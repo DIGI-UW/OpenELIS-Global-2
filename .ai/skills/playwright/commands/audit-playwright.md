@@ -39,6 +39,7 @@ Interpret input best-effort:
    - Confirm helpers keep deterministic behavior.
 
 5. **Repo policy alignment**
+
    - Use `videoPause()` for demo pacing, not `waitForTimeout()`.
    - Keep tests focused and avoid multi-concern mega-tests when possible.
 

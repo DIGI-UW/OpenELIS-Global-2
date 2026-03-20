@@ -121,8 +121,8 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 4. **`isVisible({ timeout: N })`** — The timeout parameter is deprecated and
    ignored; use `expect(el).toBeVisible({ timeout: N })` for waiting
 
-**Full guide:** `.specify/guides/playwright-best-practices.md`
-**Quality report:** `.specify/guides/playwright-e2e-quality-report.md`
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ---
 

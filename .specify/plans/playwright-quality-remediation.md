@@ -1,9 +1,8 @@
 # Playwright Quality Remediation Plan
 
-> **Date:** 2026-03-20
-> **Status:** DRAFT
-> **Research Report:** `.specify/guides/playwright-e2e-quality-report.md`
-> **Scope:** Prevent new anti-patterns, fix existing ones, improve architecture
+> **Date:** 2026-03-20 **Status:** DRAFT **Research Report:** >
+> `.specify/guides/playwright-e2e-quality-report.md` > **Scope:** Prevent new
+> anti-patterns, fix existing ones, improve architecture
 
 ---
 
@@ -26,8 +25,8 @@ block (after line 109):
 3. **`{ force: true }`** -- Click the `<label>` instead of forcing hidden Carbon
    inputs; `force` masks real actionability regressions
 
-**Full guide:** `.specify/guides/playwright-best-practices.md`
-**Quality report:** `.specify/guides/playwright-e2e-quality-report.md`
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 ```
 
 ### 1.2 AGENTS.md Additions
@@ -62,43 +61,45 @@ These patterns cause flaky tests and invisible failures:
 
 Add the following sections to the best practices guide:
 
-**A) Replace the "Anti-Patterns" table (line 499-510) with an expanded version:**
+**A) Replace the "Anti-Patterns" table (line 499-510) with an expanded
+version:**
 
-```markdown
+````markdown
 ## Anti-Patterns
 
 ### Critical Anti-Patterns (Cause Flaky Tests)
 
-| Anti-Pattern | Why It Fails | Fix |
-|---|---|---|
-| `waitForResponse` as assertion | Backend 500 throws before UI renders error notification | Use for sync only, assert on UI |
-| `expect.poll()` for autocomplete | 12s polling adds flakiness; dropdown timing is non-deterministic | Type full value + Tab |
-| `{ force: true }` on Carbon inputs | Bypasses actionability; masks overlay/focus regressions | Click the `<label>` element |
-| `.catch(() => false)` silently | Swallows real failures; broken features pass green | Use explicit conditional paths |
-| No `expect()` in test body | Test provides zero regression protection | Add at least one assertion per step |
+| Anti-Pattern                       | Why It Fails                                                     | Fix                                 |
+| ---------------------------------- | ---------------------------------------------------------------- | ----------------------------------- |
+| `waitForResponse` as assertion     | Backend 500 throws before UI renders error notification          | Use for sync only, assert on UI     |
+| `expect.poll()` for autocomplete   | 12s polling adds flakiness; dropdown timing is non-deterministic | Type full value + Tab               |
+| `{ force: true }` on Carbon inputs | Bypasses actionability; masks overlay/focus regressions          | Click the `<label>` element         |
+| `.catch(() => false)` silently     | Swallows real failures; broken features pass green               | Use explicit conditional paths      |
+| No `expect()` in test body         | Test provides zero regression protection                         | Add at least one assertion per step |
 
 ### Structural Anti-Patterns
 
-| Anti-Pattern | Fix |
-|---|---|
-| `page.waitForTimeout(ms)` | Use auto-retrying `expect()` assertions |
-| Manual POM construction | Use `test.extend()` fixture injection |
-| Pure API tests in E2E suite | Move to backend integration tests |
-| Long tests with many concerns | Split into focused single-concern tests with `test.step()` |
-| Hardcoded credentials | Use `TEST_USER`/`TEST_PASS` environment variables |
-| CSS class assertions for state | Use ARIA role/attribute assertions |
+| Anti-Pattern                   | Fix                                                        |
+| ------------------------------ | ---------------------------------------------------------- |
+| `page.waitForTimeout(ms)`      | Use auto-retrying `expect()` assertions                    |
+| Manual POM construction        | Use `test.extend()` fixture injection                      |
+| Pure API tests in E2E suite    | Move to backend integration tests                          |
+| Long tests with many concerns  | Split into focused single-concern tests with `test.step()` |
+| Hardcoded credentials          | Use `TEST_USER`/`TEST_PASS` environment variables          |
+| CSS class assertions for state | Use ARIA role/attribute assertions                         |
 
 ### Correct `waitForResponse` Pattern
 
 ```typescript
 // Synchronize on network, then assert on UI
-const responsePromise = page.waitForResponse('**/api/save');
+const responsePromise = page.waitForResponse("**/api/save");
 await saveButton.click();
 await responsePromise; // sync only -- do not check .ok()
 
 // This is the real assertion
-await expect(page.getByText('Saved successfully')).toBeVisible();
+await expect(page.getByText("Saved successfully")).toBeVisible();
 ```
+````
 
 ### Correct Autocomplete Pattern
 
@@ -117,9 +118,10 @@ await expect(siteInput).toHaveValue("CAMES MAN");
 const label = page.locator('label[for="saveallresults"]');
 await label.click();
 // Or use getByLabel
-await page.getByLabel('Accept All').check();
+await page.getByLabel("Accept All").check();
 ```
-```
+
+````
 
 **B) Add a "Multi-Step Workflow Pattern" section:**
 
@@ -148,8 +150,9 @@ test('complete sample order workflow', async ({ page }) => {
     await expect(page.locator('.orderEntrySuccessMsg')).toBeVisible();
   });
 });
-```
-```
+````
+
+````
 
 **C) Add "Soft Assertions for Transient UI" section:**
 
@@ -164,8 +167,9 @@ await expect.soft(
   page.getByRole('alert'),
   'Success notification should appear after save'
 ).toBeVisible({ timeout: 10_000 });
-```
-```
+````
+
+````
 
 **D) Update the Authentication Strategy section** to match the actual
 `auth.setup.ts` implementation (API-based login, not UI-based).
@@ -180,7 +184,7 @@ await expect.soft(
 - Never poll for autocomplete dropdowns. Type the full known value and Tab.
 - Never use `{ force: true }` on Carbon inputs. Click the label instead.
 - Every test must contain at least one `expect()` assertion.
-```
+````
 
 **B) `commands/audit-playwright.md` -- Add to Audit Checklist:**
 
@@ -194,13 +198,14 @@ await expect.soft(
    - Flag `.catch(() => false)` or `.catch(() => {})` patterns
 ```
 
-**C) `commands/write-playwright-test.md` -- Add to step 3 "Write from template":**
+**C) `commands/write-playwright-test.md` -- Add to step 3 "Write from
+template":**
 
 ```markdown
-   - Never use `waitForResponse` as assertion; use for sync only
-   - For autocomplete fields, type full value + Tab (never poll for suggestions)
-   - For Carbon checkboxes/radios, click the label (never `{ force: true }`)
-   - Use `test.step()` for multi-step workflows
+- Never use `waitForResponse` as assertion; use for sync only
+- For autocomplete fields, type full value + Tab (never poll for suggestions)
+- For Carbon checkboxes/radios, click the label (never `{ force: true }`)
+- Use `test.step()` for multi-step workflows
 ```
 
 **D) `reference/selector-policy.md` -- Add "Actionability" section:**
@@ -232,15 +237,15 @@ cd frontend && npm install -D eslint-plugin-playwright
 
 ```javascript
 module.exports = {
-  extends: ['plugin:playwright/recommended'],
-  files: ['playwright/**/*.ts'],
+  extends: ["plugin:playwright/recommended"],
+  files: ["playwright/**/*.ts"],
   rules: {
-    'playwright/no-wait-for-timeout': 'error',
-    'playwright/prefer-web-first-assertions': 'warn',
-    'playwright/no-force-option': 'warn',
-    'playwright/no-page-pause': 'error',
-    'playwright/expect-expect': 'warn',
-    'playwright/no-conditional-expect': 'warn',
+    "playwright/no-wait-for-timeout": "error",
+    "playwright/prefer-web-first-assertions": "warn",
+    "playwright/no-force-option": "warn",
+    "playwright/no-page-pause": "error",
+    "playwright/expect-expect": "warn",
+    "playwright/no-conditional-expect": "warn",
   },
 };
 ```
@@ -269,33 +274,38 @@ Priority ordering: highest flakiness risk first.
 
 #### 2.1 Fix `accept-results.ts` -- Remove `waitForResponse` as Assertion
 
-**File:** `frontend/playwright/helpers/accept-results.ts`
-**Lines:** 68-92
-**Risk:** HIGH -- Backend 500 causes generic error before UI notification renders
+**File:** `frontend/playwright/helpers/accept-results.ts` **Lines:** 68-92
+**Risk:** HIGH -- Backend 500 causes generic error before UI notification
+renders
 
 **Changes needed:**
+
 1. Keep `waitForResponse` for synchronization (line 68-73) but remove the
    `saveResponse.ok()` check and the programmatic throw (lines 86-92)
 2. Instead, after `await saveResponsePromise`, assert on visible UI state:
-   - Success: `await expect(page).toHaveURL(/AnalyzerResults/, { timeout: 45_000 })`
-   - Error: `await expect(page.getByRole('alert').or(page.locator('.cds--inline-notification--error'))).not.toBeVisible()`
+   - Success:
+     `await expect(page).toHaveURL(/AnalyzerResults/, { timeout: 45_000 })`
+   - Error:
+     `await expect(page.getByRole('alert').or(page.locator('.cds--inline-notification--error'))).not.toBeVisible()`
 3. Keep the existing post-navigation UI assertions (lines 97-106) which are
    already correct
 
 #### 2.2 Fix `ogc-284-barcode-workflow.spec.ts` -- Remove Autocomplete Polling
 
 **File:** `frontend/playwright/tests/ogc-284-barcode-workflow.spec.ts`
-**Function:** `pickFirstAutosuggestOptional` (lines 18-32)
-**Risk:** HIGH -- 12s polling per call, 2 calls per order = up to 24s flake window
+**Function:** `pickFirstAutosuggestOptional` (lines 18-32) **Risk:** HIGH -- 12s
+polling per call, 2 calls per order = up to 24s flake window
 
 **Changes needed:**
+
 1. Replace `pickFirstAutosuggestOptional` with a simple Tab press:
    ```typescript
    async function tabOutOfAutocomplete(page: Page) {
      await page.keyboard.press("Tab");
    }
    ```
-2. In `fillOrderDetails` (lines 263-342), change the site/requester fill pattern:
+2. In `fillOrderDetails` (lines 263-342), change the site/requester fill
+   pattern:
    - For `siteInput`: fill full value ("CAMES MAN"), press Tab
    - For `requesterLookup`: fill full value ("Prime"), press Tab
 3. Remove the `[data-cy="auto-suggestion"]` locator usage entirely (Cypress-era
@@ -303,48 +313,46 @@ Priority ordering: highest flakiness risk first.
 
 #### 2.3 Fix `accept-results.ts` -- Replace `{ force: true }`
 
-**File:** `frontend/playwright/helpers/accept-results.ts`
-**Line:** 53
-**Risk:** MEDIUM -- May mask actionability regression on Accept All checkbox
+**File:** `frontend/playwright/helpers/accept-results.ts` **Line:** 53 **Risk:**
+MEDIUM -- May mask actionability regression on Accept All checkbox
 
 **Changes needed:**
+
 1. Replace `await acceptAllCheckbox.check({ force: true })` with either:
    - `await page.getByLabel('Select all results').check()` (if label exists)
-   - `await page.locator('label[for="saveallresults"]').click()` (click the label)
+   - `await page.locator('label[for="saveallresults"]').click()` (click the
+     label)
 
 ### P2 (Medium -- Masks Real Failures)
 
 #### 2.4 Fix `ogc-284-barcode-workflow.spec.ts` -- Replace `{ force: true }`
 
-**Lines:** 163, 199
-**Changes needed:**
-1. Line 163: Replace `await firstRadio.check({ force: true })` with clicking
-   the Carbon radio label element
+**Lines:** 163, 199 **Changes needed:**
+
+1. Line 163: Replace `await firstRadio.check({ force: true })` with clicking the
+   Carbon radio label element
 2. Line 199: Replace `await genderMale.check({ force: true })` with
    `await page.getByLabel('Male').check()` or clicking the label
 
 #### 2.5 Fix `ogc-284-labels-ui.spec.ts` -- Replace `{ force: true }`
 
-**Line:** 9
-**Changes needed:**
-Replace `.click({ force: true })` with a proper wait for the element to be
-actionable, then click without force.
+**Line:** 9 **Changes needed:** Replace `.click({ force: true })` with a proper
+wait for the element to be actionable, then click without force.
 
 #### 2.6 Fix `barcode-configuration.spec.ts` -- Replace `{ force: true }`
 
-**Line:** 60
-**Changes needed:**
-Replace `await collectionDateCheckbox.setChecked(false, { force: true })` with
+**Line:** 60 **Changes needed:** Replace
+`await collectionDateCheckbox.setChecked(false, { force: true })` with
 `await page.getByLabel('Collection Date and Time').uncheck()`.
 
 #### 2.7 Fix `ogc-284-barcode-workflow.spec.ts` -- Remove Silent Error Swallowing
 
-**Lines:** 84, 124, 188, 197-199, 205
-**Changes needed:**
-Replace `.catch(() => false)` patterns with explicit conditional checks:
+**Lines:** 84, 124, 188, 197-199, 205 **Changes needed:** Replace
+`.catch(() => false)` patterns with explicit conditional checks:
+
 ```typescript
 // Instead of: if (await element.isVisible().catch(() => false))
-const isPresent = await element.count() > 0;
+const isPresent = (await element.count()) > 0;
 if (isPresent) {
   await expect(element).toBeVisible();
   // ... proceed with interaction
@@ -355,31 +363,34 @@ if (isPresent) {
 
 **File:** `ogc-284-barcode-workflow.spec.ts` -- US3 test (lines 597-713)
 **Changes needed:**
+
 1. Add `await expect(successArea).toBeVisible()` after order submission
-2. Add `await expect(page.getByRole('heading', { name: /print bar code labels/i })).toBeVisible()` in reprint section
+2. Add
+   `await expect(page.getByRole('heading', { name: /print bar code labels/i })).toBeVisible()`
+   in reprint section
 3. Wrap logical sections in `test.step()` blocks
 
 ### P3 (Low -- Structural Improvements)
 
 #### 2.9 Move `file-import.spec.ts` to API Test Suite
 
-**File:** `frontend/playwright/tests/file-import.spec.ts`
-**Changes needed:**
+**File:** `frontend/playwright/tests/file-import.spec.ts` **Changes needed:**
 This file contains zero UI interactions. Either:
+
 - Move assertions into backend integration tests, or
-- Convert to use `page.goto()` + UI assertions to verify the configurations
-  are visible in the UI (making it a real E2E test)
+- Convert to use `page.goto()` + UI assertions to verify the configurations are
+  visible in the UI (making it a real E2E test)
 
 #### 2.10 Add `test.step()` to Long Workflow Tests
 
 **Files:**
+
 - `ogc-284-barcode-workflow.spec.ts` (3 tests, each 100+ lines)
 - `astm-genexpert-results.spec.ts` (1 test with multiple phases)
 - `file-import-results.spec.ts` (1 test with multiple phases)
 
-**Changes needed:**
-Wrap existing logical sections in `test.step()` blocks for better trace
-readability and failure diagnostics.
+**Changes needed:** Wrap existing logical sections in `test.step()` blocks for
+better trace readability and failure diagnostics.
 
 ---
 
@@ -393,13 +404,15 @@ readability and failure diagnostics.
 **Target state:** POMs provided via Playwright `test.extend()` fixtures.
 
 **Migration plan:**
+
 1. Create `frontend/playwright/fixtures/index.ts` with extended test:
+
    ```typescript
-   import { test as base } from '@playwright/test';
-   import { AnalyzerListPage } from './analyzer-list';
-   import { AnalyzerFormPage } from './analyzer-form';
-   import { ErrorDashboardPage } from './error-dashboard';
-   import { Sidenav } from './sidenav';
+   import { test as base } from "@playwright/test";
+   import { AnalyzerListPage } from "./analyzer-list";
+   import { AnalyzerFormPage } from "./analyzer-form";
+   import { ErrorDashboardPage } from "./error-dashboard";
+   import { Sidenav } from "./sidenav";
 
    export const test = base.extend<{
      analyzerList: AnalyzerListPage;
@@ -421,19 +434,22 @@ readability and failure diagnostics.
      },
    });
 
-   export { expect } from '@playwright/test';
+   export { expect } from "@playwright/test";
    ```
+
 2. Update test files to import from `../fixtures` instead of `@playwright/test`
-3. Use destructured fixtures: `test('...', async ({ page, analyzerList }) => {})`
+3. Use destructured fixtures:
+   `test('...', async ({ page, analyzerList }) => {})`
 
 ### 3.2 API-First Test Data Setup
 
-**Current state:** Tests create data through UI navigation (slow, flaky) or
-rely on SQL fixtures loaded externally.
+**Current state:** Tests create data through UI navigation (slow, flaky) or rely
+on SQL fixtures loaded externally.
 
 **Target state:** Tests create required data via REST API in `beforeAll` hooks.
 
 **Migration plan:**
+
 1. Create `frontend/playwright/helpers/api-data.ts` with helper functions:
    - `createPatient(request, data)` - creates test patient via API
    - `createOrder(request, data)` - creates test order via API
@@ -455,6 +471,7 @@ rely on SQL fixtures loaded externally.
 **Applicable to:** Carbon form components that have stable accessible structure.
 
 **Migration plan:**
+
 1. Start with `barcode-configuration.spec.ts` as a pilot -- the form has clear
    ARIA structure
 2. Add ARIA snapshot tests alongside existing assertions (additive, not
@@ -466,6 +483,7 @@ rely on SQL fixtures loaded externally.
 **Timeline:** After Phase 1 and Phase 2 are complete.
 
 **Steps:**
+
 1. Install: `npx playwright init-agents --loop=claude`
 2. Configure for OpenELIS-specific patterns (Carbon selectors, auth setup)
 3. Document in CLAUDE.md as an optional development tool
@@ -489,8 +507,8 @@ Insert after line 109 (after the "Playwright E2E -- RECOMMENDED" section):
 3. **`{ force: true }`** -- Click the `<label>` instead of forcing hidden Carbon
    inputs; `force` masks real actionability regressions
 
-**Full guide:** `.specify/guides/playwright-best-practices.md`
-**Quality report:** `.specify/guides/playwright-e2e-quality-report.md`
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 ```
 
 ## Appendix: Draft AGENTS.md Addition

@@ -49,7 +49,8 @@ For AI-assisted development, prefer this sequence:
 - NEVER use `response.ok()` as the test pass/fail signal. Use `waitForResponse`
   for sync, assert on visible UI.
 - NEVER use `{ force: true }` on Carbon inputs. Click the `<label>` instead.
-- NEVER use `.catch(() => false)` on `isVisible()` — it returns boolean directly.
+- NEVER use `.catch(() => false)` on `isVisible()` — it returns boolean
+  directly.
 - ALWAYS include at least one `expect()` assertion per test.
 
 ## Execution Invariants

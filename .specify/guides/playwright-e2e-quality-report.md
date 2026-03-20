@@ -1,9 +1,9 @@
 # Playwright E2E Quality Report
 
-> **Date:** 2026-03-20
-> **Scope:** All files in `frontend/playwright/` (tests, helpers, fixtures)
-> **Purpose:** Identify anti-patterns, establish modern best practices, and
-> recommend tooling improvements for OpenELIS Playwright E2E tests.
+> **Date:** 2026-03-20 **Scope:** All files in `frontend/playwright/` (tests,
+> helpers, fixtures) **Purpose:** Identify anti-patterns, establish modern best
+> practices, and recommend tooling improvements for OpenELIS Playwright E2E
+> tests.
 
 ---
 
@@ -27,7 +27,7 @@ const saveResponsePromise = page.waitForResponse(
   (res) =>
     res.url().includes("/rest/AnalyzerResults") &&
     res.request().method() === "POST",
-  { timeout: 60_000 },
+  { timeout: 60_000 }
 );
 await saveButton.click();
 // ... then checks saveResponse.ok() and throws if not
@@ -46,10 +46,10 @@ UI tell the story.
 **File:** `frontend/playwright/tests/ogc-284-barcode-workflow.spec.ts` (lines
 18-32)
 
-The `pickFirstAutosuggestOptional` function uses `expect.poll()` with a 12-second
-timeout and custom intervals to wait for autocomplete dropdown suggestions to
-appear, then clicks the first one. If the dropdown never appears, it falls back
-to pressing Tab.
+The `pickFirstAutosuggestOptional` function uses `expect.poll()` with a
+12-second timeout and custom intervals to wait for autocomplete dropdown
+suggestions to appear, then clicks the first one. If the dropdown never appears,
+it falls back to pressing Tab.
 
 ```typescript
 // ogc-284-barcode-workflow.spec.ts lines 18-32
@@ -68,11 +68,11 @@ async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
 }
 ```
 
-**Why it matters:** This is called twice in `fillOrderDetails` (for site name and
-requester lookup), adding up to 24 seconds of potential polling time per order.
-The `[data-cy="auto-suggestion"]` selector is a Cypress-era attribute being used
-in Playwright tests. The try/catch silently swallows failures, masking real
-issues.
+**Why it matters:** This is called twice in `fillOrderDetails` (for site name
+and requester lookup), adding up to 24 seconds of potential polling time per
+order. The `[data-cy="auto-suggestion"]` selector is a Cypress-era attribute
+being used in Playwright tests. The try/catch silently swallows failures,
+masking real issues.
 
 **Better approach:** For known values in E2E fixtures, type the full value and
 press Tab. Autocomplete is a UX convenience, not the interaction path tests
@@ -82,13 +82,13 @@ should exercise.
 
 Multiple files use `{ force: true }` on click and check operations:
 
-| File | Line | Usage |
-|------|------|-------|
-| `ogc-284-barcode-workflow.spec.ts` | 163 | `await firstRadio.check({ force: true })` |
-| `ogc-284-barcode-workflow.spec.ts` | 199 | `await genderMale.check({ force: true })` |
-| `ogc-284-labels-ui.spec.ts` | 9 | `.click({ force: true })` |
-| `accept-results.ts` | 53 | `await acceptAllCheckbox.check({ force: true })` |
-| `barcode-configuration.spec.ts` | 60 | `await collectionDateCheckbox.setChecked(false, { force: true })` |
+| File                               | Line | Usage                                                             |
+| ---------------------------------- | ---- | ----------------------------------------------------------------- |
+| `ogc-284-barcode-workflow.spec.ts` | 163  | `await firstRadio.check({ force: true })`                         |
+| `ogc-284-barcode-workflow.spec.ts` | 199  | `await genderMale.check({ force: true })`                         |
+| `ogc-284-labels-ui.spec.ts`        | 9    | `.click({ force: true })`                                         |
+| `accept-results.ts`                | 53   | `await acceptAllCheckbox.check({ force: true })`                  |
+| `barcode-configuration.spec.ts`    | 60   | `await collectionDateCheckbox.setChecked(false, { force: true })` |
 
 **Why it matters:** `{ force: true }` bypasses Playwright's actionability checks
 (visibility, enabled state, not intercepted by overlay). This means the test may
@@ -109,9 +109,13 @@ assertions. For example:
 **File:** `ogc-284-barcode-workflow.spec.ts` -- "US3" test (lines 597-713)
 
 Large portions of US3 are purely navigational with no assertions:
-- Lines 651-665: Scrolls to print dialog elements, checks visibility with `.catch(() => false)`, but never asserts on outcome
-- Lines 676-679: Checks for Done button visibility with `.catch(() => false)` but no assertion
-- Lines 693-703: Navigates to Print Barcode page and scrolls around with no assertions
+
+- Lines 651-665: Scrolls to print dialog elements, checks visibility with
+  `.catch(() => false)`, but never asserts on outcome
+- Lines 676-679: Checks for Done button visibility with `.catch(() => false)`
+  but no assertion
+- Lines 693-703: Navigates to Print Barcode page and scrolls around with no
+  assertions
 
 **Why it matters:** A test without assertions is a "fire-and-forget" navigation
 script. It provides no regression protection. If the feature breaks, the test
@@ -141,7 +145,7 @@ injection, proper setup/teardown lifecycle, and composability.
 **Better approach:** Define POMs as Playwright fixtures:
 
 ```typescript
-import { test as base } from '@playwright/test';
+import { test as base } from "@playwright/test";
 const test = base.extend<{ analyzerList: AnalyzerListPage }>({
   analyzerList: async ({ page }, use) => {
     const list = new AnalyzerListPage(page);
@@ -175,17 +179,17 @@ belong in backend integration tests or a separate API test suite.
 Multiple files use `.catch(() => false)` or `.catch(() => {})` to silently
 swallow errors:
 
-| File | Line | Pattern |
-|------|------|---------|
-| `accept-results.ts` | 82 | `}).catch(() => { /* Some runs complete quickly */ })` |
-| `ogc-284-barcode-workflow.spec.ts` | 84 | `.isVisible({ timeout: 2_000 }).catch(() => false)` |
-| `ogc-284-barcode-workflow.spec.ts` | 124 | `.isVisible({ timeout: 3000 }).catch(() => false)` |
-| `ogc-284-barcode-workflow.spec.ts` | 188 | `.isVisible({ timeout: 5000 }).catch(() => false)` |
-| `ogc-284-barcode-workflow.spec.ts` | 197-198 | `.isChecked().catch(() => false)` |
-| `ogc-284-barcode-workflow.spec.ts` | 199 | `.isVisible().catch(() => false)` |
-| `ogc-284-barcode-workflow.spec.ts` | 205 | `.isVisible().catch(() => false)` |
-| `analyzer-plugin-config.spec.ts` | 32 | `.catch(() => {})` |
-| `analyzer-plugin-config.spec.ts` | 60 | `.catch(() => {})` |
+| File                               | Line    | Pattern                                                |
+| ---------------------------------- | ------- | ------------------------------------------------------ |
+| `accept-results.ts`                | 82      | `}).catch(() => { /* Some runs complete quickly */ })` |
+| `ogc-284-barcode-workflow.spec.ts` | 84      | `.isVisible({ timeout: 2_000 }).catch(() => false)`    |
+| `ogc-284-barcode-workflow.spec.ts` | 124     | `.isVisible({ timeout: 3000 }).catch(() => false)`     |
+| `ogc-284-barcode-workflow.spec.ts` | 188     | `.isVisible({ timeout: 5000 }).catch(() => false)`     |
+| `ogc-284-barcode-workflow.spec.ts` | 197-198 | `.isChecked().catch(() => false)`                      |
+| `ogc-284-barcode-workflow.spec.ts` | 199     | `.isVisible().catch(() => false)`                      |
+| `ogc-284-barcode-workflow.spec.ts` | 205     | `.isVisible().catch(() => false)`                      |
+| `analyzer-plugin-config.spec.ts`   | 32      | `.catch(() => {})`                                     |
+| `analyzer-plugin-config.spec.ts`   | 60      | `.catch(() => {})`                                     |
 
 **Why it matters:** Silent error swallowing creates invisible failures. When a
 DOM element is unexpectedly missing, the test silently skips the interaction
@@ -208,12 +212,13 @@ Playwright auto-waiting.
 
 ### 9. Network Interception Used as Assertion
 
-**File:** `frontend/playwright/tests/barcode-configuration.spec.ts` (lines 28-45)
+**File:** `frontend/playwright/tests/barcode-configuration.spec.ts` (lines
+28-45)
 
 This test intercepts `**/rest/BarcodeConfiguration` to mock the API, then
 asserts on the mock's state. While API mocking is a valid technique, this test
-never verifies the actual network call happened -- it only verifies the mock
-was set up correctly.
+never verifies the actual network call happened -- it only verifies the mock was
+set up correctly.
 
 ---
 
@@ -227,12 +232,12 @@ with a visible UI state assertion.
 
 ```typescript
 // Synchronize on network completion
-const responsePromise = page.waitForResponse('**/api/save');
+const responsePromise = page.waitForResponse("**/api/save");
 await saveButton.click();
 await responsePromise; // Wait for network, but don't assert on it
 
 // Assert on visible UI state
-await expect(page.getByText('Saved successfully')).toBeVisible();
+await expect(page.getByText("Saved successfully")).toBeVisible();
 ```
 
 ### 2. Type Full Text + Tab for Known Values
@@ -243,8 +248,8 @@ Tab out. Never poll for autocomplete dropdown suggestions in tests.
 ```typescript
 // BAD: Poll for autocomplete dropdown
 await input.fill("CAMES");
-await expect.poll(() => page.locator('.suggestion').count()).toBeGreaterThan(0);
-await page.locator('.suggestion').first().click();
+await expect.poll(() => page.locator(".suggestion").count()).toBeGreaterThan(0);
+await page.locator(".suggestion").first().click();
 
 // GOOD: Type full value and move on
 await input.fill("CAMES MAN");
@@ -271,16 +276,16 @@ Instead of long sequential test bodies, use `test.step()` to create named
 sections. This improves trace readability and failure diagnostics.
 
 ```typescript
-test('complete order workflow', async ({ page }) => {
-  await test.step('Select patient', async () => {
+test("complete order workflow", async ({ page }) => {
+  await test.step("Select patient", async () => {
     // ...
   });
 
-  await test.step('Fill sample details', async () => {
+  await test.step("Fill sample details", async () => {
     // ...
   });
 
-  await test.step('Submit order', async () => {
+  await test.step("Submit order", async () => {
     // ...
   });
 });
@@ -293,8 +298,8 @@ navigating through the UI. This is 10x faster and more reliable.
 
 ```typescript
 test.beforeAll(async ({ request }) => {
-  await request.post('/api/test-data/patients', {
-    data: { lastName: 'TEST-Smith', firstName: 'John' },
+  await request.post("/api/test-data/patients", {
+    data: { lastName: "TEST-Smith", firstName: "John" },
   });
 });
 ```
@@ -306,7 +311,7 @@ tree of a component. This is ideal for Carbon Design System forms where the
 accessible structure is well-defined.
 
 ```typescript
-await expect(page.getByTestId('order-form')).toMatchAriaSnapshot(`
+await expect(page.getByTestId("order-form")).toMatchAriaSnapshot(`
   - form "Add Order":
     - textbox "Patient Name"
     - combobox "Sample Type"
@@ -320,10 +325,12 @@ Use soft assertions with custom error messages for elements like toast
 notifications that may disappear quickly.
 
 ```typescript
-await expect.soft(
-  page.getByRole('alert'),
-  'Success notification should appear after save'
-).toBeVisible({ timeout: 10_000 });
+await expect
+  .soft(
+    page.getByRole("alert"),
+    "Success notification should appear after save"
+  )
+  .toBeVisible({ timeout: 10_000 });
 ```
 
 ---
@@ -344,28 +351,28 @@ cd frontend && npm install -D eslint-plugin-playwright
 
 ```javascript
 module.exports = {
-  extends: ['plugin:playwright/recommended'],
+  extends: ["plugin:playwright/recommended"],
   rules: {
-    'playwright/no-wait-for-timeout': 'error',
-    'playwright/prefer-web-first-assertions': 'warn',
-    'playwright/no-force-option': 'warn',
-    'playwright/no-page-pause': 'error',
-    'playwright/expect-expect': 'warn',
-    'playwright/no-conditional-expect': 'warn',
-    'playwright/no-conditional-in-test': 'warn',
+    "playwright/no-wait-for-timeout": "error",
+    "playwright/prefer-web-first-assertions": "warn",
+    "playwright/no-force-option": "warn",
+    "playwright/no-page-pause": "error",
+    "playwright/expect-expect": "warn",
+    "playwright/no-conditional-expect": "warn",
+    "playwright/no-conditional-in-test": "warn",
   },
 };
 ```
 
 **Key rules:**
 
-| Rule | Purpose | Current Violations |
-|------|---------|-------------------|
-| `no-wait-for-timeout` | Prevents `page.waitForTimeout()` | title-card.ts (2), video-pause.ts (1), results-ui retry loop |
-| `prefer-web-first-assertions` | Enforces auto-retrying assertions | Multiple `.isVisible()` one-shot checks |
-| `no-force-option` | Flags `{ force: true }` | 5 instances across 3 files |
-| `expect-expect` | Requires assertions in tests | Demo test steps with no expects |
-| `no-conditional-expect` | Flags `expect` inside try/catch | accept-results.ts, analyzer-test-connection.spec.ts |
+| Rule                          | Purpose                           | Current Violations                                           |
+| ----------------------------- | --------------------------------- | ------------------------------------------------------------ |
+| `no-wait-for-timeout`         | Prevents `page.waitForTimeout()`  | title-card.ts (2), video-pause.ts (1), results-ui retry loop |
+| `prefer-web-first-assertions` | Enforces auto-retrying assertions | Multiple `.isVisible()` one-shot checks                      |
+| `no-force-option`             | Flags `{ force: true }`           | 5 instances across 3 files                                   |
+| `expect-expect`               | Requires assertions in tests      | Demo test steps with no expects                              |
+| `no-conditional-expect`       | Flags `expect` inside try/catch   | accept-results.ts, analyzer-test-connection.spec.ts          |
 
 ### 2. Playwright MCP Server
 
@@ -375,8 +382,8 @@ Enable AI-assisted test development with the Playwright MCP server:
 claude mcp add playwright npx @playwright/mcp@latest
 ```
 
-This provides the LLM with direct browser interaction capabilities for
-debugging and understanding DOM state during test development.
+This provides the LLM with direct browser interaction capabilities for debugging
+and understanding DOM state during test development.
 
 ### 3. Playwright Test Agents
 
@@ -387,6 +394,7 @@ npx playwright init-agents --loop=claude
 ```
 
 This enables three-phase test generation:
+
 1. **Planner**: Analyzes the page and creates a test plan
 2. **Generator**: Writes the test code from the plan
 3. **Healer**: Fixes broken selectors automatically on failure
@@ -408,11 +416,13 @@ This catches flaky tests before they enter the CI pipeline.
 ### CLAUDE.md
 
 **Current Playwright guidance (lines 105-109):**
+
 - Points to AGENTS.md for full details
 - Mentions `npm run pw:test` invariant
 - No anti-pattern warnings
 
 **Gaps:**
+
 - No mention of the top 3 anti-patterns to avoid
 - No pointer to `.specify/guides/playwright-best-practices.md`
 - No mention of `eslint-plugin-playwright`
@@ -420,12 +430,14 @@ This catches flaky tests before they enter the CI pipeline.
 ### AGENTS.md
 
 **Current Playwright section (lines 1543-1685):**
+
 - Comprehensive project structure documentation
 - Good CI workflow documentation
 - Good local execution examples
 - Lists `videoPause()` pattern
 
 **Gaps:**
+
 - No anti-pattern list specific to Playwright (only has Cypress anti-patterns)
 - No mention of `waitForResponse` misuse
 - No mention of `{ force: true }` risks
@@ -437,12 +449,14 @@ This catches flaky tests before they enter the CI pipeline.
 ### `.specify/guides/playwright-best-practices.md`
 
 **Current content:**
+
 - Good selector strategy table
 - Good POM pattern
 - Good authentication strategy
 - Anti-patterns table at line 499-510
 
 **Gaps:**
+
 - Anti-pattern table is generic (copied from Playwright docs)
 - No mention of `waitForResponse` misuse pattern
 - No mention of autocomplete polling
@@ -458,11 +472,13 @@ This catches flaky tests before they enter the CI pipeline.
 ### `.ai/skills/playwright/SKILL.md`
 
 **Current content:**
+
 - Good lifecycle sequence
 - Good non-negotiables list
 - Good execution invariants
 
 **Gaps:**
+
 - No anti-pattern list
 - No mention of `waitForResponse` vs UI assertion pattern
 - No mention of `{ force: true }` risks
@@ -470,46 +486,55 @@ This catches flaky tests before they enter the CI pipeline.
 ### `.ai/skills/playwright/commands/*.md`
 
 **audit-playwright.md:**
+
 - Has 5-point checklist but all are generic
 - No specific anti-patterns to flag
 - No mention of `waitForResponse`, `force: true`, or autocomplete polling
 
 **write-playwright-test.md:**
+
 - Good source-first workflow
 - No mention of avoiding `waitForResponse` as assertion
 - No mention of avoiding autocomplete polling
 - No mention of `test.step()` for workflows
 
 **debug-playwright.md:**
+
 - Good source-first, evidence-first workflow
 - No mention of checking for `waitForResponse` masking real failures
 
 **plan-record-playwright.md:**
+
 - Good planning workflow
 - No quality criteria for what makes a test "ready to record"
 
 ### `.ai/skills/playwright/reference/*.md`
 
 **selector-policy.md:**
+
 - Good selector priority order
 - Good wait strategy rules
 - No mention of `{ force: true }` as a selector-adjacent concern
 
 **write-workflow.md:**
+
 - Good 6-step workflow
 - No anti-pattern checklist at the end
 
 **debug-workflow.md:**
+
 - Good 5-step diagnostic workflow
 - No mention of `waitForResponse` masking failures
 
 ### `.ai/skills/playwright/templates/PlaywrightE2E.spec.ts.template`
 
 **Current content:**
+
 - Good debug context capture pattern
 - Good `videoPause()` usage
 
 **Gaps:**
+
 - Uses `console`/`pageerror` listeners that are flagged as inappropriate for
   demo specs in playwright-best-practices.md -- template should have a note
 - No `test.step()` example for multi-step workflows
@@ -519,13 +544,13 @@ This catches flaky tests before they enter the CI pipeline.
 
 ## Summary of Findings
 
-| Category | Count | Severity |
-|----------|-------|----------|
-| `waitForResponse` as primary assertion | 1 file (accept-results.ts) | High -- masks backend failures |
-| Autocomplete polling (12s timeout) | 1 file (ogc-284-barcode-workflow.spec.ts) | High -- adds 24s flaky wait |
-| `{ force: true }` bypasses | 5 instances in 3 files | Medium -- masks actionability issues |
-| Tests with no assertions | Parts of 3 demo tests | Medium -- no regression protection |
-| Silent `.catch(() => false/{})`  | 15+ instances in 4 files | Medium -- invisible failures |
-| Pure API tests in E2E suite | 1 file (file-import.spec.ts) | Low -- wrong test type |
-| Manual POM construction | 10+ test files | Low -- boilerplate |
-| `page.waitForTimeout()` in helpers | 3 helpers (title-card, video-pause, results-ui) | Low -- most are video-only |
+| Category                               | Count                                           | Severity                             |
+| -------------------------------------- | ----------------------------------------------- | ------------------------------------ |
+| `waitForResponse` as primary assertion | 1 file (accept-results.ts)                      | High -- masks backend failures       |
+| Autocomplete polling (12s timeout)     | 1 file (ogc-284-barcode-workflow.spec.ts)       | High -- adds 24s flaky wait          |
+| `{ force: true }` bypasses             | 5 instances in 3 files                          | Medium -- masks actionability issues |
+| Tests with no assertions               | Parts of 3 demo tests                           | Medium -- no regression protection   |
+| Silent `.catch(() => false/{})`        | 15+ instances in 4 files                        | Medium -- invisible failures         |
+| Pure API tests in E2E suite            | 1 file (file-import.spec.ts)                    | Low -- wrong test type               |
+| Manual POM construction                | 10+ test files                                  | Low -- boilerplate                   |
+| `page.waitForTimeout()` in helpers     | 3 helpers (title-card, video-pause, results-ui) | Low -- most are video-only           |

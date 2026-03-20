@@ -1618,10 +1618,10 @@ state.
 
 ```typescript
 // DO: sync then assert on UI
-const responsePromise = page.waitForResponse('**/api/save');
+const responsePromise = page.waitForResponse("**/api/save");
 await saveButton.click();
 await responsePromise; // sync only — do not check .ok()
-await expect(page.getByText('Saved successfully')).toBeVisible();
+await expect(page.getByText("Saved successfully")).toBeVisible();
 ```
 
 **DO NOT: Use `{ force: true }` on Carbon inputs**
@@ -1634,11 +1634,11 @@ Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
 // DO: click the label
 await page.locator('label[for="saveallresults"]').click();
 // or for dynamic IDs:
-await input.locator('..').locator('label').click();
+await input.locator("..").locator("label").click();
 
 // DO NOT:
 await checkbox.check({ force: true }); // bypasses actionability checks
-await page.getByLabel('text').check(); // targets hidden input — will fail
+await page.getByLabel("text").check(); // targets hidden input — will fail
 ```
 
 **DO NOT: Use `.catch(() => false)` on `isVisible()`**
