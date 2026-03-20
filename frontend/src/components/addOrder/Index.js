@@ -13,6 +13,8 @@ import {
 } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
+import EQASampleEntry from "../eqa/EQASampleEntry";
+import EQAOrderForm from "../eqa/EQAOrderForm";
 import { FormattedMessage, useIntl } from "react-intl";
 import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
@@ -49,7 +51,20 @@ const Index = () => {
     "sampleOrderItems.labNo": false,
   });
   const [page, setPage] = useState(firstPageNumber);
-  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
+  const isEQAFromUrl =
+    new URLSearchParams(window.location.search).get("isEQA") === "true";
+  const [orderFormValues, setOrderFormValues] = useState(() => {
+    if (isEQAFromUrl) {
+      return {
+        ...SampleOrderFormValues,
+        sampleOrderItems: {
+          ...SampleOrderFormValues.sampleOrderItems,
+          isEQASample: true,
+        },
+      };
+    }
+    return SampleOrderFormValues;
+  });
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,13 +92,13 @@ const Index = () => {
       const externalId = urlParams.get("ID");
       checkOrderReferral(externalId);
     } else {
-      setOrderFormValues({
-        ...orderFormValues,
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...prev.sampleOrderItems,
           externalOrderNumber: "",
         },
-      });
+      }));
     }
   }, [configurationProperties.ACCEPT_EXTERNAL_ORDERS]);
 
@@ -601,6 +616,10 @@ const Index = () => {
     if ("questionnaire" in orderFormValues.sampleOrderItems) {
       delete orderFormValues.sampleOrderItems.questionnaire;
     }
+    // readOnly is frontend-only, do not send to backend
+    if ("readOnly" in orderFormValues.patientProperties) {
+      delete orderFormValues.patientProperties.readOnly;
+    }
     //remove display Lists rom the form
     orderFormValues.sampleOrderItems.priorityList = [];
     orderFormValues.sampleOrderItems.programList = [];
@@ -785,19 +804,34 @@ const Index = () => {
             )}
 
             {page === patientInfoPageNumber && (
-              <PatientInfo
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-                error={elementError}
-                setPhoneValidation={setPhoneValidation}
-              />
+              <>
+                {(configurationProperties.EQA_ENABLED === "true" ||
+                  orderFormValues?.sampleOrderItems?.isEQASample) && (
+                  <EQASampleEntry
+                    orderFormValues={orderFormValues}
+                    setOrderFormValues={setOrderFormValues}
+                  />
+                )}
+                <PatientInfo
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                  error={elementError}
+                  setPhoneValidation={setPhoneValidation}
+                />
+              </>
             )}
-            {page === programPageNumber && (
-              <OrderEntryAdditionalQuestions
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-              />
-            )}
+            {page === programPageNumber &&
+              (orderFormValues?.sampleOrderItems?.isEQASample ? (
+                <EQAOrderForm
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                />
+              ) : (
+                <OrderEntryAdditionalQuestions
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                />
+              ))}
             {page === samplePageNumber && (
               <AddSample
                 error={elementError}

@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Stack, Grid, Column } from "@carbon/react";
+import { Button, Stack, Grid, Column, InlineNotification } from "@carbon/react";
 import SearchPatientForm from "../patient/SearchPatientForm";
 import CreatePatientForm from "../patient/CreatePatientForm";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const PatientInfo = (props) => {
   const { orderFormValues, setOrderFormValues, error, setPhoneValidation } =
     props;
   const componentMounted = useRef(false);
+  const intl = useIntl();
   const [searchPatientTab, setSearchPatientTab] = useState({
     kind: "primary",
     active: true,
@@ -21,6 +22,8 @@ const PatientInfo = (props) => {
     id: "",
     healthRegion: [],
   });
+
+  const isEQASample = orderFormValues?.sampleOrderItems?.isEQASample || false;
 
   const getSelectedPatient = (patient) => {
     setSelectedPatient(patient);
@@ -59,6 +62,24 @@ const PatientInfo = (props) => {
     };
   }, []);
 
+  // When EQA mode toggles on, switch to the form tab and populate selectedPatient
+  // from the patient properties (which may be an existing or new N_A patient).
+  useEffect(() => {
+    if (isEQASample) {
+      handleNewPatientTab();
+      setSelectedPatient({
+        id: orderFormValues.patientProperties.patientPK || "",
+        healthRegion: [],
+        firstName: orderFormValues.patientProperties.firstName || "NULL",
+        lastName: orderFormValues.patientProperties.lastName || "NULL",
+        nationalId: orderFormValues.patientProperties.nationalId || "NULL",
+        gender: orderFormValues.patientProperties.gender || "M",
+        birthDateForDisplay:
+          orderFormValues.patientProperties.birthDateForDisplay || "01/01/1900",
+      });
+    }
+  }, [isEQASample, orderFormValues.patientProperties.patientPK]);
+
   useEffect(() => {
     if (
       orderFormValues.patientProperties.guid &&
@@ -92,29 +113,53 @@ const PatientInfo = (props) => {
                 <FormattedMessage id="banner.menu.patient" />
               </h3>
             </Column>
-            <Column lg={4} md={4} sm={2}>
-              <Button
-                data-cy="searchPatientTabButton"
-                kind={searchPatientTab.kind}
-                onClick={handleSearchPatientTab}
-              >
-                <FormattedMessage id="search.patient.label" />
-              </Button>
-            </Column>
-            <Column lg={4} md={4} sm={2}>
-              <Button
-                data-cy="newPatientTabButton"
-                kind={newPatientTab.kind}
-                onClick={handleNewPatientTab}
-              >
-                <FormattedMessage id="new.patient.label" />
-              </Button>
-            </Column>
-            <Column lg={16} md={8} sm={4}>
-              {searchPatientTab.active && (
-                <SearchPatientForm getSelectedPatient={getSelectedPatient} />
-              )}
-            </Column>
+
+            {isEQASample && (
+              <Column lg={16} md={8} sm={4}>
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "eqa.sample.patient.readonly.title",
+                  })}
+                  subtitle={intl.formatMessage({
+                    id: "eqa.sample.patient.readonly.body",
+                  })}
+                />
+              </Column>
+            )}
+
+            {!isEQASample && (
+              <>
+                <Column lg={4} md={4} sm={2}>
+                  <Button
+                    data-cy="searchPatientTabButton"
+                    kind={searchPatientTab.kind}
+                    onClick={handleSearchPatientTab}
+                  >
+                    <FormattedMessage id="search.patient.label" />
+                  </Button>
+                </Column>
+                <Column lg={4} md={4} sm={2}>
+                  <Button
+                    data-cy="newPatientTabButton"
+                    kind={newPatientTab.kind}
+                    onClick={handleNewPatientTab}
+                  >
+                    <FormattedMessage id="new.patient.label" />
+                  </Button>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  {searchPatientTab.active && (
+                    <SearchPatientForm
+                      getSelectedPatient={getSelectedPatient}
+                    />
+                  )}
+                </Column>
+              </>
+            )}
+
             <Column lg={16} md={8} sm={4}>
               {newPatientTab.active && (
                 <CreatePatientForm
@@ -124,6 +169,7 @@ const PatientInfo = (props) => {
                   setOrderFormValues={setOrderFormValues}
                   error={error}
                   setPhoneValidation={setPhoneValidation}
+                  disabled={isEQASample}
                 />
               )}
             </Column>

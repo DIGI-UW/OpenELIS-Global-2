@@ -96,81 +96,17 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Cypress E2E Test Execution — DEPRECATED (CRITICAL for Claude Code Environment)
+### Cypress E2E — DEPRECATED
 
-> **Cypress is deprecated.** All new E2E tests should use Playwright. Cypress
-> scripts below are retained for existing tests only.
+> **Do not create new Cypress tests.** See [AGENTS.md](AGENTS.md) "E2E Tests
+> (Cypress) — DEPRECATED" for existing test maintenance scripts and execution
+> constraints.
 
-**IMPORTANT:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` is set,
-which breaks Cypress. All `npm run cy:*` scripts include
-`unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use the npm scripts,
-NOT direct `npx cypress` commands.**
+### Playwright E2E — RECOMMENDED
 
-**Available Scripts (use these, not direct cypress commands):**
-
-```bash
-# Run specific test file
-npm run cy:spec "cypress/e2e/home.cy.js"
-
-# Run all admin tests
-npm run cy:admin
-
-# Run all analyzer tests
-npm run cy:analyzer
-
-# Run full suite (development)
-npm run cy:run
-
-# Run full suite with fail-fast (stops on first failure)
-npm run cy:failfast
-
-# Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
-
-# Open Cypress UI (interactive mode)
-npm run cy:open
-```
-
-**Three-Phase Workflow (Constitution V.5):**
-
-1. **During Development:** Run individual tests (`npm run cy:spec "..."`)
-2. **Before Pushing (MANDATORY):** Run full suite (`npm run cy:failfast`)
-3. **In CI/CD:** Automatic via GitHub Actions
-
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
-
-### Playwright E2E Test Execution — RECOMMENDED
-
-> **Playwright is the recommended E2E framework.** All new E2E tests should use
-> Playwright. See [AGENTS.md](AGENTS.md) § "E2E Tests (Playwright)" for full
-> details on projects, CI workflows, fixtures, and command entrypoints.
-
-**Available Scripts:**
-
-```bash
-cd frontend
-
-# Run specific project
-npm run pw:test -- --project=core-app
-
-# Record demo videos (requires harness stack)
-npm run pw:test -- --project=demo-video
-
-# Run all tests
-npm run pw:test
-```
-
-**Key Rule:** Use `videoPause()` (from `helpers/video-pause.ts`) instead of
-`page.waitForTimeout()` for video pacing. No-ops in non-video projects.
-
-**Projects:** `core-app` (build stack), `harness` (full infra), `demo` (normal
-speed), `demo-video` (slowMo + video recording).
-
-**Skill Commands:** Use `/plan-record-playwright` to plan feature/PR flow
-coverage and recording stages, `/write-playwright-test` for first-pass
-authoring, `/audit-playwright` for selector/anti-pattern audits, and
-`/debug-playwright` for evidence-first runtime failure diagnosis.
+> See [AGENTS.md](AGENTS.md) "E2E Tests (Playwright)" for the full execution
+> contract, scripts, and project descriptions. Key invariant: always use
+> `npm run pw:test` scripts, never raw `npx playwright test`.
 
 ---
 
@@ -186,4 +122,14 @@ authoring, `/audit-playwright` for selector/anti-pattern audits, and
 
 ---
 
+## Active Technologies
+
+- Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
+- PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
+  (005-eqa-module)
+
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)
