@@ -8,8 +8,7 @@ import { defineConfig, devices } from "@playwright/test";
  *   core-app            — CI build stack (no plugins, bridge, or import dirs)
  *   core-demo           — UI workflow demos provable on build stack + fixtures
  *   core-demo-video     — core-demo with slowMo + video (local recording)
- *   harness             — Analyzer harness infra tests (bridge, simulator, plugins)
- *   harness-demo        — UI demos that require full analyzer harness
+ *   harness-demo        — Analyzer-stack UI tests requiring full harness
  *   harness-demo-video  — harness-demo with slowMo + video (local recording)
  *
  * New test files must be explicitly added to a project's testMatch.
@@ -21,8 +20,11 @@ import { defineConfig, devices } from "@playwright/test";
 // Demos that must run on the minimal build stack only (see e2e-playwright.yml)
 const CORE_DEMO_TESTS = ["**/ogc-284-barcode-workflow.spec.ts"];
 
-// Demos that require analyzer harness overlay + seeded analyzers
+// Analyzer-stack UI tests that require harness overlay + seeded analyzers
 const HARNESS_DEMO_TESTS = [
+  "**/analyzer-test-connection.spec.ts",
+  "**/analyzer-plugin-config.spec.ts",
+  "**/analyzer-simulator.spec.ts",
   "**/demo-quantstudio*.spec.ts",
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
@@ -110,23 +112,7 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Harness — infrastructure tests needing bridge, simulator, plugins
-    {
-      name: "harness",
-      testMatch: [
-        "**/analyzer-test-connection.spec.ts",
-        "**/analyzer-plugin-config.spec.ts",
-        "**/analyzer-simulator.spec.ts",
-        "**/file-import.spec.ts",
-      ],
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: "playwright/.auth/user.json",
-      },
-      dependencies: ["setup"],
-    },
-
-    // Analyzer harness demos (CI: reusable harness workflow only)
+    // Analyzer-stack UI tests (CI: reusable harness workflow only)
     {
       name: "harness-demo",
       testMatch: HARNESS_DEMO_TESTS,

@@ -188,8 +188,8 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Enforce Playwright wait guard
-        run: npm run pw:guard:no-timeout
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
         working-directory: frontend
 
       - name: Restore Playwright browser cache

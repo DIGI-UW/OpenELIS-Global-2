@@ -33,16 +33,15 @@ Tests are organized into projects via allowlist-based `testMatch` in
 | `core-app`           | Core UI tests (no plugins/bridge)                    | `e2e-playwright.yml`              | Build stack    |
 | `core-demo`          | UI workflow demos on build stack + SQL fixtures      | `e2e-playwright.yml`              | Build stack    |
 | `core-demo-video`    | `core-demo` + slowMo + video                         | Local only                        | Build stack    |
-| `harness`            | Analyzer infra tests (bridge, simulator, plugins)    | `e2e-playwright-analyzer-harness` | Full harness   |
-| `harness-demo`       | UI demos requiring bridge/import dirs/seeded plugins | `e2e-playwright-analyzer-harness` | Full harness   |
-| `harness-demo-video` | `harness-demo` + slowMo + video                      | Local only                        | Full harness   |
+| `harness-demo`       | Analyzer-stack UI tests on full harness (serial run) | `e2e-playwright-analyzer-harness` | Full harness   |
+| `harness-demo-video` | `harness-demo` + slowMo + video (serial run)         | Local only                        | Full harness   |
 
 ## CI Workflows
 
-| Workflow                                 | Compose Files                                          | Projects                   | Fixtures                                           |
-| ---------------------------------------- | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
-| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                 | Compose Files                                          | Projects                 | Fixtures                                           |
+| ---------------------------------------- | ------------------------------------------------------ | ------------------------ | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo` | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness-demo`           | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 `e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
 
@@ -79,12 +78,14 @@ Banned in demo specs and demo-facing helpers:
 - `page.on("console")` or `page.on("pageerror")`
 - `captureDebugContext`
 - `page.request.get()`, `page.request.put()`, `page.request.delete()`
-- `waitForResponse()` or `expect.poll()` used as proof
+- `waitForResponse()` used as proof
 - Filesystem or server-state polling to decide success
 
-If a behavior needs backend consistency checks, config persistence checks,
-file watcher proof, or bridge/simulator proof, put that test in `harness`
-instead.
+`expect.poll()` is allowed only for DOM predicates (not backend/file polling).
+
+If a behavior needs backend consistency checks, config persistence checks, or
+bridge/file-watcher proof, move it to backend integration tests or CI health
+checks rather than demo specs.
 
 ### File import wait tuning (`file-import-results.spec.ts`)
 
@@ -116,11 +117,9 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
 npm run pw:test -- --project=harness-demo
 
 # Convenience aliases
-npm run pw:test:harness
 npm run pw:test:core-demo
 npm run pw:test:harness-demo
 npm run pw:test:demo # alias → harness-demo (analyzer story tests)
@@ -141,13 +140,6 @@ cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 ```
 
-**Harness tests** (analyzer harness — see `/restart-analyzer-harness`):
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness
-```
-
 **Core demos** (barcode workflow — build stack only):
 
 ```bash
@@ -164,7 +156,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 
 ### Analyzer Harness Remediation Loop
 
-When remediating `harness` or `harness-demo` failures, do not use CI as the
+When remediating `harness-demo` failures, do not use CI as the
 first repro. Follow this local loop after every substantive spec/helper change:
 
 1. Restart the analyzer harness from the repo root:
@@ -191,9 +183,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-dem
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo --shard=1/2
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo --shard=2/2
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 ```
 
 5. During remediation, keep local validation running before or alongside every

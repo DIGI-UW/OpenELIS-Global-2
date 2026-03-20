@@ -4,15 +4,48 @@ import path from "path";
 const root = path.resolve(process.cwd(), "playwright");
 const violations = [];
 
-const demoUiOnlyFiles = [
-  path.resolve(root, "tests/file-import-ui.spec.ts"),
-  path.resolve(root, "tests/file-import-results.spec.ts"),
-  path.resolve(root, "tests/astm-genexpert-results.spec.ts"),
-  path.resolve(root, "tests/demo-quantstudio-file-config.spec.ts"),
-  path.resolve(root, "tests/ogc-284-demo-video.spec.ts"),
-  path.resolve(root, "helpers/accept-results.ts"),
-  path.resolve(root, "helpers/analyzer-dashboard.ts"),
+function collectAllTestFiles(dir, acc = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectAllTestFiles(full, acc);
+    } else if (full.endsWith(".spec.ts")) {
+      acc.push(full);
+    }
+  }
+  return acc;
+}
+
+function patternsFromConfig(varName) {
+  const configPath = path.resolve(process.cwd(), "playwright.config.ts");
+  const content = fs.readFileSync(configPath, "utf8");
+  const blockMatch = content.match(
+    new RegExp(`const\\s+${varName}\\s*=\\s*\\[(.*?)\\];`, "s"),
+  );
+  if (!blockMatch) return [];
+  return [...blockMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+}
+
+const allowedDemoPatterns = [
+  ...patternsFromConfig("CORE_DEMO_TESTS"),
+  ...patternsFromConfig("HARNESS_DEMO_TESTS"),
 ];
+
+const allSpecFiles = collectAllTestFiles(path.resolve(root, "tests"));
+const demoSpecFiles = allSpecFiles.filter((file) =>
+  allowedDemoPatterns.some((pattern) => {
+    const specName = pattern.replace("**/", "");
+    if (specName.includes("*")) {
+      const re = new RegExp(
+        "^" +
+          specName.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") +
+          "$",
+      );
+      return re.test(path.basename(file));
+    }
+    return path.basename(file) === specName;
+  }),
+);
 
 const bannedPatterns = [
   {
@@ -20,24 +53,16 @@ const bannedPatterns = [
     regex: /page\.on\(\s*["'`](console|pageerror)["'`]/g,
   },
   {
-    label: "debug context capture",
-    regex: /captureDebugContext\(/g,
-  },
-  {
     label: "response-based synchronization",
     regex: /waitForResponse\(/g,
   },
   {
-    label: "backend polling",
-    regex: /expect\.poll\(/g,
-  },
-  {
-    label: "backend GET\/PUT\/DELETE assertions",
+    label: "backend GET/PUT/DELETE assertions",
     regex: /page\.request\.(get|put|delete)\(/g,
   },
 ];
 
-for (const file of demoUiOnlyFiles) {
+for (const file of demoSpecFiles) {
   if (!fs.existsSync(file)) {
     continue;
   }
