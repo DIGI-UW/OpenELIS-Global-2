@@ -102,23 +102,33 @@ jobs:
         run: |
           TAG="sha-${GITHUB_SHA}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images.txt
-          : > /tmp/e2e-image-map.txt
-          while IFS= read -r image; do
-            [ -z "$image" ] && continue
+          export TAG OWNER_LOWER
+          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
+          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
+          xargs -r -I{} -P4 bash -lc '
+            image="$1"
+            [ -z "$image" ] && exit 0
             if docker image inspect "$image" >/dev/null 2>&1; then
-              image_repo="$(echo "$image" | tr '[:upper:]' '[:lower:]' | sed 's|[^a-z0-9._/-]|-|g')"
+              image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
               ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
               docker tag "$image" "$ghcr_image"
-              docker push "$ghcr_image"
-              printf "%s|%s\n" "$image" "$ghcr_image" >> /tmp/e2e-image-map.txt
+              docker push "$ghcr_image" >/dev/null
+              printf "%s|%s\n" "$image" "$ghcr_image"
             else
-              echo "WARN: skipping $image (not built locally)"
+              echo "WARN: skipping $image (not built locally)" >&2
             fi
-          done < /tmp/e2e-images.txt
+          ' _ {} < /tmp/e2e-images-full.txt | sort -u > /tmp/e2e-image-map.txt
+
+          awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
+            /tmp/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
+
           if [ ! -s /tmp/e2e-image-map.txt ]; then
             echo "No locally available images were pushed to GHCR."
             exit 1
+          fi
+          if [ ! -s /tmp/e2e-image-map-base.txt ]; then
+            echo "WARN: no base compose image mappings found; falling back to full image map."
+            cp /tmp/e2e-image-map.txt /tmp/e2e-image-map-base.txt
           fi
           echo "Pushed image mappings:"
           cat /tmp/e2e-image-map.txt
@@ -136,6 +146,14 @@ jobs:
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload base Docker image map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-image-map-base
+          path: /tmp/e2e-image-map-base.txt
           if-no-files-found: error
           retention-days: 1
 
@@ -170,6 +188,19 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
+        working-directory: frontend
+
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
         working-directory: frontend
@@ -180,7 +211,7 @@ jobs:
       - name: Download Docker image map artifact
         uses: actions/download-artifact@v4
         with:
-          name: e2e-image-map
+          name: e2e-image-map-base
           path: /tmp/e2e-image-map
 
       - name: Login to GHCR
@@ -192,11 +223,12 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -r -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
 
       - name: Start OpenELIS containers (no rebuild)
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
@@ -207,10 +239,19 @@ jobs:
           timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
           echo "Application is ready"
 
+      - name: Load E2E foundational + demo patient data (order entry / OGC-284)
+        run: |
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/e2e-foundational-data.sql
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/analyzer-harness-e2e.sql
+
       - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
         run: |
           docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
             < src/test/resources/fixtures/file-import-e2e.sql
 
       - name: Create analyzer import directories in container
@@ -221,7 +262,7 @@ jobs:
             /data/analyzer-imports/e2e-fluorocycler/incoming
 
       - name: Run Playwright tests
-        run: npm run pw:test -- --project=core-app --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+        run: npm run pw:test -- --project=core-app --project=core-demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
         env:
           CI: true

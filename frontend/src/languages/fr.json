@@ -3680,6 +3680,7 @@
   "validation.password.minLength": "Password must be at least 7 characters",
   "validation.password.notSameAsOld": "New password must not be the same as the old password",
   "validation.password.specialChar": "Password must contain at least one special character (*$#!) and one uppercase letter",
+  "validation.no.records.display": "Aucun enregistrement a afficher",
   "validation.reject.all": "Rejeter tous les résultats",
   "validation.save.error": "Erreur lors de l'enregistrement de la validation",
   "validation.save.success": "Validation enregistrée avec succès",
