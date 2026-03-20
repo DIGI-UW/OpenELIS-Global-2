@@ -122,4 +122,14 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 
 ---
 
+## Active Technologies
+
+- Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
+- PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
+  (005-eqa-module)
+
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)
