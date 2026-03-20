@@ -44,11 +44,21 @@ public class OdooRetryJobTest {
 
     @Before
     public void setUp() {
-        // retryEnabled = true by default
+        ReflectionTestUtils.setField(odooRetryJob, "odooEnabled", true);
         ReflectionTestUtils.setField(odooRetryJob, "retryEnabled", true);
     }
 
     // ─── processRetryQueue — disabled ─────────────────────────────────────────
+
+    @Test
+    public void processRetryQueue_whenOdooDisabled_doesNothing() {
+        ReflectionTestUtils.setField(odooRetryJob, "odooEnabled", false);
+
+        odooRetryJob.processRetryQueue();
+
+        verify(odooSyncQueueService, never()).getItemsReadyForRetry();
+        verify(odooIntegrationService, never()).createInvoiceForSample(any());
+    }
 
     @Test
     public void processRetryQueue_whenRetryDisabled_doesNothing() {
@@ -57,7 +67,7 @@ public class OdooRetryJobTest {
         odooRetryJob.processRetryQueue();
 
         verify(odooSyncQueueService, never()).getItemsReadyForRetry();
-        verify(odooIntegrationService, never()).createInvoice(any());
+        verify(odooIntegrationService, never()).createInvoiceForSample(any());
     }
 
     // ─── processRetryQueue — empty queue ──────────────────────────────────────

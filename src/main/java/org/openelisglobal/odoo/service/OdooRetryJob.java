@@ -16,6 +16,9 @@ public class OdooRetryJob {
 
     private static final Logger log = LogManager.getLogger(OdooRetryJob.class);
 
+    @Value("${org.openelisglobal.odoo.enabled:false}")
+    private boolean odooEnabled;
+
     @Value("${org.openelisglobal.odoo.retry.enabled:true}")
     private boolean retryEnabled;
 
@@ -30,6 +33,9 @@ public class OdooRetryJob {
 
     @Scheduled(fixedDelayString = "${org.openelisglobal.odoo.retry.interval.ms:300000}")
     public void processRetryQueue() {
+        if (!odooEnabled) {
+            return;
+        }
         if (!retryEnabled) {
             return;
         }
