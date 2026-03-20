@@ -258,9 +258,9 @@ public class TestReflexDAOImpl extends BaseDAOImpl<TestReflex, String> implement
 
             // not case sensitive hemolysis and Hemolysis are considered
             // duplicates
-            String sql = "from TestReflex t where t.test.localizedTestName = :localizedTestNameId and "
+            String sql = "from TestReflex t where t.test.localizedTestName.id = :localizedTestNameId and "
                     + "trim(lower(t.testAnalyte.analyte.analyteName)) = :analyteName and "
-                    + "t.testResult.id = :resultId and " + "t.addedTest.localizedTestName = :addedTestNameId "
+                    + "t.testResult.id = :resultId and " + "t.addedTest.localizedTestName.id = :addedTestNameId "
                     + "and t.id != :testId";
 
             if (testReflex.getActionScriptlet() != null) {
@@ -275,13 +275,12 @@ public class TestReflexDAOImpl extends BaseDAOImpl<TestReflex, String> implement
             }
 
             Query<TestReflex> query = entityManager.unwrap(Session.class).createQuery(sql, TestReflex.class);
-            query.setParameter("localizedTestNameId",
-                    Integer.parseInt(testReflex.getTest().getLocalizedTestName().getId()));
+            query.setParameter("localizedTestNameId", testReflex.getTest().getLocalizedTestName().getId());
             query.setParameter("analyteName",
                     testReflex.getTestAnalyte().getAnalyte().getAnalyteName().toLowerCase().trim());
             query.setParameter("resultId", testReflex.getTestResult().getId());
-            query.setParameter("addedTestNameId", testReflex.getAddedTest() == null ? -1
-                    : Integer.parseInt(testReflex.getAddedTest().getLocalizedTestName().getId()));
+            query.setParameter("addedTestNameId", testReflex.getAddedTest() == null ? "-1"
+                    : testReflex.getAddedTest().getLocalizedTestName().getId());
 
             String testReflexId = StringUtil.isNullorNill(testReflex.getId()) ? "0" : testReflex.getId();
 
