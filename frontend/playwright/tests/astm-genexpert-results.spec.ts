@@ -16,9 +16,9 @@ const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const RESULTS_TIMEOUT = 90_000;
 
 const EXPECTED_RESULTS = [
-  { sampleId: "SPECIMEN-GX-001", result: "NEGATIVE" },
-  { sampleId: "SPECIMEN-GX-001", result: "Sensitive" },
-  { sampleId: "SPECIMEN-GX-001", result: "1250" },
+  { sampleId: "E2E001", result: "NEGATIVE" },
+  { sampleId: "E2E001", result: "Sensitive" },
+  { sampleId: "E2E001", result: "1250" },
 ];
 
 async function testConnection(
@@ -129,7 +129,12 @@ test.describe("GeneXpert ASTM demo story", () => {
     await presentation.step(4, "Review the staged results");
     await verifyResults(page, PRELOADED_NAME, presentation);
 
-    await acceptAndVerifyResults(page, presentation, 4);
+    await acceptAndVerifyResults(
+      page,
+      presentation,
+      4,
+      EXPECTED_RESULTS[0].sampleId,
+    );
 
     await presentation.title(
       "Story Complete",

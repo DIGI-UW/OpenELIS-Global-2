@@ -233,6 +233,43 @@ load_sql_file() {
     echo ""
 }
 
+# Normalize sequences against current table maxima after fixture loading.
+# This prevents generated fixture SQL from rewinding sequences below
+# pre-existing rows that were intentionally preserved.
+normalize_sequences() {
+    local sequence_sql="
+SELECT setval('storage_room_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_room) AS BIGINT), false);
+SELECT setval('storage_device_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_device) AS BIGINT), false);
+SELECT setval('storage_shelf_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_shelf) AS BIGINT), false);
+SELECT setval('storage_rack_seq', CAST((SELECT COALESCE(MAX(id), 1000) + 1 FROM storage_rack) AS BIGINT), false);
+SELECT setval('storage_box_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM storage_box) AS BIGINT), false);
+SELECT setval('sample_storage_assignment_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM sample_storage_assignment) AS BIGINT), false);
+SELECT setval('sample_storage_movement_seq', CAST((SELECT COALESCE(MAX(id), 10000) + 1 FROM sample_storage_movement) AS BIGINT), false);
+SELECT setval('person_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM person) AS BIGINT), false);
+SELECT setval('patient_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM patient) AS BIGINT), false);
+SELECT setval('sample_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM sample) AS BIGINT), false);
+SELECT setval('sample_human_seq', CAST((SELECT COALESCE(MAX(id), 2000) + 1 FROM sample_human) AS BIGINT), false);
+SELECT setval('sample_item_seq', CAST((SELECT COALESCE(MAX(id), 10100) + 1 FROM sample_item) AS BIGINT), false);
+SELECT setval('analysis_seq', CAST((SELECT COALESCE(MAX(id), 20000) + 1 FROM analysis) AS BIGINT), false);
+SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM result) AS BIGINT), false);
+"
+
+    echo "Normalizing sequences after fixture load..."
+    if [ "$USE_DOCKER" = true ]; then
+        echo "$sequence_sql" | docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims
+    else
+        echo "$sequence_sql" | psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT"
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo "OK: sequences normalized"
+    else
+        echo "ERROR: failed to normalize sequences after fixture load"
+        exit 1
+    fi
+    echo ""
+}
+
 # Load analyzer fixtures based on --analyzers= mode
 load_analyzer_fixtures() {
     case "$ANALYZER_MODE" in
@@ -407,6 +444,7 @@ load_analyzer_fixtures
 
 # 3. Load storage hierarchy + E2E test data via generated SQL
 load_sql_file "$STORAGE_SQL" "storage fixtures (generated SQL)" "fatal"
+normalize_sequences
 
 echo "======================================"
 echo "All fixtures loaded successfully!"

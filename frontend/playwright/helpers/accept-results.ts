@@ -58,6 +58,18 @@ export async function acceptAndVerifyResults(
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
   await expect(saveButton).toBeEnabled({ timeout: 5_000 });
   await saveButton.click();
+  await expect(saveButton).toBeDisabled({ timeout: 5_000 });
+
+  const saveInProgress = page.locator(
+    '[data-testid="analyzer-results-save-in-progress"]',
+  );
+  await saveInProgress
+    .waitFor({ state: "attached", timeout: 5_000 })
+    .catch(() => {
+      // Fast saves can complete before Playwright observes a visible transition.
+    });
+  await expect(saveInProgress).toBeHidden({ timeout: 20_000 });
+  await expect(saveButton).toBeEnabled({ timeout: 20_000 });
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);

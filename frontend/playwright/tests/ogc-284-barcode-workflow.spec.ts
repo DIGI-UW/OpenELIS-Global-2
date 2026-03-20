@@ -227,6 +227,33 @@ async function fillSampleStep(page: Page) {
     await sampleSelect.selectOption({ index: 1 });
   }
 
+  const collectionDate = page.locator("input#collectionDate_0");
+  if (await collectionDate.isVisible().catch(() => false)) {
+    await collectionDate.fill("13/03/2026");
+    await collectionDate.press("Tab");
+  }
+
+  const collectionTime = page.locator("input#collectionTime_0");
+  if (await collectionTime.isVisible().catch(() => false)) {
+    await collectionTime.fill("07:15");
+    await collectionTime.press("Tab");
+  }
+
+  const collector = page.locator("input#collector_0");
+  if (await collector.isVisible().catch(() => false)) {
+    await collector.fill("E2E Collector");
+  }
+
+  const quantity = page.locator("input#quantity");
+  if (await quantity.isVisible().catch(() => false)) {
+    await quantity.fill("1");
+  }
+
+  const uomSelect = page.locator("select#uomId_0");
+  if (await uomSelect.isVisible().catch(() => false)) {
+    await uomSelect.selectOption({ index: 1 });
+  }
+
   await selectPanelOrTest(page);
 }
 
@@ -290,6 +317,27 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
       await requesterLookup.fill("Prime, Optimus");
     }
     await expect(requesterLookup).not.toHaveValue("", { timeout: 5_000 });
+  }
+
+  // Newer order-entry validation requires explicit selections here.
+  const paymentStatus = page.getByRole("combobox", {
+    name: "Patient payment status:",
+  });
+  if (await paymentStatus.isVisible().catch(() => false)) {
+    const current = await paymentStatus.inputValue();
+    if (!current) {
+      await paymentStatus.selectOption({ index: 1 });
+    }
+  }
+
+  const samplingPoint = page.getByRole("combobox", {
+    name: "Sampling performed for analysis:",
+  });
+  if (await samplingPoint.isVisible().catch(() => false)) {
+    const current = await samplingPoint.inputValue();
+    if (!current) {
+      await samplingPoint.selectOption({ index: 1 });
+    }
   }
 }
 
@@ -530,6 +578,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   // Submit
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 1000);
+  await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
   await submitBtn.click();
   await expectOrderEntrySaveSuccess(page);
 
@@ -585,6 +634,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 800);
+  await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
   await submitBtn.click();
   await expectOrderEntrySaveSuccess(page);
 
