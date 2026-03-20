@@ -619,13 +619,13 @@ public class AnalyzerResultsController extends BaseController {
 
     private String getSignificantDigitsFromAnalyzerResults(AnalyzerResults result) {
         if (result.getTestId() == null) {
-            return result.getResult();
+            return null;
         }
 
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
 
         if (GenericValidator.isBlankOrNull(result.getResult()) || testResults.isEmpty()) {
-            return result.getResult();
+            return null;
         }
 
         TestResult testResult = testResults.get(0);
@@ -1357,7 +1357,12 @@ public class AnalyzerResultsController extends BaseController {
         // the results table is not autmatically updated with the significant digits
         // from TestResult so we must do this
         if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
+                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+            } else {
+                LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "createNewResult",
+                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
+            }
         }
 
         addMinMaxNormal(result, resultItem, patient);
