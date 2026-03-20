@@ -1237,7 +1237,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (page == null) {
             return false;
         }
-        return ROUTING_PAGE_TYPES.contains(page.getPageType());
+        String pageType = page.getPageType();
+        // Primary check: new-style routing page types
+        if (ROUTING_PAGE_TYPES.contains(pageType)) {
+            return true;
+        }
+        // Fallback: support legacy routing page types seeded via Liquibase
+        if (StringUtils.equalsIgnoreCase(pageType, "BRANCHING")
+                || StringUtils.equalsIgnoreCase(pageType, "CHILD_SAMPLE_CREATION")) {
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -1250,7 +1260,20 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (page == null) {
             return false;
         }
-        return STORAGE_PAGE_TYPES.contains(page.getPageType());
+        String pageType = page.getPageType();
+        if (pageType == null) {
+            return false;
+        }
+        // Primary check: new storage page type keys
+        if (STORAGE_PAGE_TYPES.contains(pageType)) {
+            return true;
+        }
+        // Backward-compatibility: legacy enum-like page_type values used by Liquibase templates
+        // e.g. "STORAGE_ASSIGNMENT", "PATHOLOGY_STORAGE_INVENTORY"
+        if ("STORAGE_ASSIGNMENT".equals(pageType) || "PATHOLOGY_STORAGE_INVENTORY".equals(pageType)) {
+            return true;
+        }
+        return false;
     }
 
     @Override
