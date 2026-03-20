@@ -138,7 +138,7 @@ async function selectPatient(
   await expect(firstRadio).toBeVisible({ timeout: 5000 });
   await scrollToAndPause(page, firstRadio, pause, 800);
   // Carbon radio: click the visible label sibling instead of forcing the hidden input
-  await firstRadio.locator("..").locator("label").click();
+  await firstRadio.locator("xpath=..").locator("label").click();
 
   // Wait for patient form hydration before moving to the next wizard step.
   await expect(page.locator('[data-cy="patientSelectionReady"]')).toBeVisible({
@@ -174,8 +174,11 @@ async function selectPatient(
     const hasGender =
       ((await genderMale.count()) > 0 && (await genderMale.isChecked())) ||
       ((await genderFemale.count()) > 0 && (await genderFemale.isChecked()));
-    if (!hasGender && (await genderMale.isVisible())) {
+    if (!hasGender && (await genderMale.count()) > 0) {
       // Carbon radio: click the visible label instead of forcing the hidden input
+      await expect(page.locator('label[for="radio-1"]')).toBeVisible({
+        timeout: 5_000,
+      });
       await page.locator('label[for="radio-1"]').click();
     }
 
