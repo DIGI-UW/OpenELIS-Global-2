@@ -64,6 +64,13 @@ export async function acceptAndVerifyResults(
   const stagedCountBeforeSave = await stagedRows.count();
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
   await expect(saveButton).toBeEnabled({ timeout: 5_000 });
+
+  const saveResponsePromise = page.waitForResponse(
+    (res) =>
+      res.url().includes("/rest/AnalyzerResults") &&
+      res.request().method() === "POST",
+    { timeout: 60_000 },
+  );
   await saveButton.click();
 
   const saveInProgress = page.locator(
@@ -76,12 +83,23 @@ export async function acceptAndVerifyResults(
     // Some runs complete quickly and can skip observable transition states.
   });
 
+  const saveResponse = await saveResponsePromise;
+  if (!saveResponse.ok()) {
+    const detail = (await saveResponse.text().catch(() => "")).slice(0, 500);
+    throw new Error(
+      `POST /rest/AnalyzerResults failed: HTTP ${saveResponse.status()} ${detail}`,
+    );
+  }
+
+  // Success path issues full page reload (AnalyserResults.js).
+  await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: 45_000 });
+
   if (stagedCountBeforeSave > 0) {
     await expect
       .poll(async () => stagedRows.count(), {
         timeout: 30_000,
       })
-      .toBeLessThan(stagedCountBeforeSave);
+      .toBe(0);
   }
 
   await expect(saveInProgress).toBeHidden({ timeout: 30_000 });

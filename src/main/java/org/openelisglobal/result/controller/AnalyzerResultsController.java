@@ -1,6 +1,7 @@
 package org.openelisglobal.result.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
@@ -751,8 +752,8 @@ public class AnalyzerResultsController extends BaseController {
 
     @RequestMapping(value = "/rest/AnalyzerResults", method = RequestMethod.POST)
     @ResponseBody
-    public void showRestAnalyzerResultsSave(HttpServletRequest request, @Validated({ Paging.class,
-            AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
+    public void showRestAnalyzerResultsSave(HttpServletRequest request, HttpServletResponse response, @Validated({
+            Paging.class, AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
 
         AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
         paging.updatePagedResults(request, form);
@@ -779,7 +780,9 @@ public class AnalyzerResultsController extends BaseController {
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
-
+            // Align with MVC save path: failures must not return 200 — React only redirects
+            // on 200.
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
 
     }
