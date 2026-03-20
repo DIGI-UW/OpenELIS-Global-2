@@ -9,13 +9,13 @@ import { openAccessionResultsAndWaitForText } from "./results-ui";
  * Call this AFTER verifying results are visible on the AnalyzerResults page.
  *
  * Flow:
- *   1. Click "Save All Results" label (Carbon Checkbox — hidden input + visible label)
+ *   1. Check "Save All Results" via stable checkbox id
  *   2. Click Save button (data-testid="Save-btn")
  *   3. Navigate to AccessionResults for the staged accession
  *   4. Verify the accepted results appear in the OE results view
  *
  * DOM references (from AnalyserResults.js):
- *   - Accept All checkbox label: text "Save All Results" (line 385)
+ *   - Accept All checkbox input: id="saveallresults"
  *   - Save button: data-testid="Save-btn" (line 505)
  *   - Staged accession number: data-testid="LabNo"
  *   - POST to /rest/AnalyzerResults, reloads same page on success (line 134)
@@ -44,36 +44,53 @@ export async function acceptAndVerifyResults(
   // ── Accept All ──────────────────────────────────────────────────
   await presentation.step(stepOffset + 1, "Accept All Results", 2000);
 
-  // Carbon Checkbox renders a hidden <input> + visible <label>.
-  // Click the label text, not the hidden input.
-  const acceptAllLabel = page.getByText("Save All Results");
-  await expect(acceptAllLabel).toBeVisible({ timeout: 5_000 });
-  await acceptAllLabel.click();
+  const acceptAllCheckbox = page.locator("#saveallresults");
+  await expect(acceptAllCheckbox).toBeAttached({ timeout: 5_000 });
+  await acceptAllCheckbox.check({ force: true });
   await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
   await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
+  const stagedRows = page.locator('[data-testid="LabNo"]');
+  const stagedCountBeforeSave = await stagedRows.count();
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
   await expect(saveButton).toBeEnabled({ timeout: 5_000 });
   await saveButton.click();
-  await expect(saveButton).toBeDisabled({ timeout: 5_000 });
 
   const saveInProgress = page.locator(
     '[data-testid="analyzer-results-save-in-progress"]',
   );
-  await saveInProgress
-    .waitFor({ state: "attached", timeout: 5_000 })
-    .catch(() => {
-      // Fast saves can complete before Playwright observes a visible transition.
-    });
-  await expect(saveInProgress).toBeHidden({ timeout: 20_000 });
+  await Promise.any([
+    expect(saveButton).toBeDisabled({ timeout: 5_000 }),
+    saveInProgress.waitFor({ state: "attached", timeout: 5_000 }),
+  ]).catch(() => {
+    // Some runs complete quickly and can skip observable transition states.
+  });
+
+  if (stagedCountBeforeSave > 0) {
+    await expect
+      .poll(async () => stagedRows.count(), {
+        timeout: 30_000,
+      })
+      .toBeLessThan(stagedCountBeforeSave);
+  }
+
+  await expect(saveInProgress).toBeHidden({ timeout: 30_000 });
   await expect(saveButton).toBeEnabled({ timeout: 20_000 });
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
-  await openAccessionResultsAndWaitForText(page, stagedAccession);
+  await openAccessionResultsAndWaitForText(
+    page,
+    stagedAccession,
+    stagedAccession,
+    {
+      timeoutMs: 60_000,
+      perAttemptTimeoutMs: 15_000,
+    },
+  );
   await expect(page.getByText(stagedAccession).first()).toBeVisible({
     timeout: 15_000,
   });

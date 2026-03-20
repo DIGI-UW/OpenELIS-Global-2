@@ -153,7 +153,12 @@ test.describe("QuantStudio 7 file import demo story", () => {
     await presentation.step(3, "Review the imported results");
     await verifyImportedResults(page, presentation);
 
-    await acceptAndVerifyResults(page, presentation, 3);
+    await acceptAndVerifyResults(
+      page,
+      presentation,
+      3,
+      QUANTSTUDIO.expectedResults[0].sampleId,
+    );
 
     await presentation.title(
       "Story Complete",

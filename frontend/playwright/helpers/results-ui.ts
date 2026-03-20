@@ -19,7 +19,7 @@ async function navigateUntilVisible(
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(url, { waitUntil: "load" });
 
     try {
       await expect(visibleLocator()).toBeVisible({
