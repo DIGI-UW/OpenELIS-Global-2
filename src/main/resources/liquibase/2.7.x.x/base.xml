@@ -60,5 +60,9 @@
         file="add_electronic_rejection.xml"
     />
     <include relativeToChangelogFile="true" file="seed_ci_study_tests.xml" />
+    <include
+        relativeToChangelogFile="true"
+        file="seed_ci_study_organizations.xml"
+    />
 
 </databaseChangeLog>

@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <!--
+      CI Study Organizations Seed
+      ============================
+      Seeds ARV and EID organizations required by the Cypress E2E study entry tests.
+
+      Organizations seeded:
+        ARV (type short_name = 'ARV Service Loc', id = 20):
+          - Centre ARV Hopital General  (short_name = '01')
+          - Centre ARV CHU Yopougon    (short_name = '02')
+          - Centre ARV Bouake          (short_name = '03')
+
+        EID ACONDA-VS CI (type short_name = 'EID ACONDA-VS CI', id = 21):
+          - Site EID ACONDA Abidjan    (short_name = 'EID01')
+
+        EID EGPAF (type short_name = 'EID EGPAF', id = 22):
+          - Site EID EGPAF Yopougon    (short_name = 'EID03')
+
+      Pattern per organization (2 changesets labelled -a / -b):
+        -a  Insert the organization row if absent (by name).
+        -b  Insert the organization_organization_type join row if absent.
+
+      All changesets:
+        - context="CDIRetroCI"  → only executed when SPRING_LIQUIBASE_CONTEXTS includes CDIRetroCI
+        - onFail="MARK_RAN"     → safe to run on environments that already have the data
+    -->
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ARV: Centre ARV Hopital General (short_name = '01')               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-arv-hopital-general-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization
+                WHERE name = 'Centre ARV Hopital General'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed organization: Centre ARV Hopital General</comment>
+        <sql>
+            INSERT INTO clinlims.organization(id, name, short_name, is_active, lastupdated, fhir_uuid)
+            VALUES (nextval('organization_seq'), 'Centre ARV Hopital General', '01', 'Y', now(), gen_random_uuid()::text);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-arv-hopital-general-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_organization_type oot
+                JOIN clinlims.organization o ON o.id = oot.org_id
+                JOIN clinlims.organization_type ot ON ot.id = oot.org_type_id
+                WHERE o.name = 'Centre ARV Hopital General'
+                AND ot.short_name = 'ARV Service Loc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Centre ARV Hopital General to organization type ARV Service Loc</comment>
+        <sql>
+            INSERT INTO clinlims.organization_organization_type(org_id, org_type_id)
+            SELECT o.id, ot.id
+            FROM clinlims.organization o, clinlims.organization_type ot
+            WHERE o.name = 'Centre ARV Hopital General'
+            AND ot.short_name = 'ARV Service Loc';
+        </sql>
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ARV: Centre ARV CHU Yopougon (short_name = '02')                  -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-arv-chu-yopougon-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization
+                WHERE name = 'Centre ARV CHU Yopougon'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed organization: Centre ARV CHU Yopougon</comment>
+        <sql>
+            INSERT INTO clinlims.organization(id, name, short_name, is_active, lastupdated, fhir_uuid)
+            VALUES (nextval('organization_seq'), 'Centre ARV CHU Yopougon', '02', 'Y', now(), gen_random_uuid()::text);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-arv-chu-yopougon-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_organization_type oot
+                JOIN clinlims.organization o ON o.id = oot.org_id
+                JOIN clinlims.organization_type ot ON ot.id = oot.org_type_id
+                WHERE o.name = 'Centre ARV CHU Yopougon'
+                AND ot.short_name = 'ARV Service Loc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Centre ARV CHU Yopougon to organization type ARV Service Loc</comment>
+        <sql>
+            INSERT INTO clinlims.organization_organization_type(org_id, org_type_id)
+            SELECT o.id, ot.id
+            FROM clinlims.organization o, clinlims.organization_type ot
+            WHERE o.name = 'Centre ARV CHU Yopougon'
+            AND ot.short_name = 'ARV Service Loc';
+        </sql>
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ARV: Centre ARV Bouake (short_name = '03')                        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-arv-bouake-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization
+                WHERE name = 'Centre ARV Bouake'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed organization: Centre ARV Bouake</comment>
+        <sql>
+            INSERT INTO clinlims.organization(id, name, short_name, is_active, lastupdated, fhir_uuid)
+            VALUES (nextval('organization_seq'), 'Centre ARV Bouake', '03', 'Y', now(), gen_random_uuid()::text);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-arv-bouake-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_organization_type oot
+                JOIN clinlims.organization o ON o.id = oot.org_id
+                JOIN clinlims.organization_type ot ON ot.id = oot.org_type_id
+                WHERE o.name = 'Centre ARV Bouake'
+                AND ot.short_name = 'ARV Service Loc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Centre ARV Bouake to organization type ARV Service Loc</comment>
+        <sql>
+            INSERT INTO clinlims.organization_organization_type(org_id, org_type_id)
+            SELECT o.id, ot.id
+            FROM clinlims.organization o, clinlims.organization_type ot
+            WHERE o.name = 'Centre ARV Bouake'
+            AND ot.short_name = 'ARV Service Loc';
+        </sql>
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- EID: Site EID ACONDA Abidjan (short_name = 'EID01')               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-eid-aconda-abidjan-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization
+                WHERE name = 'Site EID ACONDA Abidjan'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed organization: Site EID ACONDA Abidjan</comment>
+        <sql>
+            INSERT INTO clinlims.organization(id, name, short_name, is_active, lastupdated, fhir_uuid)
+            VALUES (nextval('organization_seq'), 'Site EID ACONDA Abidjan', 'EID01', 'Y', now(), gen_random_uuid()::text);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-eid-aconda-abidjan-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_organization_type oot
+                JOIN clinlims.organization o ON o.id = oot.org_id
+                JOIN clinlims.organization_type ot ON ot.id = oot.org_type_id
+                WHERE o.name = 'Site EID ACONDA Abidjan'
+                AND ot.short_name = 'EID ACONDA-VS CI'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Site EID ACONDA Abidjan to organization type EID ACONDA-VS CI</comment>
+        <sql>
+            INSERT INTO clinlims.organization_organization_type(org_id, org_type_id)
+            SELECT o.id, ot.id
+            FROM clinlims.organization o, clinlims.organization_type ot
+            WHERE o.name = 'Site EID ACONDA Abidjan'
+            AND ot.short_name = 'EID ACONDA-VS CI';
+        </sql>
+    </changeSet>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- EID: Site EID EGPAF Yopougon (short_name = 'EID03')               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-eid-egpaf-yopougon-a"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization
+                WHERE name = 'Site EID EGPAF Yopougon'
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed organization: Site EID EGPAF Yopougon</comment>
+        <sql>
+            INSERT INTO clinlims.organization(id, name, short_name, is_active, lastupdated, fhir_uuid)
+            VALUES (nextval('organization_seq'), 'Site EID EGPAF Yopougon', 'EID03', 'Y', now(), gen_random_uuid()::text);
+        </sql>
+    </changeSet>
+
+    <changeSet
+        author="study-entry-seed"
+        id="ci-orgs-eid-egpaf-yopougon-b"
+        context="CDIRetroCI"
+        onValidationFail="MARK_RAN"
+    >
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.organization_organization_type oot
+                JOIN clinlims.organization o ON o.id = oot.org_id
+                JOIN clinlims.organization_type ot ON ot.id = oot.org_type_id
+                WHERE o.name = 'Site EID EGPAF Yopougon'
+                AND ot.short_name = 'EID EGPAF'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Site EID EGPAF Yopougon to organization type EID EGPAF</comment>
+        <sql>
+            INSERT INTO clinlims.organization_organization_type(org_id, org_type_id)
+            SELECT o.id, ot.id
+            FROM clinlims.organization o, clinlims.organization_type ot
+            WHERE o.name = 'Site EID EGPAF Yopougon'
+            AND ot.short_name = 'EID EGPAF';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
