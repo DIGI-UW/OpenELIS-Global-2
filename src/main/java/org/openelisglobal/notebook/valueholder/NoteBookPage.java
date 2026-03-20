@@ -35,6 +35,10 @@ public class NoteBookPage extends BaseObject<Integer> {
     @SequenceGenerator(name = "notebook_page_generator", sequenceName = "notebook_page_seq", allocationSize = 1)
     private Integer id;
 
+    @Column(name = "page_type")
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String pageType;
+
     @Column(name = "page_order")
     private Integer order;
 
@@ -196,10 +200,6 @@ public class NoteBookPage extends BaseObject<Integer> {
     public void setPageId(String pageId) {
         this.pageId = pageId;
     }
-
-    @Column(name = "page_type")
-    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
-    private String pageType;
 
     public String getPageType() {
         return pageType;

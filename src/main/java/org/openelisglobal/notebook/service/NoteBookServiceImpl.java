@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Hibernate;
@@ -1268,7 +1267,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (STORAGE_PAGE_TYPES.contains(pageType)) {
             return true;
         }
-        // Backward-compatibility: legacy enum-like page_type values used by Liquibase templates
+        // Backward-compatibility: legacy enum-like page_type values used by Liquibase
+        // templates
         // e.g. "STORAGE_ASSIGNMENT", "PATHOLOGY_STORAGE_INVENTORY"
         if ("STORAGE_ASSIGNMENT".equals(pageType) || "PATHOLOGY_STORAGE_INVENTORY".equals(pageType)) {
             return true;
