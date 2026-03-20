@@ -1363,9 +1363,18 @@ public class AnalyzerResultsController extends BaseController {
 
     private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
         if ("D".equals(resultItem.getTestResultType())) {
-            TestResult testResult;
-            testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
+            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
                     resultItem.getResult());
+            // ASTM/file imports often store the human-readable dict entry (e.g. "NEGATIVE")
+            // while
+            // TestResultDAO only resolves numeric dictionary IDs.
+            if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
+                Dictionary dict = dictionaryService.getDictionaryByDictEntry(resultItem.getResult());
+                if (dict != null) {
+                    testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
+                            dict.getId());
+                }
+            }
             return testResult;
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
