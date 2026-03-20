@@ -15,21 +15,6 @@ import { videoPause } from "../helpers/video-pause";
 type PauseFn = (ms: number) => Promise<void>;
 
 /** Site/requester lookup: prefer autosuggest, but fall back to tabbing out. */
-async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
-  try {
-    await expect
-      .poll(async () => page.locator('[data-cy="auto-suggestion"]').count(), {
-        timeout: 12_000,
-        intervals: [400, 800, 1500],
-      })
-      .toBeGreaterThan(0);
-    await page.locator('[data-cy="auto-suggestion"]').first().click();
-    await pause(500);
-  } catch {
-    await page.keyboard.press("Tab");
-    await pause(200);
-  }
-}
 
 /** Visible success panel after SamplePatientEntry save (class from OrderSuccessMessage). */
 async function expectOrderEntrySaveSuccess(page: Page) {
@@ -287,16 +272,16 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   if (await siteInput.isVisible().catch(() => false)) {
     await siteInput.clear();
     await siteInput.fill("CAMES MAN");
-    await pause(1200);
-    await pickFirstAutosuggestOptional(page, pause);
+    await page.keyboard.press("Tab");
+    await pause(300);
   }
 
   const requesterLookup = page.locator("input#requesterId");
   if (await requesterLookup.isVisible().catch(() => false)) {
     await requesterLookup.clear();
-    await requesterLookup.fill("Prime");
-    await pause(800);
-    await pickFirstAutosuggestOptional(page, pause);
+    await requesterLookup.fill("Prime, Optimus");
+    await page.keyboard.press("Tab");
+    await pause(300);
   }
 
   const requesterFirst = page.locator("input#requesterFirstName");
