@@ -1020,7 +1020,7 @@ public class AnalyzerResultsController extends BaseController {
         int maxSampleItemSortOrder = 0;
 
         for (Analysis dbAnalysis : dBAnalysisList) {
-            if (GenericValidator.isBlankOrNull(dbAnalysis.getSampleItem().getSortOrder())) {
+            if (!GenericValidator.isBlankOrNull(dbAnalysis.getSampleItem().getSortOrder())) {
                 maxSampleItemSortOrder = Math.max(maxSampleItemSortOrder,
                         Integer.parseInt(dbAnalysis.getSampleItem().getSortOrder()));
             }

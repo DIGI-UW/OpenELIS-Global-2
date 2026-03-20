@@ -166,11 +166,12 @@ jobs:
           mkdir -p /tmp/oe-logs /tmp/tomcat-logs
           docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. /tmp/oe-logs/ 2>/dev/null || true
           docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. /tmp/tomcat-logs/ 2>/dev/null || true
-          echo "=== Extracted files ===" && ls -la /tmp/oe-logs/ /tmp/tomcat-logs/ 2>/dev/null || true
-          echo "=== OpenELIS App Logs (last 500 lines) ==="
-          find /tmp/oe-logs -name '*.log' -exec cat {} + 2>/dev/null | tail -500 || echo "(no app logs found)"
-          echo "=== Tomcat Logs (last 500 lines) ==="
-          find /tmp/tomcat-logs -name 'catalina*' -exec cat {} + 2>/dev/null | tail -500 || echo "(no catalina logs found)"
+          echo "=== Extracted files ==="
+          ls -la /tmp/oe-logs/ /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Errors ==="
+          find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== Tomcat Errors ==="
+          find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
 
       - name: Dump docker logs on failure
         if: failure()
