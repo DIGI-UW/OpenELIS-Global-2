@@ -1357,10 +1357,11 @@ public class AnalyzerResultsController extends BaseController {
         // the results table is not autmatically updated with the significant digits
         // from TestResult so we must do this
         if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            try {
+            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
                 result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
-            } catch (NumberFormatException e) {
-                // significantDigits may contain non-numeric text if test mapping was missing
+            } else {
+                LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "createNewResult",
+                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
             }
         }
 
