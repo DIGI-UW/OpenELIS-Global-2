@@ -51,6 +51,30 @@
   <!-- Site Branding / White Labeling (001-site-branding) -->
   <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
 
+  <!-- External Quality Assurance (005-eqa-module) -->
+  <include relativeToChangelogFile="true" file="eqa-001-create-eqa-program-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-002-create-eqa-distribution-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-003-create-sample-eqa-table.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-004-create-eqa-result-table.xml"/>
+
+  <!-- EQA Result audit trail columns (T116) -->
+  <include relativeToChangelogFile="true" file="eqa-006-add-result-audit-columns.xml"/>
+
+  <!-- Quality Control / Internal Control (005-eqa-module QC/IC) -->
+  <include relativeToChangelogFile="true" file="eqa-005-create-qc-tables.xml"/>
+
+  <!-- EQA/QC Menu Items, System Module, and Role Assignments -->
+  <include relativeToChangelogFile="true" file="eqa-007-add-eqa-menu-items.xml"/>
+
+  <!-- EQA Program Administration columns (provider, category, frequency) -->
+  <include relativeToChangelogFile="true" file="eqa-008-add-program-admin-columns.xml"/>
+
+  <!-- EQA Enrollment tables (provider-side + self-enrollment + mappings) -->
+  <include relativeToChangelogFile="true" file="eqa-009-create-enrollment-tables.xml"/>
+
+  <!-- EQA Navigation restructure (EQA Tests + EQA Management + standalone Alerts) -->
+  <include relativeToChangelogFile="true" file="eqa-010-restructure-menu.xml"/>
+
   <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
   <!-- Address Hierarchy Configuration -->
   <include relativeToChangelogFile="true" file="030-add-address-hierarchy-config.xml"/>
