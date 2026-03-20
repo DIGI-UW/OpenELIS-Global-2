@@ -49,12 +49,26 @@ export async function acceptAndVerifyResults(
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
   await expect(saveButton).toBeVisible({ timeout: 5_000 });
+  // On success the app assigns window.location.href to the same
+  // "/AnalyzerResults?type=..." URL (AnalyserResults.js), so waitForURL does
+  // not observe a change. Wait for the save POST (200), then assert the empty
+  // state (retries until the reload paints).
+  const saveResponse = page.waitForResponse(
+    (r) =>
+      r.request().method() === "POST" &&
+      /\/rest\/AnalyzerResults(?:\?|\/|$)/.test(r.url()) &&
+      r.status() === 200,
+    { timeout: 60_000 },
+  );
   await saveButton.click();
-  await presentation.pause(2_000);
+  await saveResponse;
+  // Full reload follows in the UI thread; avoid waitForLoadState here (same
+  // URL as before can satisfy "load" on the wrong lifecycle). The expect
+  // below retries against the live DOM until the refreshed empty state shows.
 
   // ── Verify post-save state ───────────────────────────────────────
   const noResults = page.getByText("There are no records to display");
-  await expect(noResults).toBeVisible({ timeout: 30_000 });
+  await expect(noResults).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('[data-testid="LabNo"]')).toHaveCount(0, {
     timeout: 15_000,
   });

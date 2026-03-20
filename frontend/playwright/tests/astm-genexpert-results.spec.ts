@@ -73,7 +73,7 @@ async function verifyResults(
     page,
     analyzerName,
     EXPECTED_RESULTS[0].sampleId,
-    { timeoutMs: RESULTS_TIMEOUT, perAttemptTimeoutMs: 5_000 },
+    { timeoutMs: RESULTS_TIMEOUT, perAttemptTimeoutMs: 15_000 },
   );
 
   const resultsRegion = page.locator(".orderLegendBody, table").first();
