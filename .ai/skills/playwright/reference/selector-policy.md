@@ -30,7 +30,7 @@ Use this priority order:
 - NEVER use `{ force: true }` without documented justification.
 - For Carbon `<input type="checkbox">` and `<input type="radio">`: ALWAYS click
   the associated `<label>` element or use
-  `input.locator('..').locator('label').click()`. Carbon applies
+  `input.locator('xpath=..').locator('label').click()`. Carbon applies
   `visually-hidden` to these inputs.
 - `page.getByLabel("text")` targets the hidden input — DO NOT call `.check()` or
   `.click()` on it without force. Click the label directly instead.

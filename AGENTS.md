@@ -1634,7 +1634,7 @@ Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
 // DO: click the label
 await page.locator('label[for="saveallresults"]').click();
 // or for dynamic IDs:
-await input.locator("..").locator("label").click();
+await input.locator("xpath=..").locator("label").click();
 
 // DO NOT:
 await checkbox.check({ force: true }); // bypasses actionability checks

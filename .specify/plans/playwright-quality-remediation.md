@@ -115,10 +115,9 @@ await expect(siteInput).toHaveValue("CAMES MAN");
 
 ```typescript
 // Click the label, not the hidden input
+// Carbon checkbox: click the visible label, not the hidden input
 const label = page.locator('label[for="saveallresults"]');
 await label.click();
-// Or use getByLabel
-await page.getByLabel("Accept All").check();
 ```
 
 ````
@@ -215,7 +214,8 @@ template":**
 
 - Never use `{ force: true }` unless documented and justified.
 - For Carbon `<input type="checkbox">` and `<input type="radio">`: click the
-  associated `<label>` element or use `page.getByLabel()`.
+  associated `<label>` element (e.g., `label[for="inputId"]`). Do NOT use
+  `getByLabel().check()` — Carbon hides inputs with `visually-hidden`.
 - For Carbon `ComboBox` / `Dropdown`: click the trigger button
   (`button[role="combobox"]` or `.cds--list-box__field`), not the wrapper div.
 ```

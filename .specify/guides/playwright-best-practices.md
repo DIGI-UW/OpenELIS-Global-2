@@ -545,7 +545,7 @@ await expect(page.getByText("Saved successfully")).toBeVisible();
 await page.locator('label[for="saveallresults"]').click();
 
 // DO: For dynamic IDs, navigate to the parent wrapper
-await radioInput.locator("..").locator("label").click();
+await radioInput.locator("xpath=..").locator("label").click();
 
 // DO NOT: page.getByLabel("text").check() — targets hidden input
 // DO NOT: checkbox.check({ force: true }) — bypasses actionability
