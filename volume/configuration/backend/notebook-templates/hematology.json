@@ -1,0 +1,60 @@
+{
+  "title": "Clinical Hematology Laboratory",
+  "workflowType": "hematology",
+  "departments": ["Clinical Hematology Laboratory"],
+  "objective": "Complete blood analysis workflow from sample collection to report generation with quality assurance and proficiency testing",
+  "protocol": "Standard Clinical Hematology Laboratory Protocol with ISO 15189 compliance",
+  "content": "Clinical Hematology Laboratory notebook template with 8 predefined workflow pages for specimen reception, preparation, hematology analysis, morphology review, quality control, proficiency testing, result validation, and report generation.",
+  "status": "ACTIVE",
+  "tags": ["hematology", "blood-analysis", "clinical"],
+  "pages": [
+    {
+      "order": 1,
+      "title": "Specimen Reception & Registration",
+      "instructions": "Register specimen arrival: Assign or verify specimen ID, capture specimen type (EDTA, serum, plasma), document patient demographics and clinical indication, note collection date/time and time of receipt, verify proper anticoagulant, assess visual appearance (hemolysis, lipemia, icterus), document any pre-analytical issues, record receiving technician ID, and verify patient consent/test authorization.",
+      "content": "Specimen Reception & Registration - Specimen verification, ID validation, and pre-analytical quality assessment"
+    },
+    {
+      "order": 2,
+      "title": "Specimen Preparation & Storage",
+      "instructions": "Prepare specimens for analysis: Centrifuge if required (serum/plasma), document centrifugation parameters (speed, duration, temperature), verify sample separation quality, aliquot specimens as needed for different tests, label aliquots with specimen ID and date, document storage location and temperature (room temp, refrigerated, frozen), monitor stability until analysis, and record any storage deviations.",
+      "content": "Specimen Preparation & Storage - Sample preparation, centrifugation, aliquoting, and storage management"
+    },
+    {
+      "order": 3,
+      "title": "Hematology Analyzer Run",
+      "instructions": "Perform complete blood count (CBC) analysis: Document analyzer ID and calibration status (QC passed today). Load specimen on analyzer, verify specimen barcode scan, confirm patient demographics match, record analysis start time. Document complete blood count parameters: WBC, RBC, hemoglobin, hematocrit, MCV, MCH, MCHC, platelet count. Review analyzer results for flags or errors. Document any analyzer warnings or rechecks required. Record analysis end time and technician ID.",
+      "content": "Hematology Analyzer Run - Automated CBC analysis with quality control flags and result validation"
+    },
+    {
+      "order": 4,
+      "title": "Blood Smear Morphology Review",
+      "instructions": "Prepare and examine blood smear: Select which specimens require microscopic review (based on analyzer flags). Prepare thin blood smear (if not pre-made), allow to air dry, fix and stain (Wright-Giemsa). Examine under microscope, document RBC morphology (size, shape, inclusions), WBC differential (neutrophils, lymphocytes, monocytes, eosinophils, basophils), platelet assessment, and any abnormal findings. Record findings, technician ID, and microbiologist/hematologist review status if abnormal.",
+      "content": "Blood Smear Morphology Review - Manual microscopic examination for morphologic findings and validation"
+    },
+    {
+      "order": 5,
+      "title": "Quality Control & Calibration",
+      "instructions": "Perform QC checks: Record QC run date/time and analyzer ID. Use 3-level QC materials (normal, low, high). Document QC results for each parameter (WBC, RBC, HGB, HCT, MCV, PLT) against expected ranges. Verify all parameters passed acceptance criteria. Document calibration status (run calibration if required). Record any QC failures and corrective actions taken. Document QC material lot numbers and expiration dates. Verify analyzer maintenance logs.",
+      "content": "Quality Control & Calibration - Daily/weekly QC verification and analyzer calibration"
+    },
+    {
+      "order": 6,
+      "title": "Proficiency Testing & External QA",
+      "instructions": "Submit to proficiency testing programs: Document PT program name and provider (CAP, CLIA, etc.). Record PT specimen batch and expected reference ranges. Analyze PT specimen same as patient specimens. Submit results within required timeframe. Document result status (acceptable, corrective action needed). If out of range, document investigation and root cause analysis. Record corrective action taken and verification. File PT performance summary.",
+      "content": "Proficiency Testing & External QA - External quality assurance and result validation"
+    },
+    {
+      "order": 7,
+      "title": "Result Review & Validation",
+      "instructions": "Review and approve results: Verify specimen identification matches requisition. Review all numerical results for clinically significant values and delta checks (compare with patient's previous results if available). Evaluate analyzer flags and morphology findings correlation. Verify reference ranges are appropriate for patient age/sex if applicable. Document result review date/time and reviewing technologist. Flag critical values requiring immediate physician notification. Document any result amendments or corrections.",
+      "content": "Result Review & Validation - Final QA review with critical value notification and reference range verification"
+    },
+    {
+      "order": 8,
+      "title": "Report Generation & Delivery",
+      "instructions": "Generate and distribute final report: Verify all required patient and specimen information is present. Confirm all results are reviewed and approved. Include reference ranges and units for each parameter. Append any critical value notifications or physician comments. Document report generation date/time and system version. Verify report legibility if printed. Document delivery method (electronic to EHR, printed, fax). Record recipient and delivery confirmation. Archive report per retention policy.",
+      "content": "Report Generation & Delivery - Final report compilation, quality verification, and delivery to ordering provider"
+    }
+  ]
+}
