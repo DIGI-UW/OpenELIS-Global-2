@@ -17,7 +17,9 @@ package org.openelisglobal.common.formfields;
 
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.formfields.service.FormFieldConfigService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.spring.util.SpringContext;
 
 /*
  * These are different fields on the forms which can be turned on and off by configuration.
@@ -111,8 +113,14 @@ public class FormFields {
     private Map<FormFields.Field, FormField> fields;
 
     private FormFields() {
-        AFormFields defaultFields = new DefaultFormFields();
-        fields = defaultFields.getFieldFormSet();
+        try {
+            FormFieldConfigService configService = SpringContext.getBean(FormFieldConfigService.class);
+            fields = configService.getFormFields();
+        } catch (Exception e) {
+            // Spring context might not be fully loaded or service not available yet
+            AFormFields defaultFields = new DefaultFormFields();
+            fields = defaultFields.getFieldFormSet();
+        }
     }
 
     public static FormFields getInstance() {
@@ -121,6 +129,10 @@ public class FormFields {
         }
 
         return instance;
+    }
+
+    public static void reload() {
+        instance = null;
     }
 
     public boolean useField(FormFields.Field field) {
@@ -133,6 +145,9 @@ public class FormFields {
 
     public String getLabel(FormFields.Field field) {
         FormField formField = fields.get(field);
+        if (formField == null) {
+            return "";
+        }
         if (!GenericValidator.isBlankOrNull(formField.getLabel())) {
             return formField.getLabel();
         }
