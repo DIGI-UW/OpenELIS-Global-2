@@ -136,11 +136,19 @@ public class FormFields {
     }
 
     public boolean useField(FormFields.Field field) {
-        return fields.get(field).getInUse();
+        FormField formField = fields.get(field);
+        if (formField == null) {
+            return false;
+        }
+        return formField.getInUse();
     }
 
     public boolean requireField(FormFields.Field field) {
-        return fields.get(field).getRequired();
+        FormField formField = fields.get(field);
+        if (formField == null) {
+            return false;
+        }
+        return formField.getRequired();
     }
 
     public String getLabel(FormFields.Field field) {
