@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Hibernate;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -856,7 +857,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         try {
             NoteBook notebook = get(notebookId);
             if (notebook != null) {
-                List<NoteBook> allEntries = new ArrayList<>();
 
                 // DEBUG: Log all relevant fields before isParentTemplate check
                 LogEvent.logInfo(this.getClass().getSimpleName(), "getNoteBookEntries",
@@ -870,7 +870,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 if (notebook.isParentTemplate()) {
                     // First, add any direct entries on the template itself (legacy support)
                     Hibernate.initialize(notebook.getEntries());
-                    allEntries.addAll(notebook.getEntries());
+                    List<NoteBook> allEntries = new ArrayList<>(notebook.getEntries());
 
                     // Then, aggregate entries from all child instances
                     List<NoteBook> children = baseObjectDAO.findChildrenByParentId(notebookId);
@@ -1210,12 +1210,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
 
         // Check pageType for routing categorization
         // (e.g. "BRANCHING", "CHILD_SAMPLE_CREATION")
-        String pageType = page.getPageType();
-        if (StringUtils.equalsIgnoreCase(pageType, "BRANCHING")
-                || StringUtils.equalsIgnoreCase(pageType, "CHILD_SAMPLE_CREATION")) {
-            return true;
-        }
-        return false;
+        String pageType = StringUtils.trimToEmpty(page.getPageType());
+        return StringUtils.equalsIgnoreCase(pageType, "BRANCHING")
+                || StringUtils.equalsIgnoreCase(pageType, "CHILD_SAMPLE_CREATION");
     }
 
     @Override
@@ -1229,13 +1226,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             return false;
         }
 
-        // Check pageType for storage categorization
-        // (e.g. "STORAGE_ASSIGNMENT", "PATHOLOGY_STORAGE_INVENTORY", "BULK_DATA_ENTRY")
-        String pageType = page.getPageType();
-        if ("STORAGE_ASSIGNMENT".equals(pageType) || "PATHOLOGY_STORAGE_INVENTORY".equals(pageType)) {
-            return true;
-        }
-        return false;
+        String pageType = StringUtils.trimToEmpty(page.getPageType());
+        return StringUtils.equalsIgnoreCase(pageType, "STORAGE_ASSIGNMENT")
+                || StringUtils.equalsIgnoreCase(pageType, "PATHOLOGY_STORAGE_INVENTORY");
     }
 
     @Override
@@ -1920,9 +1913,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional
     public Integer insert(NoteBook notebook) {
-        Integer id = super.insert(notebook);
         // Note: Audit logging handled by save() method to avoid duplicates
-        return id;
+        return super.insert(notebook);
     }
 
     @Override
