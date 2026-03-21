@@ -1977,56 +1977,39 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         super.delete(notebook);
     }
 
-    /**
-     * Get the effective workflow type for a notebook.
-     * Ensures child instances and entries always inherit a workflow type through
-     * a comprehensive fallback mechanism:
-     * 1. Own workflowType
-     * 2. Parent notebook workflowType (for child instances)
-     * 3. Parent template workflowType (via findParentTemplate for all non-templates)
-     * 4. Ultimate parent template search (for deep hierarchies)
-     *
-     * @param noteBook the notebook to get workflow type for
-     * @return the effective workflow type, or null if not found anywhere in hierarchy
-     */
     private String getEffectiveWorkflowType(NoteBook noteBook) {
-        String workflowType = noteBook.getWorkflowType();
-
-        // If notebook has its own workflowType, use it
+        String workflowType = getWorkflowTypeIfPresent(noteBook);
         if (workflowType != null) {
             return workflowType;
         }
 
-        // For child instances, try parent notebook first
-        if (noteBook.isChildInstance() && noteBook.getParentNotebook() != null) {
-            workflowType = noteBook.getParentNotebook().getWorkflowType();
+        if (noteBook.isChildInstance()) {
+            workflowType = getWorkflowTypeIfPresent(noteBook.getParentNotebook());
             if (workflowType != null) {
                 return workflowType;
             }
-            // If parent notebook also doesn't have workflowType, continue to fallback logic below
         }
 
-        // For any non-template (child instances or entries), try findParentTemplate as fallback
-        if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+        if (!Boolean.TRUE.equals(noteBook.getIsTemplate())) {
             NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
-            if (parentTemplate != null) {
-                workflowType = parentTemplate.getWorkflowType();
+            workflowType = getWorkflowTypeIfPresent(parentTemplate);
+            if (workflowType != null) {
+                return workflowType;
+            }
+
+            if (parentTemplate != null && parentTemplate.isChildInstance()) {
+                workflowType = getWorkflowTypeIfPresent(parentTemplate.getParentNotebook());
                 if (workflowType != null) {
                     return workflowType;
-                }
-
-                // If the parent template also doesn't have workflowType,
-                // check if the parent template itself has a parent (deep hierarchy)
-                if (parentTemplate.isChildInstance() && parentTemplate.getParentNotebook() != null) {
-                    workflowType = parentTemplate.getParentNotebook().getWorkflowType();
-                    if (workflowType != null) {
-                        return workflowType;
-                    }
                 }
             }
         }
 
-        return null; // No workflowType found in entire hierarchy
+        return null;
+    }
+
+    private String getWorkflowTypeIfPresent(NoteBook noteBook) {
+        return noteBook != null ? noteBook.getWorkflowType() : null;
     }
 
 }
