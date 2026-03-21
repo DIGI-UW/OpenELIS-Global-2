@@ -129,6 +129,23 @@ public class PatientMergeServiceImpl implements PatientMergeService {
             return result;
         }
 
+        // Validation 5: Check FHIR resources exist on FHIR server (if patients have
+        // FHIR UUIDs)
+        // Only validate if at least one patient has FHIR UUID - if neither has FHIR,
+        // skip this check
+        if (fhirPatientLinkService.hasFhirResource(patient1.getId())
+                || fhirPatientLinkService.hasFhirResource(patient2.getId())) {
+            boolean fhirResourcesExist = fhirPatientLinkService.verifyFhirResourcesExist(patient1.getId(),
+                    patient2.getId());
+
+            if (!fhirResourcesExist) {
+                result.addError("FHIR resources not found for one or both patients. "
+                        + "Cannot merge patients with missing FHIR resources. "
+                        + "Please ensure both patients have synchronized FHIR records.");
+                return result;
+            }
+        }
+
         // All validations passed - create data summary
         result.setValid(true);
         result.setDataSummary(createDataSummary(patient1, patient2));
@@ -345,6 +362,23 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         Patient primaryPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient1 : patient2;
         Patient mergedPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient2 : patient1;
 
+        // Pre-transaction FHIR validation: Verify FHIR resources exist before starting
+        // merge
+        // This is a defense-in-depth check in case validation was bypassed or stale
+        if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+                || fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
+            boolean fhirResourcesExist = fhirPatientLinkService.verifyFhirResourcesExist(primaryPatient.getId(),
+                    mergedPatient.getId());
+
+            if (!fhirResourcesExist) {
+                LogEvent.logWarn(this.getClass().getName(), "executeMerge",
+                        "FHIR resources not found - preventing merge execution");
+                return PatientMergeExecutionResultDTO
+                        .failure("Cannot execute merge: FHIR resources not found for one or both patients. "
+                                + "The patient records must have synchronized FHIR resources before merging.");
+            }
+        }
+
         // Mark merged patient as inactive
         mergedPatient.setIsMerged(true);
         mergedPatient.setMergedIntoPatientId(primaryPatient.getId());
@@ -401,9 +435,9 @@ public class PatientMergeServiceImpl implements PatientMergeService {
                         "Successfully updated FHIR Patient links for merge: " + primaryPatient.getId() + " <- "
                                 + mergedPatient.getId());
             } catch (FhirLocalPersistingException e) {
-                // Log error but don't fail the entire merge if FHIR update fails
                 LogEvent.logError(this.getClass().getName(), "executeMerge",
-                        "FHIR link update failed but merge succeeded: " + e.getMessage());
+                        "FHIR link update failed, rolling back merge transaction: " + e.getMessage());
+                throw new RuntimeException("FHIR link update failed during patient merge: " + e.getMessage(), e);
             }
         }
 

@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -50,6 +51,18 @@ public class PatientMergeExecutionTest {
 
     @Mock
     private PatientMergeConsolidationService consolidationService;
+
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
+
+    @Mock
+    private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
+
+    @Mock
+    private org.openelisglobal.analysis.service.AnalysisService analysisService;
+
+    @Mock
+    private org.openelisglobal.common.services.IStatusService iStatusService;
 
     @InjectMocks
     private PatientMergeServiceImpl patientMergeService;
@@ -226,5 +239,60 @@ public class PatientMergeExecutionTest {
         // Assert
         assertFalse("Primary patient should NOT be marked as merged", patient1.getIsMerged());
         assertEquals("Primary patient ID should be unchanged", "1", patient1.getId());
+    }
+
+    /**
+     * Test: Merge should fail when FHIR resources are missing. Business Rule:
+     * Cannot merge patients with missing FHIR resources.
+     */
+    @Test
+    public void testExecuteMerge_FhirResourcesMissing_ShouldFail() {
+        // Arrange - Patients have FHIR UUIDs in DB but resources don't exist on server
+        patient1.setFhirUuid(java.util.UUID.randomUUID());
+        patient2.setFhirUuid(java.util.UUID.randomUUID());
+
+        when(patientDAO.getData("1")).thenReturn(patient1);
+        when(patientDAO.getData("2")).thenReturn(patient2);
+
+        // FHIR check returns true for hasFhirResource but false for
+        // verifyFhirResourcesExist
+        lenient().when(fhirPatientLinkService.hasFhirResource("1")).thenReturn(true);
+        lenient().when(fhirPatientLinkService.hasFhirResource("2")).thenReturn(true);
+        when(fhirPatientLinkService.verifyFhirResourcesExist("1", "2")).thenReturn(false);
+
+        // Act
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
+
+        // Assert
+        assertNotNull("Result should not be null", result);
+        assertFalse("Merge should fail when FHIR resources missing", result.isSuccess());
+        assertTrue("Error message should mention FHIR", result.getMessage().toLowerCase().contains("fhir"));
+    }
+
+    /**
+     * Test: Merge should succeed when FHIR resources exist on server. Business
+     * Rule: Merge proceeds normally when FHIR resources are available.
+     */
+    @Test
+    public void testExecuteMerge_FhirResourcesExist_ShouldSucceed() {
+        // Arrange - Patients have FHIR UUIDs and resources exist on server
+        patient1.setFhirUuid(java.util.UUID.randomUUID());
+        patient2.setFhirUuid(java.util.UUID.randomUUID());
+
+        when(patientDAO.getData("1")).thenReturn(patient1);
+        when(patientDAO.getData("2")).thenReturn(patient2);
+        when(patientMergeAuditDAO.insert(any(PatientMergeAudit.class))).thenReturn(123L);
+
+        // FHIR resources exist on server
+        when(fhirPatientLinkService.hasFhirResource("1")).thenReturn(true);
+        when(fhirPatientLinkService.hasFhirResource("2")).thenReturn(true);
+        when(fhirPatientLinkService.verifyFhirResourcesExist("1", "2")).thenReturn(true);
+
+        // Act
+        PatientMergeExecutionResultDTO result = patientMergeService.executeMerge(validRequest, "1");
+
+        // Assert
+        assertNotNull("Result should not be null", result);
+        assertTrue("Merge should succeed when FHIR resources exist", result.isSuccess());
     }
 }
