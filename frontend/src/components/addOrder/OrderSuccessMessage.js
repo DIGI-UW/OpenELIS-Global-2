@@ -4,15 +4,42 @@ import config from "../../config.json";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { sampleObject } from "./Index";
 import { FormattedMessage } from "react-intl";
+import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 const OrderSuccessMessage = (props) => {
-  const { orderFormValues, setOrderFormValues, setSamples, setPage } = props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    setSamples,
+    setPage,
+    saveResponse,
+  } = props;
 
-  const handlePrintBarCode = () => {
-    let barcodesPdf =
+  const dialogModel = saveResponse?.postSavePrintDialog;
+  const accessionNumber =
+    dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
+  const printableTypes =
+    dialogModel?.printableLabelTypes &&
+    dialogModel.printableLabelTypes.length > 0
+      ? dialogModel.printableLabelTypes
+      : ["order"];
+  const printableLabels = printableTypes.map((labelType) => {
+    const normalizedType =
+      typeof labelType === "string" ? labelType : labelType.labelType;
+    return {
+      labelType: normalizedType,
+      quantity: 1,
+      printUrl:
+        config.serverBaseUrl +
+        `/LabelMakerServlet?labNo=${accessionNumber}&type=${normalizedType}`,
+    };
+  });
+
+  const handlePrintByType = (labelType) => {
+    const printUrl =
       config.serverBaseUrl +
-      `/LabelMakerServlet?labNo=${orderFormValues.sampleOrderItems.labNo}`;
-    window.open(barcodesPdf);
+      `/LabelMakerServlet?labNo=${accessionNumber}&type=${labelType}`;
+    window.open(printUrl);
   };
 
   const handleAnotherSiteOrder = () => {
@@ -67,13 +94,11 @@ const OrderSuccessMessage = (props) => {
           <FormattedMessage id="save.success" />
         </h4>
         <Row>
-          <Button
-            data-cy="printBarCode"
-            className=""
-            onClick={handlePrintBarCode}
-          >
-            <FormattedMessage id="print.barcode" />
-          </Button>
+          <PostSavePrintDialog
+            accessionNumber={accessionNumber}
+            printableLabelTypes={printableLabels}
+            onPrint={handlePrintByType}
+          />
         </Row>
         <Row>
           {orderFormValues.rememberSiteAndRequester && (

@@ -1,6 +1,5 @@
 package org.openelisglobal.analyzer.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +29,6 @@ public class SerialPortRestController extends BaseRestController {
 
     @Autowired
     private SerialPortService serialPortService;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * GET /rest/analyzer/serial-port/configurations Retrieve all serial port
