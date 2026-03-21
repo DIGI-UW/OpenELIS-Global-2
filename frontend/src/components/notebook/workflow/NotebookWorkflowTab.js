@@ -45,6 +45,7 @@ import AnalysisPage from "../pages/AnalysisPage";
 import StoragePage from "../pages/StoragePage";
 import ResultCompilationPage from "../pages/ResultCompilationPage";
 import EndOfProjectArchivingPage from "../pages/EndOfProjectArchivingPage";
+import GenericWorkflowPage from "../pages/GenericWorkflowPage";
 import "./NotebookWorkflow.css";
 
 /**
@@ -293,8 +294,19 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     }
   }, [entryId]);
 
-  // Determine the workflow type based on notebook title
+  // Determine the workflow type from backend data.
+  // Priority: notebook.workflowType (from backend template) > title-based fallback
   const workflowType = useMemo(() => {
+    // Use workflowType from the backend if available (set by NotebookTemplateConfigurationHandler)
+    if (notebook?.workflowType) {
+      return notebook.workflowType.toLowerCase();
+    }
+    if (entry?.notebook?.workflowType) {
+      return entry.notebook.workflowType.toLowerCase();
+    }
+
+    // Fallback: parse title for backwards compatibility with older templates
+    // that may not have workflowType set
     const title = (notebook?.title || entry?.title || "").toLowerCase();
     if (title.includes("virology") || title.includes("vaccine")) {
       return "virology";
@@ -302,9 +314,15 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     if (title.includes("immunology")) {
       return "immunology";
     }
-    // Default to immunology for backwards compatibility
-    return "immunology";
-  }, [notebook?.title, entry?.title]);
+    // Return null to indicate no known workflow type -
+    // renderPageContent will use GenericWorkflowPage
+    return "generic";
+  }, [
+    notebook?.workflowType,
+    entry?.notebook?.workflowType,
+    notebook?.title,
+    entry?.title,
+  ]);
 
   // Render page-specific content based on page order and workflow type
   // Per spec: Reception → Processing → Assays → Child Samples → Prep → Analysis → Storage → Results → Archive
@@ -494,175 +512,190 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
       }
     }
 
-    // Immunology workflow (default)
-    switch (pageOrder) {
-      case 1:
-        // Page 1: Sample Reception - Use enhanced ImmunologySampleReceptionPage
-        // for full reception metadata capture (inspired by Pharma Sample Creation)
-        return (
-          <ImmunologySampleReceptionPage
-            key={`reception-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 2:
-        // Page 2: Initial Processing - Volume determination, cell count & isolation,
-        // parameter logging, and quality checks (inspired by Pharma QC page)
-        return (
-          <ImmunologyInitialProcessingPage
-            key={`processing-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-            templateInstruments={notebook?.analyzers}
-          />
-        );
-      case 3:
-        // Page 3: Additional Assays - Perform supplementary tests prior to extraction
-        // Includes: cell phenotyping, viability assays, functional assays, contamination checks
-        // Documents: test type, operator, reagents (with lot numbers), results, pass/fail, deviations
-        return (
-          <ImmunologyAdditionalAssaysPage
-            key={`assays-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-            templateInstruments={notebook?.analyzers}
-          />
-        );
-      case 4:
-        // Page 4: Child Samples - Create child samples AND route to destinations
-        // Per User Story 4: "Child Sample Creation with Destination Routing"
-        // This page combines ImmunologyChildSampleCreationPage AND SampleRoutingPage
-        // ImmunologyChildSampleCreationPage includes: extraction from isolated material,
-        // unique child sample IDs, parent-child linking, extraction volume, remaining parent volume
-        return (
-          <React.Fragment key={`child-samples-${page.id}`}>
-            <ImmunologyChildSampleCreationPage
-              key={`child-creation-${page.id}`}
+    // Immunology workflow - only when explicitly identified as immunology
+    if (workflowType === "immunology") {
+      switch (pageOrder) {
+        case 1:
+          // Page 1: Sample Reception - Use enhanced ImmunologySampleReceptionPage
+          // for full reception metadata capture (inspired by Pharma Sample Creation)
+          return (
+            <ImmunologySampleReceptionPage
+              key={`reception-${page.id}`}
               entryId={entryId}
-              notebookId={notebook?.id}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 2:
+          // Page 2: Initial Processing - Volume determination, cell count & isolation,
+          // parameter logging, and quality checks (inspired by Pharma QC page)
+          return (
+            <ImmunologyInitialProcessingPage
+              key={`processing-${page.id}`}
+              entryId={entryId}
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
               templateInstruments={notebook?.analyzers}
             />
-            <div className="routing-section" style={{ marginTop: "2rem" }}>
-              <h4 style={{ marginBottom: "1rem" }}>
-                <FormattedMessage
-                  id="notebook.workflow.page4.routing"
-                  defaultMessage="Destination Routing"
-                />
-              </h4>
-              <SampleRoutingPage
-                key={`routing-${page.id}`}
+          );
+        case 3:
+          // Page 3: Additional Assays - Perform supplementary tests prior to extraction
+          // Includes: cell phenotyping, viability assays, functional assays, contamination checks
+          // Documents: test type, operator, reagents (with lot numbers), results, pass/fail, deviations
+          return (
+            <ImmunologyAdditionalAssaysPage
+              key={`assays-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+              templateInstruments={notebook?.analyzers}
+            />
+          );
+        case 4:
+          // Page 4: Child Samples - Create child samples AND route to destinations
+          // Per User Story 4: "Child Sample Creation with Destination Routing"
+          // This page combines ImmunologyChildSampleCreationPage AND SampleRoutingPage
+          // ImmunologyChildSampleCreationPage includes: extraction from isolated material,
+          // unique child sample IDs, parent-child linking, extraction volume, remaining parent volume
+          return (
+            <React.Fragment key={`child-samples-${page.id}`}>
+              <ImmunologyChildSampleCreationPage
+                key={`child-creation-${page.id}`}
                 entryId={entryId}
                 notebookId={notebook?.id}
                 pageData={page}
                 progress={progress}
                 onProgressUpdate={handleProgressUpdate}
+                templateInstruments={notebook?.analyzers}
+              />
+              <div className="routing-section" style={{ marginTop: "2rem" }}>
+                <h4 style={{ marginBottom: "1rem" }}>
+                  <FormattedMessage
+                    id="notebook.workflow.page4.routing"
+                    defaultMessage="Destination Routing"
+                  />
+                </h4>
+                <SampleRoutingPage
+                  key={`routing-${page.id}`}
+                  entryId={entryId}
+                  notebookId={notebook?.id}
+                  pageData={page}
+                  progress={progress}
+                  onProgressUpdate={handleProgressUpdate}
+                />
+              </div>
+            </React.Fragment>
+          );
+        case 5:
+          // Page 5: Prep - Analysis preparation (fresh, thawed, or incubated)
+          return (
+            <PrepPage
+              key={`prep-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 6:
+          // Page 6: Analysis - Import analyzer results from ELISA/Flow Cytometry
+          return (
+            <AnalysisPage
+              key={`analysis-${page.id}`}
+              entryId={entryId}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 7:
+          // Page 7: Post-Analysis Handling - Store processed samples under defined conditions,
+          // track remaining volume and sample status (analyzed/partially used/exhausted),
+          // flag samples with quality issues (insufficient volume, quality issues, unexpected results)
+          return (
+            <ImmunologyPostAnalysisPage
+              key={`post-analysis-${page.id}`}
+              entryId={entryId}
+              notebookId={notebook?.id}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 8:
+          // Page 8: Result Compilation & Dissemination - Compile analysis outputs into structured files,
+          // generate reports, flag invalid/inconclusive results (failed controls, instrument errors,
+          // borderline values, poor cell viability), determine repeat testing needs,
+          // export deliverables (raw data, analyzed data, QC summary, visualizations),
+          // and deliver to Data Management Team, sponsors, or project databases (REDCap)
+          return (
+            <ImmunologyResultCompilationPage
+              key={`results-${page.id}`}
+              entryId={entryId}
+              notebookId={notebook?.id}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 9:
+          // Page 9: Archiving - Project conclusion with comprehensive traceability:
+          // - Identify all remaining samples (parent and child)
+          // - Transfer to Biorepository Laboratory with complete documentation
+          // - Ensure traceability (Parent→Child relationships, processing events, analysis events, storage history)
+          // - Archive all associated data (raw assay data, analysis files, QC records, protocols)
+          return (
+            <ImmunologyArchivingPage
+              key={`archive-${page.id}`}
+              entryId={entryId}
+              notebookId={notebook?.id}
+              pageData={page}
+              progress={progress}
+              onProgressUpdate={handleProgressUpdate}
+            />
+          );
+        case 10:
+          // Page 10: Data Analysis & Export - Final reporting and data export:
+          // - View validation summary statistics
+          // - Export comprehensive results to Excel/CSV formats
+          // - Record result delivery to recipients
+          // - View delivery history
+          return (
+            <ImmunologyDataAnalysisPage
+              key={`dataanalysis-${page.id}`}
+              entryId={entryId}
+              notebookId={notebook?.id}
+              pageData={page}
+            />
+          );
+        default:
+          return (
+            <div className="page-placeholder">
+              <FormattedMessage
+                id="notebook.workflow.pageDefault.description"
+                defaultMessage="Page content for workflow step {step}"
+                values={{ step: pageOrder }}
               />
             </div>
-          </React.Fragment>
-        );
-      case 5:
-        // Page 5: Prep - Analysis preparation (fresh, thawed, or incubated)
-        return (
-          <PrepPage
-            key={`prep-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 6:
-        // Page 6: Analysis - Import analyzer results from ELISA/Flow Cytometry
-        return (
-          <AnalysisPage
-            key={`analysis-${page.id}`}
-            entryId={entryId}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 7:
-        // Page 7: Post-Analysis Handling - Store processed samples under defined conditions,
-        // track remaining volume and sample status (analyzed/partially used/exhausted),
-        // flag samples with quality issues (insufficient volume, quality issues, unexpected results)
-        return (
-          <ImmunologyPostAnalysisPage
-            key={`post-analysis-${page.id}`}
-            entryId={entryId}
-            notebookId={notebook?.id}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 8:
-        // Page 8: Result Compilation & Dissemination - Compile analysis outputs into structured files,
-        // generate reports, flag invalid/inconclusive results (failed controls, instrument errors,
-        // borderline values, poor cell viability), determine repeat testing needs,
-        // export deliverables (raw data, analyzed data, QC summary, visualizations),
-        // and deliver to Data Management Team, sponsors, or project databases (REDCap)
-        return (
-          <ImmunologyResultCompilationPage
-            key={`results-${page.id}`}
-            entryId={entryId}
-            notebookId={notebook?.id}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 9:
-        // Page 9: Archiving - Project conclusion with comprehensive traceability:
-        // - Identify all remaining samples (parent and child)
-        // - Transfer to Biorepository Laboratory with complete documentation
-        // - Ensure traceability (Parent→Child relationships, processing events, analysis events, storage history)
-        // - Archive all associated data (raw assay data, analysis files, QC records, protocols)
-        return (
-          <ImmunologyArchivingPage
-            key={`archive-${page.id}`}
-            entryId={entryId}
-            notebookId={notebook?.id}
-            pageData={page}
-            progress={progress}
-            onProgressUpdate={handleProgressUpdate}
-          />
-        );
-      case 10:
-        // Page 10: Data Analysis & Export - Final reporting and data export:
-        // - View validation summary statistics
-        // - Export comprehensive results to Excel/CSV formats
-        // - Record result delivery to recipients
-        // - View delivery history
-        return (
-          <ImmunologyDataAnalysisPage
-            key={`dataanalysis-${page.id}`}
-            entryId={entryId}
-            notebookId={notebook?.id}
-            pageData={page}
-          />
-        );
-      default:
-        return (
-          <div className="page-placeholder">
-            <FormattedMessage
-              id="notebook.workflow.pageDefault.description"
-              defaultMessage="Page content for workflow step {step}"
-              values={{ step: pageOrder }}
-            />
-          </div>
-        );
+          );
+      }
     }
+
+    // Generic fallback for workflow types without custom UI components
+    // (e.g., hematology, bacteriology, GBD, etc.)
+    return (
+      <GenericWorkflowPage
+        key={`generic-${workflowType}-${page.id}`}
+        entryId={entryId}
+        pageData={page}
+        progress={progress}
+        onProgressUpdate={handleProgressUpdate}
+        workflowType={workflowType}
+      />
+    );
   };
 
   if (loading) {
