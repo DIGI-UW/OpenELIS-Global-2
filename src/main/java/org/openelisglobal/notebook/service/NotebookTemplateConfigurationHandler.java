@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
@@ -13,7 +14,6 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,18 +23,20 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>
  * Each JSON file under {@code volume/configuration/backend/notebook-templates/}
- * describes a single lab template. This handler reads the file and creates the
- * corresponding {@code notebook} and {@code notebook_page} rows — exactly what
- * the per-lab Liquibase changesets do, but without requiring a schema migration
- * for every new lab.
+ * describes a single lab template. This handler reads the file and creates or
+ * updates the corresponding {@code notebook} and {@code notebook_page} rows —
+ * exactly what the per-lab Liquibase changesets do, but without requiring a
+ * schema migration for every new lab.
  *
  * <p>
- * <strong>Idempotency:</strong> if a template with the same title already
- * exists (e.g. seeded by a Liquibase changeset), the file is skipped entirely.
+ * <strong>Behavior:</strong> if a template with the same title already exists
+ * (e.g. seeded by a Liquibase changeset), the template and all its pages are
+ * re-processed (metadata updated, pages replaced wholesale). This allows config
+ * changes to be picked up at runtime without restarts.
  *
  * <p>
  * <strong>JSON contract:</strong>
- * 
+ *
  * <pre>{@code
  * {
  *   "title":        "Lab Name",           // required, must be unique
@@ -47,9 +49,8 @@ import org.springframework.transaction.annotation.Transactional;
  *   "tags":         ["tag1"],
  *   "pages": [
  *     {
- *       "order":        1,                // required, 1-based; entries with order < 1 are skipped
+ *       "order":        1,                // required, 1-based; throws if missing or < 1
  *       "title":        "...",
- *       "pageType":     "...",            // optional; maps to a frontend page component key
  *       "instructions": "...",
  *       "content":      "..."
  *     }
@@ -69,9 +70,6 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
 
     @Autowired
     private TestSectionService testSectionService;
-
-    @Value("${org.openelisglobal.configuration.forcereload:true}")
-    private boolean forceReload;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -183,20 +181,30 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
 
         int created = 0;
         for (JsonNode pageNode : pagesNode) {
-            int order = pageNode.has("order") ? pageNode.get("order").asInt() : -1;
-            if (order < 1) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "createPages",
-                        "Skipping page with missing/invalid order in " + fileName);
-                continue;
-            }
+            // All pages are guaranteed to have valid order >= 1 by validateTemplate()
+            int order = pageNode.get("order").asInt();
 
             NoteBookPage page = new NoteBookPage();
             page.setNotebook(template);
             page.setOrder(order);
             page.setTitle(textOrNull(pageNode, "title"));
-            page.setPageType(textOrNull(pageNode, "pageType"));
             page.setInstructions(textOrNull(pageNode, "instructions"));
             page.setContent(textOrNull(pageNode, "content"));
+
+            // Parse and persist page-level configuration data
+            JsonNode dataNode = pageNode.get("data");
+            if (dataNode != null && !dataNode.isNull()) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> dataMap = objectMapper.convertValue(dataNode, Map.class);
+                    page.setData(dataMap);
+                } catch (IllegalArgumentException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createPages",
+                            "Failed to parse 'data' object for page order=" + order + " in " + fileName + ": "
+                                    + e.getMessage());
+                }
+            }
+
             page.setCompleted(false);
             page.setSysUserId("1");
             noteBookPageDAO.insert(page);
@@ -234,6 +242,7 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
         }
 
         // Validate each page
+        java.util.Set<Integer> seenOrders = new java.util.HashSet<>();
         int pageIndex = 0;
         for (JsonNode pageNode : pagesNode) {
             // Validate order is present and >= 1
@@ -247,19 +256,12 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
                         "Page at index " + pageIndex + " in " + fileName + " has invalid 'order' (must be >= 1)");
             }
 
-            // Validate pageType is present when data is present
-            JsonNode dataNode = pageNode.get("data");
-            if (dataNode != null && !dataNode.isNull()) {
-                String pageType = textOrNull(pageNode, "pageType");
-                if (pageType == null) {
-                    throw new IllegalArgumentException("Page at index " + pageIndex + " (order=" + order + ") in "
-                            + fileName + " has 'data' but is missing 'pageType'");
-                }
-            } else if (!pageNode.has("pageType") || pageNode.get("pageType").isNull()) {
-                // Warn but don't throw for missing pageType when no data
-                LogEvent.logWarn(this.getClass().getSimpleName(), "validateTemplate", "Page at index " + pageIndex
-                        + " (order=" + order + ") in " + fileName + " is missing 'pageType'");
+            // Validate order is unique within the template
+            if (seenOrders.contains(order)) {
+                throw new IllegalArgumentException("Page at index " + pageIndex + " in " + fileName
+                        + " has duplicate 'order=" + order + "' (all page orders must be unique)");
             }
+            seenOrders.add(order);
 
             pageIndex++;
         }

@@ -57,20 +57,10 @@
           "order": {
             "type": "integer",
             "minimum": 1,
-            "description": "1-based page order within the template. Must be unique within the template."
+            "description": "1-based page order within the template. Must be unique within the template (validation enforced at startup; duplicates will cause configuration to be rejected with an error)."
           },
           "title": {
             "type": "string"
-          },
-          "pageType": {
-            "type": "string",
-            "description": "Key into frontend PAGE_TYPE_REGISTRY. Required when 'data' is present. Common values: generic_sample_reception, generic_quality_check, generic_sample_processing, generic_storage, generic_sample_storage, generic_disposal, generic_reporting, generic_environmental_monitor",
-            "examples": [
-              "generic_sample_reception",
-              "generic_quality_check",
-              "tb_culture_results",
-              "pathology_cassette_entry"
-            ]
           },
           "instructions": {
             "type": "string"
@@ -80,7 +70,7 @@
           },
           "data": {
             "type": "object",
-            "description": "Page-level config stored in the notebook_page.data JSONB column. When present, pageType is required.",
+            "description": "Page-level configuration object. Persisted to notebook_page.data JSONB column at runtime. Configuration can be updated without schema migration.",
             "additionalProperties": true,
             "properties": {
               "manifestColumns": {
@@ -159,12 +149,6 @@
               }
             }
           }
-        },
-        "if": {
-          "required": ["data"]
-        },
-        "then": {
-          "required": ["order", "pageType"]
         }
       }
     }
