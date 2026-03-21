@@ -70,11 +70,7 @@
           },
           "pageType": {
             "type": "string",
-            "description": "Optional legacy page type for routing/storage categorization. Used only for Liquibase-seeded pages (e.g. BRANCHING, CHILD_SAMPLE_CREATION, STORAGE_ASSIGNMENT). For JSON-seeded pages, use pageId instead."
-          },
-          "pageId": {
-            "type": "string",
-            "description": "Optional lab-specific page identifier (routing/storage behavior). Valid values: immunology_child_samples, mntd_aliquoting, medlab_sample_routing (routing); bacteriology_post_analysis, pathology_storage_inventory, tb_storage_assignment, biorepo_storage_assignment, gbd_storage_monitoring, bioanalytical_storage, bioeq_storage (storage). Enables isRoutingPage() and isStoragePage() checks for JSON-seeded templates. If omitted, page has no special routing/storage behavior."
+            "description": "Page type for routing/storage categorization (e.g. BRANCHING, CHILD_SAMPLE_CREATION, STORAGE_ASSIGNMENT, BULK_DATA_ENTRY). Enables isRoutingPage() and isStoragePage() checks."
           },
           "data": {
             "type": "object",

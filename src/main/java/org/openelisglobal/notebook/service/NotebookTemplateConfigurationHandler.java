@@ -194,7 +194,6 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
             page.setInstructions(textOrNull(pageNode, "instructions"));
             page.setContent(textOrNull(pageNode, "content"));
             page.setPageType(textOrNull(pageNode, "pageType"));
-            page.setPageId(textOrNull(pageNode, "pageId"));
 
             // Parse and persist page-level configuration data
             JsonNode dataNode = pageNode.get("data");
