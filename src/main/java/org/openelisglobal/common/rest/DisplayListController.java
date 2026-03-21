@@ -449,6 +449,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
+        configs.put(Property.EQA_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.EQA_ENABLED));
         return configs;
     }
 

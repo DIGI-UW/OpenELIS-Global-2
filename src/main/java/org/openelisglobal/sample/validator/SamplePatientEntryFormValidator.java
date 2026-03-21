@@ -1,12 +1,12 @@
 package org.openelisglobal.sample.validator;
 
 import java.util.Iterator;
+import org.apache.commons.validator.GenericValidator;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
-import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.springframework.stereotype.Component;
@@ -29,9 +29,9 @@ public class SamplePatientEntryFormValidator implements Validator {
         if (!GenericValidator.isBlankOrNull(form.getSampleXML())) {
             validateSampleXML(form.getSampleXML(), errors);
         }
+
     }
 
-    @SuppressWarnings("unchecked")
     private void validateSampleXML(String sampleXML, Errors errors) {
         try {
             Document sampleDom = DocumentHelper.parseText(sampleXML);
