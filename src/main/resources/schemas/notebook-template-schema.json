@@ -72,6 +72,10 @@
             "type": "string",
             "description": "Page type for routing/storage categorization (e.g. BRANCHING, CHILD_SAMPLE_CREATION, STORAGE_ASSIGNMENT, BULK_DATA_ENTRY). Enables isRoutingPage() and isStoragePage() checks."
           },
+          "pageId": {
+            "type": "string",
+            "description": "Lab-specific page identifier for routing/storage (e.g. 'gbd_storage_monitoring', 'quality-check'). Used by frontend components and services for page identification and workflow routing."
+          },
           "data": {
             "type": "object",
             "description": "Optional lab-specific page configuration data. Stored as JSONB in database. Example: {\"sampleTypesEndpoint\": \"/rest/notebook/{lab}/sample-types\", \"columns\": [...], \"validValues\": {...}}. Structure depends on page purpose and frontend component expectations."

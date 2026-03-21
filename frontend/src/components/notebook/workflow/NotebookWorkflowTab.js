@@ -314,7 +314,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
     if (title.includes("immunology")) {
       return "immunology";
     }
-    // Return null to indicate no known workflow type -
+    // Return "generic" as fallback for unknown workflow types -
     // renderPageContent will use GenericWorkflowPage
     return "generic";
   }, [

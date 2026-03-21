@@ -334,18 +334,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setBudget(noteBook.getBudget());
             displayBean.setProjectTimeline(noteBook.getProjectTimeline());
 
-            String workflowType = noteBook.getWorkflowType();
-            if (workflowType == null) {
-                if (noteBook.isChildInstance() && noteBook.getParentNotebook() != null) {
-                    workflowType = noteBook.getParentNotebook().getWorkflowType();
-                } else if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
-                    NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
-                    if (parentTemplate != null) {
-                        workflowType = parentTemplate.getWorkflowType();
-                    }
-                }
-            }
-            displayBean.setWorkflowType(workflowType);
+            displayBean.setWorkflowType(getEffectiveWorkflowType(noteBook));
 
             // Handle allowedRoles based on notebook type
             // 1. Parent templates (isTemplate=true, no parentNotebook): use own
@@ -479,18 +468,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setBudget(noteBook.getBudget());
             fullDisplayBean.setProjectTimeline(noteBook.getProjectTimeline());
 
-            String wfType = noteBook.getWorkflowType();
-            if (wfType == null) {
-                if (noteBook.isChildInstance() && noteBook.getParentNotebook() != null) {
-                    wfType = noteBook.getParentNotebook().getWorkflowType();
-                } else if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
-                    NoteBook wfParent = baseObjectDAO.findParentTemplate(noteBook.getId());
-                    if (wfParent != null) {
-                        wfType = wfParent.getWorkflowType();
-                    }
-                }
-            }
-            fullDisplayBean.setWorkflowType(wfType);
+            fullDisplayBean.setWorkflowType(getEffectiveWorkflowType(noteBook));
 
             // Prefer inventory instruments over legacy analyzers
             List<IdValuePair> instrumentList = new ArrayList<>();
@@ -2000,11 +1978,55 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     /**
-     * Normalize pageId for consistent comparison. Converts hyphens to underscores
-     * to handle both naming conventions (e.g. "gbd-storage-monitoring" →
-     * "gbd_storage_monitoring").
+     * Get the effective workflow type for a notebook.
+     * Ensures child instances and entries always inherit a workflow type through
+     * a comprehensive fallback mechanism:
+     * 1. Own workflowType
+     * 2. Parent notebook workflowType (for child instances)
+     * 3. Parent template workflowType (via findParentTemplate for all non-templates)
+     * 4. Ultimate parent template search (for deep hierarchies)
      *
-     * @param pageId the page identifier to normalize
-     * @return normalized page identifier (null-safe)
+     * @param noteBook the notebook to get workflow type for
+     * @return the effective workflow type, or null if not found anywhere in hierarchy
      */
+    private String getEffectiveWorkflowType(NoteBook noteBook) {
+        String workflowType = noteBook.getWorkflowType();
+
+        // If notebook has its own workflowType, use it
+        if (workflowType != null) {
+            return workflowType;
+        }
+
+        // For child instances, try parent notebook first
+        if (noteBook.isChildInstance() && noteBook.getParentNotebook() != null) {
+            workflowType = noteBook.getParentNotebook().getWorkflowType();
+            if (workflowType != null) {
+                return workflowType;
+            }
+            // If parent notebook also doesn't have workflowType, continue to fallback logic below
+        }
+
+        // For any non-template (child instances or entries), try findParentTemplate as fallback
+        if (noteBook.getIsTemplate() != null && !noteBook.getIsTemplate()) {
+            NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+            if (parentTemplate != null) {
+                workflowType = parentTemplate.getWorkflowType();
+                if (workflowType != null) {
+                    return workflowType;
+                }
+
+                // If the parent template also doesn't have workflowType,
+                // check if the parent template itself has a parent (deep hierarchy)
+                if (parentTemplate.isChildInstance() && parentTemplate.getParentNotebook() != null) {
+                    workflowType = parentTemplate.getParentNotebook().getWorkflowType();
+                    if (workflowType != null) {
+                        return workflowType;
+                    }
+                }
+            }
+        }
+
+        return null; // No workflowType found in entire hierarchy
+    }
+
 }

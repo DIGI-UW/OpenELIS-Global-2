@@ -31,8 +31,15 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * <strong>Behavior:</strong> if a template with the same title already exists
  * (e.g. seeded by a Liquibase changeset), the template and all its pages are
- * re-processed (metadata updated, pages replaced wholesale). This allows config
- * changes to be picked up at runtime without restarts.
+ * re-processed (metadata updated, pages replaced wholesale).
+ *
+ * <p>
+ * <strong>Loading behavior:</strong> Configuration files are processed by
+ * {@link org.openelisglobal.configuration.service.ConfigurationInitializationService}
+ * at application startup (on {@code ContextRefreshedEvent}). To pick up configuration
+ * changes, a full application restart or context refresh is required. Files are
+ * tracked via MD5 checksums to skip unchanged files unless {@code forceReload=true}
+ * is configured.
  *
  * <p>
  * <strong>JSON contract:</strong>
@@ -194,6 +201,7 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
             page.setInstructions(textOrNull(pageNode, "instructions"));
             page.setContent(textOrNull(pageNode, "content"));
             page.setPageType(textOrNull(pageNode, "pageType"));
+            page.setPageId(textOrNull(pageNode, "pageId"));
 
             // Parse and persist page-level configuration data
             JsonNode dataNode = pageNode.get("data");
