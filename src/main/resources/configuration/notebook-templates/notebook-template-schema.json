@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://openelis-global.org/schemas/notebook-template.schema.json",
+  "$id": "https://raw.githubusercontent.com/openelis/OpenELIS-Global-2/main/src/main/resources/configuration/notebook-templates/notebook-template-schema.json",
   "title": "Notebook Template",
   "description": "Schema for OpenELIS-Global notebook template configuration files loaded by NotebookTemplateConfigurationHandler",
   "type": "object",
