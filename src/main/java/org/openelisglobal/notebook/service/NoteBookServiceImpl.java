@@ -1236,12 +1236,17 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (page == null) {
             return false;
         }
-        String pageType = page.getPageType();
-        // Primary check: new-style routing page types
-        if (ROUTING_PAGE_TYPES.contains(pageType)) {
+
+        // Primary check: lab-specific pageId values from JSON templates
+        // (e.g. "immunology_child_samples", "mntd_aliquoting", "medlab_sample_routing")
+        String jsonPageId = page.getPageId();
+        if (jsonPageId != null && ROUTING_PAGE_TYPES.contains(normalizePageId(jsonPageId))) {
             return true;
         }
-        // Fallback: support legacy routing page types seeded via Liquibase
+
+        // Fallback: legacy pageType values seeded via Liquibase
+        // (e.g. "BRANCHING", "CHILD_SAMPLE_CREATION")
+        String pageType = page.getPageType();
         if (StringUtils.equalsIgnoreCase(pageType, "BRANCHING")
                 || StringUtils.equalsIgnoreCase(pageType, "CHILD_SAMPLE_CREATION")) {
             return true;
@@ -1259,17 +1264,18 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (page == null) {
             return false;
         }
-        String pageType = page.getPageType();
-        if (pageType == null) {
-            return false;
-        }
-        // Primary check: new storage page type keys
-        if (STORAGE_PAGE_TYPES.contains(pageType)) {
+
+        // Primary check: lab-specific pageId values from JSON templates
+        // (e.g. "gbd_storage_monitoring", "bacteriology_post_analysis",
+        // "biorepo_storage_assignment")
+        String jsonPageId = page.getPageId();
+        if (jsonPageId != null && STORAGE_PAGE_TYPES.contains(normalizePageId(jsonPageId))) {
             return true;
         }
-        // Backward-compatibility: legacy enum-like page_type values used by Liquibase
-        // templates
-        // e.g. "STORAGE_ASSIGNMENT", "PATHOLOGY_STORAGE_INVENTORY"
+
+        // Fallback: legacy pageType values seeded via Liquibase
+        // (e.g. "STORAGE_ASSIGNMENT", "PATHOLOGY_STORAGE_INVENTORY")
+        String pageType = page.getPageType();
         if ("STORAGE_ASSIGNMENT".equals(pageType) || "PATHOLOGY_STORAGE_INVENTORY".equals(pageType)) {
             return true;
         }
@@ -2013,5 +2019,20 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             LogEvent.logWarn("NoteBookService", "delete", "Failed to save notebook audit log: " + e.getMessage());
         }
         super.delete(notebook);
+    }
+
+    /**
+     * Normalize pageId for consistent comparison. Converts hyphens to underscores
+     * to handle both naming conventions (e.g. "gbd-storage-monitoring" →
+     * "gbd_storage_monitoring").
+     *
+     * @param pageId the page identifier to normalize
+     * @return normalized page identifier (null-safe)
+     */
+    private String normalizePageId(String pageId) {
+        if (pageId == null) {
+            return null;
+        }
+        return pageId.replace("-", "_").toLowerCase();
     }
 }

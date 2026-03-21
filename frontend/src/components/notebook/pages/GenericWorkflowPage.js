@@ -35,10 +35,7 @@ function GenericWorkflowPage({ pageData, progress, workflowType }) {
             </div>
 
             {pageData?.content && (
-              <div
-                className="generic-page-content"
-                dangerouslySetInnerHTML={{ __html: pageData.content }}
-              />
+              <div className="generic-page-content">{pageData.content}</div>
             )}
 
             <div className="generic-page-meta">

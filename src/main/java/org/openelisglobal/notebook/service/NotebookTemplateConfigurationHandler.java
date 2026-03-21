@@ -53,8 +53,8 @@ import org.springframework.transaction.annotation.Transactional;
  *       "title":        "...",
  *       "instructions": "...",
  *       "content":      "...",
- *       "pageType":     "routing-type",   // optional; enables routing/storage behavior (e.g. "gbd_storage_monitoring")
- *       "pageId":       "legacy-id",      // optional; legacy page identifier (rarely used)
+ *       "pageType":     "STORAGE_ASSIGNMENT", // optional; legacy routing/storage categorization for Liquibase pages
+ *       "pageId":       "gbd_storage_monitoring", // optional; lab-specific page identifier (enables routing/storage for JSON pages)
  *       "data":         {}                // optional; lab-specific configuration data (JSONB)
  *     }
  *   ]
