@@ -17,7 +17,7 @@ import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer } from "../utils/Utils";
+import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -118,20 +118,25 @@ const AnalyserResults = (props) => {
       return;
     }
     setIsSubmitting(true);
-    postToOpenElisServer(
+    postToOpenElisServerFullResponse(
       "/rest/AnalyzerResults",
       JSON.stringify(props.results),
       handleResponse,
     );
   };
-  const handleResponse = (status) => {
+  const handleResponse = async (response) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
     setIsSubmitting(false);
-    if (status == 200) {
+    if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
       window.location.href = "/AnalyzerResults?type=" + props.type;
+    } else {
+      const detail = await response.text().catch(() => "");
+      if (detail) {
+        message = message + ": " + detail.substring(0, 200);
+      }
     }
     addNotification({
       kind: kind,
