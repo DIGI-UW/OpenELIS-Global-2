@@ -65,6 +65,7 @@
     {
       "order": 10,
       "title": "Storage & Environmental Monitoring",
+      "pageType": "gbd_storage_monitoring",
       "instructions": "Manage physical sample storage and environmental conditions. Assign samples to hierarchical storage locations (Room > Freezer > Shelf > Rack > Box > Well). Select appropriate storage condition based on sample type (DNA: -20C/-80C, RNA: -80C, PCR products: -20C). Log daily temperature checks (AM/PM) with acceptable ranges. Track sample retrievals with date, staff, recipient signature, and retrieval purpose. Record sample disposals with method, date, and authorization. Monitor storage logbook audit trail for compliance and traceability.",
       "content": "Storage & Environmental Monitoring - Physical storage management, temperature monitoring, and sample lifecycle tracking"
     }

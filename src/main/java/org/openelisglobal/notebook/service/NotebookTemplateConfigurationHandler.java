@@ -52,7 +52,10 @@ import org.springframework.transaction.annotation.Transactional;
  *       "order":        1,                // required, 1-based; throws if missing or < 1
  *       "title":        "...",
  *       "instructions": "...",
- *       "content":      "..."
+ *       "content":      "...",
+ *       "pageType":     "routing-type",   // optional; enables routing/storage behavior (e.g. "gbd_storage_monitoring")
+ *       "pageId":       "legacy-id",      // optional; legacy page identifier (rarely used)
+ *       "data":         {}                // optional; lab-specific configuration data (JSONB)
  *     }
  *   ]
  * }
@@ -190,6 +193,8 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
             page.setTitle(textOrNull(pageNode, "title"));
             page.setInstructions(textOrNull(pageNode, "instructions"));
             page.setContent(textOrNull(pageNode, "content"));
+            page.setPageType(textOrNull(pageNode, "pageType"));
+            page.setPageId(textOrNull(pageNode, "pageId"));
 
             // Parse and persist page-level configuration data
             JsonNode dataNode = pageNode.get("data");

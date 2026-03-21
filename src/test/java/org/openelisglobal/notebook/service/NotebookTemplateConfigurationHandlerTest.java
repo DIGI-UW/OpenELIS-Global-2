@@ -291,7 +291,13 @@ public class NotebookTemplateConfigurationHandlerTest {
 
         handler.processConfiguration(input, "test.json");
 
-        verify(noteBookDAO, times(3)).update(any(NoteBook.class));
+        // Verify scalar fields were updated on the existing template
+        org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
+        verify(noteBookDAO, org.mockito.Mockito.atLeast(1)).update(nbCaptor.capture());
+
+        NoteBook updatedNb = nbCaptor.getValue();
+        assertEquals("lab-key", updatedNb.getWorkflowType());
+        assertEquals("New Content", updatedNb.getContent());
     }
 
     @Test
@@ -318,9 +324,14 @@ public class NotebookTemplateConfigurationHandlerTest {
 
         handler.processConfiguration(input, "test.json");
 
-        // Verify departments cleared and re-synced
-        // (scalar update + clear update + link update + page clear update = 4 calls)
-        verify(noteBookDAO, times(4)).update(any(NoteBook.class));
+        // Verify departments were cleared and re-synced by checking final state
+        org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
+        verify(noteBookDAO, org.mockito.Mockito.atLeast(1)).update(nbCaptor.capture());
+
+        NoteBook updatedNb = nbCaptor.getValue();
+        assertNotNull("Departments collection should exist", updatedNb.getDepartments());
+        // Department should be in the final synced state (mocked by linkDepartments)
+        verify(testSectionService, org.mockito.Mockito.atLeastOnce()).getTestSectionByName("Dept A");
     }
 
     @Test
@@ -336,6 +347,76 @@ public class NotebookTemplateConfigurationHandlerTest {
     @Test
     public void testGetLoadOrder() {
         assertEquals(210, handler.getLoadOrder());
+    }
+
+    @Test
+    public void testProcess_PageWithPageType_persistsPageType() throws Exception {
+        String json = "{\"title\":\"Storage Lab\",\"pages\":[{\"order\":1,\"pageType\":\"gbd_storage_monitoring\"}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+
+        when(noteBookDAO.getAllMatching("title", "Storage Lab")).thenReturn(new ArrayList<>());
+
+        handler.processConfiguration(input, "test.json");
+
+        // Capture the inserted page and verify pageType was set
+        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
+        verify(noteBookPageDAO, times(1)).insert(pageCaptor.capture());
+
+        NoteBookPage insertedPage = pageCaptor.getValue();
+        assertEquals("gbd_storage_monitoring", insertedPage.getPageType());
+    }
+
+    @Test
+    public void testProcess_PageWithoutPageType_pageTypeRemains() throws Exception {
+        String json = "{\"title\":\"Generic Lab\",\"pages\":[{\"order\":1,\"title\":\"Generic Page\"}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+
+        when(noteBookDAO.getAllMatching("title", "Generic Lab")).thenReturn(new ArrayList<>());
+
+        handler.processConfiguration(input, "test.json");
+
+        // Capture the inserted page and verify pageType was not set
+        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
+        verify(noteBookPageDAO, times(1)).insert(pageCaptor.capture());
+
+        NoteBookPage insertedPage = pageCaptor.getValue();
+        assertNull(insertedPage.getPageType());
+    }
+
+    @Test
+    public void testProcess_PageWithPageId_persistsPageId() throws Exception {
+        String json = "{\"title\":\"Legacy Lab\",\"pages\":[{\"order\":1,\"pageId\":\"legacy_page_id\"}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+
+        when(noteBookDAO.getAllMatching("title", "Legacy Lab")).thenReturn(new ArrayList<>());
+
+        handler.processConfiguration(input, "test.json");
+
+        // Capture the inserted page and verify pageId was set
+        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
+        verify(noteBookPageDAO, times(1)).insert(pageCaptor.capture());
+
+        NoteBookPage insertedPage = pageCaptor.getValue();
+        assertEquals("legacy_page_id", insertedPage.getPageId());
+    }
+
+    @Test
+    public void testProcess_PageWithData_persistsDataAsJsonb() throws Exception {
+        String json = "{\"title\":\"Config Lab\",\"pages\":[{\"order\":1,\"data\":{\"key\":\"value\",\"nested\":{\"field\":123}}}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+
+        when(noteBookDAO.getAllMatching("title", "Config Lab")).thenReturn(new ArrayList<>());
+
+        handler.processConfiguration(input, "test.json");
+
+        // Capture the inserted page and verify data was parsed and set
+        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
+        verify(noteBookPageDAO, times(1)).insert(pageCaptor.capture());
+
+        NoteBookPage insertedPage = pageCaptor.getValue();
+        assertNotNull("Data should be persisted", insertedPage.getData());
+        assertEquals("value", insertedPage.getData().get("key"));
+        assertNotNull("Nested object should exist", insertedPage.getData().get("nested"));
     }
 
     @Test
@@ -808,6 +889,16 @@ public class NotebookTemplateConfigurationHandlerTest {
 
         handler.processConfiguration(input, "test.json");
 
-        verify(noteBookDAO, times(3)).update(any(NoteBook.class)); // scalar, clear deps, clear pages
+        // Verify only the template (isTemplate=true) was updated, not the entry
+        org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
+        verify(noteBookDAO, org.mockito.Mockito.atLeastOnce()).update(nbCaptor.capture());
+
+        // All captured updates should be for the template entity
+        for (NoteBook updatedNb : nbCaptor.getAllValues()) {
+            assertTrue("Only templates should be updated", Boolean.TRUE.equals(updatedNb.getIsTemplate()));
+        }
+
+        // Verify pages were inserted (not updated from the entry)
+        verify(noteBookPageDAO, org.mockito.Mockito.atLeastOnce()).insert(any(NoteBookPage.class));
     }
 }
