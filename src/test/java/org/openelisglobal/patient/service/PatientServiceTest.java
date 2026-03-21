@@ -554,4 +554,65 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    @Test
+    public void getData_shouldReturnNullForNonExistentId() throws Exception {
+        Patient patient = patientService.getData("9999");
+
+        Assert.assertNull("getData should return null for a non-existent patient ID", patient);
+    }
+
+    @Test
+    public void externalIDExists_shouldReturnFalseForNonExistentExternalId() throws Exception {
+        Assert.assertFalse("A non-existent external ID should return false",
+                patientService.externalIDExists("DOES_NOT_EXIST_XYZ"));
+    }
+
+    @Test
+    public void getPatientByNationalId_shouldReturnNullForUnknownNationalId() throws Exception {
+        Patient patient = patientService.getPatientByNationalId("UNKNOWN_NATIONAL_ID");
+
+        Assert.assertNull("Should return null when no patient has the given national ID", patient);
+    }
+
+    @Test
+    public void getPatientsByNationalId_shouldReturnEmptyListForUnknownId() throws Exception {
+        List<Patient> patients = patientService.getPatientsByNationalId("NO_SUCH_ID");
+
+        Assert.assertNotNull("Result should be an empty list, not null", patients);
+        Assert.assertTrue("No patients should match an unknown national ID", patients.isEmpty());
+    }
+
+    @Test
+    public void getAllMissingFhirUuid_shouldReturnAllPatientsWhenNoneHaveUuid() throws Exception {
+        List<Patient> patients = patientService.getAllMissingFhirUuid();
+
+        Assert.assertNotNull("Result should not be null", patients);
+        Assert.assertEquals("All 4 dataset patients are missing a FHIR UUID", 4, patients.size());
+    }
+
+    // Edge case: Handling special characters in patient name
+    @Test
+    public void createPatient_withSpecialCharactersInName_shouldPersistAndRetrieveCorrectly() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
+
+        Patient patient = createPatient("José", "O'Brien", "01/01/1990", "M");
+        String insertedId = patientService.insert(patient);
+        Patient retrieved = patientService.get(insertedId);
+
+        Assert.assertNotNull("Patient with special-character name should be retrievable", retrieved);
+        Assert.assertEquals("First name with accent should be stored without corruption", "José",
+                retrieved.getPerson().getFirstName());
+        Assert.assertEquals("Last name with apostrophe should be stored without corruption", "O'Brien",
+                retrieved.getPerson().getLastName());
+    }
+
+    @Test
+    public void getPatientByExternalId_withUuidFormattedId_shouldReturnNullWhenNotFound() throws Exception {
+        String nonExistentUuid = UUID.randomUUID().toString();
+
+        Patient patient = patientService.getPatientByExternalId(nonExistentUuid);
+
+        Assert.assertNull("Searching by a random UUID-formatted external ID should return null", patient);
+    }
+
 }
