@@ -18,13 +18,14 @@ public class ChangePasswordLoginFormValidator implements Validator {
     public void validate(Object target, Errors errors) {
         ChangePasswordLoginForm form = (ChangePasswordLoginForm) target;
 
-        //  1. Required field validation (consistent with project)
+        // 1. Required field validation (consistent with project)
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "password", "login.password.required");
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "newPassword", "login.newpassword.required");
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "confirmPassword", "login.confirmpassword.required");
 
         // Stop if basic validation fails
-        if (errors.hasErrors()) return;
+        if (errors.hasErrors())
+            return;
 
         String password = form.getPassword();
         String newPassword = form.getNewPassword();
@@ -32,8 +33,7 @@ public class ChangePasswordLoginFormValidator implements Validator {
 
         // . New password should not match old password
         if (password.equals(newPassword)) {
-            errors.reject("login.error.newpassword.required",
-                    "New password cannot match old password");
+            errors.reject("login.error.newpassword.required", "New password cannot match old password");
         }
 
         // 3. Confirm password match
@@ -41,13 +41,11 @@ public class ChangePasswordLoginFormValidator implements Validator {
             errors.reject("login.error.password.notmatch");
         }
 
-        //  4. Prevent leading/trailing spaces (without trimming)
-        if (!password.equals(password.trim()) ||
-            !newPassword.equals(newPassword.trim()) ||
-            !confirmPassword.equals(confirmPassword.trim())) {
+        // 4. Prevent leading/trailing spaces (without trimming)
+        if (!password.equals(password.trim()) || !newPassword.equals(newPassword.trim())
+                || !confirmPassword.equals(confirmPassword.trim())) {
 
-            errors.reject("login.error.password.whitespace",
-                    "Passwords should not contain leading or trailing spaces");
+            errors.reject("login.error.password.whitespace", "Passwords should not contain leading or trailing spaces");
         }
     }
 }
