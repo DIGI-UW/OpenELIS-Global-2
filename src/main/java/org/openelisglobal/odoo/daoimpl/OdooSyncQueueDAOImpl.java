@@ -22,7 +22,7 @@ public class OdooSyncQueueDAOImpl extends BaseDAOImpl<OdooSyncQueue, Long> imple
     @Override
     public List<OdooSyncQueue> getItemsReadyForRetry() {
         String hql = "FROM OdooSyncQueue q WHERE q.status = :pendingStatus "
-                + "AND (q.nextRetryTime IS NULL OR q.nextRetryTime <= :now) " + "AND q.retryCount < q.maxRetries "
+                + "AND (q.nextRetryTime IS NULL OR q.nextRetryTime <= :now) " + "AND q.retryCount <= q.maxRetries "
                 + "ORDER BY q.createdAt ASC";
         TypedQuery<OdooSyncQueue> query = entityManager.createQuery(hql, OdooSyncQueue.class);
         query.setParameter("pendingStatus", SyncStatus.PENDING);
