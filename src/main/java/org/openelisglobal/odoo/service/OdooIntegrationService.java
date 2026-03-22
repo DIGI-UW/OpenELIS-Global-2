@@ -73,7 +73,10 @@ public class OdooIntegrationService {
             throw new org.openelisglobal.odoo.exception.OdooUnavailableException(
                     "Odoo connection is not available for sample: " + updateData.getAccessionNumber());
         }
-
+        if (updateData.getAccessionNumber() == null) {
+            throw new IllegalArgumentException("Accession number is required for Odoo invoice creation");
+        }
+        
         try {
             Map<String, Object> invoiceData = createInvoiceData(updateData);
             Integer invoiceId = odooConnection.create("account.move", List.of(invoiceData));
