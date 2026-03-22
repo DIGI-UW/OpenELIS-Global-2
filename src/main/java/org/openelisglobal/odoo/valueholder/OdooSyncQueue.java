@@ -139,6 +139,6 @@ public class OdooSyncQueue extends BaseObject<Long> {
     }
 
     public boolean hasExceededMaxRetries() {
-        return retryCount >= maxRetries;
+        return retryCount > maxRetries;
     }
 }
