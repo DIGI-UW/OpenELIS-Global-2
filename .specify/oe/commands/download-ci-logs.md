@@ -12,6 +12,18 @@ specify a target.
   run the shim with **current branch** and **failed-only** (so the downloader is
   invoked with `--branch <current-branch>` and `--failed`).
 
+**Before downloading logs, ALWAYS run a holistic status check first:**
+
+```bash
+# Show ALL workflows at a glance (same view as GitHub PR UI)
+gh pr checks $(gh pr view --json number -q '.number') 2>/dev/null || \
+  gh run list --branch "$(git branch --show-current)" --limit 10
+```
+
+This ensures you identify ALL failing workflows (Backend, Frontend, E2E, etc.)
+before downloading logs for just one. A formatting failure in `01 - Backend` is
+just as blocking as an E2E failure in `03 - E2E`.
+
 ## Invocation
 
 The agent should parse user arguments and construct a safe command call. Only

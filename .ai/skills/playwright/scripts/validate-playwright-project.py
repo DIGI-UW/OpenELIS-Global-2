@@ -26,18 +26,25 @@ def normalize_spec_arg(spec_arg: str) -> str:
     return spec if spec.startswith("playwright/tests/") else f"playwright/tests/{spec}"
 
 
+_DEMO_CONST_NAMES = frozenset(
+    {"DEMO_TESTS", "CORE_DEMO_TESTS", "HARNESS_DEMO_TESTS"}
+)
+
+
 def extract_project_blocks(config_text: str) -> list[tuple[str, str]]:
     pattern = re.compile(
-        r'name:\s*"([^"]+)"[\s\S]*?testMatch:\s*(\[[\s\S]*?\]|DEMO_TESTS|/[^/]+/)',
+        r'name:\s*"([^"]+)"[\s\S]*?testMatch:\s*(\[[\s\S]*?\]|DEMO_TESTS|CORE_DEMO_TESTS|HARNESS_DEMO_TESTS|/[^/]+/)',
         re.MULTILINE,
     )
     return [(m.group(1), m.group(2)) for m in pattern.finditer(config_text)]
 
 
 def extract_globs(config_text: str, block: str) -> list[str]:
-    if block == "DEMO_TESTS":
+    if block in _DEMO_CONST_NAMES:
         demo_match = re.search(
-            r"const\s+DEMO_TESTS\s*=\s*\[([\s\S]*?)\];", config_text, re.MULTILINE
+            rf"const\s+{re.escape(block)}\s*=\s*\[([\s\S]*?)\];",
+            config_text,
+            re.MULTILINE,
         )
         if not demo_match:
             return []

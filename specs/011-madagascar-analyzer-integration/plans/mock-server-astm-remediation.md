@@ -161,7 +161,7 @@ Results"):
     "dob": "19850315"
   },
   "testSample": {
-    "id": "SPECIMEN-GX-001",
+    "id": "HARN-GX-2026-00001",
     "type": "ORH^Other"
   }
 }
@@ -283,7 +283,7 @@ f"O|1|{sample_id}||^^^{first_test_code}|R|{order_ts}|||||{action_code}||||{speci
 ```
 
 For GeneXpert:
-`O|1|SPECIMEN-GX-001||^^^MTB-RIF|R|20240515140000|||||||||ORH|||^^|||||||F`
+`O|1|HARN-GX-2026-00001||^^^MTB-RIF|R|20240515140000|||||||||ORH|||^^|||||||F`
 
 **Backward compatibility:** Non-GeneXpert templates continue working — they get
 empty action code, empty specimen descriptor.

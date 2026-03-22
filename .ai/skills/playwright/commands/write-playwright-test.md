@@ -21,7 +21,8 @@ Interpret input best-effort:
 
    - Confirm target user story / acceptance criteria.
    - Identify feature route and expected user-visible behavior.
-   - Decide project target: `core-app`, `harness`, `demo`, `demo-video`.
+   - Decide project target: `core-app`, `core-demo`, `harness`, `harness-demo`,
+     or the matching `*-demo-video` for recording.
 
 2. **Read source before writing selectors**
 
@@ -36,12 +37,19 @@ Interpret input best-effort:
    - Keep `testInfo` and `videoPause()` conventions.
    - Prefer `getByRole` / `getByLabel` / `data-testid` selectors.
    - Add debug-context capture hooks for fragile or async-heavy workflows.
+   - NEVER use `response.ok()` as assertion — use `waitForResponse` for sync
+     only, then assert on visible UI
+   - For Carbon checkboxes/radios, click the `<label>` (NEVER `{ force: true }`)
+   - For autocomplete fields, wait for suggestion dropdown and click (do NOT
+     just type + Tab)
+   - Use `test.step()` for multi-step workflows
+   - Call `isVisible()` directly — never add `.catch(() => false)`
 
 4. **Register spec in Playwright config**
 
    - Add new spec to the correct `testMatch` project list in
      `frontend/playwright.config.ts`.
-   - For demo workflow tests, update `DEMO_TESTS`.
+   - For demo workflow tests, update `CORE_DEMO_TESTS` or `HARNESS_DEMO_TESTS`.
 
 5. **Validate and run narrow scope**
 

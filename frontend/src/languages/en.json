@@ -3703,6 +3703,7 @@
   "validation.password.minLength": "Password must be at least 7 characters",
   "validation.password.notSameAsOld": "New password must not be the same as the old password",
   "validation.password.specialChar": "Password must contain at least one special character (*$#!) and one uppercase letter",
+  "validation.no.records.display": "There are no records to display",
   "validation.reject.all": "Retest All Tests",
   "validation.save.error": "Results have been validated successfully",
   "validation.save.success": "Results have been validated successfully",
