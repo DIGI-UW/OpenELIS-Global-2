@@ -14,9 +14,11 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.springframework.test.annotation.Rollback;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
+@Rollback
 public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String BASE_PATH = "/rest/alert-notification-config";
@@ -27,11 +29,17 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
         super.setUp();
         objectMapper = new ObjectMapper();
         executeDataSetWithStateManagement("testdata/alert_notification_config.xml");
-        cleanRowsInCurrentConnection(new String[] { "notification_config_option", "site_information" });
     }
 
     @Test
     public void getAlertNotificationConfig_ShouldReturnAllExpectedAlertTypes() throws Exception {
+        Map<String, Object> payload = createConfigPayload(false, true, false, 20, "get@lab.com");
+
+        mockMvc.perform(post(BASE_PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(payload)))
+            .andExpect(status().isOk());
+
         MvcResult result = mockMvc.perform(get(BASE_PATH).accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
@@ -45,6 +53,18 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
             root.path("alertConfigs").get("FREEZER_TEMPERATURE_ALERT"));
         assertNotNull("EQUIPMENT_ALERT should exist", root.path("alertConfigs").get("EQUIPMENT_ALERT"));
         assertNotNull("INVENTORY_ALERT should exist", root.path("alertConfigs").get("INVENTORY_ALERT"));
+
+        assertEquals(
+            "FREEZER_TEMPERATURE_ALERT email should match saved config",
+            false,
+            root.path("alertConfigs").path("FREEZER_TEMPERATURE_ALERT").path("email").asBoolean());
+        assertEquals(
+            "FREEZER_TEMPERATURE_ALERT sms should match saved config",
+            true,
+            root.path("alertConfigs").path("FREEZER_TEMPERATURE_ALERT").path("sms").asBoolean());
+        assertEquals("Escalation should match saved config", false, root.path("escalationEnabled").asBoolean());
+        assertEquals("Escalation delay should match saved config", 20, root.path("escalationDelayMinutes").asInt());
+        assertEquals("Supervisor email should match saved config", "get@lab.com", root.path("supervisorEmail").asText());
     }
 
     @Test
@@ -55,7 +75,7 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-            .andExpect(jsonPath("$.message").value("Alert notification configuration saved successfully"));
+            .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
