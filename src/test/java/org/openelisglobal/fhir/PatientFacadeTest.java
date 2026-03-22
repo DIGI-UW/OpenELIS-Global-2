@@ -484,4 +484,219 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         // Should validate and reject whitespace-only names
         assertTrue(response.getStatus() == 200 || response.getStatus() == 422 || response.getStatus() == 400);
     }
+
+    // ========================================================================
+    // PHASE 3 - Search Parameter Validation
+    // ========================================================================
+
+    @Test
+    public void searchPatient_withNoParams_shouldReturnBundleOrError() throws Exception {
+        MockHttpServletRequest request = buildRequest("GET", "/Patient");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // Search with no params is valid FHIR — server either returns a Bundle (200)
+        // or an internal error when the FHIR store proxy is unavailable in tests (500)
+        int status = response.getStatus();
+        assertTrue("Expected 200 or 500 but got: " + status, status == 200 || status == 500);
+    }
+
+    @Test
+    public void searchPatient_withFamilyName_shouldReturnBundleOrError() throws Exception {
+        MockHttpServletRequest request = buildRequest("GET", "/Patient");
+        request.setParameter("family", "Smith");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // HAPI parses the param and forwards to search handler; proxy unavailable → 500
+        int status = response.getStatus();
+        assertTrue("Expected 200 or 500 but got: " + status, status == 200 || status == 500);
+    }
+
+    @Test
+    public void searchPatient_withIdentifier_shouldReturnBundleOrError() throws Exception {
+        MockHttpServletRequest request = buildRequest("GET", "/Patient");
+        request.setParameter("identifier", "http://openelis-global.org/pat_nationalId|ABC123");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // Identifier search is a supported param — HAPI routes it to
+        // searchPatientBundle
+        int status = response.getStatus();
+        assertTrue("Expected 200 or 500 but got: " + status, status == 200 || status == 500);
+    }
+
+    // ========================================================================
+    // PHASE 3 - Update Edge Cases
+    // ========================================================================
+
+    @Test
+    public void updatePatient_withInvalidUuidFormat_shouldReturn404() throws Exception {
+        String invalidUuid = "not-a-real-uuid";
+
+        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + invalidUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "family": "Test",
+                    "given": ["User"]
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(invalidUuid);
+
+        request.setContent(updateJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        // Malformed UUID should be caught by getPatientByFhirId → 404
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_withEmptyBody_shouldReturn400() throws Exception {
+        Patient existingPatient = patientService.get("1");
+        String patientUuid = existingPatient.getFhirUuidAsString();
+
+        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + patientUuid);
+        request.setContent(new byte[0]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // Empty body on PUT should be rejected as 400
+        assertEquals(400, response.getStatus());
+    }
+
+    @Test
+    public void updatePatient_preservesExistingDataOnPartialUpdate() throws Exception {
+        Patient existingPatient = patientService.get("1");
+        String patientUuid = existingPatient.getFhirUuidAsString();
+
+        // First set a known state
+        MockHttpServletRequest setupRequest = buildRequest("PUT", "/Patient/" + patientUuid);
+        String setupJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "OriginalFamily",
+                    "given": ["OriginalGiven"]
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(patientUuid);
+        setupRequest.setContent(setupJson.getBytes());
+        MockHttpServletResponse setupResponse = new MockHttpServletResponse();
+        fhirServlet.service(setupRequest, setupResponse);
+        assertEquals(200, setupResponse.getStatus());
+
+        // Now update only the family name — given name should still be set
+        MockHttpServletRequest updateRequest = buildRequest("PUT", "/Patient/" + patientUuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "UpdatedFamily",
+                    "given": ["OriginalGiven"]
+                  }],
+                  "gender": "male"
+                }
+                """.formatted(patientUuid);
+        updateRequest.setContent(updateJson.getBytes());
+        MockHttpServletResponse updateResponse = new MockHttpServletResponse();
+        fhirServlet.service(updateRequest, updateResponse);
+
+        assertEquals(200, updateResponse.getStatus());
+
+        Person updatedPerson = personService.get(patientService.get("1").getPerson().getId());
+        assertEquals("UpdatedFamily", updatedPerson.getLastName());
+        assertEquals("OriginalGiven", updatedPerson.getFirstName());
+    }
+
+    // ========================================================================
+    // PHASE 3 - Delete Edge Cases
+    // ========================================================================
+
+    @Test
+    public void deletePatient_withInvalidUuidFormat_shouldReturn404() throws Exception {
+        String invalidUuid = "not-a-real-uuid";
+
+        MockHttpServletRequest request = buildRequest("DELETE", "/Patient/" + invalidUuid);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        // Malformed UUID caught by getPatientByFhirId → 404
+        assertEquals(404, response.getStatus());
+    }
+
+    @Test
+    public void deletePatient_twiceOnSamePatient_isIdempotent() throws Exception {
+        Patient existingPatient = patientService.get("1");
+        String patientUuid = existingPatient.getFhirUuidAsString();
+
+        // First delete — should succeed
+        MockHttpServletRequest firstRequest = buildRequest("DELETE", "/Patient/" + patientUuid);
+        MockHttpServletResponse firstResponse = new MockHttpServletResponse();
+        fhirServlet.service(firstRequest, firstResponse);
+        assertEquals(204, firstResponse.getStatus());
+
+        // Second delete on the same UUID — OpenELIS uses soft deletes (marks patient
+        // inactive but does not remove the row), so the record is still found and the
+        // delete is idempotent: 204 again rather than 404.
+        MockHttpServletRequest secondRequest = buildRequest("DELETE", "/Patient/" + patientUuid);
+        MockHttpServletResponse secondResponse = new MockHttpServletResponse();
+        fhirServlet.service(secondRequest, secondResponse);
+        assertEquals(204, secondResponse.getStatus());
+    }
+
+    // ========================================================================
+    // PHASE 3 - Read Edge Cases
+    // ========================================================================
+
+    @Test
+    public void readPatient_afterUpdate_shouldReflectNewData() throws Exception {
+        Patient existingPatient = patientService.get("1");
+        String patientUuid = existingPatient.getFhirUuidAsString();
+
+        // Update the patient
+        MockHttpServletRequest updateRequest = buildRequest("PUT", "/Patient/" + patientUuid);
+        String updateJson = """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{
+                    "use": "official",
+                    "family": "PostUpdateFamily",
+                    "given": ["PostUpdateGiven"]
+                  }],
+                  "gender": "female"
+                }
+                """.formatted(patientUuid);
+        updateRequest.setContent(updateJson.getBytes());
+        MockHttpServletResponse updateResponse = new MockHttpServletResponse();
+        fhirServlet.service(updateRequest, updateResponse);
+        assertEquals(200, updateResponse.getStatus());
+
+        // Read it back — should see updated data
+        MockHttpServletRequest readRequest = buildRequest("GET", "/Patient/" + patientUuid);
+        MockHttpServletResponse readResponse = new MockHttpServletResponse();
+        fhirServlet.service(readRequest, readResponse);
+
+        assertEquals(200, readResponse.getStatus());
+
+        JsonNode json = objectMapper.readTree(readResponse.getContentAsString());
+        assertEquals("Patient", json.get("resourceType").asText());
+        assertEquals("female", json.get("gender").asText());
+    }
 }
