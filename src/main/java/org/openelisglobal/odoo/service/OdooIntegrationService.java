@@ -62,6 +62,9 @@ public class OdooIntegrationService {
         org.openelisglobal.sample.action.util.SamplePatientUpdateData updateData = new org.openelisglobal.sample.action.util.SamplePatientUpdateData(
                 null);
         updateData.setSample(sample);
+        if (sample != null && sample.getAccessionNumber() != null) {
+            updateData.setAccessionNumber(sample.getAccessionNumber());
+        }
         createInvoice(updateData);
     }
 
