@@ -1,9 +1,8 @@
 # Feature Specification: Generic ASTM Plugin v1.2 — Plugin Config Foundation
 
-**Feature Branch**: `spec/012-ogc-337-generic-astm-plugin-profiles`  
-**Created**: 2026-02-27  
-**Status**: Draft  
-**Jira**: OGC-337
+**Feature Branch**: `spec/012-ogc-337-generic-astm-plugin-profiles` **Demo
+Branch**: `feat/012-genexpert-astm-demo` (E2E demo + test catalog work)
+**Created**: 2026-02-27 **Status**: Draft **Jira**: OGC-337
 
 **Extends**: `004-astm-analyzer-mapping` (v1.0 complete)  
 **Relationship to 011**: Independent but complementary to
@@ -223,15 +222,22 @@ import/export sharing, or community profile exchange.
 - **FR-022 Profile Format**:
   - Profile JSON MUST include `profileMeta` (`id`, `version`, `displayName`).
   - Profile JSON MAY include `configDefaults` for instance-level defaults.
-  - Profile files live in `projects/analyzer-profiles/{astm,hl7}/`.
+  - Profile JSON MAY include `default_test_mappings` as an array of objects:
+    `[{ "analyzer_code": "...", "loinc": "...", "test_name_hint": "...", "unit": "..." }]`.
+    When present, `autoCreateTestMappings()` looks up each LOINC against the
+    active test catalog and creates `analyzer_test_map` entries automatically.
+  - Profile files live in `projects/analyzer-profiles/{astm,hl7,file}/`.
 - **FR-023 Profile Source (MVP)**:
   - MVP source is filesystem-only built-in profiles.
   - No DB profile library, no community import pipeline in MVP.
-  - Built-in catalog includes 11 files (6 ASTM + 5 HL7) validated in repository.
+  - Built-in catalog includes 16 files (6 ASTM + 5 HL7 + 5 FILE) validated in
+    repository.
   - ASTM filenames: `genexpert-astm`, `horiba-micros60`, `horiba-pentra60`,
     `mindray-ba88a`, `stago-start4`, `sysmex-xn`.
   - HL7 filenames: `abbott-architect`, `genexpert-hl7`, `mindray-bc2000`,
     `mindray-bc5380`, `mindray-bs360e`.
+  - FILE filenames: `quantstudio`, `fluorocycler-xt`, `dtprime`, `multiskan-fc`,
+    `tecan-f50`.
 - **FR-024 Profile Selection**:
   - Add Analyzer MUST allow built-in profile selection and "None (Start from
     Scratch)".
@@ -367,7 +373,8 @@ Pending-code action semantics for MVP:
 
 - **SC-001**: Built-in profile onboarding path can be completed in under 10
   minutes, measured from opening Add Analyzer to successful save using a
-  standard built-in profile on local dev environment with seeded baseline data.
+  standard built-in profile on local dev environment with test catalog loaded
+  (molecular-tests.csv via `TestConfigurationHandler`).
 - **SC-002**: Profile-based analyzer creation deterministically applies
   defaults.
 - **SC-003**: Activation blocked when QC rules are missing/invalid.
@@ -387,6 +394,11 @@ Pending-code action semantics for MVP:
    UX.
 2. Existing analyzer model from 011 remains authoritative.
 3. Existing preview-mapping endpoint remains the simulator backend mechanism.
+4. The OE test catalog must include entries with LOINC codes matching each
+   profile's `default_test_mappings[].loinc`. Test catalog entries are seeded
+   via CSV config files loaded by `TestConfigurationHandler` on startup (see
+   `ConfigurationInitializationService`). For the harness stack, these CSVs live
+   in `projects/analyzer-harness/config-templates/tests/`.
 
 ### Constraints
 

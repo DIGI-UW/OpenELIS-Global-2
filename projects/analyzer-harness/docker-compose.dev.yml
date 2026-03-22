@@ -44,7 +44,7 @@ services:
       - DEFAULT_PW=adminADMIN!
       - TZ=Africa/Nairobi
       - SPRING_LIQUIBASE_CONTEXTS=test
-      - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - lucene_index-vol:/var/lib/lucene_index
@@ -104,7 +104,7 @@ services:
       - ../../frontend/public:/app/public
 
   proxy:
-    image: nginx:1.15-alpine
+    image: nginx:1.27-alpine
     ports:
       - "80:80"
       - "443:443"

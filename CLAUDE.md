@@ -26,8 +26,8 @@ When working on this project, follow this documentation order:
 
 This project uses **GitHub SpecKit** for Specification-Driven Development (SDD).
 
-**Setup:** Run `python scripts/install-speckit-commands.py` to install slash
-commands.
+**Setup:** Run `python3 scripts/install-agent-skills.py` to install slash
+commands and packaged skills.
 
 **Full documentation:** See [AGENTS.md](AGENTS.md) § "GitHub SpecKit
 Integration" for:
@@ -96,46 +96,33 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Cypress E2E Test Execution (CRITICAL for Claude Code Environment)
+### Cypress E2E — DEPRECATED
 
-**IMPORTANT:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` is set,
-which breaks Cypress. All `npm run cy:*` scripts include
-`unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use the npm scripts,
-NOT direct `npx cypress` commands.**
+> **Do not create new Cypress tests.** See [AGENTS.md](AGENTS.md) "E2E Tests
+> (Cypress) — DEPRECATED" for existing test maintenance scripts and execution
+> constraints.
 
-**Available Scripts (use these, not direct cypress commands):**
+### Playwright E2E — RECOMMENDED
 
-```bash
-# Run specific test file
-npm run cy:spec "cypress/e2e/home.cy.js"
+> See [AGENTS.md](AGENTS.md) "E2E Tests (Playwright)" for the full execution
+> contract, scripts, and project descriptions. Key invariant: always use
+> `npm run pw:test` scripts, never raw `npx playwright test`.
 
-# Run all admin tests
-npm run cy:admin
+### Playwright Anti-Patterns (CRITICAL)
 
-# Run all analyzer tests
-npm run cy:analyzer
+**DO NOT** introduce these patterns — they cause flaky tests:
 
-# Run full suite (development)
-npm run cy:run
+1. **`response.ok()` as pass/fail** — Use `waitForResponse` for sync only, then
+   assert on visible UI state (`toBeVisible`, `toHaveURL`, `toHaveText`)
+2. **`{ force: true }` on Carbon inputs** — Click the `<label>` instead; Carbon
+   hides `<input>` elements with `visually-hidden`
+3. **`.catch(() => false)` on `isVisible()`** — `isVisible()` already returns
+   boolean; the catch hides real errors
+4. **`isVisible({ timeout: N })`** — The timeout parameter is deprecated and
+   ignored; use `expect(el).toBeVisible({ timeout: N })` for waiting
 
-# Run full suite with fail-fast (stops on first failure)
-npm run cy:failfast
-
-# Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
-
-# Open Cypress UI (interactive mode)
-npm run cy:open
-```
-
-**Three-Phase Workflow (Constitution V.5):**
-
-1. **During Development:** Run individual tests (`npm run cy:spec "..."`)
-2. **Before Pushing (MANDATORY):** Run full suite (`npm run cy:failfast`)
-3. **In CI/CD:** Automatic via GitHub Actions
-
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ---
 
@@ -151,4 +138,14 @@ This wastes 60+ minutes of CI time.
 
 ---
 
+## Active Technologies
+
+- Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
+- PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
+  (005-eqa-module)
+
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)
