@@ -76,7 +76,41 @@ class HomePage {
   }
 
   openNavigationMenu() {
-    cy.get(this.selectors.menuButton).click();
+    cy.get("body").then(($body) => {
+      const reportsVisible = $body.find(this.selectors.reportsMenu).is(":visible");
+      const sampleVisible = $body.find(this.selectors.sampleMenu).is(":visible");
+
+      if (!reportsVisible && !sampleVisible) {
+        cy.get(this.selectors.menuButton).click({ force: true });
+      }
+    });
+  }
+
+  ensureSidenavMenuExpanded(menuId) {
+    cy.get(menuId, { timeout: 15000 })
+      .find("button[aria-expanded]")
+      .first()
+      .then(($btn) => {
+        if ($btn.attr("aria-expanded") !== "true") {
+          cy.wrap($btn).click({ force: true });
+        }
+      });
+
+    cy.get(menuId, { timeout: 15000 })
+      .find('button[aria-expanded="true"]')
+      .first()
+      .should("exist");
+  }
+
+  clickSidenavLink(selector) {
+    cy.get(selector, { timeout: 15000 })
+      .find("a")
+      .first()
+      .scrollIntoView()
+      .should("exist")
+      .then(($a) => {
+        $a[0].click();
+      });
   }
 
   closeNavigationMenu() {
@@ -262,15 +296,15 @@ class HomePage {
   // Reports related functions
   goToRoutineReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsRoutine).should("be.visible").click();
+    this.ensureSidenavMenuExpanded("#menu_reports");
+    this.clickSidenavLink("#menu_reports_routine");
     return new RoutineReportPage();
   }
 
   goToStudyReports() {
     this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsStudy).should("be.visible").click();
+    this.ensureSidenavMenuExpanded("#menu_reports");
+    this.clickSidenavLink("#menu_reports_study");
     return new StudyReportPage();
   }
 

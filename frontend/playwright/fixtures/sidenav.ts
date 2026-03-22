@@ -119,8 +119,9 @@ export class Sidenav {
 
   /** Navigate to storage section and wait for load */
   async gotoStorage(path = "samples") {
-    await this.page.goto(`/Storage/${path}`);
+    await this.page.goto(`/Storage/${path}`, { waitUntil: "commit" });
     await expect(this.page).toHaveURL(new RegExp(`/Storage/${path}`));
+    await expect(this.nav).toBeVisible();
   }
 
   /**
@@ -139,8 +140,9 @@ export class Sidenav {
 
   /** Navigate to freezer monitoring */
   async gotoFreezer(tab = 0) {
-    await this.page.goto(`/FreezerMonitoring?tab=${tab}`);
+    await this.page.goto(`/FreezerMonitoring?tab=${tab}`, { waitUntil: "commit" });
     await expect(this.page).toHaveURL(/FreezerMonitoring/);
+    await expect(this.nav).toBeVisible();
   }
 
   /**

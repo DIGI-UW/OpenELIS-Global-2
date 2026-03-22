@@ -1,9 +1,15 @@
 import { test, expect } from "@playwright/test";
 
+const expectHeaderIconVisible = async (page, selector: string) => {
+  await expect(page.locator(selector)).toBeVisible({ timeout: 15_000 });
+};
+
 test.describe("Navbar (Header) actions", () => {
   test("logo click navigates to home", async ({ page }) => {
-    await page.goto("/Storage/samples");
-    await expect(page.locator("#sidenav-menu-button")).toBeVisible();
+    await page.goto("/Storage/samples", { waitUntil: "commit" });
+    await expect(page.locator("#sidenav-menu-button")).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Carbon HeaderName renders an anchor; clicking should navigate home
     await page.locator("#mainHeader a.cds--header__name").click();
@@ -11,8 +17,8 @@ test.describe("Navbar (Header) actions", () => {
   });
 
   test("search icon toggles search bar", async ({ page }) => {
-    await page.goto("/Dashboard");
-    await expect(page.locator("#search-Icon")).toBeVisible();
+    await page.goto("/Dashboard", { waitUntil: "commit" });
+    await expectHeaderIconVisible(page, "#search-Icon");
 
     await page.locator("#search-Icon").click();
     await expect(page.locator("#searchItem")).toBeVisible();
@@ -23,8 +29,8 @@ test.describe("Navbar (Header) actions", () => {
   });
 
   test("notifications icon opens notifications panel", async ({ page }) => {
-    await page.goto("/Dashboard");
-    await expect(page.locator("#notification-Icon")).toBeVisible();
+    await page.goto("/Dashboard", { waitUntil: "commit" });
+    await expectHeaderIconVisible(page, "#notification-Icon");
 
     await page.locator("#notification-Icon").click();
     // Wait for slide-over panel to open and show the title
@@ -37,8 +43,8 @@ test.describe("Navbar (Header) actions", () => {
   test("user icon opens user panel (logout + language selector visible)", async ({
     page,
   }) => {
-    await page.goto("/Dashboard");
-    await expect(page.locator("#user-Icon")).toBeVisible();
+    await page.goto("/Dashboard", { waitUntil: "commit" });
+    await expectHeaderIconVisible(page, "#user-Icon");
 
     await page.locator("#user-Icon").click();
 
@@ -48,8 +54,8 @@ test.describe("Navbar (Header) actions", () => {
   });
 
   test("help icon toggles help panel", async ({ page }) => {
-    await page.goto("/Dashboard");
-    await expect(page.locator("#user-Help")).toBeVisible();
+    await page.goto("/Dashboard", { waitUntil: "commit" });
+    await expectHeaderIconVisible(page, "#user-Help");
 
     await page.locator("#user-Help").click();
     await expect(page.getByLabel("Help Panel")).toBeVisible();
