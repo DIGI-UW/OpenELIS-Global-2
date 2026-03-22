@@ -39,8 +39,18 @@ Interpret input best-effort:
    - Confirm helpers keep deterministic behavior.
 
 5. **Repo policy alignment**
+
    - Use `videoPause()` for demo pacing, not `waitForTimeout()`.
    - Keep tests focused and avoid multi-concern mega-tests when possible.
+
+6. **Anti-pattern detection**
+   - Flag `response.ok()` or `response.status()` used as pass/fail signal
+   - Flag `{ force: true }` without a justifying comment about Carbon
+   - Flag `.catch(() => false)` on `isVisible()` calls (dead code)
+   - Flag `isVisible({ timeout: N })` — timeout param is deprecated
+   - Flag tests with no `expect()` calls
+   - Flag `page.getByLabel("text").check()` on Carbon inputs (targets hidden
+     element)
 
 ## Required References
 

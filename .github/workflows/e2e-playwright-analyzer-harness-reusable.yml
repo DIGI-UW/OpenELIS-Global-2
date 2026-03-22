@@ -120,6 +120,22 @@ jobs:
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
+      - name: Verify analyzer test mappings exist (prevent unmapped-result race)
+        run: |
+          for analyzer in "Cepheid GeneXpert (ASTM Mode)" "QuantStudio 5" "QuantStudio 7" "FluoroCycler XT"; do
+            MAPPINGS=$(curl -sk -u "$TEST_USER:$TEST_PASS" \
+              "$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers" | \
+              python3 -c "import json,sys; data=json.load(sys.stdin); a=[x for x in data if x.get('name')=='$analyzer']; print(len(a[0].get('testMappings',[])) if a else 0)" 2>/dev/null || echo "0")
+            echo "$analyzer: $MAPPINGS test mappings"
+            if [ "$MAPPINGS" = "0" ]; then
+              echo "::warning::Analyzer '$analyzer' has no test mappings — results will be unmapped"
+            fi
+          done
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
       - name: Run analyzer Playwright harness-demo shard
         run: npm run pw:test -- --project=harness-demo --workers=1 --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
@@ -160,11 +176,24 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Extract application and Tomcat logs from container
+        if: failure()
+        run: |
+          mkdir -p /tmp/oe-logs /tmp/tomcat-logs
+          docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. /tmp/oe-logs/ 2>/dev/null || true
+          docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== Extracted files ==="
+          ls -la /tmp/oe-logs/ /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Errors ==="
+          find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== Tomcat Errors ==="
+          find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+
       - name: Dump docker logs on failure
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-          tail: "200"
+          tail: "2000"
 
   merge-reports:
     name: Report Merge

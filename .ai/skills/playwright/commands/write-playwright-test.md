@@ -37,6 +37,13 @@ Interpret input best-effort:
    - Keep `testInfo` and `videoPause()` conventions.
    - Prefer `getByRole` / `getByLabel` / `data-testid` selectors.
    - Add debug-context capture hooks for fragile or async-heavy workflows.
+   - NEVER use `response.ok()` as assertion — use `waitForResponse` for sync
+     only, then assert on visible UI
+   - For Carbon checkboxes/radios, click the `<label>` (NEVER `{ force: true }`)
+   - For autocomplete fields, wait for suggestion dropdown and click (do NOT
+     just type + Tab)
+   - Use `test.step()` for multi-step workflows
+   - Call `isVisible()` directly — never add `.catch(() => false)`
 
 4. **Register spec in Playwright config**
 

@@ -24,3 +24,15 @@ Use this priority order:
 - Use event/response waits for async transitions.
 - Avoid `page.waitForTimeout()` except controlled demo pacing handled by
   `videoPause()`.
+
+## Actionability Rules
+
+- NEVER use `{ force: true }` without documented justification.
+- For Carbon `<input type="checkbox">` and `<input type="radio">`: ALWAYS click
+  the associated `<label>` element or use
+  `input.locator('xpath=..').locator('label').click()`. Carbon applies
+  `visually-hidden` to these inputs.
+- `page.getByLabel("text")` targets the hidden input — DO NOT call `.check()` or
+  `.click()` on it without force. Click the label directly instead.
+- For Carbon `ComboBox` / `Dropdown`: click the trigger button
+  (`button[role="combobox"]` or `.cds--list-box__field`), not the wrapper div.
