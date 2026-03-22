@@ -199,7 +199,6 @@ jobs:
   playwright-core:
     name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     needs: shared-build
-    if: needs.shared-build.outputs.image_transfer != 'fork-fallback'
     runs-on: ubuntu-latest
     environment: e2e
     strategy:
@@ -345,11 +344,7 @@ jobs:
   # ─── Analyzer Harness ──────────────────────────────────────────────────────
   analyzer-harness:
     name: Analyzer Harness
-    if: >-
-      ${{
-        needs.shared-build.outputs.image_transfer != 'fork-fallback' &&
-        (github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e'))
-      }}
+    if: ${{ github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e') }}
     needs: shared-build
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
     secrets: inherit
@@ -357,7 +352,6 @@ jobs:
   # ─── Cypress (Deprecated) ──────────────────────────────────────────────────
   cypress:
     name: Cypress
-    if: needs.shared-build.outputs.image_transfer != 'fork-fallback'
     needs: shared-build
     uses: ./.github/workflows/e2e-cypress-deprecated.yml
     secrets: inherit
