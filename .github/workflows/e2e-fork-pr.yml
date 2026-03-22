@@ -33,19 +33,43 @@ jobs:
       pr_sha: ${{ steps.check.outputs.pr_sha }}
       head_sha: ${{ steps.check.outputs.head_sha }}
     steps:
+      - name: Detect fork signal artifact presence
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runId = ${{ github.event.workflow_run.id }};
+            const { data } = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+              per_page: 100,
+            });
+            const hasSignal = data.artifacts.some(a => a.name === 'e2e-fork-signal' && !a.expired);
+            core.setOutput('has_signal', hasSignal ? 'true' : 'false');
+
       - name: Download fork signal artifact
         id: download
+        if: steps.detect.outputs.has_signal == 'true'
         uses: actions/download-artifact@v4
         with:
           name: e2e-fork-signal
           path: /tmp/e2e-fork-signal
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
 
       - name: Check if fork PR needs E2E
         id: check
         run: |
+          HAS_SIGNAL="${{ steps.detect.outputs.has_signal }}"
+
+          if [ "$HAS_SIGNAL" != "true" ]; then
+            echo "No fork signal artifact — skipping (normal PR or push)"
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ -f /tmp/e2e-fork-signal/pr_number ]; then
             echo "is_fork=true" >> "$GITHUB_OUTPUT"
             echo "pr_number=$(cat /tmp/e2e-fork-signal/pr_number)" >> "$GITHUB_OUTPUT"
@@ -53,8 +77,9 @@ jobs:
             echo "head_sha=$(cat /tmp/e2e-fork-signal/head_sha)" >> "$GITHUB_OUTPUT"
             echo "Fork PR #$(cat /tmp/e2e-fork-signal/pr_number) detected — running E2E"
           else
+            echo "::error::Fork signal artifact present but pr_number file missing"
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
-            echo "No fork signal — skipping (normal PR or push)"
+            exit 1
           fi
 
   # ─── Set pending status on PR ────────────────────────────────────────────
