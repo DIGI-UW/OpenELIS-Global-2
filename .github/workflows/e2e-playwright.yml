@@ -118,12 +118,12 @@ jobs:
               image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
               ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
               docker tag "$image" "$ghcr_image"
-              if docker push "$ghcr_image" >/dev/null 2>&1; then
+              push_err=$(docker push "$ghcr_image" 2>&1) && {
                 printf "%s|%s\n" "$image" "$ghcr_image"
-              else
-                echo "PUSH_DENIED: $image" >&2
+              } || {
+                echo "PUSH FAILED ($image): $push_err" >&2
                 exit 1
-              fi
+              }
             else
               echo "WARN: skipping $image (not built locally)" >&2
             fi
@@ -142,17 +142,21 @@ jobs:
             fi
             echo "Pushed image mappings:"
             cat /tmp/e2e-image-map.txt
-          else
+          elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+            # Fork PRs can't push to GHCR (read-only token) — delegate to workflow_run
             echo "mode=fork-fallback" >> "$GITHUB_OUTPUT"
             echo "::warning::GHCR push denied (fork PR) — E2E tests will run via 'E2E (Fork PR)' workflow"
 
             # Write placeholder image maps so artifact uploads don't fail
             for img in $(cat /tmp/e2e-images-full.txt); do printf "%s|fork-pending\n" "$img"; done > /tmp/e2e-image-map.txt
             for img in $(cat /tmp/e2e-images-base.txt); do printf "%s|fork-pending\n" "$img"; done > /tmp/e2e-image-map-base.txt
+          else
+            echo "::error::GHCR push failed (not a fork PR — this is a real failure)"
+            exit 1
           fi
 
       - name: Prepare fork signal data
-        if: steps.push-images.outputs.mode == 'fork-fallback'
+        if: steps.push-images.outputs.mode == 'fork-fallback' && github.event_name == 'pull_request'
         run: |
           mkdir -p /tmp/e2e-fork-signal
           echo "${{ github.event.pull_request.number }}" > /tmp/e2e-fork-signal/pr_number

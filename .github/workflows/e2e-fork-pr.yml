@@ -19,7 +19,7 @@ env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
 
 concurrency:
-  group: fork-e2e-${{ github.event.workflow_run.head_branch }}
+  group: fork-e2e-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
@@ -121,7 +121,7 @@ jobs:
           cd ..
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
-          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
+          mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true -Dfix.version=3
 
       - name: Build plugins
         run: mvn clean install -DskipTests -Dmaven.test.skip=true
