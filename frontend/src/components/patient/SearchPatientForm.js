@@ -144,6 +144,8 @@ function SearchPatientForm(props) {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
+    setPage(1);
+    setPatientSearchResults([]);
     setLoading(true);
     values.dateOfBirth = dob;
     let searchEndPoint =
@@ -569,7 +571,7 @@ function SearchPatientForm(props) {
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
-          <TableContainer title="Patient Results">
+          <TableContainer title="Patient Results" data-cy="patientResultsTable">
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
@@ -601,7 +603,10 @@ function SearchPatientForm(props) {
                       `${firstName} ${lastName}`.trim() || "Patient";
 
                     return (
-                      <TableRow key={row.id}>
+                      <TableRow
+                        key={row.id}
+                        data-cy={`patient-result-row-${row.id}`}
+                      >
                         <TableCell>
                           {dataSourceName === "OpenElis" ? (
                             <div

@@ -1549,8 +1549,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - `harness`, `demo`, and `demo-video` require analyzer harness stack preflight
->   (see `/restart-analyzer-harness`)
+> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
+>   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
+>   `core-demo-video` run on the build stack only.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -1566,23 +1567,25 @@ to review selectors/quality, and `/debug-playwright` for runtime failures.
 
 #### Playwright Projects
 
-Tests are organized into 4 projects, each targeting a different infrastructure
-level. New test files must be explicitly added to a project's `testMatch`
-allowlist in `playwright.config.ts`.
+Tests are organized into projects by infrastructure requirement. New test files
+must be explicitly added to a project's `testMatch` allowlist in
+`playwright.config.ts`.
 
-| Project      | Purpose                                           | CI Workflow          | Infra Required   |
-| ------------ | ------------------------------------------------- | -------------------- | ---------------- |
-| `core-app`   | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml` | Build stack only |
-| `harness`    | Analyzer infra tests (bridge, simulator, plugins) | `e2e-playwright.yml` | Full harness     |
-| `demo`       | Workflow demos at normal speed (CI validation)    | `e2e-playwright.yml` | Full harness     |
-| `demo-video` | Same demos with `slowMo` + video recording        | Local only           | Harness          |
+| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
+| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
+| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
+| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
+| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
 
 #### CI Workflows
 
-| Workflow             | Compose Files                                          | Projects Run       | Fixtures Loaded                                    |
-| -------------------- | ------------------------------------------------------ | ------------------ | -------------------------------------------------- |
-| `e2e-playwright.yml` | `build.docker-compose.yml`                             | `core-app`         | `file-import-e2e.sql`                              |
-| `e2e-playwright.yml` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
 
 #### Key Patterns
 
@@ -1590,16 +1593,80 @@ allowlist in `playwright.config.ts`.
   must add the glob pattern to the appropriate project in
   `playwright.config.ts`.
 - **`videoPause(page, ms, testInfo)`** (`helpers/video-pause.ts`): Conditional
-  timeout — pauses only in `demo-video` project, no-op everywhere else. Use this
-  instead of `page.waitForTimeout()` for video pacing.
+  timeout — pauses only in `core-demo-video` / `harness-demo-video`, no-op
+  elsewhere. Use this instead of `page.waitForTimeout()` for video pacing.
 - **`showTitleCard()` / `showStepCard()`** (`helpers/title-card.ts`): DOM
   overlay helpers for demo videos. Pass `testInfo` to skip overlays in non-video
   projects.
 - **`testInfo`**: Playwright's 2nd test callback parameter
   (`async ({ page }, testInfo)`). Provides `testInfo.project.name` to determine
   which project is running.
-- **`DEMO_TESTS` constant**: Shared test list between `demo` and `demo-video`
-  projects — defined once in `playwright.config.ts`.
+- **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between each demo
+  pair and its `*-demo-video` project — defined in `playwright.config.ts`.
+
+#### Playwright Anti-Patterns (MUST AVOID)
+
+These patterns cause flaky tests and invisible failures. Apply them as hard
+rules when writing or reviewing Playwright code.
+
+**DO NOT: Use `response.ok()` as test pass/fail**
+
+Use `waitForResponse` for synchronization only. The real assertion must be on
+visible UI state. When the backend returns HTTP 500, checking `response.ok()`
+throws before the UI renders its error notification — CI screenshots show stale
+state.
+
+```typescript
+// DO: sync then assert on UI
+const responsePromise = page.waitForResponse("**/api/save");
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+await expect(page.getByText("Saved successfully")).toBeVisible();
+```
+
+**DO NOT: Use `{ force: true }` on Carbon inputs**
+
+Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
+`<input type="radio">`. The visible, clickable element is the associated
+`<label>`. Click the label instead.
+
+```typescript
+// DO: click the label
+await page.locator('label[for="saveallresults"]').click();
+// or for dynamic IDs:
+await input.locator("xpath=..").locator("label").click();
+
+// DO NOT:
+await checkbox.check({ force: true }); // bypasses actionability checks
+await page.getByLabel("text").check(); // targets hidden input — will fail
+```
+
+**DO NOT: Use `.catch(() => false)` on `isVisible()`**
+
+`locator.isVisible()` returns `boolean` without throwing. The `.catch()` is dead
+code that hides real errors (like strict mode violations matching 2+ elements).
+The `timeout` parameter on `isVisible()` is deprecated and ignored.
+
+```typescript
+// DO:
+if (await element.isVisible()) { ... }
+// For waiting: use web-first assertion
+await expect(element).toBeVisible({ timeout: 5_000 });
+
+// DO NOT:
+if (await element.isVisible({ timeout: 3000 }).catch(() => false)) { ... }
+```
+
+**DO NOT: Replace autocomplete selection with type + Tab**
+
+The `AutoComplete` component's `onSelect` callback sets server-side IDs that
+`onChange` (typing) does not. Typing + Tab leaves `referringSiteId` empty. Wait
+for suggestion dropdown items, then click one. Provide a Tab fallback only for
+when no suggestions appear.
+
+**ALWAYS: Include at least one `expect()` assertion per test.**
+
+**Full guide:** `.specify/guides/playwright-best-practices.md`
 
 #### Available npm Scripts
 
@@ -1611,11 +1678,13 @@ npm run pw:test
 
 # Run specific project
 npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-demo
 npm run pw:test -- --project=harness
-npm run pw:test -- --project=demo
+npm run pw:test -- --project=harness-demo
 
-# Record demo videos (local only, requires harness stack)
-npm run pw:test -- --project=demo-video
+# Record demo videos (local only)
+npm run pw:test -- --project=core-demo-video
+npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
 npm run pw:test -- playwright/tests/file-import-ui.spec.ts
@@ -1638,18 +1707,34 @@ cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 ```
 
-**Harness/demo tests (analyzer harness stack):**
+**Harness tests (analyzer harness stack):**
 
 ```bash
 cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
 ```
 
+**Harness demos:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
+```
+
+**Core demos (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
+```
+
 **Demo video recording:**
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo-video
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
+# or full harness demos:
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
 # Videos saved to frontend/test-results/
 ```
 
@@ -1658,8 +1743,8 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=demo-video
 1. Create test file in `frontend/playwright/tests/`
 2. Add the glob pattern to the appropriate project's `testMatch` array in
    `playwright.config.ts`
-3. For demo workflow tests, add to the `DEMO_TESTS` constant (shared between
-   `demo` and `demo-video`)
+3. For demo workflow tests, add globs to `CORE_DEMO_TESTS` or
+   `HARNESS_DEMO_TESTS` (each pairs with its `*-demo-video` project)
 4. Use `videoPause()` instead of `page.waitForTimeout()` for any video pacing
 
 ### Testing Resources
