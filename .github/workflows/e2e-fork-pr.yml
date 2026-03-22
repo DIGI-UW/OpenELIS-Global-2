@@ -15,9 +15,6 @@ permissions:
   statuses: write
   actions: read
 
-env:
-  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
-
 concurrency:
   group: fork-e2e-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
@@ -96,7 +93,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ needs.check-fork.outputs.head_sha }}',
+              sha: '${{ needs.check-fork.outputs.pr_sha }}',
               state: 'pending',
               context: 'E2E (Fork PR)',
               description: 'Fork PR E2E tests running...',
@@ -194,8 +191,12 @@ jobs:
               image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
               ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
               docker tag "$image" "$ghcr_image"
-              docker push "$ghcr_image" >/dev/null
-              printf "%s|%s\n" "$image" "$ghcr_image"
+              push_err=$(docker push "$ghcr_image" 2>&1) && {
+                printf "%s|%s\n" "$image" "$ghcr_image"
+              } || {
+                echo "PUSH FAILED ($image): $push_err" >&2
+                exit 1
+              }
             else
               echo "WARN: skipping $image (not built locally)" >&2
             fi
@@ -441,7 +442,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ needs.check-fork.outputs.head_sha }}',
+              sha: '${{ needs.check-fork.outputs.pr_sha }}',
               state,
               context: 'E2E (Fork PR)',
               description,
