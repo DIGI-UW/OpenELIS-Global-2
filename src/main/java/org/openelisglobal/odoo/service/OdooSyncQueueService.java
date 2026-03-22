@@ -5,6 +5,8 @@ import java.time.Instant;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.hibernate.exception.ConstraintViolationException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.odoo.dao.OdooSyncQueueDAO;
 import org.openelisglobal.odoo.valueholder.OdooSyncQueue;
 import org.openelisglobal.odoo.valueholder.OdooSyncQueue.SyncStatus;
@@ -38,9 +40,49 @@ public class OdooSyncQueueService {
         item.setMaxRetries(3);
         item.setCreatedAt(Timestamp.from(Instant.now()));
         item.setNextRetryTime(Timestamp.from(Instant.now()));
-        odooSyncQueueDAO.insert(item);
+        try {
+            odooSyncQueueDAO.insert(item);
+        } catch (LIMSRuntimeException e) {
+            // A concurrent enqueue on another thread or node won the race and inserted
+            // first, causing the partial unique index on (accession_number) WHERE status IN
+            // ('PENDING','IN_PROGRESS') to reject our insert. Treat this as idempotent:
+            // re-fetch the winning row and return it rather than propagating a false failure.
+            if (isCausedByConstraintViolation(e)) {
+                OdooSyncQueue winner =
+                    odooSyncQueueDAO.getActiveItemByAccessionNumber(
+                        accessionNumber
+                    );
+                if (winner != null) {
+                    log.info(
+                        "Concurrent enqueue detected for accession {} — returning existing active item " +
+                            "(id={}, status={}).",
+                        accessionNumber,
+                        winner.getId(),
+                        winner.getStatus()
+                    );
+                    return winner;
+                }
+            }
+            throw e;
+        }
         log.info("Enqueued Odoo sync for accession: {}", accessionNumber);
         return item;
+    }
+
+    /**
+     * Walks the exception cause chain to determine whether the root cause is a
+     * database unique-constraint violation. Hibernate wraps the JDBC
+     * {@link java.sql.SQLException} in a {@link ConstraintViolationException}
+     * which is itself wrapped in a {@link LIMSRuntimeException} by
+     * {@link org.openelisglobal.common.daoimpl.BaseDAOImpl#insert}.
+     */
+    private boolean isCausedByConstraintViolation(Throwable t) {
+        for (Throwable cause = t; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void markInProgress(OdooSyncQueue item) {
