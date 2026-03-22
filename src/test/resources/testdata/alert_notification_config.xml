@@ -4,4 +4,7 @@
     <system_user id="1" login_name="testuser" last_name="User"
         first_name="Test" is_active="Y" is_employee="Y" />
 
+    <notification_config_option />
+    <site_information />
+
 </dataset>
