@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
 
 /**
  * Analyzer Test Connection E2E
@@ -18,7 +22,12 @@ const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
-    const GENEXPERT_ID = "2013";
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
+    );
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();
@@ -88,7 +97,7 @@ test.describe("Analyzer Test Connection", () => {
           await expect(retryButton).toBeVisible({ timeout: 5_000 });
           await retryButton.click();
         } catch {
-          await page.waitForTimeout(2_000);
+          await expect(successTag.or(errorTag)).toBeVisible({ timeout: 5_000 });
         }
       }
     }
