@@ -72,6 +72,13 @@ export class AnalyzerListPage {
 
   /** Open the overflow menu for a specific analyzer row */
   async openOverflowMenu(id: string) {
+    const explicitOverflow = this.page.locator(
+      `[data-testid="analyzer-row-overflow-${id}"]`,
+    );
+    if ((await explicitOverflow.count()) > 0) {
+      await explicitOverflow.first().click();
+      return;
+    }
     const actionsCell = this.page.locator(
       `[data-testid="analyzer-actions-${id}"]`,
     );

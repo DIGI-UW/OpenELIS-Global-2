@@ -18,11 +18,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.FileImportService;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
@@ -35,6 +37,7 @@ import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.common.services.PluginMenuService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,6 +76,12 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private AnalyzerTypeService analyzerTypeService;
+
+    @Autowired
+    private PluginMenuService pluginService;
+
+    @Autowired
+    private BridgeRegistrationService bridgeRegistrationService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -199,8 +208,10 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setIpAddress(
                     form.getIpAddress() != null && !form.getIpAddress().trim().isEmpty() ? form.getIpAddress() : null);
             analyzer.setPort(form.getPort());
-            ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
-            analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            if (form.getProtocolVersion() != null && !form.getProtocolVersion().trim().isEmpty()) {
+                ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
+                analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
+            }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -223,12 +234,20 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
+            pluginService.registerAnalyzerMenuAndPermission(analyzer.getName());
 
-            // Auto-create test mappings from default config if provided
+            // Auto-create test mappings and file import config from default profile if
+            // provided
             if (form.getDefaultConfigId() != null && !form.getDefaultConfigId().isEmpty()) {
                 Map<String, Object> configData = loadDefaultConfigFile(form.getDefaultConfigId());
                 if (configData != null) {
                     analyzerService.autoCreateTestMappings(analyzerId, configData, getSysUserId(request));
+
+                    // For FILE protocol profiles, auto-create FileImportConfiguration
+                    if (isFileProtocol(configData)) {
+                        fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
+                                getSysUserId(request));
+                    }
                 } else {
                     logger.warn("Could not load default config '{}' for test mapping auto-creation",
                             form.getDefaultConfigId());
@@ -241,6 +260,10 @@ public class AnalyzerRestController extends BaseRestController {
             if (createdAnalyzer == null) {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
+
+            // Register analyzer with bridge for transport-level identification.
+            // Fire-and-forget to avoid slowing down analyzer creation requests.
+            registerWithBridgeAsync(createdAnalyzer);
 
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -505,8 +528,9 @@ public class AnalyzerRestController extends BaseRestController {
                 response.put("deleted", false); // Soft delete, not hard delete
                 return ResponseEntity.ok(response);
             } else {
-                // Hard delete: remove from database (no recent results)
-                analyzerService.delete(analyzer);
+                // Hard delete: remove dependent records first to avoid FK violations,
+                // then delete the analyzer itself.
+                analyzerService.deleteWithDependents(analyzer);
 
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("message", "Analyzer permanently deleted");
@@ -816,6 +840,46 @@ public class AnalyzerRestController extends BaseRestController {
      * @param analyzer Analyzer entity
      * @return Map with success status and message
      */
+    /**
+     * Register analyzer with the bridge for transport-level identification. Runs in
+     * background — failures are logged but don't prevent analyzer creation.
+     */
+    private void registerWithBridgeAsync(Analyzer createdAnalyzer) {
+        CompletableFuture.runAsync(() -> registerWithBridge(createdAnalyzer)).exceptionally(e -> {
+            logger.warn("Async bridge registration failed for analyzer {}: {}", createdAnalyzer.getName(),
+                    e.getMessage());
+            return null;
+        });
+    }
+
+    /**
+     * Performs the bridge registration call.
+     */
+    private void registerWithBridge(Analyzer createdAnalyzer) {
+        try {
+            String id = createdAnalyzer.getId();
+            String name = createdAnalyzer.getName();
+
+            // TCP/ASTM/HL7 analyzers: register by IP
+            if (createdAnalyzer.getIpAddress() != null && !createdAnalyzer.getIpAddress().isBlank()) {
+                String protocol = createdAnalyzer.getProtocolVersion() != null
+                        && createdAnalyzer.getProtocolVersion().isHl7() ? "HL7" : "ASTM";
+                bridgeRegistrationService.registerTcp(id, name, createdAnalyzer.getIpAddress(),
+                        createdAnalyzer.getPort(), protocol);
+            }
+
+            // FILE analyzers: register by watch directory
+            Integer analyzerIdInt = Integer.valueOf(id);
+            fileImportService.getByAnalyzerId(analyzerIdInt).ifPresent(fileConfig -> {
+                bridgeRegistrationService.registerFile(id, name, fileConfig.getImportDirectory(),
+                        fileConfig.getFilePattern());
+            });
+        } catch (Exception e) {
+            logger.warn("Bridge registration failed for analyzer {} — bridge may need manual config: {}",
+                    createdAnalyzer.getName(), e.getMessage());
+        }
+    }
+
     private Map<String, Object> testFileConfiguration(Analyzer analyzer) {
         Map<String, Object> response = new LinkedHashMap<>();
 
@@ -1009,6 +1073,12 @@ public class AnalyzerRestController extends BaseRestController {
                 scanTemplates(hl7Dir, "hl7", templates);
             }
 
+            // Scan FILE directory
+            Path fileDir = baseDir.resolve("file");
+            if (Files.exists(fileDir) && Files.isDirectory(fileDir)) {
+                scanTemplates(fileDir, "file", templates);
+            }
+
             return ResponseEntity.ok(templates);
         } catch (Exception e) {
             logger.error("Error listing default configs", e);
@@ -1040,9 +1110,10 @@ public class AnalyzerRestController extends BaseRestController {
             Path templateFile = resolveConfigFilePath(protocol, name);
             if (templateFile == null) {
                 // Determine specific error for HTTP response
-                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm' or 'hl7'"));
+                if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
+                        && !protocol.equalsIgnoreCase("file")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                            AnalyzerControllerHelper.wrapError("Invalid protocol: must be 'astm', 'hl7', or 'file'"));
                 }
                 if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AnalyzerControllerHelper
@@ -1100,6 +1171,9 @@ public class AnalyzerRestController extends BaseRestController {
         case "generic-astm":
             lookupName = "Generic ASTM";
             break;
+        case "generic-file":
+            lookupName = "Generic File";
+            break;
         case "generic-hl7":
             lookupName = "Generic HL7";
             break;
@@ -1125,7 +1199,8 @@ public class AnalyzerRestController extends BaseRestController {
      *         file not found
      */
     private Path resolveConfigFilePath(String protocol, String name) {
-        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")) {
+        if (!protocol.equalsIgnoreCase("astm") && !protocol.equalsIgnoreCase("hl7")
+                && !protocol.equalsIgnoreCase("file")) {
             return null;
         }
         if (!name.matches("^[a-zA-Z0-9\\-_.]+$")) {
@@ -1180,6 +1255,16 @@ public class AnalyzerRestController extends BaseRestController {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private boolean isFileProtocol(Map<String, Object> configData) {
+        Object protocol = configData.get("protocol");
+        if (protocol instanceof Map) {
+            Object name = ((Map<String, Object>) protocol).get("name");
+            return "FILE".equalsIgnoreCase(name instanceof String ? (String) name : null);
+        }
+        return false;
+    }
+
     /**
      * Scan directory for JSON template files and add to list.
      *
@@ -1203,9 +1288,27 @@ public class AnalyzerRestController extends BaseRestController {
                     String filename = file.getFileName().toString().replace(".json", "");
                     template.put("id", protocol + "/" + filename);
                     template.put("protocol", protocol.toUpperCase());
-                    template.put("analyzerName", config.get("analyzer_name"));
-                    template.put("manufacturer", config.get("manufacturer"));
-                    template.put("category", config.get("category"));
+
+                    // Top-level keys (ASTM/HL7 profiles)
+                    String analyzerName = (String) config.get("analyzer_name");
+                    String manufacturer = (String) config.get("manufacturer");
+                    String category = (String) config.get("category");
+
+                    // Fallback to profileMeta (FILE profiles store data there)
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> profileMeta = (Map<String, Object>) config.get("profileMeta");
+                    if (profileMeta != null) {
+                        if (analyzerName == null) {
+                            analyzerName = (String) profileMeta.get("displayName");
+                        }
+                        if (manufacturer == null) {
+                            manufacturer = (String) profileMeta.get("manufacturer");
+                        }
+                    }
+
+                    template.put("analyzerName", analyzerName);
+                    template.put("manufacturer", manufacturer);
+                    template.put("category", category);
 
                     templates.add(template);
                 } catch (Exception e) {
@@ -1236,4 +1339,5 @@ public class AnalyzerRestController extends BaseRestController {
     private boolean isBlank(Object value) {
         return value == null || String.valueOf(value).trim().isEmpty();
     }
+
 }

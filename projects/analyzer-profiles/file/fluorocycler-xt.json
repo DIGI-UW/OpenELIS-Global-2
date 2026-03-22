@@ -1,0 +1,61 @@
+{
+  "profileMeta": {
+    "id": "fluorocycler-xt",
+    "version": "1.0.0",
+    "displayName": "Bruker FluoroCycler XT",
+    "manufacturer": "Bruker"
+  },
+  "protocol": {
+    "name": "FILE",
+    "format": "EXCEL"
+  },
+  "supported_extensions": [
+    ".xlsx",
+    ".xls",
+    ".csv"
+  ],
+  "column_mapping": {
+    "SampleID": "sampleId",
+    "WellPosition": "position",
+    "AssayName": "assayName",
+    "TargetName": "testCode",
+    "TargetNo": "targetNo",
+    "CP": "result",
+    "Interpretation": "interpretation",
+    "CalcConc": "calcConc",
+    "CalcConcUnit": "calcConcUnit",
+    "RunDate": "testDate",
+    "RunID": "runId",
+    "Notes": "notes"
+  },
+  "required_columns": [
+    "SampleID",
+    "WellPosition",
+    "AssayName",
+    "TargetName",
+    "CP",
+    "Interpretation",
+    "RunDate"
+  ],
+  "optional_columns": [
+    "TargetNo",
+    "CalcConc",
+    "CalcConcUnit",
+    "RunID",
+    "Notes"
+  ],
+  "fallback_mapping": {
+    "description": "Raw copy-paste: no SampleID column, use WellPosition as fallback",
+    "CT": "result",
+    "Ct": "result"
+  },
+  "default_test_mappings": [
+    { "analyzer_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "analyzer_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+  ],
+  "configDefaults": {
+    "fileFormat": "EXCEL",
+    "hasHeader": true,
+    "sheetName": "Results"
+  }
+}

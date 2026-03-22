@@ -18,16 +18,27 @@ package org.openelisglobal.common.services;
 
 import jakarta.annotation.PostConstruct;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.util.MenuUtil;
 import org.openelisglobal.menu.valueholder.Menu;
+import org.openelisglobal.role.valueholder.Role;
+import org.openelisglobal.systemmodule.valueholder.SystemModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PluginMenuService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PluginMenuService.class);
 
     static PluginMenuService INSTANCE;
 
@@ -36,6 +47,10 @@ public class PluginMenuService {
     private final Map<String, String> actionToKeyMap = new HashMap<>();
     @Autowired
     private MenuService menuService;
+    @Autowired
+    private AnalyzerService analyzerService;
+    @Autowired
+    private IPluginPermissionService pluginPermissionService;
 
     public enum KnownMenu {
         ANALYZER("menu_results_analyzer"), WORKPLAN("menu_workplan");
@@ -54,6 +69,11 @@ public class PluginMenuService {
     @PostConstruct
     private void registerInstance() {
         INSTANCE = this;
+    }
+
+    @EventListener(ContextRefreshedEvent.class)
+    private void onApplicationReady() {
+        initializeAnalyzerMenus();
     }
 
     public static PluginMenuService getInstance() {
@@ -132,5 +152,68 @@ public class PluginMenuService {
 
     public String getKeyForAction(String action) {
         return actionToKeyMap.get(action);
+    }
+
+    /**
+     * Register an analyzer's menu entry and permission in one call. Creates the
+     * in-memory menu under Results > Analyzer, adds language keys, binds the
+     * permission, and invalidates the menu cache.
+     *
+     * @param analyzerName the analyzer name (used for menu element ID, URL, and
+     *                     display label)
+     */
+    public void registerAnalyzerMenuAndPermission(String analyzerName) {
+        String elementId = analyzerName + "_plugin";
+        String actionURL = "/AnalyzerResults?type=" + analyzerName;
+
+        // Skip if already registered (avoid duplicates on re-init)
+        if (actionToKeyMap.containsKey(actionURL)) {
+            logger.debug("Menu already registered for analyzer: {}", analyzerName);
+            return;
+        }
+
+        // Create menu entry under Results > Analyzer
+        Menu menu = new Menu();
+        menu.setParent(getKnownMenu(KnownMenu.ANALYZER, "menu_results"));
+        menu.setPresentationOrder(10);
+        menu.setElementId(elementId);
+        menu.setActionURL(actionURL);
+        menu.setDisplayKey(analyzerName);
+        menu.setOpenInNewWindow(false);
+
+        addMenu(menu);
+        MenuUtil.forceRebuild();
+
+        // Language keys (English + French default to analyzer name)
+        insertLanguageKeyValue(analyzerName, analyzerName, Locale.ENGLISH.toLanguageTag());
+        insertLanguageKeyValue(analyzerName, analyzerName, Locale.FRENCH.toLanguageTag());
+
+        // Permission: bind AnalyzerResults module to Results role
+        SystemModule module = pluginPermissionService.getOrCreateSystemModule("AnalyzerResults", analyzerName,
+                "Results->Analyzer->" + analyzerName);
+        Role role = pluginPermissionService.getSystemRole("Results");
+        pluginPermissionService.bindRoleToModule(role, module);
+
+        logger.info("Registered menu and permission for analyzer: {}", analyzerName);
+    }
+
+    /**
+     * Initialize menus for all existing analyzers on application startup. Called
+     * after the Spring context is fully ready.
+     */
+    public void initializeAnalyzerMenus() {
+        try {
+            List<Analyzer> analyzers = analyzerService.getAll();
+            int count = 0;
+            for (Analyzer analyzer : analyzers) {
+                if (analyzer.getName() != null && !analyzer.getName().trim().isEmpty()) {
+                    registerAnalyzerMenuAndPermission(analyzer.getName());
+                    count++;
+                }
+            }
+            logger.info("Initialized menus for {} analyzers", count);
+        } catch (Exception e) {
+            logger.error("Error initializing analyzer menus", e);
+        }
     }
 }
