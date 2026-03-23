@@ -10,14 +10,17 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.shipment.dto.SampleItemDTO;
+import org.openelisglobal.shipment.fhir.ShipmentFhirImportService;
 import org.openelisglobal.shipment.form.ShippingBoxForm;
 import org.openelisglobal.shipment.service.BoxLabelPDFService;
-import org.openelisglobal.shipment.service.BoxSampleService;
+import org.openelisglobal.shipment.service.BoxSampleItemService;
 import org.openelisglobal.shipment.service.ManifestPDFService;
 import org.openelisglobal.shipment.service.ShippingBoxService;
-import org.openelisglobal.shipment.valueholder.BoxSample;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +49,7 @@ public class ShippingBoxRestController extends BaseRestController {
     private ShippingBoxService shippingBoxService;
 
     @Autowired
-    private BoxSampleService boxSampleService;
+    private BoxSampleItemService boxSampleItemService;
 
     @Autowired
     private OrganizationService organizationService;
@@ -59,6 +62,12 @@ public class ShippingBoxRestController extends BaseRestController {
 
     @Autowired
     private ManifestPDFService manifestPDFService;
+
+    @Autowired
+    private SiteInformationService siteInformationService;
+
+    @Autowired
+    private ShipmentFhirImportService shipmentFhirImportService;
 
     /**
      * Get all active shipping boxes
@@ -93,21 +102,18 @@ public class ShippingBoxRestController extends BaseRestController {
 
             ShippingBoxForm form = convertToForm(box);
 
-            // Load samples for this box
-            List<BoxSample> boxSamples = boxSampleService.getBoxSamplesByShippingBoxId(id);
+            // Load sample items for this box (NEW: using BoxSampleItemService)
+            List<SampleItemDTO> sampleItems = boxSampleItemService.getBoxSampleItemDTOsByShippingBoxId(id);
             List<ShippingBoxForm.BoxSampleInfo> sampleInfos = new ArrayList<>();
 
-            for (BoxSample boxSample : boxSamples) {
+            for (SampleItemDTO sampleItem : sampleItems) {
                 ShippingBoxForm.BoxSampleInfo info = new ShippingBoxForm.BoxSampleInfo();
-                info.setId(boxSample.getId());
-                if (boxSample.getSample() != null) {
-                    info.setSampleId(Integer.parseInt(boxSample.getSample().getId()));
-                    info.setAccessionNumber(boxSample.getSample().getAccessionNumber());
-                }
-                info.setReceptionStatus(
-                        boxSample.getReceptionStatus() != null ? boxSample.getReceptionStatus().name() : null);
-                info.setReceptionNotes(boxSample.getReceptionNotes());
-                info.setAddedDate(boxSample.getAddedDate());
+                // Convert sampleItemId (String) to Integer for backward compatibility
+                info.setSampleId(parseSampleItemId(sampleItem.getSampleItemId()));
+                info.setAccessionNumber(sampleItem.getAccessionNumber());
+                // Note: SampleItemDTO doesn't have receptionStatus, addedDate
+                // These fields may need to be added or we need to fetch from BoxSampleItem
+                // entity
                 sampleInfos.add(info);
             }
             form.setSamples(sampleInfos);
@@ -177,12 +183,200 @@ public class ShippingBoxRestController extends BaseRestController {
     }
 
     /**
-     * Generate unique box number with format BOX-YYYY-NNNN
-     * Uses sequential numbering within the year to avoid collisions
+     * Get the configured box label prefix
      */
-    private String generateUniqueBoxNumber() {
+    @GetMapping("/box-label-prefix")
+    public ResponseEntity<String> getBoxLabelPrefix() {
+        try {
+            String prefix = getConfiguredPrefix();
+            return ResponseEntity.ok(prefix);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Update the box label prefix
+     */
+    @PutMapping("/box-label-prefix")
+    public ResponseEntity<String> updateBoxLabelPrefix(@RequestBody String newPrefix, HttpServletRequest request) {
+        try {
+            if (newPrefix == null || newPrefix.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Prefix cannot be empty");
+            }
+            String trimmedPrefix = newPrefix.trim().toUpperCase();
+
+            SiteInformation siteInfo = siteInformationService.getSiteInformationByName("boxLabelPrefix");
+            if (siteInfo != null) {
+                siteInfo.setValue(trimmedPrefix);
+                String userId = getSysUserId(request);
+                if (userId != null) {
+                    siteInfo.setSysUserId(userId);
+                }
+                siteInformationService.persistData(siteInfo, false);
+            }
+
+            return ResponseEntity.ok(trimmedPrefix);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get the FHIR UUID and org ID of the Organization representing this site.
+     */
+    @GetMapping("/site-organization-uuid")
+    public ResponseEntity<?> getSiteOrganizationUuid() {
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName("siteOrganizationFhirUuid");
+        String fhirUuid = (siteInfo != null && siteInfo.getValue() != null) ? siteInfo.getValue() : "";
+
+        // Resolve fhirUuid back to org database ID for dropdown pre-selection
+        String orgId = "";
+        if (!fhirUuid.isBlank()) {
+            try {
+                java.util.UUID uuid = java.util.UUID.fromString(fhirUuid);
+                List<Organization> orgs = organizationService.getAll();
+                for (Organization org : orgs) {
+                    if (org.getFhirUuid() != null && org.getFhirUuid().equals(uuid)) {
+                        orgId = org.getId();
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // Invalid UUID stored — ignore
+            }
+        }
+
+        var result = new java.util.HashMap<String, String>();
+        result.put("fhirUuid", fhirUuid);
+        result.put("orgId", orgId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Set the site organization by its database ID. The backend resolves the FHIR
+     * UUID and stores it. Used to filter incoming FHIR shipments.
+     */
+    @PutMapping("/site-organization-uuid")
+    public ResponseEntity<?> setSiteOrganizationUuid(@RequestBody String orgId, HttpServletRequest request) {
+        try {
+            String trimmed = orgId != null ? orgId.trim() : "";
+            String fhirUuid = "";
+
+            // Resolve database ID to FHIR UUID
+            if (!trimmed.isEmpty()) {
+                Organization org = organizationService.get(trimmed);
+                if (org == null) {
+                    return ResponseEntity.badRequest().body("Organization not found: " + trimmed);
+                }
+                if (org.getFhirUuid() != null) {
+                    fhirUuid = org.getFhirUuid().toString();
+                } else {
+                    return ResponseEntity.badRequest()
+                            .body("Organization '" + org.getOrganizationName() + "' has no FHIR UUID");
+                }
+            }
+
+            SiteInformation siteInfo = siteInformationService.getSiteInformationByName("siteOrganizationFhirUuid");
+            if (siteInfo != null) {
+                siteInfo.setValue(fhirUuid);
+                String userId = getSysUserId(request);
+                if (userId != null) {
+                    siteInfo.setSysUserId(userId);
+                }
+                siteInformationService.update(siteInfo);
+            }
+
+            // Return both the FHIR UUID and the org name for display
+            var result = new java.util.HashMap<String, String>();
+            result.put("fhirUuid", fhirUuid);
+            result.put("orgId", trimmed);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get all FHIR mapping configuration values.
+     */
+    @GetMapping("/fhir-mapping-config")
+    public ResponseEntity<?> getFhirMappingConfig() {
+        var config = new java.util.HashMap<String, String>();
+        config.put("containerTypeCode", getSiteInfoValue("fhirContainerTypeCode", "434711009"));
+        config.put("containerTypeDisplay", getSiteInfoValue("fhirContainerTypeDisplay", "Specimen container"));
+        config.put("nonConformityCodes",
+                getSiteInfoValue("fhirNonConformityCodes",
+                        "{\"RECEIVED_DAMAGED\":\"281411007\",\"RECEIVED_LEAKED\":\"281412000\","
+                                + "\"MISSING\":\"281264009\",\"REJECTED\":\"123840003\"}"));
+        return ResponseEntity.ok(config);
+    }
+
+    /**
+     * Update FHIR mapping configuration values.
+     */
+    @PutMapping("/fhir-mapping-config")
+    public ResponseEntity<?> setFhirMappingConfig(@RequestBody java.util.Map<String, String> configMap,
+            HttpServletRequest request) {
+        try {
+            String userId = getSysUserId(request);
+
+            if (configMap.containsKey("containerTypeCode")) {
+                saveSiteInfo("fhirContainerTypeCode", configMap.get("containerTypeCode"), userId);
+            }
+            if (configMap.containsKey("containerTypeDisplay")) {
+                saveSiteInfo("fhirContainerTypeDisplay", configMap.get("containerTypeDisplay"), userId);
+            }
+            if (configMap.containsKey("nonConformityCodes")) {
+                saveSiteInfo("fhirNonConformityCodes", configMap.get("nonConformityCodes"), userId);
+            }
+
+            return ResponseEntity.ok(configMap);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private String getSiteInfoValue(String name, String defaultValue) {
+        SiteInformation si = siteInformationService.getSiteInformationByName(name);
+        if (si != null && si.getValue() != null && !si.getValue().isBlank()) {
+            return si.getValue();
+        }
+        return defaultValue;
+    }
+
+    private void saveSiteInfo(String name, String value, String userId) {
+        SiteInformation si = siteInformationService.getSiteInformationByName(name);
+        if (si != null) {
+            si.setValue(value != null ? value.trim() : "");
+            if (userId != null) {
+                si.setSysUserId(userId);
+            }
+            siteInformationService.update(si);
+        }
+    }
+
+    private String getConfiguredPrefix() {
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName("boxLabelPrefix");
+        if (siteInfo != null && siteInfo.getValue() != null && !siteInfo.getValue().isEmpty()) {
+            return siteInfo.getValue();
+        }
+        return "BOX";
+    }
+
+    /**
+     * Generate unique box number with format PREFIX-YYYY-NNNN Uses sequential
+     * numbering within the year to avoid collisions. The prefix is configurable via
+     * the boxLabelPrefix site information setting.
+     */
+    private synchronized String generateUniqueBoxNumber() {
         int year = java.time.Year.now().getValue();
-        String prefix = "BOX-" + year + "-";
+        String labelPrefix = getConfiguredPrefix();
+        String prefix = labelPrefix + "-" + year + "-";
         int nextNumber = 1;
 
         // Try up to 9999 sequential numbers
@@ -266,7 +460,7 @@ public class ShippingBoxRestController extends BaseRestController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateBox(@PathVariable Integer id, @Valid @RequestBody ShippingBoxForm form,
-            BindingResult result) {
+            BindingResult result, HttpServletRequest request) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());
         }
@@ -283,6 +477,12 @@ public class ShippingBoxRestController extends BaseRestController {
 
             // Preserve FHIR UUID
             box.setFhirUuid(existing.getFhirUuid());
+
+            // Set sys_user_id for audit trail
+            String userIdString = getSysUserId(request);
+            if (userIdString != null) {
+                box.setSystemUserId(Integer.parseInt(userIdString));
+            }
 
             ShippingBox updatedBox = shippingBoxService.updateBox(box);
             ShippingBoxForm responseForm = convertToForm(updatedBox);
@@ -301,10 +501,16 @@ public class ShippingBoxRestController extends BaseRestController {
      * Change box state
      */
     @PutMapping("/{id}/state")
-    public ResponseEntity<?> changeBoxState(@PathVariable Integer id, @RequestParam String newState) {
+    public ResponseEntity<?> changeBoxState(@PathVariable Integer id, @RequestParam String newState,
+            HttpServletRequest request) {
         try {
+            if (newState == null || newState.isBlank()) {
+                return ResponseEntity.badRequest().body("State parameter is required");
+            }
             BoxState state = BoxState.valueOf(newState.toUpperCase());
-            ShippingBox box = shippingBoxService.changeBoxState(id, state);
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+            ShippingBox box = shippingBoxService.changeBoxState(id, state, systemUserId);
             ShippingBoxForm form = convertToForm(box);
 
             return ResponseEntity.ok(form);
@@ -323,9 +529,11 @@ public class ShippingBoxRestController extends BaseRestController {
      * Delete/Archive a box
      */
     @PutMapping("/{id}/archive")
-    public ResponseEntity<?> archiveBox(@PathVariable Integer id) {
+    public ResponseEntity<?> archiveBox(@PathVariable Integer id, HttpServletRequest request) {
         try {
-            shippingBoxService.deleteBox(id);
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+            shippingBoxService.deleteBox(id, systemUserId);
             return ResponseEntity.ok().build();
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -364,6 +572,78 @@ public class ShippingBoxRestController extends BaseRestController {
     }
 
     /**
+     * Get manifest data as JSON for frontend PDF generation. Now returns SampleItem
+     * data including typeOfSample and referralTests.
+     */
+    @GetMapping("/{id}/manifest-data")
+    public ResponseEntity<?> getManifestData(@PathVariable Integer id) {
+        try {
+            ShippingBox box = shippingBoxService.getBoxById(id);
+            if (box == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Get sample items (NEW: using BoxSampleItemService)
+            List<SampleItemDTO> sampleItems = boxSampleItemService.getBoxSampleItemDTOsByShippingBoxId(id);
+
+            // Create response map
+            java.util.Map<String, Object> manifestData = new java.util.HashMap<>();
+            manifestData.put("boxId", box.getBoxId());
+            manifestData.put("destinationFacility",
+                    box.getDestinationFacility() != null ? box.getDestinationFacility().getOrganizationName() : "");
+            manifestData.put("state", box.getState() != null ? box.getState().toString() : "");
+            manifestData.put("temperature",
+                    box.getTemperatureRequirement() != null ? box.getTemperatureRequirement() : "AMBIENT");
+            manifestData.put("createdDate", box.getCreatedDate());
+            manifestData.put("createdBy", box.getCreatedBy() != null ? box.getCreatedBy().getNameForDisplay() : "");
+            manifestData.put("notes", box.getNotes() != null ? box.getNotes() : "");
+
+            // Service location (sender facility)
+            String serviceLocation = org.openelisglobal.common.util.ConfigurationProperties.getInstance()
+                    .getPropertyValue(org.openelisglobal.common.util.ConfigurationProperties.Property.SiteName);
+            manifestData.put("serviceLocation", serviceLocation != null ? serviceLocation : "");
+
+            // Add sample items with typeOfSample and referralTests
+            java.util.List<java.util.Map<String, Object>> samplesList = new java.util.ArrayList<>();
+            for (SampleItemDTO sampleItem : sampleItems) {
+                java.util.Map<String, Object> sampleData = new java.util.HashMap<>();
+                sampleData.put("accessionNumber",
+                        sampleItem.getAccessionNumber() != null ? sampleItem.getAccessionNumber() : "");
+                sampleData.put("typeOfSample",
+                        sampleItem.getTypeOfSample() != null ? sampleItem.getTypeOfSample() : "");
+                sampleData.put("referralTests", sampleItem.getReferralTestsAsString()); // Comma-separated test names
+                sampleData.put("collectionDate", sampleItem.getCollectionDate());
+                samplesList.add(sampleData);
+            }
+            manifestData.put("samples", samplesList);
+
+            // Time-based manifest rules (Rule 3): regeneration within 24h, recall within 7d
+            final long MILLIS_PER_HOUR = 1000L * 60 * 60;
+            final long REGENERATION_LIMIT_HOURS = 24;
+            final long RECALL_LIMIT_HOURS = 7 * 24; // 7 days
+
+            manifestData.put("sentDate", box.getSentDate());
+            boolean canRegenerate = true;
+            boolean canRecall = true;
+            if (box.getSentDate() != null) {
+                long hoursSinceSent = (System.currentTimeMillis() - box.getSentDate().getTime()) / MILLIS_PER_HOUR;
+                canRegenerate = hoursSinceSent <= REGENERATION_LIMIT_HOURS;
+                canRecall = hoursSinceSent <= RECALL_LIMIT_HOURS;
+            }
+            manifestData.put("canRegenerate", canRegenerate);
+            manifestData.put("canRecall", canRecall);
+
+            return ResponseEntity.ok(manifestData);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Collections.singletonMap("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Download box manifest PDF
      */
     @GetMapping("/{id}/manifest/pdf")
@@ -383,8 +663,10 @@ public class ShippingBoxRestController extends BaseRestController {
 
             return new ResponseEntity<>(pdfStream.toByteArray(), headers, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
+            LogEvent.logError("Box not found", e);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
+            LogEvent.logError("Error generating manifest PDF", e);
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -405,7 +687,7 @@ public class ShippingBoxRestController extends BaseRestController {
 
             for (ShippingBox box : allBoxes) {
                 BoxState state = box.getState();
-                int sampleCount = boxSampleService.countSamplesInBox(box.getId());
+                int sampleCount = boxSampleItemService.countSampleItemsInBox(box.getId());
 
                 if (state == BoxState.SENT) {
                     inTransitCount++;
@@ -452,19 +734,42 @@ public class ShippingBoxRestController extends BaseRestController {
         form.setArchived(box.getArchived());
         form.setArchivedDate(box.getArchivedDate());
 
-        if (box.getDestinationFacility() != null) {
-            form.setDestinationFacilityId(Integer.parseInt(box.getDestinationFacility().getId()));
+        if (box.getDestinationFacility() != null && box.getDestinationFacility().getId() != null) {
+            try {
+                form.setDestinationFacilityId(Integer.parseInt(box.getDestinationFacility().getId()));
+            } catch (NumberFormatException e) {
+                // Non-numeric facility ID — skip
+            }
             form.setDestinationFacilityName(box.getDestinationFacility().getOrganizationName());
         }
 
-        if (box.getCreatedBy() != null) {
-            form.setCreatedBy(Integer.parseInt(box.getCreatedBy().getId()));
+        if (box.getCreatedBy() != null && box.getCreatedBy().getId() != null) {
+            try {
+                form.setCreatedBy(Integer.parseInt(box.getCreatedBy().getId()));
+            } catch (NumberFormatException e) {
+                // Non-numeric user ID — skip
+            }
             form.setCreatedByName(box.getCreatedBy().getNameForDisplay());
         }
 
-        // Get sample count
-        int sampleCount = boxSampleService.countSamplesInBox(box.getId());
-        form.setSampleCount(sampleCount);
+        // Get sample items and compute count + contents summary
+        List<SampleItemDTO> sampleItems = boxSampleItemService.getBoxSampleItemDTOsByShippingBoxId(box.getId());
+        form.setSampleCount(sampleItems.size());
+
+        // Build contents summary: "Serum (3), Plasma (2)"
+        java.util.Map<String, Integer> typeCounts = new java.util.LinkedHashMap<>();
+        for (SampleItemDTO item : sampleItems) {
+            String type = item.getTypeOfSample() != null ? item.getTypeOfSample() : "Unknown";
+            typeCounts.put(type, typeCounts.getOrDefault(type, 0) + 1);
+        }
+        StringBuilder contentsBuilder = new StringBuilder();
+        typeCounts.forEach((type, count) -> {
+            if (!contentsBuilder.isEmpty()) {
+                contentsBuilder.append(", ");
+            }
+            contentsBuilder.append(type).append(" (").append(count).append(")");
+        });
+        form.setContents(contentsBuilder.toString());
 
         return form;
     }
@@ -506,5 +811,39 @@ public class ShippingBoxRestController extends BaseRestController {
         }
 
         return box;
+    }
+
+    /**
+     * Import shipments from remote FHIR servers. Polls for SupplyDelivery resources
+     * with status in-progress and creates local ShippingBox entries with state
+     * IN_TRANSIT for reception reconciliation.
+     */
+    @PostMapping("/import-from-fhir")
+    public ResponseEntity<?> importShipmentsFromFhir() {
+        try {
+            int imported = shipmentFhirImportService.pollAndImportShipments();
+            return ResponseEntity.ok(java.util.Collections.singletonMap("imported", imported));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Collections.singletonMap("error", "Error importing shipments: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Helper method to parse sampleItemId (String) to Integer Handles
+     * NumberFormatException gracefully
+     */
+    private Integer parseSampleItemId(String sampleItemId) {
+        if (sampleItemId == null) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(sampleItemId);
+        } catch (NumberFormatException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "parseSampleItemId",
+                    "Could not parse sampleItemId to Integer: " + sampleItemId);
+            return null;
+        }
     }
 }

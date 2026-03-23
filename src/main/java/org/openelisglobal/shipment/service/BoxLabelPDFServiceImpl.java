@@ -35,9 +35,14 @@ public class BoxLabelPDFServiceImpl implements BoxLabelPDFService {
             throw new IllegalArgumentException("Shipping box not found: " + boxId);
         }
 
+        // Initialize lazy associations within transaction
+        String destinationName = "";
+        if (box.getDestinationFacility() != null) {
+            destinationName = box.getDestinationFacility().getOrganizationName(); // Force initialization
+        }
+
         // Create label with box information
-        ShippingBoxLabel label = new ShippingBoxLabel(box.getBoxId(),
-                box.getDestinationFacility() != null ? box.getDestinationFacility().getOrganizationName() : "",
+        ShippingBoxLabel label = new ShippingBoxLabel(box.getBoxId(), destinationName,
                 box.getTemperatureRequirement() != null ? box.getTemperatureRequirement().toString() : "AMBIENT",
                 box.getSampleCount(), box.getCreatedDate());
 

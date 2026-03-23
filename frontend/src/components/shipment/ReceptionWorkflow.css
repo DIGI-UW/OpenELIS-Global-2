@@ -83,6 +83,18 @@
   flex-wrap: wrap;
 }
 
+.sample-scan-section {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  max-width: 500px;
+}
+
+.sample-scan-button {
+  flex-shrink: 0;
+}
+
 .action-buttons {
   display: flex;
   gap: 1rem;

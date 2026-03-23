@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add site organization FHIR UUID to site_information.
+       This identifies "this lab" so that FHIR import can filter shipments
+       destined only for this installation. The value should be set to the
+       fhir_uuid of the Organization row that represents the local site. -->
+  <changeSet author="oe" id="shipment-015-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'siteOrganizationFhirUuid'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="siteOrganizationFhirUuid" />
+      <column name="description" value="FHIR UUID of this lab's Organization. Filters FHIR shipment imports." />
+      <column name="value" value="" />
+      <column name="value_type" value="text" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

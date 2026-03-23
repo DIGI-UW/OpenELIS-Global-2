@@ -42,3 +42,10 @@
   align-items: center;
   min-height: 200px;
 }
+
+.test-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}

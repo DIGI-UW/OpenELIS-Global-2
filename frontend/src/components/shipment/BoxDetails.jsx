@@ -1,40 +1,40 @@
-import React, { useState, useEffect, useContext } from "react";
-import {
-  Grid,
-  Column,
-  Button,
-  Loading,
-  DataTable,
-  TableContainer,
-  Table,
-  TableHead,
-  TableRow,
-  TableHeader,
-  TableBody,
-  TableCell,
-  Tag,
-  Modal,
-  TextArea,
-} from "@carbon/react";
 import {
   Add,
-  TrashCan,
   Checkmark,
-  Download,
   Document,
+  Download,
+  TrashCan,
 } from "@carbon/icons-react";
+import {
+  Button,
+  Column,
+  DataTable,
+  Grid,
+  Loading,
+  Modal,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+} from "@carbon/react";
+import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
+import config from "../../config.json";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import config from "../../config.json";
-import { NotificationContext } from "../layout/Layout";
-import PageBreadCrumb from "../common/PageBreadCrumb";
-import ShipmentNavigation from "./ShipmentNavigation";
-import SampleAssignmentModal from "./SampleAssignmentModal";
 import "./BoxDetails.css";
+import SampleAssignmentModal from "./SampleAssignmentModal";
+import ShipmentNavigation from "./ShipmentNavigation";
+import { generateManifestPDF, generateLabelPDF } from "./utils/pdfGenerator";
 
 const BoxDetails = () => {
   const intl = useIntl();
@@ -46,6 +46,9 @@ const BoxDetails = () => {
   const [samples, setSamples] = useState([]);
   const [showAddSampleModal, setShowAddSampleModal] = useState(false);
   const [showReadyModal, setShowReadyModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [sampleToRemove, setSampleToRemove] = useState(null);
 
   useEffect(() => {
     if (boxId) {
@@ -78,8 +81,9 @@ const BoxDetails = () => {
 
   const fetchBoxSamples = async () => {
     try {
+      // Use new SampleItem-based endpoint
       const response = await getFromOpenElisServerV2(
-        `/rest/box-sample/by-box/${boxId}`,
+        `/rest/box-sample/items/by-box/${boxId}`,
       );
       if (response) {
         setSamples(response);
@@ -89,45 +93,82 @@ const BoxDetails = () => {
     }
   };
 
-  const handleAddSample = async (sampleId) => {
-    try {
-      await postToOpenElisServerJsonResponse(
-        "/rest/box-sample",
-        JSON.stringify({
-          shippingBoxId: boxId,
-          sampleId: sampleId,
-        }),
-      );
-
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.sampleAdded",
-        }),
-      });
-
-      fetchBoxSamples();
-      setShowAddSampleModal(false);
-    } catch (error) {
-      console.error("Error adding sample:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message:
-          error.message ||
-          intl.formatMessage({ id: "shipment.error.addSample" }),
-      });
-    }
+  const handleAddSample = (sampleItemId) => {
+    postToOpenElisServerJsonResponse(
+      "/rest/box-sample/items",
+      JSON.stringify({
+        shippingBoxId: boxId,
+        sampleItemId: sampleItemId,
+      }),
+      (response) => {
+        if (response.error) {
+          console.error("Error adding sample:", response);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message:
+              response.message ||
+              intl.formatMessage({ id: "shipment.error.addSample" }),
+          });
+        } else {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({
+              id: "shipment.notification.sampleAdded",
+            }),
+          });
+          fetchBoxSamples();
+          setShowAddSampleModal(false);
+        }
+      },
+    );
   };
 
-  const handleRemoveSample = async (boxSampleId) => {
+  const handleRemoveSampleClick = (sample) => {
+    setSampleToRemove(sample);
+    setShowRemoveModal(true);
+  };
+
+  const handleRemoveSample = () => {
+    if (!sampleToRemove) return;
+
+    postToOpenElisServerJsonResponse(
+      `/rest/box-sample/items/${sampleToRemove.sampleItemId || sampleToRemove.id}/remove`,
+      JSON.stringify({}),
+      (response) => {
+        if (response.error) {
+          console.error("Error removing sample:", response);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message:
+              response.message ||
+              intl.formatMessage({ id: "shipment.error.removeSample" }),
+          });
+        } else {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({
+              id: "shipment.notification.sampleRemoved",
+            }),
+          });
+          fetchBoxSamples();
+          setShowRemoveModal(false);
+          setSampleToRemove(null);
+        }
+      },
+    );
+  };
+
+  const handleMarkReadyToSend = async () => {
     try {
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/box-sample/${boxSampleId}`,
+        `${config.serverBaseUrl}/rest/shipping-box/${boxId}/state?newState=READY_TO_SEND`,
         {
           credentials: "include",
-          method: "DELETE",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
             "X-CSRF-Token": localStorage.getItem("CSRF"),
@@ -136,34 +177,8 @@ const BoxDetails = () => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to remove sample");
+        throw new Error(intl.formatMessage({ id: "shipment.error.markReady" }));
       }
-
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.sampleRemoved",
-        }),
-      });
-
-      fetchBoxSamples();
-    } catch (error) {
-      console.error("Error removing sample:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "shipment.error.removeSample" }),
-      });
-    }
-  };
-
-  const handleMarkReadyToSend = async () => {
-    try {
-      await postToOpenElisServerJsonResponse(
-        `/rest/shipping-box/${boxId}/state`,
-        JSON.stringify({ state: "READY_TO_SEND" }),
-      );
 
       addNotification({
         kind: "success",
@@ -185,25 +200,210 @@ const BoxDetails = () => {
     }
   };
 
-  const handleDownloadLabel = () => {
-    window.open(`/rest/shipping-box/${boxId}/label/pdf`, "_blank");
+  const handleSendBox = async () => {
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/shipping-box/${boxId}/state?newState=SENT`,
+        {
+          credentials: "include",
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(intl.formatMessage({ id: "shipment.error.sendBox" }));
+      }
+
+      addNotification({
+        kind: "success",
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage({
+          id: "shipment.notification.boxSent",
+        }),
+      });
+
+      // Auto-generate packing list on send (spec User Story 4)
+      try {
+        const manifestResponse = await getFromOpenElisServerV2(
+          `/rest/shipping-box/${boxId}/manifest-data`,
+        );
+        if (manifestResponse) {
+          await generateManifestPDF(manifestResponse, intl.formatMessage);
+        }
+      } catch {
+        // Non-blocking — manifest can be regenerated later
+      }
+
+      fetchBoxDetails();
+      setShowSendModal(false);
+    } catch (error) {
+      console.error("Error sending box:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "shipment.error.sendBox" }),
+      });
+    }
   };
 
-  const handleDownloadManifest = () => {
-    window.open(`/rest/shipping-box/${boxId}/manifest/pdf`, "_blank");
+  const handleDownloadLabel = async () => {
+    try {
+      const response = await getFromOpenElisServerV2(
+        `/rest/shipping-box/${boxId}`,
+      );
+      if (response) {
+        // Compute sample type counts: { "Serum": 3, "Plasma": 2, ... }
+        const typeCounts = {};
+        samples.forEach((s) => {
+          const type =
+            s.typeOfSample && s.typeOfSample !== "-"
+              ? s.typeOfSample
+              : "Unknown";
+          typeCounts[type] = (typeCounts[type] || 0) + 1;
+        });
+
+        generateLabelPDF(
+          {
+            boxId: response.boxId,
+            destinationFacility: response.destinationFacilityName,
+            temperature: response.temperatureRequirement,
+            sampleCount: samples.length,
+            sampleTypeCounts: typeCounts,
+            createdDate: response.createdDate,
+          },
+          intl.formatMessage,
+        );
+      }
+    } catch (error) {
+      console.error("Error generating label:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "shipment.error.generateLabel" }),
+      });
+    }
+  };
+
+  const handleDownloadManifest = async ({ isResend = false } = {}) => {
+    try {
+      const response = await getFromOpenElisServerV2(
+        `/rest/shipping-box/${boxId}/manifest-data`,
+      );
+      if (response) {
+        // Enforce time-based rules (Rule 3): regeneration ≤24h, recall ≤7d
+        if (isResend && response.canRegenerate === false) {
+          addNotification({
+            kind: "warning",
+            title: intl.formatMessage({ id: "notification.warning" }),
+            message: intl.formatMessage({
+              id: "shipment.manifest.regenerationExpired",
+            }),
+          });
+          return;
+        }
+        if (isResend && response.canRecall === false) {
+          addNotification({
+            kind: "warning",
+            title: intl.formatMessage({ id: "notification.warning" }),
+            message: intl.formatMessage({
+              id: "shipment.manifest.recallExpired",
+            }),
+          });
+          return;
+        }
+        await generateManifestPDF(response, intl.formatMessage);
+      }
+    } catch (error) {
+      console.error("Error generating manifest:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({
+          id: "shipment.error.generateManifest",
+        }),
+      });
+    }
   };
 
   const renderStateTag = (state) => {
     const stateConfig = {
-      DRAFT: { type: "gray", label: "Draft" },
-      READY_TO_SEND: { type: "blue", label: "Ready to Send" },
-      SENT: { type: "purple", label: "Sent" },
-      RECEIVED: { type: "green", label: "Received" },
-      RECONCILED: { type: "teal", label: "Reconciled" },
+      DRAFT: {
+        type: "gray",
+        label: intl.formatMessage({ id: "shipment.state.draft" }),
+      },
+      READY_TO_SEND: {
+        type: "blue",
+        label: intl.formatMessage({ id: "shipment.state.readyToSend" }),
+      },
+      SENT: {
+        type: "purple",
+        label: intl.formatMessage({ id: "shipment.state.sent" }),
+      },
+      RECEIVED: {
+        type: "green",
+        label: intl.formatMessage({ id: "shipment.state.received" }),
+      },
+      RECONCILED: {
+        type: "teal",
+        label: intl.formatMessage({ id: "shipment.state.reconciled" }),
+      },
     };
 
-    const config = stateConfig[state] || stateConfig.DRAFT;
-    return <Tag type={config.type}>{config.label}</Tag>;
+    const cfg = stateConfig[state] || stateConfig.DRAFT;
+    return <Tag type={cfg.type}>{cfg.label}</Tag>;
+  };
+
+  const renderReceptionTag = (status) => {
+    const cfg = {
+      PENDING: { type: "gray", id: "shipment.reception.pending" },
+      RECEIVED_GOOD: { type: "green", id: "shipment.reception.received" },
+      RECEIVED_DAMAGED: { type: "red", id: "shipment.reception.damaged" },
+      RECEIVED_LEAKED: { type: "magenta", id: "shipment.reception.leaked" },
+      MISSING: { type: "gray", id: "shipment.reception.missing" },
+      REJECTED: { type: "purple", id: "shipment.reception.rejected" },
+    };
+    const c = cfg[status] || cfg.PENDING;
+    return <Tag type={c.type}>{intl.formatMessage({ id: c.id })}</Tag>;
+  };
+
+  const handleReconcile = async () => {
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/shipping-box/${boxId}/state?newState=RECONCILED`,
+        {
+          credentials: "include",
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to reconcile");
+      }
+
+      addNotification({
+        kind: "success",
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage({
+          id: "shipment.notification.boxReconciled",
+        }),
+      });
+      fetchBoxDetails();
+    } catch (error) {
+      console.error("Error reconciling box:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({ id: "notification.error" }),
+        message: intl.formatMessage({ id: "shipment.error.reconcile" }),
+      });
+    }
   };
 
   const sampleHeaders = [
@@ -212,30 +412,49 @@ const BoxDetails = () => {
       header: intl.formatMessage({ id: "sample.label.accessionNumber" }),
     },
     {
-      key: "positionInBox",
-      header: intl.formatMessage({ id: "shipment.label.position" }),
+      key: "typeOfSample",
+      header: intl.formatMessage({ id: "sample.label.typeOfSample" }),
     },
     {
-      key: "addedDate",
-      header: intl.formatMessage({ id: "shipment.label.addedDate" }),
+      key: "referralTests",
+      header: intl.formatMessage({ id: "shipment.label.tests" }),
+    },
+    {
+      key: "collectionDate",
+      header: intl.formatMessage({ id: "sample.label.collectionDate" }),
+    },
+    {
+      key: "receptionStatus",
+      header: intl.formatMessage({ id: "shipment.reception.status" }),
+    },
+    {
+      key: "receptionNotes",
+      header: intl.formatMessage({ id: "shipment.reception.notes" }),
     },
     { key: "actions", header: intl.formatMessage({ id: "label.actions" }) },
   ];
 
   const renderSampleRows = () => {
     return samples.map((sample) => ({
-      id: sample.id.toString(),
+      id: sample.sampleItemId || sample.id?.toString() || "-",
       accessionNumber: sample.accessionNumber,
-      positionInBox: sample.positionInBox || "-",
-      addedDate: sample.addedDate
-        ? new Date(sample.addedDate).toLocaleDateString()
+      typeOfSample: sample.typeOfSample || "-",
+      referralTests: sample.referralTests
+        ? sample.referralTests.map((t) => t.testName).join(", ")
         : "-",
+      collectionDate: sample.collectionDate
+        ? new Date(sample.collectionDate).toLocaleDateString()
+        : "-",
+      receptionStatus: sample.receptionStatus
+        ? renderReceptionTag(sample.receptionStatus)
+        : renderReceptionTag("PENDING"),
+      receptionNotes: sample.receptionNotes || "-",
       actions: (
         <Button
           kind="ghost"
           size="sm"
           renderIcon={TrashCan}
-          onClick={() => handleRemoveSample(sample.id)}
+          onClick={() => handleRemoveSampleClick(sample)}
           disabled={box?.state !== "DRAFT"}
           iconDescription={intl.formatMessage({ id: "label.remove" })}
         >
@@ -269,7 +488,6 @@ const BoxDetails = () => {
         breadcrumbs={[
           { label: "home.label", link: "/" },
           { label: "shipment.breadcrumb", link: "/SampleShipment" },
-          { label: "shipment.box.title", link: `/SampleShipment/box/${boxId}` },
         ]}
       />
       <ShipmentNavigation />
@@ -312,10 +530,75 @@ const BoxDetails = () => {
                   </Button>
                 </>
               )}
-              {(box.state === "READY_TO_SEND" ||
-                box.state === "SENT" ||
-                box.state === "RECEIVED" ||
-                box.state === "RECONCILED") && (
+              {box.state === "READY_TO_SEND" && (
+                <>
+                  <Button
+                    kind="primary"
+                    renderIcon={Checkmark}
+                    onClick={() => setShowSendModal(true)}
+                  >
+                    <FormattedMessage id="shipment.box.sendBox" />
+                  </Button>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Download}
+                    onClick={handleDownloadLabel}
+                  >
+                    <FormattedMessage id="shipment.box.downloadLabel" />
+                  </Button>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Document}
+                    onClick={handleDownloadManifest}
+                  >
+                    <FormattedMessage id="shipment.box.downloadManifest" />
+                  </Button>
+                </>
+              )}
+              {(box.state === "SENT" || box.state === "IN_TRANSIT") && (
+                <>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Download}
+                    onClick={handleDownloadLabel}
+                  >
+                    <FormattedMessage id="shipment.box.downloadLabel" />
+                  </Button>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Document}
+                    onClick={() => handleDownloadManifest({ isResend: true })}
+                  >
+                    <FormattedMessage id="shipment.box.resendManifest" />
+                  </Button>
+                </>
+              )}
+              {box.state === "RECEIVED" && (
+                <>
+                  <Button
+                    kind="primary"
+                    renderIcon={Checkmark}
+                    onClick={handleReconcile}
+                  >
+                    <FormattedMessage id="shipment.box.reconcile" />
+                  </Button>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Download}
+                    onClick={handleDownloadLabel}
+                  >
+                    <FormattedMessage id="shipment.box.downloadLabel" />
+                  </Button>
+                  <Button
+                    kind="tertiary"
+                    renderIcon={Document}
+                    onClick={handleDownloadManifest}
+                  >
+                    <FormattedMessage id="shipment.box.downloadManifest" />
+                  </Button>
+                </>
+              )}
+              {box.state === "RECONCILED" && (
                 <>
                   <Button
                     kind="tertiary"
@@ -348,6 +631,22 @@ const BoxDetails = () => {
                 <FormattedMessage id="shipment.box.temperature" />:
               </span>
               <span className="info-value">{box.temperatureRequirement}</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">
+                <FormattedMessage id="shipment.box.createdBy" />:
+              </span>
+              <span className="info-value">{box.createdByName || "-"}</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">
+                <FormattedMessage id="shipment.box.created" />:
+              </span>
+              <span className="info-value">
+                {box.createdDate
+                  ? new Date(box.createdDate).toLocaleString()
+                  : "-"}
+              </span>
             </div>
             {box.notes && (
               <div className="info-item">
@@ -447,6 +746,52 @@ const BoxDetails = () => {
             values={{ count: samples.length }}
           />
         </p>
+      </Modal>
+
+      {/* Send Box Confirmation Modal */}
+      <Modal
+        open={showSendModal}
+        modalHeading={intl.formatMessage({ id: "shipment.box.sendBox" })}
+        primaryButtonText={intl.formatMessage({ id: "label.confirm" })}
+        secondaryButtonText={intl.formatMessage({ id: "label.cancel" })}
+        onRequestSubmit={handleSendBox}
+        onRequestClose={() => setShowSendModal(false)}
+      >
+        <p>
+          <FormattedMessage id="shipment.box.sendConfirmation" />
+        </p>
+        <p>
+          <FormattedMessage
+            id="shipment.box.sendSampleCount"
+            values={{ count: samples.length }}
+          />
+        </p>
+      </Modal>
+
+      {/* Remove Sample Confirmation Modal */}
+      <Modal
+        open={showRemoveModal}
+        modalHeading={intl.formatMessage({ id: "shipment.box.removeSample" })}
+        primaryButtonText={intl.formatMessage({ id: "label.remove" })}
+        secondaryButtonText={intl.formatMessage({ id: "label.cancel" })}
+        onRequestSubmit={handleRemoveSample}
+        onRequestClose={() => {
+          setShowRemoveModal(false);
+          setSampleToRemove(null);
+        }}
+        danger
+      >
+        <p>
+          <FormattedMessage id="shipment.box.removeSampleConfirmation" />
+        </p>
+        {sampleToRemove && (
+          <p>
+            <strong>
+              <FormattedMessage id="sample.label.accessionNumber" />:
+            </strong>{" "}
+            {sampleToRemove.accessionNumber}
+          </p>
+        )}
       </Modal>
     </div>
   );

@@ -15,19 +15,26 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
- * Represents the association between a shipping box and a sample
+ * Represents the association between a shipping box and a sample item (physical
+ * specimen).
+ *
+ * Note: This replaces the old BoxSample entity. A SampleItem is the correct
+ * granularity for shipment because: - A Sample can have multiple SampleItems
+ * (e.g., blood → serum + plasma) - Referrals/Analyses are linked to
+ * SampleItems, not Samples - Physical specimens in boxes are SampleItems with
+ * specific TypeOfSample (serum, urine, etc.)
  */
 @Entity
-@Table(name = "box_sample")
+@Table(name = "box_sample_item")
 @AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
-public class BoxSample extends BaseObject<Integer> {
+public class BoxSampleItem extends BaseObject<Integer> {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "box_sample_seq")
-    @SequenceGenerator(name = "box_sample_seq", sequenceName = "box_sample_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "box_sample_item_seq")
+    @SequenceGenerator(name = "box_sample_item_seq", sequenceName = "box_sample_item_seq", allocationSize = 1)
     @Column(name = "id")
     private Integer id;
 
@@ -36,8 +43,8 @@ public class BoxSample extends BaseObject<Integer> {
     private ShippingBox shippingBox;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sample_id", nullable = false)
-    private Sample sample;
+    @JoinColumn(name = "sample_item_id", nullable = false)
+    private SampleItem sampleItem;
 
     @Column(name = "added_date", nullable = false)
     private Timestamp addedDate;
@@ -55,7 +62,7 @@ public class BoxSample extends BaseObject<Integer> {
     @Column(name = "sys_user_id", nullable = false)
     private Integer systemUserId;
 
-    public BoxSample() {
+    public BoxSampleItem() {
         this.receptionStatus = ReceptionStatus.PENDING;
     }
 
@@ -77,12 +84,12 @@ public class BoxSample extends BaseObject<Integer> {
         this.shippingBox = shippingBox;
     }
 
-    public Sample getSample() {
-        return sample;
+    public SampleItem getSampleItem() {
+        return sampleItem;
     }
 
-    public void setSample(Sample sample) {
-        this.sample = sample;
+    public void setSampleItem(SampleItem sampleItem) {
+        this.sampleItem = sampleItem;
     }
 
     public Timestamp getAddedDate() {

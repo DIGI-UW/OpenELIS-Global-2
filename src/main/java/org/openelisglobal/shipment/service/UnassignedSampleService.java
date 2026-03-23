@@ -4,14 +4,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Service for managing unassigned referral samples
- * Uses the existing referral table instead of a separate unassigned_sample table
+ * Service for managing unassigned referral samples Uses the existing referral
+ * table instead of a separate unassigned_sample table
  */
 public interface UnassignedSampleService {
 
     /**
-     * Get unassigned samples for dashboard with metadata
-     * Services MUST compile all DTOs within transaction to prevent LazyInitializationException
+     * Get unassigned samples for dashboard with metadata Services MUST compile all
+     * DTOs within transaction to prevent LazyInitializationException
      *
      * @return List of unassigned sample data as Maps
      */
@@ -28,8 +28,8 @@ public interface UnassignedSampleService {
     /**
      * Assign a referral sample to a shipment box
      *
-     * @param referralId Referral ID
-     * @param boxId Box ID
+     * @param referralId    Referral ID
+     * @param boxId         Box ID
      * @param currentUserId Current user ID for audit trail
      */
     void assignSampleToBox(String referralId, String boxId, String currentUserId);
@@ -37,8 +37,8 @@ public interface UnassignedSampleService {
     /**
      * Mark a referral sample as lost
      *
-     * @param referralId Referral ID
-     * @param reason Reason for marking as lost
+     * @param referralId    Referral ID
+     * @param reason        Reason for marking as lost
      * @param currentUserId Current user ID for audit trail
      */
     void markSampleAsLost(String referralId, String reason, String currentUserId);
@@ -46,8 +46,8 @@ public interface UnassignedSampleService {
     /**
      * Cancel a referral
      *
-     * @param referralId Referral ID
-     * @param reason Reason for cancellation
+     * @param referralId    Referral ID
+     * @param reason        Reason for cancellation
      * @param currentUserId Current user ID for audit trail
      */
     void cancelReferral(String referralId, String reason, String currentUserId);

@@ -91,5 +91,10 @@
   <include relativeToChangelogFile="true" file="shipment-009-add-referral-shipment-columns.xml"/>
   <include relativeToChangelogFile="true" file="shipment-010-add-actual-sample-count.xml"/>
   <include relativeToChangelogFile="true" file="shipment-011-add-sample-shipment-referral-type.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-012-migrate-to-sample-item.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-013-add-box-label-prefix-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
 
 </databaseChangeLog>

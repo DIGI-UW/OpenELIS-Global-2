@@ -2,27 +2,25 @@ package org.openelisglobal.shipment.form;
 
 import jakarta.validation.constraints.NotNull;
 import java.sql.Timestamp;
-import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 
 /**
- * Form object for BoxSample REST API requests and responses
+ * Form object for BoxSampleItem REST API requests and responses. Uses
+ * SampleItem (not Sample) as the correct granularity for shipment operations.
  */
-public class BoxSampleForm extends BaseForm {
+public class BoxSampleItemForm extends BaseForm {
 
     private Integer id;
 
     @NotNull(message = "Shipping box ID is required")
     private Integer shippingBoxId;
 
-    @NotNull(message = "Sample ID is required")
-    private Integer sampleId;
-
-    private Integer analysisId;
-
-    private List<Integer> analysisIds;
+    @NotNull(message = "Sample item ID is required")
+    private String sampleItemId;
 
     private String accessionNumber;
+
+    private String typeOfSample;
 
     private Integer positionInBox;
 
@@ -50,28 +48,12 @@ public class BoxSampleForm extends BaseForm {
         this.shippingBoxId = shippingBoxId;
     }
 
-    public Integer getSampleId() {
-        return sampleId;
+    public String getSampleItemId() {
+        return sampleItemId;
     }
 
-    public void setSampleId(Integer sampleId) {
-        this.sampleId = sampleId;
-    }
-
-    public Integer getAnalysisId() {
-        return analysisId;
-    }
-
-    public void setAnalysisId(Integer analysisId) {
-        this.analysisId = analysisId;
-    }
-
-    public List<Integer> getAnalysisIds() {
-        return analysisIds;
-    }
-
-    public void setAnalysisIds(List<Integer> analysisIds) {
-        this.analysisIds = analysisIds;
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
     }
 
     public String getAccessionNumber() {
@@ -80,6 +62,14 @@ public class BoxSampleForm extends BaseForm {
 
     public void setAccessionNumber(String accessionNumber) {
         this.accessionNumber = accessionNumber;
+    }
+
+    public String getTypeOfSample() {
+        return typeOfSample;
+    }
+
+    public void setTypeOfSample(String typeOfSample) {
+        this.typeOfSample = typeOfSample;
     }
 
     public Integer getPositionInBox() {

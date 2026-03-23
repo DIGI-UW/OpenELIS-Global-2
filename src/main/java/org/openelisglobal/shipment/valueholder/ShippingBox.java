@@ -91,7 +91,7 @@ public class ShippingBox extends BaseObject<Integer> {
 
     // Relationships
     @OneToMany(mappedBy = "shippingBox", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    private List<BoxSample> boxSamples = new ArrayList<>();
+    private List<BoxSampleItem> boxSampleItems = new ArrayList<>();
 
     @OneToOne(mappedBy = "shippingBox", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private Shipment shipment;
@@ -126,6 +126,10 @@ public class ShippingBox extends BaseObject<Integer> {
 
     public void setFhirUuid(UUID fhirUuid) {
         this.fhirUuid = fhirUuid;
+    }
+
+    public String getFhirUuidAsString() {
+        return fhirUuid == null ? "" : fhirUuid.toString();
     }
 
     public Organization getDestinationFacility() {
@@ -240,12 +244,12 @@ public class ShippingBox extends BaseObject<Integer> {
         this.systemUserId = systemUserId;
     }
 
-    public List<BoxSample> getBoxSamples() {
-        return boxSamples;
+    public List<BoxSampleItem> getBoxSampleItems() {
+        return boxSampleItems;
     }
 
-    public void setBoxSamples(List<BoxSample> boxSamples) {
-        this.boxSamples = boxSamples;
+    public void setBoxSampleItems(List<BoxSampleItem> boxSampleItems) {
+        this.boxSampleItems = boxSampleItems;
     }
 
     public Shipment getShipment() {
@@ -257,17 +261,17 @@ public class ShippingBox extends BaseObject<Integer> {
     }
 
     // Helper methods
-    public void addBoxSample(BoxSample boxSample) {
-        boxSamples.add(boxSample);
-        boxSample.setShippingBox(this);
+    public void addBoxSampleItem(BoxSampleItem boxSampleItem) {
+        boxSampleItems.add(boxSampleItem);
+        boxSampleItem.setShippingBox(this);
     }
 
-    public void removeBoxSample(BoxSample boxSample) {
-        boxSamples.remove(boxSample);
-        boxSample.setShippingBox(null);
+    public void removeBoxSampleItem(BoxSampleItem boxSampleItem) {
+        boxSampleItems.remove(boxSampleItem);
+        boxSampleItem.setShippingBox(null);
     }
 
     public int getSampleCount() {
-        return boxSamples != null ? boxSamples.size() : 0;
+        return boxSampleItems != null ? boxSampleItems.size() : 0;
     }
 }

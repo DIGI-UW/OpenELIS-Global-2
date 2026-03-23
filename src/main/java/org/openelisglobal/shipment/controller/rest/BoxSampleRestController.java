@@ -1,13 +1,14 @@
 package org.openelisglobal.shipment.controller.rest;
 
 import jakarta.validation.Valid;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.shipment.form.BoxSampleForm;
-import org.openelisglobal.shipment.service.BoxSampleService;
-import org.openelisglobal.shipment.valueholder.BoxSample;
+import org.openelisglobal.shipment.dto.SampleItemDTO;
+import org.openelisglobal.shipment.form.BoxSampleItemForm;
+import org.openelisglobal.shipment.service.BoxSampleItemService;
+import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ReceptionStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,104 +25,170 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for box sample management operations
+ * REST controller for box sample management operations.
+ *
+ * Now uses SampleItem (not Sample) as the correct granularity for shipment
+ * operations.
  */
 @RestController
 @RequestMapping("/rest/box-sample")
 public class BoxSampleRestController extends BaseRestController {
 
     @Autowired
-    private BoxSampleService boxSampleService;
-
-    @Autowired
-    private org.openelisglobal.referral.service.ReferralService referralService;
-
-    @Autowired
-    private org.openelisglobal.referral.service.ReferralTypeService referralTypeService;
-
-    @Autowired
-    private org.openelisglobal.analysis.service.AnalysisService analysisService;
-
-    @Autowired
-    private org.openelisglobal.shipment.dao.ShippingBoxDAO shippingBoxDAO;
+    private BoxSampleItemService boxSampleItemService;
 
     /**
      * Get box samples by shipping box ID
+     * 
+     * @deprecated since 3.3.x - Use GET /items/by-box/{shippingBoxId} instead
+     *             (SampleItem-based API)
      */
+    @Deprecated(since = "3.3.x", forRemoval = true)
     @GetMapping("/by-box/{shippingBoxId}")
-    public ResponseEntity<List<BoxSampleForm>> getBoxSamplesByShippingBox(@PathVariable Integer shippingBoxId) {
-        try {
-            List<BoxSample> boxSamples = boxSampleService.getBoxSamplesByShippingBoxId(shippingBoxId);
-            List<BoxSampleForm> forms = new ArrayList<>();
-
-            for (BoxSample boxSample : boxSamples) {
-                forms.add(convertToForm(boxSample));
-            }
-
-            return ResponseEntity.ok(forms);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    public ResponseEntity<List<Map<String, Object>>> getBoxSamplesByShippingBox(@PathVariable Integer shippingBoxId) {
+        // This endpoint is deprecated - table box_sample has been replaced by
+        // box_sample_item
+        // Use /rest/box-sample/items/by-box/{shippingBoxId} instead
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getBoxSamplesByShippingBox",
+                "Deprecated endpoint called - use /items/by-box/" + shippingBoxId + " instead");
+        return ResponseEntity.status(HttpStatus.GONE).body(java.util.Collections.emptyList());
     }
 
     /**
      * Get box sample by ID
+     * 
+     * @deprecated since 3.3.x - table box_sample no longer exists
      */
+    @Deprecated(since = "3.3.x", forRemoval = true)
     @GetMapping("/{id}")
-    public ResponseEntity<BoxSampleForm> getBoxSampleById(@PathVariable Integer id) {
-        try {
-            BoxSample boxSample = boxSampleService.getBoxSampleById(id);
-            if (boxSample == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            BoxSampleForm form = convertToForm(boxSample);
-            return ResponseEntity.ok(form);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    public ResponseEntity<Map<String, Object>> getBoxSampleById(@PathVariable Integer id) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getBoxSampleById",
+                "Deprecated endpoint called - box_sample table no longer exists");
+        return ResponseEntity.status(HttpStatus.GONE).build();
     }
 
     /**
      * Get box sample by sample ID
+     * 
+     * @deprecated since 3.3.x - table box_sample no longer exists
      */
+    @Deprecated(since = "3.3.x", forRemoval = true)
     @GetMapping("/by-sample/{sampleId}")
-    public ResponseEntity<BoxSampleForm> getBoxSampleBySampleId(@PathVariable Integer sampleId) {
-        try {
-            BoxSample boxSample = boxSampleService.getBoxSampleBySampleId(sampleId);
-            if (boxSample == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            BoxSampleForm form = convertToForm(boxSample);
-            return ResponseEntity.ok(form);
-        } catch (Exception e) {
-            LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    public ResponseEntity<Map<String, Object>> getBoxSampleBySampleId(@PathVariable Integer sampleId) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getBoxSampleBySampleId",
+                "Deprecated endpoint called - box_sample table no longer exists");
+        return ResponseEntity.status(HttpStatus.GONE).build();
     }
 
     /**
      * Get box samples by reception status
+     * 
+     * @deprecated since 3.3.x - table box_sample no longer exists
      */
+    @Deprecated(since = "3.3.x", forRemoval = true)
     @GetMapping("/by-box/{shippingBoxId}/status/{status}")
-    public ResponseEntity<List<BoxSampleForm>> getBoxSamplesByReceptionStatus(@PathVariable Integer shippingBoxId,
+    public ResponseEntity<List<Map<String, Object>>> getBoxSamplesByReceptionStatus(@PathVariable Integer shippingBoxId,
             @PathVariable String status) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getBoxSamplesByReceptionStatus",
+                "Deprecated endpoint called - box_sample table no longer exists");
+        return ResponseEntity.status(HttpStatus.GONE).body(java.util.Collections.emptyList());
+    }
+
+    /**
+     * Add sample to box
+     *
+     * @deprecated Use POST /items endpoint instead
+     */
+    @Deprecated(since = "3.3.x", forRemoval = true)
+    @PostMapping
+    public ResponseEntity<?> addSampleToBox(@RequestBody Map<String, Object> form,
+            jakarta.servlet.http.HttpServletRequest request) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "addSampleToBox",
+                "Deprecated endpoint called - use POST /items instead");
+        return ResponseEntity.status(HttpStatus.GONE).body(java.util.Collections.singletonMap("error",
+                "This endpoint is deprecated. Use POST /rest/box-sample/items instead"));
+    }
+
+    /**
+     * Remove sample from box (POST alternative to DELETE for CSRF compatibility)
+     *
+     * @deprecated Use POST /items/{id}/remove endpoint instead
+     */
+    @Deprecated(since = "3.3.x", forRemoval = true)
+    @PostMapping("/{id}/remove")
+    public ResponseEntity<?> removeSampleFromBoxPost(@PathVariable Integer id) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "removeSampleFromBoxPost",
+                "Deprecated endpoint called - use POST /items/{id}/remove instead");
+        return ResponseEntity.status(HttpStatus.GONE).body(java.util.Collections.singletonMap("error",
+                "This endpoint is deprecated. Use POST /rest/box-sample/items/{id}/remove instead"));
+    }
+
+    /**
+     * Remove sample from box
+     *
+     * @deprecated Use DELETE /items/{id} endpoint instead
+     */
+    @Deprecated(since = "3.3.x", forRemoval = true)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> removeSampleFromBox(@PathVariable Integer id) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "removeSampleFromBox",
+                "Deprecated endpoint called - use DELETE /items/{id} instead");
+        return ResponseEntity.status(HttpStatus.GONE).body(java.util.Collections.singletonMap("error",
+                "This endpoint is deprecated. Use DELETE /rest/box-sample/items/{id} instead"));
+    }
+
+    /**
+     * Update reception status
+     *
+     * @deprecated Use PUT /items/{id}/reception-status endpoint instead
+     */
+    @Deprecated(since = "3.3.x", forRemoval = true)
+    @PutMapping("/{id}/reception-status")
+    public ResponseEntity<?> updateReceptionStatus(@PathVariable Integer id, @RequestParam String status,
+            @RequestParam(required = false) String notes) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "updateReceptionStatus",
+                "Deprecated endpoint called - use PUT /items/{id}/reception-status instead");
+        return ResponseEntity.status(HttpStatus.GONE).body(java.util.Collections.singletonMap("error",
+                "This endpoint is deprecated. Use PUT /rest/box-sample/items/{id}/reception-status instead"));
+    }
+
+    /**
+     * Check if sample is in a box
+     *
+     * @deprecated Use /items/check-sample-item/{sampleItemId} endpoint instead
+     */
+    @Deprecated(since = "3.3.x", forRemoval = true)
+    @GetMapping("/check-sample/{sampleId}")
+    public ResponseEntity<Boolean> isSampleInBox(@PathVariable Integer sampleId) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "isSampleInBox",
+                "Deprecated endpoint called - box_sample table no longer exists");
+        return ResponseEntity.status(HttpStatus.GONE).build();
+    }
+
+    /**
+     * Count samples in box
+     *
+     * @deprecated Use /items/count-by-box/{shippingBoxId} endpoint instead
+     */
+    @Deprecated(since = "3.3.x", forRemoval = true)
+    @GetMapping("/count-by-box/{shippingBoxId}")
+    public ResponseEntity<Integer> countSamplesInBox(@PathVariable Integer shippingBoxId) {
+        LogEvent.logWarn(this.getClass().getSimpleName(), "countSamplesInBox",
+                "Deprecated endpoint called - box_sample table no longer exists");
+        return ResponseEntity.status(HttpStatus.GONE).build();
+    }
+
+    // ========== NEW SAMPLEITEM-BASED ENDPOINTS ==========
+
+    /**
+     * Get box sample items by shipping box ID (NEW API using SampleItem). Returns
+     * full DTOs with typeOfSample and referralTests.
+     */
+    @GetMapping("/items/by-box/{shippingBoxId}")
+    public ResponseEntity<List<SampleItemDTO>> getBoxSampleItemsByShippingBox(@PathVariable Integer shippingBoxId) {
         try {
-            ReceptionStatus receptionStatus = ReceptionStatus.valueOf(status.toUpperCase());
-            List<BoxSample> boxSamples = boxSampleService.getBoxSamplesByReceptionStatus(shippingBoxId,
-                    receptionStatus);
-            List<BoxSampleForm> forms = new ArrayList<>();
-
-            for (BoxSample boxSample : boxSamples) {
-                forms.add(convertToForm(boxSample));
-            }
-
-            return ResponseEntity.ok(forms);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            List<SampleItemDTO> sampleItems = boxSampleItemService.getBoxSampleItemDTOsByShippingBoxId(shippingBoxId);
+            return ResponseEntity.ok(sampleItems);
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -129,10 +196,10 @@ public class BoxSampleRestController extends BaseRestController {
     }
 
     /**
-     * Add sample to box
+     * Add sample item to box (NEW API using SampleItem).
      */
-    @PostMapping
-    public ResponseEntity<?> addSampleToBox(@Valid @RequestBody BoxSampleForm form, BindingResult result,
+    @PostMapping("/items")
+    public ResponseEntity<?> addSampleItemToBox(@Valid @RequestBody BoxSampleItemForm form, BindingResult result,
             jakarta.servlet.http.HttpServletRequest request) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());
@@ -143,133 +210,99 @@ public class BoxSampleRestController extends BaseRestController {
             String userIdString = getSysUserId(request);
             Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
 
-            BoxSample boxSample = boxSampleService.addSampleToBox(form.getShippingBoxId(), form.getSampleId(),
-                    systemUserId);
-            BoxSampleForm responseForm = convertToForm(boxSample);
+            BoxSampleItem boxSampleItem = boxSampleItemService.addSampleItemToBox(form.getShippingBoxId(),
+                    form.getSampleItemId(), systemUserId);
 
-            // Create or update Referral entries for ALL analysis IDs
-            if (form.getAnalysisIds() != null && !form.getAnalysisIds().isEmpty()) {
-                for (Integer analysisId : form.getAnalysisIds()) {
-                    createOrUpdateReferral(analysisId, form.getShippingBoxId(), request);
-                }
-            } else if (form.getAnalysisId() != null) {
-                // Fallback for backward compatibility
-                createOrUpdateReferral(form.getAnalysisId(), form.getShippingBoxId(), request);
-            }
+            // Convert to DTO for response
+            SampleItemDTO responseDTO = convertBoxSampleItemToDTO(boxSampleItem);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(responseForm);
+            return ResponseEntity.status(HttpStatus.CREATED).body(responseDTO);
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().body(java.util.Collections.singletonMap("error", e.getMessage()));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error adding sample to box: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    java.util.Collections.singletonMap("error", "Error adding sample item to box: " + e.getMessage()));
         }
     }
 
     /**
-     * Create or update referral entry for analysis and assign to box
+     * Remove sample item from box (POST alternative to DELETE for CSRF
+     * compatibility).
      */
-    private void createOrUpdateReferral(Integer analysisId, Integer shippingBoxId,
+    @PostMapping("/items/{id}/remove")
+    public ResponseEntity<?> removeSampleItemFromBoxPost(@PathVariable Integer id,
             jakarta.servlet.http.HttpServletRequest request) {
         try {
-            // Get existing referral or create new one
-            org.openelisglobal.referral.valueholder.Referral referral =
-                referralService.getReferralByAnalysisId(String.valueOf(analysisId));
-
-            org.openelisglobal.shipment.valueholder.ShippingBox box =
-                shippingBoxDAO.get(shippingBoxId).orElse(null);
-
-            if (referral == null) {
-                // Create new referral
-                referral = new org.openelisglobal.referral.valueholder.Referral();
-
-                // Get analysis
-                org.openelisglobal.analysis.valueholder.Analysis analysis =
-                    analysisService.get(String.valueOf(analysisId));
-
-                // Get referral type "Sample Shipment"
-                org.openelisglobal.referral.valueholder.ReferralType referralType =
-                    referralTypeService.getReferralTypeByName("Sample Shipment");
-
-                if (analysis != null && referralType != null) {
-                    referral.setAnalysis(analysis);
-                    referral.setRequestDate(new java.sql.Timestamp(System.currentTimeMillis()));
-                    referral.setStatus(org.openelisglobal.referral.valueholder.ReferralStatus.CREATED);
-                    referral.setFhirUuid(java.util.UUID.randomUUID());
-                    referral.setAssignedBox(box);
-                    referral.setReferralTypeId(referralType.getId());
-                    referral.setSysUserId(getSysUserId(request));
-
-                    // Set destination organization from the box
-                    if (box != null && box.getDestinationFacility() != null) {
-                        referral.setOrganization(box.getDestinationFacility());
-                    }
-
-                    referralService.insert(referral);
-                } else {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "createOrUpdateReferral",
-                            "Could not create referral - analysis or referralType is null. Analysis ID: " + analysisId);
-                }
-            } else {
-                // Update existing referral
-                referral.setAssignedBox(box);
-                referral.setSysUserId(getSysUserId(request));
-                referralService.update(referral);
-            }
-        } catch (Exception e) {
-            LogEvent.logError("Error creating/updating referral", e);
-            // Log but don't fail the box sample creation
-        }
-    }
-
-    /**
-     * Remove sample from box
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> removeSampleFromBox(@PathVariable Integer id) {
-        try {
-            boxSampleService.removeSampleFromBox(id);
-            return ResponseEntity.ok().build();
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+            boxSampleItemService.removeSampleItemFromBox(id, systemUserId);
+            return ResponseEntity.ok(java.util.Collections.singletonMap("success", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Collections.singletonMap("error", e.getMessage()));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error removing sample from box: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Collections
+                    .singletonMap("error", "Error removing sample item from box: " + e.getMessage()));
         }
     }
 
     /**
-     * Update reception status
+     * Remove sample item from box (DELETE method).
      */
-    @PutMapping("/{id}/reception-status")
-    public ResponseEntity<?> updateReceptionStatus(@PathVariable Integer id, @RequestParam String status,
-            @RequestParam(required = false) String notes) {
+    @DeleteMapping("/items/{id}")
+    public ResponseEntity<?> removeSampleItemFromBox(@PathVariable Integer id,
+            jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+            boxSampleItemService.removeSampleItemFromBox(id, systemUserId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(java.util.Collections.singletonMap("error", e.getMessage()));
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Collections
+                    .singletonMap("error", "Error removing sample item from box: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Update reception status for a sample item.
+     */
+    @PutMapping("/items/{id}/reception-status")
+    public ResponseEntity<?> updateSampleItemReceptionStatus(@PathVariable Integer id, @RequestParam String status,
+            @RequestParam(required = false) String notes, jakarta.servlet.http.HttpServletRequest request) {
         try {
             ReceptionStatus receptionStatus = ReceptionStatus.valueOf(status.toUpperCase());
-            BoxSample boxSample = boxSampleService.updateReceptionStatus(id, receptionStatus, notes);
-            BoxSampleForm form = convertToForm(boxSample);
+            String userIdString = getSysUserId(request);
+            Integer systemUserId = userIdString != null ? Integer.parseInt(userIdString) : null;
+            BoxSampleItem boxSampleItem = boxSampleItemService.updateReceptionStatus(id, receptionStatus, notes,
+                    systemUserId);
 
-            return ResponseEntity.ok(form);
+            // Convert to DTO for response
+            SampleItemDTO responseDTO = convertBoxSampleItemToDTO(boxSampleItem);
+
+            return ResponseEntity.ok(responseDTO);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid reception status: " + status);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(java.util.Collections.singletonMap("error", "Invalid reception status: " + status));
         } catch (Exception e) {
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error updating reception status: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    java.util.Collections.singletonMap("error", "Error updating reception status: " + e.getMessage()));
         }
     }
 
     /**
-     * Check if sample is in a box
+     * Check if sample item is in a box.
      */
-    @GetMapping("/check-sample/{sampleId}")
-    public ResponseEntity<Boolean> isSampleInBox(@PathVariable Integer sampleId) {
+    @GetMapping("/items/check/{sampleItemId}")
+    public ResponseEntity<Boolean> isSampleItemInBox(@PathVariable String sampleItemId) {
         try {
-            boolean inBox = boxSampleService.isSampleInBox(sampleId);
+            boolean inBox = boxSampleItemService.isSampleItemInBox(sampleItemId);
             return ResponseEntity.ok(inBox);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -278,12 +311,12 @@ public class BoxSampleRestController extends BaseRestController {
     }
 
     /**
-     * Count samples in box
+     * Count sample items in box.
      */
-    @GetMapping("/count-by-box/{shippingBoxId}")
-    public ResponseEntity<Integer> countSamplesInBox(@PathVariable Integer shippingBoxId) {
+    @GetMapping("/items/count-by-box/{shippingBoxId}")
+    public ResponseEntity<Integer> countSampleItemsInBox(@PathVariable Integer shippingBoxId) {
         try {
-            int count = boxSampleService.countSamplesInBox(shippingBoxId);
+            int count = boxSampleItemService.countSampleItemsInBox(shippingBoxId);
             return ResponseEntity.ok(count);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -292,29 +325,40 @@ public class BoxSampleRestController extends BaseRestController {
     }
 
     /**
-     * Convert BoxSample entity to form
+     * Convert BoxSampleItem to SampleItemDTO
      */
-    private BoxSampleForm convertToForm(BoxSample boxSample) {
-        BoxSampleForm form = new BoxSampleForm();
+    private SampleItemDTO convertBoxSampleItemToDTO(BoxSampleItem boxSampleItem) {
+        SampleItemDTO dto = new SampleItemDTO();
 
-        form.setId(boxSample.getId());
-        form.setPositionInBox(boxSample.getPositionInBox());
-        form.setReceptionNotes(boxSample.getReceptionNotes());
-        form.setAddedDate(boxSample.getAddedDate());
+        if (boxSampleItem.getSampleItem() != null) {
+            dto.setSampleItemId(boxSampleItem.getSampleItem().getId());
 
-        if (boxSample.getShippingBox() != null) {
-            form.setShippingBoxId(boxSample.getShippingBox().getId());
+            if (boxSampleItem.getSampleItem().getSample() != null) {
+                dto.setAccessionNumber(boxSampleItem.getSampleItem().getSample().getAccessionNumber());
+                dto.setCollectionDate(boxSampleItem.getSampleItem().getSample().getCollectionDate());
+            }
+
+            if (boxSampleItem.getSampleItem().getTypeOfSample() != null) {
+                dto.setTypeOfSample(boxSampleItem.getSampleItem().getTypeOfSample().getDescription());
+                dto.setTypeOfSampleId(boxSampleItem.getSampleItem().getTypeOfSample().getId());
+            }
         }
 
-        if (boxSample.getSample() != null) {
-            form.setSampleId(Integer.parseInt(boxSample.getSample().getId()));
-            form.setAccessionNumber(boxSample.getSample().getAccessionNumber());
+        if (boxSampleItem.getShippingBox() != null) {
+            dto.setAssignedBoxId(boxSampleItem.getShippingBox().getId());
+            dto.setAssignedBoxName(boxSampleItem.getShippingBox().getBoxId());
         }
 
-        if (boxSample.getReceptionStatus() != null) {
-            form.setReceptionStatus(boxSample.getReceptionStatus().name());
-        }
+        // BoxSampleItem ID for reception updates
+        dto.setBoxSampleItemId(boxSampleItem.getId());
 
-        return form;
+        // Reception data
+        if (boxSampleItem.getReceptionStatus() != null) {
+            dto.setReceptionStatus(boxSampleItem.getReceptionStatus().name());
+        }
+        dto.setReceptionNotes(boxSampleItem.getReceptionNotes());
+
+        return dto;
     }
+
 }

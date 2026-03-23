@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import { IntlProvider } from "react-intl";
+import { useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
-import Layout from "./components/layout/Layout";
+import { IntlProvider } from "react-intl";
+import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import "./App.css";
+import RedirectOldUI from "./RedirectOldUI";
+import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import { Admin } from "./components";
+import ChangePassword from "./components/ChangePassword.js";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
@@ -77,6 +81,8 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import ShipmentReport from "./components/shipment/ShipmentReport";
+import ShipmentSettings from "./components/shipment/ShipmentSettings";
 
 export default function App() {
   const defaultLocale =
@@ -590,7 +596,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/SampleShipment/box/create"
+                  path="/SampleShipment/create-box"
                   exact
                   component={() => <BoxCreation />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
@@ -606,6 +612,18 @@ export default function App() {
                   exact
                   component={() => <ReceptionWorkflow />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/reports"
+                  exact
+                  component={() => <ShipmentReport />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/settings"
+                  exact
+                  component={() => <ShipmentSettings />}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleShipment/:tab"

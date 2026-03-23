@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.shipment.dto.SampleItemDTO;
+import org.openelisglobal.shipment.service.UnassignedSampleItemService;
 import org.openelisglobal.shipment.service.UnassignedSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,11 +18,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for unassigned referral sample management operations
- * Uses the existing referral table instead of a separate unassigned_sample table
+ * REST controller for unassigned sample item management operations.
+ *
+ * This controller now uses SampleItem (not Sample) as the correct granularity
+ * for shipment operations. Each SampleItemDTO includes type of sample and
+ * associated referral tests.
  */
 @RestController
 @RequestMapping("/rest/unassigned-sample")
@@ -29,15 +35,52 @@ public class UnassignedSampleRestController extends BaseRestController {
     @Autowired
     private UnassignedSampleService unassignedSampleService;
 
+    @Autowired
+    private UnassignedSampleItemService unassignedSampleItemService;
+
     /**
-     * Get all unassigned referral samples for dashboard
-     * Returns samples that are not yet assigned to a box and not lost/canceled
+     * Get all unassigned sample items grouped by SampleItem. Each item includes
+     * type of sample and all associated referral tests. This is the NEW API
+     * endpoint using SampleItem granularity.
+     */
+    @GetMapping("/items")
+    public ResponseEntity<List<SampleItemDTO>> getAllUnassignedSampleItems() {
+        try {
+            List<SampleItemDTO> unassignedSampleItems = unassignedSampleItemService.getAllUnassigned();
+            return ResponseEntity.ok(unassignedSampleItems);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Search unassigned sample items by accession number. This is the NEW API
+     * endpoint using SampleItem granularity.
+     */
+    @GetMapping("/items/search")
+    public ResponseEntity<List<SampleItemDTO>> searchUnassignedSampleItems(@RequestParam String accessionNumber) {
+        try {
+            List<SampleItemDTO> results = unassignedSampleItemService
+                    .searchUnassignedByAccessionNumber(accessionNumber);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Get all unassigned referral samples for dashboard Returns samples that are
+     * not yet assigned to a box and not lost/canceled
+     *
+     * @deprecated Use /items endpoint instead - this uses old Sample-based logic
      */
     @GetMapping
+    @Deprecated
     public ResponseEntity<List<Map<String, Object>>> getAllUnassignedSamples() {
         try {
-            List<Map<String, Object>> unassignedSamples = unassignedSampleService
-                    .getUnassignedSamplesForDashboard();
+            List<Map<String, Object>> unassignedSamples = unassignedSampleService.getUnassignedSamplesForDashboard();
             return ResponseEntity.ok(unassignedSamples);
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -49,8 +92,7 @@ public class UnassignedSampleRestController extends BaseRestController {
      * Get unassigned samples by destination facility
      */
     @GetMapping("/by-facility/{facilityId}")
-    public ResponseEntity<List<Map<String, Object>>> getUnassignedSamplesByFacility(
-            @PathVariable Integer facilityId) {
+    public ResponseEntity<List<Map<String, Object>>> getUnassignedSamplesByFacility(@PathVariable Integer facilityId) {
         try {
             List<Map<String, Object>> unassignedSamples = unassignedSampleService
                     .getUnassignedSamplesByDestinationFacility(facilityId);
@@ -65,8 +107,7 @@ public class UnassignedSampleRestController extends BaseRestController {
      * Count unassigned samples by facility
      */
     @GetMapping("/count-by-facility/{facilityId}")
-    public ResponseEntity<Map<String, Integer>> countUnassignedSamplesByFacility(
-            @PathVariable Integer facilityId) {
+    public ResponseEntity<Map<String, Integer>> countUnassignedSamplesByFacility(@PathVariable Integer facilityId) {
         try {
             int count = unassignedSampleService.countUnassignedSamplesByFacility(facilityId);
             Map<String, Integer> response = new HashMap<>();
@@ -82,10 +123,8 @@ public class UnassignedSampleRestController extends BaseRestController {
      * Assign a referral sample to a shipment box
      */
     @PutMapping("/{referralId}/assign-to-box")
-    public ResponseEntity<?> assignSampleToBox(
-            @PathVariable String referralId,
-            @Valid @RequestBody AssignToBoxRequest requestBody,
-            BindingResult result,
+    public ResponseEntity<?> assignSampleToBox(@PathVariable String referralId,
+            @Valid @RequestBody AssignToBoxRequest requestBody, BindingResult result,
             jakarta.servlet.http.HttpServletRequest request) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());
@@ -113,10 +152,8 @@ public class UnassignedSampleRestController extends BaseRestController {
      * Mark a referral sample as lost
      */
     @PutMapping("/{referralId}/mark-lost")
-    public ResponseEntity<?> markSampleAsLost(
-            @PathVariable String referralId,
-            @Valid @RequestBody MarkLostRequest requestBody,
-            BindingResult result,
+    public ResponseEntity<?> markSampleAsLost(@PathVariable String referralId,
+            @Valid @RequestBody MarkLostRequest requestBody, BindingResult result,
             jakarta.servlet.http.HttpServletRequest request) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());
@@ -144,10 +181,8 @@ public class UnassignedSampleRestController extends BaseRestController {
      * Cancel a referral
      */
     @PutMapping("/{referralId}/cancel")
-    public ResponseEntity<?> cancelReferral(
-            @PathVariable String referralId,
-            @Valid @RequestBody CancelReferralRequest requestBody,
-            BindingResult result,
+    public ResponseEntity<?> cancelReferral(@PathVariable String referralId,
+            @Valid @RequestBody CancelReferralRequest requestBody, BindingResult result,
             jakarta.servlet.http.HttpServletRequest request) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(result.getAllErrors());

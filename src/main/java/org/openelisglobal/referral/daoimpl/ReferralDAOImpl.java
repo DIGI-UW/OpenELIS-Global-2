@@ -18,7 +18,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.commons.validator.GenericValidator;
+import org.apache.commons.lang3.ObjectUtils;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -43,7 +43,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public Referral getReferralById(String referralId) throws LIMSRuntimeException {
+    public Referral getReferralById(Integer referralId) throws LIMSRuntimeException {
         try {
             Referral referral = entityManager.unwrap(Session.class).get(Referral.class, referralId);
             return referral;
@@ -56,14 +56,14 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException {
+    public Referral getReferralByAnalysisId(Integer analysisId) throws LIMSRuntimeException {
 
-        if (!GenericValidator.isBlankOrNull(analysisId)) {
+        if (ObjectUtils.isNotEmpty(analysisId)) {
             String sql = "From Referral r where r.analysis.id = :analysisId";
 
             try {
                 Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-                query.setParameter("analysisId", Integer.parseInt(analysisId));
+                query.setParameter("analysisId", analysisId);
                 List<Referral> referralList = query.list();
                 return referralList.isEmpty() ? null : referralList.get(referralList.size() - 1);
             } catch (HibernateException e) {
@@ -88,13 +88,13 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public List<Referral> getAllReferralsBySampleId(String id) throws LIMSRuntimeException {
-        if (!GenericValidator.isBlankOrNull(id)) {
+    public List<Referral> getAllReferralsBySampleId(Integer id) throws LIMSRuntimeException {
+        if (ObjectUtils.isNotEmpty(id)) {
             String sql = "FROM Referral r WHERE r.analysis.sampleItem.sample.id = :sampleId";
 
             try {
                 Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-                query.setParameter("sampleId", Integer.parseInt(id));
+                query.setParameter("sampleId", id);
                 List<Referral> referralList = query.list();
                 return referralList;
 
@@ -112,13 +112,13 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
      */
     @Override
     @Transactional(readOnly = true)
-    public List<Referral> getAllReferralsByOrganization(String organizationId, Date lowDate, Date highDate) {
+    public List<Referral> getAllReferralsByOrganization(Integer organizationId, Date lowDate, Date highDate) {
         String sql = "FROM Referral r WHERE r.organization.id = :organizationId AND r.requestDate >= :lowDate"
                 + " AND r.requestDate <= :highDate";
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-            query.setParameter("organizationId", Integer.parseInt(organizationId));
+            query.setParameter("organizationId", organizationId);
             query.setParameter("lowDate", lowDate);
             query.setParameter("highDate", highDate);
             List<Referral> referralList = query.list();
@@ -147,15 +147,14 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Transactional(readOnly = true)
     @Override
-    public List<Referral> getReferralsByAnalysisIds(List<String> analysisIds) {
+    public List<Referral> getReferralsByAnalysisIds(List<Integer> analysisIds) {
         if (analysisIds == null || analysisIds.size() == 0) {
             return new ArrayList<>();
         }
         String sql = "From Referral r where r.analysis.id in (:analysisIds)";
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-            query.setParameterList("analysisIds",
-                    analysisIds.stream().map(e -> Integer.parseInt(e)).collect(Collectors.toList()));
+            query.setParameterList("analysisIds", analysisIds.stream().map(e -> e).collect(Collectors.toList()));
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getReferralsByAnalysisIds");
@@ -166,7 +165,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     @Transactional(readOnly = true)
     @Override
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startDate, Timestamp endDate,
-            List<String> testUnitIds, List<String> testIds) {
+            List<Integer> testUnitIds, List<Integer> testIds) {
         String hql = "From Referral r WHERE 1 = 1 ";
         String subHQL = "SELECT a.id FROM Analysis a WHERE 1 = 1 ";
         if (ReferDateType.RESULT.equals(dateType) && startDate != null) {
@@ -193,12 +192,10 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
                 query.setParameter("endDate", endDate);
             }
             if (testUnitIds != null && testUnitIds.size() > 0) {
-                query.setParameter("testUnitIds",
-                        testUnitIds.stream().map(e -> Integer.parseInt(e)).collect(Collectors.toList()));
+                query.setParameter("testUnitIds", testUnitIds.stream().map(e -> e).collect(Collectors.toList()));
             }
             if (testIds != null && testIds.size() > 0) {
-                query.setParameter("testIds",
-                        testIds.stream().map(e -> Integer.parseInt(e)).collect(Collectors.toList()));
+                query.setParameter("testIds", testIds.stream().map(e -> e).collect(Collectors.toList()));
             }
             return query.list();
         } catch (HibernateException e) {
@@ -210,16 +207,122 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     @Transactional(readOnly = true)
     @Override
     public List<Referral> getUnassignedReferrals() {
-        // Filter in SQL for performance: exclude lost, canceled, and already assigned referrals
-        String sql = "FROM Referral r WHERE r.assignedBox IS NULL " +
-                     "AND (r.lostStatus IS NULL OR r.lostStatus = false) " +
-                     "AND r.status != 'CANCELED'";
+        // Filter in SQL for performance: exclude lost, canceled, and already assigned
+        // referrals
+        String sql = "FROM Referral r WHERE r.assignedBox IS NULL "
+                + "AND (r.lostStatus IS NULL OR r.lostStatus = false) " + "AND r.status != :canceledStatus";
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getUnassignedReferrals");
+        }
+        return new ArrayList<>();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Referral> getReferralsByBoxId(Integer boxId) {
+        String sql = "FROM Referral r WHERE r.assignedBox.id = :boxId";
+
+        try {
+            Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
+            query.setParameter("boxId", boxId);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getReferralsByBoxId");
+        }
+        return new ArrayList<>();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Referral> getReferralsBySampleItemId(Integer sampleItemId) {
+        String hql = "SELECT DISTINCT r" + " FROM Referral r" + " JOIN FETCH r.analysis a"
+                + " JOIN FETCH a.sampleItem si" + " LEFT JOIN FETCH a.test t" + " LEFT JOIN FETCH r.organization org"
+                + " WHERE si.id = :sampleItemId" + "   AND r.status != :canceledStatus"
+                + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)" + " ORDER BY r.requestDate";
+
+        try {
+            Query<Referral> query = entityManager.unwrap(Session.class).createQuery(hql, Referral.class);
+            query.setParameter("sampleItemId", sampleItemId);
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getReferralsBySampleItemId");
+        }
+        return new ArrayList<>();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Object[]> getUnassignedReferralsGroupedBySampleItem(List<String> excludedSampleItemIds) {
+        String hql = "SELECT DISTINCT si.id, s.accessionNumber, COALESCE(tos.description, ''), tos.id,"
+                + " s.collectionDate, si.sortOrder" + " FROM Referral r" + " JOIN r.analysis a"
+                + " JOIN a.sampleItem si" + " JOIN si.sample s" + " LEFT JOIN si.typeOfSample tos"
+                + " WHERE r.assignedBox IS NULL" + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)"
+                + "   AND r.status != :canceledStatus" + "   AND (si.rejected IS NULL OR si.rejected = false)"
+                + "   AND (si.voided IS NULL OR si.voided = false)";
+
+        if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
+            hql += " AND si.id NOT IN (:excludedIds)";
+        }
+
+        hql += " ORDER BY s.accessionNumber, si.sortOrder";
+
+        try {
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+
+            if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
+                List<Integer> excludedIdsAsInt = excludedSampleItemIds.stream()
+                        .filter(id -> id != null && id.matches("\\d+")).map(Integer::parseInt)
+                        .collect(Collectors.toList());
+                query.setParameter("excludedIds", excludedIdsAsInt);
+            }
+
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getUnassignedReferralsGroupedBySampleItem");
+        }
+        return new ArrayList<>();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<Object[]> searchUnassignedByAccessionNumber(String accessionNumber,
+            List<String> excludedSampleItemIds) {
+        String hql = "SELECT DISTINCT si.id, s.accessionNumber, COALESCE(tos.description, ''), tos.id,"
+                + " s.collectionDate, si.sortOrder" + " FROM Referral r" + " JOIN r.analysis a"
+                + " JOIN a.sampleItem si" + " JOIN si.sample s" + " LEFT JOIN si.typeOfSample tos"
+                + " WHERE r.assignedBox IS NULL" + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)"
+                + "   AND r.status != :canceledStatus" + "   AND (si.rejected IS NULL OR si.rejected = false)"
+                + "   AND (si.voided IS NULL OR si.voided = false)" + "   AND s.accessionNumber LIKE :accessionNumber";
+
+        if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
+            hql += " AND si.id NOT IN (:excludedIds)";
+        }
+
+        hql += " ORDER BY s.accessionNumber, si.sortOrder";
+
+        try {
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+            query.setParameter("accessionNumber", "%" + accessionNumber + "%");
+
+            if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
+                // DB column is numeric but Hibernate maps id as String — convert to Integer
+                List<Integer> excludedIdsAsInt = excludedSampleItemIds.stream()
+                        .filter(id -> id != null && id.matches("\\d+")).map(Integer::parseInt)
+                        .collect(Collectors.toList());
+                query.setParameter("excludedIds", excludedIdsAsInt);
+            }
+
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "searchUnassignedByAccessionNumber");
         }
         return new ArrayList<>();
     }

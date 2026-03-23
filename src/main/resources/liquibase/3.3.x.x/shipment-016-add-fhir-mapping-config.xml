@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- FHIR mapping: specimen container type code -->
+  <changeSet author="oe" id="shipment-016-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'fhirContainerTypeCode'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="fhirContainerTypeCode" />
+      <column name="description" value="SNOMED CT code for specimen container type" />
+      <column name="value" value="434711009" />
+      <column name="value_type" value="text" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+  </changeSet>
+
+  <changeSet author="oe" id="shipment-016-2">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'fhirContainerTypeDisplay'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="fhirContainerTypeDisplay" />
+      <column name="description" value="Display name for specimen container type" />
+      <column name="value" value="Specimen container" />
+      <column name="value_type" value="text" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+  </changeSet>
+
+  <!-- FHIR mapping: non-conformity SNOMED CT codes (JSON) -->
+  <changeSet author="oe" id="shipment-016-3">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'fhirNonConformityCodes'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="fhirNonConformityCodes" />
+      <column name="description" value="SNOMED CT codes for non-conformities (JSON)" />
+      <column name="value" value='{"RECEIVED_DAMAGED":"281411007","RECEIVED_LEAKED":"281412000","MISSING":"281264009","REJECTED":"123840003"}' />
+      <column name="value_type" value="text" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

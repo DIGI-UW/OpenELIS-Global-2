@@ -7,8 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.shipment.dao.BoxSampleDAO;
+import org.openelisglobal.shipment.dao.BoxSampleItemDAO;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
+import org.openelisglobal.shipment.fhir.ShippingBoxFhirTransform;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.slf4j.Logger;
@@ -31,7 +32,10 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     private ShippingBoxDAO shippingBoxDAO;
 
     @Autowired
-    private BoxSampleDAO boxSampleDAO;
+    private BoxSampleItemDAO boxSampleItemDAO;
+
+    @Autowired
+    private ShippingBoxFhirTransform shippingBoxFhirTransform;
 
     @Override
     @Transactional(readOnly = true)
@@ -152,7 +156,17 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
 
             Integer id = shippingBoxDAO.insert(box);
             logger.info("Created shipping box with ID: {}", id);
-            return shippingBoxDAO.get(id).orElse(null);
+
+            ShippingBox createdBox = shippingBoxDAO.get(id).orElse(null);
+            // Initialize lazy-loaded associations before returning
+            initializeLazyAssociations(createdBox);
+
+            // Sync to FHIR server asynchronously
+            if (createdBox != null) {
+                shippingBoxFhirTransform.syncToFhir(createdBox, true);
+            }
+
+            return createdBox;
         } catch (Exception e) {
             logger.error("Error creating shipping box", e);
             throw new LIMSRuntimeException("Error creating shipping box", e);
@@ -165,6 +179,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             box.setLastupdated(new Timestamp(System.currentTimeMillis()));
             shippingBoxDAO.update(box);
             logger.info("Updated shipping box with ID: {}", box.getId());
+
+            // Initialize lazy-loaded associations before returning
+            initializeLazyAssociations(box);
             return box;
         } catch (Exception e) {
             logger.error("Error updating shipping box", e);
@@ -173,14 +190,18 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     }
 
     @Override
-    public void deleteBox(Integer id) {
+    public void deleteBox(Integer id, Integer systemUserId) {
         try {
             ShippingBox box = shippingBoxDAO.get(id).orElse(null);
             if (box != null) {
                 box.setArchived(true);
                 box.setArchivedDate(new Timestamp(System.currentTimeMillis()));
+                box.setLastupdated(new Timestamp(System.currentTimeMillis()));
+                if (systemUserId != null) {
+                    box.setSystemUserId(systemUserId);
+                }
                 shippingBoxDAO.update(box);
-                logger.info("Archived shipping box with ID: {}", id);
+                logger.info("Archived shipping box with ID: {} by user: {}", id, systemUserId);
             }
         } catch (Exception e) {
             logger.error("Error deleting shipping box", e);
@@ -189,13 +210,23 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
     }
 
     @Override
-    public ShippingBox changeBoxState(Integer id, BoxState newState) {
+    public ShippingBox changeBoxState(Integer id, BoxState newState, Integer systemUserId) {
         try {
             ShippingBox box = shippingBoxDAO.get(id)
                     .orElseThrow(() -> new IllegalArgumentException("Box not found with ID: " + id));
 
+            // Validate state transition
+            BoxState currentState = box.getState();
+            if (currentState != null && !currentState.canTransitionTo(newState)) {
+                throw new IllegalStateException("Invalid state transition from " + currentState + " to " + newState
+                        + ". Allowed transitions: " + currentState.getAllowedTransitions());
+            }
+
             box.setState(newState);
             box.setLastupdated(new Timestamp(System.currentTimeMillis()));
+            if (systemUserId != null) {
+                box.setSystemUserId(systemUserId);
+            }
 
             // Update date fields based on state
             Timestamp now = new Timestamp(System.currentTimeMillis());
@@ -208,8 +239,18 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             }
 
             shippingBoxDAO.update(box);
-            logger.info("Changed box {} state to {}", id, newState);
+            logger.info("Changed box {} state to {} by user: {}", id, newState, systemUserId);
+
+            // Initialize lazy-loaded associations before returning
+            initializeLazyAssociations(box);
+
+            // Sync state change to FHIR server asynchronously
+            shippingBoxFhirTransform.syncToFhir(box, false);
+
             return box;
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            logger.error("State transition error: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             logger.error("Error changing box state", e);
             throw new LIMSRuntimeException("Error changing box state", e);
@@ -223,12 +264,12 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
                     .orElseThrow(() -> new IllegalArgumentException("Box not found with ID: " + id));
 
             // Validate box has at least one sample
-            int sampleCount = boxSampleDAO.countByShippingBoxId(id);
+            int sampleCount = boxSampleItemDAO.countByShippingBoxId(id);
             if (sampleCount == 0) {
                 throw new IllegalStateException("Cannot mark empty box as ready to send");
             }
 
-            return changeBoxState(id, BoxState.READY_TO_SEND);
+            return changeBoxState(id, BoxState.READY_TO_SEND, null);
         } catch (Exception e) {
             logger.error("Error marking box as ready to send", e);
             throw new LIMSRuntimeException("Error marking box as ready to send", e);
@@ -249,7 +290,7 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
                 boxData.put("boxId", box.getBoxId());
                 boxData.put("state", box.getState().name());
                 boxData.put("createdDate", box.getCreatedDate());
-                boxData.put("sampleCount", boxSampleDAO.countByShippingBoxId(box.getId()));
+                boxData.put("sampleCount", boxSampleItemDAO.countByShippingBoxId(box.getId()));
 
                 // Eagerly fetch destination facility name within transaction
                 if (box.getDestinationFacility() != null) {

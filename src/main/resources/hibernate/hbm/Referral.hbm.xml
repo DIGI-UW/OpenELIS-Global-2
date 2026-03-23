@@ -64,8 +64,8 @@
             column="lost_date" length="7" not-null="false" />
         <property name="lostReason" column="lost_reason"
             type="java.lang.String" not-null="false" />
-        <property name="priority" column="priority"
-            length="20" not-null="false" />
+        <property name="priority" column="priority" length="20"
+            not-null="false" />
         <property name="cancelDate" type="java.sql.Timestamp"
             column="cancel_date" length="7" not-null="false" />
         <property name="cancelReason" column="cancel_reason"
