@@ -142,6 +142,29 @@ Determine:
 branch → BREAK immediately. Tell the user: "Cannot run /fix-ci on a protected
 branch. Please switch to a feature branch first."
 
+**Holistic CI status check (MANDATORY):**
+
+Before diving into specific failures, get the full picture across ALL workflows
+— not just E2E. This matches what the user sees in the GitHub PR UI:
+
+```bash
+# If PR exists, use gh pr checks for the same view as the GitHub UI
+gh pr checks $PR_NUMBER 2>/dev/null || \
+  gh run list --branch $BRANCH --limit 10 --json name,status,conclusion,workflowName \
+    --jq '.[] | "\(.workflowName) / \(.name): \(.conclusion // .status)"'
+```
+
+**Check ALL workflows**, not just the one you expect to fail:
+
+- `01 - Backend` (formatting, compilation, unit tests)
+- `02 - Frontend` (static analysis, image build)
+- `03 - E2E` (Playwright, Analyzer Harness, Cypress)
+- `Automation / Merge Conflicts`
+- `Validation / SpecKit`, `Validation / i18n`
+
+**Any failing workflow is in scope.** A formatting failure in Backend is just as
+blocking as an E2E test failure. Triage ALL failures before fixing any.
+
 Check project knowledge for known CI failure patterns:
 
 1. `.specify/memory/` — project-scoped memory (shared across all agents)
@@ -149,7 +172,7 @@ Check project knowledge for known CI failure patterns:
 3. Agent-specific memory (e.g., `$HOME/.claude/projects/*/memory/MEMORY.md`) if
    available
 
-Report the detected state before proceeding.
+Report the detected state (including all workflow statuses) before proceeding.
 
 ---
 
@@ -459,6 +482,19 @@ git push
 - Files changed
 - Summary of fix
 - Expected CI outcome
+
+**Post-push holistic check (MANDATORY):**
+
+After pushing, immediately check ALL workflow statuses — not just the one you
+fixed:
+
+```bash
+gh pr checks $PR_NUMBER 2>/dev/null || \
+  gh run list --branch $BRANCH --limit 5
+```
+
+This catches cascading failures (e.g., a test fix that breaks formatting) before
+waiting 30 minutes for E2E to report back.
 
 #### Parallel tracks: Local E2E + CI monitoring
 

@@ -6,8 +6,9 @@ import { isVideoProject } from "./video-pause";
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
- * No-op when not recording video (i.e., outside demo-video project).
+ * No-op when not recording video (i.e., outside *-demo-video projects).
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
+ * Presentation only: do not use title cards to gate readiness or assertions.
  */
 export async function showTitleCard(
   page: Page,
@@ -69,6 +70,7 @@ export async function showTitleCard(
  * Shows a step transition banner at the top of the screen.
  * No-op when not recording video.
  * Uses Carbon blue (#0f62fe) for visual consistency.
+ * Presentation only: do not use step cards as synchronization.
  */
 export async function showStepCard(
   page: Page,
@@ -109,6 +111,7 @@ export async function showStepCard(
 /**
  * Shows a compact scene label pinned to the top-left corner.
  * No-op when not recording video.
+ * Presentation only: this should never affect business assertions.
  */
 export async function showSceneLabel(
   page: Page,

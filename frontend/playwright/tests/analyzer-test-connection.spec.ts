@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
 
 /**
  * Analyzer Test Connection E2E
@@ -18,38 +22,11 @@ const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
-    // Find or create a GeneXpert analyzer for testing
-    const listResp = await page.request.get(
-      "/api/OpenELIS-Global/rest/analyzer/analyzers",
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
     );
-    const data = await listResp.json();
-    const existing = (data.analyzers ?? []).find(
-      (a: any) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
-    );
-
-    let GENEXPERT_ID: string;
-    if (existing) {
-      GENEXPERT_ID = String(existing.id);
-    } else {
-      const createResp = await page.request.post(
-        "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        {
-          data: {
-            name: "Cepheid GeneXpert (ASTM Mode)",
-            analyzerType: "MOLECULAR",
-            pluginTypeId: "generic-astm",
-            ipAddress: "172.21.1.100",
-            port: 9600,
-            protocolVersion: "ASTM_LIS2_A2",
-            identifierPattern: "GENEXPERT|CEPHEID",
-            status: "ACTIVE",
-            defaultConfigId: "astm/genexpert-astm",
-          },
-        },
-      );
-      const created = await createResp.json();
-      GENEXPERT_ID = String(created.id);
-    }
 
     const list = new AnalyzerListPage(page);
 
@@ -120,7 +97,7 @@ test.describe("Analyzer Test Connection", () => {
           await expect(retryButton).toBeVisible({ timeout: 5_000 });
           await retryButton.click();
         } catch {
-          await page.waitForTimeout(2_000);
+          await expect(successTag.or(errorTag)).toBeVisible({ timeout: 5_000 });
         }
       }
     }

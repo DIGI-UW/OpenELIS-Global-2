@@ -1,6 +1,38 @@
 SET search_path TO clinlims;
 
 -- ============================================================================
+-- 0. Analyzer harness lane residue (accepted + pending results on HARN-*)
+--    Runs before dashboard cleanup on every full fixture load. Storage E2E
+--    samples (E2E001, etc.) are intentionally untouched.
+-- ============================================================================
+DELETE FROM analyzer_results WHERE accession_number LIKE 'HARN-%';
+
+DROP TABLE IF EXISTS tmp_harn_analysis_ids;
+CREATE TEMP TABLE tmp_harn_analysis_ids AS
+SELECT a.id
+  FROM analysis a
+  JOIN sample_item si ON si.id = a.sampitem_id
+  JOIN sample s ON s.id = si.samp_id
+ WHERE s.accession_number LIKE 'HARN-%';
+
+DELETE FROM referral_result
+ WHERE referral_id IN (SELECT id FROM referral WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids));
+DELETE FROM referral WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM result WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM note
+ WHERE reference_table = 4
+   AND reference_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM analysis_qaevent_action
+ WHERE analysis_qaevent_id IN (SELECT id FROM analysis_qaevent WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids));
+DELETE FROM analysis_qaevent WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM analysis WHERE id IN (SELECT id FROM tmp_harn_analysis_ids);
+DROP TABLE IF EXISTS tmp_harn_analysis_ids;
+
+DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
+DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
+DELETE FROM sample WHERE accession_number LIKE 'HARN-%';
+
+-- ============================================================================
 -- E2E Cleanup + Dashboard Preparation
 --
 -- Purpose: (1) Clean up stale/out-of-scope analyzers for a clean dashboard,
