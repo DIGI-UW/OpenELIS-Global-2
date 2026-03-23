@@ -1,0 +1,49 @@
+.cold-actions-page {
+  padding: 1.5rem 1.5rem 3rem;
+}
+
+.cold-actions-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.align-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.cold-actions-header-row {
+  margin-bottom: 1rem;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 0;
+  color: var(--cds-text-secondary);
+}
+
+.cold-actions-footer {
+  margin-top: 3rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+}
+
+.modal-subtitle {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--cds-text-secondary);
+}
+
+.modal-grid {
+  margin-top: 0.5rem;
+  row-gap: 1rem;
+}

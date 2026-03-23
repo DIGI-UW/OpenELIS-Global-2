@@ -34,6 +34,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFormValues";
+import AsyncAvatar from "./photoManagement/photoAvatar/AyncAvatar";
 
 function SearchPatientForm(props) {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -143,6 +144,8 @@ function SearchPatientForm(props) {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
+    setPage(1);
+    setPatientSearchResults([]);
     setLoading(true);
     values.dateOfBirth = dob;
     let searchEndPoint =
@@ -192,6 +195,10 @@ function SearchPatientForm(props) {
 
   const fetchPatientResults = (res) => {
     let patientsResults = res.patientSearchResults;
+    // Filter out the EQA placeholder patient (NULL/NULL)
+    patientsResults = patientsResults.filter(
+      (p) => !(p.lastName === "NULL" && p.firstName === "NULL"),
+    );
     if (patientsResults.length > 0) {
       patientsResults.forEach((item) => (item.id = item.patientID));
       setPatientSearchResults(patientsResults);
@@ -226,6 +233,14 @@ function SearchPatientForm(props) {
   };
 
   const fetchPatientDetails = (patientDetails) => {
+    getFromOpenElisServer(
+      `/rest/patient-photos/${patientDetails.patientPK}/${false}`,
+      (response) => {
+        if (response && response.data) {
+          patientDetails.photo = response.data;
+        }
+      },
+    );
     props.getSelectedPatient(patientDetails);
   };
 
@@ -556,7 +571,7 @@ function SearchPatientForm(props) {
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
-          <TableContainer title="Patient Results">
+          <TableContainer title="Patient Results" data-cy="patientResultsTable">
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
@@ -578,18 +593,38 @@ function SearchPatientForm(props) {
                     const dataSourceName = row.cells.find(
                       (cell) => cell.info.header === "dataSourceName",
                     )?.value;
+                    const firstName =
+                      row.cells.find((cell) => cell.info.header === "firstName")
+                        ?.value || "";
+                    const lastName =
+                      row.cells.find((cell) => cell.info.header === "lastName")
+                        ?.value || "";
+                    const patientName =
+                      `${firstName} ${lastName}`.trim() || "Patient";
 
                     return (
-                      <TableRow key={row.id}>
+                      <TableRow
+                        key={row.id}
+                        data-cy={`patient-result-row-${row.id}`}
+                      >
                         <TableCell>
                           {dataSourceName === "OpenElis" ? (
-                            <RadioButton
-                              data-cy="radioButton"
-                              name="radio-group"
-                              onClick={patientSelected}
-                              labelText=""
-                              id={row.id}
-                            />
+                            <div
+                              style={{ display: "flex", flexDirection: "row" }}
+                            >
+                              <RadioButton
+                                data-cy="radioButton"
+                                name="radio-group"
+                                onClick={patientSelected}
+                                labelText=""
+                                id={row.id}
+                              />
+                              <AsyncAvatar
+                                patientId={row.id}
+                                hasPhoto={true}
+                                patientName={patientName}
+                              />
+                            </div>
                           ) : (
                             <span></span>
                           )}

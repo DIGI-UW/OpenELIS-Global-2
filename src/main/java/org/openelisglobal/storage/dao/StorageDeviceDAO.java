@@ -35,12 +35,6 @@ public interface StorageDeviceDAO extends BaseDAO<StorageDevice, Integer> {
      */
     int countByRoomId(Integer roomId);
 
-    /**
-     * Find device by short code (for label management) TODO: Add shortCode field to
-     * StorageDevice entity in Phase 5.4
-     *
-     * @param shortCode Short code
-     * @return StorageDevice or null if not found
-     */
-    StorageDevice findByShortCode(String shortCode);
+    StorageDevice findByNameAndParentRoomId(String name, Integer parentRoomId);
+
 }

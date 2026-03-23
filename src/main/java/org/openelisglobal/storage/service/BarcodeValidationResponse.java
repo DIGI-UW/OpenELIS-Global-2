@@ -15,9 +15,13 @@ public class BarcodeValidationResponse {
     private String failedStep;
     private String errorMessage;
     private Map<String, Object> validComponents;
+    private String firstMissingLevel; // 'device' | 'shelf' | 'rack' | 'position' | null if all valid or completely
+                                      // invalid
+    private boolean hasAdditionalInvalidLevels; // true if there are invalid levels beyond valid portion
 
     public BarcodeValidationResponse() {
         this.validComponents = new HashMap<>();
+        this.hasAdditionalInvalidLevels = false;
     }
 
     // Getters and setters
@@ -74,5 +78,21 @@ public class BarcodeValidationResponse {
      */
     public void addValidComponent(String key, Object value) {
         this.validComponents.put(key, value);
+    }
+
+    public String getFirstMissingLevel() {
+        return firstMissingLevel;
+    }
+
+    public void setFirstMissingLevel(String firstMissingLevel) {
+        this.firstMissingLevel = firstMissingLevel;
+    }
+
+    public boolean isHasAdditionalInvalidLevels() {
+        return hasAdditionalInvalidLevels;
+    }
+
+    public void setHasAdditionalInvalidLevels(boolean hasAdditionalInvalidLevels) {
+        this.hasAdditionalInvalidLevels = hasAdditionalInvalidLevels;
     }
 }

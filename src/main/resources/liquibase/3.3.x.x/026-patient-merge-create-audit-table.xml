@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Patient Merge Audit Table -->
+    <changeSet id="patient-merge-001-create-audit-table" author="patient-merge-backend">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="patient_merge_audit"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="patient_merge_audit">
+            <column name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="primary_patient_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="merged_patient_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="merge_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by_user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="data_summary" type="JSONB">
+                <constraints nullable="true"/>
+            </column>
+            <!-- Standard audit fields (must match BaseObject column naming) -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sys_user_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <!-- Foreign key constraints -->
+        <addForeignKeyConstraint
+            baseTableName="patient_merge_audit"
+            baseColumnNames="primary_patient_id"
+            constraintName="fk_pma_primary_patient"
+            referencedTableName="patient"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+            baseTableName="patient_merge_audit"
+            baseColumnNames="merged_patient_id"
+            constraintName="fk_pma_merged_patient"
+            referencedTableName="patient"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+            baseTableName="patient_merge_audit"
+            baseColumnNames="performed_by_user_id"
+            constraintName="fk_pma_performed_by"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+            baseTableName="patient_merge_audit"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_pma_sys_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"
+            onDelete="SET NULL"/>
+
+        <!-- Indexes for query performance -->
+        <createIndex tableName="patient_merge_audit" indexName="idx_pma_primary_patient">
+            <column name="primary_patient_id"/>
+        </createIndex>
+
+        <createIndex tableName="patient_merge_audit" indexName="idx_pma_merged_patient">
+            <column name="merged_patient_id"/>
+        </createIndex>
+
+        <createIndex tableName="patient_merge_audit" indexName="idx_pma_merge_date">
+            <column name="merge_date"/>
+        </createIndex>
+
+        <createIndex tableName="patient_merge_audit" indexName="idx_pma_performed_by">
+            <column name="performed_by_user_id"/>
+        </createIndex>
+
+        <!-- GIN index for JSONB queries -->
+        <sql>
+            CREATE INDEX idx_pma_data_summary ON patient_merge_audit USING gin(data_summary);
+        </sql>
+
+        <!-- Rollback -->
+        <rollback>
+            <sql>DROP INDEX IF EXISTS idx_pma_data_summary;</sql>
+            <dropIndex tableName="patient_merge_audit" indexName="idx_pma_performed_by"/>
+            <dropIndex tableName="patient_merge_audit" indexName="idx_pma_merge_date"/>
+            <dropIndex tableName="patient_merge_audit" indexName="idx_pma_merged_patient"/>
+            <dropIndex tableName="patient_merge_audit" indexName="idx_pma_primary_patient"/>
+            <dropForeignKeyConstraint baseTableName="patient_merge_audit" constraintName="fk_pma_sys_user"/>
+            <dropForeignKeyConstraint baseTableName="patient_merge_audit" constraintName="fk_pma_performed_by"/>
+            <dropForeignKeyConstraint baseTableName="patient_merge_audit" constraintName="fk_pma_merged_patient"/>
+            <dropForeignKeyConstraint baseTableName="patient_merge_audit" constraintName="fk_pma_primary_patient"/>
+            <dropTable tableName="patient_merge_audit" cascadeConstraints="true"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

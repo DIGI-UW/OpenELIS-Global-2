@@ -96,6 +96,12 @@ public class LoginPageController extends BaseController {
             return new ModelAndView(findForward(HOME_PAGE));
         }
 
+        // Store redirect parameter in session for SAML success handler to check
+        String redirectParam = request.getParameter("redirect");
+        if ("true".equals(redirectParam)) {
+            request.getSession().setAttribute("saml_full_page_redirect", true);
+        }
+
         String forward = FWD_SUCCESS;
         LoginForm form = new LoginForm();
         if (useSAML) {

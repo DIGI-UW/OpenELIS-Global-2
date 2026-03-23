@@ -27,18 +27,18 @@ import {
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "sidenav.label.admin.testmgt.ViewtestCatalog",
-    link: "/MasterListsPage#TestCatalog",
+    link: "/MasterListsPage/TestCatalog",
   },
 ];
 
@@ -370,7 +370,9 @@ const TestCatalog = () => {
               onChange={handleSectionChange}
               selectedItems={selectedSections}
               selectionFeedback="top-after-reopen"
-              placeholder="Selected Tests"
+              placeholder={intl.formatMessage({
+                id: "field.select.testSection",
+              })}
             />
           </Column>
         </Grid>

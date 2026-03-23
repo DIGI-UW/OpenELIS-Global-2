@@ -3,7 +3,7 @@ package org.openelisglobal.barcode.labeltype;
 import java.util.ArrayList;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
-import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.barcode.util.BarcodeConfigUtil;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.SampleOrderService;
@@ -26,18 +26,14 @@ import org.openelisglobal.spring.util.SpringContext;
 public class OrderLabel extends Label {
 
     public OrderLabel(String labNo, String facility) {
-        // set dimensions
-        try {
-            width = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_WIDTH));
-            height = Float
-                    .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_HEIGHT));
-        } catch (Exception e) {
-            LogEvent.logError("OrderLabel", "OrderLabel OrderLabel()", e.toString());
-        }
+        // set dimensions (safe parsing for admin-configured DB values)
+        width = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH), 2.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        LabelField labelField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), "", 12);
+        LabelField labelField = new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), "", 12);
         labelField.setDisplayFieldName(true);
         labelField.setUnderline(true);
         aboveFields.add(labelField);
@@ -62,37 +58,122 @@ public class OrderLabel extends Label {
     }
 
     /**
-     * @param patient Who to include on order label
+     * Constructor for generic samples with additional details (sample type,
+     * quantity, from)
+     *
+     * @param labNo      Code to include in bar code
+     * @param sampleType Sample type description
+     * @param quantity   Quantity with unit of measure
+     * @param from       Source/origin of the sample
+     */
+    public OrderLabel(String labNo, String sampleType, String quantity, String from) {
+        // set dimensions (safe parsing for admin-configured DB values)
+        width = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH), 2.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
+
+        // adding fields above bar code
+        aboveFields = new ArrayList<>();
+
+        // Sample Type field
+        if (!StringUtil.isNullorNill(sampleType)) {
+            LabelField sampleTypeField = new LabelField(MessageUtil.getMessage("barcode.label.info.sampletype"),
+                    StringUtils.substring(sampleType, 0, 25), 10);
+            sampleTypeField.setDisplayFieldName(true);
+            aboveFields.add(sampleTypeField);
+        }
+
+        // Quantity field
+        if (!StringUtil.isNullorNill(quantity)) {
+            LabelField quantityField = new LabelField(MessageUtil.getMessage("barcode.label.info.quantity"),
+                    StringUtils.substring(quantity, 0, 15), 10);
+            quantityField.setDisplayFieldName(true);
+            aboveFields.add(quantityField);
+        }
+
+        // From/Source field
+        if (!StringUtil.isNullorNill(from)) {
+            LabelField fromField = new LabelField(MessageUtil.getMessage("barcode.label.info.from"),
+                    StringUtils.substring(from, 0, 25), 10);
+            fromField.setDisplayFieldName(true);
+            aboveFields.add(fromField);
+        }
+
+        // adding bar code
+        if (AccessionFormat.ALPHANUM.toString()
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {
+            setCodeLabel(AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(labNo));
+        }
+        setCode(labNo);
+    }
+
+    /**
+     * @param patient Who to include on order label (can be null for generic
+     *                samples)
      * @param sample  What to include on order label
      * @param labNo   Code to include in bar code
      */
     public OrderLabel(Patient patient, Sample sample, String labNo) {
-        // set dimensions
-        width = Float.parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_WIDTH));
-        height = Float
-                .parseFloat(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_BARCODE_HEIGHT));
-        // get information to display above bar code
-        Person person = patient.getPerson();
+        // set dimensions (safe parsing for admin-configured DB values)
+        width = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH), 2.0f);
+        height = BarcodeConfigUtil.parseFloatSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT), 2.0f);
+
+        // get referring facility from sample
         SampleOrderService sampleOrderService = new SampleOrderService(sample);
         String referringFacility = StringUtil
                 .replaceNullWithEmptyString(sampleOrderService.getSampleOrderItem().getReferringSiteName());
-        String patientName = StringUtil.replaceNullWithEmptyString(person.getLastName()) + ", "
-                + StringUtil.replaceNullWithEmptyString(person.getFirstName());
-        if (patientName.trim().equals(",")) {
-            patientName = " ";
-        }
-        patientName = StringUtils.substring(patientName.replaceAll("( )+", " "), 0, 30);
-        String dob = StringUtil.replaceNullWithEmptyString(patient.getBirthDateForDisplay());
 
+        // Handle patient information - may be null for generic samples
+        String patientName = " ";
+        String dob = "";
+        if (patient != null && patient.getPerson() != null) {
+            Person person = patient.getPerson();
+            patientName = StringUtil.replaceNullWithEmptyString(person.getLastName()) + ", "
+                    + StringUtil.replaceNullWithEmptyString(person.getFirstName());
+            if (patientName.trim().equals(",")) {
+                patientName = " ";
+            }
+            patientName = StringUtils.substring(patientName.replaceAll("( )+", " "), 0, 30);
+            dob = StringUtil.replaceNullWithEmptyString(patient.getBirthDateForDisplay());
+        }
+
+        boolean useDob = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_DOB));
+        boolean usePatientId = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_ID));
+        boolean usePatientName = "true".equals(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_NAME));
+        boolean useSiteId = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.ORDER_LABEL_FIELD_SITE_ID));
         // adding fields above bar code
         aboveFields = new ArrayList<>();
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientname"), patientName, 12));
-        aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
-        aboveFields.add(getAvailableIdField(patient));
-        LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
-                StringUtils.substring(referringFacility, 0, 20), 8);
-        siteField.setDisplayFieldName(true);
-        aboveFields.add(siteField);
+        if (usePatientName)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientName"), patientName, 12));
+        if (useDob)
+            aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientdob"), dob, 8));
+        if (usePatientId)
+            if (patient != null) {
+                aboveFields.add(getAvailableIdField(patient));
+            } else {
+                // Add empty patient ID field for generic samples
+                aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 6));
+            }
+        if (useSiteId) {
+            LabelField siteField = new LabelField(MessageUtil.getMessage("barcode.label.info.site"),
+                    StringUtils.substring(referringFacility, 0, 20), 8);
+            siteField.setDisplayFieldName(true);
+            aboveFields.add(siteField);
+        }
+
+        if (sample != null && sample.hasGpsCoordinates()) {
+            LabelField gpsField = new LabelField(MessageUtil.getMessage("barcode.label.info.gps"),
+                    sample.getGpsCoordinatesDisplay(), 12);
+            gpsField.setDisplayFieldName(true);
+            aboveFields.add(gpsField);
+        }
 
         // adding bar code
         if (AccessionFormat.ALPHANUM.toString()
@@ -114,15 +195,15 @@ public class OrderLabel extends Label {
         personService.getData(patient.getPerson());
         String patientId = patientPatientService.getSubjectNumber(patient);
         if (!StringUtil.isNullorNill(patientId)) {
-            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"),
+            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"),
                     StringUtils.substring(patientId, 0, 25), 12);
         }
         patientId = patientPatientService.getNationalId(patient);
         if (!StringUtil.isNullorNill(patientId)) {
-            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"),
+            return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"),
                     StringUtils.substring(patientId, 0, 25), 12);
         }
-        return new LabelField(MessageUtil.getMessage("barcode.label.info.patientid"), "", 6);
+        return new LabelField(MessageUtil.getMessage("barcode.label.info.patientId"), "", 6);
     }
 
     /*
@@ -180,11 +261,8 @@ public class OrderLabel extends Label {
     @Override
     public int getMaxNumLabels() {
         int max = 0;
-        try {
-            max = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_PRINTED));
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-        }
+        max = BarcodeConfigUtil.parseIntSafe(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED), 10);
         return max;
     }
 }

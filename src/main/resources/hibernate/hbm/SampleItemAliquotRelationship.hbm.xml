@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class
+        name="org.openelisglobal.sampleitem.valueholder.SampleItemAliquotRelationship"
+        table="sample_item_aliquot_relationship" optimistic-lock="version"
+        dynamic-update="true">
+
+        <id name="id" type="java.lang.Long">
+            <column name="id" />
+            <generator class="identity" />
+        </id>
+
+        <timestamp name="createdDate" column="lastupdated"
+            access="field" />
+
+        <many-to-one name="parentSampleItem"
+            class="org.openelisglobal.sampleitem.valueholder.SampleItem"
+            fetch="select" lazy="proxy" not-null="true">
+            <column name="parent_sample_item_id" />
+        </many-to-one>
+
+        <many-to-one name="childSampleItem"
+            class="org.openelisglobal.sampleitem.valueholder.SampleItem"
+            fetch="select" lazy="proxy" not-null="true">
+            <column name="child_sample_item_id" />
+        </many-to-one>
+
+        <property name="sequenceNumber" type="java.lang.Integer"
+            not-null="true">
+            <column name="sequence_number" />
+        </property>
+
+        <property name="quantityTransferred"
+            type="java.math.BigDecimal" not-null="true">
+            <column name="quantity_transferred" precision="10" scale="3" />
+        </property>
+
+        <property name="notes" type="java.lang.String">
+            <column name="notes" length="1000" />
+        </property>
+
+        <property name="fhirUuid" column="fhir_uuid"
+            type="java.util.UUID" />
+    </class>
+</hibernate-mapping>

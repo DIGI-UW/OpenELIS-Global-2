@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Patient Table - Add Merge Tracking Fields -->
+    <changeSet id="patient-merge-002-alter-patient-table" author="patient-merge-backend">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="patient" columnName="merged_into_patient_id"/>
+            </not>
+        </preConditions>
+
+        <!-- Add new columns -->
+        <addColumn tableName="patient">
+            <column name="merged_into_patient_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="patient">
+            <column name="is_merged" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="patient">
+            <column name="merge_date" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            baseTableName="patient"
+            baseColumnNames="merged_into_patient_id"
+            constraintName="fk_patient_merged_into"
+            referencedTableName="patient"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"/>
+
+        <!-- Add indexes for merge queries -->
+        <createIndex tableName="patient" indexName="idx_patient_is_merged">
+            <column name="is_merged"/>
+        </createIndex>
+
+        <createIndex tableName="patient" indexName="idx_patient_merged_into">
+            <column name="merged_into_patient_id"/>
+        </createIndex>
+
+        <sql>
+            ALTER TABLE patient
+            ADD CONSTRAINT chk_patient_merge_consistency
+            CHECK ((is_merged = TRUE AND merged_into_patient_id IS NOT NULL AND merge_date IS NOT NULL)
+                OR (is_merged = FALSE));
+        </sql>
+
+        <!-- Rollback -->
+        <rollback>
+            <sql>ALTER TABLE patient DROP CONSTRAINT IF EXISTS chk_patient_merge_consistency;</sql>
+            <dropIndex tableName="patient" indexName="idx_patient_merged_into"/>
+            <dropIndex tableName="patient" indexName="idx_patient_is_merged"/>
+            <dropForeignKeyConstraint baseTableName="patient" constraintName="fk_patient_merged_into"/>
+            <dropColumn tableName="patient" columnName="merge_date"/>
+            <dropColumn tableName="patient" columnName="is_merged"/>
+            <dropColumn tableName="patient" columnName="merged_into_patient_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

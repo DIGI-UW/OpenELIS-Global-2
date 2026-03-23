@@ -22,7 +22,9 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \
     rm -f /etc/apt/apt.conf.d/docker-clean \
-    && apt-get -y update \
+    && apt-get clean \
+    && apt-get -y update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-releaseinfo-change || \
+       (sleep 5 && apt-get -y update -o Acquire::Retries=3 -o Acquire::http::Timeout=30 --allow-releaseinfo-change) \
     && apt-get -y --no-install-recommends install \
     git apache2-utils 
 
@@ -111,12 +113,6 @@ RUN chown tomcat_admin:tomcat /healthcheck.sh; \
 ADD install/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
     chmod 770 /docker-entrypoint.sh;
-
-RUN mkdir -p /var/lib/lucene_index; \
-    chown -R tomcat_admin:tomcat /var/lib/lucene_index; \
-    chmod -R 770 /var/lib/lucene_index;
-
-USER tomcat_admin
+USER root
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
-

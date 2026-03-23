@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="012-011-01-create-analyzer-pending-code" author="generic-astm-plugin-profiles">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="analyzer_pending_code"/>
+            </not>
+        </preConditions>
+        <comment>Create analyzer_pending_code queue for auto-detected unmapped analyzer test codes</comment>
+        <createTable tableName="analyzer_pending_code">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analyzer_test_name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="first_seen_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_seen_at" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="seen_count" type="INTEGER" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_payload" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="analyzer_pending_code"
+            baseColumnNames="analyzer_id"
+            constraintName="analyzer_pending_code_analyzer_fk"
+            referencedTableName="analyzer"
+            referencedColumnNames="id"/>
+        <createIndex tableName="analyzer_pending_code" indexName="idx_analyzer_pending_code_analyzer_status">
+            <column name="analyzer_id"/>
+            <column name="status"/>
+            <column name="last_seen_at"/>
+        </createIndex>
+        <createIndex tableName="analyzer_pending_code" indexName="idx_analyzer_pending_code_unique_name">
+            <column name="analyzer_id"/>
+            <column name="analyzer_test_name"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="analyzer_pending_code"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

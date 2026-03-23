@@ -16,6 +16,9 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.localization.valueholder.Localization</class>
+        <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
+        <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -33,9 +36,72 @@
         <class>org.openelisglobal.storage.valueholder.StorageDevice</class>
         <class>org.openelisglobal.storage.valueholder.StorageShelf</class>
         <class>org.openelisglobal.storage.valueholder.StorageRack</class>
-        <class>org.openelisglobal.storage.valueholder.StoragePosition</class>
+        <class>org.openelisglobal.storage.valueholder.StorageBox</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageAssignment</class>
         <class>org.openelisglobal.storage.valueholder.SampleStorageMovement</class>
+
+        <!-- Alert System entities (003-freezer-monitoring) -->
+        <class>org.openelisglobal.alert.valueholder.Alert</class>
+        <class>org.openelisglobal.coldstorage.valueholder.CorrectiveAction</class>
+
+        <!-- Cold Storage Management entities (003-freezer-monitoring) -->
+        <class>org.openelisglobal.coldstorage.valueholder.Freezer</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerReading</class>
+        <class>org.openelisglobal.coldstorage.valueholder.ThresholdProfile</class>
+        <class>org.openelisglobal.coldstorage.valueholder.FreezerThresholdProfile</class>
+
+        <!-- Notebook Management entities -->
+        <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookFile</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookComment</class>
+        <class>org.openelisglobal.notebook.valueholder.NoteBookSample</class>
+
+        <!-- Inventory Management entities -->
+        <class>org.openelisglobal.inventory.valueholder.InventoryItem</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryStorageLocation</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryLot</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
+        <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
+
+        <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
+        <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
+
+        <!-- Site Branding entity (001-site-branding) -->
+        <class>org.openelisglobal.sitebranding.valueholder.SiteBranding</class>
+        <!-- Generic Reporting Framework entities (reporting-framework) -->
+        <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
+
+        <!-- External Quality Assurance entities (005-eqa-module) -->
+        <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
+        <class>org.openelisglobal.eqa.valueholder.EQADistribution</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+        <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
+
+        <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
+        <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCSignature</class>
+        <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
+        <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
+        <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerField</class>
+        <!-- AnalyzerConfiguration removed: merged into Analyzer entity -->
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
+        <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
+        <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
+        <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
+
+        <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration M2) -->
+        <class>org.openelisglobal.analyzer.valueholder.SerialPortConfiguration</class>
+        <!-- Migrated from HBM to JPA annotations (004-astm-analyzer-mapping) -->
+        <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"

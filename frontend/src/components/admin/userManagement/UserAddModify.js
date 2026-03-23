@@ -18,6 +18,7 @@ import {
   FormGroup,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import {
   AlertDialog,
@@ -40,7 +41,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "unifiedSystemUser.browser.title",
-    link: "/MasterListsPage#userManagement",
+    link: "/MasterListsPage/userManagement",
   },
 ];
 
@@ -85,11 +86,11 @@ function UserAddModify() {
     confirmPassword: false,
   });
 
+  const location = useLocation();
   const ID = (() => {
-    const hash = window.location.hash;
-    if (hash.includes("?")) {
-      const queryParams = hash.split("?")[1];
-      const urlParams = new URLSearchParams(queryParams);
+    const search = location.search;
+    if (search) {
+      const urlParams = new URLSearchParams(search);
       return urlParams.get("ID");
     }
     return "0";
@@ -105,7 +106,7 @@ function UserAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage#userManagement");
+        window.location.assign("/MasterListsPage/userManagement");
       }, 200);
     }
     return () => {
@@ -1435,7 +1436,7 @@ function UserAddModify() {
                     <Button
                       onClick={() =>
                         window.location.assign(
-                          "/MasterListsPage#userManagement",
+                          "/MasterListsPage/userManagement",
                         )
                       }
                       data-cy="exitButton"

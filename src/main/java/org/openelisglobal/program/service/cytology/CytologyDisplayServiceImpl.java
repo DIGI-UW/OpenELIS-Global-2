@@ -63,6 +63,7 @@ public class CytologyDisplayServiceImpl implements CytologyDisplayService {
         displayItem.setLastName(patient.getPerson().getLastName());
         displayItem.setLabNumber(cytologySample.getSample().getAccessionNumber());
         displayItem.setPathologySampleId(cytologySample.getId());
+        displayItem.setPatientPK(patient.getId());
         displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
                 .withId(cytologySample.getProgram().getQuestionnaireUUID().toString()).execute());
         displayItem.setProgramQuestionnaireResponse(

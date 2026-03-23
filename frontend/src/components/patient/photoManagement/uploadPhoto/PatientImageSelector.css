@@ -1,0 +1,108 @@
+/* Styles pour PatientImageSelector */
+
+.patient-image-selector {
+  margin: 1rem 0;
+}
+
+.image-selector-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+  margin-bottom: 0.5rem;
+}
+
+.required-indicator {
+  color: #da1e28;
+}
+
+.image-selector-content {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.image-display {
+  width: 150px;
+  height: 150px;
+  border: 2px dashed #c6c6c6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #f4f4f4;
+  overflow: hidden;
+  position: relative;
+}
+
+.image-display:hover {
+  border-color: #0f62fe;
+  background-color: #e5f6ff;
+}
+
+.patient-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-with-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.image-with-overlay:hover .image-overlay {
+  opacity: 1;
+}
+
+.overlay-text {
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.image-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  color: #525252;
+}
+
+.placeholder-text {
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* Responsive */
+@media (max-width: 672px) {
+  .image-selector-content {
+    flex-direction: column;
+  }
+
+  .image-display {
+    width: 100%;
+    height: 200px;
+  }
+}

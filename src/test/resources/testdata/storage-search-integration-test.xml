@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- System User -->
+    <system_user id="1" login_name="testadmin"
+        last_name="Admin" first_name="Test" is_active="Y" is_employee="Y"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Storage Room -->
+    <storage_room id="1000" name="Main Laboratory"
+        code="MAINLAB" description="Test room" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Storage Device -->
+    <storage_device id="1000" name="Freezer Unit 1"
+        code="FRZ01" type="freezer" parent_room_id="1000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Storage Shelf (need to check schema, but let me guess) -->
+    <storage_shelf id="1000" label="Shelf-A" code="SHF-A"
+        parent_device_id="1000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Storage Rack -->
+    <storage_rack id="1000" label="Rack R1" code="RACK-R1"
+        parent_shelf_id="1000" active="true"
+        fhir_uuid="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14" sys_user_id="1"
+        last_updated="2024-01-01 00:00:00" />
+
+    <!-- Sample -->
+    <sample id="1000" accession_number="INT001"
+        received_date="2024-01-01 00:00:00" entered_date="2024-01-01 00:00:00"
+        lastupdated="2024-01-01 00:00:00" sys_user_id="1" />
+
+    <!-- Sample Item -->
+    <sample_item id="1000" samp_id="1000" sort_order="1"
+        status_id="1" lastupdated="2024-01-01 00:00:00" />
+
+    <!-- Sample Storage Assignment -->
+    <sample_storage_assignment id="1000"
+        sample_item_id="1000" location_id="1000" location_type="rack"
+        assigned_by_user_id="1" assigned_date="2024-01-01 00:00:00"
+        last_updated="2024-01-01 00:00:00" />
+</dataset>

@@ -42,6 +42,7 @@ public class BaseTestConfig {
         SpringLiquibase liquibase = new SpringLiquibase();
         liquibase.setChangeLog("classpath:liquibase/base-changelog.xml");
         liquibase.setDataSource(dataSource);
+        liquibase.setContexts("test");
         return liquibase;
     }
 
@@ -83,6 +84,9 @@ public class BaseTestConfig {
     }
 
     private void startPostgreSql() {
+        if (postgreSqlContainer != null && postgreSqlContainer.isRunning()) {
+            return;
+        }
         postgreSqlContainer.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
                 "/docker-entrypoint-initdb.d");
         postgreSqlContainer.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");

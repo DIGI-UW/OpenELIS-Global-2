@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Rename short_code column to location_code in print history table -->
+    <changeSet id="storage-013-rename-print-history-short-code-to-location-code" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_location_print_history" columnName="short_code"/>
+        </preConditions>
+        <renameColumn tableName="storage_location_print_history" oldColumnName="short_code" newColumnName="location_code" columnDataType="VARCHAR(10)"/>
+        <rollback>
+            <renameColumn tableName="storage_location_print_history" oldColumnName="location_code" newColumnName="short_code" columnDataType="VARCHAR(10)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

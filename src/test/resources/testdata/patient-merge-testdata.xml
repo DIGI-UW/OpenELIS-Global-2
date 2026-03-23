@@ -1,0 +1,160 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Patient Merge Integration Test Dataset This DBUnit XML file contains
+    test data for validating FR-004 (Clinical Data Reassignment) and FR-009 (Demographic
+    Merging) functionality. Test Patients: - Patient 9001 (persona 9001): PRIMARY
+    - has some demographics filled - Patient 9002 (persona 9002): MERGED - has
+    clinical data and extra demographics ID Ranges Used (to avoid conflicts with
+    existing fixtures): - Persons: 9001-9010 - Patients: 9001-9010 - Samples:
+    9001-9010 - SampleHuman: 9001-9010 - PatientContact: 9001-9010 - ElectronicOrder:
+    9001-9010 - PatientRelations: 9001-9010 - Providers: 9001-9002 -->
+<dataset>
+    <!-- ============================================ -->
+    <!-- PERSONS - Demographics for Primary/Merged -->
+    <!-- ============================================ -->
+
+    <!-- Primary Patient Person - has partial demographics -->
+    <person id="9001" last_name="Primary" first_name="Alice"
+        middle_name="P" city="Kampala" state="" zip_code="" country="Uganda"
+        work_phone="111-111-1111" home_phone="" cell_phone=""
+        primary_phone="111-111-1111" fax="" email=""
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Merged Patient Person - has extra demographics that should fill gaps -->
+    <person id="9002" last_name="Merged" first_name="Bob"
+        middle_name="M" city="Nairobi" state="Nairobi County" zip_code="00100"
+        country="Kenya" work_phone="222-222-2222" home_phone="333-333-3333"
+        cell_phone="444-444-4444" primary_phone="222-222-2222"
+        fax="555-555-5555" email="merged@test.com"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Contact Person for PatientContact records -->
+    <person id="9003" last_name="Contact" first_name="Charlie"
+        email="charlie@contact.com" lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Provider Persons -->
+    <person id="9004" last_name="Provider" first_name="DrOne"
+        lastupdated="2024-01-01 12:00:00" />
+    <person id="9005" last_name="Provider" first_name="DrTwo"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Third patient for patient_relations testing -->
+    <person id="9006" last_name="Related" first_name="Diana"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- ============================================ -->
+    <!-- PATIENTS -->
+    <!-- ============================================ -->
+
+    <!-- Primary Patient - will receive all merged data -->
+    <patient id="9001" person_id="9001" race="A" gender="F"
+        birth_date="1990-05-15 00:00:00" national_id="NAT-PRIMARY-001"
+        external_id="MERGE-TEST-PRIMARY" ethnicity="U"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Merged Patient - data will move FROM here -->
+    <patient id="9002" person_id="9002" race="B" gender="M"
+        birth_date="1985-08-20 00:00:00" national_id="NAT-MERGED-002"
+        external_id="MERGE-TEST-MERGED" ethnicity="H"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- Related Patient - for patient_relations testing -->
+    <patient id="9003" person_id="9006" race="A" gender="F"
+        birth_date="1995-03-10 00:00:00" national_id="NAT-RELATED-003"
+        external_id="MERGE-TEST-RELATED" ethnicity="U"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- ============================================ -->
+    <!-- PROVIDERS -->
+    <!-- ============================================ -->
+
+    <provider id="9001" person_id="9004" provider_type="P"
+        lastupdated="2024-01-01 12:00:00" />
+    <provider id="9002" person_id="9005" provider_type="D"
+        lastupdated="2024-01-01 12:00:00" />
+
+    <!-- ============================================ -->
+    <!-- SAMPLES - Associated with MERGED patient -->
+    <!-- (Should be reassigned to PRIMARY after merge) -->
+    <!-- ============================================ -->
+
+    <sample id="9001" accession_number="MERGE-SMP-001"
+        received_date="2024-06-01 10:00:00" entered_date="2024-06-01 10:00:00"
+        collection_date="2024-06-01 09:00:00"
+        lastupdated="2024-06-01 12:00:00" />
+
+    <sample id="9002" accession_number="MERGE-SMP-002"
+        received_date="2024-06-02 10:00:00" entered_date="2024-06-02 10:00:00"
+        collection_date="2024-06-02 09:00:00"
+        lastupdated="2024-06-02 12:00:00" />
+
+    <sample id="9003" accession_number="MERGE-SMP-003"
+        received_date="2024-06-03 10:00:00" entered_date="2024-06-03 10:00:00"
+        collection_date="2024-06-03 09:00:00"
+        lastupdated="2024-06-03 12:00:00" />
+
+    <!-- ============================================ -->
+    <!-- SAMPLE_HUMAN - Links samples to MERGED patient -->
+    <!-- These patient_id values should change after merge -->
+    <!-- ============================================ -->
+
+    <!-- Sample 9001 belongs to MERGED patient 9002 -->
+    <sample_human id="9001" provider_id="9001" samp_id="9001"
+        patient_id="9002" lastupdated="2024-06-01 12:00:00" />
+
+    <!-- Sample 9002 belongs to MERGED patient 9002 -->
+    <sample_human id="9002" provider_id="9001" samp_id="9002"
+        patient_id="9002" lastupdated="2024-06-02 12:00:00" />
+
+    <!-- Sample 9003 belongs to MERGED patient 9002 -->
+    <sample_human id="9003" provider_id="9002" samp_id="9003"
+        patient_id="9002" lastupdated="2024-06-03 12:00:00" />
+
+    <!-- ============================================ -->
+    <!-- PATIENT_CONTACT - Contacts for MERGED patient -->
+    <!-- These patient_id values should change after merge -->
+    <!-- ============================================ -->
+
+    <patient_contact id="9001" patient_id="9002"
+        person_id="9003" lastupdated="2024-01-15 10:00:00" />
+
+    <patient_contact id="9002" patient_id="9002"
+        person_id="9003" lastupdated="2024-01-16 10:00:00" />
+
+    <!-- ============================================ -->
+    <!-- STATUS_OF_SAMPLE - Required for electronic_order -->
+    <!-- ============================================ -->
+
+    <status_of_sample id="9001"
+        description="Merge Test Status" code="1" status_type="ORDER"
+        name="MergeTestStatus" display_key="merge_test_status" is_active="Y"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- ============================================ -->
+    <!-- ELECTRONIC_ORDER - Orders for MERGED patient -->
+    <!-- These patient_id values should change after merge -->
+    <!-- ============================================ -->
+
+    <electronic_order id="9001"
+        external_id="MERGE-ORD-001" patient_id="9002" status_id="9001"
+        order_timestamp="2024-06-01 08:00:00"
+        data="Order 1 for merged patient" lastupdated="2024-06-01 12:00:00" />
+
+    <electronic_order id="9002"
+        external_id="MERGE-ORD-002" patient_id="9002" status_id="9001"
+        order_timestamp="2024-06-02 08:00:00"
+        data="Order 2 for merged patient" lastupdated="2024-06-02 12:00:00" />
+
+    <!-- ============================================ -->
+    <!-- PATIENT_RELATIONS - Relationships involving MERGED patient -->
+    <!-- Both pat_id and pat_id_source reference should be updated -->
+    <!-- ============================================ -->
+
+    <!-- Merged patient (9002) is a FATHER of Related patient (9003) -->
+    <patient_relations id="9001" pat_id_source="9002"
+        pat_id="9003" relation="F" />
+
+    <!-- Related patient (9003) is a CHILD of Merged patient (9002) -->
+    <patient_relations id="9002" pat_id_source="9003"
+        pat_id="9002" relation="C" />
+
+</dataset>

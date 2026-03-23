@@ -15,21 +15,36 @@
  */
 package org.openelisglobal.analyzerimport.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
+/**
+ * Composite primary key for AnalyzerTestMapping, combining analyzer type ID and
+ * analyzer-specific test name. Test mappings are a property of the plugin TYPE,
+ * not a physical device instance.
+ */
+@Embeddable
 public class AnalyzerTestMappingPK implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    private String analyzerId;
+    private static final long serialVersionUID = 2L;
+
+    @Column(name = "analyzer_type_id")
+    @Convert(converter = StringToIntegerConverter.class)
+    private String analyzerTypeId;
+
+    @Column(name = "analyzer_test_name")
     private String analyzerTestName;
 
-    public String getAnalyzerId() {
-        return analyzerId;
+    public String getAnalyzerTypeId() {
+        return analyzerTypeId;
     }
 
-    public void setAnalyzerId(String analyzerId) {
-        this.analyzerId = analyzerId;
+    public void setAnalyzerTypeId(String analyzerTypeId) {
+        this.analyzerTypeId = analyzerTypeId;
     }
 
     public String getAnalyzerTestName() {
@@ -48,11 +63,11 @@ public class AnalyzerTestMappingPK implements Serializable {
 
         AnalyzerTestMappingPK that = (AnalyzerTestMappingPK) o;
 
-        return Objects.equals(this.analyzerId, that.analyzerId)
+        return Objects.equals(this.analyzerTypeId, that.analyzerTypeId)
                 && Objects.equals(this.analyzerTestName, that.analyzerTestName);
     }
 
     public int hashCode() {
-        return Objects.hash(analyzerId, analyzerTestName);
+        return Objects.hash(analyzerTypeId, analyzerTestName);
     }
 }

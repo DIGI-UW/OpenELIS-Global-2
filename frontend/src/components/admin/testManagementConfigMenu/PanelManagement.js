@@ -48,11 +48,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.panel.manage",
-    link: "/MasterListsPage#PanelManagement",
+    link: "/MasterListsPage/PanelManagement",
   },
 ];
 
@@ -86,21 +86,21 @@ function PanelManagement() {
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
                 <ClickableTile
-                  href="/MasterListsPage#PanelCreate"
+                  href="/MasterListsPage/PanelCreate"
                   id="PanelCreate"
                 >
                   <FormattedMessage id="configuration.panel.create" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage#PanelOrder"
+                  href="/MasterListsPage/PanelOrder"
                   id="PanelOrder"
                 >
                   <FormattedMessage id="configuration.panel.order" />
                 </ClickableTile>
                 <br />
                 <ClickableTile
-                  href="/MasterListsPage#PanelTestAssign"
+                  href="/MasterListsPage/PanelTestAssign"
                   id="PanelTestAssign"
                 >
                   <FormattedMessage id="configuration.panel.assign" />

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <status_of_sample id="24"
+        description="Sample has been physically disposed" code="1"
+        status_type="SAMPLE" lastupdated="2024-01-01 10:00:00"
+        name="SampleDisposed" display_key="status.sample.disposed"
+        is_active="Y" />
+
+    <!-- Storage hierarchy for sample_storage_assignment location_id=10 -->
+    <storage_room id="10" name="Test Room" code="TESTROOM"
+        active="true" sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440010" />
+    <storage_device id="10" name="Test Freezer"
+        code="TESTFRZ" type="freezer" parent_room_id="10" active="true"
+        sys_user_id="1" last_updated="2024-01-01 10:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440011" />
+
+    <sample id="1000" accession_number="TD1000"
+        received_date="2024-01-01 10:00:00" entered_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" sys_user_id="1" />
+    <sample id="1001" accession_number="TD1001"
+        received_date="2024-01-01 10:00:00" entered_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" sys_user_id="1" />
+    <sample id="1002" accession_number="TD1002"
+        received_date="2024-01-01 10:00:00" entered_date="2024-01-01 10:00:00"
+        lastupdated="2024-01-01 10:00:00" sys_user_id="1" />
+    <sample_item id="1000" samp_id="1000" sort_order="1"
+        status_id="1" external_id="EXT-1000" lastupdated="2024-01-01 10:00:00" />
+    <sample_item id="1001" samp_id="1001" sort_order="1"
+        status_id="24" external_id="EXT-1001"
+        lastupdated="2024-01-01 10:00:00" />
+    <sample_item id="1002" samp_id="1002" sort_order="1"
+        status_id="1" external_id="EXT-1002" lastupdated="2024-01-01 10:00:00" />
+    <sample_storage_assignment id="10000"
+        sample_item_id="1002" location_id="10" location_type="device"
+        position_coordinate="A5" assigned_by_user_id="1"
+        assigned_date="2024-01-01 10:00:00" last_updated="2024-01-01 10:00:00" />
+</dataset>

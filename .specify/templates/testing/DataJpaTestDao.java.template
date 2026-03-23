@@ -1,0 +1,288 @@
+package org.openelisglobal.{module}.dao;
+
+import static org.junit.Assert.*;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.openelisglobal.{module}.valueholder.{Entity};
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.test.context.junit4.SpringRunner;
+
+/**
+ * DAO tests for {Entity}DAO using @DataJpaTest
+ * 
+ * References:
+ * - Testing Roadmap: .specify/guides/testing-roadmap.md
+ * - Backend Best Practices: .specify/guides/backend-testing-best-practices.md
+ * - Template: DataJpaTest DAO Test
+ * 
+ * @DataJpaTest provides:
+ * - Faster execution than @SpringBootTest (no full application context)
+ * - Focused testing of persistence layer only (HQL queries, CRUD operations)
+ * - Automatic transaction rollback (no manual cleanup needed)
+ * - TestEntityManager for test data setup
+ * 
+ * TDD Workflow (MANDATORY for complex logic):
+ * - RED: Write failing test first (defines expected behavior)
+ * - GREEN: Write minimal code to make test pass
+ * - REFACTOR: Improve code quality while keeping tests green
+ * 
+ * SDD Checkpoint: DAO tests MUST pass after Phase 1 (Entities)
+ * Test Coverage Goal: >80% (measured via JaCoCo)
+ * 
+ * Test Naming: test{MethodName}_{Scenario}_{ExpectedResult}
+ * Example: testFindByParentId_WithValidParent_ReturnsChildLocations
+ * 
+ * Use this template for testing DAO methods and HQL queries in isolation.
+ * For full integration tests, use @SpringBootTest (see BaseWebContextSensitiveTest).
+ * 
+ * Reference: Testing Roadmap > @DataJpaTest (DAO/Repository Layer)
+ */
+@RunWith(SpringRunner.class)
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+public class {Entity}DAOTest {
+
+    // ✅ CORRECT: Use TestEntityManager for test data (NOT JdbcTemplate)
+    // TestEntityManager provides JPA-aware test data management
+    // Reference: Testing Roadmap > @DataJpaTest > Key Points
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Autowired
+    private {Entity}DAO {entity}DAO;
+
+    private {Entity} test{Entity};
+
+    @Before
+    public void setUp() {
+        // ✅ CORRECT: Setup test data using TestEntityManager with builders
+        // Builders provide reusable, readable test data
+        test{Entity} = {Entity}Builder.create()
+            .withName("Test {Entity}")
+            .withCode("TEST-CODE")
+            .withActive(true)
+            .build();
+        entityManager.persist(test{Entity});
+        entityManager.flush();
+        
+        // ❌ ANTI-PATTERN: Don't use JdbcTemplate in @DataJpaTest
+        // jdbcTemplate.update("INSERT INTO ...");
+        
+        // ❌ ANTI-PATTERN: Don't use hardcoded values
+        // test{Entity} = new {Entity}();
+        // test{Entity}.setName("Test {Entity}");
+    }
+
+    /**
+     * Test: GET {Entity} by ID
+     * Task Reference: T{###}
+     * 
+     * Testing DAO get method:
+     * - Retrieves entity by ID
+     * - Returns null if not found
+     * 
+     * Reference: Testing Roadmap > @DataJpaTest > CRUD Testing Pattern
+     */
+    @Test
+    public void testGet_WithValidId_Returns{Entity}() {
+        // Act: Execute DAO method
+        {Entity} result = {entity}DAO.get(test{Entity}.getId());
+        
+        // Assert: Verify result
+        assertNotNull("Result should not be null", result);
+        assertEquals("ID should match", test{Entity}.getId(), result.getId());
+        assertEquals("Name should match", "Test {Entity}", result.getName());
+    }
+
+    /**
+     * Test: GET {Entity} - Not Found
+     * Task Reference: T{###}
+     * 
+     * Testing DAO get method with invalid ID:
+     * - Returns null when entity not found
+     */
+    @Test
+    public void testGet_WithInvalidId_ReturnsNull() {
+        // Act
+        {Entity} result = {entity}DAO.get("INVALID-ID");
+        
+        // Assert
+        assertNull("Result should be null for invalid ID", result);
+    }
+
+    /**
+     * Test: INSERT {Entity}
+     * Task Reference: T{###}
+     * 
+     * Testing DAO insert method:
+     * - Persists entity to database
+     * - Returns generated ID
+     * 
+     * Reference: Testing Roadmap > @DataJpaTest > CRUD Testing Pattern
+     */
+    @Test
+    public void testInsert_WithValidData_PersistsToDatabase() {
+        // Arrange: Create new entity
+        {Entity} new{Entity} = {Entity}Builder.create()
+            .withName("New {Entity}")
+            .withCode("NEW-CODE")
+            .withActive(true)
+            .build();
+        
+        // Act: Insert entity
+        String id = {entity}DAO.insert(new{Entity});
+        entityManager.flush();
+        entityManager.clear(); // Clear persistence context to force reload
+        
+        // Assert: Verify entity was persisted
+        {Entity} retrieved = entityManager.find({Entity}.class, id);
+        assertNotNull("Entity should be persisted", retrieved);
+        assertEquals("Name should match", "New {Entity}", retrieved.getName());
+        assertEquals("Code should match", "NEW-CODE", retrieved.getCode());
+    }
+
+    /**
+     * Test: FIND BY {Field}
+     * Task Reference: T{###}
+     * 
+     * Testing query methods:
+     * - findBy* methods
+     * - getAll methods with filters
+     * - Query correctness
+     * 
+     * Reference: Testing Roadmap > @DataJpaTest > Key Points
+     */
+    @Test
+    public void testFindBy{Field}_{Scenario}_ReturnsCorrectResults() {
+        // Arrange: Setup test data with specific field values
+        {Entity} {entity}1 = {Entity}Builder.create()
+            .withCode("CODE-1")
+            .withActive(true)
+            .build();
+        {Entity} {entity}2 = {Entity}Builder.create()
+            .withCode("CODE-2")
+            .withActive(false)
+            .build();
+        entityManager.persist({entity}1);
+        entityManager.persist({entity}2);
+        entityManager.flush();
+        
+        // Act: Execute query
+        List<{Entity}> results = {entity}DAO.findByActive(true);
+        
+        // Assert: Verify query results
+        assertEquals("Should return one active {entity}", 1, results.size());
+        assertTrue("Result should be active", results.get(0).getActive());
+        assertEquals("Code should match", "CODE-1", results.get(0).getCode());
+    }
+
+    /**
+     * Test: FIND BY PARENT ID (Relationship Query)
+     * Task Reference: T{###}
+     * 
+     * Testing relationship queries:
+     * - Parent-child relationships
+     * - HQL queries with JOIN FETCH
+     * - Relationship loading
+     * 
+     * Reference: Testing Roadmap > @DataJpaTest > Key Points
+     */
+    @Test
+    public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
+        // Arrange: Setup entities with relationships
+        {ParentEntity} parent = {ParentEntity}Builder.create()
+            .withId("PARENT-001")
+            .withName("Parent {Entity}")
+            .build();
+        entityManager.persist(parent);
+        
+        {Entity} child1 = {Entity}Builder.create()
+            .withId("CHILD-001")
+            .withName("Child 1")
+            .withParent(parent)
+            .build();
+        {Entity} child2 = {Entity}Builder.create()
+            .withId("CHILD-002")
+            .withName("Child 2")
+            .withParent(parent)
+            .build();
+        entityManager.persist(child1);
+        entityManager.persist(child2);
+        entityManager.flush();
+        
+        // Act: Execute relationship query
+        List<{Entity}> results = {entity}DAO.findByParentId("PARENT-001");
+        
+        // Assert: Verify relationship query results
+        assertEquals("Should return two children", 2, results.size());
+        assertEquals("First child ID should match", "CHILD-001", results.get(0).getId());
+        assertEquals("Second child ID should match", "CHILD-002", results.get(1).getId());
+    }
+
+    /**
+     * Test: UPDATE {Entity}
+     * Task Reference: T{###}
+     * 
+     * Testing DAO update method:
+     * - Updates entity in database
+     * - Persists changes
+     */
+    @Test
+    public void testUpdate_WithValidData_UpdatesDatabase() {
+        // Arrange: Modify existing entity
+        test{Entity}.setName("Updated {Entity}");
+        test{Entity}.setCode("UPDATED-CODE");
+        
+        // Act: Update entity
+        {entity}DAO.update(test{Entity});
+        entityManager.flush();
+        entityManager.clear(); // Clear persistence context to force reload
+        
+        // Assert: Verify entity was updated
+        {Entity} retrieved = entityManager.find({Entity}.class, test{Entity}.getId());
+        assertEquals("Name should be updated", "Updated {Entity}", retrieved.getName());
+        assertEquals("Code should be updated", "UPDATED-CODE", retrieved.getCode());
+    }
+
+    /**
+     * Test: DELETE {Entity}
+     * Task Reference: T{###}
+     * 
+     * Testing DAO delete method:
+     * - Removes entity from database
+     * - Entity no longer exists
+     */
+    @Test
+    public void testDelete_WithValidId_RemovesFromDatabase() {
+        // Act: Delete entity
+        {entity}DAO.delete(test{Entity}.getId());
+        entityManager.flush();
+        entityManager.clear(); // Clear persistence context
+        
+        // Assert: Verify entity was deleted
+        {Entity} retrieved = entityManager.find({Entity}.class, test{Entity}.getId());
+        assertNull("Entity should be deleted", retrieved);
+    }
+
+    // Additional test methods:
+    // - Test getAll methods
+    // - Test query methods with multiple filters
+    // - Test HQL query correctness
+    // - Test relationship loading (JOIN FETCH)
+    // - Test query performance (if applicable)
+    // - Test edge cases (null, empty, boundary values)
+    
+    // ❌ ANTI-PATTERNS to avoid:
+    // - Don't use JdbcTemplate in @DataJpaTest (use TestEntityManager)
+    // - Don't use @SpringBootTest when @DataJpaTest would work (slower execution)
+    // - Don't use hardcoded test data (use builders)
+    // - Don't forget to flush() and clear() after persist/update for verification
+    // - Don't test service logic in DAO tests (test persistence layer only)
+    // - Don't use manual cleanup (automatic rollback with @DataJpaTest)
+}
+

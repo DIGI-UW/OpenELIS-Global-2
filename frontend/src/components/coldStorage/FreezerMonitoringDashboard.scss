@@ -1,0 +1,129 @@
+.oe-coldStorage-page {
+  padding: 1.5rem 1.5rem 2rem;
+}
+
+.oe-coldStorage-pageHeader {
+  margin-bottom: 1rem;
+}
+
+.oe-coldStorage-pageTitle {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.oe-coldStorage-pageSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.95rem;
+  color: var(--cds-text-secondary);
+}
+
+.oe-coldStorage-systemStatus {
+  margin-bottom: 1rem;
+}
+
+.oe-coldStorage-criticalBanner {
+  margin-bottom: 1rem;
+}
+
+.oe-coldStorage-kpis {
+  margin-bottom: 1.5rem;
+}
+
+.oe-coldStorage-kpiCard {
+  background: var(--cds-layer);
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.oe-coldStorage-kpiLabel {
+  font-size: 0.8rem;
+  color: var(--cds-text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.oe-coldStorage-kpiValue {
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.oe-coldStorage-tableHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.oe-coldStorage-filters {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.oe-coldStorage-temp--high {
+  color: var(--cds-support-error);
+  font-weight: 600;
+}
+
+.oe-coldStorage-temp--ok {
+  color: var(--cds-support-success);
+  font-weight: 600;
+}
+
+.oe-coldStorage-alerts {
+  margin-top: 1.5rem;
+}
+
+.oe-coldStorage-alerts h3 {
+  margin-bottom: 0.75rem;
+}
+
+.oe-coldStorage-alertCard {
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background: var(--cds-layer);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.oe-coldStorage-alertCard--critical {
+  border-color: var(--cds-support-error);
+  background: rgba(244, 67, 54, 0.04);
+}
+
+.oe-coldStorage-alertCard--warning {
+  border-color: var(--cds-support-warning);
+  background: rgba(255, 167, 38, 0.04);
+}
+
+.oe-coldStorage-alertHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.oe-coldStorage-alertTitle {
+  font-weight: 600;
+}
+
+.oe-coldStorage-alertBody {
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.oe-coldStorage-alertMeta {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary);
+}
+
+.oe-coldStorage-alertActions {
+  margin-top: 0.5rem;
+  text-align: right;
+}
+
+.oe-coldStorage-tag--warning {
+  color: #f1c21b;
+  background-color: rgba(241, 194, 27, 0.1);
+}

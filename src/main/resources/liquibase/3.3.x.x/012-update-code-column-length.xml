@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Update code column length to VARCHAR(10) for storage_room -->
+    <changeSet id="storage-011-update-room-code-length" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_room" columnName="code"/>
+            <sqlCheck expectedResult="50">
+                SELECT character_maximum_length
+                FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'storage_room'
+                AND column_name = 'code'
+            </sqlCheck>
+        </preConditions>
+        <modifyDataType tableName="storage_room" columnName="code" newDataType="VARCHAR(10)"/>
+        <rollback>
+            <modifyDataType tableName="storage_room" columnName="code" newDataType="VARCHAR(50)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Update code column length to VARCHAR(10) for storage_device -->
+    <changeSet id="storage-011-update-device-code-length" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_device" columnName="code"/>
+            <sqlCheck expectedResult="50">
+                SELECT character_maximum_length
+                FROM information_schema.columns
+                WHERE table_schema = 'clinlims'
+                AND table_name = 'storage_device'
+                AND column_name = 'code'
+            </sqlCheck>
+        </preConditions>
+        <modifyDataType tableName="storage_device" columnName="code" newDataType="VARCHAR(10)"/>
+        <rollback>
+            <modifyDataType tableName="storage_device" columnName="code" newDataType="VARCHAR(50)"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add code column to storage_shelf (if it doesn't exist) -->
+    <changeSet id="storage-011-add-shelf-code-column" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_shelf" columnName="code"/>
+            </not>
+        </preConditions>
+        <!-- Add column as nullable first (required when table has existing rows) -->
+        <addColumn tableName="storage_shelf">
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <sql>
+            -- Populate code from short_code if it exists, otherwise generate from label
+            UPDATE clinlims.storage_shelf
+            SET code = COALESCE(
+                short_code,
+                UPPER(REGEXP_REPLACE(label, '[^A-Z0-9_-]', '', 'g'))
+            )
+            WHERE code IS NULL;
+
+            -- Truncate to 10 chars if needed
+            UPDATE clinlims.storage_shelf
+            SET code = LEFT(code, 10)
+            WHERE LENGTH(code) > 10;
+        </sql>
+        <!-- Add NOT NULL constraint after populating data -->
+        <addNotNullConstraint tableName="storage_shelf" columnName="code" columnDataType="VARCHAR(10)"/>
+        <rollback>
+            <dropColumn tableName="storage_shelf" columnName="code"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Add code column to storage_rack (if it doesn't exist) -->
+    <changeSet id="storage-011-add-rack-code-column" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="storage_rack" columnName="code"/>
+            </not>
+        </preConditions>
+        <!-- Add column as nullable first (required when table has existing rows) -->
+        <addColumn tableName="storage_rack">
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <sql>
+            -- Populate code from short_code if it exists, otherwise generate from label
+            UPDATE clinlims.storage_rack
+            SET code = COALESCE(
+                short_code,
+                UPPER(REGEXP_REPLACE(label, '[^A-Z0-9_-]', '', 'g'))
+            )
+            WHERE code IS NULL;
+
+            -- Truncate to 10 chars if needed
+            UPDATE clinlims.storage_rack
+            SET code = LEFT(code, 10)
+            WHERE LENGTH(code) > 10;
+        </sql>
+        <!-- Add NOT NULL constraint after populating data -->
+        <addNotNullConstraint tableName="storage_rack" columnName="code" columnDataType="VARCHAR(10)"/>
+        <rollback>
+            <dropColumn tableName="storage_rack" columnName="code"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

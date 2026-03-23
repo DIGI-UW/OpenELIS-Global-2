@@ -109,8 +109,9 @@ export const mapTestCatBeanToFormData = (test) => {
     antimicrobialResistance: test.antimicrobialResistance ? "Y" : "N",
     active: test.active === "Active" ? "Y" : "N",
     dictionary: test.dictionaryValues || [],
-    dictionaryReference:
-      test.referenceValue !== "n/a" ? test.referenceValue : "",
+    dictionaryReference: Number.isNaN(Number(test.referenceValue))
+      ? ""
+      : test.referenceValue,
     defaultTestResult: "",
     sampleTypes: test.sampleType ? [test.sampleType] : [],
     lowValid: extractRange(test.resultLimits?.[0]?.validRange)[0],

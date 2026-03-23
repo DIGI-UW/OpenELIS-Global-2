@@ -1,77 +1,115 @@
-import { useEffect, useState } from "react";
-import { confirmAlert } from "react-confirm-alert";
+import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import { IntlProvider } from "react-intl";
-import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
-import "./App.css";
-import RedirectOldUI from "./RedirectOldUI";
-import UserSessionDetailsContext from "./UserSessionDetailsContext";
-import { Admin } from "./components";
-import ChangePassword from "./components/ChangePassword.js";
-import Home from "./components/Home";
-import Login from "./components/Login";
-import AddOrder from "./components/addOrder/Index";
-import AnalyserResultIndex from "./components/analyserResults/Index";
-import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
-import CytologyCaseView from "./components/cytology/CytologyCaseView";
-import CytologyDashboard from "./components/cytology/CytologyDashBoard";
-import EOrderPage from "./components/eOrder/Index";
-import LandingPage from "./components/home/LandingPage";
-import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
-import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
+import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
-import FindOrder from "./components/modifyOrder/Index";
-import ModifyOrder from "./components/modifyOrder/ModifyOrder";
-import NonConformIndex from "./components/nonconform/index";
-import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
-import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
-import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
-import PathologyCaseView from "./components/pathology/PathologyCaseView";
-import PathologyDashboard from "./components/pathology/PathologyDashboard";
-import PatientHistory from "./components/patient/PatientHistory";
-import PatientManagement from "./components/patient/PatientManagement";
-import RoutedResultsViewer from "./components/patient/resultsViewer/results-viewer.tsx";
-import PrintBarcode from "./components/printBarcode/Index";
-import ReportIndex from "./components/reports/Index.js";
-import RoutineReports from "./components/reports/Routine";
-import StudyReports from "./components/reports/Study";
-import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
-import RoutineIndex from "./components/reports/routine/Index.js";
-import StudyIndex from "./components/reports/study/index.js";
+import Home from "./components/Home";
+import StorageDashboard from "./components/storage/StorageDashboard";
+import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
+import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
+import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
+import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
+import MyProgramsPage from "./components/eqa/MyProgramsPage";
+import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
+import EQAResultsPage from "./components/eqa/EQAResultsPage";
+import InventoryManagement from "./components/inventory/InventoryManagement";
+import Login from "./components/Login";
+import LandingPage from "./components/home/LandingPage";
+import AnalyzersPage from "./pages/AnalyzersPage";
+import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
+import ErrorDashboardPage from "./pages/ErrorDashboardPage";
+import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import AnalyzerTypesPage from "./pages/AnalyzerTypesPage";
+import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
+import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
+import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
+import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
-import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
-import Aliquot from "./components/sample/Aliquot";
+import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
+import "./App.css";
+import { languages, languageMessages } from "./languages";
+import config from "./config.json";
 import { SecureRoute } from "./components/security";
+import "./index.scss";
+import RedirectOldUI from "./RedirectOldUI";
+import PatientManagement from "./components/patient/PatientManagement";
+import PatientHistory from "./components/patient/PatientHistory";
+import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
 import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
-import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
 import ShipmentReport from "./components/shipment/ShipmentReport";
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
-import StorageDashboard from "./components/storage/StorageDashboard";
-import { getFromOpenElisServer, Roles } from "./components/utils/Utils";
-import StudyValidation from "./components/validation/Index";
+import PatientMerge from "./components/patient/PatientMerge";
+import Aliquot from "./components/sample/Aliquot";
 import Workplan from "./components/workplan/Workplan";
-import config from "./config.json";
-import "./index.scss";
-import { languages } from "./languages";
+import AddOrder from "./components/addOrder/Index";
+import FindOrder from "./components/modifyOrder/Index";
+import ModifyOrder from "./components/modifyOrder/ModifyOrder";
+import RoutineReports from "./components/reports/Routine";
+import StudyReports from "./components/reports/Study";
+import StudyValidation from "./components/validation/Index";
+import AnalyserResultIndex from "./components/analyserResults/Index";
+import PathologyDashboard from "./components/pathology/PathologyDashboard";
+import CytologyDashboard from "./components/cytology/CytologyDashBoard";
+import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
+import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
+import CytologyCaseView from "./components/cytology/CytologyCaseView";
+import PathologyCaseView from "./components/pathology/PathologyCaseView";
+import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
+import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
+import RoutedResultsViewer from "./components/patient/resultsViewer/results-viewer.tsx";
+import EOrderPage from "./components/eOrder/Index";
+import RoutineIndex from "./components/reports/routine/Index.js";
+import StudyIndex from "./components/reports/study/index.js";
+import ReportIndex from "./components/reports/Index.js";
+import PrintBarcode from "./components/printBarcode/Index";
+import NonConformIndex from "./components/nonconform/index";
+import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
+import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
+import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
+import ChangePassword from "./components/ChangePassword.js";
+import { Roles } from "./components/utils/Utils";
+import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
+import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitoringDashboard";
+import ProgramDashboard from "./components/program/programDashboard.jsx";
+import ProgramCaseView from "./components/program/programCaseView.jsx";
+import SampleManagement from "./components/sampleManagement/SampleManagement";
 
 export default function App() {
-  let i18nConfig = {
-    locale: navigator.language.split(/[-_]/)[0],
-    defaultLocale: "en",
-    messages: languages["en"].messages,
-  };
-
   const defaultLocale =
     localStorage.getItem("locale") || navigator.language.split(/[-_]/)[0];
+
+  const initialLocale = languages[defaultLocale] ? defaultLocale : "en";
+
+  const [locale, setLocale] = useState(initialLocale);
+  const [messages, setMessages] = useState(languages[initialLocale].messages);
 
   const [userSessionDetails, setUserSessionDetails] = useState({});
   const [errorLoadingSessionDetails, setErrorLoadingSessionDetails] =
     useState(false);
-  const [locale, setLocale] = useState("en");
 
   useEffect(() => {
     getUserSessionDetails();
+  }, []);
+
+  // Load and apply site branding (colors, favicon)
+  useEffect(() => {
+    loadAndApplyBranding();
+
+    // Listen for branding updates from admin UI
+    const handleBrandingUpdate = () => {
+      loadAndApplyBranding();
+    };
+    window.addEventListener("branding-updated", handleBrandingUpdate);
+
+    return () => {
+      window.removeEventListener("branding-updated", handleBrandingUpdate);
+    };
   }, []);
 
   const getUserSessionDetails = async () => {
@@ -129,10 +167,6 @@ export default function App() {
     return userSessionDetails;
   };
 
-  i18nConfig.locale = languages[defaultLocale] ? defaultLocale : "en";
-
-  i18nConfig.messages = languages[i18nConfig.locale].messages;
-
   const logout = () => {
     if (userSessionDetails.loginMethod === "SAML") {
       fetch(config.serverBaseUrl + "/Logout?useSAML=true", {
@@ -145,20 +179,30 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          const POPUP_HEIGHT = 700;
-          const POPUP_WIDTH = 600;
-          const top =
-            window.outerHeight / 2 + window.screenY - POPUP_HEIGHT / 2;
-          const left = window.outerWidth / 2 + window.screenX - POPUP_WIDTH / 2;
-          const newWindow = window.open(
-            "",
-            "SAML Popup",
-            `height=${POPUP_HEIGHT},width=${POPUP_WIDTH},top=${top},left=${left}`,
-          );
-          newWindow.document.write(html);
-          newWindow.document.close();
-          getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          // Parse the SAML SLO response and submit the form in the current
+          // window — no popup, no iframe needed.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const samlForm = doc.querySelector("form");
+
+          if (samlForm) {
+            const form = document.createElement("form");
+            form.method = samlForm.method || "POST";
+            form.action = samlForm.action;
+            Array.from(samlForm.querySelectorAll("input")).forEach((input) => {
+              const hidden = document.createElement("input");
+              hidden.type = "hidden";
+              hidden.name = input.name;
+              hidden.value = input.value;
+              form.appendChild(hidden);
+            });
+            document.body.appendChild(form);
+            form.submit();
+          } else {
+            // No SAML form in response — fall back to a direct redirect
+            getUserSessionDetails();
+            window.location.href = config.loginRedirect;
+          }
         })
         .catch((error) => {
           console.error(error);
@@ -184,20 +228,25 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    if (!languages[lang]) {
+    // Check if we have messages for this language
+    const messages = languageMessages[lang] || languages[lang]?.messages;
+    if (!messages) {
       lang = "en";
     }
-    i18nConfig.messages = languages[lang].messages;
-    i18nConfig.locale = lang;
-    localStorage.setItem("locale", lang);
     setLocale(lang);
+    setMessages(languageMessages[lang] || languages["en"].messages);
+    localStorage.setItem("locale", lang);
   };
 
   const changeLanguageBackend = async (lang) => {
     if (userSessionDetails.authenticated) {
-      getFromOpenElisServer("/Home?lang=" + lang, () => {});
+      getFromOpenElisServer("/Home?lang=" + lang, () => {
+        // Language changed on backend
+      });
     } else {
-      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {});
+      getFromOpenElisServer("/LoginPage?lang=" + lang, () => {
+        // Language changed on backend
+      });
     }
   };
 
@@ -219,10 +268,10 @@ export default function App() {
 
   return (
     <IntlProvider
-      locale={i18nConfig.locale}
-      key={i18nConfig.locale}
-      defaultLocale={i18nConfig.defaultLocale}
-      messages={i18nConfig.messages}
+      locale={locale}
+      key={locale}
+      defaultLocale="en"
+      messages={messages}
     >
       <UserSessionDetailsContext.Provider
         value={{
@@ -268,7 +317,6 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/MasterListsPage"
-                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -305,41 +353,60 @@ export default function App() {
                   exact
                   component={() => <CytologyDashboard />}
                   role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/genericProgram"
+                  exact
+                  component={() => <ProgramDashboard />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/programView/:programSampleId"
+                  exact
+                  component={() => <ProgramCaseView />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/NoteBookDashboard"
                   exact
                   component={() => <NoteBookDashBoard />}
-                  role={Roles.RECEPTION}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/NoteBookEntryForm"
                   exact
                   component={() => <NoteBookEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEntryForm/:notebookid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/NoteBookInstanceEditForm/:notebookentryid"
                   exact
                   component={() => <NoteBookInstanceEntryForm />}
-                  role=""
-                  labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId/:notebookEntryId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
+                  path="/NotebookSampleOrder/:notebookId"
+                  exact
+                  component={() => <NotebookSampleOrder />}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/CytologyCaseView/:cytologySampleId"
@@ -347,6 +414,42 @@ export default function App() {
                   component={() => <CytologyCaseView />}
                   role=""
                   labUnitRole={{ Cytology: [Roles.RESULTS] }}
+                />
+                <SecureRoute
+                  path="/GenericSample/Order"
+                  exact
+                  component={() => {
+                    const GenericSampleOrder =
+                      require("./components/genericSample/GenericSampleOrder").default;
+                    return <GenericSampleOrder />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Edit"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderEdit =
+                      require("./components/genericSample/GenericSampleOrderEdit").default;
+                    return <GenericSampleOrderEdit />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/GenericSample/Import"
+                  exact
+                  component={() => {
+                    const GenericSampleOrderImport =
+                      require("./components/genericSample/GenericSampleOrderImport").default;
+                    return <GenericSampleOrderImport />;
+                  }}
+                  role=""
+                />
+                <SecureRoute
+                  path="/FreezerMonitoring"
+                  exact
+                  component={() => <FreezerMonitoringDashboard />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/SamplePatientEntry"
@@ -418,6 +521,54 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
+                  path="/Alerts"
+                  exact
+                  component={() => <AlertsDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAOrders"
+                  exact
+                  component={() => <EQAOrdersPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAMyPrograms"
+                  exact
+                  component={() => <MyProgramsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAManagement"
+                  exact
+                  component={() => <EQAManagementDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAResults"
+                  exact
+                  component={() => <EQAResultsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAParticipants"
+                  exact
+                  component={() => <EQAParticipantsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQADistribution/create"
+                  exact
+                  component={() => <CreateDistribution />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQADistribution"
+                  exact
+                  component={() => <EQADistributionDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/Storage"
                   exact
                   component={() => <StorageDashboard />}
@@ -429,51 +580,128 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/inventory"
+                  exact
+                  component={() => <InventoryManagement />}
+                  role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                {/* Sample Shipment Management */}
+                <SecureRoute
                   path="/SampleShipment"
                   exact
                   component={() => <ShipmentDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/SampleShipment/create-box"
-                  exact
-                  component={() => <BoxCreation />}
+                  path="/SampleShipment/boxes"
+                  component={() => <ShipmentDashboard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/SampleShipment/unassigned"
+                  component={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/create-box"
+                  component={() => <BoxCreation />}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/SampleShipment/box/:boxId"
-                  exact
-                  component={BoxDetails}
+                  component={() => <BoxDetails />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleShipment/receive"
-                  exact
                   component={() => <ReceptionWorkflow />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleShipment/reports"
-                  exact
                   component={() => <ShipmentReport />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleShipment/settings"
-                  exact
                   component={() => <ShipmentSettings />}
-                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/SampleShipment/:tab"
-                  component={() => <ShipmentDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  path="/SampleManagement"
+                  exact
+                  component={() => <SampleManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
+                />
+                <SecureRoute
+                  path="/analyzers"
+                  exact
+                  component={() => <AnalyzersPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/:id/mappings"
+                  exact
+                  component={FieldMapping}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/errors"
+                  exact
+                  component={() => <ErrorDashboardPage />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/custom-field-types"
+                  exact
+                  component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/types"
+                  exact
+                  component={() => <AnalyzerTypesPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/qc"
+                  exact
+                  component={() => <QCDashboardPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/alerts"
+                  exact
+                  component={() => <QCAlertsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/corrective-actions"
+                  exact
+                  component={() => <CorrectiveActionsPlaceholder />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/PatientHistory"
                   exact
                   component={() => <PatientHistory />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientMerge"
+                  exact
+                  component={() => <PatientMerge />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/GenericSample/Results"
+                  exact
+                  component={() => {
+                    const GenericSampleResults =
+                      require("./components/genericSample/GenericSampleResults").default;
+                    return <GenericSampleResults />;
+                  }}
+                  role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/Aliquot"

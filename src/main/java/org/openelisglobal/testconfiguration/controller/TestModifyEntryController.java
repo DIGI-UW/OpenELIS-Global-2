@@ -148,10 +148,13 @@ public class TestModifyEntryController extends BaseController {
             bean.setResultType(resultType);
             TypeOfSample typeOfSample = testService.getTypeOfSample(test);
             bean.setSampleType(typeOfSample != null ? typeOfSample.getLocalizedName() : "n/a");
-            bean.setOrderable(test.getOrderable() ? "Orderable" : "Not orderable");
-            bean.setNotifyResults(test.isNotifyResults());
+            Boolean orderable = test.getOrderable();
+            bean.setOrderable(orderable != null && orderable ? "Orderable" : "Not orderable");
+            Boolean notifyResults = test.isNotifyResults();
+            bean.setNotifyResults(notifyResults != null ? notifyResults : false);
             bean.setInLabOnly(test.isInLabOnly());
-            bean.setAntimicrobialResistance(test.getAntimicrobialResistance());
+            Boolean antimicrobialResistance = test.getAntimicrobialResistance();
+            bean.setAntimicrobialResistance(antimicrobialResistance != null ? antimicrobialResistance : false);
             bean.setLoinc(test.getLoinc());
             bean.setActive(test.isActive() ? "Active" : "Not active");
             bean.setUom(testService.getUOM(test, false));

@@ -17,15 +17,10 @@ import {
   TableSelectRow,
   TableSelectAll,
   TableContainer,
-  Pagination,
-  Search,
   TextInput,
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
-  postToOpenElisServerFormData,
-  postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils.js";
 import {
@@ -37,6 +32,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import AutoComplete from "../../common/AutoComplete.js";
 
@@ -45,7 +41,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "organization.main.title",
-    link: "/MasterListsPage#organizationManagement",
+    link: "/MasterListsPage/organizationManagement",
   },
 ];
 
@@ -73,11 +69,11 @@ function OrganizationAddModify() {
   const [typeOfActivity, setTypeOfActivity] = useState();
   const [typeOfActivityShow, setTypeOfActivityShow] = useState([]);
 
+  const location = useLocation();
   const ID = (() => {
-    const hash = window.location.hash;
-    if (hash.includes("?")) {
-      const queryParams = hash.split("?")[1];
-      const urlParams = new URLSearchParams(queryParams);
+    const search = location.search;
+    if (search) {
+      const urlParams = new URLSearchParams(search);
       return urlParams.get("ID");
     }
     return "0";
@@ -93,7 +89,7 @@ function OrganizationAddModify() {
       );
     } else {
       setTimeout(() => {
-        window.location.assign("/MasterListsPage#organizationManagement");
+        window.location.assign("/MasterListsPage/organizationManagement");
       }, 1000);
     }
     return () => {
@@ -389,7 +385,7 @@ function OrganizationAddModify() {
       kind: NotificationKinds.success,
     });
     setTimeout(() => {
-      window.location.assign("/MasterListsPage#organizationManagement");
+      window.location.assign("/MasterListsPage/organizationManagement");
     }, 200);
     setNotificationVisible(true);
   };
@@ -830,7 +826,7 @@ function OrganizationAddModify() {
               <Button
                 onClick={() =>
                   window.location.assign(
-                    "/MasterListsPage#organizationManagement",
+                    "/MasterListsPage/organizationManagement",
                   )
                 }
                 kind="tertiary"

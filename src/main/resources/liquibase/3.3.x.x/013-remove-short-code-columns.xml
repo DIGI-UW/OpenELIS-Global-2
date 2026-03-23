@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Remove short_code column from storage_device -->
+    <changeSet id="storage-012-remove-device-short-code" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_device" columnName="short_code"/>
+        </preConditions>
+        <!-- Drop unique constraint first if it exists -->
+        <sql>
+            -- Drop unique constraint if it exists
+            ALTER TABLE clinlims.storage_device
+            DROP CONSTRAINT IF EXISTS uk_device_parent_short_code;
+        </sql>
+        <dropColumn tableName="storage_device" columnName="short_code"/>
+        <rollback>
+            <addColumn tableName="storage_device">
+                <column name="short_code" type="VARCHAR(10)">
+                    <constraints nullable="true"/>
+                </column>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+    <!-- Remove short_code column from storage_shelf -->
+    <changeSet id="storage-012-remove-shelf-short-code" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_shelf" columnName="short_code"/>
+        </preConditions>
+        <!-- Drop unique constraint first if it exists -->
+        <sql>
+            -- Drop unique constraint if it exists
+            ALTER TABLE clinlims.storage_shelf
+            DROP CONSTRAINT IF EXISTS uk_shelf_parent_short_code;
+        </sql>
+        <dropColumn tableName="storage_shelf" columnName="short_code"/>
+        <rollback>
+            <addColumn tableName="storage_shelf">
+                <column name="short_code" type="VARCHAR(10)">
+                    <constraints nullable="true"/>
+                </column>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+    <!-- Remove short_code column from storage_rack -->
+    <changeSet id="storage-012-remove-rack-short-code" author="sample-storage-feature">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_rack" columnName="short_code"/>
+        </preConditions>
+        <!-- Drop unique constraint first if it exists -->
+        <sql>
+            -- Drop unique constraint if it exists
+            ALTER TABLE clinlims.storage_rack
+            DROP CONSTRAINT IF EXISTS uk_rack_parent_short_code;
+        </sql>
+        <dropColumn tableName="storage_rack" columnName="short_code"/>
+        <rollback>
+            <addColumn tableName="storage_rack">
+                <column name="short_code" type="VARCHAR(10)">
+                    <constraints nullable="true"/>
+                </column>
+            </addColumn>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

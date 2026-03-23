@@ -88,6 +88,7 @@ public class ImmunohistochemistryDisplayServiceImpl implements Immunohistochemis
         displayItem.setLastName(patient.getPerson().getLastName());
         displayItem.setLabNumber(immunohistochemistrySample.getSample().getAccessionNumber());
         displayItem.setImmunohistochemistrySampleId(immunohistochemistrySample.getId());
+        displayItem.setPatientPK(patient.getId());
         displayItem.setProgramQuestionnaire(fhirUtil.getLocalFhirClient().read().resource(Questionnaire.class)
                 .withId(immunohistochemistrySample.getProgram().getQuestionnaireUUID().toString()).execute());
         displayItem.setProgramQuestionnaireResponse(

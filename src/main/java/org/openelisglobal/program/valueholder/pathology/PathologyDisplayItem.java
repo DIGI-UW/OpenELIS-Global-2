@@ -18,6 +18,8 @@ public class PathologyDisplayItem {
 
     private Integer pathologySampleId;
 
+    private String patientPK;
+
     public Date getRequestDate() {
         return requestDate;
     }
@@ -80,5 +82,13 @@ public class PathologyDisplayItem {
 
     public void setPathologySampleId(Integer pathologySampleId) {
         this.pathologySampleId = pathologySampleId;
+    }
+
+    public String getPatientPK() {
+        return patientPK;
+    }
+
+    public void setPatientPK(String patientPK) {
+        this.patientPK = patientPK;
     }
 }

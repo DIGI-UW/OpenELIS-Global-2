@@ -46,7 +46,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "testnotificationconfig.browse.title",
-    link: "/MasterListsPage#testNotificationConfigMenu",
+    link: "/MasterListsPage/testNotificationConfigMenu",
   },
 ];
 
@@ -127,7 +127,7 @@ function TestNotificationConfigMenu() {
 
   const handleEditButtonClick = (id) => {
     window.location.assign(
-      `/MasterListsPage#testNotificationConfig?testId=${id}`,
+      `/MasterListsPage/testNotificationConfig?testId=${id}`,
     );
   };
 
@@ -289,7 +289,7 @@ function TestNotificationConfigMenu() {
                 <Button
                   onClick={() =>
                     window.location.assign(
-                      "/MasterListsPage#testNotificationConfigMenu",
+                      "/MasterListsPage/testNotificationConfigMenu",
                     )
                   }
                   kind="tertiary"
@@ -460,7 +460,7 @@ function TestNotificationConfigMenu() {
               <Button
                 onClick={() =>
                   window.location.assign(
-                    "/MasterListsPage#testNotificationConfigMenu",
+                    "/MasterListsPage/testNotificationConfigMenu",
                   )
                 }
                 kind="tertiary"

@@ -49,16 +49,16 @@ facility areas.
 
 **Fields**:
 
-| Field         | Type         | Constraints             | Description                                   |
-| ------------- | ------------ | ----------------------- | --------------------------------------------- |
-| `id`          | VARCHAR(36)  | PK, AUTO                | Primary key (StringSequenceGenerator)         |
-| `fhir_uuid`   | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier             |
-| `name`        | VARCHAR(255) | NOT NULL                | Human-readable room name                      |
-| `code`        | VARCHAR(50)  | NOT NULL, UNIQUE        | Unique room code (e.g., "MAIN", "LAB-2")      |
-| `description` | TEXT         | NULL                    | Optional room description                     |
-| `active`      | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                        |
-| `sys_user_id` | INT          | NOT NULL                | User who created/modified (audit)             |
-| `lastupdated` | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp (optimistic lock) |
+| Field         | Type         | Constraints             | Description                                                                                        |
+| ------------- | ------------ | ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `id`          | VARCHAR(36)  | PK, AUTO                | Primary key (StringSequenceGenerator)                                                              |
+| `fhir_uuid`   | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                  |
+| `name`        | VARCHAR(255) | NOT NULL                | Human-readable room name                                                                           |
+| `code`        | VARCHAR(10)  | NOT NULL, UNIQUE        | Unique room code (≤10 chars, auto-generated from name on create, editable) (e.g., "MAIN", "LAB-2") |
+| `description` | TEXT         | NULL                    | Optional room description                                                                          |
+| `active`      | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                             |
+| `sys_user_id` | INT          | NOT NULL                | User who created/modified (audit)                                                                  |
+| `lastupdated` | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp (optimistic lock)                                                      |
 
 **Constraints**:
 
@@ -83,7 +83,13 @@ facility areas.
 
 **Validation Rules**:
 
-- Code must be unique across all rooms
+- Code must be unique across all rooms (globally unique)
+- Code must be ≤10 characters
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
+- Code is editable in create and edit modals
+- Code does NOT regenerate when name changes
 - Name cannot be empty
 - Cannot delete room with active child devices (FK constraint)
 - Cannot deactivate room with active samples assigned to child locations
@@ -100,19 +106,19 @@ room.
 
 **Fields**:
 
-| Field                 | Type         | Constraints             | Description                                   |
-| --------------------- | ------------ | ----------------------- | --------------------------------------------- |
-| `id`                  | VARCHAR(36)  | PK, AUTO                | Primary key                                   |
-| `fhir_uuid`           | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier             |
-| `name`                | VARCHAR(255) | NOT NULL                | Device name (e.g., "Freezer Unit 1")          |
-| `code`                | VARCHAR(50)  | NOT NULL                | Device code (unique within parent room)       |
-| `type`                | VARCHAR(20)  | NOT NULL                | Enum: freezer, refrigerator, cabinet, other   |
-| `temperature_setting` | DECIMAL(5,2) | NULL                    | Optional temperature in Celsius               |
-| `capacity_limit`      | INT          | NULL                    | Optional capacity limit (number of positions) |
-| `active`              | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                        |
-| `parent_room_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent room reference                         |
-| `sys_user_id`         | INT          | NOT NULL                | User who created/modified                     |
-| `lastupdated`         | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                   |
+| Field                 | Type         | Constraints             | Description                                                                                      |
+| --------------------- | ------------ | ----------------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                  | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                      |
+| `fhir_uuid`           | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                |
+| `name`                | VARCHAR(255) | NOT NULL                | Device name (e.g., "Freezer Unit 1")                                                             |
+| `code`                | VARCHAR(10)  | NOT NULL                | Device code (≤10 chars, auto-generated from name on create, editable, unique within parent room) |
+| `type`                | VARCHAR(20)  | NOT NULL                | Enum: freezer, refrigerator, cabinet, other                                                      |
+| `temperature_setting` | DECIMAL(5,2) | NULL                    | Optional temperature in Celsius                                                                  |
+| `capacity_limit`      | INT          | NULL                    | Optional capacity limit (number of positions)                                                    |
+| `active`              | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                           |
+| `parent_room_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent room reference                                                                            |
+| `sys_user_id`         | INT          | NOT NULL                | User who created/modified                                                                        |
+| `lastupdated`         | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                      |
 
 **Constraints**:
 
@@ -142,6 +148,12 @@ room.
 **Validation Rules**:
 
 - Code must be unique within parent room (not globally unique)
+- Code must be ≤10 characters
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
+- Code is editable in create and edit modals
+- Code does NOT regenerate when name changes
 - Type must be one of enumerated values
 - Temperature setting (if provided) must be reasonable (-273.15 to 100 Celsius)
 - Cannot delete device with active child shelves
@@ -157,21 +169,23 @@ room.
 
 **Fields**:
 
-| Field              | Type         | Constraints             | Description                          |
-| ------------------ | ------------ | ----------------------- | ------------------------------------ |
-| `id`               | VARCHAR(36)  | PK, AUTO                | Primary key                          |
-| `fhir_uuid`        | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier    |
-| `label`            | VARCHAR(100) | NOT NULL                | Shelf label (e.g., "Shelf-A", "Top") |
-| `capacity_limit`   | INT          | NULL                    | Optional capacity limit              |
-| `active`           | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status               |
-| `parent_device_id` | VARCHAR(36)  | NOT NULL, FK            | Parent device reference              |
-| `sys_user_id`      | INT          | NOT NULL                | User who created/modified            |
-| `lastupdated`      | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp          |
+| Field              | Type         | Constraints             | Description                                                                                       |
+| ------------------ | ------------ | ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `id`               | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                       |
+| `fhir_uuid`        | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                                 |
+| `name`             | VARCHAR(255) | NOT NULL                | Shelf name (e.g., "Shelf-A", "Top")                                                               |
+| `code`             | VARCHAR(10)  | NOT NULL                | Shelf code (≤10 chars, auto-generated from name on create, editable, unique within parent device) |
+| `capacity_limit`   | INT          | NULL                    | Optional capacity limit                                                                           |
+| `active`           | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                            |
+| `parent_device_id` | VARCHAR(36)  | NOT NULL, FK            | Parent device reference                                                                           |
+| `sys_user_id`      | INT          | NOT NULL                | User who created/modified                                                                         |
+| `lastupdated`      | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                       |
 
 **Constraints**:
 
 - PRIMARY KEY (`id`)
-- UNIQUE (`parent_device_id`, `label`) - Label unique within parent device
+- UNIQUE (`parent_device_id`, `name`) - Name unique within parent device
+- UNIQUE (`parent_device_id`, `code`) - Code unique within parent device
 - UNIQUE (`fhir_uuid`)
 - FOREIGN KEY (`parent_device_id`) REFERENCES `storage_device(id)` ON DELETE
   RESTRICT
@@ -186,14 +200,21 @@ room.
 
 - Maps to FHIR R4 `Location` resource
 - `Location.id` = `fhir_uuid`
-- `Location.identifier.value` = "{room_code}-{device_code}-{shelf_label}"
-- `Location.name` = `label`
+- `Location.identifier.value` = "{room_code}-{device_code}-{shelf_code}"
+- `Location.name` = `name`
 - `Location.physicalType.code` = "co" (container)
 - `Location.partOf.reference` = "Location/{parent_device_fhir_uuid}"
 
 **Validation Rules**:
 
-- Label must be unique within parent device
+- Name must be unique within parent device
+- Code must be unique within parent device
+- Code must be ≤10 characters
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
+- Code is editable in create and edit modals
+- Code does NOT regenerate when name changes
 - Cannot delete shelf with active child racks
 - Cannot deactivate shelf with active samples in child locations
 
@@ -207,23 +228,25 @@ room.
 
 **Fields**:
 
-| Field                  | Type         | Constraints             | Description                                           |
-| ---------------------- | ------------ | ----------------------- | ----------------------------------------------------- |
-| `id`                   | VARCHAR(36)  | PK, AUTO                | Primary key                                           |
-| `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                     |
-| `label`                | VARCHAR(100) | NOT NULL                | Rack label (e.g., "Rack R1", "Tray-1")                |
-| `rows`                 | INT          | NOT NULL, DEFAULT 0     | Grid rows (0 = no grid)                               |
-| `columns`              | INT          | NOT NULL, DEFAULT 0     | Grid columns (0 = no grid)                            |
-| `position_schema_hint` | VARCHAR(50)  | NULL                    | Optional hint for position naming (e.g., "A1", "1-1") |
-| `active`               | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                |
-| `parent_shelf_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent shelf reference                                |
-| `sys_user_id`          | INT          | NOT NULL                | User who created/modified                             |
-| `lastupdated`          | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                           |
+| Field                  | Type         | Constraints             | Description                                                                                     |
+| ---------------------- | ------------ | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `id`                   | VARCHAR(36)  | PK, AUTO                | Primary key                                                                                     |
+| `fhir_uuid`            | UUID         | NOT NULL, UNIQUE        | FHIR Location resource identifier                                                               |
+| `name`                 | VARCHAR(255) | NOT NULL                | Rack name (e.g., "Rack R1", "Tray-1")                                                           |
+| `code`                 | VARCHAR(10)  | NOT NULL                | Rack code (≤10 chars, auto-generated from name on create, editable, unique within parent shelf) |
+| `rows`                 | INT          | NOT NULL, DEFAULT 0     | Grid rows (0 = no grid)                                                                         |
+| `columns`              | INT          | NOT NULL, DEFAULT 0     | Grid columns (0 = no grid)                                                                      |
+| `position_schema_hint` | VARCHAR(50)  | NULL                    | Optional hint for position naming (e.g., "A1", "1-1")                                           |
+| `active`               | BOOLEAN      | NOT NULL, DEFAULT true  | Active/inactive status                                                                          |
+| `parent_shelf_id`      | VARCHAR(36)  | NOT NULL, FK            | Parent shelf reference                                                                          |
+| `sys_user_id`          | INT          | NOT NULL                | User who created/modified                                                                       |
+| `lastupdated`          | TIMESTAMP    | NOT NULL, DEFAULT NOW() | Last modification timestamp                                                                     |
 
 **Constraints**:
 
 - PRIMARY KEY (`id`)
-- UNIQUE (`parent_shelf_id`, `label`) - Label unique within parent shelf
+- UNIQUE (`parent_shelf_id`, `name`) - Name unique within parent shelf
+- UNIQUE (`parent_shelf_id`, `code`) - Code unique within parent shelf
 - UNIQUE (`fhir_uuid`)
 - CHECK (`rows` >= 0 AND `columns` >= 0)
 - FOREIGN KEY (`parent_shelf_id`) REFERENCES `storage_shelf(id)` ON DELETE
@@ -245,15 +268,22 @@ room.
 - Maps to FHIR R4 `Location` resource
 - `Location.id` = `fhir_uuid`
 - `Location.identifier.value` =
-  "{room_code}-{device_code}-{shelf_label}-{rack_label}"
-- `Location.name` = `label`
+  "{room_code}-{device_code}-{shelf_code}-{rack_code}"
+- `Location.name` = `name`
 - `Location.physicalType.code` = "co" (container)
 - `Location.partOf.reference` = "Location/{parent_shelf_fhir_uuid}"
 - `Location.extension[grid-dimensions].valueString` = "{rows} × {columns}"
 
 **Validation Rules**:
 
-- Label must be unique within parent shelf
+- Name must be unique within parent shelf
+- Code must be unique within parent shelf
+- Code must be ≤10 characters
+- Code is auto-generated from name on create (uppercase, remove
+  non-alphanumeric, keep hyphens/underscores, truncate to 10 chars, append
+  numeric suffix if conflict)
+- Code is editable in create and edit modals
+- Code does NOT regenerate when name changes
 - Rows and columns must be non-negative integers
 - Cannot delete rack with active child positions (occupied positions)
 - Cannot deactivate rack with active samples in child positions
@@ -327,12 +357,12 @@ and enforced by database constraint.
 - `Location.id` = `fhir_uuid`
 - `Location.identifier.value` = hierarchical code based on position level:
   - Device level: "{room_code}-{device_code}"
-  - Shelf level: "{room_code}-{device_code}-{shelf_label}"
-  - Rack level: "{room_code}-{device_code}-{shelf_label}-{rack_label}"
+  - Shelf level: "{room_code}-{device_code}-{shelf_code}"
+  - Rack level: "{room_code}-{device_code}-{shelf_code}-{rack_code}"
   - Position level:
-    "{room_code}-{device_code}-{shelf_label}-{rack_label}-{coordinate}"
-- `Location.name` = coordinate (if position level) or device/shelf/rack label
-  (if lower level)
+    "{room_code}-{device_code}-{shelf_code}-{rack_code}-{coordinate}"
+- `Location.name` = coordinate (if position level) or device/shelf/rack name (if
+  lower level)
 - `Location.physicalType.code` = "co" (container)
 - `Location.partOf.reference` = "Location/{parent_fhir_uuid}" (parent device,
   shelf, or rack depending on level)
@@ -383,20 +413,27 @@ field (`position_coordinate`), not a separate entity reference.
 stored independently, even when multiple SampleItems belong to the same parent
 Sample.
 
+**⚠️ CRITICAL: ID Handling**: The `sample_item_id` column stores **numeric ID
+only** (Integer), not external ID. Service methods accept flexible identifiers
+(external ID, accession number, or numeric ID) via `resolveSampleItem()`, then
+convert to numeric ID for database operations. See
+[SampleItem ID Patterns Guide](.specify/guides/sampleitem-id-patterns.md) for
+detailed conversion patterns and anti-patterns.
+
 **Table**: `SAMPLE_STORAGE_ASSIGNMENT`
 
 **Fields**:
 
-| Field                 | Type        | Constraints             | Description                                                                  |
-| --------------------- | ----------- | ----------------------- | ---------------------------------------------------------------------------- |
-| `id`                  | VARCHAR(36) | PK, AUTO                | Primary key                                                                  |
-| `sample_item_id`      | VARCHAR(36) | NOT NULL, UNIQUE        | SampleItem reference (one current location per SampleItem)                   |
-| `location_id`         | NUMERIC(10) | NOT NULL                | Polymorphic location ID (references device, shelf, or rack)                  |
-| `location_type`       | VARCHAR(20) | NOT NULL                | Type discriminator: 'device', 'shelf', or 'rack'                             |
-| `position_coordinate` | VARCHAR(50) | NULL                    | Optional text-based position coordinate (can be used with any location_type) |
-| `assigned_by_user_id` | INT         | NOT NULL, FK            | User who assigned                                                            |
-| `assigned_date`       | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Assignment timestamp                                                         |
-| `notes`               | TEXT        | NULL                    | Optional assignment notes                                                    |
+| Field                 | Type        | Constraints             | Description                                                                                    |
+| --------------------- | ----------- | ----------------------- | ---------------------------------------------------------------------------------------------- |
+| `id`                  | VARCHAR(36) | PK, AUTO                | Primary key                                                                                    |
+| `sample_item_id`      | NUMERIC(10) | NOT NULL, UNIQUE        | SampleItem numeric ID reference (Integer in Java, **not external ID** - see ID Patterns Guide) |
+| `location_id`         | NUMERIC(10) | NOT NULL                | Polymorphic location ID (references device, shelf, or rack)                                    |
+| `location_type`       | VARCHAR(20) | NOT NULL                | Type discriminator: 'device', 'shelf', or 'rack'                                               |
+| `position_coordinate` | VARCHAR(50) | NULL                    | Optional text-based position coordinate (can be used with any location_type)                   |
+| `assigned_by_user_id` | INT         | NOT NULL, FK            | User who assigned                                                                              |
+| `assigned_date`       | TIMESTAMP   | NOT NULL, DEFAULT NOW() | Assignment timestamp                                                                           |
+| `notes`               | TEXT        | NULL                    | Optional assignment notes                                                                      |
 
 **Constraints**:
 

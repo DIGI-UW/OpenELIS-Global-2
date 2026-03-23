@@ -1,5 +1,6 @@
 package org.openelisglobal.storage.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -38,7 +39,7 @@ public class StorageRoom extends BaseObject<Integer> {
     @Column(name = "NAME", length = 255, nullable = false)
     private String name;
 
-    @Column(name = "CODE", length = 50, nullable = false, unique = true)
+    @Column(name = "CODE", length = 10, nullable = false, unique = true)
     private String code;
 
     @Column(name = "DESCRIPTION")
@@ -126,6 +127,7 @@ public class StorageRoom extends BaseObject<Integer> {
     }
 
     // Helper methods for FHIR transform
+    @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid != null ? fhirUuid.toString() : null;
     }

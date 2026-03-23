@@ -128,3 +128,22 @@
   color: var(--cds-text-secondary);
   font-weight: normal;
 }
+
+/* Autosaved indicator - unobtrusive success message */
+.autosaved-indicator {
+  margin-top: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: var(--cds-support-success, #24a148);
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

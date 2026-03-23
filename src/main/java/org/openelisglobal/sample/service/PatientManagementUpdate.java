@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -22,6 +23,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientContactService;
+import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -63,6 +65,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     private PatientPatientTypeService patientPatientTypeService;
     @Autowired
     private PatientContactService patientContactService;
+    @Autowired
+    private PatientPhotoService patientPhotoService;
     protected PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.NO_ACTION;
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -154,6 +158,18 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getHealthRegion(), "HEALTH REGION");
         persistIdentityType(patientInfo.getOtherNationality(), "OTHER NATIONALITY");
         persistIdentityType(patientInfo.getGuid(), "GUID");
+
+        // Persist dynamic address hierarchy values (addressHierarchy_0,
+        // addressHierarchy_1, etc.)
+        if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
+            for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
+                    String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    persistIdentityType(entry.getValue(), identityType);
+                }
+            }
+        }
     }
 
     private void persistExtraPatientAddressInfo(PatientManagementInfo patientInfo) {
@@ -211,6 +227,9 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     }
 
     private void persistContact(PatientManagementInfo patientInfo, Patient patient) {
+        if (patientInfo.getPatientContact() == null) {
+            return; // No patient contact to persist
+        }
         if (GenericValidator.isBlankOrNull(patientInfo.getPatientContact().getId())) {
             PatientContact contact = patientInfo.getPatientContact();
             Person contactPerson = patientInfo.getPatientContact().getPerson();
@@ -223,13 +242,18 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         } else {
             Person newContactPerson = patientInfo.getPatientContact().getPerson();
             PatientContact contact = patientContactService.get(patientInfo.getPatientContact().getId());
-            Person oldContactPerson = contact.getPerson();
+            // Reload person from database to get latest version (avoids stale state
+            // exception)
+            // The person may have been updated by audit trail, changing its version
+            Person oldContactPerson = personService.get(contact.getPerson().getId());
             oldContactPerson.setEmail(newContactPerson.getEmail());
             oldContactPerson.setLastName(newContactPerson.getLastName());
             oldContactPerson.setFirstName(newContactPerson.getFirstName());
             oldContactPerson.setPrimaryPhone(newContactPerson.getPrimaryPhone());
             contact.setSysUserId(patient.getSysUserId());
             oldContactPerson.setSysUserId(patient.getSysUserId());
+            personService.update(oldContactPerson);
+            patientContactService.update(contact);
         }
     }
 
@@ -238,10 +262,14 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);
 
+        if (typeID == null) {
+            return; // Cannot persist without a valid type ID
+        }
+
         if (patientUpdateStatus == PatientUpdateStatus.UPDATE) {
 
             for (PatientIdentity listIdentity : patientIdentities) {
-                if (listIdentity.getIdentityTypeId().equals(typeID)) {
+                if (typeID.equals(listIdentity.getIdentityTypeId())) {
 
                     newIdentityNeeded = false;
 
@@ -365,6 +393,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistPatientRelatedInformation(patientInfo);
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
+        patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+
     }
 
     @Override

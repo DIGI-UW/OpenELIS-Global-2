@@ -27,7 +27,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "Global Menu Management",
-    link: "/MasterListsPage#globalMenuManagement",
+    link: "/MasterListsPage/globalMenuManagement",
   },
 ];
 function GlobalMenuManagement() {

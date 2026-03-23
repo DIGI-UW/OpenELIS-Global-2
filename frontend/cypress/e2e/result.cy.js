@@ -31,7 +31,10 @@ describe("Result By Unit", function () {
 
   it("should accept the sample, refer the sample, and save the result", function () {
     result.expandSampleDetails();
+    cy.wait(500); // Wait for form to fully render
     cy.fixture("result").then((res) => {
+      // Wait for test method dropdown to be enabled
+      cy.get("#testMethod0").should("be.visible").and("not.be.disabled");
       result.selectTestMethod(res.pcrTestMethod);
       result.referTests(res.referTests);
       result.referralReason(res.referalReason);
@@ -224,6 +227,7 @@ describe("Result By Referred Out Tests", function () {
       result.clickDateButton();
     });
     result.clickReferralsByTestAndName();
+    cy.wait(2000); // Wait for search results to load
     result.selectAllButtonEnabled(); //wont be if patient does not exist
     result.clickSelectAllButton();
     result.selectNoneButtonEnabled();
@@ -238,6 +242,7 @@ describe("Result By Referred Out Tests", function () {
       result.clickDateButton();
     });
     result.clickReferralsByTestAndName();
+    cy.wait(2000); // Wait for search results to load
     result.selectAllButtonEnabled(); //wont be if patient does not exist
     result.clickSelectAllButton();
     result.selectNoneButtonEnabled();

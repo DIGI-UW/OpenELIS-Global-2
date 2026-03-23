@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.bean;
 
 import java.util.List;
+import java.util.UUID;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
 
 public class NoteBookDisplayBean {
@@ -13,6 +14,8 @@ public class NoteBookDisplayBean {
     private NoteBookStatus status;
     private Boolean isTemplate;
     private Integer entriesCount;
+    private Integer technicianId;
+    private UUID questionnaireFhirUuid;
 
     public String getTitle() {
         return title;
@@ -85,4 +88,21 @@ public class NoteBookDisplayBean {
     public void setEntriesCount(Integer entriesCount) {
         this.entriesCount = entriesCount;
     }
+
+    public UUID getQuestionnaireFhirUuid() {
+        return questionnaireFhirUuid;
+    }
+
+    public void setQuestionnaireFhirUuid(UUID questionnaireFhirUuid) {
+        this.questionnaireFhirUuid = questionnaireFhirUuid;
+    }
+
+    public Integer getTechnicianId() {
+        return technicianId;
+    }
+
+    public void setTechnicianId(Integer technicianId) {
+        this.technicianId = technicianId;
+    }
+
 }

@@ -38,6 +38,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { ArrowLeft, ArrowRight, Cost } from "@carbon/icons-react";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType.js";
@@ -47,7 +48,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "testnotificationconfig.browse.title",
-    link: "/MasterListsPage#testNotificationConfigMenu",
+    link: "/MasterListsPage/testNotificationConfigMenu",
   },
 ];
 
@@ -56,13 +57,13 @@ function TestNotificationConfigEdit() {
     useContext(NotificationContext);
 
   const intl = useIntl();
+  const location = useLocation();
 
   const ID = (() => {
-    const hash = window.location.hash;
-    if (hash.includes("?")) {
-      const queryParams = hash.split("?")[1];
-      const urlParams = new URLSearchParams(queryParams);
-      return urlParams.get("testId");
+    const search = location.search;
+    if (search) {
+      const urlParams = new URLSearchParams(search);
+      return urlParams.get("testId") || "0";
     }
     return "0";
   })();
@@ -119,15 +120,17 @@ function TestNotificationConfigEdit() {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer(
-      `/rest/TestNotificationConfig?testId=${ID}`,
-      handleMenuItems,
-    );
+    if (ID && ID !== "0") {
+      getFromOpenElisServer(
+        `/rest/TestNotificationConfig?testId=${ID}`,
+        handleMenuItems,
+      );
+    }
     getFromOpenElisServer(`/rest/test-list`, handleTestNamesList);
     return () => {
       componentMounted.current = false;
     };
-  }, [ID]);
+  }, [ID, location.search]);
 
   useEffect(() => {
     const testId = testNotificationConfigEditData?.config?.testId;
@@ -783,7 +786,7 @@ function TestNotificationConfigEdit() {
                 <Button
                   onClick={() =>
                     window.location.assign(
-                      "/MasterListsPage#testNotificationConfigMenu",
+                      "/MasterListsPage/testNotificationConfigMenu",
                     )
                   }
                   kind="tertiary"

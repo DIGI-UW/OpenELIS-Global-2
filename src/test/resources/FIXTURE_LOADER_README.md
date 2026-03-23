@@ -5,8 +5,11 @@
 This directory contains a **single unified script** for loading all test
 fixtures:
 
-- Storage hierarchy (rooms, devices, shelves, racks, positions)
 - E2E test data (patients, samples, sample items, storage assignments)
+
+**Note**: Storage hierarchy (rooms/devices/shelves/racks/boxes) is loaded by
+Liquibase with `context="test"`. The loader scripts verify that foundation data
+exists before inserting E2E fixtures.
 
 ## Usage
 
@@ -84,22 +87,25 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 ## What Gets Loaded
 
-### Storage Hierarchy
+### 1. Foundational Data
 
-- 3 Rooms (Main Laboratory, Secondary Laboratory, Inactive Room)
-- 5 Devices (Freezers, Refrigerators, Cabinets)
-- 6 Shelves
-- 6 Racks
-- 100+ Positions (mix of occupied/unoccupied)
+- Providers, Organizations (e2e-foundational-data.sql)
 
-### E2E Test Data
+### 2. Analyzer E2E Fixtures
 
-- 3 Test Patients (John E2E-Smith, Jane E2E-Jones, Bob E2E-Williams)
-- 10 Test Samples (E2E-001 through E2E-010)
-- 20+ Test Sample Items
-- 15+ Storage Assignments
-- 5 Test Analyses (orders for E2E sample items)
-- 2 Test Results (for finalized analyses)
+- **analyzer-test-data.sql** – Analyzers 1000–1004, configurations, fields,
+  mappings, errors (same as CI frontend-qa).
+- **011 Madagascar set** (Docker + Maven only) – When
+  `load-analyzer-test-data.sh` is available and Maven is on PATH, the script
+  runs `--dataset-011` to load analyzers 2000–2012
+  (madagascar-analyzer-test-data.xml). If this step fails, run manually:
+  `./src/test/resources/load-analyzer-test-data.sh --dataset-011`.
+
+### 3. Storage + E2E Test Data
+
+- Storage hierarchy (rooms, devices, shelves, racks, boxes) + 3 Test Patients,
+  10 Test Samples, 20+ Sample Items, 15+ Storage Assignments, 5 Analyses, 2
+  Results (from storage-e2e.xml → generated SQL).
 
 ## Verification
 
@@ -110,7 +116,7 @@ Storage Hierarchy | Rooms     |     3
                   | Devices   |     5
                   | Shelves   |     6
                   | Racks     |     6
-                  | Positions |   106
+                  | Boxes     |   10+
 
 E2E Test Data     | Patients            |     3
                   | Samples             |    10

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add parent reference and remaining quantity tracking to sample_item -->
+    <changeSet id="sample-mgmt-001-add-aliquot-columns" author="dev-team">
+        <addColumn tableName="sample_item">
+            <column name="remaining_quantity" type="DECIMAL(10,3)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="parent_sample_item_id" type="NUMERIC(10,0)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Add foreign key constraint -->
+    <changeSet id="sample-mgmt-002-add-parent-fk" author="dev-team">
+        <addForeignKeyConstraint
+            constraintName="fk_sample_item_parent"
+            baseTableName="sample_item"
+            baseColumnNames="parent_sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            onDelete="RESTRICT"
+            onUpdate="CASCADE"/>
+    </changeSet>
+
+    <!-- Add index for parent-child queries -->
+    <changeSet id="sample-mgmt-003-add-parent-index" author="dev-team">
+        <createIndex tableName="sample_item" indexName="idx_sample_item_parent">
+            <column name="parent_sample_item_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create aliquot relationship tracking table -->
+    <changeSet id="sample-mgmt-004-create-aliquot-relationship" author="dev-team">
+        <createTable tableName="sample_item_aliquot_relationship">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="parent_sample_item_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="child_sample_item_id" type="NUMERIC(10,0)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sequence_number" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_transferred" type="DECIMAL(10,3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="uuid">
+                <constraints nullable="true" unique="true"/>
+            </column>
+            <column name="notes" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Add foreign keys for relationship table -->
+    <changeSet id="sample-mgmt-005-add-relationship-fks" author="dev-team">
+        <addForeignKeyConstraint
+            constraintName="fk_aliquot_rel_parent"
+            baseTableName="sample_item_aliquot_relationship"
+            baseColumnNames="parent_sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+
+        <addForeignKeyConstraint
+            constraintName="fk_aliquot_rel_child"
+            baseTableName="sample_item_aliquot_relationship"
+            baseColumnNames="child_sample_item_id"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"
+            onDelete="CASCADE"
+            onUpdate="CASCADE"/>
+    </changeSet>
+
+    <!-- Add unique constraint on parent + sequence number -->
+    <changeSet id="sample-mgmt-006-add-sequence-unique" author="dev-team">
+        <addUniqueConstraint
+            tableName="sample_item_aliquot_relationship"
+            columnNames="parent_sample_item_id, sequence_number"
+            constraintName="uk_aliquot_parent_sequence"/>
+    </changeSet>
+
+    <!-- Add indexes for relationship table -->
+    <changeSet id="sample-mgmt-007-add-relationship-indexes" author="dev-team">
+        <createIndex tableName="sample_item_aliquot_relationship" indexName="idx_aliquot_rel_parent">
+            <column name="parent_sample_item_id"/>
+        </createIndex>
+        <createIndex tableName="sample_item_aliquot_relationship" indexName="idx_aliquot_rel_child">
+            <column name="child_sample_item_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Optional: Migrate existing quantity to remaining_quantity for legacy samples -->
+    <changeSet id="sample-mgmt-008-migrate-legacy-quantity" author="dev-team">
+        <sql>
+            UPDATE sample_item
+            SET remaining_quantity = quantity
+            WHERE quantity IS NOT NULL
+              AND remaining_quantity IS NULL;
+        </sql>
+    </changeSet>
+
+    <!-- Add Sample Management menu entry under Generic Sample -->
+    <changeSet id="sample-mgmt-009-add-menu-entry" author="dev-team">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_sample_management'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Sample Management menu entry as child of Generic Sample with dynamic ID generation</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_generic_sample')"/>
+            <column name="presentation_order" valueNumeric="4"/>
+            <column name="element_id" value="menu_sample_management"/>
+            <column name="action_url" value="/SampleManagement"/>
+            <column name="display_key" value="banner.menu.sampleManagement"/>
+            <column name="tool_tip_key" value="banner.menu.sampleManagement.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <!-- Add Result Entry menu entry under Results -->
+    <changeSet id="sample-mgmt-010-add-result-entry-menu" author="dev-team">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_sample_management'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Result Entry menu entry as child of Results menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_results')"/>
+            <column name="presentation_order" valueNumeric="1"/>
+            <column name="element_id" value="menu_sample_management"/>
+            <column name="action_url" value="/ResultEntry"/>
+            <column name="display_key" value="result.entry.label"/>
+            <column name="tool_tip_key" value="result.entry.label"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

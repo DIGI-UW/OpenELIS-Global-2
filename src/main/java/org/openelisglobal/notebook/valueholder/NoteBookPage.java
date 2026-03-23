@@ -48,10 +48,21 @@ public class NoteBookPage extends BaseObject<Integer> {
     @JsonIgnore
     private NoteBook notebook;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @Column(name = "sample_type_id")
+    private Integer sampleTypeId;
+
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "notebook_page_panels", joinColumns = @JoinColumn(name = "notebook_page_id"))
+    @Column(name = "panel")
+    private List<Integer> panels;
+
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "notebook_page_tests", joinColumns = @JoinColumn(name = "notebook_page_id"))
     @Column(name = "test")
     private List<Integer> tests;
+
+    @Column(name = "completed")
+    private Boolean completed;
 
     public Integer getId() {
         return id;
@@ -110,6 +121,33 @@ public class NoteBookPage extends BaseObject<Integer> {
 
     public void setTests(List<Integer> tests) {
         this.tests = tests;
+    }
+
+    public Boolean getCompleted() {
+        return completed != null ? completed : false;
+    }
+
+    public void setCompleted(Boolean completed) {
+        this.completed = completed;
+    }
+
+    public Integer getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(Integer sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
+    public List<Integer> getPanels() {
+        if (panels == null) {
+            panels = new ArrayList<>();
+        }
+        return panels;
+    }
+
+    public void setPanels(List<Integer> panels) {
+        this.panels = panels;
     }
 
 }

@@ -7,6 +7,8 @@
 
     <!-- Sample Storage Assignment Table (Flexible Assignment Model) -->
     <changeSet id="storage-006-create-sample-storage-assignment-table" author="sample-storage-feature">
+        <validCheckSum>8:23288ac36cc8862ec52428c1e844a7c2</validCheckSum>
+        <validCheckSum>8:9d05839bb5a3e1655037be7d29a4be58</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="sample_storage_assignment"/>
@@ -43,7 +45,7 @@
         <sql>
             ALTER TABLE clinlims.sample_storage_assignment
             ADD CONSTRAINT chk_location_type_valid
-            CHECK (location_type IN ('device', 'shelf', 'rack'));
+            CHECK (location_type IN ('device', 'shelf', 'rack', 'box'));
         </sql>
         <createSequence sequenceName="sample_storage_assignment_seq" startValue="1" incrementBy="1"/>
         <rollback>
@@ -54,6 +56,8 @@
 
     <!-- Sample Storage Movement Table (Flexible Assignment Model) -->
     <changeSet id="storage-007-create-sample-storage-movement-table" author="sample-storage-feature">
+        <validCheckSum>8:edde8ef8725b4f543ee57b16069774ea</validCheckSum>
+        <validCheckSum>8:7443ac240d454c3a32b2bcba2d594b4e</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="sample_storage_movement"/>
@@ -99,7 +103,7 @@
             ADD CONSTRAINT chk_previous_location_type_valid
             CHECK (
                 previous_location_type IS NULL OR
-                previous_location_type IN ('device', 'shelf', 'rack')
+                previous_location_type IN ('device', 'shelf', 'rack', 'box')
             );
         </sql>
         <sql>
@@ -107,7 +111,7 @@
             ADD CONSTRAINT chk_new_location_type_valid
             CHECK (
                 new_location_type IS NULL OR
-                new_location_type IN ('device', 'shelf', 'rack')
+                new_location_type IN ('device', 'shelf', 'rack', 'box')
             );
         </sql>
         <createSequence sequenceName="sample_storage_movement_seq" startValue="1" incrementBy="1"/>

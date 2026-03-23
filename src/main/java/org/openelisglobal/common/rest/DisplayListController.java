@@ -77,6 +77,9 @@ public class DisplayListController extends BaseRestController {
     @Value("${org.itech.login.saml:false}")
     private Boolean useSAML;
 
+    @Value("${org.itech.login.saml.loginpage:true}")
+    private Boolean useSamlLoginPage;
+
     @Value("${org.itech.login.oauth:false}")
     private Boolean useOAUTH;
 
@@ -291,19 +294,19 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_EDUCATION);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
     }
 
     @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_MARITAL_STATUS);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
     }
 
     @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_NATIONALITY);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
     }
 
     @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -385,6 +388,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);
         configs.put("LAST_NAME_REGEX", LAST_NAME_REGEX);
+        configs.put(Property.USE_NEW_ADDRESS_HIERARCHY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY));
         return configs;
     }
 
@@ -414,6 +419,7 @@ public class DisplayListController extends BaseRestController {
         SiteInformation studyManagementTab = siteInformationService.getSiteInformationByName("Study Management tab");
         configs.put("studyManagementTab", studyManagementTab != null ? studyManagementTab.getValue() : "false");
         configs.put("useSaml", useSAML ? "true" : "false");
+        configs.put("useSamlLoginPage", useSamlLoginPage ? "true" : "false");
         configs.put("useOauth", useOAUTH ? "true" : "false");
         if (useOAUTH) {
             ResolvableType type = ResolvableType.forInstance(clientRegistrationRepository).as(Iterable.class);
@@ -437,8 +443,14 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN));
         configs.put(Property.ENABLE_CLIENT_REGISTRY.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_CLIENT_REGISTRY));
-        configs.put(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION.toString(),
-                ConfigurationProperties.getInstance().getPropertyValue(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION));
+        configs.put(Property.GPS_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ENABLED));
+        configs.put(Property.GPS_ACCURACY_METERS.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
+        configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
+        configs.put(Property.EQA_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.EQA_ENABLED));
         return configs;
     }
 
@@ -537,6 +549,21 @@ public class DisplayListController extends BaseRestController {
                 SpringContext.getBean(IStatusService.class).getStatusID(StatusService.OrderStatus.Started),
                 SpringContext.getBean(IStatusService.class).getStatusName(StatusService.OrderStatus.Started)));
 
+        return list;
+    }
+
+    /**
+     * Get sample item status types for filtering (specs/001-sample-storage/spec.md
+     * FR-056) Returns user-friendly status names (active, disposed) for sample item
+     * filtering
+     */
+    @GetMapping(value = "sample-item-status-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getSampleItemStatusTypes() {
+        List<IdValuePair> list = new ArrayList<>();
+        list.add(new IdValuePair("", "All"));
+        list.add(new IdValuePair("active", "Active"));
+        list.add(new IdValuePair("disposed", "Disposed"));
         return list;
     }
 

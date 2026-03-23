@@ -95,8 +95,10 @@ public class ProjectDAOImpl extends BaseDAOImpl<Project, String> implements Proj
 
             // bugzilla 1399
             // bugzilla 2438 order by local abbreviation
-            String sql = "from Project p order by p.localAbbreviation desc";
-            Query<Project> query = entityManager.unwrap(Session.class).createQuery(sql, Project.class);
+            // Note: localAbbreviation maps to numeric column (local_abbrev), use native SQL
+            // for ordering
+            String sql = "SELECT * FROM project p ORDER BY CAST(p.local_abbrev AS VARCHAR) DESC";
+            Query<Project> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Project.class);
             query.setFirstResult(startingRecNo - 1);
             query.setMaxResults(endingRecNo - 1);
 
@@ -210,11 +212,16 @@ public class ProjectDAOImpl extends BaseDAOImpl<Project, String> implements Proj
             // duplicates
 
             // bugzilla 2438 adding local abbreviation to duplicate check
-            String sql = "from Project t where ((trim(lower(t.projectName)) = :param and t.id != :param2) or"
-                    + " (trim(lower(t.localAbbreviation)) = :param3 and t.id != :param2))";
-            Query<Project> query = entityManager.unwrap(Session.class).createQuery(sql, Project.class);
+            // Note: localAbbreviation maps to numeric column (local_abbrev), so we use
+            // native SQL with explicit cast
+            // HQL doesn't handle numeric-to-string casting well, so we use native SQL for
+            // this comparison
+            String sql = "SELECT * FROM project t WHERE ((trim(lower(t.name)) = :param AND CAST(t.id AS VARCHAR) != :param2) OR"
+                    + " (trim(lower(CAST(t.local_abbrev AS VARCHAR))) = :param3 AND CAST(t.id AS VARCHAR) != :param2))";
+            Query<Project> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Project.class);
             query.setParameter("param", project.getProjectName().toLowerCase().trim());
-            query.setParameter("param3", project.getLocalAbbreviation().toLowerCase().trim());
+            query.setParameter("param3",
+                    project.getLocalAbbreviation() != null ? project.getLocalAbbreviation().toLowerCase().trim() : "");
 
             // initialize with 0 (for new records where no id has been generated yet
             String projId = "0";
@@ -243,14 +250,17 @@ public class ProjectDAOImpl extends BaseDAOImpl<Project, String> implements Proj
     @Transactional(readOnly = true)
     public Project getProjectByLocalAbbreviation(Project project, boolean activeOnly) throws LIMSRuntimeException {
         try {
+            // Note: localAbbreviation maps to numeric column (local_abbrev), so we use
+            // native SQL with explicit cast
             String sql = null;
             if (activeOnly) {
-                sql = "from Project p where trim(lower(p.localAbbreviation)) = :param and p.isActive='Y'";
+                sql = "SELECT * FROM project p WHERE trim(lower(CAST(p.local_abbrev AS VARCHAR))) = :param AND p.is_active='Y'";
             } else {
-                sql = "from Project p where trim(lower(p.localAbbreviation)) = :param";
+                sql = "SELECT * FROM project p WHERE trim(lower(CAST(p.local_abbrev AS VARCHAR))) = :param";
             }
-            Query<Project> query = entityManager.unwrap(Session.class).createQuery(sql, Project.class);
-            query.setParameter("param", project.getLocalAbbreviation().toLowerCase().trim());
+            Query<Project> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Project.class);
+            query.setParameter("param",
+                    project.getLocalAbbreviation() != null ? project.getLocalAbbreviation().toLowerCase().trim() : "");
             List<Project> list = query.list();
             Project pro = null;
             if (list.size() > 0) {

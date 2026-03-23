@@ -74,58 +74,31 @@ public class StorageEntityTest {
     }
 
     @Test
-    public void testStorageRack_CalculateCapacity_ReturnsRowsTimesColumns() {
-        // Given: Rack with 9x9 grid
-        StorageRack rack = new StorageRack();
-        rack.setRows(9);
-        rack.setColumns(9);
+    public void testStorageBox_CalculateCapacity_ReturnsRowsTimesColumns() {
+        // Given: Box with 9x9 grid (boxes are gridded containers)
+        StorageBox box = new StorageBox();
+        box.setRows(9);
+        box.setColumns(9);
 
         // When: Calculate capacity
-        Integer capacity = rack.getCapacity();
+        Integer capacity = box.getCapacity();
 
         // Then: Capacity should be 81
         assertEquals("Capacity should be rows * columns", Integer.valueOf(81), capacity);
     }
 
     @Test
-    public void testStorageRack_CalculateCapacity_NoGrid_ReturnsZero() {
-        // Given: Rack with no grid (rows=0)
-        StorageRack rack = new StorageRack();
-        rack.setRows(0);
-        rack.setColumns(0);
+    public void testStorageBox_CalculateCapacity_NoGrid_ReturnsZero() {
+        // Given: Box with no grid (rows=0)
+        StorageBox box = new StorageBox();
+        box.setRows(0);
+        box.setColumns(0);
 
         // When: Calculate capacity
-        Integer capacity = rack.getCapacity();
+        Integer capacity = box.getCapacity();
 
         // Then: Capacity should be 0
         assertEquals("No grid should return 0 capacity", Integer.valueOf(0), capacity);
-    }
-
-    @Test
-    public void testStoragePosition_OccupancyFlag_DefaultsFalse() {
-        // Given: New StoragePosition
-        StoragePosition position = new StoragePosition();
-
-        // Then: Occupied should default to false (or null)
-        // Occupancy is now calculated dynamically from SampleStorageAssignment records
-    }
-
-    @Test
-    public void testStoragePosition_CoordinateFlexibility_AcceptsAnyFormat() {
-        // Given: Position with various coordinate formats
-        StoragePosition pos1 = new StoragePosition();
-        StoragePosition pos2 = new StoragePosition();
-        StoragePosition pos3 = new StoragePosition();
-
-        // When: Set different coordinate formats
-        pos1.setCoordinate("A5"); // Alphanumeric
-        pos2.setCoordinate("1-1"); // Numeric with dash
-        pos3.setCoordinate("RED-01"); // Color-coded
-
-        // Then: All formats accepted (free text, no validation)
-        assertEquals("A5", pos1.getCoordinate());
-        assertEquals("1-1", pos2.getCoordinate());
-        assertEquals("RED-01", pos3.getCoordinate());
     }
 
     @Test
@@ -149,16 +122,4 @@ public class StorageEntityTest {
                 SampleStorageMovement.class.isAnnotationPresent(org.hibernate.annotations.Immutable.class));
     }
 
-    @Test
-    public void testStoragePosition_GridIndexes_Optional() {
-        // Given: Position without grid indexes
-        StoragePosition position = new StoragePosition();
-        position.setCoordinate("BASKET-1");
-        // rowIndex and columnIndex intentionally NULL
-
-        // Then: Should be valid (grid indexes are optional)
-        assertNull(position.getRowIndex());
-        assertNull(position.getColumnIndex());
-        assertEquals("BASKET-1", position.getCoordinate());
-    }
 }

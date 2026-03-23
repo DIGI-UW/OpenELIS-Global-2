@@ -78,16 +78,30 @@ public abstract class AbstractHistoryService {
         reverseSortByTime(historyList);
         List<AuditTrailItem> items = new ArrayList<>();
 
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getAuditTrailItems",
+                "Processing " + historyList.size() + " history records");
+
         for (History history : historyList) {
             try {
                 if ("U".equals(history.getActivity()) || "D".equals(history.getActivity())) {
                     Map<String, String> changeMaps = getChangeMap(history);
 
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getAuditTrailItems",
+                            "History ID: " + history.getId() + ", Activity: " + history.getActivity()
+                                    + ", Changes found: " + changeMaps.size());
+
                     if (!changeMaps.isEmpty()) {
                         addItemsForKeys(items, history, changeMaps);
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getAuditTrailItems",
+                                "Added " + changeMaps.size() + " audit trail items for history ID: " + history.getId());
+                    } else {
+                        LogEvent.logInfo(this.getClass().getSimpleName(), "getAuditTrailItems",
+                                "No changes found for history ID: " + history.getId() + ", skipping");
                     }
                 } else {
                     addInsertion(history, items);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "getAuditTrailItems",
+                            "Added insertion audit trail item for history ID: " + history.getId());
                 }
             } catch (SQLException e) {
                 LogEvent.logDebug(e);
@@ -95,6 +109,9 @@ public abstract class AbstractHistoryService {
                 LogEvent.logDebug(e);
             }
         }
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "getAuditTrailItems",
+                "Total audit trail items created: " + items.size());
 
         return items;
     }

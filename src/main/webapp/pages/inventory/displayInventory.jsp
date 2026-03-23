@@ -1,6 +1,7 @@
+<%-- TODO: Re-enable after new inventory frontend integration --%>
+<%-- import="org.openelisglobal.inventory.form.InventoryKitItem" --%>
 <%@ page language="java" contentType="text/html; charset=UTF-8" %>
-<%@ page import="org.openelisglobal.common.action.IActionConstants,
-				org.openelisglobal.inventory.form.InventoryKitItem" %>
+<%@ page import="org.openelisglobal.common.action.IActionConstants" %>
 
 
 <%@ page isELIgnored="false" %>
@@ -8,10 +9,8 @@
 <%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
 <%@ taglib prefix="c" uri="jakarta.tags.core"%>
 
-
-
-	
-
+<%-- TODO: Re-enable after new inventory frontend integration --%>
+<%-- 
 <div id="PatientPage" class="colorFill" style="display:inline" >
 	<c:if test="${not empty form.inventoryItems}" >
 	<table width="40%" >
@@ -67,6 +66,7 @@
 
 	
 </div>
+--%>
 
 
 

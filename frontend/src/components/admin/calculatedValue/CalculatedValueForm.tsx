@@ -43,7 +43,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.testmgt.calculated",
-    link: "/MasterListsPage#calculatedValue",
+    link: "/MasterListsPage/calculatedValue",
   },
 ];
 interface CalculatedValueProps {}
@@ -961,7 +961,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                             <AutoComplete
                               id={index + "_finalresult"}
                               class="inputText"
-                              label="Final Result"
+                              label={
+                                <FormattedMessage id="testcalculation.label.finalresult" />
+                              }
                               name="testName"
                               onSelect={(id) => handleTestSelection(id, index)}
                               value={calculation.testId}

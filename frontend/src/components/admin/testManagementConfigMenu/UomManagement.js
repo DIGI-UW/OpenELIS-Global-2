@@ -48,11 +48,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.uom.manage",
-    link: "/MasterListsPage#UomManagement",
+    link: "/MasterListsPage/UomManagement",
   },
 ];
 
@@ -85,7 +85,7 @@ function UomManagement() {
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <UnorderedList>
-                <ClickableTile href="/MasterListsPage#UomCreate" id="UomCreate">
+                <ClickableTile href="/MasterListsPage/UomCreate" id="UomCreate">
                   <FormattedMessage id="configuration.uom.create" />
                 </ClickableTile>
               </UnorderedList>

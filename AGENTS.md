@@ -33,7 +33,7 @@ reporting, serving 30+ countries worldwide.
 
 **Governance:**
 
-- **Constitution Authority**: `.specify/memory/constitution.md` (v1.7.0) is the
+- **Constitution Authority**: `.specify/memory/constitution.md` (v1.8.1) is the
   authoritative governance document
 - **All code changes MUST comply with constitutional principles**
 - **Constitution supersedes all other documentation in case of conflict**
@@ -42,10 +42,12 @@ reporting, serving 30+ countries worldwide.
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
 - Branch strategy: `develop` (main development), `main` (production releases)
-- Feature branches: `{###-feature-name}` or `issue-{###}-{feature-name}`
+- Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
+  (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
-**Tech Stack:** Java 21 + Spring Boot 3.x backend, React 17 + Carbon Design
-System frontend, PostgreSQL 14+ database, HAPI FHIR R4 for interoperability
+**Tech Stack:** Java 21 + Spring Framework 6.2.2 (Traditional Spring MVC)
+backend, React 17 + Carbon Design System frontend, PostgreSQL 14+ database, HAPI
+FHIR R4 for interoperability
 
 **Architecture:** Strict 5-layer pattern (Valueholder → DAO → Service →
 Controller → Form)
@@ -76,7 +78,7 @@ sdk use java 21.0.1-tem
 **Why Java 21?**
 
 - Maven compiler plugin requires Java 21 for `--release 21` flag
-- Spring Boot 3.x requires Java 17+ (we use 21 for LTS)
+- Spring Framework 6.2.2 requires Java 17+ (we use 21 for LTS)
 - Jakarta EE 9 APIs require Java 17+
 
 ### Test Skipping (CRITICAL)
@@ -105,6 +107,25 @@ mvn clean install -DskipTests
 - **Node.js 16+**: Frontend development
 - **Git with submodules**: `git submodule update --init --recursive`
 
+### Environment Configuration (.env file) - CRITICAL
+
+**IMPORTANT:** Before running any `docker compose` command, you MUST create a
+`.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Then customize `.env` for your environment (database passwords, domain, etc.).
+
+**Why this matters:**
+
+- `.env` is in `.gitignore` (contains secrets and server-specific settings)
+- **`.env` is intentionally NOT tracked in git** - each developer/server needs
+  their own
+- Docker Compose uses `.env` for `${VAR}` substitution in compose files
+- Missing `.env` causes authentication failures and SSL certificate errors
+
 ---
 
 ## Technology Stack
@@ -114,7 +135,11 @@ mvn clean install -DskipTests
 **Core Framework:**
 
 - **Java 21 LTS** (OpenJDK/Temurin) - MANDATORY
-- **Spring Boot 3.x** (Spring Framework 6.2.2)
+- **Spring Framework 6.2.2** (Traditional Spring MVC, NOT Spring Boot)
+  - Uses `@EnableWebMvc`, `@Configuration`, `@ComponentScan` (not
+    `@SpringBootApplication`)
+  - Individual Spring modules (spring-web, spring-webmvc, spring-context, etc.)
+  - WAR packaging for Tomcat deployment
 - **Hibernate 6.x** (Hibernate ORM 5.6.15.Final)
 - **Jakarta EE 9** (NOT javax._ - use jakarta.persistence._)
 - **PostgreSQL 14+** (production database)
@@ -169,7 +194,9 @@ mvn clean install -DskipTests
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests)
+- **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
+- **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
+  migrated to Playwright)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -211,9 +238,9 @@ jakarta.persistence (Jakarta EE 9)
 
 ## Constitution Principles Summary
 
-> **Full Document:** `.specify/memory/constitution.md` (1147 lines, v1.7.0)
+> **Full Document:** `.specify/memory/constitution.md` (v1.8.1)
 
-The constitution defines 8 core principles that ALL code changes MUST follow:
+The constitution defines 9 core principles that ALL code changes MUST follow:
 
 ### I. Configuration-Driven Variation
 
@@ -376,8 +403,12 @@ production.
 
 **How:**
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets with unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets with unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
@@ -431,6 +462,33 @@ hardcoded English text.
 - [ ] Sensitive data encrypted at rest (if applicable)
 - [ ] HTTPS endpoints only (NO HTTP for PHI)
 
+### IX. Spec-Driven Iteration (NEW in v1.8.0)
+
+**Rule:** Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request.
+
+**Why:** Large PRs create review bottlenecks, increase merge conflict risk, and
+delay feedback. Milestone-based delivery enables manageable code reviews.
+
+**How:**
+
+- Spec PR created first on `spec/{NNN}[-{jira}]-{name}` branch
+- Each milestone gets its own branch: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
+- Parallel milestones marked with `[P]` can be developed simultaneously
+- Sequential milestones must complete in order
+
+**Branch Naming Convention:**
+
+| Branch Type      | Pattern                                                    | Example                                               |
+| ---------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
+| Spec Branch      | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`               |
+| Milestone Branch | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db` |
+| Hotfix           | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                         |
+| Bugfix           | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                           |
+
+**Reference:**
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
 ---
 
 ## Development Workflow
@@ -441,7 +499,9 @@ hardcoded English text.
 # Clone repository with submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
+
+# Run workspace setup (initializes submodules, hooks, .env)
+bash scripts/setup-workspace.sh
 
 # Verify Java version
 java -version  # Must be Java 21
@@ -468,8 +528,42 @@ docker compose -f dev.docker-compose.yml up -d
 
 ### SpecKit Workflow (Specification-Driven Development)
 
-This project uses GitHub SpecKit for rigorous feature development. The workflow
-enforces constitution compliance at every stage.
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+rigorous feature development. The workflow enforces constitution compliance at
+every stage.
+
+**Setup (Required for AI Agents):**
+
+Before using SpecKit commands or packaged skills, install agent command assets:
+
+**Cross-platform (Python 3.9+):**
+
+```bash
+# Install legacy + packaged command assets for all supported AI agents
+python3 scripts/install-agent-skills.py
+
+# Or install for specific agent only
+python3 scripts/install-agent-skills.py cursor   # Cursor IDE
+python3 scripts/install-agent-skills.py claude   # Claude Code CLI
+
+# Skip confirmation prompt (for automation/CI)
+python3 scripts/install-agent-skills.py -y all
+
+# Legacy compatibility (SpecKit-only install path)
+python3 scripts/install-speckit-commands.py -y all
+```
+
+> **Note:** A `.python-version` file is provided for version managers (pyenv,
+> asdf, uv). If you use one, it will automatically select Python 3.11.
+
+This compiles command definitions from legacy SpecKit sources
+(`.specify/core/commands/` + `.specify/oe/commands/`) and packaged skills in
+`.ai/skills/` into agent-specific directories (`.cursor/commands/`,
+`.claude/commands/`, plus packaged skill mirrors under `.cursor/skills/` and
+`.claude/skills/`).
+
+**CI Validation:** The CI pipeline validates that required legacy and packaged
+commands compile correctly and contain valid paths.
 
 **Available Commands:**
 
@@ -483,6 +577,14 @@ enforces constitution compliance at every stage.
 - `/speckit.analyze` - Cross-artifact consistency analysis
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
+- `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
+- `/plan-record-playwright` - Plan feature/PR E2E flows and orchestrate
+  write/audit/record lifecycle with correct project usage
+- `/write-playwright-test` - Playwright test authoring from requirements with
+  project registration and narrow-scope validation
+- `/debug-playwright` - Playwright failure diagnosis using source/runtime
+  evidence
+- `/audit-playwright` - Playwright test quality audit and selector hardening
 
 **Standard Workflow:**
 
@@ -576,18 +678,36 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 ### Branch Strategy
 
+**Reference:** See Constitution Principle IX for complete conventions.
+
+**Primary Branches:**
+
 - **`develop`** - Main development branch (ALL PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches:** `{###-feature-name}` (e.g., `001-sample-storage`) or
-  `issue-{###}-{feature-name}`
-- **Hotfix branches:** `hotfix-{description}` (merged to develop + main)
 
-**Creating Feature Branch:**
+**Feature Development (Principle IX):**
+
+- **Spec branches:** `spec/{NNN}[-{jira}]-{name}` - Specification PRs
+- **Milestone branches:** `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Individual
+  PRs
+- **Hotfix branches:** `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
+- **Bugfix branches:** `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
+
+**Issue ID Format:** Jira ticket (`OGC-{###}`) preferred, or GitHub issue number
+(`{###}`)
+
+**Creating Feature Branch (SDD Workflow):**
 
 ```bash
+# 1. Start with spec branch
 git checkout develop
 git pull --rebase upstream develop
-git checkout -b 001-new-feature
+git checkout -b spec/009-sidenav
+
+# 2. Create milestone branches (avoid Git ref prefix collisions by not nesting)
+git checkout -b feat/009-sidenav-m1-backend
+git checkout -b feat/009-sidenav-m2-frontend
 ```
 
 ### Pre-Commit Checklist
@@ -766,6 +886,72 @@ public class SampleServiceImpl {
 
 ## Testing Strategy
 
+**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+
+The Testing Roadmap is the authoritative source for all testing practices,
+patterns, and procedures. This section provides a high-level overview. For
+detailed guidance, see the Testing Roadmap.
+
+### Test Data Management
+
+**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
+fixture loading system.
+
+**Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
+for comprehensive guide.
+
+**Key Principles:**
+
+- Single source of truth: `storage-test-data.sql` contains all test fixtures
+- Unified loader: `load-test-fixtures.sh` used by all test types
+- Dependency validation: Scripts verify required tables exist before loading
+- Comprehensive verification: Automatic verification after loading
+- Safe cleanup: Only removes test-created data, preserves fixtures
+
+**Quick Start:**
+
+```bash
+# Load test fixtures (basic usage)
+./src/test/resources/load-test-fixtures.sh
+
+# Reset database before loading (clean state)
+./src/test/resources/load-test-fixtures.sh --reset
+
+# Load without verification (faster)
+./src/test/resources/load-test-fixtures.sh --no-verify
+```
+
+**Fixture Loading:**
+
+- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
+  `load-test-fixtures.sh`
+- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
+- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+
+**DBUnit datasets (MANDATORY for DB-backed tests):**
+
+- **Where**: `src/test/resources/testdata/*.xml`
+- **How**: Load via
+  `BaseWebContextSensitiveTest.executeDataSetWithStateManagement("testdata/<file>.xml")`
+- **Rule**: Prefer DBUnit datasets over inline SQL setup/cleanup to prevent test
+  data pollution and keep tests maintainable.
+
+**For detailed information**, see:
+
+- [Test Data Strategy Guide](.specify/guides/test-data-strategy.md) -
+  Comprehensive guide
+- [E2E Fixtures Quick Reference](.specify/guides/e2e-fixtures-readme.md) -
+  E2E-specific reference
+
+**Key Resources**:
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide for both agents and humans
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates for all test types
+- **Constitution**: `.specify/memory/constitution.md` (Principle V) - High-level
+  testing requirements
+
 ### Test-Driven Development (TDD) Workflow
 
 **MANDATORY for complex features. ENCOURAGED for all features.**
@@ -805,6 +991,67 @@ public class SampleServiceImpl {
  └─────────────────────────────┘
 ```
 
+### Backend Testing
+
+**For Comprehensive Guidance**: See
+[Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+for detailed patterns, code examples, and best practices.
+
+**For Quick Reference**: See
+[Backend Testing Best Practices Guide](.specify/guides/backend-testing-best-practices.md)
+for common patterns and cheat sheets.
+
+**TDD Workflow (MANDATORY for complex logic):**
+
+- **Red**: Write failing test first (defines expected behavior)
+- **Green**: Write minimal code to make test pass
+- **Refactor**: Improve code quality while keeping tests green
+
+**SDD Checkpoint Requirements:**
+
+- **After Phase 1 (Entities)**: ORM validation tests MUST pass
+- **After Phase 2 (Services)**: Unit tests MUST pass
+- **After Phase 3 (Controllers)**: Integration tests MUST pass
+- **Coverage Goal**: >80% (measured via JaCoCo)
+
+### Test Slicing Strategy
+
+**CRITICAL**: Use focused test slices when possible for faster execution.
+
+**Decision Tree**:
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, Spring Boot test annotations (`@WebMvcTest`,
+`@DataJpaTest`, `@SpringBootTest`) are **NOT available**. All tests use
+`BaseWebContextSensitiveTest`.
+
+1. **Testing REST controller HTTP layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
+2. **Testing DAO/repository persistence layer only?** → Use
+   `BaseWebContextSensitiveTest` ✅
+3. **Testing complete workflow with full application context?** → Use
+   `BaseWebContextSensitiveTest` ✅
+4. **All integration tests** → Use `BaseWebContextSensitiveTest` ✅
+
+**When to Use Each**:
+
+| Test Type   | Base Class/Pattern            | Use Case               | Speed  | Context      |
+| ----------- | ----------------------------- | ---------------------- | ------ | ------------ |
+| Controller  | `BaseWebContextSensitiveTest` | HTTP layer only        | Medium | Full context |
+| DAO         | `BaseWebContextSensitiveTest` | Persistence layer only | Medium | Full context |
+| Integration | `BaseWebContextSensitiveTest` | Full workflow          | Medium | Full context |
+
+**Why not Spring Boot test annotations?**
+
+- This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**, not
+  Spring Boot
+- No `spring-boot-starter-test` dependency
+- No `@SpringBootApplication` - uses `@EnableWebMvc` + `@Configuration` instead
+- WAR packaging (not JAR) - deployed to Tomcat
+
+**Reference**:
+[Testing Roadmap - Test Slicing Strategy Decision Tree](.specify/guides/testing-roadmap.md#test-slicing-strategy-decision-tree)
+
 ### Unit Tests (JUnit 4 + Mockito)
 
 **Location:** `src/test/java/org/openelisglobal/{module}/service/`
@@ -824,7 +1071,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SampleServiceTest {
-    @Mock
+    @Mock  // ✅ Use @Mock for isolated unit tests (NOT @MockBean)
     private SampleDAO sampleDAO;
 
     @InjectMocks
@@ -833,8 +1080,9 @@ public class SampleServiceTest {
     @Test
     public void testGetSampleById_ReturnsCorrectSample() {
         // Arrange
-        Sample expected = new Sample();
-        expected.setId("123");
+        Sample expected = SampleBuilder.create()
+            .withId("123")
+            .build();
         when(sampleDAO.get("123")).thenReturn(expected);
 
         // Act
@@ -847,11 +1095,223 @@ public class SampleServiceTest {
 }
 ```
 
-**Remember:**
+**Key Points:**
 
 - Use JUnit 4 imports (`org.junit.Test`, NOT `org.junit.jupiter.api.Test`)
+- Use `@Mock` for isolated unit tests (NOT `@MockBean` - that's for Spring
+  context tests)
 - Assertion order: `assertEquals(expected, actual)`
 - Mock DAO layer, test service logic only
+- Use builders/factories for test data (NOT hardcoded values)
+- Test business logic only (mock dependencies)
+
+**Template:** `.specify/templates/testing/JUnit4ServiceTest.java.template`
+
+### Controller Tests (BaseWebContextSensitiveTest)
+
+**Location:** `src/test/java/org/openelisglobal/{module}/controller/`
+
+**Use for**: Testing REST controllers with full Spring context.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@WebMvcTest` is **NOT available**. All controller
+tests extend `BaseWebContextSensitiveTest`.
+
+**Pattern:**
+
+```java
+public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTest {
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean  // ✅ Use @MockBean for Spring context tests (NOT @Mock)
+    private StorageLocationService storageLocationService;
+
+    @Test
+    public void testGetLocation_WithValidId_ReturnsLocation() throws Exception {
+        StorageRoom room = StorageRoomBuilder.create()
+            .withId("ROOM-001")
+            .withName("Main Laboratory")
+            .build();
+        when(storageLocationService.getLocationById("ROOM-001")).thenReturn(room);
+
+        mockMvc.perform(get("/rest/storage/rooms/ROOM-001")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value("ROOM-001"));
+    }
+}
+```
+
+**Key Points:**
+
+- Extends `BaseWebContextSensitiveTest` (provides MockMvc)
+- Use `@MockBean` (NOT `@Mock`) for Spring context mocking
+- Use `MockMvc` for HTTP request/response testing
+- Use JSONPath for response assertions
+- Mock service layer, test HTTP layer only
+
+**Template:** `.specify/templates/testing/WebMvcTestController.java.template`
+
+### DAO Tests (BaseWebContextSensitiveTest)
+
+**Location:** `src/test/java/org/openelisglobal/{module}/dao/`
+
+**Use for**: Testing persistence layer with real HQL query execution.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@DataJpaTest` is **NOT available**. All DAO tests
+extend `BaseWebContextSensitiveTest`.
+
+**Pattern:**
+
+```java
+public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private StorageLocationDAO storageLocationDAO;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
+    @Test
+    public void testFindByParentId_WithValidParent_ReturnsChildLocations() {
+        StorageRoom room = StorageRoomBuilder.create()
+            .withId("ROOM-001")
+            .withName("Main Lab")
+            .build();
+        entityManager.persist(room);
+
+        StorageDevice device = StorageDeviceBuilder.create()
+            .withId("DEV-001")
+            .withName("Freezer 1")
+            .withParentRoom(room)
+            .build();
+        entityManager.persist(device);
+        entityManager.flush();
+
+        List<StorageDevice> devices = storageLocationDAO.findByParentId("ROOM-001");
+
+        assertEquals("Should return one device", 1, devices.size());
+        assertEquals("Device ID should match", "DEV-001", devices.get(0).getId());
+    }
+}
+```
+
+**Key Points:**
+
+- Use `TestEntityManager` for test data (NOT JdbcTemplate)
+- Automatic transaction rollback (no manual cleanup needed)
+- Test HQL queries, CRUD operations, relationships
+
+**Template:** `.specify/templates/testing/DataJpaTestDao.java.template`
+
+### Frontend Unit Tests (Jest + React Testing Library)
+
+**Location:** `frontend/src/components/{feature}/*.test.jsx` or
+`frontend/src/components/{feature}/__tests__/*.test.jsx`
+
+**For Comprehensive Guidance**: See
+[Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+for detailed patterns, code examples, and best practices.
+
+**For Quick Reference**: See
+[Jest Best Practices Guide](.specify/guides/jest-best-practices.md) for common
+patterns and cheat sheets.
+
+**TDD Workflow (MANDATORY for complex logic):**
+
+- **Red**: Write failing test first (defines expected behavior)
+- **Green**: Write minimal code to make test pass
+- **Refactor**: Improve code quality while keeping tests green
+
+**SDD Checkpoint:** After Phase 4 (Frontend), all unit tests MUST pass  
+**Coverage Goal:** >70% (measured via Jest)
+
+**Pattern:**
+
+```javascript
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
+import { BrowserRouter } from "react-router-dom";
+import ComponentName from "./ComponentName";
+import messages from "../../../languages/en.json";
+
+// Mock utilities BEFORE imports (Jest hoisting)
+jest.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: jest.fn(),
+}));
+
+const renderWithIntl = (component) => {
+  return render(
+    <BrowserRouter>
+      <IntlProvider locale="en" messages={messages}>
+        {component}
+      </IntlProvider>
+    </BrowserRouter>
+  );
+};
+
+describe("ComponentName", () => {
+  test("testUserInteraction_ShowsExpectedResult", async () => {
+    // Arrange
+    renderWithIntl(<ComponentName />);
+
+    // Act: Use userEvent for user interactions (PREFERRED)
+    const input = screen.getByLabelText(/name/i);
+    await userEvent.type(input, "Test Name", { delay: 0 });
+
+    const button = screen.getByRole("button", { name: /submit/i });
+    await userEvent.click(button);
+
+    // Assert: Wait for async element (use queryBy* in waitFor)
+    await waitFor(() => {
+      const element = screen.queryByText("Success");
+      expect(element).toBeInTheDocument();
+    });
+  });
+});
+```
+
+**Key Points:**
+
+- **Import Order**: React → Testing Library → userEvent → jest-dom → Intl →
+  Router → Component → Utils → Messages
+- **userEvent vs fireEvent**: Prefer `userEvent` for user interactions (more
+  realistic)
+- **Async Testing**: Use `waitFor` with `queryBy*` (NOT `getBy*`) or `findBy*`
+  for async elements
+- **DON'T**: Use `setTimeout` (no retry logic - use `waitFor` instead)
+- **Carbon Components**: Use `userEvent`, `waitFor` for portals, `within()` for
+  scoped queries
+- **Test Behavior**: Test user-visible behavior, NOT implementation details
+- **Edge Cases**: Test null, empty, boundary values
+
+**Anti-Patterns:**
+
+- ❌ Using `setTimeout` for async operations (use `waitFor` instead)
+- ❌ Using `getBy*` in `waitFor` (use `queryBy*` instead)
+- ❌ Using `fireEvent` when `userEvent` works (prefer `userEvent`)
+- ❌ Testing implementation details (test user-visible behavior)
+- ❌ Inconsistent import order
+
+**Template:** `.specify/templates/testing/JestComponent.test.jsx.template`
 
 ### ORM Validation Tests (Constitution V.4)
 
@@ -891,29 +1351,54 @@ public class HibernateMappingValidationTest {
 - Missing annotations
 - Invalid relationship mappings
 
-### Integration Tests (Spring Test)
+### Integration Tests (BaseWebContextSensitiveTest)
 
-**Location:** `src/test/java/org/openelisglobal/{module}/controller/`
+**Location:** `src/test/java/org/openelisglobal/{module}/controller/` or
+`src/test/java/org/openelisglobal/{module}/service/`
+
+**Use for**: Testing complete workflows that require full application context.
+
+**NOTE**: This project uses **Spring Framework 6.2.2 (Traditional Spring MVC)**,
+NOT Spring Boot. Therefore, `@SpringBootTest` is **NOT available**. All
+integration tests extend `BaseWebContextSensitiveTest`.
 
 **Pattern:**
 
 ```java
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class SampleControllerIntegrationTest {
+import javax.sql.DataSource;
+
+public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private SampleService sampleService;
 
+    @Autowired
+    private DataSource dataSource;
+
+    private JdbcTemplate jdbcTemplate;
+
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        jdbcTemplate = new JdbcTemplate(dataSource);
+        cleanTestData();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        cleanTestData();
+    }
+
     @Test
     public void testSaveSample_PersistsToDatabase() {
-        Sample sample = new Sample();
-        sample.setAccessionNumber("2025-00001");
+        Sample sample = SampleBuilder.create()
+            .withAccessionNumber("2025-00001")
+            .build();
 
         sampleService.save(sample);
 
@@ -923,58 +1408,119 @@ public class SampleControllerIntegrationTest {
 }
 ```
 
-### E2E Tests (Cypress)
+### E2E Tests (Cypress) — DEPRECATED
+
+> **STOP: Do NOT create new Cypress tests.** Cypress is deprecated in this
+> repository. All new E2E tests MUST use Playwright. The Cypress docs below are
+> retained only for maintaining existing tests during migration. See the
+> [Playwright section below](#e2e-tests-playwright--recommended) for the
+> recommended approach.
 
 **Location:** `frontend/cypress/e2e/{feature}.cy.js`
 
+**For Comprehensive Guidance**: See
+[Testing Roadmap - Cypress E2E Testing](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
+for detailed patterns, code examples, and best practices.
+
+**For Quick Reference**: See
+[Cypress Best Practices Guide](.specify/guides/cypress-best-practices.md) for
+common patterns and cheat sheets.
+
+**For Functional Requirements**: See
+[Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
+for E2E testing requirements.
+
+**CRITICAL - Environment Note:**
+
+In Claude Code CLI environment (and some CI environments),
+`ELECTRON_RUN_AS_NODE=1` is set, which breaks Cypress. All `npm run cy:*`
+scripts include `unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use
+the npm scripts.**
+
 **Execution Strategy (Constitution V.5):**
 
-- **Development:** Run INDIVIDUAL test files (max 5-10 test cases)
-- **CI/CD:** Run full suite
+1. **During Development:** Run individual tests for fast feedback
+2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
+3. **In CI/CD:** Automatic via GitHub Actions
+
+**Available npm Scripts (use these, NOT direct cypress commands):**
 
 ```bash
-# Development (CORRECT - run individual test)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# Run specific test file
+npm run cy:spec "cypress/e2e/home.cy.js"
 
-# CI/CD only (NOT during development)
+# Run all admin tests
+npm run cy:admin
+
+# Run all analyzer tests
+npm run cy:analyzer
+
+# Run full suite (development)
 npm run cy:run
+
+# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+npm run cy:failfast
+
+# Run specific test with fail-fast
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+
+# Open Cypress UI (interactive mode)
+npm run cy:open
 ```
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time.
 
 **Configuration (`cypress.config.js`):**
 
 ```javascript
-{
-  video: false,              // Disabled for performance
-  screenshotOnRunFailure: true,  // Enabled for debugging
+module.exports = defineConfig({
+  video: false, // MUST be disabled by default (Constitution V.5)
+  screenshotOnRunFailure: true, // MUST be enabled (Constitution V.5)
   defaultCommandTimeout: 10000,
-  testIsolation: false       // Only if shared state needed
-}
+  e2e: {
+    baseUrl: "https://localhost",
+    testIsolation: true, // Default: true (cy.session() handles caching)
+  },
+  viewportWidth: 1025, // Desktop default
+  viewportHeight: 900,
+});
 ```
 
-**Post-Run Review (MANDATORY):**
+**Post-Run Review (MANDATORY - Constitution V.5):**
+
+After each test execution, review:
 
 1. **Console Logs:** Review browser console in Cypress UI for errors, failed API
-   requests
-2. **Screenshots:** Review failure screenshots for UI state
-3. **Test Output:** Review Cypress command log for execution order
+   requests, warnings
+2. **Screenshots:** Review failure screenshots for UI state at failure point
+3. **Test Output:** Review Cypress command log for execution order and timeouts
 
 **Pattern:**
 
 ```javascript
 describe("User Story P1: Sample Storage Assignment", () => {
-  beforeEach(() => {
-    cy.visit("/storage");
+  before(() => {
+    // Login runs ONCE per test file (cy.session() pattern)
     cy.login("admin", "password");
   });
 
+  beforeEach(() => {
+    cy.viewport(1025, 900); // Set viewport before visit
+    cy.visit("/storage");
+  });
+
   it("should assign sample to storage location via barcode scan", () => {
-    // Arrange: Set up API intercept
+    // Arrange: Set up API intercept BEFORE action
     cy.intercept("POST", "/rest/storage/assign").as("assignRequest");
 
-    // Act: User scans barcode
+    // Act: User workflow (what user does)
     cy.get('[data-testid="barcode-input"]').type("SAMPLE-001{enter}");
     cy.get('[data-testid="location-input"]').type("RACK-A1{enter}");
-    cy.get('[data-testid="submit-button"]').click();
+    cy.get('[data-testid="submit-button"]')
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
 
     // Assert: Wait for API call and verify success
     cy.wait("@assignRequest").its("response.statusCode").should("eq", 200);
@@ -985,10 +1531,267 @@ describe("User Story P1: Sample Storage Assignment", () => {
 
 **Anti-Patterns:**
 
-- ❌ `cy.wait(5000)` - Use Cypress retry-ability instead
+- ❌ `cy.wait(5000)` - Use Cypress retry-ability instead (`.should()`)
 - ❌ Not setting up intercepts before actions
 - ❌ Not reviewing console logs after failures
 - ❌ Running full suite during development (slow feedback)
+- ❌ Not using data-testid selectors
+- ❌ Ineffective DOM queries (not scoped, no viewport management)
+- ❌ Recreating test data via UI (use API-based setup)
+- ❌ Starting new sessions unnecessarily (use cy.session())
+
+### E2E Tests (Playwright) — RECOMMENDED
+
+> **Playwright is the recommended E2E framework** for all new tests. It provides
+> project-based organization, built-in video recording, and faster execution
+> than Cypress.
+>
+> **Execution Contract:**
+>
+> - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
+> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
+>   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
+>   `core-demo-video` run on the build stack only.
+> - `TEST_USER` and `TEST_PASS` are required
+> - Do not create new Cypress tests
+
+**Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
+`frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
+**Canonical Guide (single source of truth):**
+`.specify/guides/playwright-best-practices.md` **Operational Reference:**
+`frontend/playwright/README.md`
+
+**Command-first workflow:** Use `/plan-record-playwright` to scope flows and
+project targets, `/write-playwright-test` to author tests, `/audit-playwright`
+to review selectors/quality, and `/debug-playwright` for runtime failures.
+
+#### Playwright Projects
+
+Tests are organized into projects by infrastructure requirement. New test files
+must be explicitly added to a project's `testMatch` allowlist in
+`playwright.config.ts`.
+
+| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
+| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
+| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
+| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
+| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
+
+#### CI Workflows
+
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+
+#### Key Patterns
+
+- **Allowlist-based `testMatch`**: New test files are NOT auto-discovered. You
+  must add the glob pattern to the appropriate project in
+  `playwright.config.ts`.
+- **`videoPause(page, ms, testInfo)`** (`helpers/video-pause.ts`): Conditional
+  timeout — pauses only in `core-demo-video` / `harness-demo-video`, no-op
+  elsewhere. Use this instead of `page.waitForTimeout()` for video pacing.
+- **`showTitleCard()` / `showStepCard()`** (`helpers/title-card.ts`): DOM
+  overlay helpers for demo videos. Pass `testInfo` to skip overlays in non-video
+  projects.
+- **`testInfo`**: Playwright's 2nd test callback parameter
+  (`async ({ page }, testInfo)`). Provides `testInfo.project.name` to determine
+  which project is running.
+- **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between each demo
+  pair and its `*-demo-video` project — defined in `playwright.config.ts`.
+
+#### Playwright Anti-Patterns (MUST AVOID)
+
+These patterns cause flaky tests and invisible failures. Apply them as hard
+rules when writing or reviewing Playwright code.
+
+**DO NOT: Use `response.ok()` as test pass/fail**
+
+Use `waitForResponse` for synchronization only. The real assertion must be on
+visible UI state. When the backend returns HTTP 500, checking `response.ok()`
+throws before the UI renders its error notification — CI screenshots show stale
+state.
+
+```typescript
+// DO: sync then assert on UI
+const responsePromise = page.waitForResponse("**/api/save");
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+await expect(page.getByText("Saved successfully")).toBeVisible();
+```
+
+**DO NOT: Use `{ force: true }` on Carbon inputs**
+
+Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
+`<input type="radio">`. The visible, clickable element is the associated
+`<label>`. Click the label instead.
+
+```typescript
+// DO: click the label
+await page.locator('label[for="saveallresults"]').click();
+// or for dynamic IDs:
+await input.locator("xpath=..").locator("label").click();
+
+// DO NOT:
+await checkbox.check({ force: true }); // bypasses actionability checks
+await page.getByLabel("text").check(); // targets hidden input — will fail
+```
+
+**DO NOT: Use `.catch(() => false)` on `isVisible()`**
+
+`locator.isVisible()` returns `boolean` without throwing. The `.catch()` is dead
+code that hides real errors (like strict mode violations matching 2+ elements).
+The `timeout` parameter on `isVisible()` is deprecated and ignored.
+
+```typescript
+// DO:
+if (await element.isVisible()) { ... }
+// For waiting: use web-first assertion
+await expect(element).toBeVisible({ timeout: 5_000 });
+
+// DO NOT:
+if (await element.isVisible({ timeout: 3000 }).catch(() => false)) { ... }
+```
+
+**DO NOT: Replace autocomplete selection with type + Tab**
+
+The `AutoComplete` component's `onSelect` callback sets server-side IDs that
+`onChange` (typing) does not. Typing + Tab leaves `referringSiteId` empty. Wait
+for suggestion dropdown items, then click one. Provide a Tab fallback only for
+when no suggestions appear.
+
+**ALWAYS: Include at least one `expect()` assertion per test.**
+
+**Full guide:** `.specify/guides/playwright-best-practices.md`
+
+#### Available npm Scripts
+
+```bash
+cd frontend
+
+# Run all projects
+npm run pw:test
+
+# Run specific project
+npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-demo
+npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-demo
+
+# Record demo videos (local only)
+npm run pw:test -- --project=core-demo-video
+npm run pw:test -- --project=harness-demo-video
+
+# Run specific test file
+npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+
+# Interactive UI mode
+npm run pw:test:ui
+```
+
+#### Local Execution
+
+**Prerequisites:**
+
+1. App running at `https://localhost` (or set `BASE_URL`)
+2. Auth env vars: `TEST_USER` and `TEST_PASS`
+
+**Core-app tests (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+```
+
+**Harness tests (analyzer harness stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+```
+
+**Harness demos:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
+```
+
+**Core demos (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
+```
+
+**Demo video recording:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
+# or full harness demos:
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
+# Videos saved to frontend/test-results/
+```
+
+#### Adding New Tests
+
+1. Create test file in `frontend/playwright/tests/`
+2. Add the glob pattern to the appropriate project's `testMatch` array in
+   `playwright.config.ts`
+3. For demo workflow tests, add globs to `CORE_DEMO_TESTS` or
+   `HARNESS_DEMO_TESTS` (each pairs with its `*-demo-video` project)
+4. Use `videoPause()` instead of `page.waitForTimeout()` for any video pacing
+
+### Testing Resources
+
+**Comprehensive Guides**:
+
+- **Playwright Best Practices (canonical)**:
+  `.specify/guides/playwright-best-practices.md` — Authoritative Playwright
+  testing guidance for humans and agents
+- **Playwright README (operational details)**: `frontend/playwright/README.md` —
+  Project matrix, CI workflows, fixture loading, and local execution guide
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide for all test types (backend and frontend)
+- **Backend Testing Best Practices**:
+  `.specify/guides/backend-testing-best-practices.md` - Quick reference for
+  backend Java/Spring Framework testing patterns
+- **Jest Best Practices**: `.specify/guides/jest-best-practices.md` - Quick
+  reference for Jest + React Testing Library patterns
+- **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` -
+  Quick reference for Cypress patterns
+
+**Templates**:
+
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates for all test types
+  - JUnit Service:
+    `.specify/templates/testing/JUnit4ServiceTest.java.template` - Unit tests
+    (JUnit 4 + Mockito)
+  - WebMvc Controller:
+    `.specify/templates/testing/WebMvcTestController.java.template` - Controller
+    tests (BaseWebContextSensitiveTest)
+  - DAO Tests: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO
+    tests (BaseWebContextSensitiveTest)
+  - Jest Component:
+    `.specify/templates/testing/JestComponent.test.jsx.template` - Frontend unit
+    tests
+  - Cypress E2E: `.specify/templates/testing/CypressE2E.cy.js.template` - E2E
+    tests
+
+**Constitution**:
+
+- **Constitution Section V**: `.specify/memory/constitution.md` (Principle V) -
+  High-level testing requirements
+  - Section V.4: ORM Validation Tests - Requirements for Hibernate mapping
+    validation
+  - Section V.5: Cypress E2E Testing Best Practices - Functional requirements
+    and mandates
 
 ---
 
@@ -1160,24 +1963,37 @@ import { Grid, Column } from "@carbon/react"; // ✅ CORRECT
 </Grid>;
 ```
 
-### Running Full E2E Suite During Development
+### Running Full E2E Suite During Development (Without Pre-Push Validation)
 
-**Symptom:** Slow feedback (>15 minutes), difficult debugging
+**Symptom:** CI failures that could have been caught locally, wasted CI time
 
-**Cause:** Running all E2E tests instead of individual test files
+**Cause:** Running only individual tests during development, then pushing
+without validating the full suite
 
-**Wrong:**
-
-```bash
-npm run cy:run  # Runs ALL tests (60+ test cases)
-```
-
-**Correct:**
+**Wrong Workflow:**
 
 ```bash
-# Run individual test file (5-10 test cases)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# 1. Run individual test (passes)
+npm run cy:spec "cypress/e2e/home.cy.js"
+# 2. Push without running full suite
+git push  # CI fails 60 minutes later
 ```
+
+**Correct Workflow:**
+
+```bash
+# 1. Run individual tests during development
+npm run cy:spec "cypress/e2e/home.cy.js"
+
+# 2. BEFORE PUSHING: Run full suite with fail-fast (MANDATORY)
+npm run cy:failfast
+
+# 3. Only push if full suite passes
+git push
+```
+
+**Note:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` breaks
+Cypress. Always use `npm run cy:*` scripts, NOT direct `npx cypress` commands.
 
 ### javax.persistence vs jakarta.persistence
 
@@ -1212,7 +2028,8 @@ Before creating PR, verify ALL items:
 
 2. **Branch Naming:**
 
-   - Branch name matches: `issue-{###}-{feature-name}` or `{###-feature-name}`
+   - Branch name follows Constitution Principle IX (e.g.,
+     `spec/{NNN}[-{jira}]-{name}` or `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`)
 
 3. **Target Branch:**
 
@@ -1281,10 +2098,16 @@ Before creating PR, verify ALL items:
 
 **GitHub Actions workflows (MUST pass):**
 
-- `ci.yml` - Maven build + JaCoCo coverage report
-- `publish-and-test.yml` - Docker image build + integration tests
-- `frontend-qa.yml` - Cypress E2E tests
-- `build-installer.yml` - Offline installer packaging
+- `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
+  tests (PR + push)
+- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
+  harness) with required Playwright gate (PR)
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
+  required frontend gate (PR)
+- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
+  deprecated Cypress gate (PR)
+- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
+  releases only)
 
 ### Code Review Standards
 
@@ -1316,6 +2139,21 @@ Before creating PR, verify ALL items:
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
 
+### Testing Documentation
+
+- **Testing Roadmap:** `.specify/guides/testing-roadmap.md` - Comprehensive
+  testing guide
+- **Test Data Strategy:** `.specify/guides/test-data-strategy.md` - Unified test
+  data management
+- **E2E Fixtures Reference:** `.specify/guides/e2e-fixtures-readme.md` -
+  E2E-specific fixture guide
+- **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
+  Cypress patterns
+- **Jest Best Practices:** `.specify/guides/jest-best-practices.md` - Jest
+  patterns
+- **Backend Testing Best Practices:**
+  `.specify/guides/backend-testing-best-practices.md` - Backend patterns
+
 ### SpecKit Templates
 
 - **Spec Template:** `.specify/templates/spec-template.md`
@@ -1341,7 +2179,7 @@ Before creating PR, verify ALL items:
 - **IHE Lab Profiles:**
   https://wiki.ihe.net/index.php/Laboratory_Technical_Framework
 - **HAPI FHIR:** https://hapifhir.io/
-- **GitHub SpecKit:** https://github.com/anthropics/github-speckit
+- **GitHub SpecKit:** https://github.com/github/spec-kit
 
 ---
 
@@ -1360,8 +2198,12 @@ mvn spotless:apply && cd frontend && npm run format && cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# Run individual E2E test (development)
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+# E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
+npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
+npm run cy:admin                                # All admin tests
+npm run cy:analyzer                             # All analyzer tests
+npm run cy:failfast                             # Full suite with fail-fast (BEFORE PUSHING)
+npm run cy:failfast:spec "cypress/e2e/..."      # Specific test with fail-fast
 
 # Verify Java version
 java -version  # Must be 21.x.x
@@ -1387,10 +2229,11 @@ sdk env        # SDKMAN auto-switch
 - ✅ React Intl for ALL strings (NO hardcoded text)
 - ✅ Liquibase for ALL schema changes
 - ✅ Format before commit (spotless + prettier)
-- ✅ Individual E2E tests during dev (NOT full suite)
+- ✅ E2E: Use npm scripts (NOT direct cypress commands)
+- ✅ E2E: Run `npm run cy:failfast` BEFORE pushing
 
 ---
 
-**Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0 **Maintained By:**
+**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

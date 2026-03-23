@@ -24,6 +24,7 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.PasswordValidationFactory;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -105,7 +106,22 @@ public class UnifiedSystemUserRestController extends BaseController {
 
     @PostConstruct
     private void initialize() {
-        GLOBAL_ADMIN_ID = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId();
+        Role globalAdmin = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN);
+        if (globalAdmin == null) {
+            // Some DB seeds use "Admin" instead of "Global Administrator".
+            LogEvent.logWarn(this.getClass().getSimpleName(), "initialize",
+                    "Role '" + Constants.ROLE_GLOBAL_ADMIN + "' not found; falling back to 'Admin'");
+            globalAdmin = roleService.getRoleByName("Admin");
+        }
+
+        if (globalAdmin == null) {
+            LogEvent.logError(this.getClass().getSimpleName(), "initialize",
+                    "No suitable global admin role found (expected '" + Constants.ROLE_GLOBAL_ADMIN + "' or 'Admin')");
+            GLOBAL_ADMIN_ID = null;
+            return;
+        }
+
+        GLOBAL_ADMIN_ID = globalAdmin.getId();
     }
 
     @InitBinder

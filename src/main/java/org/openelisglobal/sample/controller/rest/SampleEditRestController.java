@@ -25,6 +25,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
@@ -54,6 +55,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -70,6 +72,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     SampleEditFormValidator formValidator;
+    @Autowired
+    private FhirTransformService fhirTransformService;
 
     // private ObservationHistory paymentObservation = null;
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
@@ -187,6 +191,27 @@ public class SampleEditRestController extends BaseSampleEntryController {
         return form;
     }
 
+    @GetMapping(value = "patientByLabNumer", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Patient> getPatientByLabNumber(HttpServletRequest request,
+            @RequestParam(required = false) String accessionNumber) {
+        if (GenericValidator.isBlankOrNull(accessionNumber)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Sample sample = getSample(accessionNumber);
+        if (sample == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(patient);
+    }
+
     @PostMapping(value = "SampleEdit", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void saveSampleEdit(HttpServletRequest request,
@@ -220,6 +245,12 @@ public class SampleEditRestController extends BaseSampleEntryController {
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
             saveErrors(result);
+        }
+
+        try {
+            fhirTransformService.transformAnalysisByIds(sampleEditService.getUpdatedAnalysisList());
+        } catch (Exception e) {
+            LogEvent.logError(e);
         }
     }
 

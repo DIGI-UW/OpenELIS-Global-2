@@ -90,7 +90,11 @@ Cypress.Commands.add("cleanupStorageTests", () => {
  */
 Cypress.Commands.add("setupStorageIntercepts", () => {
   // Use more flexible patterns to match query parameters
-  cy.intercept("GET", "**/rest/storage/samples**").as("getSamples");
+  // Note: The backend uses /rest/storage/sample-items for sample list operations
+  cy.intercept("GET", "**/rest/storage/sample-items**").as("getSamples");
+  cy.intercept("GET", "**/rest/storage/sample-items/search**").as(
+    "searchSamples",
+  );
   cy.intercept("GET", "**/rest/storage/rooms**").as("getRooms");
   cy.intercept("GET", "**/rest/storage/devices**").as("getDevices");
   cy.intercept("GET", "**/rest/storage/shelves**").as("getShelves");
@@ -102,7 +106,7 @@ Cypress.Commands.add("setupStorageIntercepts", () => {
   cy.intercept("POST", "**/rest/storage/devices**").as("createDevice");
   cy.intercept("POST", "**/rest/storage/shelves**").as("createShelf");
   cy.intercept("POST", "**/rest/storage/racks**").as("createRack");
-  cy.intercept("POST", "**/rest/storage/samples/move**").as("moveSample");
+  cy.intercept("POST", "**/rest/storage/sample-items/move**").as("moveSample");
 });
 
 /**

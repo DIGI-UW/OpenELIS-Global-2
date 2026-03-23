@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Inventory Storage Locations -->
+    <inventory_storage_location id="1000"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440101"
+        name="Test Refrigerator 1" location_code="TEST-FRIDGE-01"
+        location_type="REFRIGERATOR" temperature_min="2.0"
+        temperature_max="8.0" is_active="true"
+        last_updated="2025-12-06 00:00:00" />
+
+    <inventory_storage_location id="1001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440102"
+        name="Test Room Temperature" location_code="TEST-ROOM-01"
+        location_type="ROOM" is_active="true"
+        last_updated="2025-12-06 00:00:00" />
+
+    <!-- Inventory Items -->
+    <inventory_item id="1000"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" name="Test Reagent A"
+        description="Test reagent for unit testing" item_type="REAGENT"
+        category="CHEMISTRY" manufacturer="Test Manufacturer"
+        catalog_number="CAT-001" units="mL" low_stock_threshold="10"
+        stability_after_opening="30" is_active="Y"
+        last_updated="2025-12-06 00:00:00" />
+
+    <inventory_item id="1001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440002" name="Test RDT Kit"
+        description="Test RDT kit for unit testing" item_type="RDT"
+        category="QC" units="kits" low_stock_threshold="5" is_active="Y"
+        last_updated="2025-12-06 00:00:00" />
+
+    <!-- Inventory Lots -->
+    <inventory_lot id="1000"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440011"
+        inventory_item_id="1000" storage_location_id="1000"
+        lot_number="LOT-2025-001" expiration_date="2025-12-31 00:00:00"
+        receipt_date="2025-01-01 00:00:00" initial_quantity="100.00"
+        current_quantity="100.00" qc_status="PASSED" status="ACTIVE"
+        version="0" last_updated="2025-12-06 00:00:00" />
+
+    <inventory_lot id="1001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440012"
+        inventory_item_id="1000" storage_location_id="1000"
+        lot_number="LOT-2025-002" expiration_date="2025-06-30 00:00:00"
+        receipt_date="2025-01-15 00:00:00" initial_quantity="50.00"
+        current_quantity="50.00" qc_status="PASSED" status="ACTIVE"
+        version="0" last_updated="2025-12-06 00:00:00" />
+
+    <inventory_lot id="1002"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440013"
+        inventory_item_id="1001" storage_location_id="1001"
+        lot_number="CTRL-2025-001" expiration_date="2026-01-31 00:00:00"
+        receipt_date="2025-01-01 00:00:00" initial_quantity="20.00"
+        current_quantity="15.00" qc_status="PASSED" status="IN_USE"
+        date_opened="2025-02-01 00:00:00" version="0"
+        last_updated="2025-12-06 00:00:00" />
+
+    <!-- Inventory Transactions -->
+    <inventory_transaction id="1000" lot_id="1000"
+        transaction_type="RECEIPT" quantity_change="100.00"
+        quantity_after="100.00" transaction_date="2025-01-01 00:00:00"
+        notes="Initial receipt" performed_by_user="1"
+        last_updated="2025-12-06 00:00:00" />
+
+    <inventory_transaction id="1001" lot_id="1002"
+        transaction_type="RECEIPT" quantity_change="20.00"
+        quantity_after="20.00" transaction_date="2025-01-01 00:00:00"
+        notes="Initial receipt" performed_by_user="1"
+        last_updated="2025-12-06 00:00:00" />
+
+    <inventory_transaction id="1002" lot_id="1002"
+        transaction_type="CONSUMPTION" quantity_change="-5.00"
+        quantity_after="15.00" transaction_date="2025-02-01 00:00:00"
+        notes="Test usage" performed_by_user="1"
+        last_updated="2025-12-06 00:00:00" />
+</dataset>

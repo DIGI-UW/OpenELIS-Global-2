@@ -5,4 +5,6 @@ import org.openelisglobal.storage.valueholder.StorageRoom;
 
 public interface StorageRoomDAO extends BaseDAO<StorageRoom, Integer> {
     StorageRoom findByCode(String code);
+
+    StorageRoom findByName(String name);
 }

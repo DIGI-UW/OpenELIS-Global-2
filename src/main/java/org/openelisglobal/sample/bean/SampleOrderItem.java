@@ -209,11 +209,20 @@ public class SampleOrderItem implements Serializable {
 
     private String contactTracingIndexName;
 
+    private String provisionalClinicalDiagnosis;
     private String contactTracingIndexRecordNumber;
 
     private QuestionnaireResponse additionalQuestions;
 
     private String programId;
+
+    private boolean isEQASample;
+    private String eqaProgramId;
+    private String eqaProviderOrganizationId;
+    private String eqaProviderSampleId;
+    private String eqaParticipantId;
+    private String eqaDeadline;
+    private String eqaPriority;
 
     // for display
     private List<IdValuePair> priorityList;
@@ -254,6 +263,14 @@ public class SampleOrderItem implements Serializable {
 
     public String getOrderType() {
         return orderType;
+    }
+
+    public String getProvisionalClinicalDiagnosis() {
+        return provisionalClinicalDiagnosis;
+    }
+
+    public void setProvisionalClinicalDiagnosis(String provisionalClinicalDiagnosis) {
+        this.provisionalClinicalDiagnosis = provisionalClinicalDiagnosis;
     }
 
     public void setOrderType(String orderType) {
@@ -594,5 +611,61 @@ public class SampleOrderItem implements Serializable {
 
     public void setProgramId(String programId) {
         this.programId = programId;
+    }
+
+    public boolean getIsEQASample() {
+        return isEQASample;
+    }
+
+    public void setIsEQASample(boolean isEQASample) {
+        this.isEQASample = isEQASample;
+    }
+
+    public String getEqaProgramId() {
+        return eqaProgramId;
+    }
+
+    public void setEqaProgramId(String eqaProgramId) {
+        this.eqaProgramId = eqaProgramId;
+    }
+
+    public String getEqaProviderOrganizationId() {
+        return eqaProviderOrganizationId;
+    }
+
+    public void setEqaProviderOrganizationId(String eqaProviderOrganizationId) {
+        this.eqaProviderOrganizationId = eqaProviderOrganizationId;
+    }
+
+    public String getEqaProviderSampleId() {
+        return eqaProviderSampleId;
+    }
+
+    public void setEqaProviderSampleId(String eqaProviderSampleId) {
+        this.eqaProviderSampleId = eqaProviderSampleId;
+    }
+
+    public String getEqaParticipantId() {
+        return eqaParticipantId;
+    }
+
+    public void setEqaParticipantId(String eqaParticipantId) {
+        this.eqaParticipantId = eqaParticipantId;
+    }
+
+    public String getEqaDeadline() {
+        return eqaDeadline;
+    }
+
+    public void setEqaDeadline(String eqaDeadline) {
+        this.eqaDeadline = eqaDeadline;
+    }
+
+    public String getEqaPriority() {
+        return eqaPriority;
+    }
+
+    public void setEqaPriority(String eqaPriority) {
+        this.eqaPriority = eqaPriority;
     }
 }

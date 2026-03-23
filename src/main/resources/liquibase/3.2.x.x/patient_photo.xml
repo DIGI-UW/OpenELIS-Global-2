@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="aziz_diakite" id="create-patient-photo">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="patient_photo" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>create patient photo table</comment>
+        <createSequence incrementBy="1" schemaName="clinlims" sequenceName="patient_photo_seq" startValue="1" />
+
+        <createTable tableName="patient_photo">
+            <column name="id" type="INTEGER" valueSequenceNext="patient_photo_seq">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="patient_id" type="VARCHAR">
+                <constraints nullable="false"/>
+            </column>
+            <column name="photo_data" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+              <column name="thumbnail_data" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="photo_type" type="varchar(20)">
+                <constraints nullable="false"/>
+            </column>
+              <column name="last_updated" type="datetime"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

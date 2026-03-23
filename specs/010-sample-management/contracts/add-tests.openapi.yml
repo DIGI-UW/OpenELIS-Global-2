@@ -1,0 +1,313 @@
+openapi: 3.0.3
+info:
+  title: Sample Management - Add Tests API
+  description: |
+    API for adding tests to sample items (single or bulk operations).
+    Part of the Sample Management Menu feature (001-sample-management).
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Support
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Sample Management
+    description: Sample management operations
+
+paths:
+  /sample-management/add-tests:
+    post:
+      summary: Add tests to one or more sample items
+      description: |
+        Add one or more tests to one or more sample items in a single operation.
+        Supports bulk test ordering with automatic duplicate detection.
+
+        **Business Rules**:
+        - Tests can be added to original samples or aliquots
+        - Duplicate tests (same test already ordered for same sample) are automatically skipped
+        - Test must be compatible with sample type
+        - Operation is transactional - all valid test additions succeed even if some duplicates are skipped
+        - Each test addition creates an Analysis entity (TestOrder) with status "ORDERED"
+
+        **Use Cases**:
+        - Add multiple tests to a single sample (e.g., CBC + Chemistry Panel + HIV Test)
+        - Add same test to multiple samples (e.g., Malaria test to 10 blood samples)
+        - Bulk add tests to aliquots (e.g., PCR test to 5 aliquots)
+      operationId: addTestsToSamples
+      tags:
+        - Sample Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddTestsRequest'
+            examples:
+              multipleTestsToOneSample:
+                summary: Add 3 tests to a single sample
+                value:
+                  sampleItemIds:
+                    - "sample-uuid-1"
+                  testIds:
+                    - "cbc-test-uuid"
+                    - "chemistry-panel-uuid"
+                    - "hiv-test-uuid"
+              oneTestToMultipleSamples:
+                summary: Add Malaria test to 3 samples
+                value:
+                  sampleItemIds:
+                    - "sample-uuid-1"
+                    - "sample-uuid-2"
+                    - "sample-uuid-3"
+                  testIds:
+                    - "malaria-test-uuid"
+              bulkAliquotTesting:
+                summary: Add 2 tests to 5 aliquots
+                value:
+                  sampleItemIds:
+                    - "aliquot-uuid-1"
+                    - "aliquot-uuid-2"
+                    - "aliquot-uuid-3"
+                    - "aliquot-uuid-4"
+                    - "aliquot-uuid-5"
+                  testIds:
+                    - "pcr-test-uuid"
+                    - "culture-test-uuid"
+      responses:
+        '200':
+          description: Test addition operation completed (may include skipped duplicates)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddTestsResponse'
+              examples:
+                allSuccess:
+                  summary: All tests added successfully
+                  value:
+                    successCount: 3
+                    results:
+                      - sampleItemId: "sample-uuid-1"
+                        sampleItemExternalId: "2025-001234"
+                        testId: "cbc-test-uuid"
+                        testName: "Complete Blood Count (CBC)"
+                        success: true
+                        message: "Test added successfully"
+                      - sampleItemId: "sample-uuid-1"
+                        sampleItemExternalId: "2025-001234"
+                        testId: "chemistry-panel-uuid"
+                        testName: "Chemistry Panel"
+                        success: true
+                        message: "Test added successfully"
+                      - sampleItemId: "sample-uuid-1"
+                        sampleItemExternalId: "2025-001234"
+                        testId: "hiv-test-uuid"
+                        testName: "HIV Test"
+                        success: true
+                        message: "Test added successfully"
+                withDuplicates:
+                  summary: Some tests skipped (duplicates)
+                  value:
+                    successCount: 2
+                    results:
+                      - sampleItemId: "sample-uuid-1"
+                        sampleItemExternalId: "2025-001234"
+                        testId: "cbc-test-uuid"
+                        testName: "Complete Blood Count (CBC)"
+                        success: false
+                        message: "Test already ordered for this sample"
+                      - sampleItemId: "sample-uuid-1"
+                        sampleItemExternalId: "2025-001234"
+                        testId: "chemistry-panel-uuid"
+                        testName: "Chemistry Panel"
+                        success: true
+                        message: "Test added successfully"
+                      - sampleItemId: "sample-uuid-1"
+                        sampleItemExternalId: "2025-001234"
+                        testId: "hiv-test-uuid"
+                        testName: "HIV Test"
+                        success: true
+                        message: "Test added successfully"
+                withIncompatibleType:
+                  summary: Some tests incompatible with sample type
+                  value:
+                    successCount: 1
+                    results:
+                      - sampleItemId: "urine-sample-uuid"
+                        sampleItemExternalId: "2025-001235"
+                        testId: "blood-culture-uuid"
+                        testName: "Blood Culture"
+                        success: false
+                        message: "Test not compatible with sample type (Urine)"
+                      - sampleItemId: "urine-sample-uuid"
+                        sampleItemExternalId: "2025-001235"
+                        testId: "urinalysis-uuid"
+                        testName: "Urinalysis"
+                        success: true
+                        message: "Test added successfully"
+
+        '400':
+          description: Bad request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emptySampleList:
+                  summary: No sample item IDs provided
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "At least one sample item ID is required"
+                    timestamp: "2025-11-20T12:34:56Z"
+                emptyTestList:
+                  summary: No test IDs provided
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "At least one test ID is required"
+                    timestamp: "2025-11-20T12:34:56Z"
+
+        '404':
+          description: One or more sample items or tests not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "NOT_FOUND"
+                message: "Sample item with ID 'sample-uuid-1' not found"
+                timestamp: "2025-11-20T12:34:56Z"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    AddTestsRequest:
+      type: object
+      required:
+        - sampleItemIds
+        - testIds
+      properties:
+        sampleItemIds:
+          type: array
+          description: List of sample item IDs to add tests to
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          example:
+            - "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            - "b2c3d4e5-f6g7-8901-bcde-fg2345678901"
+        testIds:
+          type: array
+          description: List of test IDs to add
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          example:
+            - "test1-uuid"
+            - "test2-uuid"
+
+    AddTestsResponse:
+      type: object
+      required:
+        - successCount
+        - results
+      properties:
+        successCount:
+          type: integer
+          description: Number of tests successfully added (excludes duplicates and incompatible types)
+          example: 5
+        results:
+          type: array
+          description: Detailed results for each sample-test combination
+          items:
+            $ref: '#/components/schemas/TestAdditionResult'
+
+    TestAdditionResult:
+      type: object
+      required:
+        - sampleItemId
+        - sampleItemExternalId
+        - testId
+        - testName
+        - success
+        - message
+      properties:
+        sampleItemId:
+          type: string
+          format: uuid
+          description: Sample item ID
+          example: "sample-uuid-1"
+        sampleItemExternalId:
+          type: string
+          description: Sample item external ID (human-readable)
+          example: "2025-001234.1"
+        testId:
+          type: string
+          format: uuid
+          description: Test ID
+          example: "cbc-test-uuid"
+        testName:
+          type: string
+          description: Test name
+          example: "Complete Blood Count (CBC)"
+        success:
+          type: boolean
+          description: Whether test was added successfully
+          example: true
+        message:
+          type: string
+          description: Result message (success or reason for failure)
+          example: "Test added successfully"
+          enum:
+            - "Test added successfully"
+            - "Test already ordered for this sample"
+            - "Test not compatible with sample type"
+        analysisId:
+          type: string
+          format: uuid
+          description: Analysis (test order) ID (only present if success=true)
+          example: "analysis-uuid-123"
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "VALIDATION_ERROR"
+          enum:
+            - VALIDATION_ERROR
+            - NOT_FOUND
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error message
+          example: "At least one sample item ID is required"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2025-11-20T12:34:56Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

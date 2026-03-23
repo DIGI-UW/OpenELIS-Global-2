@@ -46,8 +46,6 @@ import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.method.service.MethodService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -249,7 +247,8 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         List<TestResultItem> filteredTests = new ArrayList<>();
 
         ResultsPaging paging = new ResultsPaging();
-        List<InventoryKitItem> inventoryList = new ArrayList<>();
+        // TODO: Re-enable after new inventory frontend integration
+        // List<InventoryKitItem> inventoryList = new ArrayList<>();
         ResultsLoadUtility resultsLoadUtility = SpringContext.getBean(ResultsLoadUtility.class);
         resultsLoadUtility.setSysUser(getSysUserId(request));
 
@@ -279,8 +278,10 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                             .isPropertyValueEqual(Property.configurationName, "Haiti Clinical");
                     if (resultsLoadUtility.inventoryNeeded()
                             || (isHaitiClinical && ("VCT").equals(ts.getTestSectionName()))) {
-                        InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
-                        inventoryList = inventoryUtility.getExistingActiveInventory();
+                        // TODO: Re-enable after new inventory frontend integration
+                        // InventoryUtility inventoryUtility =
+                        // SpringContext.getBean(InventoryUtility.class);
+                        // inventoryList = inventoryUtility.getExistingActiveInventory();
 
                         form.setDisplayTestKit(true);
                     }
@@ -312,19 +313,24 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             paging.page(request, form, requestedPageNumber);
         }
         form.setDisplayTestKit(false);
-        List<String> hivKits = new ArrayList<>();
-        List<String> syphilisKits = new ArrayList<>();
+        // TODO: Re-enable after new inventory frontend integration
+        // List<String> hivKits = new ArrayList<>();
+        // List<String> syphilisKits = new ArrayList<>();
+        // for (InventoryKitItem item : inventoryList) {
+        // if (item.getType().equals("HIV")) {
+        // hivKits.add(item.getInventoryLocationId());
+        // } else {
+        // syphilisKits.add(item.getInventoryLocationId());
+        // }
+        // }
+        // form.setHivKits(hivKits);
+        // form.setSyphilisKits(syphilisKits);
 
-        for (InventoryKitItem item : inventoryList) {
-            if (item.getType().equals("HIV")) {
-                hivKits.add(item.getInventoryLocationId());
-            } else {
-                syphilisKits.add(item.getInventoryLocationId());
-            }
-        }
-        form.setHivKits(hivKits);
-        form.setSyphilisKits(syphilisKits);
-        form.setInventoryItems(inventoryList);
+        // Temporary fix: Set empty lists
+        form.setHivKits(new ArrayList<String>());
+        form.setSyphilisKits(new ArrayList<String>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(inventoryList);
         form.setReferralOrganizations(DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS));
 
         addFlashMsgsToRequest(request);
@@ -350,7 +356,24 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
         String statusRuleSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.StatusRules);
 
-        // load testSections for drop down
+        if (form.getTestResult() != null) {
+            for (TestResultItem item : form.getTestResult()) {
+                if ("M".equals(item.getResultType()) || "C".equals(item.getResultType())) {
+
+                    String raw = item.getMultiSelectResultValues();
+
+                    if (raw != null && !raw.isEmpty()) {
+
+                        String json = extractMultiSelectJson(raw);
+
+                        if (json != null) {
+                            item.setMultiSelectResultValues(json);
+                        }
+                    }
+                }
+            }
+        }
+
         String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
         form.setTestSections(testSections);
@@ -797,6 +820,87 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             sig.setSysUserId(getSysUserId(request));
         }
         return sig;
+    }
+
+    private String extractMultiSelectJson(String input) {
+
+        String bestJson = null;
+        int maxKeyCount = 0;
+
+        StringBuilder current = new StringBuilder();
+        boolean inObject = false;
+        int braceDepth = 0;
+
+        for (int i = 0; i < input.length(); i++) {
+            char ch = input.charAt(i);
+
+            if (ch == '{') {
+                inObject = true;
+                braceDepth++;
+                current.setLength(0);
+            }
+
+            if (inObject) {
+                current.append(ch);
+            }
+
+            if (ch == '}') {
+                braceDepth--;
+                if (braceDepth == 0) {
+                    inObject = false;
+
+                    String json = current.toString();
+                    int keyCount = countNumericKeys(json);
+
+                    if (keyCount > maxKeyCount) {
+                        maxKeyCount = keyCount;
+                        bestJson = json;
+                    }
+                }
+            }
+        }
+
+        return bestJson;
+    }
+
+    private int countNumericKeys(String json) {
+        boolean insideQuotes = false;
+        StringBuilder key = new StringBuilder();
+        int count = 0;
+
+        for (int i = 0; i < json.length(); i++) {
+            char ch = json.charAt(i);
+
+            if (ch == '"') {
+                insideQuotes = !insideQuotes;
+
+                if (!insideQuotes) {
+                    // closing quote
+                    if (i + 1 < json.length() && json.charAt(i + 1) == ':') {
+                        if (isDigits(key.toString())) {
+                            count++;
+                        }
+                    }
+                    key.setLength(0);
+                }
+                continue;
+            }
+
+            if (insideQuotes) {
+                key.append(ch);
+            }
+        }
+        return count;
+    }
+
+    private boolean isDigits(String s) {
+        if (s.isEmpty())
+            return false;
+        for (char c : s.toCharArray()) {
+            if (!Character.isDigit(c))
+                return false;
+        }
+        return true;
     }
 
     private String findLogBookForward(String forward) {

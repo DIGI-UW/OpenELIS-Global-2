@@ -74,5 +74,22 @@
             type="java.lang.Boolean" />
         <property name="voidReason" column="void_reason"
             type="java.lang.String" />
+
+        <!-- Aliquoting fields for Sample Management feature -->
+        <property name="remainingQuantity"
+            type="java.math.BigDecimal" column="remaining_quantity" />
+
+        <many-to-one name="parentSampleItem"
+            class="org.openelisglobal.sampleitem.valueholder.SampleItem"
+            fetch="select" lazy="proxy">
+            <column name="parent_sample_item_id" />
+        </many-to-one>
+
+        <bag name="childAliquots" lazy="true" inverse="true"
+            cascade="none">
+            <key column="parent_sample_item_id" />
+            <one-to-many
+                class="org.openelisglobal.sampleitem.valueholder.SampleItem" />
+        </bag>
     </class>
 </hibernate-mapping>

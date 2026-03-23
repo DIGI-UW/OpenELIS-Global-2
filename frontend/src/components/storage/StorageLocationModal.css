@@ -1,0 +1,12 @@
+.storage-location-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.storage-location-form .cds--text-input,
+.storage-location-form .cds--text-area,
+.storage-location-form .cds--dropdown,
+.storage-location-form .cds--toggle {
+  width: 100%;
+}

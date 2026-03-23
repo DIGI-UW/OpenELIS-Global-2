@@ -10,7 +10,7 @@ const breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "sidenav.label.admin.testmgt.reflex",
-    link: "/MasterListsPage#reflex",
+    link: "/MasterListsPage/reflex",
   },
 ];
 

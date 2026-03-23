@@ -20,7 +20,61 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
+    @Transactional(readOnly = true)
     @SuppressWarnings("unchecked")
+    public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
+            Date fromDate, Date toDate) {
+
+        StringBuilder hql = new StringBuilder("select distinct nb from NoteBook nb ");
+        hql.append("left join nb.tags t where nb.isTemplate = true ");
+
+        if (statuses != null && !statuses.isEmpty()) {
+            hql.append("and nb.status in (:statuses) ");
+        }
+
+        if (types != null && !types.isEmpty()) {
+            hql.append("and nb.type.id in (:types) ");
+        }
+
+        if (tags != null && !tags.isEmpty()) {
+            hql.append("and t in (:tags) ");
+        }
+
+        if (fromDate != null) {
+            hql.append("and nb.dateCreated >= :fromDate ");
+        }
+
+        if (toDate != null) {
+            hql.append("and nb.dateCreated <= :toDate ");
+        }
+
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), NoteBook.class);
+
+        if (statuses != null && !statuses.isEmpty()) {
+            query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        }
+
+        if (types != null && !types.isEmpty()) {
+            query.setParameterList("types", types);
+        }
+
+        if (tags != null && !tags.isEmpty()) {
+            query.setParameterList("tags", tags);
+        }
+
+        if (fromDate != null) {
+            query.setParameter("fromDate", fromDate);
+        }
+
+        if (toDate != null) {
+            query.setParameter("toDate", toDate);
+        }
+
+        return query.list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, List<Integer> entryIds) {
 
@@ -32,7 +86,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
         }
 
         if (types != null && !types.isEmpty()) {
-            hql.append("and nb.type in (:types) ");
+            hql.append("and nb.type.id in (:types) ");
         }
 
         if (tags != null && !tags.isEmpty()) {
@@ -78,6 +132,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Long getCountWithStatus(List<NoteBookStatus> statuses) {
         String sql = "select count(*) from NoteBook nb where status in (:statuses) and nb.isTemplate = false";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
@@ -87,6 +142,7 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Long getCountWithStatusBetweenDates(List<NoteBookStatus> statuses, Timestamp from, Timestamp to) {
         String sql = "select count(*) from NoteBook nb where nb.status in (:statuses) and nb.lastupdated"
                 + " between :datefrom and :dateto and nb.isTemplate = false";
@@ -99,10 +155,36 @@ public class NoteBookDAOImpl extends BaseDAOImpl<NoteBook, Integer> implements N
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Long getTotalCount() {
         String sql = "select count(*) from NoteBook nb where nb.isTemplate = false";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
         Long count = query.uniqueResult();
         return count;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countByAnalyzerId(String analyzerId) {
+        String hql = "SELECT COUNT(n) FROM NoteBook n JOIN n.analysers a WHERE a.id = :analyzerId";
+        Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
+        query.setParameter("analyzerId", Integer.parseInt(analyzerId));
+        Long count = query.uniqueResult();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public String getTableName() {
+        return "notebook";
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NoteBook findParentTemplate(Integer entryId) {
+        String hql = "select nb from NoteBook nb join nb.entries e where e.id = :entryId and nb.isTemplate = true";
+        Query<NoteBook> query = entityManager.unwrap(Session.class).createQuery(hql, NoteBook.class);
+        query.setParameter("entryId", entryId);
+        List<NoteBook> results = query.list();
+        return results.isEmpty() ? null : results.get(0);
     }
 }

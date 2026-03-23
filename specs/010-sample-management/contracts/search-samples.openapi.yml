@@ -1,0 +1,376 @@
+openapi: 3.0.3
+info:
+  title: Sample Management - Search Samples API
+  description: |
+    API for searching sample items by accession number with full parent-child hierarchy.
+    Part of the Sample Management Menu feature (001-sample-management).
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Support
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Sample Management
+    description: Sample management operations
+
+paths:
+  /sample-management/search:
+    get:
+      summary: Search for sample items by accession number
+      description: |
+        Search for sample items using a complete or partial accession number.
+        Returns all related sample items including parent-child aliquot relationships.
+
+        **Business Rules**:
+        - Searching by base accession number (e.g., "2025-001234") returns all related samples (parent + aliquots)
+        - Searching by full external ID with suffix (e.g., "2025-001234.2") returns exact match + descendants
+        - Results include full hierarchy with parent/child relationships loaded
+        - Results are ordered by external ID (parent first, then aliquots in sequence)
+      operationId: searchSamplesByAccessionNumber
+      tags:
+        - Sample Management
+      parameters:
+        - name: accessionNumber
+          in: query
+          description: |
+            Complete or partial accession number to search for.
+            Examples: "2025-001234", "2025-00", "SAMPLE001.2"
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            example: "2025-001234"
+        - name: includeTests
+          in: query
+          description: Include ordered tests in the response (default: false)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Search completed successfully (may return empty results)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchSamplesResponse'
+              examples:
+                singleSampleNoAliquots:
+                  summary: Single sample with no aliquots
+                  value:
+                    accessionNumber: "2025-001234"
+                    sampleItems:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        externalId: "2025-001234"
+                        sampleAccessionNumber: "2025-001234"
+                        sampleType: "Blood"
+                        originalQuantity: 10.0
+                        remainingQuantity: 10.0
+                        unitOfMeasure: "mL"
+                        status: "AVAILABLE"
+                        collectionDate: "2025-11-20T08:30:00Z"
+                        hasRemainingQuantity: true
+                        isAliquot: false
+                        nestingLevel: 0
+                    totalCount: 1
+
+                parentWithAliquots:
+                  summary: Parent sample with nested aliquots
+                  value:
+                    accessionNumber: "2025-001234"
+                    sampleItems:
+                      - id: "parent-uuid"
+                        externalId: "2025-001234"
+                        sampleAccessionNumber: "2025-001234"
+                        sampleType: "Blood"
+                        originalQuantity: 10.0
+                        remainingQuantity: 3.0
+                        unitOfMeasure: "mL"
+                        status: "AVAILABLE"
+                        collectionDate: "2025-11-20T08:30:00Z"
+                        hasRemainingQuantity: true
+                        isAliquot: false
+                        nestingLevel: 0
+                        childAliquots:
+                          - id: "aliquot1-uuid"
+                            externalId: "2025-001234.1"
+                            originalQuantity: 5.0
+                            remainingQuantity: 5.0
+                            createdDate: "2025-11-20T10:15:00Z"
+                          - id: "aliquot2-uuid"
+                            externalId: "2025-001234.2"
+                            originalQuantity: 2.0
+                            remainingQuantity: 0.0
+                            createdDate: "2025-11-20T11:30:00Z"
+                      - id: "aliquot1-uuid"
+                        externalId: "2025-001234.1"
+                        sampleAccessionNumber: "2025-001234"
+                        sampleType: "Blood"
+                        originalQuantity: 5.0
+                        remainingQuantity: 5.0
+                        unitOfMeasure: "mL"
+                        status: "AVAILABLE"
+                        collectionDate: "2025-11-20T08:30:00Z"
+                        parentId: "parent-uuid"
+                        parentExternalId: "2025-001234"
+                        hasRemainingQuantity: true
+                        isAliquot: true
+                        nestingLevel: 1
+                      - id: "aliquot2-uuid"
+                        externalId: "2025-001234.2"
+                        sampleAccessionNumber: "2025-001234"
+                        sampleType: "Blood"
+                        originalQuantity: 2.0
+                        remainingQuantity: 0.0
+                        unitOfMeasure: "mL"
+                        status: "AVAILABLE"
+                        collectionDate: "2025-11-20T08:30:00Z"
+                        parentId: "parent-uuid"
+                        parentExternalId: "2025-001234"
+                        hasRemainingQuantity: false
+                        isAliquot: true
+                        nestingLevel: 1
+                    totalCount: 3
+
+        '400':
+          description: Bad request (invalid accession number format)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "INVALID_REQUEST"
+                message: "Accession number is required"
+                timestamp: "2025-11-20T12:34:56Z"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    SearchSamplesResponse:
+      type: object
+      required:
+        - accessionNumber
+        - sampleItems
+        - totalCount
+      properties:
+        accessionNumber:
+          type: string
+          description: The accession number that was searched
+          example: "2025-001234"
+        sampleItems:
+          type: array
+          description: List of sample items matching the search (includes parent and all aliquots)
+          items:
+            $ref: '#/components/schemas/SampleItemDTO'
+        totalCount:
+          type: integer
+          description: Total number of sample items returned
+          example: 3
+
+    SampleItemDTO:
+      type: object
+      required:
+        - id
+        - externalId
+        - sampleAccessionNumber
+        - status
+        - hasRemainingQuantity
+        - isAliquot
+        - nestingLevel
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Internal sample item ID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        externalId:
+          type: string
+          description: Human-readable external identifier (includes .1, .2, .3 suffix for aliquots)
+          example: "2025-001234.1"
+        sampleAccessionNumber:
+          type: string
+          description: Parent sample accession number
+          example: "2025-001234"
+        sampleType:
+          type: string
+          description: Type of sample (blood, urine, tissue, etc.)
+          example: "Blood"
+        originalQuantity:
+          type: number
+          format: double
+          description: Initial quantity when sample/aliquot was created
+          example: 10.5
+          nullable: true
+        remainingQuantity:
+          type: number
+          format: double
+          description: Current available quantity after aliquoting
+          example: 5.25
+          nullable: true
+        unitOfMeasure:
+          type: string
+          description: Unit of measurement for quantities
+          example: "mL"
+          nullable: true
+        status:
+          type: string
+          description: Current sample status
+          example: "AVAILABLE"
+          enum:
+            - AVAILABLE
+            - IN_USE
+            - EXHAUSTED
+            - VOIDED
+        collectionDate:
+          type: string
+          format: date-time
+          description: Date and time sample was collected
+          example: "2025-11-20T08:30:00Z"
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          description: ID of parent sample item (null for original samples)
+          example: "parent-uuid"
+          nullable: true
+        parentExternalId:
+          type: string
+          description: External ID of parent sample item
+          example: "2025-001234"
+          nullable: true
+        childAliquots:
+          type: array
+          description: List of aliquots created from this sample item
+          items:
+            $ref: '#/components/schemas/AliquotSummaryDTO'
+          nullable: true
+        orderedTests:
+          type: array
+          description: Tests ordered for this sample item (only included if includeTests=true)
+          items:
+            $ref: '#/components/schemas/TestSummaryDTO'
+          nullable: true
+        hasRemainingQuantity:
+          type: boolean
+          description: Whether sample has quantity remaining for aliquoting
+          example: true
+        isAliquot:
+          type: boolean
+          description: Whether this sample item is an aliquot (has parent)
+          example: false
+        nestingLevel:
+          type: integer
+          description: Hierarchy depth (0 = original, 1 = first-level aliquot, etc.)
+          example: 0
+
+    AliquotSummaryDTO:
+      type: object
+      required:
+        - id
+        - externalId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Aliquot sample item ID
+          example: "aliquot-uuid"
+        externalId:
+          type: string
+          description: Aliquot external identifier
+          example: "2025-001234.1"
+        originalQuantity:
+          type: number
+          format: double
+          description: Aliquot quantity
+          example: 5.0
+          nullable: true
+        remainingQuantity:
+          type: number
+          format: double
+          description: Remaining quantity in aliquot
+          example: 5.0
+          nullable: true
+        createdDate:
+          type: string
+          format: date-time
+          description: When aliquot was created
+          example: "2025-11-20T10:15:00Z"
+          nullable: true
+
+    TestSummaryDTO:
+      type: object
+      required:
+        - analysisId
+        - testId
+        - testName
+        - status
+      properties:
+        analysisId:
+          type: string
+          format: uuid
+          description: Analysis (test order) ID
+          example: "analysis-uuid"
+        testId:
+          type: string
+          description: Test definition ID
+          example: "test-uuid"
+        testName:
+          type: string
+          description: Name of the test
+          example: "Complete Blood Count (CBC)"
+        status:
+          type: string
+          description: Test order status
+          example: "ORDERED"
+          enum:
+            - ORDERED
+            - IN_PROGRESS
+            - COMPLETED
+            - CANCELLED
+        orderedDate:
+          type: string
+          format: date-time
+          description: When test was ordered
+          example: "2025-11-20T09:00:00Z"
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Accession number is required"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2025-11-20T12:34:56Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.patient.action.bean;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -20,7 +21,9 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.services.DisplayListService;
@@ -193,8 +196,16 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String otherNationality;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String photo;
+
     @Valid
     private PatientContact patientContact;
+
+    // Dynamic address hierarchy fields (addressHierarchy_0, addressHierarchy_1,
+    // etc.)
+    private Map<String, String> addressHierarchy = new HashMap<>();
 
     // for display
     private static List<Dictionary> addressDepartments;
@@ -542,6 +553,30 @@ public class PatientManagementInfo implements Serializable {
 
     public void setPatientContact(PatientContact patientContact) {
         this.patientContact = patientContact;
+    }
+
+    public String getPhoto() {
+        return photo;
+    }
+
+    public void setPhotoData(String photo) {
+        this.photo = photo;
+    }
+
+    public Map<String, String> getAddressHierarchy() {
+        return addressHierarchy;
+    }
+
+    public void setAddressHierarchy(Map<String, String> addressHierarchy) {
+        this.addressHierarchy = addressHierarchy;
+    }
+
+    // Capture dynamic addressHierarchy_N fields from JSON
+    @JsonAnySetter
+    public void setDynamicProperty(String name, Object value) {
+        if (name != null && name.startsWith("addressHierarchy_")) {
+            addressHierarchy.put(name, value != null ? value.toString() : null);
+        }
     }
 
     // public UUID getFhirUuid() {

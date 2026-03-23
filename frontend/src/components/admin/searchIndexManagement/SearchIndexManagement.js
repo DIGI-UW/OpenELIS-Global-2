@@ -48,7 +48,7 @@ function SearchIndexManagement() {
     },
     {
       label: "searchindexmanagement.label",
-      link: "/MasterListsPage#SearchIndexManagement",
+      link: "/MasterListsPage/SearchIndexManagement",
     },
   ];
 

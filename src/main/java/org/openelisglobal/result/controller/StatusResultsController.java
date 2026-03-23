@@ -21,8 +21,6 @@ import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.inventory.action.InventoryUtility;
-import org.openelisglobal.inventory.form.InventoryKitItem;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
 import org.openelisglobal.result.action.util.ResultsPaging;
 import org.openelisglobal.result.form.StatusResultsForm;
@@ -58,7 +56,9 @@ public class StatusResultsController extends BaseController {
     @Autowired
     private UserService userService;
 
-    private final InventoryUtility inventoryUtility = SpringContext.getBean(InventoryUtility.class);
+    // TODO: Re-enable after new inventory frontend integration
+    // private final InventoryUtility inventoryUtility =
+    // SpringContext.getBean(InventoryUtility.class);
     private static final ConfigurationProperties configProperties = ConfigurationProperties.getInstance();
 
     private static Set<Integer> excludedStatusIds;
@@ -161,13 +161,15 @@ public class StatusResultsController extends BaseController {
     private void addInventory(StatusResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
-        form.setInventoryItems(list);
+        // TODO: Re-enable after new inventory frontend integration
+        // List<InventoryKitItem> list = inventoryUtility.getExistingActiveInventory();
+        // form.setInventoryItems(list);
     }
 
     private void addEmptyInventoryList(StatusResultsForm form)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        form.setInventoryItems(new ArrayList<InventoryKitItem>());
+        // TODO: Re-enable after new inventory frontend integration
+        // form.setInventoryItems(new ArrayList<InventoryKitItem>());
     }
 
     private void setSelectionLists(StatusResultsForm form, HttpServletRequest request)

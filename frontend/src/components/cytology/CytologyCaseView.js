@@ -36,6 +36,7 @@ import PatientHeader from "../common/PatientHeader";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "cytology.label.dashboard", link: "/CytologyDashboard" },
@@ -88,6 +89,7 @@ function CytologyCaseView() {
   const [slidesToAdd, setSlidesToAdd] = useState(1);
   const [isConfirmOpen, setConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -122,6 +124,9 @@ function CytologyCaseView() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
+      setPostSavePrintModel(
+        body?.postSavePrintDialog || buildFallbackPostSavePrintDialog(),
+      );
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -130,6 +135,46 @@ function CytologyCaseView() {
       });
     }
   }
+
+  const buildFallbackPostSavePrintDialog = () => {
+    const accessionNumber = pathologySampleInfo.labNumber;
+    if (!accessionNumber) {
+      return null;
+    }
+
+    const slideQuantity =
+      pathologySampleInfo.slides && pathologySampleInfo.slides.length > 0
+        ? 1
+        : 0;
+    const labels = [
+      {
+        labelType: "order",
+        quantity: 1,
+        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
+          accessionNumber,
+        )}&type=order&quantity=1`,
+      },
+      {
+        labelType: "specimen",
+        quantity: 1,
+        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
+          accessionNumber,
+        )}&type=specimen&quantity=1`,
+      },
+      {
+        labelType: "slide",
+        quantity: slideQuantity,
+        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
+          accessionNumber,
+        )}&type=slideOrder&quantity=${slideQuantity || 1}`,
+      },
+    ].filter((label) => label.quantity > 0);
+
+    return {
+      accessionNumber,
+      printableLabelTypes: labels,
+    };
+  };
 
   const reportStatus = async (pdfGenerated, blob, index) => {
     setNotificationVisible(true);
@@ -179,6 +224,7 @@ function CytologyCaseView() {
       return;
     }
     setIsSubmitting(true);
+    setPostSavePrintModel(null);
     let specimenAdequacy = null;
     if (pathologySampleInfo.specimenAdequacy) {
       specimenAdequacy = pathologySampleInfo.specimenAdequacy;
@@ -382,7 +428,7 @@ function CytologyCaseView() {
           <Section>
             <Section>
               <PatientHeader
-                id={pathologySampleInfo.labNumber}
+                id={pathologySampleInfo.patientPK}
                 lastName={pathologySampleInfo.lastName}
                 firstName={pathologySampleInfo.firstName}
                 gender={pathologySampleInfo.sex}
@@ -433,6 +479,14 @@ function CytologyCaseView() {
             <FormattedMessage id="label.button.save" />
           </Button>
         </Column>
+        {postSavePrintModel?.accessionNumber && (
+          <Column lg={16} md={8} sm={4}>
+            <PostSavePrintDialog
+              accessionNumber={postSavePrintModel.accessionNumber}
+              printableLabelTypes={postSavePrintModel.printableLabelTypes || []}
+            />
+          </Column>
+        )}
         <Column lg={16} md={8} sm={4}>
           <div> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
         </Column>

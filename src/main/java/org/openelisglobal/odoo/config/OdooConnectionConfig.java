@@ -1,8 +1,7 @@
 package org.openelisglobal.odoo.config;
 
 import lombok.extern.slf4j.Slf4j;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.config.condition.ConditionalOnProperty;
 import org.openelisglobal.odoo.client.NoOpOdooClient;
 import org.openelisglobal.odoo.client.OdooClient;
 import org.openelisglobal.odoo.client.OdooConnection;
@@ -10,24 +9,23 @@ import org.openelisglobal.odoo.client.RealOdooClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Uses custom @ConditionalOnProperty to enable/disable Odoo based on
+ * application.properties.
+ */
 @Slf4j
 @Configuration
 @SuppressWarnings("unused")
 public class OdooConnectionConfig {
 
+    /**
+     * Creates a real Odoo connection when org.openelisglobal.odoo.enabled=true
+     */
     @Bean
-    public OdooConnection odooConnection(OdooClient odooClient) {
-        // Check if Odoo integration is enabled in configuration
-        boolean odooEnabled = ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.ENABLE_OPENELIS_TO_ODOO_CONNECTION, "true");
-
-        if (!odooEnabled) {
-            log.info("Odoo integration is disabled in configuration. Using NoOpOdooClient.");
-            return new NoOpOdooClient();
-        }
-
+    @ConditionalOnProperty(property = "org.openelisglobal.odoo.enabled", havingValue = "true")
+    public OdooConnection realOdooConnection(OdooClient odooClient) {
+        log.info("Odoo integration is ENABLED!");
         try {
-            log.info("Odoo integration is enabled. Attempting to connect to Odoo...");
             odooClient.init();
             log.info("Successfully connected to Odoo.");
             return new RealOdooClient(odooClient);
@@ -36,5 +34,16 @@ public class OdooConnectionConfig {
             log.warn("Falling back to NoOpOdooClient. Odoo operations will be skipped.");
             return new NoOpOdooClient();
         }
+    }
+
+    /**
+     * Creates a no-op Odoo connection when org.openelisglobal.odoo.enabled is false
+     * or missing
+     */
+    @Bean
+    @ConditionalOnProperty(property = "org.openelisglobal.odoo.enabled", havingValue = "false", matchIfMissing = false)
+    public OdooConnection noOpOdooConnection() {
+        log.info("Odoo integration is DISABLED (org.openelisglobal.odoo.enabled=false or not set)");
+        return new NoOpOdooClient();
     }
 }

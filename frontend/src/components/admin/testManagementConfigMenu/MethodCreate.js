@@ -45,15 +45,15 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.testUnit.manage",
-    link: "/MasterListsPage#MethodManagement",
+    link: "/MasterListsPage/MethodManagement",
   },
   {
     label: "configuration.method.create",
-    link: "/MasterListsPage#MethodCreate",
+    link: "/MasterListsPage/MethodCreate",
   },
 ];
 

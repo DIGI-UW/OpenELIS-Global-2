@@ -192,8 +192,10 @@ public class RenameTestSectionDAOImpl extends BaseDAOImpl<RenameTestSection, Str
 
             // not case sensitive hemolysis and Hemolysis are considered
             // duplicates
-            String sql = "from RenameTestSection t where trim(lower(t.testSectionName)) = :param and t.id != :param2";
-            Query<RenameTestSection> query = entityManager.unwrap(Session.class).createQuery(sql,
+            // Note: Using native SQL to avoid type mismatch (id is numeric, param2 is
+            // String)
+            String sql = "SELECT * FROM test_section t WHERE trim(lower(t.name)) = :param AND CAST(t.id AS VARCHAR) != :param2";
+            Query<RenameTestSection> query = entityManager.unwrap(Session.class).createNativeQuery(sql,
                     RenameTestSection.class);
             query.setParameter("param", testSection.getTestSectionName().toLowerCase().trim());
 

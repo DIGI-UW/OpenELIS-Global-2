@@ -14,7 +14,11 @@ class OrderEntityPage {
   }
 
   clickNextButton() {
-    cy.contains("button", "Next").click();
+    cy.contains("button", "Next")
+      .should("be.visible")
+      .scrollIntoView()
+      .should("not.be.disabled")
+      .click();
   }
 
   selectCytology() {
@@ -87,7 +91,10 @@ class OrderEntityPage {
     cy.contains("span", "Remember site and requester").click();
   }
   clickSubmitOrderButton() {
-    cy.contains("button", "Submit").click();
+    cy.contains("button", "Submit")
+      .should("be.visible")
+      .should("not.be.disabled")
+      .click();
   }
 }
 

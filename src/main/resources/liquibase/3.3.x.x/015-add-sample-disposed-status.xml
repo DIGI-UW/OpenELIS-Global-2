@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="add-sample-disposed-status" author="ogc-73">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck  expectedResult="0">SELECT count(*) FROM clinlims.status_of_sample WHERE status_type = 'SAMPLE' AND name = 'SampleDisposed'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="status_of_sample">
+            <column name="id" valueSequenceNext="status_of_sample_seq" />
+            <column name="description" value="Sample has been physically disposed" />
+            <column name="code" value="1" />
+            <column name="status_type" value="SAMPLE" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="name" value="SampleDisposed" />
+            <column name="display_key" value="status.sample.disposed" />
+            <column name="is_active" value="Y" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

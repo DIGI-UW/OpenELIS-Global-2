@@ -17,7 +17,7 @@ public class StorageDeviceForm {
     @Size(max = 255, message = "Device name must not exceed 255 characters")
     private String name;
 
-    @Size(max = 50, message = "Device code must not exceed 50 characters")
+    @Size(max = 10, message = "Device code must not exceed 10 characters")
     private String code; // Optional - will be auto-generated if not provided
 
     @NotBlank(message = "Device type is required")
@@ -30,8 +30,19 @@ public class StorageDeviceForm {
 
     private Boolean active = true;
 
-    @NotBlank(message = "Parent room ID is required")
+    // Note: parentRoomId is required for creation but optional for updates
+    // (parent cannot be changed after creation, backend ignores this field on PUT)
     private String parentRoomId;
+
+    // Device connectivity configuration fields for network-connected equipment
+    @Size(max = 45, message = "IP address must not exceed 45 characters")
+    @Pattern(regexp = "^$|^((25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(?!$)|$)){4}|^((([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,7}:)|(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|([0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6}))|(:((:[0-9A-Fa-f]{1,4}){1,7}|:))|(([0-9A-Fa-f]{1,4}:){1,4}:((25[0-5]|2[0-4]\\d|1?\\d?\\d)(\\.(?!$)|$)){4}))$", message = "IP address must be valid IPv4 or IPv6 format")
+    private String ipAddress;
+
+    private Integer port; // Validated by database constraint: 1-65535
+
+    @Size(max = 20, message = "Communication protocol must not exceed 20 characters")
+    private String communicationProtocol;
 
     // Getters and Setters
 
@@ -97,5 +108,29 @@ public class StorageDeviceForm {
 
     public void setParentRoomId(String parentRoomId) {
         this.parentRoomId = parentRoomId;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
+    }
+
+    public Integer getPort() {
+        return port;
+    }
+
+    public void setPort(Integer port) {
+        this.port = port;
+    }
+
+    public String getCommunicationProtocol() {
+        return communicationProtocol;
+    }
+
+    public void setCommunicationProtocol(String communicationProtocol) {
+        this.communicationProtocol = communicationProtocol;
     }
 }

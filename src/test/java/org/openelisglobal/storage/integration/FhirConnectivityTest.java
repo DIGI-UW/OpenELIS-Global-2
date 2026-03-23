@@ -55,10 +55,10 @@ public class FhirConnectivityTest {
 
             // Then: Should get response
             assertNotNull("FHIR server should return CapabilityStatement", capabilities);
-            assertEquals("Should be FHIR R4", "4.0.1", capabilities.getFhirVersion().toString());
+            assertEquals("Should be FHIR R4", "4.0.1", capabilities.getFhirVersion().toCode());
 
             System.out.println("✅ FHIR server is accessible at http://localhost:8081/fhir/");
-            System.out.println("FHIR Version: " + capabilities.getFhirVersion());
+            System.out.println("FHIR Version: " + capabilities.getFhirVersion().toCode());
         } catch (Exception e) {
             fail("FHIR server not accessible: " + e.getMessage());
         }

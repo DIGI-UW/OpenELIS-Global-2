@@ -1,0 +1,363 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Storage Location CRUD API",
+    "description": "API endpoints for storage location management (OGC-68)",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/rest/storage/rooms": {
+      "post": {
+        "summary": "Create a new Room",
+        "tags": ["Rooms"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RoomCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Room created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRoom" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" }
+        }
+      }
+    },
+    "/rest/storage/rooms/{id}": {
+      "put": {
+        "summary": "Update an existing Room",
+        "tags": ["Rooms"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RoomUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Room updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRoom" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a Room",
+        "tags": ["Rooms"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Room deleted successfully" },
+          "409": { "$ref": "#/components/responses/ReferentialIntegrityError" }
+        }
+      }
+    },
+    "/rest/storage/devices": {
+      "post": {
+        "summary": "Create a new Device",
+        "tags": ["Devices"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeviceCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Device created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageDevice" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rest/storage/devices/{id}": {
+      "put": {
+        "summary": "Update an existing Device",
+        "tags": ["Devices"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DeviceUpdateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Device updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageDevice" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a Device",
+        "tags": ["Devices"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Device deleted successfully" },
+          "409": { "$ref": "#/components/responses/ReferentialIntegrityError" }
+        }
+      }
+    },
+    "/rest/storage/shelves": {
+      "post": {
+        "summary": "Create a new Shelf",
+        "tags": ["Shelves"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ShelfCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Shelf created successfully" }
+        }
+      }
+    },
+    "/rest/storage/shelves/{id}": {
+      "put": {
+        "summary": "Update an existing Shelf",
+        "tags": ["Shelves"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Shelf updated successfully" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a Shelf",
+        "tags": ["Shelves"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Shelf deleted successfully" },
+          "409": { "$ref": "#/components/responses/ReferentialIntegrityError" }
+        }
+      }
+    },
+    "/rest/storage/racks": {
+      "post": {
+        "summary": "Create a new Rack",
+        "tags": ["Racks"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RackCreateRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Rack created successfully" }
+        }
+      }
+    },
+    "/rest/storage/racks/{id}": {
+      "put": {
+        "summary": "Update an existing Rack",
+        "tags": ["Racks"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Rack updated successfully" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a Rack",
+        "tags": ["Racks"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Rack deleted successfully" },
+          "409": { "$ref": "#/components/responses/ReferentialIntegrityError" }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RoomCreateRequest": {
+        "type": "object",
+        "required": ["name", "code"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 255 },
+          "code": { "type": "string", "maxLength": 10 },
+          "description": { "type": "string" },
+          "active": { "type": "boolean", "default": true }
+        }
+      },
+      "RoomUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 255 },
+          "description": { "type": "string" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "DeviceCreateRequest": {
+        "type": "object",
+        "required": ["name", "code", "type", "parentRoomId"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 255 },
+          "code": { "type": "string", "maxLength": 10 },
+          "type": { "type": "string", "enum": ["freezer", "refrigerator", "cabinet", "other"] },
+          "parentRoomId": { "type": "integer" },
+          "temperatureSetting": { "type": "number" },
+          "capacityLimit": { "type": "integer" },
+          "ipAddress": { "type": "string", "maxLength": 45, "description": "IPv4 or IPv6 address" },
+          "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "communicationProtocol": { "type": "string", "maxLength": 20, "default": "BACnet" },
+          "active": { "type": "boolean", "default": true }
+        }
+      },
+      "DeviceUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "maxLength": 255 },
+          "type": { "type": "string", "enum": ["freezer", "refrigerator", "cabinet", "other"] },
+          "temperatureSetting": { "type": "number" },
+          "capacityLimit": { "type": "integer" },
+          "ipAddress": { "type": "string", "maxLength": 45 },
+          "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+          "communicationProtocol": { "type": "string", "maxLength": 20 },
+          "active": { "type": "boolean" }
+        }
+      },
+      "ShelfCreateRequest": {
+        "type": "object",
+        "required": ["label", "code", "parentDeviceId"],
+        "properties": {
+          "label": { "type": "string", "maxLength": 255 },
+          "code": { "type": "string", "maxLength": 10 },
+          "parentDeviceId": { "type": "integer" },
+          "capacityLimit": { "type": "integer" },
+          "active": { "type": "boolean", "default": true }
+        }
+      },
+      "RackCreateRequest": {
+        "type": "object",
+        "required": ["label", "code", "parentShelfId"],
+        "properties": {
+          "label": { "type": "string", "maxLength": 255 },
+          "code": { "type": "string", "maxLength": 10 },
+          "parentShelfId": { "type": "integer" },
+          "active": { "type": "boolean", "default": true }
+        }
+      },
+      "StorageRoom": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "fhirUuid": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "StorageDevice": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "fhirUuid": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "type": { "type": "string" },
+          "temperatureSetting": { "type": "number" },
+          "capacityLimit": { "type": "integer" },
+          "ipAddress": { "type": "string" },
+          "port": { "type": "integer" },
+          "communicationProtocol": { "type": "string" },
+          "active": { "type": "boolean" },
+          "parentRoomId": { "type": "integer" }
+        }
+      },
+      "DeletionError": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "errorCode": { "type": "string", "enum": ["REFERENTIAL_INTEGRITY_VIOLATION", "ACTIVE_ASSIGNMENTS"] },
+          "message": { "type": "string", "example": "Cannot delete Room 'Main Lab': contains 3 active devices" },
+          "dependentCount": { "type": "integer", "example": 3 }
+        }
+      }
+    },
+    "responses": {
+      "ValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "example": false },
+                "errors": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": { "type": "boolean", "example": false },
+                "message": { "type": "string", "example": "Room not found" }
+              }
+            }
+          }
+        }
+      },
+      "ReferentialIntegrityError": {
+        "description": "Cannot delete due to referential integrity",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/DeletionError" }
+          }
+        }
+      }
+    }
+  }
+}

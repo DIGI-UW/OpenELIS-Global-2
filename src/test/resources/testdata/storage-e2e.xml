@@ -1,0 +1,582 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- E2E Test Data for Storage Management Feature This file contains E2E
+    test fixtures (patients, samples, sample items, analyses, results, storage
+    assignments) Foundation data (storage hierarchy) is loaded by Liquibase -
+    see 004-insert-test-storage-data.xml Note: Some fields use placeholder values
+    that must exist in test database: - typeosamp_id: References type_of_sample
+    (typically IDs 1-3 for Serum, Urine, Blood) - status_id: References status_of_sample
+    (Entered status, typically ID 1) - test_id: References test table (first
+    active test) - test_sect_id: References test_section (first active test section,
+    can be NULL) - test_result_id: References test_result (first dictionary type
+    result, can be NULL) - finalized_status_id: References status_of_sample (Finalized
+    ANALYSIS status) - not_started_status_id: References status_of_sample (Not
+    Tested ANALYSIS status) - tech_accept_status_id: References status_of_sample
+    (Technical Acceptance ANALYSIS status) - canceled_status_id: References status_of_sample
+    (Test Canceled ANALYSIS status) -->
+<dataset>
+    <!-- Storage hierarchy fixtures. IMPORTANT: DBUnit datasets truncate+refresh
+        the tables they touch. To keep storage tests self-contained across the full
+        suite, include the storage hierarchy rows needed by storage E2E fixtures
+        in this dataset. -->
+
+    <storage_room id="1"
+        fhir_uuid="00000000-0000-0000-0000-000000000001"
+        name="Main Laboratory" code="MAIN"
+        description="Primary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="2"
+        fhir_uuid="00000000-0000-0000-0000-000000000002"
+        name="Secondary Laboratory" code="SEC"
+        description="Secondary laboratory storage facility" active="true"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_room id="3"
+        fhir_uuid="00000000-0000-0000-0000-000000000003" name="Inactive Room"
+        code="INACTIVE" description="Inactive storage room for testing"
+        active="false" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="10"
+        fhir_uuid="00000000-0000-0000-0000-00000000000a" name="Freezer Unit 1"
+        code="FRZ01" type="freezer" temperature_setting="-80.0"
+        capacity_limit="500" active="true" parent_room_id="1" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="11"
+        fhir_uuid="00000000-0000-0000-0000-00000000000b"
+        name="Refrigerator Unit 1" code="REF01" type="refrigerator"
+        temperature_setting="4.0" capacity_limit="300" active="true"
+        parent_room_id="1" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="12"
+        fhir_uuid="00000000-0000-0000-0000-00000000000c" name="Cabinet Unit 1"
+        code="CAB01" type="cabinet" active="true" parent_room_id="2"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_device id="13"
+        fhir_uuid="00000000-0000-0000-0000-00000000000d"
+        name="Inactive Freezer" code="INACT-FRZ" type="freezer" active="false"
+        parent_room_id="3" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="20"
+        fhir_uuid="00000000-0000-0000-0000-000000000014" label="Shelf-A"
+        code="SHA" capacity_limit="50" active="true" parent_device_id="10"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="21"
+        fhir_uuid="00000000-0000-0000-0000-000000000015" label="Shelf-B"
+        code="SHB" capacity_limit="50" active="true" parent_device_id="10"
+        sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="22"
+        fhir_uuid="00000000-0000-0000-0000-000000000016" label="Shelf-1"
+        code="SH1" active="true" parent_device_id="11" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_shelf id="23"
+        fhir_uuid="00000000-0000-0000-0000-000000000017" label="Shelf-1"
+        code="SH1" active="true" parent_device_id="12" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="30"
+        fhir_uuid="00000000-0000-0000-0000-00000000001e" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="20" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="31"
+        fhir_uuid="00000000-0000-0000-0000-00000000001f" label="Rack R2"
+        code="RR2" active="true" parent_shelf_id="20" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="32"
+        fhir_uuid="00000000-0000-0000-0000-000000000020" label="Rack R3"
+        code="RR3" active="true" parent_shelf_id="21" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="33"
+        fhir_uuid="00000000-0000-0000-0000-000000000021" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="22" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <storage_rack id="34"
+        fhir_uuid="00000000-0000-0000-0000-000000000022" label="Rack R1"
+        code="RR1" active="true" parent_shelf_id="23" sys_user_id="1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Boxes (gridded containers) for Boxes tab + position assignment testing -->
+    <!-- Parent rack 30 (Main Laboratory -> Freezer Unit 1 -> Shelf-A -> Rack
+        R1) -->
+    <storage_box id="100"
+        fhir_uuid="00000000-0000-0000-0000-000000000064" label="Plate A"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PA" active="true"
+        parent_rack_id="30" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+    <storage_box id="101"
+        fhir_uuid="00000000-0000-0000-0000-000000000065" label="Plate B"
+        type="96-well" rows="8" columns="12"
+        position_schema_hint="letter-number" code="PB" active="true"
+        parent_rack_id="30" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+    <!-- Parent rack 33 (Refrigerator Unit 1 -> Shelf-1 -> Rack R1) -->
+    <storage_box id="102"
+        fhir_uuid="00000000-0000-0000-0000-000000000066" label="Plate C"
+        type="24-well" rows="4" columns="6"
+        position_schema_hint="letter-number" code="PC" active="true"
+        parent_rack_id="33" sys_user_id="1" last_updated="2025-01-01 12:00:00" />
+
+    <!-- E2E Test Fixtures: Patients -->
+    <!-- E2E patients (John TEST-Smith, Jane TEST-Jones, Bob TEST-Williams) -->
+    <!-- Using TEST- prefix instead of E2E- to avoid UI truncation issues -->
+    <person id="1000" last_name="TEST-Smith" first_name="John"
+        middle_name="Test" city="Test City" state="Test State"
+        zip_code="12345" country="USA" work_phone="555-0101"
+        home_phone="555-0102" cell_phone="555-0103" primary_phone="555-0101"
+        email="john.test@test.com" lastupdated="2025-01-01 12:00:00" />
+
+    <person id="1001" last_name="TEST-Jones" first_name="Jane"
+        middle_name="Test" city="Test City" state="Test State"
+        zip_code="12345" country="USA" work_phone="555-0201"
+        home_phone="555-0202" cell_phone="555-0203" primary_phone="555-0201"
+        email="jane.test@test.com" lastupdated="2025-01-01 12:00:00" />
+
+    <person id="1002" last_name="TEST-Williams" first_name="Bob"
+        middle_name="Test" city="Test City" state="Test State"
+        zip_code="12345" country="USA" work_phone="555-0301"
+        home_phone="555-0302" cell_phone="555-0303" primary_phone="555-0301"
+        email="bob.test@test.com" lastupdated="2025-01-01 12:00:00" />
+
+    <patient id="1000" person_id="1000" race="black" gender="M"
+        birth_date="1990-01-15 00:00:00" birth_time="1990-01-15 10:00:00"
+        national_id="E2E-PAT-001" ethnicity="U" external_id="E2E-PAT-001"
+        entered_birth_date="01/15/1990" lastupdated="2025-01-01 12:00:00" />
+
+    <patient id="1001" person_id="1001" race="white" gender="F"
+        birth_date="1985-05-20 00:00:00" birth_time="1985-05-20 14:30:00"
+        national_id="E2E-PAT-002" ethnicity="U" external_id="E2E-PAT-002"
+        entered_birth_date="05/20/1985" lastupdated="2025-01-01 12:00:00" />
+
+    <patient id="1002" person_id="1002" race="asian" gender="M"
+        birth_date="1992-11-10 00:00:00" birth_time="1992-11-10 09:15:00"
+        national_id="E2E-PAT-003" ethnicity="U" external_id="E2E-PAT-003"
+        entered_birth_date="11/10/1992" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- E2E Test Fixtures: Samples -->
+    <!-- Sample 1: E2E001 - Assigned to Main Lab > Main Lab Freezer Unit 1 >
+        Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A1 -->
+    <sample id="1000" accession_number="E2E001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440100" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 2: E2E002 - Assigned to Main Lab > Main Lab Freezer Unit 1 >
+        Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A2 -->
+    <sample id="1001" accession_number="E2E002"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440101" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 3: E2E003 - Assigned to Main Lab > Main Lab Freezer Unit 1 >
+        Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A4 -->
+    <sample id="1002" accession_number="E2E003"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440102" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 4: E2E004 - Not assigned (for testing assignment workflow) -->
+    <sample id="1003" accession_number="E2E004"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440103" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 5: E2E005 - Assigned to Main Lab > Main Lab Freezer Unit 1 >
+        Main Freezer Shelf-A > Main Freezer Shelf-A Rack 1 > A5 -->
+    <sample id="1004" accession_number="E2E005"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440104" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 6: E2E - 3-character accession number for Result By Order search
+        tests -->
+    <sample id="1005" accession_number="E2E"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440105" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 7: E2E007 - In Secondary Laboratory -->
+    <sample id="1006" accession_number="E2E007"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440106" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 8: E2E008 - In Main Laboratory -->
+    <sample id="1007" accession_number="E2E008"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440107" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 9: E2E009 - In Secondary Laboratory -->
+    <sample id="1008" accession_number="E2E009"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440108" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- Sample 10: E2E010 - In Main Laboratory > Refrigerator -->
+    <sample id="1009" accession_number="E2E010"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440109" domain="H"
+        status_id="1" entered_date="2025-04-30 10:00:00" sys_user_id="1"
+        received_date="2025-05-01 10:00:00" lastupdated="2025-01-01 12:00:00"
+        is_confirmation="false" />
+
+    <!-- E2E Test Fixtures: Sample Items -->
+    <!-- Sample 1 SampleItems: Multiple items (blood tube + serum aliquot) -->
+    <sample_item id="10001" samp_id="1000" sort_order="1"
+        external_id="E2E001-TUBE-1" typeosamp_id="1"
+        collection_date="2025-04-30 10:00:00" collector="Tech-001"
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10002" samp_id="1000" sort_order="2"
+        sampitem_id="10001" external_id="E2E001-ALIQUOT-1" typeosamp_id="1"
+        collection_date="2025-04-30 10:00:00" collector="Tech-001"
+        quantity="2.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 2 SampleItems: Single blood tube -->
+    <sample_item id="10011" samp_id="1001" sort_order="1"
+        external_id="E2E002-TUBE-1" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-002"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 3 SampleItems: Urine sample with multiple aliquots -->
+    <sample_item id="10021" samp_id="1002" sort_order="1"
+        external_id="E2E003-URINE-1" typeosamp_id="2"
+        collection_date="2025-04-30 10:00:00" collector="Tech-003"
+        quantity="50.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10022" samp_id="1002" sort_order="2"
+        sampitem_id="10021" external_id="E2E003-ALIQUOT-1" typeosamp_id="2"
+        collection_date="2025-04-30 10:00:00" collector="Tech-003"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10023" samp_id="1002" sort_order="3"
+        sampitem_id="10021" external_id="E2E003-ALIQUOT-2" typeosamp_id="2"
+        collection_date="2025-04-30 10:00:00" collector="Tech-003"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 4 SampleItems: Single item, not yet assigned -->
+    <sample_item id="10031" samp_id="1003" sort_order="1"
+        external_id="E2E004-TUBE-1" typeosamp_id="1"
+        collection_date="2025-04-30 10:00:00" collector="Tech-004"
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 5 SampleItems: Blood sample with multiple tubes -->
+    <sample_item id="10041" samp_id="1004" sort_order="1"
+        external_id="E2E005-TUBE-1" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-005"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10042" samp_id="1004" sort_order="2"
+        sampitem_id="10041" external_id="E2E005-TUBE-2" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-005"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 6 SampleItems: Single serum sample -->
+    <sample_item id="10051" samp_id="1005" sort_order="1"
+        external_id="E2E-TUBE-1" typeosamp_id="1"
+        collection_date="2025-04-30 10:00:00" collector="Tech-006"
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 7 SampleItems: Single blood tube -->
+    <sample_item id="10061" samp_id="1006" sort_order="1"
+        external_id="E2E007-TUBE-1" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-007"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 8 SampleItems: Urine sample with multiple aliquots -->
+    <sample_item id="10071" samp_id="1007" sort_order="1"
+        external_id="E2E008-URINE-1" typeosamp_id="2"
+        collection_date="2025-04-30 10:00:00" collector="Tech-008"
+        quantity="50.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10072" samp_id="1007" sort_order="2"
+        sampitem_id="10071" external_id="E2E008-ALIQUOT-1" typeosamp_id="2"
+        collection_date="2025-04-30 10:00:00" collector="Tech-008"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 9 SampleItems: Serum sample with multiple aliquots -->
+    <sample_item id="10081" samp_id="1008" sort_order="1"
+        external_id="E2E009-SERUM-1" typeosamp_id="1"
+        collection_date="2025-04-30 10:00:00" collector="Tech-009"
+        quantity="5.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10082" samp_id="1008" sort_order="2"
+        sampitem_id="10081" external_id="E2E009-ALIQUOT-1" typeosamp_id="1"
+        collection_date="2025-04-30 10:00:00" collector="Tech-009"
+        quantity="2.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- Sample 10 SampleItems: Blood sample with multiple tubes -->
+    <sample_item id="10091" samp_id="1009" sort_order="1"
+        external_id="E2E010-TUBE-1" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-010"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10092" samp_id="1009" sort_order="2"
+        sampitem_id="10091" external_id="E2E010-TUBE-2" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-010"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <sample_item id="10093" samp_id="1009" sort_order="3"
+        sampitem_id="10091" external_id="E2E010-TUBE-3" typeosamp_id="3"
+        collection_date="2025-04-30 10:00:00" collector="Tech-010"
+        quantity="10.0" status_id="1" voided="false" rejected="false"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- E2E Test Fixtures: Sample-Human Links -->
+    <sample_human id="1000" samp_id="1000" patient_id="1000"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1001" samp_id="1001" patient_id="1001"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1002" samp_id="1002" patient_id="1002"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1003" samp_id="1003" patient_id="1000"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1004" samp_id="1004" patient_id="1001"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1005" samp_id="1005" patient_id="1000"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1006" samp_id="1006" patient_id="1001"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1007" samp_id="1007" patient_id="1002"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1008" samp_id="1008" patient_id="1000"
+        lastupdated="2025-01-01 12:00:00" />
+    <sample_human id="1009" samp_id="1009" patient_id="1001"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <!-- E2E Test Fixtures: Storage Assignments -->
+    <!-- Note: Using IDs 5000-5013 to avoid conflicts with test-created data
+        (1000+) -->
+    <!-- Assignment 1: SampleItem 10001 to Rack 30, position A1 -->
+    <sample_storage_assignment id="5000"
+        sample_item_id="10001" location_id="30" location_type="rack"
+        position_coordinate="A1" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment - blood tube"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 1b: SampleItem 10002 to Rack 33, position X1 -->
+    <sample_storage_assignment id="5001"
+        sample_item_id="10002" location_id="33" location_type="rack"
+        position_coordinate="X1" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment - serum aliquot"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 2: SampleItem 10011 to Rack 30, position A2 -->
+    <sample_storage_assignment id="5002"
+        sample_item_id="10011" location_id="30" location_type="rack"
+        position_coordinate="A2" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 3: SampleItem 10021 to Rack 30, position A4 -->
+    <sample_storage_assignment id="5003"
+        sample_item_id="10021" location_id="30" location_type="rack"
+        position_coordinate="A4" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment - urine sample"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 3b: SampleItem 10022 to Rack 30, position A3 -->
+    <sample_storage_assignment id="5004"
+        sample_item_id="10022" location_id="30" location_type="rack"
+        position_coordinate="A3" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment - urine aliquot 1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 4: SampleItem 10041 to Rack 30, position A5 -->
+    <sample_storage_assignment id="5005"
+        sample_item_id="10041" location_id="30" location_type="rack"
+        position_coordinate="A5" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment - blood tube 1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 4b: SampleItem 10042 to Rack 30, position A7 -->
+    <sample_storage_assignment id="5006"
+        sample_item_id="10042" location_id="30" location_type="rack"
+        position_coordinate="A7" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test assignment - blood tube 2"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 6: SampleItem 10061 to Rack 34, position A2 -->
+    <sample_storage_assignment id="5009"
+        sample_item_id="10061" location_id="34" location_type="rack"
+        position_coordinate="A2" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test - Secondary Lab"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 7: SampleItem 10071 to Rack 30, position A6 -->
+    <sample_storage_assignment id="5010"
+        sample_item_id="10071" location_id="30" location_type="rack"
+        position_coordinate="A6" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test - Disposed sample"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 8: SampleItem 10081 to Rack 34, position A3 -->
+    <sample_storage_assignment id="5011"
+        sample_item_id="10081" location_id="34" location_type="rack"
+        position_coordinate="A3" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test - Disposed in Secondary"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 9: SampleItem 10091 to Rack 33, position A1 -->
+    <sample_storage_assignment id="5012"
+        sample_item_id="10091" location_id="33" location_type="rack"
+        position_coordinate="A1" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test - Refrigerator - tube 1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Assignment 9b: SampleItem 10092 to Rack 33, position X1 -->
+    <sample_storage_assignment id="5013"
+        sample_item_id="10092" location_id="33" location_type="rack"
+        position_coordinate="X1" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1" notes="E2E test - Refrigerator - tube 2"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- Box assignment for Boxes tab (creates an occupied coordinate in Plate
+        A) -->
+    <!-- SampleItem 10031 is "not yet assigned" elsewhere in this dataset -->
+    <sample_storage_assignment id="5014"
+        sample_item_id="10031" location_id="100" location_type="box"
+        position_coordinate="A1" assigned_date="2025-01-01 12:00:00"
+        assigned_by_user_id="1"
+        notes="E2E test assignment - box position occupied"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- E2E Test Fixtures: Storage Movements -->
+    <!-- Note: Using IDs 5000-5013 to match assignments and avoid conflicts -->
+    <sample_storage_movement id="5000"
+        sample_item_id="10001" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A1" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - blood tube"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5001"
+        sample_item_id="10002" new_location_id="33" new_location_type="rack"
+        new_position_coordinate="X1" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - serum aliquot"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5002"
+        sample_item_id="10011" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A2" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5003"
+        sample_item_id="10021" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A4" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - urine sample"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5004"
+        sample_item_id="10022" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A3" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - urine aliquot 1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5005"
+        sample_item_id="10041" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A5" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - blood tube 1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5006"
+        sample_item_id="10042" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A7" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - blood tube 2"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5009"
+        sample_item_id="10061" new_location_id="34" new_location_type="rack"
+        new_position_coordinate="A2" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5010"
+        sample_item_id="10071" new_location_id="30" new_location_type="rack"
+        new_position_coordinate="A6" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5011"
+        sample_item_id="10081" new_location_id="34" new_location_type="rack"
+        new_position_coordinate="A3" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5012"
+        sample_item_id="10091" new_location_id="33" new_location_type="rack"
+        new_position_coordinate="A1" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - tube 1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5013"
+        sample_item_id="10092" new_location_id="33" new_location_type="rack"
+        new_position_coordinate="X1" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - tube 2"
+        last_updated="2025-01-01 12:00:00" />
+
+    <sample_storage_movement id="5014"
+        sample_item_id="10031" new_location_id="100" new_location_type="box"
+        new_position_coordinate="A1" movement_date="2025-01-01 12:00:00"
+        moved_by_user_id="1" reason="Initial assignment - Plate A A1"
+        last_updated="2025-01-01 12:00:00" />
+
+    <!-- E2E Test Fixtures: Analyses -->
+    <!-- Note: Analyses and Results are commented out because they require test_id
+        and test_result_id that may not exist in all test databases. Uncomment and
+        adjust IDs if needed for specific tests. -->
+    <!-- <analysis id="20001" sampitem_id="10001" test_id="1" status_id="1"
+        status="1" analysis_type="MANUAL" entry_date="2025-01-01 12:00:00" started_date="2025-01-01
+        10:00:00" completed_date="2025-01-01 11:00:00" is_reportable="Y" lastupdated="2025-01-01
+        12:00:00" /> <analysis id="20002" sampitem_id="10001" test_id="1" status_id="1"
+        status="1" analysis_type="MANUAL" entry_date="2025-01-01 12:00:00" is_reportable="Y"
+        lastupdated="2025-01-01 12:00:00" /> <analysis id="20010" sampitem_id="10051"
+        test_id="1" status_id="1" status="1" analysis_type="MANUAL" entry_date="2025-01-01
+        12:00:00" is_reportable="Y" lastupdated="2025-01-01 12:00:00" /> <analysis
+        id="20003" sampitem_id="10011" test_id="1" status_id="1" status="1" analysis_type="MANUAL"
+        entry_date="2025-01-01 12:00:00" started_date="2025-01-01 11:00:00" completed_date="2025-01-01
+        11:30:00" is_reportable="Y" lastupdated="2025-01-01 12:00:00" /> <analysis
+        id="20004" sampitem_id="10021" test_id="1" status_id="1" status="1" analysis_type="MANUAL"
+        entry_date="2025-01-01 12:00:00" started_date="2025-01-01 09:00:00" is_reportable="N"
+        lastupdated="2025-01-01 12:00:00" /> <analysis id="20005" sampitem_id="10041"
+        test_id="1" status_id="1" status="1" analysis_type="MANUAL" entry_date="2025-01-01
+        12:00:00" started_date="2025-01-01 11:00:00" completed_date="2025-01-01 11:30:00"
+        is_reportable="Y" lastupdated="2025-01-01 12:00:00" /> <result id="30001"
+        analysis_id="20001" test_result_id="1" value="Positive" result_type="D" is_reportable="Y"
+        sort_order="1" lastupdated="2025-01-01 12:00:00" /> <result id="30002" analysis_id="20005"
+        value="125.5" result_type="N" is_reportable="Y" sort_order="1" lastupdated="2025-01-01
+        12:00:00" /> -->
+
+</dataset>

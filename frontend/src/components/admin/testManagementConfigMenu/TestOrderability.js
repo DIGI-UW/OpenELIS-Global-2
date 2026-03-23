@@ -26,11 +26,11 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "master.lists.page.test.management",
-    link: "/MasterListsPage#testManagementConfigMenu",
+    link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
     label: "configuration.test.orderable",
-    link: "/MasterListsPage#TestOrderability",
+    link: "/MasterListsPage/TestOrderability",
   },
 ];
 
@@ -353,7 +353,7 @@ function TestOrderability() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign("/admin#TestOrderability")
+                  window.location.assign("/MasterListsPage/TestOrderability")
                 }
                 kind="tertiary"
                 type="button"
@@ -435,7 +435,7 @@ function TestOrderability() {
               </Button>{" "}
               <Button
                 onClick={() =>
-                  window.location.assign("/admin#TestOrderability")
+                  window.location.assign("/MasterListsPage/TestOrderability")
                 }
                 kind="tertiary"
                 type="button"

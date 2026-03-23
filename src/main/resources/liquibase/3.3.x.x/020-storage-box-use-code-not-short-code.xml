@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Align StorageBox with unified code field (<= 10 chars) -->
+    <changeSet id="storage-020-storage-box-use-code-not-short-code" author="openelisglobal-ai-agent">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="storage_box" columnName="short_code" />
+            <not>
+                <columnExists tableName="storage_box" columnName="code" />
+            </not>
+        </preConditions>
+
+        <!-- Add code column as nullable first -->
+        <addColumn tableName="storage_box">
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+
+        <!-- Backfill code from short_code or label, normalize to <=10, ensure uniqueness within rack -->
+        <sql><![CDATA[
+            -- 1) Seed code from short_code (preferred) or generated from label
+            UPDATE clinlims.storage_box
+            SET code = COALESCE(
+                NULLIF(TRIM(short_code), ''),
+                LEFT(UPPER(REGEXP_REPLACE(label, '[^A-Z0-9_-]', '', 'g')), 10)
+            )
+            WHERE code IS NULL;
+
+            -- 2) Ensure <= 10 chars
+            UPDATE clinlims.storage_box
+            SET code = LEFT(code, 10)
+            WHERE code IS NOT NULL AND LENGTH(code) > 10;
+
+            -- 3) Resolve duplicates within the same parent_rack_id by adding numeric suffix
+            WITH ranked AS (
+                SELECT
+                    id,
+                    parent_rack_id,
+                    code AS base_code,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY parent_rack_id, code
+                        ORDER BY id
+                    ) AS rn
+                FROM clinlims.storage_box
+                WHERE code IS NOT NULL
+            )
+            UPDATE clinlims.storage_box b
+            SET code = CASE
+                WHEN r.rn = 1 THEN r.base_code
+                ELSE
+                    (
+                        LEFT(
+                            r.base_code,
+                            GREATEST(
+                                1,
+                                10 - (1 + LENGTH((r.rn - 1)::text))
+                            )
+                        ) || '-' || (r.rn - 1)::text
+                    )
+            END
+            FROM ranked r
+            WHERE b.id = r.id;
+        ]]></sql>
+
+        <!-- Add NOT NULL after populating data -->
+        <addNotNullConstraint tableName="storage_box" columnName="code" columnDataType="VARCHAR(10)" />
+
+        <!-- Enforce uniqueness of code within parent rack -->
+        <addUniqueConstraint tableName="storage_box" constraintName="uk_box_code_in_rack" columnNames="parent_rack_id, code" />
+
+        <!-- Drop legacy short_code column -->
+        <dropColumn tableName="storage_box" columnName="short_code" />
+
+        <rollback>
+            <addColumn tableName="storage_box">
+                <column name="short_code" type="VARCHAR(10)">
+                    <constraints nullable="true" />
+                </column>
+            </addColumn>
+            <sql><![CDATA[
+                UPDATE clinlims.storage_box
+                SET short_code = code
+                WHERE short_code IS NULL AND code IS NOT NULL;
+            ]]></sql>
+            <dropUniqueConstraint tableName="storage_box" constraintName="uk_box_code_in_rack" />
+            <dropNotNullConstraint tableName="storage_box" columnName="code" columnDataType="VARCHAR(10)" />
+            <dropColumn tableName="storage_box" columnName="code" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

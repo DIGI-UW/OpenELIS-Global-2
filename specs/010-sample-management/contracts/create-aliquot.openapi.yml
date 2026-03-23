@@ -1,0 +1,322 @@
+openapi: 3.0.3
+info:
+  title: Sample Management - Create Aliquot API
+  description: |
+    API for creating aliquots from parent sample items with quantity tracking.
+    Part of the Sample Management Menu feature (001-sample-management).
+  version: 1.0.0
+  contact:
+    name: OpenELIS Global Support
+    url: https://github.com/I-TECH-UW/OpenELIS-Global-2
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Sample Management
+    description: Sample management operations
+
+paths:
+  /sample-management/aliquot:
+    post:
+      summary: Create an aliquot from a parent sample item
+      description: |
+        Creates a new aliquot sample item by transferring a specified quantity from a parent sample.
+
+        **Business Rules**:
+        - Quantity to transfer must be > 0 and ≤ parent's remaining quantity
+        - Parent must have remaining quantity > 0
+        - External ID automatically generated as `parent.externalId + "." + sequenceNumber`
+        - Parent's remaining quantity is reduced by transfer amount
+        - Aliquot inherits sample type, collection date, and unit of measure from parent
+        - Supports nested aliquoting (aliquots can have aliquots, unlimited depth)
+        - Uses optimistic locking to prevent concurrent modification issues
+
+        **Error Scenarios**:
+        - `INSUFFICIENT_QUANTITY`: Requested quantity exceeds parent's remaining quantity
+        - `NO_REMAINING_QUANTITY`: Parent has 0 remaining quantity (all volume dispensed)
+        - `CONCURRENT_MODIFICATION`: Another user modified the parent sample (retry recommended)
+      operationId: createAliquot
+      tags:
+        - Sample Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAliquotRequest'
+            examples:
+              basicAliquot:
+                summary: Create 5mL aliquot from parent
+                value:
+                  parentSampleItemId: "parent-uuid"
+                  quantityToTransfer: 5.0
+                  notes: "For PCR testing"
+              nestedAliquot:
+                summary: Create nested aliquot from existing aliquot
+                value:
+                  parentSampleItemId: "aliquot1-uuid"
+                  quantityToTransfer: 2.5
+                  unitOfMeasure: "mL"
+      responses:
+        '201':
+          description: Aliquot created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAliquotResponse'
+              example:
+                aliquot:
+                  id: "new-aliquot-uuid"
+                  externalId: "2025-001234.1"
+                  sampleAccessionNumber: "2025-001234"
+                  sampleType: "Blood"
+                  originalQuantity: 5.0
+                  remainingQuantity: 5.0
+                  unitOfMeasure: "mL"
+                  status: "AVAILABLE"
+                  collectionDate: "2025-11-20T08:30:00Z"
+                  parentId: "parent-uuid"
+                  parentExternalId: "2025-001234"
+                  hasRemainingQuantity: true
+                  isAliquot: true
+                  nestingLevel: 1
+                parentUpdatedRemainingQuantity: 5.0
+                message: "Aliquot created successfully"
+
+        '400':
+          description: Bad request (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingParentId:
+                  summary: Missing parent sample item ID
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Parent sample item ID is required"
+                    timestamp: "2025-11-20T12:34:56Z"
+                invalidQuantity:
+                  summary: Invalid quantity (negative or zero)
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Quantity must be at least 0.001"
+                    timestamp: "2025-11-20T12:34:56Z"
+
+        '404':
+          description: Parent sample item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "NOT_FOUND"
+                message: "Sample item with ID 'parent-uuid' not found"
+                timestamp: "2025-11-20T12:34:56Z"
+
+        '409':
+          description: Conflict (insufficient quantity or concurrent modification)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                insufficientQuantity:
+                  summary: Requested quantity exceeds remaining quantity
+                  value:
+                    error: "INSUFFICIENT_QUANTITY"
+                    message: "Cannot aliquot: requested 10.0 mL exceeds remaining 5.0 mL"
+                    timestamp: "2025-11-20T12:34:56Z"
+                noRemainingQuantity:
+                  summary: All volume dispensed
+                  value:
+                    error: "NO_REMAINING_QUANTITY"
+                    message: "All volume dispensed: no remaining quantity available for aliquoting"
+                    timestamp: "2025-11-20T12:34:56Z"
+                concurrentModification:
+                  summary: Optimistic lock failure
+                  value:
+                    error: "CONCURRENT_MODIFICATION"
+                    message: "Another user modified this sample. Please refresh and try again."
+                    timestamp: "2025-11-20T12:34:56Z"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    CreateAliquotRequest:
+      type: object
+      required:
+        - parentSampleItemId
+        - quantityToTransfer
+      properties:
+        parentSampleItemId:
+          type: string
+          format: uuid
+          description: ID of the parent sample item to aliquot from
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        quantityToTransfer:
+          type: number
+          format: double
+          description: Quantity to transfer from parent to aliquot (must be > 0)
+          example: 5.0
+          minimum: 0.001
+        unitOfMeasure:
+          type: string
+          description: Unit of measure (optional, defaults to parent's unit)
+          example: "mL"
+          nullable: true
+        notes:
+          type: string
+          description: Optional notes about the aliquoting operation
+          example: "For PCR testing in Building 2"
+          maxLength: 1000
+          nullable: true
+
+    CreateAliquotResponse:
+      type: object
+      required:
+        - aliquot
+        - parentUpdatedRemainingQuantity
+        - message
+      properties:
+        aliquot:
+          $ref: '#/components/schemas/SampleItemDTO'
+          description: The newly created aliquot sample item
+        parentUpdatedRemainingQuantity:
+          type: number
+          format: double
+          description: Updated remaining quantity of the parent after aliquoting
+          example: 5.0
+        message:
+          type: string
+          description: Success message
+          example: "Aliquot created successfully"
+
+    SampleItemDTO:
+      type: object
+      required:
+        - id
+        - externalId
+        - sampleAccessionNumber
+        - status
+        - hasRemainingQuantity
+        - isAliquot
+        - nestingLevel
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Internal sample item ID
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        externalId:
+          type: string
+          description: Human-readable external identifier (includes .1, .2, .3 suffix for aliquots)
+          example: "2025-001234.1"
+        sampleAccessionNumber:
+          type: string
+          description: Parent sample accession number
+          example: "2025-001234"
+        sampleType:
+          type: string
+          description: Type of sample (blood, urine, tissue, etc.)
+          example: "Blood"
+        originalQuantity:
+          type: number
+          format: double
+          description: Initial quantity when aliquot was created
+          example: 5.0
+          nullable: true
+        remainingQuantity:
+          type: number
+          format: double
+          description: Current available quantity
+          example: 5.0
+          nullable: true
+        unitOfMeasure:
+          type: string
+          description: Unit of measurement for quantities
+          example: "mL"
+          nullable: true
+        status:
+          type: string
+          description: Current sample status
+          example: "AVAILABLE"
+          enum:
+            - AVAILABLE
+            - IN_USE
+            - EXHAUSTED
+            - VOIDED
+        collectionDate:
+          type: string
+          format: date-time
+          description: Date and time sample was collected (inherited from parent)
+          example: "2025-11-20T08:30:00Z"
+          nullable: true
+        parentId:
+          type: string
+          format: uuid
+          description: ID of parent sample item
+          example: "parent-uuid"
+          nullable: true
+        parentExternalId:
+          type: string
+          description: External ID of parent sample item
+          example: "2025-001234"
+          nullable: true
+        hasRemainingQuantity:
+          type: boolean
+          description: Whether sample has quantity remaining for further aliquoting
+          example: true
+        isAliquot:
+          type: boolean
+          description: Whether this sample item is an aliquot (always true in this response)
+          example: true
+        nestingLevel:
+          type: integer
+          description: Hierarchy depth (1 = first-level aliquot, 2 = nested aliquot, etc.)
+          example: 1
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "INSUFFICIENT_QUANTITY"
+          enum:
+            - VALIDATION_ERROR
+            - NOT_FOUND
+            - INSUFFICIENT_QUANTITY
+            - NO_REMAINING_QUANTITY
+            - CONCURRENT_MODIFICATION
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Cannot aliquot: requested 10.0 mL exceeds remaining 5.0 mL"
+        timestamp:
+          type: string
+          format: date-time
+          description: Error timestamp
+          example: "2025-11-20T12:34:56Z"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

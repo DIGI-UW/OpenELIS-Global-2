@@ -1396,12 +1396,13 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return new ArrayList<>();
         }
 
-        String sql = "From Analysis a where (a.test.localizedTestName.english in (:testNames) or"
-                + " a.test.localizedTestName.french in (:testNames)) and a.completedDate BETWEEN"
-                + " :lowDate AND :highDate";
+        String sql = "SELECT DISTINCT a.* FROM clinlims.analysis a" + " JOIN clinlims.test t ON a.test_id = t.id"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE lv.value IN (:testNames) AND a.completed_date BETWEEN :lowDate AND :highDate";
 
         try {
-            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            Query<Analysis> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Analysis.class);
             query.setParameterList("testNames", testNames);
             query.setParameter("lowDate", lowDate);
             query.setParameter("highDate", highDate);
@@ -1572,6 +1573,12 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                 + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
                 + " ORDER BY a.sampleItem.sample.accessionNumber"; //
         try {
+            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                    "getPageAnalysisByStatusFromAccession",
+                    "Executing query with accessionNumber: " + accessionNumber + " (length: "
+                            + (accessionNumber != null ? accessionNumber.length() : 0) + "), " + "analysisStatusList: "
+                            + (analysisStatusList != null ? analysisStatusList.toString() : "null") + ", "
+                            + "sampleStatusList: " + (sampleStatusList != null ? sampleStatusList.toString() : "null"));
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("accessionNumber", accessionNumber);
             query.setParameterList("analysisStatusList", analysisStatusList);
@@ -1579,6 +1586,9 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             // query.setMaxResults(SpringContext.getBean(PagingProperties.class).getResultsPageSize());
 
             List<Analysis> analysisList = query.list();
+            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                    "getPageAnalysisByStatusFromAccession",
+                    "Query returned " + (analysisList != null ? analysisList.size() : 0) + " analyses");
 
             return analysisList;
 
@@ -1798,6 +1808,29 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return analysisList;
         } catch (HibernateException e) {
             handleException(e, "getAnalysisResultEnteredOnOnByStatusId");
+        }
+
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Analysis getAnalysisBySampleItemAndTest(String sampleItemId, String testId) {
+        if (sampleItemId == null || testId == null) {
+            return null;
+        }
+
+        String sql = "from Analysis a where a.sampleItem.id = :sampleItemId and a.test.id = :testId";
+
+        try {
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameter("sampleItemId", Integer.parseInt(sampleItemId));
+            query.setParameter("testId", Integer.parseInt(testId));
+
+            List<Analysis> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (HibernateException e) {
+            handleException(e, "getAnalysisBySampleItemAndTest");
         }
 
         return null;

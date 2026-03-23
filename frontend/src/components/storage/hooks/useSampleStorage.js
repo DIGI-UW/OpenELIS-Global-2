@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import {
+  postToOpenElisServerJsonResponse,
+  patchToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 
 /**
  * Hook for sample item storage assignment and movement
@@ -102,7 +105,48 @@ export const useSampleStorage = () => {
     });
   };
 
-  return { assignSampleItem, moveSampleItem, isSubmitting, error };
+  /**
+   * Update position and/or notes for an existing assignment without changing location
+   * @param {string} sampleItemId - The sample item ID
+   * @param {Object} updates - Object with positionCoordinate and/or notes
+   * @returns {Promise} - Resolves with updated assignment data
+   */
+  const updateSampleItemMetadata = async (sampleItemId, updates) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    return new Promise((resolve, reject) => {
+      patchToOpenElisServerJsonResponse(
+        `/rest/storage/sample-items/${sampleItemId}`,
+        JSON.stringify(updates),
+        (response) => {
+          setIsSubmitting(false);
+          if (response.assignmentId || response.hierarchicalPath) {
+            setError(null);
+            resolve(response);
+          } else if (response.error || response.message) {
+            const errorMessage =
+              response.error || response.message || "Unknown error";
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+          } else {
+            console.error("Unexpected response format:", response);
+            const errorMessage = "Unexpected response format from server";
+            setError(errorMessage);
+            reject(new Error(errorMessage));
+          }
+        },
+      );
+    });
+  };
+
+  return {
+    assignSampleItem,
+    moveSampleItem,
+    updateSampleItemMetadata,
+    isSubmitting,
+    error,
+  };
 };
 
 export default useSampleStorage;

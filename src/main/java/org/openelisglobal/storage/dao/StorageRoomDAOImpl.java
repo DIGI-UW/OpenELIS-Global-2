@@ -31,4 +31,19 @@ public class StorageRoomDAOImpl extends BaseDAOImpl<StorageRoom, Integer> implem
             throw new LIMSRuntimeException("Error finding StorageRoom by code", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StorageRoom findByName(String name) {
+        try {
+            String hql = "FROM StorageRoom WHERE name = :name";
+            Query<StorageRoom> query = entityManager.unwrap(Session.class).createQuery(hql, StorageRoom.class);
+            query.setParameter("name", name);
+            query.setMaxResults(1);
+            List<StorageRoom> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error finding StorageRoom by name", e);
+        }
+    }
 }

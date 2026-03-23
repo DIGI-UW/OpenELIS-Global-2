@@ -1,0 +1,13 @@
+testSectionName,description,isActive,sortOrder,isExternal,localization:en,localization:fr,localization:es,localization:id
+Hematology,Hematology Department,Y,1,N,Hematology,Hématologie,Hematología,Hematologi
+Biochemistry,Biochemistry Department,Y,2,N,Biochemistry,Biochimie,Bioquímica,Biokimia
+Serology,Serology Department,Y,3,N,Serology,Sérologie,Serología,Serologi
+Parasitology,Parasitology Department,Y,4,N,Parasitology,Parasitologie,Parasitología,Parasitologi
+Urinalysis,Urinalysis Department,Y,5,N,Urinalysis,Analyse Urinaire,Análisis de Orina,Urinalisis
+Microbiology,Microbiology Department,Y,6,N,Microbiology,Microbiologie,Microbiología,Mikrobiologi
+Immunology,Immunology Department,Y,7,N,Immunology,Immunologie,Inmunología,Imunologi
+Molecular Biology,Molecular Biology Department,Y,8,N,Molecular Biology,Biologie Moléculaire,Biología Molecular,Biologi Molekuler
+Cytology,Cytology Department,Y,9,N,Cytology,Cytologie,Citología,Sitologi
+Histopathology,Histopathology Department,Y,10,N,Histopathology,Histopathologie,Histopatología,Histopatologi
+Hemato-Immunology,Hemato-Immunology Department,Y,11,N,Hemato-Immunology,Hémato-Immunologie,Hemato-Inmunología,Hemato-Imunologi
+Pathology,Pathology Department,Y,12,N,Pathology,Pathologie,Patología,Patologi

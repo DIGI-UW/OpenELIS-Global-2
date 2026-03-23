@@ -29,7 +29,8 @@ const QuickFindSearch = ({ onLocationSelect, debounceMs = 300 }) => {
     getFromOpenElisServer(
       `/rest/storage/locations/search?q=${encodeURIComponent(term)}`,
       (results) => {
-        const filteredResults = results || [];
+        // Ensure results is an array - API might return non-array
+        const filteredResults = Array.isArray(results) ? results : [];
         setSearchResults(filteredResults);
         setIsLoading(false);
       },

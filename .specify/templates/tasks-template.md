@@ -8,8 +8,8 @@ description: "Task list template for feature implementation"
 plan.md (required), spec.md (required for user stories), research.md,
 data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only
-include them if explicitly requested in the feature specification.
+**Tests**: The examples below include test tasks. For OpenELIS features, tests
+are **MANDATORY** for new behavior (see Constitution Principle V).
 
 **Organization**: Tasks are grouped by user story to enable independent
 implementation and testing of each story.
@@ -87,17 +87,10 @@ parallel
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Unit test for [service/component] in
-      tests/unit/test\_[name].py
-- [ ] T010a [P] [US1] ORM validation test (if using Hibernate/JPA/Entity
-      Framework - per Constitution V.4): Build SessionFactory/DbContext using
-      `config.addAnnotatedClass()`, validate annotations, <5s execution
+- [ ] T010 [P] [US1] Contract test for [endpoint] in
+      tests/contract/test\_[name].py
 - [ ] T011 [P] [US1] Integration test for [user journey] in
       tests/integration/test\_[name].py
-- [ ] T011b [P] [US1] Cypress E2E test for [user story] in
-      frontend/cypress/e2e/[feature].cy.js (per Constitution V.5): _ Run
-      individually during development _ Review console logs and screenshots
-      post-run
 
 ### Implementation for User Story 1
 
@@ -176,48 +169,6 @@ independently
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
-
----
-
-## Phase N+1: Constitution Compliance Verification (OpenELIS Global 3.0)
-
-**Purpose**: Verify feature adheres to all applicable constitution principles
-
-**Reference**: `.specify/memory/constitution.md`
-
-- [ ] TXXX **Configuration-Driven**: Verify no country-specific code branches
-      introduced
-- [ ] TXXX **Carbon Design System**: Audit UI - confirm @carbon/react used
-      exclusively (NO Bootstrap/Tailwind)
-- [ ] TXXX **FHIR/IHE Compliance**: Validate FHIR resources against R4 profiles
-      (if applicable)
-- [ ] TXXX **Layered Architecture**: Verify 5-layer pattern followed
-      (Valueholder→DAO→Service→Controller→Form)
-- [ ] TXXX **Test Coverage**: Run coverage report - confirm >70% for new code
-      (JaCoCo/Jest)
-- [ ] TXXX **Schema Management**: Verify ALL database changes use Liquibase
-      changesets (NO direct SQL)
-- [ ] TXXX **Internationalization**: Audit UI strings - confirm React Intl used
-      for ALL text (no hardcoded strings)
-- [ ] TXXX **Security & Compliance**: Verify RBAC, audit trail (sys_user_id +
-      lastupdated), input validation
-
-**Verification Commands**:
-
-```bash
-# Backend: Code formatting (MUST run before each commit) + build + tests
-mvn spotless:apply && mvn spotless:check && mvn clean install
-
-# Frontend: Formatting (MUST run before each commit) + E2E tests
-cd frontend && npm run format
-# Run E2E tests individually (per Constitution V.5):
-npm run cy:run -- --spec "cypress/e2e/[feature].cy.js"
-# Full suite only in CI/CD: npm run cy:run
-
-# Coverage reports
-mvn verify  # JaCoCo report in target/site/jacoco/
-cd frontend && npm test -- --coverage  # Jest coverage
-```
 
 ---
 

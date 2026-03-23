@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Comprehensive Inventory Management System
+        ==========================================
+        Unified system for tracking:
+        - Reagents
+        - Rapid Diagnostic Tests (RDTs)
+        - Analyzer Cartridges
+        - HIV/Syphilis Kits (migrated from old system)
+
+        Replaces old inventory tables (inventory_item, inventory_location, inventory_receipt)
+        with new schema supporting lot tracking, QC status, and transaction history.
+    -->
+
+    <!-- ========================================
+         PHASE 1: DATA MIGRATION PREPARATION
+         ======================================== -->
+
+    <changeSet id="inventory-001-backup-old-data" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="inventory_item" schemaName="clinlims"/>
+                <columnExists tableName="inventory_item" columnName="id" schemaName="clinlims"/>
+                <sqlCheck expectedResult="1">
+                    SELECT CASE WHEN data_type = 'numeric' THEN 1 ELSE 0 END
+                    FROM information_schema.columns
+                    WHERE table_schema = 'clinlims'
+                    AND table_name = 'inventory_item'
+                    AND column_name = 'id'
+                </sqlCheck>
+            </and>
+        </preConditions>
+        <comment>Backup old HIV/Syphilis kit data before migration</comment>
+
+        <!-- Create backup tables with all existing data -->
+        <sql>
+            CREATE TABLE IF NOT EXISTS clinlims.inventory_item_backup_20251207 AS
+            SELECT * FROM clinlims.inventory_item;
+        </sql>
+        <sql>
+            CREATE TABLE IF NOT EXISTS clinlims.inventory_location_backup_20251207 AS
+            SELECT * FROM clinlims.inventory_location;
+        </sql>
+        <sql>
+            CREATE TABLE IF NOT EXISTS clinlims.inventory_receipt_backup_20251207 AS
+            SELECT * FROM clinlims.inventory_receipt;
+        </sql>
+    </changeSet>
+
+    <changeSet id="inventory-002-drop-old-tables" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <or>
+                <tableExists tableName="inventory_item" schemaName="clinlims"/>
+                <tableExists tableName="inventory_location" schemaName="clinlims"/>
+                <tableExists tableName="inventory_receipt" schemaName="clinlims"/>
+            </or>
+        </preConditions>
+        <comment>Drop old inventory tables (backup created in previous changeset)</comment>
+
+        <sql>DROP TABLE IF EXISTS clinlims.inventory_receipt CASCADE;</sql>
+        <sql>DROP TABLE IF EXISTS clinlims.inventory_location CASCADE;</sql>
+        <sql>DROP TABLE IF EXISTS clinlims.inventory_item CASCADE;</sql>
+        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_item_seq;</sql>
+        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_location_seq;</sql>
+        <sql>DROP SEQUENCE IF EXISTS clinlims.inventory_receipt_seq;</sql>
+    </changeSet>
+
+    <!-- ========================================
+         PHASE 2: CREATE NEW SCHEMA
+         ======================================== -->
+
+    <changeSet id="inventory-003-create-inventory-item-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_item" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create unified inventory_item table for all inventory types</comment>
+
+        <createTable tableName="inventory_item" schemaName="clinlims">
+            <!-- Core Fields -->
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="item_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(100)"/>
+            <column name="manufacturer" type="VARCHAR(255)"/>
+            <column name="catalog_number" type="VARCHAR(100)"/>
+            <column name="storage_requirements" type="VARCHAR(255)"/>
+            <column name="quantity_per_unit" type="INT"/>
+            <column name="units" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="low_stock_threshold" type="INT"/>
+            <column name="expiration_alert_days" type="INT"/>
+
+            <!-- REAGENT-specific -->
+            <column name="stability_after_opening" type="INT"/>
+            <column name="dilution_notes" type="TEXT"/>
+
+            <!-- CARTRIDGE-specific -->
+            <column name="compatible_analyzers" type="VARCHAR(500)"/>
+            <column name="calibration_required" type="VARCHAR(1)" defaultValue="N"/>
+
+            <!-- RDT-specific -->
+            <column name="tests_per_kit" type="INT"/>
+            <column name="individual_tracking" type="VARCHAR(1)" defaultValue="N"/>
+
+            <!-- HIV_KIT/SYPHILIS_KIT-specific -->
+            <column name="source_organization" type="VARCHAR(255)"/>
+            <column name="kit_test_type" type="VARCHAR(50)"/>
+
+            <!-- Status -->
+            <column name="is_active" type="VARCHAR(1)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Constraints -->
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_item_type
+            CHECK (item_type IN ('REAGENT', 'RDT', 'CARTRIDGE', 'HIV_KIT', 'SYPHILIS_KIT'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_is_active
+            CHECK (is_active IN ('Y', 'N'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_calibration_required
+            CHECK (calibration_required IN ('Y', 'N'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            ADD CONSTRAINT chk_individual_tracking
+            CHECK (individual_tracking IN ('Y', 'N'));
+        </sql>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_item_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+
+        <!-- Indexes -->
+        <createIndex indexName="idx_inventory_item_type" tableName="inventory_item" schemaName="clinlims">
+            <column name="item_type"/>
+        </createIndex>
+        <createIndex indexName="idx_inventory_item_category" tableName="inventory_item" schemaName="clinlims">
+            <column name="category"/>
+        </createIndex>
+        <createIndex indexName="idx_inventory_item_active" tableName="inventory_item" schemaName="clinlims">
+            <column name="is_active"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="inventory-004-create-storage-location-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_storage_location" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create hierarchical storage location table</comment>
+
+        <createTable tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_code" type="VARCHAR(50)">
+                <constraints unique="true"/>
+            </column>
+            <column name="location_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="temperature_min" type="DECIMAL(5,2)"/>
+            <column name="temperature_max" type="DECIMAL(5,2)"/>
+            <column name="parent_location_id" type="BIGINT">
+                <constraints nullable="true"
+                    foreignKeyName="fk_storage_location_parent"
+                    references="clinlims.inventory_storage_location(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Constraints -->
+        <sql>
+            ALTER TABLE clinlims.inventory_storage_location
+            ADD CONSTRAINT chk_location_type
+            CHECK (location_type IN ('ROOM', 'REFRIGERATOR', 'FREEZER', 'SHELF', 'DRAWER', 'CABINET'));
+        </sql>
+
+        <!-- Indexes -->
+        <createIndex indexName="idx_storage_location_type" tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="location_type"/>
+        </createIndex>
+        <createIndex indexName="idx_storage_location_parent" tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="parent_location_id"/>
+        </createIndex>
+        <createIndex indexName="idx_storage_location_active" tableName="inventory_storage_location" schemaName="clinlims">
+            <column name="is_active"/>
+        </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_storage_location_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="inventory-005-create-lot-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_lot" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create inventory lot table for tracking specific batches</comment>
+
+        <createTable tableName="inventory_lot" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="inventory_item_id" type="BIGINT">
+                <constraints nullable="false"
+                    foreignKeyName="fk_lot_inventory_item"
+                    references="clinlims.inventory_item(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="storage_location_id" type="BIGINT">
+                <constraints nullable="true"
+                    foreignKeyName="fk_lot_storage_location"
+                    references="clinlims.inventory_storage_location(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="lot_number" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiration_date" type="TIMESTAMP"/>
+            <column name="date_opened" type="TIMESTAMP"/>
+            <column name="calculated_expiry_after_opening" type="TIMESTAMP"/>
+            <column name="receipt_date" type="TIMESTAMP"/>
+            <column name="initial_quantity" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="current_quantity" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_status" type="VARCHAR(20)" defaultValue="PENDING">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="barcode" type="VARCHAR(100)">
+                <constraints unique="true"/>
+            </column>
+            <column name="version" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Constraints -->
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_lot_qc_status
+            CHECK (qc_status IN ('PENDING', 'PASSED', 'FAILED', 'QUARANTINED'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_lot_status
+            CHECK (status IN ('ACTIVE', 'IN_USE', 'EXPIRED', 'CONSUMED', 'DISPOSED', 'QUARANTINED'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_lot
+            ADD CONSTRAINT chk_lot_quantities
+            CHECK (initial_quantity >= 1 AND current_quantity >= 0);
+        </sql>
+
+        <!-- Indexes -->
+        <createIndex indexName="idx_lot_inventory_item" tableName="inventory_lot" schemaName="clinlims">
+            <column name="inventory_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_storage_location" tableName="inventory_lot" schemaName="clinlims">
+            <column name="storage_location_id"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_status" tableName="inventory_lot" schemaName="clinlims">
+            <column name="status"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_qc_status" tableName="inventory_lot" schemaName="clinlims">
+            <column name="qc_status"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_expiration" tableName="inventory_lot" schemaName="clinlims">
+            <column name="expiration_date"/>
+        </createIndex>
+        <createIndex indexName="idx_lot_number" tableName="inventory_lot" schemaName="clinlims">
+            <column name="lot_number"/>
+        </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_lot_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="inventory-006-create-transaction-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_transaction" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create transaction table for audit trail</comment>
+
+        <createTable tableName="inventory_transaction" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="lot_id" type="BIGINT">
+                <constraints nullable="false"
+                    foreignKeyName="fk_transaction_lot"
+                    references="clinlims.inventory_lot(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="transaction_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_change" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity_after" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference_id" type="BIGINT"/>
+            <column name="reference_type" type="VARCHAR(50)"/>
+            <column name="notes" type="TEXT"/>
+            <column name="performed_by_user" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Constraints -->
+        <sql>
+            ALTER TABLE clinlims.inventory_transaction
+            ADD CONSTRAINT chk_transaction_type
+            CHECK (transaction_type IN ('RECEIPT', 'CONSUMPTION', 'ADJUSTMENT', 'DISPOSAL', 'OPENING', 'QC_TEST', 'MANUAL'));
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.inventory_transaction
+            ADD CONSTRAINT chk_reference_type
+            CHECK (reference_type IS NULL OR reference_type IN ('TEST_RESULT', 'RECEIPT', 'QC_RUN', 'MANUAL', 'ADJUSTMENT'));
+        </sql>
+
+        <!-- Indexes -->
+        <createIndex indexName="idx_transaction_lot" tableName="inventory_transaction" schemaName="clinlims">
+            <column name="lot_id"/>
+        </createIndex>
+        <createIndex indexName="idx_transaction_type" tableName="inventory_transaction" schemaName="clinlims">
+            <column name="transaction_type"/>
+        </createIndex>
+        <createIndex indexName="idx_transaction_date" tableName="inventory_transaction" schemaName="clinlims">
+            <column name="transaction_date"/>
+        </createIndex>
+        <createIndex indexName="idx_transaction_reference" tableName="inventory_transaction" schemaName="clinlims">
+            <column name="reference_id"/>
+            <column name="reference_type"/>
+        </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_transaction_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="inventory-007-create-usage-table" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_usage" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create usage table for linking inventory to test results</comment>
+
+        <createTable tableName="inventory_usage" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="inventory_item_id" type="BIGINT">
+                <constraints nullable="false"
+                    foreignKeyName="fk_usage_inventory_item"
+                    references="clinlims.inventory_item(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="lot_id" type="BIGINT">
+                <constraints nullable="false"
+                    foreignKeyName="fk_usage_lot"
+                    references="clinlims.inventory_lot(id)"
+                    deleteCascade="false"/>
+            </column>
+            <column name="test_result_id" type="BIGINT"/>
+            <column name="analysis_id" type="BIGINT"/>
+            <column name="quantity_used" type="DECIMAL(10,2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="performed_by_user" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Constraints -->
+        <sql>
+            ALTER TABLE clinlims.inventory_usage
+            ADD CONSTRAINT chk_usage_quantity
+            CHECK (quantity_used >= 1);
+        </sql>
+
+        <!-- Indexes -->
+        <createIndex indexName="idx_usage_inventory_item" tableName="inventory_usage" schemaName="clinlims">
+            <column name="inventory_item_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_lot" tableName="inventory_usage" schemaName="clinlims">
+            <column name="lot_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_date" tableName="inventory_usage" schemaName="clinlims">
+            <column name="usage_date"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_test_result" tableName="inventory_usage" schemaName="clinlims">
+            <column name="test_result_id"/>
+        </createIndex>
+        <createIndex indexName="idx_usage_analysis" tableName="inventory_usage" schemaName="clinlims">
+            <column name="analysis_id"/>
+        </createIndex>
+
+        <!-- Sequence -->
+        <createSequence sequenceName="inventory_usage_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ========================================
+         PHASE 3: DATA MIGRATION
+         ======================================== -->
+
+    <changeSet id="inventory-008-migrate-old-hiv-kit-data" author="mherman22">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="inventory_item_backup_20251207" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Migrate old HIV/Syphilis kit data to new schema</comment>
+
+        <!-- Enable UUID extension if not already enabled -->
+        <sql>CREATE EXTENSION IF NOT EXISTS "uuid-ossp";</sql>
+
+        <!-- Migrate inventory items (HIV/Syphilis kits) -->
+        <sql>
+            INSERT INTO clinlims.inventory_item (
+                fhir_uuid, name, description, item_type,
+                units, is_active, kit_test_type
+            )
+            SELECT
+                uuid_generate_v4(),
+                COALESCE(description, 'Unknown Kit'),
+                description,
+                CASE
+                    WHEN UPPER(COALESCE(description, '')) LIKE '%HIV%' THEN 'HIV_KIT'
+                    WHEN UPPER(COALESCE(description, '')) LIKE '%SYPHILIS%'
+                         OR UPPER(COALESCE(description, '')) LIKE '%SYPHILLIS%' THEN 'SYPHILIS_KIT'
+                    ELSE 'HIV_KIT'
+                END,
+                'kits',
+                COALESCE(is_active, 'Y'),
+                CASE
+                    WHEN UPPER(COALESCE(description, '')) LIKE '%HIV%' THEN 'HIV'
+                    WHEN UPPER(COALESCE(description, '')) LIKE '%SYPHILIS%'
+                         OR UPPER(COALESCE(description, '')) LIKE '%SYPHILLIS%' THEN 'SYPHILIS'
+                    ELSE 'HIV'
+                END
+            FROM clinlims.inventory_item_backup_20251207;
+        </sql>
+
+        <!-- Migrate inventory locations to lots -->
+        <sql>
+            INSERT INTO clinlims.inventory_lot (
+                fhir_uuid, inventory_item_id, lot_number,
+                expiration_date, receipt_date, initial_quantity, current_quantity,
+                qc_status, status
+            )
+            SELECT
+                uuid_generate_v4(),
+                new_item.id,
+                COALESCE(old_loc.lot_number, 'UNKNOWN'),
+                old_loc.expiration_date,
+                NOW(),
+                COALESCE(old_loc.quantity_onhand, 100),
+                COALESCE(old_loc.quantity_onhand, 100),
+                'PASSED',
+                CASE
+                    WHEN old_loc.expiration_date IS NOT NULL
+                         AND old_loc.expiration_date &lt; NOW() THEN 'EXPIRED'
+                    ELSE 'ACTIVE'
+                END
+            FROM clinlims.inventory_location_backup_20251207 old_loc
+            INNER JOIN clinlims.inventory_item_backup_20251207 old_item
+                ON old_loc.inv_item_id = old_item.id
+            INNER JOIN clinlims.inventory_item new_item
+                ON new_item.name = COALESCE(old_item.description, 'Unknown Kit');
+        </sql>
+    </changeSet>
+
+    <!-- ========================================
+         PHASE 4: MENU CONFIGURATION
+         ======================================== -->
+
+    <changeSet author="mherman22" id="inventory-009-add-inventory-menu-item">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add top-level Inventory menu entry (expandable parent, no action URL)</comment>
+        <insert schemaName="clinlims" tableName="menu">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="presentation_order" value="127"/>
+            <column name="element_id" value="menu_inventory"/>
+            <column name="display_key" value="sidenav.label.inventory"/>
+            <column name="tool_tip_key" value="sidenav.label.inventory.tooltip"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="action_url" value=""/>
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="mherman22" id="inventory-010-add-inventory-management-submenu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_inventory_management';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Inventory Management Dashboard as child of Inventory menu</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_inventory')" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_inventory_management" />
+            <column name="action_url" value="/inventory" />
+            <column name="display_key" value="sidenav.label.inventory.management" />
+            <column name="tool_tip_key" value="sidenav.label.inventory.management.tooltip" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -10,6 +10,7 @@ import { NotificationContext } from "../../layout/Layout";
 
 // Mock the API utilities
 jest.mock("../../utils/Utils", () => ({
+  ...jest.requireActual("../../utils/Utils"),
   getFromOpenElisServer: jest.fn(),
 }));
 
@@ -65,6 +66,19 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
         callback([]);
       } else if (url.includes("/dashboard/location-counts")) {
         callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      } else if (url.includes("/rest/displayList/sample-item-status-types")) {
+        callback([
+          { id: "", value: "All" },
+          { id: "active", value: "Active" },
+          { id: "disposed", value: "Disposed" },
+        ]);
+      } else if (url.includes("/rest/storage/sample-items?countOnly=true")) {
+        callback({
+          totalSampleItems: 0,
+          active: 0,
+          disposed: 0,
+          storageLocations: 0,
+        });
       } else {
         callback([]);
       }
@@ -96,6 +110,19 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
         callback([]);
       } else if (url.includes("/dashboard/location-counts")) {
         callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      } else if (url.includes("/rest/displayList/sample-item-status-types")) {
+        callback([
+          { id: "", value: "All" },
+          { id: "active", value: "Active" },
+          { id: "disposed", value: "Disposed" },
+        ]);
+      } else if (url.includes("/rest/storage/sample-items?countOnly=true")) {
+        callback({
+          totalSampleItems: 0,
+          active: 0,
+          disposed: 0,
+          storageLocations: 0,
+        });
       } else {
         callback([]);
       }
@@ -128,6 +155,19 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
         callback([]);
       } else if (url.includes("/dashboard/location-counts")) {
         callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      } else if (url.includes("/rest/displayList/sample-item-status-types")) {
+        callback([
+          { id: "", value: "All" },
+          { id: "active", value: "Active" },
+          { id: "disposed", value: "Disposed" },
+        ]);
+      } else if (url.includes("/rest/storage/sample-items?countOnly=true")) {
+        callback({
+          totalSampleItems: 0,
+          active: 0,
+          disposed: 0,
+          storageLocations: 0,
+        });
       } else {
         callback([]);
       }
@@ -159,9 +199,7 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
     const searchCallback = jest.fn();
 
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/rest/storage/samples/search")) {
-        // Note: Backend search endpoint is still at /rest/storage/samples/search
-        // but list endpoint should be /rest/storage/sample-items
+      if (url.includes("/rest/storage/sample-items/search")) {
         searchCallback();
         callback([]);
       } else if (url.includes("/rest/storage/sample-items")) {
@@ -176,6 +214,19 @@ describe("StorageDashboard Search Functionality (FR-064, FR-064a)", () => {
         callback([]);
       } else if (url.includes("/dashboard/location-counts")) {
         callback({ rooms: 0, devices: 0, shelves: 0, racks: 0 });
+      } else if (url.includes("/rest/displayList/sample-item-status-types")) {
+        callback([
+          { id: "", value: "All" },
+          { id: "active", value: "Active" },
+          { id: "disposed", value: "Disposed" },
+        ]);
+      } else if (url.includes("/rest/storage/sample-items?countOnly=true")) {
+        callback({
+          totalSampleItems: 0,
+          active: 0,
+          disposed: 0,
+          storageLocations: 0,
+        });
       } else {
         callback([]);
       }

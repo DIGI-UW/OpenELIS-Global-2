@@ -1,0 +1,17 @@
+MSH|^~\&|SYSMEX XN-L|LAB|OpenELIS|LAB|20260201150000||ORU^R01|SYSMEX_XN_001|P|2.5.1|||||||
+PID|1||PAT004^^^HOSPITAL||JOHNSON^ROBERT||19851120|M||||||||||||||||||||
+ORC|RE|PLACER_XN123|FILLER_XN456|||||||||||||||||||||||||
+OBR|1|PLACER_XN123|FILLER_XN456|1|^^^CBC^CBC WITH DIFFERENTIAL|||20260201143000|||||||||||||||||||||||F|||||||||||||||||||||||||
+OBX|1|NM|^^^WBC^WBC||9.2|10*3/uL|4.0-11.0|N|||F||||||
+OBX|2|NM|^^^RBC^RBC||5.1|10*6/uL|4.5-5.5|N|||F||||||
+OBX|3|NM|^^^HGB^HGB||15.5|g/dL|13.0-17.0|N|||F||||||
+OBX|4|NM|^^^HCT^HCT||45.2|%|40.0-50.0|N|||F||||||
+OBX|5|NM|^^^MCV^MCV||88.6|fL|80.0-100.0|N|||F||||||
+OBX|6|NM|^^^MCH^MCH||30.4|pg|27.0-33.0|N|||F||||||
+OBX|7|NM|^^^MCHC^MCHC||34.3|g/dL|32.0-36.0|N|||F||||||
+OBX|8|NM|^^^PLT^PLT||275|10*3/uL|150-400|N|||F||||||
+OBX|9|NM|^^^NEUT%^NEUT%||58.5|%|40.0-70.0|N|||F||||||
+OBX|10|NM|^^^LYMPH%^LYMPH%||32.0|%|20.0-45.0|N|||F||||||
+OBX|11|NM|^^^MONO%^MONO%||6.5|%|2.0-10.0|N|||F||||||
+OBX|12|NM|^^^EO%^EO%||2.5|%|1.0-6.0|N|||F||||||
+OBX|13|NM|^^^BASO%^BASO%||0.5|%|0.0-2.0|N|||F||||||

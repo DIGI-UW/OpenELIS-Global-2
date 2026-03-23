@@ -24,14 +24,28 @@ You can find more information on how to set up OpenELIS at our
 
 ### CI Status
 
-[![Maven Build Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/ci.yml)
+[![01 - Backend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/backend.yml)
 ![Coverage](https://raw.githubusercontent.com/DIGI-UW/OpenELIS-Global-2/refs/heads/gh-pages/badges/jacoco.svg)
+
+[![02 - Frontend Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml)
+
+[![03 - Playwright Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-playwright.yml)
+
+[![04 - Cypress Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml)
 
 [![Publish OpenELIS WebApp Docker Image Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml)
 
-[![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend-qa.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend-qa.yml)
+[![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
 
-[![End to End QA Tests Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
+### Contributing
+
+We welcome community contributions to help improve OpenELIS Global!
+
+1. Read our
+   [Dev Environment Setup Instructions](https://uwdigi.atlassian.net/wiki/spaces/OG/pages/240844805/Dev+Environment+Setup+Instructions)
+   on the project wiki.
+2. Check out our [CONTRIBUTING guide](./CONTRIBUTING.md) for detailed
+   contribution practices and [pull request tips](PULL_REQUEST_TIPS.md).
 
 ### Requirements
 
@@ -54,6 +68,22 @@ for Offline Installation
 see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
+
+**Prerequisites for all methods below:**
+
+Before running any `docker compose` command, you must create a `.env` file with
+your environment configuration:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` to customize settings for your environment (database passwords,
+domain, etc.). See `.env.example` for detailed documentation of each variable.
+
+**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
+server-specific settings. CI copies `.env.example` to `.env` before running
+docker compose.
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
@@ -137,7 +167,28 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
-#### To ensure your code passes the same checks as the CI pipeline, you can run the following commands from your project directory
+#### To ensure your code passes the same checks as the CI pipeline
+
+**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+
+```bash
+# Run backend CI checks (formatting + build + tests)
+./scripts/run-ci-checks.sh
+
+# Run frontend CI checks (formatting + unit tests + E2E tests)
+./scripts/run-frontend-ci-checks.sh
+
+# Run both (full CI simulation)
+./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
+```
+
+**Options:**
+
+- `--skip-submodules`: Skip submodule build (faster, for quick checks)
+- `--skip-tests`: Skip tests (formatting only)
+- `--skip-e2e`: Skip E2E tests (frontend only)
+
+**Manual commands** (if you prefer to run steps individually):
 
 1.  Run Code Formatting Check (Backend). This command checks code formatting and
     performs validation similar to the CI
@@ -152,6 +203,11 @@ accessing any of these links, simply follow these steps:
 
          mvn verify -Dit.test=<packageName>.<TestClassName>
 
+    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
+    Flat XML datasets from `src/test/resources/testdata/` via
+    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
+    over inline SQL setup/cleanup to avoid test data pollution.
+
 1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
 
     > **Note:** Frontend checks will only pass successfully if your development
@@ -161,6 +217,57 @@ accessing any of these links, simply follow these steps:
         npm install
         npm run build
         npm run cy:run # this will run e2e testing same CI
+
+### AI-Assisted Development (SpecKit)
+
+This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
+Spec-Driven Development (SDD). AI coding agents can use slash commands to create
+specifications, plans, and tasks.
+
+**Available Commands:**
+
+- `/speckit.specify` - Create feature specification
+- `/speckit.plan` - Generate implementation plan
+- `/speckit.tasks` - Generate task breakdown
+- `/speckit.implement` - Execute implementation
+- `/speckit.analyze` - Validate consistency
+
+**Reference Documentation:**
+
+- **AGENTS.md** - Comprehensive guide for AI coding agents
+- **Constitution**: `.specify/memory/constitution.md` - Governance principles
+- **Feature Example**: `specs/001-sample-storage/` - Complete SDD example
+
+### Testing Resources
+
+For comprehensive testing guidance, see:
+
+- **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Complete testing
+  guide for both agents and humans
+- **Test Templates**: `.specify/templates/testing/` - Standardized test
+  templates
+- **AGENTS.md**: Testing Strategy section - Overview of testing approach
+- **Test Data Strategy**: `.specify/guides/test-data-strategy.md` - Unified test
+  data management guide
+
+### Test Data Setup
+
+For E2E testing, integration testing, and manual testing, load test fixtures:
+
+```bash
+# Basic usage (loads and verifies automatically)
+./src/test/resources/load-test-fixtures.sh
+
+# Reset database before loading (clean state)
+./src/test/resources/load-test-fixtures.sh --reset
+
+# Load without verification (faster)
+./src/test/resources/load-test-fixtures.sh --no-verify
+```
+
+**Note**: The unified loader script provides dependency checks, verification,
+and reset capabilities. See
+[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
 
 ### Pull request guidelines
 

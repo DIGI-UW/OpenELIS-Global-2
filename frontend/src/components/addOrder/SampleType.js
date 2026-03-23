@@ -1,29 +1,31 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Checkbox,
   FormGroup,
   Layer,
+  Loading,
   Search,
   Select,
   SelectItem,
   Tag,
-  Tile,
   TextInput,
-  Loading,
+  Tile,
 } from "@carbon/react";
-import CustomCheckBox from "../common/CustomCheckBox";
-import CustomSelect from "../common/CustomSelect";
-import CustomDatePicker from "../common/CustomDatePicker";
-import CustomTimePicker from "../common/CustomTimePicker";
-import { NotificationKinds } from "../common/CustomNotification";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../utils/Utils";
-import { NotificationContext, ConfigurationContext } from "../layout/Layout";
-import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
-import CustomTextInput from "../common/CustomTextInput";
-import OrderReferralRequest from "../addOrder/OrderReferralRequest";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import OrderReferralRequest from "../addOrder/OrderReferralRequest";
+import CustomCheckBox from "../common/CustomCheckBox";
+import CustomDatePicker from "../common/CustomDatePicker";
+import { NotificationKinds } from "../common/CustomNotification";
+import CustomSelect from "../common/CustomSelect";
+import CustomTextInput from "../common/CustomTextInput";
+import CustomTimePicker from "../common/CustomTimePicker";
+import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
+import { getFromOpenElisServer } from "../utils/Utils";
+import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
+import LabelsSection from "../barcodeWorkflow/LabelsSection";
 
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -77,6 +79,8 @@ const SampleType = (props) => {
             configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
               ? configurationProperties.currentTimeAsText
               : "",
+          numOrderLabels: 1,
+          numSpecimenLabels: 1,
         },
   );
   const [loading, setLoading] = useState(true);
@@ -115,10 +119,31 @@ const SampleType = (props) => {
     });
   }
 
-  function handleStorageLocationChange(location, sampleIndex) {
+  const handleGpsCoordinatesChange = useCallback(
+    (gpsData) => {
+      const updatedSampleXml = {
+        ...sampleXml,
+        gpsLatitude: gpsData.gpsLatitude,
+        gpsLongitude: gpsData.gpsLongitude,
+        gpsAccuracy: gpsData.gpsAccuracy,
+        gpsCaptureMethod: gpsData.gpsCaptureMethod,
+      };
+      setSampleXml(updatedSampleXml);
+      props.sampleTypeObject({
+        sampleXML: updatedSampleXml,
+        sampleObjectIndex: index,
+      });
+    },
+    [sampleXml, props.sampleTypeObject, index],
+  );
+
+  function handleStorageLocationChange(location, positionCoordinate) {
     setSampleXml({
       ...sampleXml,
-      storageLocation: location,
+      storageLocation: {
+        ...location,
+        positionCoordinate: positionCoordinate || "",
+      },
       storagePositionId: location?.position?.id || null,
     });
   }
@@ -137,13 +162,20 @@ const SampleType = (props) => {
     });
   }
 
+  const handleLabelsSectionChange = (labelsModel) => {
+    const nextOrderLabels = labelsModel?.orderRow?.quantities?.order ?? 0;
+    const nextSpecimenLabels =
+      labelsModel?.sampleRows?.[0]?.quantities?.specimen ?? 0;
+    setSampleXml((currentSampleXml) => ({
+      ...currentSampleXml,
+      numOrderLabels: nextOrderLabels,
+      numSpecimenLabels: nextSpecimenLabels,
+    }));
+  };
+
   useEffect(() => {
     updateSampleXml(sampleXml, index);
   }, [sampleXml]);
-
-  const handleRemoveSampleTest = (index) => {
-    removeSample(index);
-  };
 
   const handleReferralRequest = () => {
     setRequestTestReferral(!requestTestReferral);
@@ -246,20 +278,6 @@ const SampleType = (props) => {
       index++;
     }
   };
-
-  function addReferralRequest(test) {
-    setReferralRequests([
-      ...referralRequests,
-      {
-        reasonForReferral: referralReasons[0].id,
-        referrer:
-          userSessionDetails.firstName + " " + userSessionDetails.lastName,
-        institute: referralOrganizations[0].id,
-        sentDate: "",
-        testId: test.id,
-      },
-    ]);
-  }
 
   function removeReferralRequest(test) {
     let index = 0;
@@ -502,7 +520,10 @@ const SampleType = (props) => {
           }}
           required
         >
-          <SelectItem text="Select sample type" value="" />
+          <SelectItem
+            text={intl.formatMessage({ id: "sample.select.type" })}
+            value=""
+          />
           {sampleTypes?.map((sampleType, i) => (
             <SelectItem text={sampleType.value} value={sampleType.id} key={i} />
           ))}
@@ -518,7 +539,7 @@ const SampleType = (props) => {
             id={"rejectedReasonId_" + index}
             options={rejectSampleReasons}
             disabled={rejectionReasonsDisabled}
-            defaultSelect={defaultSelect}
+            value={sampleXml.rejectionReason}
             onChange={(e) => handleReasons(e)}
           />
         )}
@@ -581,6 +602,18 @@ const SampleType = (props) => {
             className="inputText"
           />
         </div>
+
+        {configurationProperties.GPS_ENABLED === "true" && (
+          <div className="gpsDiv">
+            <GpsCoordinatesCapture
+              index={index}
+              sampleXml={sampleXml}
+              onChange={handleGpsCoordinatesChange}
+              disabled={sampleXml.rejected}
+            />
+          </div>
+        )}
+
         {/* Storage Location Selector - INT-001: Integration point */}
         {/* NOTE: In order entry workflow, SampleItems are created after Sample is saved.
             Storage assignment operates at SampleItem level, so actual assignment happens
@@ -596,14 +629,40 @@ const SampleType = (props) => {
               type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
               status: sampleXml?.rejected ? "Rejected" : "Active",
             }}
+            initialLocation={sampleXml?.storageLocation || null}
             onLocationChange={(locationData) => {
               // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-              // Extract newLocation from locationData for backward compatibility
+              // Extract newLocation and positionCoordinate from locationData
               // Store location preference - will be assigned to SampleItem after SampleItems are created
               const location = locationData?.newLocation || locationData;
-              handleStorageLocationChange(location, index);
+              const positionCoordinate = locationData?.positionCoordinate || "";
+              handleStorageLocationChange(location, positionCoordinate);
             }}
           />
+        </div>
+        <div className="inlineDiv">
+          <div className="cds--col">
+            <h4>
+              <FormattedMessage id="barcode.labels.section.title" />
+            </h4>
+            <LabelsSection
+              orderQuantity={sampleXml?.numOrderLabels ?? 1}
+              specimenQuantities={[sampleXml?.numSpecimenLabels ?? 1]}
+              onChange={handleLabelsSectionChange}
+              orderLabelText={intl.formatMessage({
+                id: "barcode.labels.order.row",
+              })}
+              specimenLabelFormatter={(sampleNumber) =>
+                intl.formatMessage(
+                  { id: "barcode.labels.sample.row" },
+                  { sampleNumber },
+                )
+              }
+              runningTotalLabel={intl.formatMessage({
+                id: "barcode.labels.running.total",
+              })}
+            />
+          </div>
         </div>
         <div className="testPanels">
           <div className="cds--col">
@@ -679,7 +738,7 @@ const SampleType = (props) => {
                         <Tile className={"emptyFilterTests"}>
                           <span>
                             <FormattedMessage id="sample.panel.search.error.msg" />{" "}
-                            <strong>"{panelSearchTerm}"</strong>{" "}
+                            <strong>&quot;{panelSearchTerm}&quot;</strong>{" "}
                           </span>
                         </Tile>
                       </Layer>
@@ -779,7 +838,7 @@ const SampleType = (props) => {
                       <Tile className={"emptyFilterTests"}>
                         <span>
                           <FormattedMessage id="title.notestfoundmatching" />
-                          <strong> "{testSearchTerm}"</strong>{" "}
+                          <strong> &quot;{testSearchTerm}&quot;</strong>{" "}
                         </span>
                       </Tile>
                     </Layer>

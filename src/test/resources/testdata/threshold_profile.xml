@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <storage_room id="1"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" code="CSR001"
+        name="Cold Storage Room 1" description="Main cold storage facility"
+        active="true" sys_user_id="1" />
+
+    <storage_device id="1"
+        fhir_uuid="650e8400-e29b-41d4-a716-446655440001"
+        name="Freezer Storage Device 1" code="FSD001" type="freezer"
+        parent_room_id="1" active="true" sys_user_id="1" />
+
+    <storage_device id="2"
+        fhir_uuid="650e8400-e29b-41d4-a716-446655440002"
+        name="Freezer Storage Device 2" code="FSD002" type="freezer"
+        parent_room_id="1" active="true" sys_user_id="1" />
+
+    <freezer id="100" name="Test Freezer 1" storage_device_id="1"
+        protocol="TCP" host="192.168.1.100" port="502" slave_id="1"
+        temperature_register="0" temperature_scale="1.0"
+        temperature_offset="-80.0" humidity_register="1" humidity_scale="1.0"
+        humidity_offset="0.0" active="true" polling_interval_seconds="60"
+        last_updated="2024-01-01 00:00:00" />
+
+    <freezer id="101" name="Test Freezer 2" storage_device_id="2"
+        protocol="TCP" host="192.168.1.101" port="502" slave_id="2"
+        temperature_register="0" temperature_scale="1.0"
+        temperature_offset="0.0" humidity_register="1" humidity_scale="1.0"
+        humidity_offset="0.0" active="true" polling_interval_seconds="60"
+        last_updated="2024-01-01 00:00:00" />
+
+    <threshold_profile id="100"
+        name="Ultra-Low Freezer Profile"
+        description="Standard ultra-low freezer thresholds"
+        warning_min="-82.0" warning_max="-78.0" critical_min="-85.0"
+        critical_max="-75.0" min_excursion_minutes="5"
+        humidity_warning_min="30.0" humidity_warning_max="70.0" created_by="1"
+        created_at="2024-01-01 00:00:00" />
+
+    <threshold_profile id="101"
+        name="Standard Freezer Profile"
+        description="Standard freezer thresholds" warning_min="-22.0"
+        warning_max="-18.0" critical_min="-25.0" critical_max="-15.0"
+        min_excursion_minutes="10" created_by="1"
+        created_at="2024-01-01 00:00:00" />
+</dataset>

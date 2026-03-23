@@ -225,6 +225,9 @@ public class UserServiceImpl implements UserService {
                         if (roleId == null) {
                             userLabUnits.add(roles.getLabUnit());
                         } else {
+                            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                                    "getUserTestSections", "Checking labUnit=" + roles.getLabUnit() + ", roles="
+                                            + roles.getRoles() + ", roleId=" + roleId);
                             if (roles.getRoles().contains(roleId)) {
                                 userLabUnits.add(roles.getLabUnit());
                             }
@@ -232,14 +235,22 @@ public class UserServiceImpl implements UserService {
 
                     });
                 }
+                org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getUserTestSections",
+                        "User " + systemUserId + " roleId=" + roleId + ", userLabUnits=" + userLabUnits);
                 List<IdValuePair> allTestSections = DisplayListService.getInstance()
                         .getList(ListType.TEST_SECTION_ACTIVE);
                 if (userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS)) {
+                    org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                            "getUserTestSections",
+                            "User has AllLabUnits, returning all " + allTestSections.size() + " test sections");
                     return allTestSections;
                 } else {
                     userTestSections = allTestSections.stream()
                             .filter(testSection -> userLabUnits.contains(testSection.getId()))
                             .collect(Collectors.toList());
+                    org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
+                            "getUserTestSections", "User has " + userLabUnits.size() + " lab units, returning "
+                                    + userTestSections.size() + " test sections");
                     return userTestSections;
                 }
             } else if (principal instanceof DefaultSaml2AuthenticatedPrincipal
@@ -368,10 +379,19 @@ public class UserServiceImpl implements UserService {
         if (testSections != null) {
             testSections.forEach(testSection -> testUnitIds.add(Integer.valueOf(testSection.getId())));
         }
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "filterResultsByLabUnitRoles",
+                "User " + systemUserId + " has " + (testSections != null ? testSections.size() : 0) + " test sections: "
+                        + testUnitIds);
 
         List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
         List<String> allTestsIds = new ArrayList<>();
         allTests.forEach(test -> allTestsIds.add(test.getId()));
+        // Log which test IDs are in the results and which are allowed
+        List<String> resultTestIds = results.stream().map(r -> r.getTestId()).collect(Collectors.toList());
+        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "filterResultsByLabUnitRoles",
+                "Input results: " + results.size() + " (test IDs: " + resultTestIds + "), Allowed test IDs: "
+                        + allTestsIds.size() + ", Filtered results: "
+                        + results.stream().filter(result -> allTestsIds.contains(result.getTestId())).count());
         return results.stream().filter(result -> allTestsIds.contains(result.getTestId())).collect(Collectors.toList());
     }
 

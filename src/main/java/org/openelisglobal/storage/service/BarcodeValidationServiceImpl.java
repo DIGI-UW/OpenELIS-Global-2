@@ -3,12 +3,11 @@ package org.openelisglobal.storage.service;
 import java.util.HashMap;
 import java.util.Map;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StoragePositionDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
-import org.openelisglobal.storage.valueholder.StoragePosition;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -45,7 +44,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
     private StorageRackDAO storageRackDAO;
 
     @Autowired
-    private StoragePositionDAO storagePositionDAO;
+    private org.openelisglobal.storage.dao.StorageBoxDAO storageBoxDAO;
 
     @Override
     public BarcodeValidationResponse validateBarcode(String barcode) {
@@ -75,6 +74,8 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
         boolean isValid = true; // Assume valid until proven otherwise
         String firstFailedStep = null;
         String firstErrorMessage = null;
+        String firstMissingLevel = null; // Track first missing level for auto-open behavior
+        boolean hasValidComponents = false; // Track if we have any valid components
 
         // Step 1: Format Validation
         ParsedBarcode parsed = barcodeParsingService.parseBarcode(barcode);
@@ -82,6 +83,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             response.setValid(false);
             response.setFailedStep("FORMAT_VALIDATION");
             response.setErrorMessage(formatErrorMessage(barcode, parsed, null));
+            response.setFirstMissingLevel(null); // Completely invalid - no valid levels
             return response; // Can't continue without valid parse
         }
 
@@ -91,8 +93,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             isValid = false;
             firstFailedStep = "LOCATION_EXISTENCE";
             firstErrorMessage = "Room not found: " + parsed.getRoomCode();
+            firstMissingLevel = "room"; // Room is the first missing level
         } else {
             response.addValidComponent("room", createComponentMap(room.getId(), room.getName(), room.getCode()));
+            hasValidComponents = true;
 
             // Step 4: Room activity check
             if (room.getActive() == null || !room.getActive()) {
@@ -100,6 +104,7 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     isValid = false;
                     firstFailedStep = "ACTIVITY_CHECK";
                     firstErrorMessage = "Room is inactive: " + room.getName();
+                    // Activity check failure doesn't mean level is missing, just inactive
                 }
             }
         }
@@ -116,6 +121,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     firstFailedStep = "LOCATION_EXISTENCE";
                     firstErrorMessage = "Device not found: " + parsed.getDeviceCode();
                 }
+                // Track first missing level only if we have valid room
+                if (firstMissingLevel == null && hasValidComponents) {
+                    firstMissingLevel = "device";
+                }
             } else if (room != null) {
                 // Second check: Does it exist with correct parent?
                 device = storageDeviceDAO.findByCodeAndParentRoom(parsed.getDeviceCode(), room);
@@ -126,6 +135,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                         firstErrorMessage = "Device '" + parsed.getDeviceCode()
                                 + "' exists but parent hierarchy is incorrect (not in room '"
                                 + (room.getName() != null ? room.getName() : room.getCode()) + "')";
+                    }
+                    // Hierarchy mismatch - device exists but wrong parent, still track as missing
+                    if (firstMissingLevel == null && hasValidComponents) {
+                        firstMissingLevel = "device";
                     }
                 } else {
                     response.addValidComponent("device",
@@ -138,8 +151,12 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                             firstFailedStep = "ACTIVITY_CHECK";
                             firstErrorMessage = "Device is inactive: " + device.getName();
                         }
+                        // Activity check failure doesn't mean level is missing, just inactive
                     }
                 }
+            } else {
+                // Room is missing, so device can't be validated - already tracked room as
+                // missing
             }
         }
 
@@ -155,6 +172,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     firstFailedStep = "LOCATION_EXISTENCE";
                     firstErrorMessage = "Shelf not found: " + parsed.getShelfCode();
                 }
+                // Track first missing level only if we have valid parent levels
+                if (firstMissingLevel == null && hasValidComponents && device != null) {
+                    firstMissingLevel = "shelf";
+                }
             } else if (device != null) {
                 // Second check: Does it exist with correct parent?
                 shelf = storageShelfDAO.findByLabelAndParentDevice(parsed.getShelfCode(), device);
@@ -165,6 +186,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                         firstErrorMessage = "Shelf '" + parsed.getShelfCode()
                                 + "' exists but parent hierarchy is incorrect (not in device '"
                                 + (device.getName() != null ? device.getName() : device.getCode()) + "')";
+                    }
+                    // Hierarchy mismatch - shelf exists but wrong parent, still track as missing
+                    if (firstMissingLevel == null && hasValidComponents) {
+                        firstMissingLevel = "shelf";
                     }
                 } else {
                     response.addValidComponent("shelf",
@@ -177,8 +202,12 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                             firstFailedStep = "ACTIVITY_CHECK";
                             firstErrorMessage = "Shelf is inactive: " + shelf.getLabel();
                         }
+                        // Activity check failure doesn't mean level is missing, just inactive
                     }
                 }
+            } else {
+                // Device is missing, so shelf can't be validated - already tracked device as
+                // missing
             }
         }
 
@@ -194,6 +223,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                     firstFailedStep = "LOCATION_EXISTENCE";
                     firstErrorMessage = "Rack not found: " + parsed.getRackCode();
                 }
+                // Track first missing level only if we have valid parent levels
+                if (firstMissingLevel == null && hasValidComponents && shelf != null) {
+                    firstMissingLevel = "rack";
+                }
             } else if (shelf != null) {
                 // Second check: Does it exist with correct parent?
                 rack = storageRackDAO.findByLabelAndParentShelf(parsed.getRackCode(), shelf);
@@ -204,6 +237,10 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                         firstErrorMessage = "Rack '" + parsed.getRackCode()
                                 + "' exists but parent hierarchy is incorrect (not in shelf '" + shelf.getLabel()
                                 + "')";
+                    }
+                    // Hierarchy mismatch - rack exists but wrong parent, still track as missing
+                    if (firstMissingLevel == null && hasValidComponents) {
+                        firstMissingLevel = "rack";
                     }
                 } else {
                     response.addValidComponent("rack",
@@ -216,40 +253,49 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
                             firstFailedStep = "ACTIVITY_CHECK";
                             firstErrorMessage = "Rack is inactive: " + rack.getLabel();
                         }
+                        // Activity check failure doesn't mean level is missing, just inactive
                     }
                 }
+            } else {
+                // Shelf is missing, so rack can't be validated - already tracked shelf as
+                // missing
             }
         }
 
-        // Step 2 & 3: Position validation (existence + hierarchy) - continue even if
-        // rack failed
-        StoragePosition position = null;
+        // Step 2 & 3: Box validation (existence + hierarchy) - continue even if rack
+        // failed
+        StorageBox box = null;
         if (parsed.getPositionCode() != null) {
-            // First check: Does position coordinate exist anywhere?
-            StoragePosition positionAny = storagePositionDAO.findByCoordinates(parsed.getPositionCode());
-            if (positionAny == null) {
-                if (isValid) { // Only record first failure
+            StorageBox boxAny = storageBoxDAO.findByCoordinates(parsed.getPositionCode());
+            if (boxAny == null) {
+                if (isValid) {
                     isValid = false;
                     firstFailedStep = "LOCATION_EXISTENCE";
-                    firstErrorMessage = "Position not found: " + parsed.getPositionCode();
+                    firstErrorMessage = "Box not found: " + parsed.getPositionCode();
+                }
+                // Track first missing level only if we have valid parent levels
+                if (firstMissingLevel == null && hasValidComponents && rack != null) {
+                    firstMissingLevel = "position";
                 }
             } else if (rack != null) {
-                // Second check: Does it exist with correct parent?
-                position = storagePositionDAO.findByCoordinatesAndParentRack(parsed.getPositionCode(), rack);
-                if (position == null) {
-                    if (isValid) { // Only record first failure
+                box = storageBoxDAO.findByCoordinatesAndParentRack(parsed.getPositionCode(), rack);
+                if (box == null) {
+                    if (isValid) {
                         isValid = false;
                         firstFailedStep = "HIERARCHY_VALIDATION";
-                        firstErrorMessage = "Position '" + parsed.getPositionCode()
+                        firstErrorMessage = "Box '" + parsed.getPositionCode()
                                 + "' exists but parent hierarchy is incorrect (not in rack '" + rack.getLabel() + "')";
                     }
+                    // Hierarchy mismatch - position exists but wrong parent, still track as missing
+                    if (firstMissingLevel == null && hasValidComponents) {
+                        firstMissingLevel = "position";
+                    }
                 } else {
-                    response.addValidComponent("position",
-                            createComponentMap(position.getId(), position.getCoordinate(), position.getCoordinate()));
-
-                    // Note: StoragePosition doesn't have an active field - it inherits activity
-                    // from its parent hierarchy
+                    response.addValidComponent("box", createComponentMap(box.getId(), box.getLabel(), box.getLabel()));
                 }
+            } else {
+                // Rack is missing, so position can't be validated - already tracked rack as
+                // missing
             }
         }
 
@@ -266,6 +312,36 @@ public class BarcodeValidationServiceImpl implements BarcodeValidationService {
             response.setFailedStep(firstFailedStep);
             // Format error message with raw barcode and parsed components
             response.setErrorMessage(formatErrorMessage(barcode, parsed, firstErrorMessage));
+        }
+
+        // Set first missing level (only if we have valid components - indicates partial
+        // valid hierarchy)
+        if (hasValidComponents && !isValid) {
+            response.setFirstMissingLevel(firstMissingLevel);
+            // Check if there are additional invalid levels beyond the first missing level
+            // This happens when barcode has more levels than what we validated
+            boolean hasAdditionalInvalid = false;
+            if (firstMissingLevel != null) {
+                // Check if barcode has levels beyond the first missing one
+                if ("device".equals(firstMissingLevel) && (parsed.getShelfCode() != null || parsed.getRackCode() != null
+                        || parsed.getPositionCode() != null)) {
+                    hasAdditionalInvalid = true;
+                } else if ("shelf".equals(firstMissingLevel)
+                        && (parsed.getRackCode() != null || parsed.getPositionCode() != null)) {
+                    hasAdditionalInvalid = true;
+                } else if ("rack".equals(firstMissingLevel) && parsed.getPositionCode() != null) {
+                    hasAdditionalInvalid = true;
+                }
+            }
+            response.setHasAdditionalInvalidLevels(hasAdditionalInvalid);
+        } else if (!hasValidComponents) {
+            // Completely invalid - no valid levels
+            response.setFirstMissingLevel(null);
+            response.setHasAdditionalInvalidLevels(false);
+        } else {
+            // Fully valid - no missing levels
+            response.setFirstMissingLevel(null);
+            response.setHasAdditionalInvalidLevels(false);
         }
 
         return response;

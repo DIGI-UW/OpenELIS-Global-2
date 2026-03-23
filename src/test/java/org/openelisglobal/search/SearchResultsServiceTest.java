@@ -192,4 +192,155 @@ public class SearchResultsServiceTest extends BaseWebContextSensitiveTest {
 
         return pat;
     }
+
+    // ==================== FR-015: Merged Patient Redirect Tests
+    // ====================
+
+    /**
+     * FR-015: When searching by nationalID for a merged patient, should return the
+     * primary patient instead.
+     */
+    @Test
+    public void getSearchResults_shouldRedirectMergedPatientToPrimary_whenSearchingByNationalID() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person" });
+
+        // Create primary patient
+        Patient primaryPatient = createPatient("John", "Primary", "01/01/1990", "M");
+        primaryPatient.setNationalId("PRIMARY-001");
+        String primaryId = patientService.insert(primaryPatient);
+
+        // Create merged patient with different national ID
+        Patient mergedPatient = createPatient("Jane", "Merged", "01/01/1990", "F");
+        mergedPatient.setNationalId("MERGED-001");
+        mergedPatient.setIsMerged(true);
+        mergedPatient.setMergedIntoPatientId(primaryId);
+        mergedPatient.setMergeDate(new Timestamp(System.currentTimeMillis()));
+        patientService.insert(mergedPatient);
+
+        // Search by merged patient's national ID
+        List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(null, null, null, null,
+                "MERGED-001", null, null, null, null, null);
+
+        // Should return primary patient, not merged patient
+        Assert.assertEquals(1, searchResults.size());
+        Assert.assertEquals(primaryId, searchResults.get(0).getPatientID());
+        Assert.assertEquals("John", searchResults.get(0).getFirstName());
+        Assert.assertEquals("Primary", searchResults.get(0).getLastName());
+    }
+
+    /**
+     * FR-015: When searching by name for a merged patient, should NOT redirect -
+     * return the merged patient as-is. Redirect only applies to identifier-based
+     * searches.
+     */
+    @Test
+    public void getSearchResults_shouldNotRedirect_whenSearchingByName() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person" });
+
+        // Create primary patient
+        Patient primaryPatient = createPatient("John", "Primary", "01/01/1990", "M");
+        primaryPatient.setNationalId("PRIMARY-001");
+        String primaryId = patientService.insert(primaryPatient);
+
+        // Create merged patient
+        Patient mergedPatient = createPatient("Jane", "Merged", "01/01/1990", "F");
+        mergedPatient.setNationalId("MERGED-001");
+        mergedPatient.setIsMerged(true);
+        mergedPatient.setMergedIntoPatientId(primaryId);
+        mergedPatient.setMergeDate(new Timestamp(System.currentTimeMillis()));
+        String mergedId = patientService.insert(mergedPatient);
+
+        // Search by merged patient's name - should return the merged patient (no
+        // redirect)
+        List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults("Merged", "Jane", null,
+                null, null, null, null, null, null, null);
+
+        // Should return merged patient since we searched by name, not identifier
+        Assert.assertEquals(1, searchResults.size());
+        Assert.assertEquals(mergedId, searchResults.get(0).getPatientID());
+        Assert.assertEquals("Jane", searchResults.get(0).getFirstName());
+    }
+
+    /**
+     * FR-015: When searching returns both merged and primary patients, should
+     * deduplicate to only return the primary patient once.
+     */
+    @Test
+    public void getSearchResults_shouldDeduplicateWhenBothMergedAndPrimaryReturned() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person" });
+
+        // Create primary patient with national ID that starts with "TEST"
+        Patient primaryPatient = createPatient("John", "Primary", "01/01/1990", "M");
+        primaryPatient.setNationalId("TEST-PRIMARY");
+        String primaryId = patientService.insert(primaryPatient);
+
+        // Create merged patient with national ID that also starts with "TEST"
+        Patient mergedPatient = createPatient("Jane", "Merged", "01/01/1990", "F");
+        mergedPatient.setNationalId("TEST-MERGED");
+        mergedPatient.setIsMerged(true);
+        mergedPatient.setMergedIntoPatientId(primaryId);
+        mergedPatient.setMergeDate(new Timestamp(System.currentTimeMillis()));
+        patientService.insert(mergedPatient);
+
+        // Search by partial national ID that matches both
+        List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(null, null, null, null,
+                "TEST", null, null, null, null, null);
+
+        // Should return only the primary patient (deduplicated)
+        Assert.assertEquals(1, searchResults.size());
+        Assert.assertEquals(primaryId, searchResults.get(0).getPatientID());
+    }
+
+    /**
+     * FR-015: Non-merged patients should be returned normally without any redirect.
+     */
+    @Test
+    public void getSearchResults_shouldReturnNonMergedPatientNormally() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person" });
+
+        // Create a normal (non-merged) patient
+        Patient normalPatient = createPatient("Normal", "Patient", "01/01/1990", "M");
+        normalPatient.setNationalId("NORMAL-001");
+        String normalId = patientService.insert(normalPatient);
+
+        // Search by national ID
+        List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResults(null, null, null, null,
+                "NORMAL-001", null, null, null, null, null);
+
+        // Should return the patient normally
+        Assert.assertEquals(1, searchResults.size());
+        Assert.assertEquals(normalId, searchResults.get(0).getPatientID());
+        Assert.assertEquals("Normal", searchResults.get(0).getFirstName());
+    }
+
+    /**
+     * FR-015: getSearchResultsExact should also redirect merged patients when
+     * searching by identifier.
+     */
+    @Test
+    public void getSearchResultsExact_shouldRedirectMergedPatientToPrimary_whenSearchingByNationalID()
+            throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "patient_identity", "patient", "person" });
+
+        // Create primary patient
+        Patient primaryPatient = createPatient("John", "Primary", "01/01/1990", "M");
+        primaryPatient.setNationalId("PRIMARY-EXACT");
+        String primaryId = patientService.insert(primaryPatient);
+
+        // Create merged patient
+        Patient mergedPatient = createPatient("Jane", "Merged", "01/01/1990", "F");
+        mergedPatient.setNationalId("MERGED-EXACT");
+        mergedPatient.setIsMerged(true);
+        mergedPatient.setMergedIntoPatientId(primaryId);
+        mergedPatient.setMergeDate(new Timestamp(System.currentTimeMillis()));
+        patientService.insert(mergedPatient);
+
+        // Search by merged patient's exact national ID
+        List<PatientSearchResults> searchResults = DBSearchResultsServiceImpl.getSearchResultsExact(null, null, null,
+                null, "MERGED-EXACT", null, null, null, null, null);
+
+        // Should return primary patient
+        Assert.assertEquals(1, searchResults.size());
+        Assert.assertEquals(primaryId, searchResults.get(0).getPatientID());
+    }
 }

@@ -161,7 +161,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
             this.handleApiLogin(request, response);
         } else if (samlLogin) {
             request.getSession().setAttribute("login_method", "samlLogin");
-            this.handleApiLogin(request, response);
+            getRedirectStrategy().sendRedirect(request, response, "/Home");
         } else if (oauthLogin) {
             request.getSession().setAttribute("login_method", "oauthLogin");
             this.handleApiLogin(request, response);

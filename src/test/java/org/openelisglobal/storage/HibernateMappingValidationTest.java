@@ -39,18 +39,19 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(StorageDevice.class);
         configuration.addAnnotatedClass(StorageShelf.class);
         configuration.addAnnotatedClass(StorageRack.class);
-        configuration.addAnnotatedClass(StoragePosition.class);
+        configuration.addAnnotatedClass(StorageBox.class);
         configuration.addAnnotatedClass(SampleStorageAssignment.class);
         configuration.addAnnotatedClass(SampleStorageMovement.class);
 
         // Add dependent entity mappings (Sample and SampleItem still use XML - legacy)
         // SampleItem depends on TypeOfSample and UnitOfMeasure
-        // TypeOfSample depends on Localization
+        // TypeOfSample depends on Localization (JPA entity)
+        configuration.addAnnotatedClass(org.openelisglobal.localization.valueholder.Localization.class);
+        configuration.addAnnotatedClass(org.openelisglobal.localization.valueholder.LocalizationValue.class);
         configuration.addResource("hibernate/hbm/Sample.hbm.xml");
         configuration.addResource("hibernate/hbm/SampleItem.hbm.xml");
         configuration.addResource("hibernate/hbm/TypeOfSample.hbm.xml");
         configuration.addResource("hibernate/hbm/UnitOfMeasure.hbm.xml");
-        configuration.addResource("hibernate/hbm/Localization.hbm.xml");
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
@@ -83,8 +84,7 @@ public class HibernateMappingValidationTest {
         assertNotNull("StorageDevice should be registered", sessionFactory.getMetamodel().entity(StorageDevice.class));
         assertNotNull("StorageShelf should be registered", sessionFactory.getMetamodel().entity(StorageShelf.class));
         assertNotNull("StorageRack should be registered", sessionFactory.getMetamodel().entity(StorageRack.class));
-        assertNotNull("StoragePosition should be registered",
-                sessionFactory.getMetamodel().entity(StoragePosition.class));
+        assertNotNull("StorageBox should be registered", sessionFactory.getMetamodel().entity(StorageBox.class));
         assertNotNull("SampleStorageAssignment should be registered",
                 sessionFactory.getMetamodel().entity(SampleStorageAssignment.class));
         assertNotNull("SampleStorageMovement should be registered",
@@ -98,7 +98,7 @@ public class HibernateMappingValidationTest {
     @Test
     public void testStorageEntitiesHaveNoGetterConflicts() {
         Class<?>[] entities = { StorageRoom.class, StorageDevice.class, StorageShelf.class, StorageRack.class,
-                StoragePosition.class, SampleStorageAssignment.class, SampleStorageMovement.class };
+                StorageBox.class, SampleStorageAssignment.class, SampleStorageMovement.class };
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);

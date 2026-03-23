@@ -70,7 +70,7 @@ export const CommonProperties = () => {
             { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
             {
               label: "common properties",
-              link: "/MasterListsPage#commonproperties",
+              link: "/MasterListsPage/commonproperties",
             },
           ]}
         />

@@ -40,4 +40,15 @@ public class ProgramSampleDAOImpl extends BaseDAOImpl<ProgramSample, Integer> im
     public String getTableName() {
         return "program_sample";
     }
+
+    @Override
+    public java.util.List<ProgramSample> getProgramSamplesByAccessionNumberOrProgramName(String filter) {
+        String sql = "select ps from ProgramSample ps " + "join ps.program p " + "join ps.sample s "
+                + "where lower(p.programName) like :filter " + "or lower(s.accessionNumber) like :filter "
+                + "order by ps.id";
+
+        Query<ProgramSample> query = entityManager.unwrap(Session.class).createQuery(sql, ProgramSample.class);
+        query.setParameter("filter", "%" + filter.toLowerCase() + "%");
+        return query.list();
+    }
 }

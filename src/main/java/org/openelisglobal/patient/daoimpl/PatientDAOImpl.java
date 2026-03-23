@@ -48,7 +48,8 @@ public class PatientDAOImpl extends BaseDAOImpl<Patient, String> implements Pati
     public Optional<Patient> get(String patientId) {
         Optional<Patient> patient = super.get(patientId);
         if (patient.isPresent()) {
-            updateDisplayValues(patient.get());
+            Patient p = patient.get();
+            updateDisplayValues(p);
         }
         return patient;
     }
@@ -189,7 +190,31 @@ public class PatientDAOImpl extends BaseDAOImpl<Patient, String> implements Pati
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Patient getPatientByStringProperty(" + propertyName + "\", ) ", e);
         }
-        return patients.isEmpty() ? null : patients.get(0);
+
+        if (patients.isEmpty()) {
+            return null;
+        }
+
+        Patient patient = patients.get(0);
+
+        // Redirect-on-lookup: If patient has been merged, return primary patient
+        // instead
+        if (Boolean.TRUE.equals(patient.getIsMerged()) && patient.getMergedIntoPatientId() != null) {
+            Patient primaryPatient = entityManager.unwrap(Session.class).get(Patient.class,
+                    patient.getMergedIntoPatientId());
+            if (primaryPatient != null) {
+                updateDisplayValues(primaryPatient);
+                return primaryPatient;
+            } else {
+                // Log warning if primary patient reference is broken
+                LogEvent.logWarn("PatientDAOImpl", "getPatientByStringProperty",
+                        "Merged patient with " + propertyName + "=" + propertyValue
+                                + " references non-existent primary patient " + patient.getMergedIntoPatientId());
+            }
+        }
+
+        updateDisplayValues(patient);
+        return patient;
     }
 
     @Override
@@ -237,7 +262,30 @@ public class PatientDAOImpl extends BaseDAOImpl<Patient, String> implements Pati
             throw new LIMSRuntimeException("Error in Patient getPatientByPerson()", e);
         }
 
-        return patients.size() > 0 ? patients.get(0) : null;
+        if (patients.isEmpty()) {
+            return null;
+        }
+
+        Patient patient = patients.get(0);
+
+        // Redirect-on-lookup: If patient has been merged, return primary patient
+        // instead
+        if (Boolean.TRUE.equals(patient.getIsMerged()) && patient.getMergedIntoPatientId() != null) {
+            Patient primaryPatient = entityManager.unwrap(Session.class).get(Patient.class,
+                    patient.getMergedIntoPatientId());
+            if (primaryPatient != null) {
+                updateDisplayValues(primaryPatient);
+                return primaryPatient;
+            } else {
+                // Log warning if primary patient reference is broken
+                LogEvent.logWarn("PatientDAOImpl", "getPatientByPerson",
+                        "Merged patient with person.id=" + person.getId() + " references non-existent primary patient "
+                                + patient.getMergedIntoPatientId());
+            }
+        }
+
+        updateDisplayValues(patient);
+        return patient;
     }
 
     @Override
@@ -301,7 +349,29 @@ public class PatientDAOImpl extends BaseDAOImpl<Patient, String> implements Pati
         try {
             Query<Patient> query = entityManager.unwrap(Session.class).createQuery(sql, Patient.class);
             query.setParameter("id", id);
-            return query.uniqueResult();
+            Patient patient = query.uniqueResult();
+
+            if (patient == null) {
+                return null;
+            }
+
+            // Redirect-on-lookup: If patient has been merged, return primary patient
+            // instead
+            if (Boolean.TRUE.equals(patient.getIsMerged()) && patient.getMergedIntoPatientId() != null) {
+                Patient primaryPatient = entityManager.unwrap(Session.class).get(Patient.class,
+                        patient.getMergedIntoPatientId());
+                if (primaryPatient != null) {
+                    updateDisplayValues(primaryPatient);
+                    return primaryPatient;
+                } else {
+                    // Log warning if primary patient reference is broken
+                    LogEvent.logWarn("PatientDAOImpl", "getByExternalId", "Merged patient with externalId=" + id
+                            + " references non-existent primary patient " + patient.getMergedIntoPatientId());
+                }
+            }
+
+            updateDisplayValues(patient);
+            return patient;
         } catch (HibernateException e) {
             handleException(e, "getByExternalId");
         }

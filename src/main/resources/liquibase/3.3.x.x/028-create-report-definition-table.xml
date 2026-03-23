@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Report Definition Table
+        =======================
+        Stores user-created ad-hoc report definitions for the generic reporting framework.
+        This allows users to create custom reports without requiring code changes.
+    -->
+
+    <changeSet id="reporting-001-create-report-definition-table" author="Agaba-derrick">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="report_definition" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create report_definition table for storing user-created report definitions</comment>
+
+        <createTable tableName="report_definition" schemaName="clinlims">
+            <!-- Primary Key -->
+            <column name="id" type="VARCHAR(50)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <!-- Report Metadata -->
+            <column name="name" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="category" type="VARCHAR(100)"/>
+
+            <!-- Report Definition (JSON stored as TEXT for better ORM compatibility) -->
+            <column name="definition_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+
+            <!-- Audit Fields (inherited from BaseObject: last_updated for @Version optimistic locking) -->
+            <column name="created_by" type="VARCHAR(50)"/>
+            <column name="created_date" type="TIMESTAMP"/>
+            <column name="last_updated" type="TIMESTAMP"/>
+
+            <!-- Status -->
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <!-- Create indexes for common queries -->
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_category">
+            <column name="category"/>
+        </createIndex>
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_created_by">
+            <column name="created_by"/>
+        </createIndex>
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_is_active">
+            <column name="is_active"/>
+        </createIndex>
+        <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_last_updated">
+            <column name="last_updated"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable tableName="report_definition" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

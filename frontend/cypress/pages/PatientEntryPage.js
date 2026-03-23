@@ -107,6 +107,8 @@ class PatientEntryPage {
 
   searchPatientByDateOfBirth(dateOfBirth) {
     cy.enterText(this.dateOfBirth, dateOfBirth);
+    // Close the datepicker by clicking outside (prevents it from covering other elements)
+    cy.get("body").click(0, 0);
   }
 
   clearPatientInfo() {
@@ -197,7 +199,8 @@ class PatientEntryPage {
       .find("tr")
       .first()
       .find("td:nth-child(1)")
-      .click();
+      .find("[data-cy='radioButton']")
+      .click({ force: true });
   }
 }
 

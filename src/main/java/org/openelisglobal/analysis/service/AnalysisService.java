@@ -217,4 +217,21 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<Integer> statusIds);
 
     String getMethodId(Analysis analysis);
+
+    /**
+     * Find an analysis by sample item ID and test ID.
+     *
+     * <p>
+     * Used for duplicate detection when adding tests to sample items. Returns the
+     * analysis if a matching test already exists for the sample item, or null if no
+     * such analysis exists.
+     *
+     * <p>
+     * Related: Feature 001-sample-management, User Story 2 (Add Tests)
+     *
+     * @param sampleItemId the sample item ID
+     * @param testId       the test ID
+     * @return the existing Analysis or null if not found
+     */
+    Analysis getAnalysisBySampleItemAndTest(String sampleItemId, String testId);
 }

@@ -26,7 +26,7 @@ let breadcrumbs = [
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
     label: "resultreporting.browse.title",
-    link: "/MasterListsPage#resultReportingConfiguration",
+    link: "/MasterListsPage/resultReportingConfiguration",
   },
 ];
 

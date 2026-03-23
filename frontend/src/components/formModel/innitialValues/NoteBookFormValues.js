@@ -2,7 +2,6 @@ export const NoteBookFormValues = {
   id: null,
   title: "",
   type: null,
-  project: "",
   objective: "",
   protocol: "",
   content: "",
@@ -28,6 +27,7 @@ export const NoteBookFormValues = {
       fileType: "",
     },
   ],
+  comments: [],
 };
 
 export const NoteBookInitialData = {
@@ -35,9 +35,8 @@ export const NoteBookInitialData = {
   title: "",
   type: null,
   dateCreated: "",
-  status: "NEW",
+  status: "DRAFT",
   tags: [],
-  project: "",
   objective: "",
   protocol: "",
   content: "",
@@ -48,7 +47,9 @@ export const NoteBookInitialData = {
   analyzers: [],
   pages: [],
   files: [],
+  comments: [],
   isTemplate: null,
+  questionnaireFhirUuid: null,
 };
 
 // export const NoteBookInitialData = {

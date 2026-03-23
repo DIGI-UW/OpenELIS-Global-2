@@ -45,6 +45,9 @@ public class AccessionNumberUtil {
     private static String blacklistCharacters = ".*['\"<>\\[\\](){};:/?!@#$%^&+=].*";
 
     public static boolean containsBlackListCharacters(String value) {
+        if (value == null) {
+            return false;
+        }
         return value.matches(blacklistCharacters);
     }
 

@@ -28,7 +28,9 @@ public class NotificationConfigOption extends BaseObject<Integer> {
     private static final long serialVersionUID = -6242849348547228319L;
 
     public enum NotificationNature {
-        RESULT_VALIDATION
+        RESULT_VALIDATION, FREEZER_TEMPERATURE_ALERT, // Task T039: Alert system integration
+        EQUIPMENT_ALERT, // Task T039: Alert system integration
+        INVENTORY_ALERT // Task T039: Alert system integration
     }
 
     public enum NotificationPersonType {

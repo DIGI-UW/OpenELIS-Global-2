@@ -16,6 +16,7 @@ const CreatePatientFormValues = {
   healthDistrict: "",
   healthRegion: "",
   otherNationality: "",
+  photo: "",
   patientContact: {
     person: {
       firstName: "",

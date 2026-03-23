@@ -14,11 +14,15 @@ public class StorageShelfForm {
     @Size(max = 100, message = "Shelf label must not exceed 100 characters")
     private String label;
 
+    @Size(max = 10, message = "Shelf code must not exceed 10 characters")
+    private String code; // Optional - will be auto-generated if not provided
+
     private Integer capacityLimit;
 
     private Boolean active = true;
 
-    @NotBlank(message = "Parent device ID is required")
+    // Note: parentDeviceId is required for creation but optional for updates
+    // (parent cannot be changed after creation, so backend ignores this on PUT)
     private String parentDeviceId;
 
     // Getters and Setters
@@ -53,6 +57,14 @@ public class StorageShelfForm {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public String getParentDeviceId() {

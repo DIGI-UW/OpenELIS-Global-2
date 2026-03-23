@@ -5,9 +5,12 @@ import java.util.List;
 public class SampleDisplayBean {
 
     private Integer id;
+    private String sampleItemId; // SampleItem ID (for storage location)
     private String sampleType;
     private String collectionDate;
     private String externalId;
+    private String accessionNumber; // Sample accession number
+    private String sampleStatus; // Sample status
     private Boolean voided;
     private String voidReason;
     private List<ResultDisplayBean> results;
@@ -66,6 +69,30 @@ public class SampleDisplayBean {
 
     public void setVoidReason(String voidReason) {
         this.voidReason = voidReason;
+    }
+
+    public String getSampleItemId() {
+        return sampleItemId;
+    }
+
+    public void setSampleItemId(String sampleItemId) {
+        this.sampleItemId = sampleItemId;
+    }
+
+    public String getAccessionNumber() {
+        return accessionNumber;
+    }
+
+    public void setAccessionNumber(String accessionNumber) {
+        this.accessionNumber = accessionNumber;
+    }
+
+    public String getSampleStatus() {
+        return sampleStatus;
+    }
+
+    public void setSampleStatus(String sampleStatus) {
+        this.sampleStatus = sampleStatus;
     }
 
     public static class ResultDisplayBean {

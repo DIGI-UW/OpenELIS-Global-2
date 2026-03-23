@@ -71,6 +71,7 @@ export default {
       resultLimitId: "",
       resultType: "",
       resultValue: "",
+      sampleItemId: "",
       sampleGroupingNumber: "",
       sampleSource: "",
       sampleType: "",

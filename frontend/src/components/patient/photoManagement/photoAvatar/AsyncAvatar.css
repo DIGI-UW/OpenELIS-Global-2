@@ -1,0 +1,53 @@
+/* Styles pour AsyncAvatar */
+
+.async-avatar-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.async-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Placeholder (quand pas de photo ou erreur) */
+.async-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e0e0e0;
+  border-radius: 50%;
+  color: #525252;
+  flex-shrink: 0;
+}
+
+/* Skeleton (pendant le chargement) */
+.async-avatar-skeleton {
+  display: inline-flex;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Animation subtile pour le skeleton */
+.async-avatar-skeleton .cds--skeleton {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}

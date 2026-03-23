@@ -7,9 +7,14 @@ import "./add-order.scss";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
+import EQASampleEntry from "../eqa/EQASampleEntry";
+import EQAOrderForm from "../eqa/EQAOrderForm";
 import { FormattedMessage, useIntl } from "react-intl";
 import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
 import config from "../../config.json";
@@ -46,10 +51,24 @@ const Index = () => {
     "sampleOrderItems.labNo": false,
   });
   const [page, setPage] = useState(firstPageNumber);
-  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
+  const isEQAFromUrl =
+    new URLSearchParams(window.location.search).get("isEQA") === "true";
+  const [orderFormValues, setOrderFormValues] = useState(() => {
+    if (isEQAFromUrl) {
+      return {
+        ...SampleOrderFormValues,
+        sampleOrderItems: {
+          ...SampleOrderFormValues.sampleOrderItems,
+          isEQASample: true,
+        },
+      };
+    }
+    return SampleOrderFormValues;
+  });
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveResponse, setSaveResponse] = useState(null);
   const [phoneValidation, setPhoneValidation] = useState({
     primaryPhone: { body: "", status: true },
     contactPhone: { body: "", status: true },
@@ -57,16 +76,11 @@ const Index = () => {
 
   let SampleTypes = [];
   let sampleTypeMap = {};
-  let initializePanelTests = false;
-  let allTestsMap = {};
-  let panelTestsMap = {};
-  let crossTestSampleTypeTestIdMap = {};
-  let sampleTypeTestIdMap = {};
+  let CrossPanels = [];
+  let CrossTests = [];
   let sampleTypeOrder;
   let crossSampleTypeMap = {};
   let crossSampleTypeOrderMap = {};
-  let CrossPanels = [];
-  let CrossTests = [];
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -78,13 +92,13 @@ const Index = () => {
       const externalId = urlParams.get("ID");
       checkOrderReferral(externalId);
     } else {
-      setOrderFormValues({
-        ...orderFormValues,
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...prev.sampleOrderItems,
           externalOrderNumber: "",
         },
-      });
+      }));
     }
   }, [configurationProperties.ACCEPT_EXTERNAL_ORDERS]);
 
@@ -100,7 +114,9 @@ const Index = () => {
 
   const getLabOrder = (orderNumber, success, failure) => {
     if (!failure) {
-      failure = () => {};
+      failure = () => {
+        // Default failure handler - no-op
+      };
     }
 
     fetch(
@@ -281,7 +297,9 @@ const Index = () => {
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + requestingOrg.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 
@@ -292,7 +310,9 @@ const Index = () => {
     };
     getFromOpenElisServer(
       "/rest/departments-for-site?refferingSiteId=" + location.id,
-      () => {},
+      () => {
+        // Departments loaded - handled elsewhere
+      },
     );
   };
 
@@ -492,6 +512,8 @@ const Index = () => {
         rejected: false,
         rejectionReason: "",
         collectionTime: "",
+        numOrderLabels: 1,
+        numSpecimenLabels: 1,
       },
       id: "" + id,
       name: name,
@@ -547,9 +569,11 @@ const Index = () => {
     });
   };
 
-  const handlePost = (status) => {
+  const handlePost = (response) => {
     setIsSubmitting(false);
-    if (status === 200) {
+    const responseStatus = response?.statusCode ?? response?.status ?? 200;
+    if (response && !response.error && responseStatus < 400) {
+      setSaveResponse(response);
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
@@ -592,6 +616,10 @@ const Index = () => {
     if ("questionnaire" in orderFormValues.sampleOrderItems) {
       delete orderFormValues.sampleOrderItems.questionnaire;
     }
+    // readOnly is frontend-only, do not send to backend
+    if ("readOnly" in orderFormValues.patientProperties) {
+      delete orderFormValues.patientProperties.readOnly;
+    }
     //remove display Lists rom the form
     orderFormValues.sampleOrderItems.priorityList = [];
     orderFormValues.sampleOrderItems.programList = [];
@@ -601,8 +629,7 @@ const Index = () => {
     orderFormValues.sampleOrderItems.providersList = [];
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    console.log(JSON.stringify(orderFormValues));
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/SamplePatientEntry",
       JSON.stringify(orderFormValues),
       handlePost,
@@ -666,7 +693,21 @@ const Index = () => {
                 })
                 .join(",");
             }
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''/>`;
+            // Extract storage location data if present
+            const storageLocation = sampleItem.sampleXML?.storageLocation;
+            const storageLocationId = storageLocation?.id || "";
+            const storageLocationType = storageLocation?.type || "";
+            const storagePositionCoordinate =
+              storageLocation?.positionCoordinate || "";
+
+            // Extract GPS coordinates data if present
+            const gpsLatitude = sampleItem.sampleXML?.gpsLatitude || "";
+            const gpsLongitude = sampleItem.sampleXML?.gpsLongitude || "";
+            const gpsAccuracy = sampleItem.sampleXML?.gpsAccuracy || "";
+            const gpsCaptureMethod =
+              sampleItem.sampleXML?.gpsCaptureMethod || "";
+
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' numOrderLabels='${sampleItem.sampleXML?.numOrderLabels || 1}' numSpecimenLabels='${sampleItem.sampleXML?.numSpecimenLabels || 1}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)
@@ -763,19 +804,34 @@ const Index = () => {
             )}
 
             {page === patientInfoPageNumber && (
-              <PatientInfo
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-                error={elementError}
-                setPhoneValidation={setPhoneValidation}
-              />
+              <>
+                {(configurationProperties.EQA_ENABLED === "true" ||
+                  orderFormValues?.sampleOrderItems?.isEQASample) && (
+                  <EQASampleEntry
+                    orderFormValues={orderFormValues}
+                    setOrderFormValues={setOrderFormValues}
+                  />
+                )}
+                <PatientInfo
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                  error={elementError}
+                  setPhoneValidation={setPhoneValidation}
+                />
+              </>
             )}
-            {page === programPageNumber && (
-              <OrderEntryAdditionalQuestions
-                orderFormValues={orderFormValues}
-                setOrderFormValues={setOrderFormValues}
-              />
-            )}
+            {page === programPageNumber &&
+              (orderFormValues?.sampleOrderItems?.isEQASample ? (
+                <EQAOrderForm
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                />
+              ) : (
+                <OrderEntryAdditionalQuestions
+                  orderFormValues={orderFormValues}
+                  setOrderFormValues={setOrderFormValues}
+                />
+              ))}
             {page === samplePageNumber && (
               <AddSample
                 error={elementError}
@@ -801,6 +857,7 @@ const Index = () => {
                 setOrderFormValues={setOrderFormValues}
                 setSamples={setSamples}
                 setPage={setPage}
+                saveResponse={saveResponse}
               />
             )}
             <div className="navigationButtonsLayout">

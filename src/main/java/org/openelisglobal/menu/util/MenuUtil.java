@@ -13,10 +13,16 @@
  */
 package org.openelisglobal.menu.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginMenuService;
@@ -24,6 +30,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.menu.service.MenuService;
 import org.openelisglobal.menu.valueholder.Menu;
 import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.core.env.Environment;
 
 public class MenuUtil {
 
@@ -31,6 +38,9 @@ public class MenuUtil {
     private static final List<Menu> insertedMenus = new ArrayList<>();
     private static final PluginMenuService pluginMenuService = PluginMenuService.getInstance();
     private static final MenuService menuService = SpringContext.getBean(MenuService.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final String MENU_CONFIG_PATH = "/var/lib/openelis-global/menu/menu_config.json";
+    private static final String MENU_CONFIG_AUTOCREATE_PROPERTY = "org.openelisglobal.menu.configuration.autocreate";
 
     /**
      * The intent of this method is to allow menu items to be added outside of the
@@ -60,6 +70,11 @@ public class MenuUtil {
     public static List<MenuItem> getMenuTree() {
         if (root == null) {
             createTree();
+        }
+
+        // Apply menu filtering if enabled
+        if (isMenuFilteringEnabled()) {
+            return filterMenuTree(root);
         }
 
         return root;
@@ -220,5 +235,194 @@ public class MenuUtil {
         for (MenuItem child : menuItem.getChildMenus()) {
             sortChildren(child);
         }
+    }
+
+    /**
+     * Checks if menu filtering is enabled via configuration property. Uses Spring's
+     * Environment to read the property, similar to @Value annotation.
+     *
+     * @return true if menu filtering should be applied
+     */
+    private static boolean isMenuFilteringEnabled() {
+        try {
+            // Use Spring's Environment to read the property (same way @Value works)
+            Environment environment = SpringContext.getBean(Environment.class);
+            String autocreateValue = environment.getProperty(MENU_CONFIG_AUTOCREATE_PROPERTY);
+            return "true".equalsIgnoreCase(autocreateValue);
+        } catch (Exception e) {
+            // Fallback to ConfigurationProperties if Environment is not available
+            LogEvent.logDebug("MenuUtil", "isMenuFilteringEnabled",
+                    "Could not read property via Environment " + e.getMessage());
+
+            return false;
+        }
+    }
+
+    /**
+     * Filters the menu tree based on the menu configuration file. Supports both
+     * "includes" (whitelist) and "excludes" (blacklist) modes.
+     *
+     * @param menuTree The original menu tree
+     * @return The filtered menu tree
+     */
+    private static List<MenuItem> filterMenuTree(List<MenuItem> menuTree) {
+        try {
+            File configFile = new File(MENU_CONFIG_PATH);
+            if (!configFile.exists() || !configFile.isFile()) {
+                LogEvent.logWarn("MenuUtil", "filterMenuTree",
+                        "Menu config file not found at: " + MENU_CONFIG_PATH + ". Skipping menu filtering.");
+                return menuTree;
+            }
+
+            JsonNode configNode = objectMapper.readTree(configFile);
+            Set<String> elementIds = new HashSet<>();
+            Set<String> wildcardParentIds = new HashSet<>();
+
+            // Check for includes or excludes
+            if (configNode.has("includes") && configNode.get("includes").isArray()) {
+                extractElementIds(configNode.get("includes"), elementIds, wildcardParentIds);
+                return filterByIncludes(menuTree, elementIds, wildcardParentIds);
+            } else if (configNode.has("excludes") && configNode.get("excludes").isArray()) {
+                extractElementIds(configNode.get("excludes"), elementIds, wildcardParentIds);
+                return filterByExcludes(menuTree, elementIds, wildcardParentIds);
+            } else {
+                LogEvent.logWarn("MenuUtil", "filterMenuTree",
+                        "Menu config file does not contain 'includes' or 'excludes' array. Skipping menu filtering.");
+                return menuTree;
+            }
+        } catch (IOException e) {
+            LogEvent.logError("Error reading menu config file: " + MENU_CONFIG_PATH, e);
+            return menuTree;
+        }
+    }
+
+    /**
+     * Recursively extracts element IDs from the JSON config structure. Supports
+     * wildcard: if "childMenus": ["*"], the parent's elementId is added to
+     * wildcardParentIds so all its actual children are included/excluded.
+     *
+     * @param nodes             The JSON array of menu items
+     * @param elementIds        The set to populate with element IDs
+     * @param wildcardParentIds The set to populate with element IDs that have
+     *                          wildcard children
+     */
+    private static void extractElementIds(JsonNode nodes, Set<String> elementIds, Set<String> wildcardParentIds) {
+        if (nodes == null || !nodes.isArray()) {
+            return;
+        }
+
+        for (JsonNode node : nodes) {
+            if (node.has("elementId") && node.get("elementId").isTextual()) {
+                String elementId = node.get("elementId").asText();
+                if (!GenericValidator.isBlankOrNull(elementId)) {
+                    elementIds.add(elementId);
+                }
+
+                // Check for wildcard children
+                if (node.has("childMenus") && node.get("childMenus").isArray()) {
+                    JsonNode childMenus = node.get("childMenus");
+                    if (isWildcard(childMenus)) {
+                        wildcardParentIds.add(elementId);
+                    } else {
+                        extractElementIds(childMenus, elementIds, wildcardParentIds);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if a childMenus JSON array is a wildcard (contains just the string
+     * "*").
+     */
+    private static boolean isWildcard(JsonNode childMenusArray) {
+        if (childMenusArray.size() == 1 && childMenusArray.get(0).isTextual()) {
+            return "*".equals(childMenusArray.get(0).asText());
+        }
+        return false;
+    }
+
+    /**
+     * Filters menu tree to include only specified menu items and their children. If
+     * a parent's elementId is in wildcardParentIds, all its children are included.
+     *
+     * @param menuTree          The original menu tree
+     * @param includes          The set of element IDs to include
+     * @param wildcardParentIds The set of element IDs whose children are all
+     *                          included
+     * @return The filtered menu tree containing only included items
+     */
+    private static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
+            Set<String> wildcardParentIds) {
+        return filterByIncludes(menuTree, includes, wildcardParentIds, false);
+    }
+
+    private static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
+            Set<String> wildcardParentIds, boolean includeAll) {
+        List<MenuItem> filtered = new ArrayList<>();
+
+        for (MenuItem menuItem : menuTree) {
+            String elementId = menuItem.getMenu().getElementId();
+            if (includeAll || includes.contains(elementId)) {
+                // Include this item
+                MenuItem filteredItem = new MenuItem();
+                filteredItem.setMenu(menuItem.getMenu());
+                // If this element has wildcard children, include all children
+                boolean childrenIncludeAll = wildcardParentIds.contains(elementId);
+                filteredItem.setChildMenus(
+                        filterByIncludes(menuItem.getChildMenus(), includes, wildcardParentIds, childrenIncludeAll));
+                filtered.add(filteredItem);
+            } else {
+                // Check if any child is included - if so, include this parent but filter
+                // children
+                List<MenuItem> filteredChildren = filterByIncludes(menuItem.getChildMenus(), includes,
+                        wildcardParentIds, false);
+                if (!filteredChildren.isEmpty()) {
+                    MenuItem filteredItem = new MenuItem();
+                    filteredItem.setMenu(menuItem.getMenu());
+                    filteredItem.setChildMenus(filteredChildren);
+                    filtered.add(filteredItem);
+                }
+            }
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Filters menu tree to exclude specified menu items and their children. If a
+     * parent's elementId is in wildcardParentIds, all its children are excluded.
+     *
+     * @param menuTree          The original menu tree
+     * @param excludes          The set of element IDs to exclude
+     * @param wildcardParentIds The set of element IDs whose children are all
+     *                          excluded
+     * @return The filtered menu tree with excluded items removed
+     */
+    private static List<MenuItem> filterByExcludes(List<MenuItem> menuTree, Set<String> excludes,
+            Set<String> wildcardParentIds) {
+        return filterByExcludes(menuTree, excludes, wildcardParentIds, false);
+    }
+
+    private static List<MenuItem> filterByExcludes(List<MenuItem> menuTree, Set<String> excludes,
+            Set<String> wildcardParentIds, boolean excludeAll) {
+        List<MenuItem> filtered = new ArrayList<>();
+
+        for (MenuItem menuItem : menuTree) {
+            String elementId = menuItem.getMenu().getElementId();
+            if (excludeAll || excludes.contains(elementId)) {
+                // Excluded - skip this item and all its children
+                continue;
+            }
+            // Not excluded - include this item and recursively filter its children
+            MenuItem filteredItem = new MenuItem();
+            filteredItem.setMenu(menuItem.getMenu());
+            boolean childrenExcludeAll = wildcardParentIds.contains(elementId);
+            filteredItem.setChildMenus(
+                    filterByExcludes(menuItem.getChildMenus(), excludes, wildcardParentIds, childrenExcludeAll));
+            filtered.add(filteredItem);
+        }
+
+        return filtered;
     }
 }

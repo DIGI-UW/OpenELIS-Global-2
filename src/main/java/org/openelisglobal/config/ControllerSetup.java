@@ -77,6 +77,10 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
             HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
+        // Log validation errors for debugging
+        LogEvent.logWarn(this.getClass().getName(), "handleMethodArgumentNotValid",
+                "Validation failed for " + ex.getObjectName() + ": " + ex.getMessage());
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", new Date());
         body.put("status", status.value());

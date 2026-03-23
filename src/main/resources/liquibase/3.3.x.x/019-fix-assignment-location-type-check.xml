@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Fix for environments created before 'box' was added to location_type constraint.
+         The original changeset was edited after being applied in some DBs, so Liquibase
+         will not re-run it. This changeset safely updates the constraint to include 'box'. -->
+    <changeSet id="storage-019-fix-assignment-location-type-check" author="openelisglobal-ai-agent">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_storage_assignment"/>
+            <!-- Only run if chk_location_type_valid exists AND does not already include 'box' -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM pg_constraint
+                WHERE conname = 'chk_location_type_valid'
+                  AND conrelid = 'clinlims.sample_storage_assignment'::regclass
+                  AND pg_get_constraintdef(oid) ILIKE '%box%';
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Allow 'box' in sample_storage_assignment.location_type check constraint</comment>
+
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.sample_storage_assignment
+            ADD CONSTRAINT chk_location_type_valid
+            CHECK (
+                location_type IS NULL OR
+                location_type IN ('device', 'shelf', 'rack', 'box')
+            );
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                DROP CONSTRAINT IF EXISTS chk_location_type_valid;
+            </sql>
+            <sql>
+                ALTER TABLE clinlims.sample_storage_assignment
+                ADD CONSTRAINT chk_location_type_valid
+                CHECK (
+                    location_type IS NULL OR
+                    location_type IN ('device', 'shelf', 'rack')
+                );
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

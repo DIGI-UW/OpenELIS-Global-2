@@ -1,6 +1,134 @@
-# OpenELIS Global 3.0 Constitution
+# OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - E2E Testing: Pre-Push Validation + Playwright Support (V.5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.1 → 1.9.0
+Change Type: MINOR - Add Playwright support + clarify pre-push validation workflow
+Date: 2026-01-27
+
+Modified Sections:
+  - Principle V > Section V.5: E2E Testing Best Practices
+    * CHANGED: Title from "Cypress E2E Testing Best Practices" to "E2E Testing Best Practices"
+    * ADDED: Playwright as recommended framework for new tests
+    * ADDED: Framework selection guidance referencing Testing Roadmap
+    * CLARIFIED: "Run tests individually during development" does NOT mean
+      "skip full suite validation before pushing"
+    * NEW: Three-phase workflow: Development → Pre-Push → CI
+    * NEW: Pre-push full suite validation is MANDATORY (not optional)
+    * NEW: Scripts and npm commands for fail-fast execution
+    * NEW: Explicit anti-patterns section
+    * NEW: Env-controlled fail-fast (E2E_FAIL_FAST env var)
+    * REMOVED: Arbitrary time limits ("<30 seconds per test", "<5 minutes for full suite")
+    * REPLACED: With experience-focused criteria ("complete without user-perceived delay", "reasonable time for CI/CD")
+    * UPDATED: Command examples to include both Playwright and Cypress
+
+Rationale for Changes:
+  1. Testing Roadmap already recommends Playwright for new tests but Constitution
+     V.5 mandated Cypress exclusively, creating a compliance conflict. Feature
+     009-carbon-sidenav implemented Playwright tests successfully.
+
+  2. V.5 wording "run tests individually during development, full suite only for
+     CI/CD" was misinterpreted as "only run individual tests, let CI catch
+     everything else." This caused CI failures that could have been caught locally.
+
+  This amendment enables:
+  - Modern async/await test patterns (Playwright)
+  - Better debugging tools (trace viewer, auto-waiting)
+  - Parallel test execution (Playwright native support)
+  - Preservation of existing Cypress investment
+  - Clear three-phase workflow (Development → Pre-Push → CI)
+  - Faster feedback through fail-fast execution
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/spec-template.md - Update E2E test requirements to reference framework choice
+  ⚠️ .specify/templates/plan-template.md - Update Constitution Check to reflect Playwright allowance
+
+Follow-up TODOs:
+  - Update spec templates to allow Playwright or Cypress choice
+  - Ensure new features document framework selection rationale
+
+SYNC IMPACT REPORT - Cohesion & Branch Naming Clarifications
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.8.0 → 1.8.1
+Change Type: PATCH - Clarify branch naming, fix stack references, sync templates
+Date: 2025-12-12
+
+Modified Sections:
+  - Principle IX: Branch naming convention revised to avoid Git ref prefix collisions
+  - Technical Stack Constraints: Clarified Spring Framework usage (Traditional Spring MVC)
+  - Development Workflow > Branch Strategy: Updated to match Principle IX naming
+  - Development Workflow > Code Review Standards: Updated "8 principles" → "9 principles"
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Update branch naming + remove Spring Boot test annotations
+  ✅ .specify/templates/spec-template.md - Updated "OpenELIS Global" phrasing
+  ⚠️ AGENTS.md - Update branch strategy examples to avoid prefix-collision patterns
+
+Follow-up TODOs:
+  - Ensure any internal docs referencing nested milestone branch paths are updated to the new convention.
+
+SYNC IMPACT REPORT - Spec-Driven Iteration (Principle IX)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.7.0 → 1.8.0
+Change Type: MINOR - New principle added for milestone-based PR workflow
+Date: 2025-12-04
+
+Added Sections:
+  - Principle IX: Spec-Driven Iteration
+    * NEW: Mandate to break features >3 days into Validation Milestones
+    * NEW: Each Milestone = 1 Pull Request
+    * NEW: Parallel [P] and Sequential milestone types
+    * NEW: Branch naming convention (spec/, feat/, milestone/, hotfix/, fix/)
+    * NEW: Jira integration via OGC-{###} issue ID format
+    * NEW: Milestone Plan table structure for plan.md
+
+Modified Sections:
+  - Development Workflow > Branch Strategy
+    * CHANGED: Updated to reference Principle IX for complete naming conventions
+    * ADDED: Spec branches, Feature branches, Milestone branches
+    * ADDED: Issue ID format guidance (Jira OGC-{###} or GitHub {###})
+
+  - Development Workflow > Pull Request Requirements
+    * CHANGED: Branch naming checklist updated for new conventions
+    * ADDED: Examples for spec PRs, milestone PRs, bugfix PRs
+
+Rationale for Changes:
+  Large features implemented as single PRs create review bottlenecks, increase
+  merge conflict risk, and delay feedback. The SDD (Spec-Driven Development)
+  approach from GitHub SpecKit enables:
+  - Manageable code reviews (smaller PRs)
+  - Earlier validation of architectural decisions
+  - Parallel development when milestones are independent
+  - Clear progress tracking via milestone checkpoints
+  - Reduced risk of "big bang" integration failures
+
+  This aligns with industry best practices for stacked PRs and trunk-based
+  development while maintaining the rigor of spec-driven workflows.
+
+Templates Requiring Updates:
+  ⚠️ .specify/templates/plan-template.md - Add Milestone Plan section
+  ⚠️ .specify/templates/tasks-template.md - Restructure to milestone-based phases
+  ⚠️ .specify/core/commands/speckit.tasks.md - SOURCE: generates per-milestone task groups (via OE extension); compiled to .cursor/commands/ and .claude/commands/
+  ⚠️ .specify/core/commands/speckit.implement.md - SOURCE: enforces milestone scope (via OE extension); compiled to .cursor/commands/ and .claude/commands/
+
+Follow-up TODOs:
+  - Update plan-template.md with Milestone Plan section
+  - Update tasks-template.md with milestone-based phase structure
+  - Update speckit.tasks.md to read milestones from plan.md
+  - Update speckit.implement.md to create milestone branches automatically
+  - Test workflow on 009-carbon-sidenav feature
+
+Commit Message:
+  docs: amend constitution to v1.8.0 (Spec-Driven Iteration - Principle IX)
+
+  - Add Principle IX: Spec-Driven Iteration for milestone-based PR workflow
+  - Define branch naming: spec/, feat/, feat/.../m{N}-, hotfix/, fix/
+  - Support parallel [P] and sequential milestones
+  - Enable Jira integration via OGC-{###} issue IDs
+  - Update Branch Strategy and PR Requirements sections
+  - Based on GitHub SpecKit SDD approach
+
 SYNC IMPACT REPORT - Enhanced Cypress E2E Testing Workflow and Review Requirements
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.6.0 → 1.7.0
@@ -472,8 +600,18 @@ direct database access from controllers, NO business logic in DAOs.
    - Include `fhir_uuid UUID` for FHIR-mapped entities
    - **MANDATORY**: Use JPA/Hibernate annotations on entity classes (`@Entity`,
      `@Table`, `@Id`, `@Column`, `@ManyToOne`, etc.)
-   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) - legacy XML mappings
-     exempt until refactored
+   - **PROHIBITED**: NO XML mapping files (`.hbm.xml`) for new domain models.
+
+     **Legacy extension exception (global)**: Legacy XML-mapped entities may be
+     extended or integrated with when required for backward compatibility. This
+     exception is intended to support incremental modernization in a large,
+     mission-critical codebase.
+
+     - New entities SHOULD be annotation-based.
+     - If a change requires introducing or extending XML mappings, the PR MUST
+       document why, list the impacted entities, and include an explicit
+       migration plan to annotation-based mappings.
+
    - Validation annotations on fields (`@NotNull`, `@Size`, etc.)
    - ID generation via `@GenericGenerator` with sequence name
    - `@PrePersist` hook for fhir_uuid generation
@@ -542,20 +680,17 @@ mixes with HTTP handling and business rules.
 
 ### V. Test-Driven Development
 
-**MANDATE**: New features MUST include automated tests. TDD workflow ENCOURAGED
-for complex logic.
+**MANDATE**: New features MUST include automated tests. All testing practices
+MUST adhere to the standards and procedures outlined in the authoritative
+**OpenELIS Testing Roadmap** (`.specify/guides/testing-roadmap.md`).
 
-**Requirements**:
+**Core Requirements**:
 
-- **Backend**: JUnit 4 (4.13.1) + Mockito 2.21.0 for unit tests, integration
-  tests for API endpoints
-  - ⚠️ Use `org.junit.Test` NOT `org.junit.jupiter.api.Test` (JUnit 5)
-  - Use `org.junit.Assert.*` NOT `org.junit.jupiter.api.Assertions.*`
-  - Assertion order: `assertEquals(expected, actual)` for JUnit 4
-- **Frontend**: Jest + React Testing Library for unit tests, Cypress 12.17.3 for
-  E2E tests
-- **FHIR**: Validate generated FHIR resources against R4 profiles
-- **Coverage Goal**: >70% for new code (measured via JaCoCo)
+- **TDD Workflow**: Red-Green-Refactor cycle is mandatory for complex logic
+- **Test Coverage Goals**: >80% backend (JaCoCo), >70% frontend (Jest)
+- **Checkpoint Validations**: Tests must pass at each SDD phase checkpoint (per
+  Spec-Driven Development workflow)
+- **Test Data Management**: Use builders/factories, NOT hardcoded values
 
 **Test Organization**:
 
@@ -574,8 +709,10 @@ for complex logic.
 testing catches regressions, enforces contract compliance, and enables confident
 refactoring.
 
-**Reference**:
-[README.md Testing Section](https://github.com/DIGI-UW/OpenELIS-Global-2#to-ensure-your-code-passes-the-same-checks-as-the-ci-pipeline)
+**Reference**: For detailed testing patterns, strategies, and best practices,
+see [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md). This roadmap
+provides comprehensive guidance for both AI agents and human developers on test
+creation, execution, and maintenance.
 
 #### Section V.4: ORM Validation Tests (ADDED 2025-10-31)
 
@@ -640,25 +777,83 @@ test would have caught both immediately.
 **Exception**: Projects without ORM frameworks (pure JDBC, NoSQL, etc.) may skip
 this requirement.
 
-#### Section V.5: Cypress E2E Testing Best Practices (ADDED 2025-11-05, ENHANCED 2025-11-07)
+#### Section V.5: E2E Testing Best Practices (ADDED 2025-11-05, ENHANCED 2025-11-07, AMENDED 2026-01-27)
 
-**MANDATE**: Cypress E2E tests MUST follow efficiency and maintainability
-principles to ensure fast execution, clear debugging, and accurate user story
-coverage without becoming slow or cumbersome.
+**MANDATE**: E2E tests MUST follow efficiency and maintainability principles to
+ensure fast execution, clear debugging, and accurate user story coverage without
+becoming slow or cumbersome.
 
 **Purpose**: E2E tests validate complete user workflows end-to-end, but they
 must remain fast, debuggable, and focused on user stories/use cases rather than
 implementation details.
 
+**Framework Selection**:
+
+- **Playwright** (RECOMMENDED for new tests): Modern async/await patterns,
+  auto-waiting, better debugging, parallel execution
+- **Cypress** (EXISTING tests only): Do not create new Cypress tests. Existing
+  test suite continues to use Cypress and will be migrated over time
+- **Selection Guidance**: Consult Testing Roadmap
+  (`.specify/guides/testing-roadmap.md`) Section "When to Use Playwright vs
+  Cypress" for framework selection criteria
+
 **Test Execution Workflow**:
 
-- **Individual Execution**: E2E tests MUST be executed individually in small,
-  manageable chunks during development. Full test suite runs are for CI/CD only.
-  - Run individual test files during development
-  - Maximum 5-10 test cases per execution during development
-  - Full suite runs only in CI/CD pipeline or pre-merge validation
-  - **Rationale**: Running tests individually provides faster feedback, easier
-    debugging, and prevents cascading failures from masking root causes.
+1. **During Development (Fast Iteration):**
+
+   - Run tests individually or in small chunks (5-10 tests)
+   - Playwright: `npm run pw:test -- {spec}.spec.ts`
+   - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
+   - Purpose: Fast feedback loop while coding
+   - **Rationale**: Running tests individually provides faster feedback, easier
+     debugging, and prevents cascading failures from masking root causes.
+
+2. **Before Pushing (Pre-Push Validation) - MANDATORY:**
+
+   - MUST validate full suite locally with fail-fast enabled
+   - Cypress: `npm run cy:failfast`
+   - Playwright: `npm run pw:test`
+   - Purpose: Catch integration issues BEFORE pushing to CI
+   - **Rationale**: CI is expensive (60+ minutes per failure). Validating
+     locally before pushing saves time, money, and catches issues faster.
+
+3. **In CI/CD (Final Validation):**
+   - Full suite runs automatically via GitHub Actions
+   - Fail-fast enabled (`E2E_FAIL_FAST=true`) stops on first failure
+   - Purpose: Final gate before merge, not first discovery of issues
+
+**CRITICAL - What This Workflow Does NOT Mean:**
+
+- ❌ "Only run individual tests, let CI catch everything else"
+- ❌ "Skip full suite validation before pushing"
+- ❌ "CI is the only place to run full tests"
+
+**What This Workflow DOES Mean:**
+
+- ✅ Fast iteration during active development (individual tests)
+- ✅ Full validation before pushing (fail-fast full suite)
+- ✅ CI as final confirmation, not first discovery of issues
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time and delays feedback when issues are found.
+
+**Command Examples**:
+
+```bash
+# 1. Development (fast iteration)
+# Playwright (recommended for new tests)
+npm run pw:test -- sidenav.spec.ts     # Individual file
+
+# Cypress (existing tests)
+npm run cy:spec "cypress/e2e/storageAssignment.cy.js"  # Individual file
+
+# 2. Pre-push validation (MANDATORY before pushing)
+npm run cy:failfast                     # Cypress full suite with fail-fast
+npm run pw:test                         # Playwright full suite
+
+# 3. Test specific feature area
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
+```
 
 **Configuration Requirements**:
 
@@ -671,8 +866,7 @@ implementation details.
   - Review screenshots after test failures (see Post-Run Review Requirements)
 - **Browser Console Logging**: MUST be enabled for all test executions and
   reviewed after each run
-  - Browser console logging enabled by default (Cypress captures automatically)
-  - Review browser console logs in Cypress UI after each test run
+  - Review browser console logs after each test run
   - Check for JavaScript errors, API failures, and unexpected warnings
   - **Rationale**: Console logs reveal underlying issues (network failures,
     JavaScript errors) that may not be visible in test output alone.
@@ -680,20 +874,21 @@ implementation details.
 **Test Organization Requirements**:
 
 - **User Story Focus**: E2E tests MUST map directly to user stories/use cases
-  - One test file per user story (e.g., `storageAssignment.cy.js` for P1)
+  - One test file per user story (e.g., `storageAssignment.cy.js` or
+    `storage.spec.ts`)
   - Test cases validate acceptance criteria, not implementation details
   - Avoid testing what unit tests already cover (e.g., form validation logic)
-- **Test File Structure**: MUST follow naming convention
-  - File: `{feature}.cy.js` (e.g., `storageMovement.cy.js`)
-  - Test cases: `it('should {user action} {expected outcome}', ...)`
-  - Group related tests: `describe('User Story P1: Basic Assignment', ...)`
+- **Test File Structure**: MUST follow framework naming convention
+  - Playwright: `{feature}.spec.ts`
+  - Cypress: `{feature}.cy.js`
+  - Test cases: `test('should {user action} {expected outcome}')` or
+    `it('should {user action} {expected outcome}')`
+  - Group related tests: `test.describe()` or `describe()`
 - **Avoid Test Bloat**: MUST prevent tests from becoming slow/cumbersome
-  - Maximum 20-30 test cases per feature (if more, split into multiple files)
   - Focus on critical paths, not edge cases (edge cases belong in unit tests)
   - Avoid redundant tests (if assignment works via dropdown, don't need separate
     tests for every dropdown interaction)
-  - Use parameterized tests for similar scenarios (e.g.,
-    `[freezer, refrigerator].forEach(...)`)
+  - Use parameterized tests for similar scenarios
 
 **Post-Run Review Requirements**:
 
@@ -701,47 +896,42 @@ implementation details.
   developers MUST review console logs and screenshots before marking tests as
   passing or filing bug reports.
 - **Review Checklist**:
-  1. **Console Logs**: Review browser console in Cypress UI for errors, failed
-     API requests, warnings
+  1. **Console Logs**: Review browser console for errors, failed API requests,
+     warnings
   2. **Screenshots**: Review failure screenshots for UI state at failure point
-  3. **Test Output**: Review Cypress command log for execution order and
-     timeouts
+  3. **Test Output**: Review test execution log for failures and timeouts
 - **Documentation**: Document findings in test file comments or PR description
   if issues are discovered.
 
 **Debugging and Maintenance**:
 
-- **Test Isolation**: Use `testIsolation: false` only when necessary (shared
-  state across tests)
-  - Prefer isolated tests that can run independently
-  - If shared state needed, document rationale in test file header
-- **Performance Monitoring**: Track test execution time
-  - Target: Individual test <30 seconds, full suite <5 minutes
-  - If tests exceed targets, refactor to reduce setup/teardown overhead
+- **Test Isolation**: Prefer isolated tests that can run independently
+  - Use setup projects (Playwright) or cy.session() (Cypress) for shared
+    authentication state
+  - If shared state needed beyond authentication, document rationale in test
+    file header
+- **Performance Monitoring**: Track test execution time and optimize as needed
+  - Individual tests should complete without user-perceived delay
+  - Full suite should complete in reasonable time for CI/CD context
+  - If tests become slow, refactor to reduce setup/teardown overhead
 
-**Note**: Technical implementation details (code examples, configuration syntax)
-belong in plan.md and research.md, not in the constitution. This section focuses
-on functional requirements and principles.
+**Rationale**: E2E tests provide critical validation of user workflows but must
+remain maintainable. The Testing Roadmap recommends Playwright for new tests due
+to better developer experience and performance. Existing Cypress tests continue
+to provide value and migration is optional.
 
-**Rationale**: During implementation of feature 001-sample-storage, Cypress E2E
-tests grew to 65+ test cases with video recording enabled, causing slow
-execution (>15 minutes) and disk space issues. By disabling video recording,
-using screenshots for debugging, and optimizing test structure, execution time
-reduced to <5 minutes. Console logging and screenshot review provide sufficient
-debugging information without performance overhead.
-
-**Anti-Patterns to Avoid** (validated against Cypress official documentation):
+**Anti-Patterns to Avoid**:
 
 - ❌ **Video recording enabled by default** - Slows execution, consumes disk
   space
-- ❌ **Arbitrary time delays** - Use Cypress's built-in waiting mechanisms
+- ❌ **Arbitrary time delays** - Use framework's auto-waiting/retry mechanisms
   instead of fixed timeouts
 - ❌ **Missing element readiness checks** - Wait for elements to be
   visible/ready before interaction
 - ❌ **Testing implementation details** - E2E tests should validate user
   workflows, not internal component logic
-- ❌ **Not leveraging Cypress retry-ability** - Use assertions that
-  automatically retry instead of immediate checks
+- ❌ **Not leveraging auto-retry** - Use assertions that automatically retry
+  instead of immediate checks
 - ❌ **Setting up intercepts after actions** - Intercepts must be set up before
   actions that trigger them
 - ❌ **Redundant test cases** - Don't test the same workflow multiple times with
@@ -749,6 +939,36 @@ debugging information without performance overhead.
 - ❌ **Per-test setup/teardown** - Use shared setup hooks for efficiency
 - ❌ **No console log review** - Always review browser console logs after test
   execution
+- ❌ **Not using semantic selectors** - Use data-testid or ARIA roles as primary
+  selector strategy (most stable, survives CSS changes and refactoring)
+- ❌ **Ineffective DOM queries** - Use scoped queries, viewport management, wait
+  for elements
+- ❌ **Recreating test data via UI** - Use API-based setup for test data (10x
+  faster than UI interactions)
+- ❌ **Starting new sessions unnecessarily** - Use setup projects or session
+  caching to preserve login state
+
+**Reference to Testing Roadmap**:
+
+All E2E testing practices MUST adhere to the standards and procedures outlined
+in the authoritative **OpenELIS Testing Roadmap**
+(`.specify/guides/testing-roadmap.md`).
+
+The Testing Roadmap provides comprehensive technical guidance on:
+
+- Framework selection criteria (Playwright vs Cypress)
+- Selector strategy (data-testid priority, ARIA roles, semantic selectors)
+- Session management patterns (setup projects, cy.session())
+- Test data management (API-first approach, fixture patterns)
+- DOM query effectiveness (scoped queries, viewport, auto-waiting)
+- Test simplification (happy path focus, user workflow validation)
+- Carbon component patterns (ComboBox, DataTable, Modal, OverflowMenu)
+- Debugging techniques (browser DevTools integration, trace viewer)
+- Migration strategy (how to migrate existing tests)
+
+**Note**: Technical implementation details (code examples, configuration syntax)
+belong in the Testing Roadmap and plan.md, not in the constitution. This section
+focuses on functional requirements and principles.
 
 ---
 
@@ -759,8 +979,12 @@ in production.
 
 **Rules**:
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets MUST have unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets MUST have unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary for performance)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
@@ -863,6 +1087,111 @@ patient data breaches and legal penalties.
 
 ---
 
+### IX. Spec-Driven Iteration (ADDED 2025-12-04)
+
+**MANDATE**: Features requiring >3 days effort MUST be broken into Validation
+Milestones. Each Milestone = 1 Pull Request. Milestones can be parallel `[P]` or
+sequential, enabling flexible team coordination.
+
+**Rules**:
+
+- **Spec First**: Specification PR created first on `spec/{issue-id}-{name}`
+  branch
+- **Milestone = PR**: Each milestone generates exactly one pull request
+- **Parallel Milestones `[P]`**: Can be developed simultaneously by different
+  developers or in any order
+- **Sequential Milestones**: Must complete in order due to dependencies
+- **Branch per Milestone**: Each milestone gets its own branch following naming
+  convention
+- **Verification Gate**: Each milestone PR must pass its verification criteria
+  before merge
+
+**Branch Naming Convention (Git-safe + SpecKit-friendly)**:
+
+**IMPORTANT (Git restriction)**: Avoid branch names where one branch is a prefix
+of another (Git ref namespace collision). Example (INVALID pair):
+`feat/004-astm-analyzer-mapping` and
+`feat/004-astm-analyzer-mapping/m1-backend-db`. To prevent this, use a **single
+category prefix** (`spec/`, `feat/`, `fix/`, `hotfix/`) and use **hyphens** (not
+additional slashes) for sub-scoping like milestones.
+
+| Branch Type        | Pattern                                                    | Example                                                |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |
+| Spec Branch        | `spec/{NNN}[-{jira}]-{name}`                               | `spec/004-ogc-49-astm-analyzer-mapping`                |
+| Spec Clarification | `spec/clarify-{NNN}[-{jira}]-{name}-{topic}`               | `spec/clarify-004-ogc-49-astm-mapping-branch-naming`   |
+| Milestone Branch   | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m1-backend-db`  |
+| Integration/Dev    | `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`                   | `feat/004-ogc-49-astm-analyzer-mapping-m4-integration` |
+| Hotfix             | `hotfix/{NNN}[-{jira}]-{desc}` (or `hotfix/{jira}-{desc}`) | `hotfix/004-ogc-49-fix-login`                          |
+| Bugfix             | `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)       | `fix/004-ogc-49-null-check`                            |
+
+**Issue ID Formats**:
+
+- **Jira (Primary)**: `OGC-{###}` (e.g., `OGC-009`, `OGC-123`) - OpenELIS Global
+  Confluence project
+- **GitHub Issues**: `{###}` (e.g., `009`, `123`) - for GitHub-only tracking
+- **Other Trackers**: `{PREFIX}-{###}` - flexible for external integrations
+
+**SpecKit tooling note**:
+
+- SpecKit scripts locate the feature folder by finding a `NNN-` prefix in the
+  branch name and mapping to `specs/{NNN}-*`. If you are working on a Jira-only
+  branch name (no `NNN-`), set `SPECIFY_FEATURE={NNN}-{feature-name}` before
+  running `/speckit.*`.
+
+**Milestone Plan Structure** (in `plan.md`):
+
+```markdown
+| ID     | Branch         | Scope                    | Verification    | Depends On |
+| ------ | -------------- | ------------------------ | --------------- | ---------- |
+| M1     | m1-backend     | Entities, DAOs, Services | Unit tests pass | -          |
+| [P] M2 | m2-frontend    | React components         | Jest tests pass | -          |
+| M3     | m3-integration | API + E2E                | E2E tests pass  | M1, M2     |
+```
+
+**Workflow**:
+
+1. **Specification Phase** (on `spec/{issue-id}-{name}` branch):
+
+   - Create spec branch from `develop`
+   - Complete `spec.md` (user stories, requirements)
+   - Complete `plan.md` (architecture, milestone plan)
+   - Complete `tasks.md` (task breakdown by milestone)
+
+- Use `spec/clarify/{issue-id}-{name}-{topic}` branches for spec iterations
+  (avoids Git parent-ref collisions)
+  - Create Spec PR targeting `develop` for review
+
+2. **Implementation Phase** (after spec PR approved OR in parallel):
+   - Spec PR does NOT need to be merged before implementation begins
+   - For simple features (1-2 milestones): milestone branches MAY target
+     `develop` directly
+   - For complex features (3+ milestones): use feature integration branch:
+     - Create feature branch `feat/{issue-id}-{name}` from `develop`
+     - Milestone branches target feature branch
+     - Final PR merges `feat/{issue-id}-{name}` → `develop`
+
+**Key Rules**:
+
+- Spec PR and implementation can proceed in parallel
+- Milestone branches MAY target `develop` directly for simpler features
+- Spec clarification branches merge back to spec branch
+- Feature integration branch is OPTIONAL (use for complex multi-milestone work)
+
+**Rationale**: Large features implemented as single PRs create review
+bottlenecks, increase merge conflict risk, and delay feedback. Milestone-based
+delivery enables:
+
+- Manageable code reviews (smaller PRs)
+- Earlier validation of architectural decisions
+- Parallel development when milestones are independent
+- Clear progress tracking
+- Reduced risk of "big bang" integration failures
+
+**Reference**:
+[GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
+---
+
 ## Technical Stack Constraints
 
 **NON-NEGOTIABLE**: All code MUST use these versions/frameworks. Exceptions
@@ -881,7 +1210,7 @@ require architecture review + documented justification.
 
 **Frameworks & Dependencies**
 
-- **Spring Boot 3.x** (Spring Framework 6.2.2)
+- **Spring Framework 6.2.2** (Traditional Spring MVC)
 - **Hibernate 6.x** (Hibernate 5.6.15.Final ORM)
 - **Jakarta EE 9** persistence API (NOT javax.persistence - use
   jakarta.persistence)
@@ -953,19 +1282,39 @@ creates hidden maintenance costs.
 
 ### Branch Strategy
 
+**Reference**: See Principle IX (Spec-Driven Iteration) for complete branch
+naming conventions and milestone workflow.
+
+**Primary Branches**:
+
 - **`develop`** - Main development branch (all PRs target this)
 - **`main`** - Production releases only (reviewers backport from develop)
-- **Feature branches**: `issue-{###}-{feature-name}` (e.g.,
-  `issue-123-storage-management`)
-- **Hotfix branches**: `hotfix-{description}` (merged to develop + main)
+
+**Feature Development Branches** (per Principle IX):
+
+- **Spec branches**: `spec/{NNN}[-{jira}]-{name}` - Specification PRs
+- **Milestone branches**: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` - Milestone
+  PRs
+- **Hotfix branches**: `hotfix/{NNN}[-{jira}]-{desc}` (or
+  `hotfix/{jira}-{desc}`)
+- **Bugfix branches**: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
+
+**Issue identifiers**:
+
+- `NNN` is the 3-digit feature number used by SpecKit and used to locate
+  `specs/{NNN}-*`
+- `{jira}` (e.g., `OGC-49`) is optional
 
 ### Pull Request Requirements
 
 **MANDATORY CHECKLIST** (from [PULL_REQUEST_TIPS.md](PULL_REQUEST_TIPS.md)):
 
-1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "issue-123:
-   Add storage location widget")
-2. **Branch Naming**: Branch name matches `issue-{###}-{feature-name}`
+1. **GitHub Issue**: PR MUST reference issue number in title (e.g., "OG-123: Add
+   storage location widget" or "feat(009): Add sidenav")
+2. **Branch Naming**: Branch name follows Principle IX convention:
+   - Spec PRs: `spec/{NNN}[-{jira}]-{name}`
+   - Milestone PRs: `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}`
+   - Bugfix PRs: `fix/{NNN}[-{jira}]-{desc}` (or `fix/{jira}-{desc}`)
 3. **Target Branch**: Always `develop` (unless hotfix)
 4. **Code Formatting** (MANDATORY - MUST run before each commit):
    - Backend: `mvn spotless:apply` - MUST run before committing
@@ -979,14 +1328,16 @@ creates hidden maintenance costs.
 7. **UI Screenshots**: Attach before/after images for UI changes
 8. **Single Concern**: PR addresses ONE issue only (NO mixed refactoring +
    features)
-9. **Constitution Compliance**: Verify adherence to all 8 core principles
+9. **Constitution Compliance**: Verify adherence to all 9 core principles
 10. **Review Assignment**: Request review from appropriate team members
 
 **CI/CD Pipeline** (GitHub Actions):
 
-- **`ci.yml`**: Maven build + JaCoCo coverage report
+- **`backend.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
-- **`frontend-qa.yml`**: Cypress E2E tests
+- **`frontend.yml`**: Frontend static/unit/image quality gate
+- **`e2e-playwright.yml`**: Playwright E2E (core + analyzer harness)
+- **`e2e-cypress-deprecated.yml`**: Cypress E2E tests (deprecated track)
 - **`build-installer.yml`**: Offline installer packaging
 
 All checks MUST pass before merge.
@@ -995,7 +1346,7 @@ All checks MUST pass before merge.
 
 **Reviewers MUST verify**:
 
-- ✅ Constitution compliance (all 8 principles)
+- ✅ Constitution compliance (all 9 principles)
 - ✅ Layered architecture respected (no DAO calls from controllers)
 - ✅ FHIR resources validated if applicable
 - ✅ Internationalization complete (no hardcoded strings)
@@ -1097,6 +1448,7 @@ documenting:
 - [ ] Tests included (Principle V)
 - [ ] Liquibase for schema changes (Principle VI)
 - [ ] Security/compliance requirements met (Principle VIII)
+- [ ] Milestone scope appropriate (Principle IX) - for features >3 days
 
 **Quarterly Audits**: Architecture team samples merged PRs to verify
 constitution adherence. Violations trigger corrective actions (documentation
@@ -1132,10 +1484,13 @@ sync.
 
 ---
 
-**Version**: 1.7.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2025-11-07
+**Version**: 1.9.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-01-27
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.9.0: Playwright E2E testing support (2026-01-27)
+  Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
+  Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
   Amendment v1.7.0: Enhanced Cypress E2E testing workflow and review requirements (2025-11-07)
   Amendment v1.6.0: Cypress E2E testing best practices (2025-11-05)
   Amendment v1.5.0: Explicit prohibition of @Transactional in controllers (2025-11-05)

@@ -4,15 +4,15 @@ import { TextInput, InlineNotification } from "@carbon/react";
 import PropTypes from "prop-types";
 import BarcodeVisualFeedback from "./BarcodeVisualFeedback";
 import useBarcodeDebounce from "./BarcodeDebounceHook";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 
 /**
- * UnifiedBarcodeInput - Unified input field supporting both barcode scan and type-ahead search
+ * UnifiedBarcodeInput - Barcode-only input field for location barcode scanning
  *
  * Features:
  * - Accepts keyboard input (manual typing)
  * - Accepts rapid character input (barcode scan)
- * - Format-based detection (hyphens = barcode, no hyphens = type-ahead)
+ * - Always validates input as barcode (backend handles format validation)
  * - Enter key triggers validation
  * - Field blur triggers validation
  * - Visual feedback states (ready, success, error)
@@ -20,15 +20,13 @@ import { getFromOpenElisServer } from "../../utils/Utils";
  *
  * Props:
  * - onScan: Callback when barcode scan detected
- * - onTypeAhead: Callback when type-ahead search triggered
  * - onValidationResult: Callback with validation result
- * - onSampleScan: Callback when sample barcode detected (new prop)
+ * - onSampleScan: Callback when sample barcode detected
  * - validationState: Current state (ready, success, error)
  * - errorMessage: Error message to display
  */
 const UnifiedBarcodeInput = ({
   onScan,
-  onTypeAhead,
   onValidationResult,
   onSampleScan,
   validationState = "ready",
@@ -68,15 +66,6 @@ const UnifiedBarcodeInput = ({
   );
 
   /**
-   * Detect if input is barcode or type-ahead search
-   * Barcode: Contains hyphens (hierarchical format: ROOM-DEVICE-SHELF-RACK-POSITION)
-   * Type-ahead: No hyphens (search text like "Freezer" or "Main Lab")
-   */
-  const isBarcodeFormat = (value) => {
-    return value && value.includes("-");
-  };
-
-  /**
    * Detect rapid character input (barcode scanner)
    * Scanners typically input characters within 50ms
    */
@@ -88,68 +77,85 @@ const UnifiedBarcodeInput = ({
 
   /**
    * Call barcode validation API
+   * Note: Backend expects POST with JSON body, not GET with query parameter
    */
   const validateBarcode = (barcode) => {
-    const url = `/rest/storage/barcode/validate?barcode=${encodeURIComponent(barcode)}`;
+    const url = `/rest/storage/barcode/validate`;
+    const payload = JSON.stringify({ barcode: barcode });
 
-    getFromOpenElisServer(
-      url,
-      (response) => {
-        // Check barcode type from response
-        const barcodeType = response.barcodeType || "unknown";
-
-        if (barcodeType === "sample") {
-          // Sample barcode detected - call onSampleScan callback
-          if (onSampleScan) {
-            onSampleScan({
-              barcode: barcode,
-              type: "sample",
-              data: response,
-            });
-          }
-        } else if (barcodeType === "location") {
-          // Location barcode - proceed with existing validation result logic
-          // Check if validation succeeded or failed
-          if (onValidationResult) {
-            onValidationResult({
-              success: response.valid || false,
-              data: response,
-              // Include errorMessage in error object for LocationManagementModal to extract
-              error: response.valid
-                ? null
-                : {
-                    errorMessage: response.errorMessage,
-                    message: response.errorMessage,
-                  },
-            });
-          }
-        } else {
-          // Unknown type - still call validation result for error handling
-          if (onValidationResult) {
-            onValidationResult({
-              success: response.valid || false,
-              data: response,
-              // Include errorMessage in error object
-              error: response.valid
-                ? null
-                : {
-                    errorMessage: response.errorMessage,
-                    message: response.errorMessage,
-                  },
-            });
-          }
-        }
-      },
-      (error) => {
-        // Error callback
+    postToOpenElisServerJsonResponse(url, payload, (response) => {
+      // Handle network/HTTP errors
+      if (response.error || (response.status && response.status >= 400)) {
         if (onValidationResult) {
           onValidationResult({
             success: false,
-            error: error,
+            error: response.error || {
+              message: response.message || "Validation failed",
+            },
           });
         }
-      },
-    );
+        return;
+      }
+
+      // Check barcode type from response
+      const barcodeType = response.barcodeType || "unknown";
+
+      if (barcodeType === "sample") {
+        // Sample barcode detected - call onSampleScan callback
+        if (onSampleScan) {
+          onSampleScan({
+            barcode: barcode,
+            type: "sample",
+            data: response,
+          });
+        }
+      } else if (barcodeType === "location") {
+        // Location barcode - proceed with existing validation result logic
+        // Check if validation succeeded or failed
+        if (onValidationResult) {
+          const validationResult = {
+            success: response.valid || false,
+            data: response,
+            // Include progressive validation fields for auto-open behavior
+            firstMissingLevel: response.firstMissingLevel || null,
+            validComponents: response.validComponents || {},
+            hasAdditionalInvalidLevels:
+              response.hasAdditionalInvalidLevels || false,
+            // Include errorMessage in error object for LocationManagementModal to extract
+            error: response.valid
+              ? null
+              : {
+                  errorMessage: response.errorMessage,
+                  message: response.errorMessage,
+                },
+          };
+          onValidationResult(validationResult);
+        }
+      } else {
+        // Unknown type - still call validation result for error handling
+        if (onValidationResult) {
+          const validationResult = {
+            success: response.valid || false,
+            data: response,
+            // Include progressive validation fields for auto-open behavior
+            firstMissingLevel: response.firstMissingLevel || null,
+            validComponents: response.validComponents || {},
+            hasAdditionalInvalidLevels:
+              response.hasAdditionalInvalidLevels || false,
+            // Include errorMessage in error object
+            error: response.valid
+              ? null
+              : {
+                  errorMessage: response.errorMessage,
+                  message: response.errorMessage,
+                },
+          };
+          onValidationResult(validationResult);
+        }
+      }
+    });
+    // Note: postToOpenElisServerJsonResponse handles errors in the response object
+    // Errors are passed as part of the response with status/error fields
   };
 
   /**
@@ -163,36 +169,40 @@ const UnifiedBarcodeInput = ({
 
   /**
    * Handle Enter key press
+   * Note: Use event.target.value instead of inputValue state to avoid React state timing issues
+   * Support both event.key and event.keyCode for Carbon TextInput compatibility
    */
   const handleKeyDown = (event) => {
-    if (event.key === "Enter" && inputValue.trim() !== "") {
+    const currentValue = event.target.value || "";
+    const trimmedValue = currentValue.trim();
+    const isEnterKey =
+      event.key === "Enter" || event.keyCode === 13 || event.code === "Enter";
+
+    if (isEnterKey && trimmedValue !== "") {
       event.preventDefault();
-      processInput(inputValue.trim());
+      event.stopPropagation();
+      processInput(trimmedValue);
     }
   };
 
   /**
    * Handle field blur
+   * Note: Use inputValue state here since blur happens after state has updated
    */
-  const handleBlur = () => {
-    if (inputValue.trim() !== "") {
-      processInput(inputValue.trim());
+  const handleBlur = (event) => {
+    const currentValue = event?.target?.value || inputValue || "";
+    const trimmedValue = currentValue.trim();
+    if (trimmedValue !== "") {
+      processInput(trimmedValue);
     }
   };
 
   /**
-   * Process input (barcode scan or type-ahead search)
+   * Process input (always validate as barcode - backend handles format validation)
    */
   const processInput = (value) => {
-    if (isBarcodeFormat(value)) {
-      // Barcode detected - use debounced handler
-      debouncedHandleScan(value);
-    } else {
-      // Type-ahead search detected
-      if (onTypeAhead) {
-        onTypeAhead(value);
-      }
-    }
+    // Always validate as barcode - backend will return appropriate error for invalid formats
+    debouncedHandleScan(value);
   };
 
   /**
@@ -230,8 +240,8 @@ const UnifiedBarcodeInput = ({
         });
       default:
         return intl.formatMessage({
-          id: "barcode.scanOrType",
-          defaultMessage: "Scan barcode or type location",
+          id: "barcode.scan",
+          defaultMessage: "Scan barcode",
         });
     }
   };
@@ -241,8 +251,8 @@ const UnifiedBarcodeInput = ({
    */
   const getLabelText = () => {
     return intl.formatMessage({
-      id: "barcode.scanOrType",
-      defaultMessage: "Scan barcode or type location",
+      id: "barcode.scan",
+      defaultMessage: "Scan barcode",
     });
   };
 
@@ -272,8 +282,6 @@ const UnifiedBarcodeInput = ({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            invalid={validationState === "error"}
-            invalidText={errorMessage}
             data-barcode-input="true"
           />
         </div>
@@ -290,7 +298,6 @@ const UnifiedBarcodeInput = ({
 
 UnifiedBarcodeInput.propTypes = {
   onScan: PropTypes.func,
-  onTypeAhead: PropTypes.func,
   onValidationResult: PropTypes.func,
   onSampleScan: PropTypes.func,
   validationState: PropTypes.oneOf(["ready", "success", "error"]),
@@ -299,7 +306,6 @@ UnifiedBarcodeInput.propTypes = {
 
 UnifiedBarcodeInput.defaultProps = {
   onScan: () => {},
-  onTypeAhead: () => {},
   onValidationResult: () => {},
   onSampleScan: () => {},
   validationState: "ready",

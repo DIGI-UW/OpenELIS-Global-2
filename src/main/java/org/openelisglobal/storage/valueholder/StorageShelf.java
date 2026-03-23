@@ -40,11 +40,11 @@ public class StorageShelf extends BaseObject<Integer> {
     @Column(name = "LABEL", length = 100, nullable = false)
     private String label;
 
+    @Column(name = "CODE", length = 10, nullable = false)
+    private String code;
+
     @Column(name = "CAPACITY_LIMIT")
     private Integer capacityLimit;
-
-    @Column(name = "SHORT_CODE", length = 10)
-    private String shortCode;
 
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
@@ -82,20 +82,20 @@ public class StorageShelf extends BaseObject<Integer> {
         this.label = label;
     }
 
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
     public Integer getCapacityLimit() {
         return capacityLimit;
     }
 
     public void setCapacityLimit(Integer capacityLimit) {
         this.capacityLimit = capacityLimit;
-    }
-
-    public String getShortCode() {
-        return shortCode;
-    }
-
-    public void setShortCode(String shortCode) {
-        this.shortCode = shortCode;
     }
 
     public Boolean getActive() {

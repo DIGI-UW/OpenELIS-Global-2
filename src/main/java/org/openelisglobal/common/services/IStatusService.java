@@ -67,4 +67,11 @@ public interface IStatusService {
     public void deleteRecordStatus(Sample sample, Patient patient, String sysUserId);
 
     public String getStatusNameFromId(String id);
+
+    /**
+     * Refresh the status cache by reloading from database. This is primarily for
+     * testing purposes when test data modifies status_of_sample table after initial
+     * context startup.
+     */
+    public void refreshCache();
 }

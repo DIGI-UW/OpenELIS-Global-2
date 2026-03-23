@@ -40,84 +40,39 @@ class StorageAssignmentPage {
   }
 
   selectRoom(roomName) {
-    // EnhancedCascadingMode uses Carbon ComboBox - type to filter, then select from menu
-    this.getRoomDropdown().click().clear().type(roomName);
-    // Carbon ComboBox shows options in a menu - wait for menu to appear
-    cy.get('[role="listbox"]', { timeout: 5000 }).should("be.visible");
-    // Try exact match first, then partial match (e.g., "MAIN" might be "Main Laboratory")
-    cy.get("body").then(($body) => {
-      const menu = $body.find('[role="listbox"]');
-      const menuText = menu.text();
-      if (menuText.includes(roomName)) {
-        cy.get('[role="listbox"]').contains(roomName).click({ force: true });
-      } else if (roomName === "MAIN" && menuText.includes("Main")) {
-        cy.get('[role="listbox"]')
-          .contains("Main", { matchCase: false })
-          .click({ force: true });
-      } else {
-        // Select first option if available
-        cy.get('[role="listbox"] [role="option"]')
-          .first()
-          .click({ force: true });
-      }
-    });
+    cy.intercept("GET", "**/rest/storage/devices**").as("waitForDevices");
+
+    // Type exact room name to trigger selection (typing partial name creates new)
+    this.getRoomDropdown().clear().type(roomName, { delay: 50 });
+
+    cy.wait("@waitForDevices", { timeout: 5000 });
     return this;
   }
 
   selectDevice(deviceName) {
-    // EnhancedCascadingMode uses Carbon ComboBox - type to filter, then select from menu
-    this.getDeviceDropdown().click().clear().type(deviceName);
-    cy.get('[role="listbox"]', { timeout: 5000 }).should("be.visible");
-    // Flexible matching - try exact, then partial, then first option
-    cy.get("body").then(($body) => {
-      const menu = $body.find('[role="listbox"]');
-      const menuText = menu.text();
-      if (menuText.includes(deviceName)) {
-        cy.get('[role="listbox"]').contains(deviceName).click({ force: true });
-      } else if (menuText.length > 0) {
-        cy.get('[role="listbox"] [role="option"]')
-          .first()
-          .click({ force: true });
-      }
-    });
+    cy.intercept("GET", "**/rest/storage/shelves**").as("waitForShelves");
+
+    // Type exact device name to trigger selection
+    this.getDeviceDropdown().clear().type(deviceName, { delay: 50 });
+
+    cy.wait("@waitForShelves", { timeout: 5000 });
     return this;
   }
 
   selectShelf(shelfLabel) {
-    // EnhancedCascadingMode uses Carbon ComboBox - type to filter, then select from menu
-    this.getShelfDropdown().click().clear().type(shelfLabel);
-    cy.get('[role="listbox"]', { timeout: 5000 }).should("be.visible");
-    // Flexible matching
-    cy.get("body").then(($body) => {
-      const menu = $body.find('[role="listbox"]');
-      const menuText = menu.text();
-      if (menuText.includes(shelfLabel)) {
-        cy.get('[role="listbox"]').contains(shelfLabel).click({ force: true });
-      } else if (menuText.length > 0) {
-        cy.get('[role="listbox"] [role="option"]')
-          .first()
-          .click({ force: true });
-      }
-    });
+    cy.intercept("GET", "**/rest/storage/racks**").as("waitForRacks");
+
+    // Type exact shelf label to trigger selection
+    this.getShelfDropdown().clear().type(shelfLabel, { delay: 50 });
+
+    cy.wait("@waitForRacks", { timeout: 5000 });
     return this;
   }
 
   selectRack(rackLabel) {
-    // EnhancedCascadingMode uses Carbon ComboBox - type to filter, then select from menu
-    this.getRackDropdown().click().clear().type(rackLabel);
-    cy.get('[role="listbox"]', { timeout: 5000 }).should("be.visible");
-    // Flexible matching
-    cy.get("body").then(($body) => {
-      const menu = $body.find('[role="listbox"]');
-      const menuText = menu.text();
-      if (menuText.includes(rackLabel)) {
-        cy.get('[role="listbox"]').contains(rackLabel).click({ force: true });
-      } else if (menuText.length > 0) {
-        cy.get('[role="listbox"] [role="option"]')
-          .first()
-          .click({ force: true });
-      }
-    });
+    // Type exact rack label to trigger selection
+    this.getRackDropdown().clear().type(rackLabel, { delay: 50 });
+
     return this;
   }
 

@@ -30,21 +30,30 @@ WORKDIR /build/dataexport/
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
     mvn dependency:go-offline 
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -DskipTests
+    mvn clean install -DskipTests \
+    && mkdir -p /build/dataexport-m2/org \
+    && cp -r /root/.m2/repository/org/itech /build/dataexport-m2/org/
 
 ##
 # Build the Project
-#  
+#
+# NOTE: Each step restores dataexport artifacts into the cache mount if missing.
+# When BuildKit restores cached layers from GHA, the --mount=type=cache volume
+# starts empty (it is not part of the layer blob). Without this restore step,
+# the main project build cannot resolve org.itech:dataexport-* dependencies.
+#
 WORKDIR /build
 
 COPY ./pom.xml /build/pom.xml
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn dependency:go-offline 
+    [ -d /root/.m2/repository/org/itech ] || { mkdir -p /root/.m2/repository/org && cp -r /build/dataexport-m2/org/itech /root/.m2/repository/org/; } \
+    && mvn dependency:go-offline
 
 ARG SKIP_SPOTLESS="false"
 COPY ./src /build/src
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \
-    mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
+    [ -d /root/.m2/repository/org/itech ] || { mkdir -p /root/.m2/repository/org && cp -r /build/dataexport-m2/org/itech /root/.m2/repository/org/; } \
+    && mvn clean install -Dmaven.test.skip=true -DskipITs=true -Dspotless.check.skip=${SKIP_SPOTLESS}
 
 ##
 # Run Stage
@@ -98,7 +107,9 @@ RUN groupadd tomcat; \
     mkdir -p /var/lib/openelis-global/logs/; \
     chown -R tomcat_admin:tomcat /var/lib/openelis-global/logs/;\
     mkdir -p /var/lib/openelis-global/properties/; \
-    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/;
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/properties/; \
+    mkdir -p /var/lib/openelis-global/configuration/; \
+    chown -R tomcat_admin:tomcat /var/lib/openelis-global/configuration/;
 
 
 COPY install/openelis_healthcheck.sh /healthcheck.sh
@@ -109,11 +120,7 @@ COPY install/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
     chmod 770 /docker-entrypoint.sh;
 
-RUN mkdir -p /var/lib/lucene_index; \
-    chown -R tomcat_admin:tomcat /var/lib/lucene_index; \
-    chmod -R 770 /var/lib/lucene_index;
-
-USER tomcat_admin
+COPY ./tomcat/oe_server.xml /usr/local/tomcat/conf/server.xml    
+USER root
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
-

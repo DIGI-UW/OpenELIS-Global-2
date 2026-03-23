@@ -1,3 +1,7 @@
+const TEST_ORG_NAME = "TEST-ORG-E2E";
+const TEST_LAB_NAME = "TEST-LAB-E2E";
+const TEST_ORG_PREFIX = "E2E-ORG";
+
 class OrganizationManagementPage {
   constructor() {
     this.selectors = {
@@ -10,8 +14,6 @@ class OrganizationManagementPage {
       orgSearchBar: "#org-name-search-bar",
       referringClinic: '[id="5:select"]',
       referralLab: '[id="6:select"]',
-      orgTableRowOne:
-        "div > div.cds--data-table-container > div > table > tbody > tr:nth-child(1)",
       orgTableRow: ".cds--data-table > tbody:nth-child(2)",
     };
   }
@@ -20,58 +22,99 @@ class OrganizationManagementPage {
     cy.get(this.selectors.addButton).should("be.visible").click();
   }
 
-  addOrgName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("CAMES MAN");
+  addOrgName(orgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.orgName)
+      .should("be.visible")
+      .clear()
+      .type(orgName)
+      .should("have.value", orgName);
   }
 
-  addInstituteName() {
-    cy.get(this.selectors.orgName).should("be.visible").type("CEDRES");
+  addInstituteName(instituteName = TEST_LAB_NAME) {
+    cy.get(this.selectors.orgName)
+      .should("be.visible")
+      .clear()
+      .type(instituteName)
+      .should("have.value", instituteName);
   }
 
   activateOrganization() {
-    cy.get(this.selectors.isActive).clear().type("Y");
+    cy.get(this.selectors.isActive).clear().type("Y").should("have.value", "Y");
   }
 
-  addPrefix() {
-    cy.get(this.selectors.orgPrefix).should("be.visible").type("279");
+  addPrefix(prefix = TEST_ORG_PREFIX) {
+    cy.get(this.selectors.orgPrefix)
+      .should("be.visible")
+      .clear()
+      .type(prefix)
+      .should("have.value", prefix);
   }
 
   addInstitutePrefix() {
-    cy.get(this.selectors.orgPrefix).should("be.visible").clear().type("");
+    cy.get(this.selectors.orgPrefix).should("be.visible").clear();
   }
 
   checkReferringClinic() {
-    cy.get(this.selectors.referringClinic).check({ force: true });
+    cy.get(this.selectors.referringClinic)
+      .check({ force: true })
+      .should("be.checked");
   }
 
   checkReferalLab() {
-    cy.get(this.selectors.referralLab).check({ force: true });
+    cy.get(this.selectors.referralLab)
+      .check({ force: true })
+      .should("be.checked");
   }
 
-  addParentOrg() {
-    cy.get(this.selectors.parentOrgName).should("be.visible").type("CAMESM AN");
+  addParentOrg(parentOrgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.parentOrgName)
+      .should("be.visible")
+      .clear()
+      .type(parentOrgName)
+      .should("have.value", parentOrgName);
   }
 
   saveOrganization() {
     cy.get(this.selectors.saveButton).should("be.visible").click();
+    cy.url().should("include", "/MasterListsPage");
   }
 
-  searchOrganzation() {
-    cy.get(this.selectors.orgSearchBar).should("be.visible").type("CAMES MAN");
+  searchOrganzation(orgName = TEST_ORG_NAME) {
+    cy.get(`input${this.selectors.orgSearchBar}`)
+      .should("be.visible")
+      .scrollIntoView();
+
+    cy.get(`input${this.selectors.orgSearchBar}`)
+      .focus()
+      .clear({ force: true });
+
+    cy.get(`input${this.selectors.orgSearchBar}`).type(orgName, {
+      force: true,
+    });
   }
 
-  searchInstitute() {
-    cy.get(this.selectors.orgSearchBar).should("be.visible").type("CEDRES");
+  searchInstitute(instituteName = TEST_LAB_NAME) {
+    cy.get(`input${this.selectors.orgSearchBar}`)
+      .should("be.visible")
+      .scrollIntoView();
+
+    cy.get(`input${this.selectors.orgSearchBar}`)
+      .focus()
+      .clear({ force: true });
+
+    cy.get(`input${this.selectors.orgSearchBar}`).type(instituteName, {
+      force: true,
+    });
   }
 
-  confirmOrganization() {
-    cy.get(this.selectors.orgTableRowOne)
-      .contains("CAMES MAN")
+  confirmOrganization(orgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.orgTableRow).contains(orgName).should("be.visible");
+  }
+
+  confirmInstitute(instituteName = TEST_LAB_NAME) {
+    cy.get(this.selectors.orgTableRow)
+      .contains(instituteName)
       .should("be.visible");
-  }
-
-  confirmInstitute() {
-    cy.get(this.selectors.orgTableRow).contains("CEDRES").should("be.visible");
   }
 }
 

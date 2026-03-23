@@ -25,7 +25,6 @@ import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testcalculated.action.util.TestCalculatedUtil;
 import org.openelisglobal.testreflex.action.util.TestReflexBean;
@@ -64,23 +63,15 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             noteService.insert(note);
         }
 
-        List<org.openelisglobal.result.valueholder.Result> checkResult = null;
-        Analysis checkAnalysis = null;
-        SampleItem checkSampleItem = null;
-        Sample checkSample = null;
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
             resultSet.result.setResultEvent(Event.PRELIMINARY_RESULT);
             resultSet.result.setFhirUuid(UUID.randomUUID());
             String resultId;
-            // resultId = resultService.insert(resultSet.result);
 
-            checkAnalysis = resultSet.result.getAnalysis();
-            checkSampleItem = checkAnalysis.getSampleItem();
-            checkSample = checkSampleItem.getSample();
-
-            checkResult = resultService.getResultsForTestAndSample(checkSample.getId(),
-                    checkAnalysis.getTest().getId());
-            if (checkResult.size() == 0) {
+            // Check if result already exists for this specific Analysis (not Sample+Test)
+            // This allows different aliquots (SampleItems) of the same sample to have
+            // results for the same test type, since each aliquot has its own Analysis
+            if (resultSet.result.getId() == null) {
                 resultId = resultService.insert(resultSet.result);
             } else {
                 continue;

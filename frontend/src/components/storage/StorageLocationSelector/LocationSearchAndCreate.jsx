@@ -18,6 +18,10 @@ import "./LocationSearchAndCreate.css";
  * - showCreateButton: boolean - Show "Add Location" button (default: true)
  * - searchPlaceholder: string - Placeholder text for search input (default: "Search for location...")
  * - isActive: boolean - Whether this input method is currently active (for visual feedback)
+ * - autoOpenCreateForm: boolean - Auto-open create form (for barcode auto-open behavior)
+ * - prefillLocation: object - Location to pre-fill in create form
+ * - focusField: string - Field to focus on ('device' | 'shelf' | 'rack' | 'position')
+ * - onCreateFormOpened: function - Callback when create form is opened
  */
 const LocationSearchAndCreate = ({
   onLocationChange,
@@ -26,6 +30,10 @@ const LocationSearchAndCreate = ({
   showCreateButton = true,
   searchPlaceholder,
   isActive = false,
+  autoOpenCreateForm = false,
+  prefillLocation = null,
+  focusField = null,
+  onCreateFormOpened = null,
 }) => {
   const intl = useIntl();
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -36,6 +44,21 @@ const LocationSearchAndCreate = ({
   // When in create form, internal state is independent until "Add" is clicked
   // CRITICAL: Don't sync when form just closed - parent might not have updated yet
   const justClosedFormRef = useRef(false);
+
+  // Auto-open create form when autoOpenCreateForm is true
+  useEffect(() => {
+    if (autoOpenCreateForm && !showCreateForm) {
+      setShowCreateForm(true);
+      // Pre-fill location if provided
+      if (prefillLocation) {
+        setInternalSelectedLocation(prefillLocation);
+      }
+      // Notify parent that form is opened
+      if (onCreateFormOpened) {
+        onCreateFormOpened();
+      }
+    }
+  }, [autoOpenCreateForm, prefillLocation, onCreateFormOpened, showCreateForm]);
 
   useEffect(() => {
     // CRITICAL: When form closes, we need to preserve the location that was just selected
@@ -235,73 +258,8 @@ const LocationSearchAndCreate = ({
 
   const handleSearchSelect = (location) => {
     // LocationFilterDropdown format: { id, type, name, hierarchical_path, ... }
-    // DEBUG: Log EXACTLY what we receive from parent
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "[LocationSearchAndCreate] handleSearchSelect RECEIVED:",
-        JSON.stringify(location, null, 2),
-      );
-    }
-
     // Convert to EnhancedCascadingMode format for proper initialization
     const convertedLocation = convertSearchToCascadingFormat(location);
-
-    // Debug logging
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "[LocationSearchAndCreate] handleSearchSelect called:",
-        JSON.stringify(
-          {
-            originalLocation: location
-              ? {
-                  id: location.id,
-                  type: location.type,
-                  deviceType: location.deviceType,
-                  name: location.name,
-                  hierarchicalPath: location.hierarchicalPath, // API format (camelCase)
-                  hierarchical_path: location.hierarchical_path, // Alternative format (snake_case)
-                  parentRoomId: location.parentRoomId, // CRITICAL: Parent IDs from API
-                  parentDeviceId: location.parentDeviceId,
-                  parentShelfId: location.parentShelfId,
-                }
-              : null,
-            convertedLocation: convertedLocation
-              ? {
-                  hierarchicalPath: convertedLocation.hierarchicalPath, // Preserved from API
-                  hierarchical_path: convertedLocation.hierarchical_path, // Normalized
-                  room: convertedLocation.room
-                    ? {
-                        id: convertedLocation.room.id,
-                        name: convertedLocation.room.name,
-                      }
-                    : null,
-                  device: convertedLocation.device
-                    ? {
-                        id: convertedLocation.device.id,
-                        name: convertedLocation.device.name,
-                      }
-                    : null,
-                  shelf: convertedLocation.shelf
-                    ? {
-                        id: convertedLocation.shelf.id,
-                        label: convertedLocation.shelf.label,
-                      }
-                    : null,
-                  rack: convertedLocation.rack
-                    ? {
-                        id: convertedLocation.rack.id,
-                        label: convertedLocation.rack.label,
-                      }
-                    : null,
-                  type: convertedLocation.type,
-                }
-              : null,
-          },
-          null,
-          2,
-        ),
-      );
-    }
 
     setInternalSelectedLocation(convertedLocation);
 
@@ -344,31 +302,6 @@ const LocationSearchAndCreate = ({
           null,
       };
 
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "[LocationSearchAndCreate] Calling onLocationChange with:",
-          JSON.stringify(
-            {
-              hasHierarchicalPath: !!(
-                locationWithFlexibleFields?.hierarchicalPath ||
-                locationWithFlexibleFields?.hierarchical_path
-              ),
-              hierarchicalPath: locationWithFlexibleFields?.hierarchicalPath,
-              hierarchical_path: locationWithFlexibleFields?.hierarchical_path,
-              type: locationWithFlexibleFields?.type,
-              locationId: locationWithFlexibleFields?.locationId,
-              locationType: locationWithFlexibleFields?.locationType,
-              positionCoordinate:
-                locationWithFlexibleFields?.positionCoordinate,
-              hasRoom: !!locationWithFlexibleFields?.room,
-              hasDevice: !!locationWithFlexibleFields?.device,
-              hasShelf: !!locationWithFlexibleFields?.shelf,
-            },
-            null,
-            2,
-          ),
-        );
-      }
       onLocationChange(locationWithFlexibleFields);
     }
     setShowCreateForm(false);
@@ -459,43 +392,9 @@ const LocationSearchAndCreate = ({
     }
   };
 
-  // Debug: Track internalSelectedLocation changes
+  // Track internalSelectedLocation changes
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log(
-        "[LocationSearchAndCreate] internalSelectedLocation changed:",
-        JSON.stringify(
-          {
-            room: internalSelectedLocation?.room
-              ? {
-                  id: internalSelectedLocation.room.id,
-                  name: internalSelectedLocation.room.name,
-                }
-              : null,
-            device: internalSelectedLocation?.device
-              ? {
-                  id: internalSelectedLocation.device.id,
-                  name: internalSelectedLocation.device.name,
-                }
-              : null,
-            shelf: internalSelectedLocation?.shelf
-              ? {
-                  id: internalSelectedLocation.shelf.id,
-                  label: internalSelectedLocation.shelf.label,
-                }
-              : null,
-            rack: internalSelectedLocation?.rack
-              ? {
-                  id: internalSelectedLocation.rack.id,
-                  label: internalSelectedLocation.rack.label,
-                }
-              : null,
-          },
-          null,
-          2,
-        ),
-      );
-    }
+    // Location state tracking
   }, [internalSelectedLocation]);
 
   const handleAddLocation = () => {
@@ -515,42 +414,6 @@ const LocationSearchAndCreate = ({
       shelfSelected,
       rackSelected,
     ].filter(Boolean).length;
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[LocationSearchAndCreate] handleAddLocation validation:", {
-        roomSelected,
-        deviceSelected,
-        shelfSelected,
-        rackSelected,
-        selectedCount,
-        internalSelectedLocation: {
-          room: internalSelectedLocation?.room
-            ? {
-                id: internalSelectedLocation.room.id,
-                name: internalSelectedLocation.room.name,
-              }
-            : null,
-          device: internalSelectedLocation?.device
-            ? {
-                id: internalSelectedLocation.device.id,
-                name: internalSelectedLocation.device.name,
-              }
-            : null,
-          shelf: internalSelectedLocation?.shelf
-            ? {
-                id: internalSelectedLocation.shelf.id,
-                label: internalSelectedLocation.shelf.label,
-              }
-            : null,
-          rack: internalSelectedLocation?.rack
-            ? {
-                id: internalSelectedLocation.rack.id,
-                label: internalSelectedLocation.rack.label,
-              }
-            : null,
-        },
-      });
-    }
 
     if (selectedCount >= 2 && internalSelectedLocation) {
       // At least 2 levels selected - valid location
@@ -584,29 +447,6 @@ const LocationSearchAndCreate = ({
           locationToPass.hierarchical_path = pathParts.join(" > ");
           locationToPass.hierarchicalPath = pathParts.join(" > "); // Also set camelCase for consistency
         }
-      }
-
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "[LocationSearchAndCreate] handleAddLocation calling onLocationChange with:",
-          JSON.stringify(
-            {
-              room: locationToPass.room
-                ? { id: locationToPass.room.id, name: locationToPass.room.name }
-                : null,
-              device: locationToPass.device
-                ? {
-                    id: locationToPass.device.id,
-                    name: locationToPass.device.name,
-                  }
-                : null,
-              hierarchical_path: locationToPass.hierarchical_path,
-              selectedCount,
-            },
-            null,
-            2,
-          ),
-        );
       }
 
       // CRITICAL: Call onLocationChange FIRST (synchronously) - this updates parent's ref immediately
@@ -650,51 +490,6 @@ const LocationSearchAndCreate = ({
     Boolean,
   ).length;
   const canAddLocation = selectedCount >= 2;
-
-  // Debug logging
-  if (process.env.NODE_ENV === "development") {
-    console.log(
-      "[LocationSearchAndCreate] Validation:",
-      JSON.stringify(
-        {
-          internalSelectedLocation: {
-            room: internalSelectedLocation?.room
-              ? {
-                  id: internalSelectedLocation.room.id,
-                  name: internalSelectedLocation.room.name,
-                }
-              : null,
-            device: internalSelectedLocation?.device
-              ? {
-                  id: internalSelectedLocation.device.id,
-                  name: internalSelectedLocation.device.name,
-                }
-              : null,
-            shelf: internalSelectedLocation?.shelf
-              ? {
-                  id: internalSelectedLocation.shelf.id,
-                  label: internalSelectedLocation.shelf.label,
-                }
-              : null,
-            rack: internalSelectedLocation?.rack
-              ? {
-                  id: internalSelectedLocation.rack.id,
-                  label: internalSelectedLocation.rack.label,
-                }
-              : null,
-          },
-          hasRoom,
-          hasDevice,
-          hasShelf,
-          hasRack,
-          selectedCount,
-          canAddLocation,
-        },
-        null,
-        2,
-      ),
-    );
-  }
 
   return (
     <div
@@ -740,7 +535,10 @@ const LocationSearchAndCreate = ({
         >
           <EnhancedCascadingMode
             onLocationChange={handleCreateSelect}
-            selectedLocation={internalSelectedLocation || null}
+            selectedLocation={
+              internalSelectedLocation || prefillLocation || null
+            }
+            focusField={focusField}
           />
           <div className="location-create-actions">
             <Button
@@ -761,9 +559,6 @@ const LocationSearchAndCreate = ({
               kind="primary"
               size="sm"
               onClick={() => {
-                if (process.env.NODE_ENV === "development") {
-                  console.log("[LocationSearchAndCreate] Add button clicked");
-                }
                 handleAddLocation();
               }}
               disabled={!canAddLocation}

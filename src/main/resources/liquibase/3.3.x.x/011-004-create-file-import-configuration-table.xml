@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- File Import Configuration Table -->
+    <!-- Stores configuration for file-based analyzer result import (CSV/TXT parsing, directory watching) -->
+    <changeSet id="011-004-create-file-import-configuration-table" author="madagascar-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="file_import_configuration"/>
+            </not>
+        </preConditions>
+        <comment>Creating file_import_configuration table for file-based analyzer import configuration</comment>
+        <createTable tableName="file_import_configuration">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="analyzer_id" type="INT">
+                <constraints nullable="false" unique="true"
+                    foreignKeyName="fk_file_import_config_analyzer"
+                    references="analyzer(id)"
+                    deleteCascade="true"/>
+            </column>
+            <column name="import_directory" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_pattern" type="VARCHAR(100)" defaultValue="*.csv">
+                <constraints nullable="false"/>
+            </column>
+            <column name="archive_directory" type="VARCHAR(255)"/>
+            <column name="error_directory" type="VARCHAR(255)"/>
+            <column name="column_mappings" type="TEXT"/>
+            <column name="delimiter" type="VARCHAR(10)" defaultValue=",">
+                <constraints nullable="false"/>
+            </column>
+            <column name="has_header" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex indexName="idx_file_import_config_analyzer"
+                     tableName="file_import_configuration">
+            <column name="analyzer_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="file_import_configuration"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

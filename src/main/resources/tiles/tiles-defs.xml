@@ -1525,4 +1525,13 @@
             value="/pages/patient/patientEnhancedSearch.jsp" />
     </definition>
 
+    <!-- Sample Management React Application -->
+    <definition name="sampleManagementDefinition"
+        extends="baseDefinition">
+        <put-attribute name="bodyFragment"
+            value="/pages/samplemanagement/sampleManagement.jsp" />
+        <put-attribute name="footerFragment"
+            value="/pages/common/emptyPlaceHolder.jsp" />
+    </definition>
+
 </tiles-definitions>

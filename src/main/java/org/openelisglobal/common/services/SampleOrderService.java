@@ -161,6 +161,8 @@ public class SampleOrderService {
                     .getValueForSample(ObservationType.TEST_LOCATION_CODE_OTHER, sample.getId()));
             sampleOrder.setBillingReferenceNumber(observationHistoryService
                     .getValueForSample(ObservationType.BILLING_REFERENCE_NUMBER, sample.getId()));
+            sampleOrder.setProvisionalClinicalDiagnosis(observationHistoryService
+                    .getValueForSample(ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS, sample.getId()));
             sampleOrder.setProgram(
                     observationHistoryService.getRawValueForSample(ObservationType.PROGRAM, sample.getId()));
             String programName = observationHistoryService.getRawValueForSample(ObservationType.PROGRAM,
@@ -331,6 +333,9 @@ public class SampleOrderService {
                 sampleOrder.getProgram(), ValueType.DICTIONARY);
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.BILLING_REFERENCE_NUMBER,
                 sampleOrder.getBillingReferenceNumber(), ValueType.LITERAL);
+        createOrUpdateObservation(currentUserId, observations, patientId,
+                ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS, sampleOrder.getProvisionalClinicalDiagnosis(),
+                ValueType.LITERAL);
 
         artifacts.setObservations(observations);
     }
