@@ -4,6 +4,7 @@ import {
   ensureAnalyzerByName,
   GENEXPERT_DEFAULT_ANALYZER,
 } from "../helpers/ensure-analyzer";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer Simulator E2E
@@ -35,7 +36,7 @@ test.describe("Analyzer Simulator", () => {
 
     await page
       .locator('[data-testid="field-mapping-test-button"]')
-      .click({ timeout: 10_000 });
+      .click({ timeout: UI_TIMEOUT });
     await expect(
       page.locator('[data-testid="test-mapping-modal"]'),
     ).toBeVisible();
@@ -48,11 +49,11 @@ test.describe("Analyzer Simulator", () => {
     await page.locator('[data-testid="test-mapping-preview-button"]').click();
 
     const results = page.locator('[data-testid="test-mapping-results"]');
-    await expect(results).toBeVisible({ timeout: 15_000 });
+    await expect(results).toBeVisible({ timeout: LONG_TIMEOUT });
 
     // Ensure preview produced actual parsed rows.
     await expect(results.locator("tbody tr").first()).toBeVisible({
-      timeout: 10_000,
+      timeout: UI_TIMEOUT,
     });
 
     // Plugin config details may render either in-modal (legacy test-id blocks)
