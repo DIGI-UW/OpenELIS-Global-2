@@ -7,8 +7,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.action.beans.NamedAnalyzerTestMapping;
 import org.openelisglobal.analyzerimport.form.AnalyzerTestNameMenuForm;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
@@ -46,7 +46,7 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
     @Autowired
     private AnalyzerTestMappingService analyzerTestMappingService;
     @Autowired
-    private AnalyzerService analyzerService;
+    AnalyzerTypeService analyzerTypeService;
 
     private static final int ANALYZER_NAME = 0;
     private static final int ANALYZER_TEST = 1;
@@ -92,7 +92,7 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
         List<NamedAnalyzerTestMapping> mappedTestNameList = new ArrayList<>();
         List<String> analyzerList = new ArrayList<>();
         if (StringUtils.isNotBlank(analyzerId)) {
-            Analyzer analyzer = analyzerService.get(analyzerId);
+            AnalyzerType analyzer = analyzerTypeService.get(analyzerId);
             if (analyzer != null) {
                 analyzerList.add(analyzer.getName());
             }
@@ -100,14 +100,14 @@ public class AnalyzerTestNameMenuRestController extends BaseMenuController<Named
             analyzerList = AnalyzerTestNameCache.getInstance().getAnalyzerNames();
         }
 
-        Analyzer analyzer = new Analyzer();
+        AnalyzerType analyzer = new AnalyzerType();
 
         for (String analyzerName : analyzerList) {
             Collection<MappedTestName> mappedTestNames = AnalyzerTestNameCache.getInstance()
                     .getMappedTestsForAnalyzer(analyzerName).values();
             if (mappedTestNames.size() > 0) {
                 analyzer.setId(((MappedTestName) mappedTestNames.toArray()[0]).getAnalyzerId());
-                analyzer = analyzerService.get(analyzer.getId());
+                analyzer = analyzerTypeService.get(analyzer.getId());
                 mappedTestNameList.addAll(convertedToNamedList(mappedTestNames, analyzer.getName()));
             }
         }

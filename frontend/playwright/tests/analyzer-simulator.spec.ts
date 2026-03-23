@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
 
 /**
  * Analyzer Simulator E2E
@@ -8,15 +12,15 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
  * open mappings -> open test mapping modal -> preview sample ASTM payload.
  */
 test.describe("Analyzer Simulator", () => {
-  test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness with fixture data (not available in CI)",
-  );
-
   test("GeneXpert preview-mapping shows v1.2 simulator payload", async ({
     page,
   }) => {
-    const GENEXPERT_ID = "2013";
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
+    );
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();

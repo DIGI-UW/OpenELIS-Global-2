@@ -16,6 +16,8 @@
 
 package org.openelisglobal.localization.daoimpl;
 
+import jakarta.persistence.TypedQuery;
+import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.localization.dao.LocalizationDAO;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -29,6 +31,41 @@ public class LocalizationDAOImpl extends BaseDAOImpl<Localization, String> imple
 
     public LocalizationDAOImpl() {
         super(Localization.class);
+    }
+
+    @Override
+    public List<Localization> findMissingTranslationsForLocale(String locale) {
+        String jpql = "SELECT l FROM Localization l WHERE NOT EXISTS ("
+                + "SELECT 1 FROM LocalizationValue lv WHERE lv.localization.id = l.id "
+                + "AND lv.locale = :locale AND lv.value IS NOT NULL AND lv.value != '')";
+
+        TypedQuery<Localization> query = entityManager.createQuery(jpql, Localization.class);
+        query.setParameter("locale", locale);
+        return query.getResultList();
+    }
+
+    @Override
+    public int countTranslatedForLocale(String locale) {
+        String jpql = "SELECT COUNT(DISTINCT l.id) FROM Localization l "
+                + "WHERE EXISTS (SELECT 1 FROM LocalizationValue lv WHERE lv.localization.id = l.id "
+                + "AND lv.locale = :locale AND lv.value IS NOT NULL AND lv.value != '')";
+
+        TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class);
+        query.setParameter("locale", locale);
+        return query.getSingleResult().intValue();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<Object[]> getTranslationStatsForAllActiveLocales() {
+        String sql = "SELECT sl.locale_code, sl.display_name, " + "COUNT(lv.id) AS translated, "
+                + "(SELECT COUNT(*) FROM clinlims.localization) - COUNT(lv.id) AS missing "
+                + "FROM clinlims.supported_locale sl " + "LEFT JOIN clinlims.localization_value lv "
+                + "ON lv.locale = sl.locale_code AND lv.value IS NOT NULL AND lv.value != '' "
+                + "WHERE sl.is_active = true " + "GROUP BY sl.locale_code, sl.display_name, sl.sort_order "
+                + "ORDER BY sl.sort_order";
+
+        return entityManager.createNativeQuery(sql).getResultList();
     }
 
     // @Override

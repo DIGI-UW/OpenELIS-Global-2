@@ -4,8 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.form.AnalyzerTestNameForm;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
@@ -42,7 +42,7 @@ public class AnalyzerTestNameController extends BaseController {
     @Autowired
     private AnalyzerTestMappingService analyzerTestMappingService;
     @Autowired
-    private AnalyzerService analyzerService;
+    private AnalyzerTypeService analyzerTypeService;
     @Autowired
     private TestService testService;
 
@@ -67,7 +67,7 @@ public class AnalyzerTestNameController extends BaseController {
         request.setAttribute(PREVIOUS_DISABLED, "true");
         request.setAttribute(NEXT_DISABLED, "true");
 
-        List<Analyzer> analyzerList = getAllAnalyzers();
+        List<AnalyzerType> analyzerList = getAllAnalyzers();
         List<Test> testList = getAllTests();
 
         newForm.setAnalyzerList(analyzerList);
@@ -93,8 +93,8 @@ public class AnalyzerTestNameController extends BaseController {
         return ID.matches("^[0-9]+#[^#/\\<>?]*#[0-9]+");
     }
 
-    private List<Analyzer> getAllAnalyzers() {
-        return analyzerService.getAll();
+    private List<AnalyzerType> getAllAnalyzers() {
+        return analyzerTypeService.getAll();
     }
 
     private List<Test> getAllTests() {
@@ -135,7 +135,7 @@ public class AnalyzerTestNameController extends BaseController {
         AnalyzerTestMapping analyzerTestNameMapping;
         if (newMapping) {
             analyzerTestNameMapping = new AnalyzerTestMapping();
-            analyzerTestNameMapping.setAnalyzerId(analyzerId);
+            analyzerTestNameMapping.setAnalyzerTypeId(analyzerId);
             analyzerTestNameMapping.setAnalyzerTestName(analyzerTestName);
             analyzerTestNameMapping.setTestId(testId);
             analyzerTestNameMapping.setSysUserId(getSysUserId(request));
@@ -180,12 +180,12 @@ public class AnalyzerTestNameController extends BaseController {
         return forward;
     }
 
-    private AnalyzerTestMapping getAnalyzerAndTestName(String analyzerId, String analyzerTestName, String testId) {
+    private AnalyzerTestMapping getAnalyzerAndTestName(String analyzerTypeId, String analyzerTestName, String testId) {
 
         AnalyzerTestMapping existingMapping = null;
         List<AnalyzerTestMapping> testMappingList = analyzerTestMappingService.getAll();
         for (AnalyzerTestMapping testMapping : testMappingList) {
-            if (analyzerId.equals(testMapping.getAnalyzerId())
+            if (analyzerTypeId.equals(testMapping.getAnalyzerTypeId())
                     && analyzerTestName.equals(testMapping.getAnalyzerTestName())) {
                 existingMapping = testMapping;
                 testMapping.setTestId(testId);
