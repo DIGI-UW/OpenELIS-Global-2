@@ -2901,6 +2901,11 @@ const StorageDashboard = () => {
     const occupiedCoordinates = selectedBox.occupiedCoordinates || {};
 
     const hint = selectedBox.positionSchemaHint || "letter-number";
+    const hasLegacyNumberCoordinates =
+      hint === "number-number" &&
+      Object.keys(occupiedCoordinates).some((coordinate) =>
+        /^\d+-\d+$/.test(coordinate),
+      );
     // Generate coordinate labels based on position schema hint
     const getCoordinateLabel = (rowIdx, colIdx) => {
       if (hint === "letter-number") {
@@ -2910,8 +2915,13 @@ const StorageDashboard = () => {
       }
 
       if (hint === "number-number") {
-        // Existing number-number schema uses row-column coordinates like 1-1, 1-2, ...
-        return `${rowIdx + 1}-${colIdx + 1}`;
+        // Backward compatibility for boxes that already stored positions as 1-1, 1-2, ...
+        if (hasLegacyNumberCoordinates) {
+          return `${rowIdx + 1}-${colIdx + 1}`;
+        }
+
+        // New behavior: treat number-number schema as continuous numbering.
+        return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
       }
 
       if (hint === "continuous") {
