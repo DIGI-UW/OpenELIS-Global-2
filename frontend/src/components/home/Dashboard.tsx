@@ -24,7 +24,14 @@ import {
 import "./Dashboard.css";
 import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
-import { useState, useEffect, useRef, useContext } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
@@ -176,21 +183,21 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       : setSelectedTestSection(res[0]?.id);
   };
 
-  const loadNextResultsPage = () => {
+  const loadNextResultsPage = useCallback(() => {
     setLoading(true);
     getFromOpenElisServer(
       "/rest/home-dashboard/" + selectedTile.type + "?page=" + nextPage,
       loadData,
     );
-  };
+  }, [selectedTile, nextPage]);
 
-  const loadPreviousResultsPage = () => {
+  const loadPreviousResultsPage = useCallback(() => {
     setLoading(true);
     getFromOpenElisServer(
       "/rest/home-dashboard/" + selectedTile.type + "?page=" + previousPage,
       loadData,
     );
-  };
+  }, [selectedTile, previousPage]);
 
   const loadCount = (data) => {
     if (componentMounted.current) {
@@ -339,7 +346,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     "ORDERS_PATIALLY_COMPLETED_TODAY",
   ];
 
-  const handleMinimizeClick = () => {
+  const handleMinimizeClick = useCallback(() => {
     console.log("Icon clicked!");
     if (selectedTile.type == "ORDERS_FOR_USER") {
       const tile: Tile = {
@@ -357,23 +364,32 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
         ? setSelectedTestSection("all")
         : setSelectedTestSection(testSections[0]?.id);
     }
-  };
+  }, [selectedTile, counts, userSessionDetails, testSections]);
 
-  const handleMaximizeClick = (tile) => {
-    if (
-      testSections?.length > 0 ||
-      hasRole(userSessionDetails, "Global Administrator")
-    ) {
-      setSelectedTile(tile);
-    } else {
-      setNotificationVisible(true);
-      addNotification({
-        kind: NotificationKinds.warning,
-        title: intl.formatMessage({ id: "accessDenied.title" }),
-        message: intl.formatMessage({ id: "accessDenied.message" }),
-      });
-    }
-  };
+  const handleMaximizeClick = useCallback(
+    (tile) => {
+      if (
+        testSections?.length > 0 ||
+        hasRole(userSessionDetails, "Global Administrator")
+      ) {
+        setSelectedTile(tile);
+      } else {
+        setNotificationVisible(true);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "accessDenied.title" }),
+          message: intl.formatMessage({ id: "accessDenied.message" }),
+        });
+      }
+    },
+    [
+      testSections,
+      userSessionDetails,
+      setNotificationVisible,
+      addNotification,
+      intl,
+    ],
+  );
 
   const viewUserOrders = (row) => {
     console.log("Icon clicked!");
@@ -397,15 +413,35 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     setSelectedTile(tile);
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
+  const handlePageChange = useCallback(
+    (pageInfo) => {
+      if (page != pageInfo.page) {
+        setPage(pageInfo.page);
+      }
 
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
+      if (pageSize != pageInfo.pageSize) {
+        setPageSize(pageInfo.pageSize);
+      }
+    },
+    [page, pageSize],
+  );
+
+  const memoizedDataTableRows = useMemo(() => {
+    const filteredRows = data.filter((item) =>
+      tilesWithTabs.includes(selectedTile?.type) && selectedTestSection != "all"
+        ? item.testSection === selectedTestSection
+        : true,
+    );
+    return filteredRows.slice((page - 1) * pageSize, page * pageSize);
+  }, [data, selectedTile, selectedTestSection, page, pageSize]);
+
+  const memoizedFilteredCount = useMemo(() => {
+    return data.filter((item) =>
+      tilesWithTabs.includes(selectedTile?.type) && selectedTestSection != "all"
+        ? item.testSection === selectedTestSection
+        : true,
+    ).length;
+  }, [data, selectedTile, selectedTestSection]);
   const renderCell = (cell, row) => {
     if (cell.info.header === "labNumber" && cell.value) {
       return (
@@ -658,14 +694,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       </Grid>
                     )}
                     <DataTable
-                      rows={data
-                        .filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        )
-                        .slice((page - 1) * pageSize, page * pageSize)}
+                      rows={memoizedDataTableRows}
                       headers={
                         selectedTile.type != "ORDERS_ENTERED_BY_USER_TODAY"
                           ? orderHeaders
@@ -716,14 +745,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       page={page}
                       pageSize={pageSize}
                       pageSizes={[10, 20, 30, 50, 100]}
-                      totalItems={
-                        data.filter((item) =>
-                          tilesWithTabs.includes(selectedTile.type) &&
-                          selectedTestSection != "all"
-                            ? item.testSection === selectedTestSection
-                            : true,
-                        ).length
-                      }
+                      totalItems={memoizedFilteredCount}
                       forwardText={intl.formatMessage({
                         id: "pagination.forward",
                       })}
