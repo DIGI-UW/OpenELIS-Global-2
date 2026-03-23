@@ -2900,17 +2900,28 @@ const StorageDashboard = () => {
     // occupiedCoordinates is now an object: { "A1": { externalId: "...", sampleItemId: "..." }, ... }
     const occupiedCoordinates = selectedBox.occupiedCoordinates || {};
 
+    const hint = selectedBox.positionSchemaHint || "letter-number";
+    const hasLegacyNumberCoordinates =
+      hint === "number-number" &&
+      Object.keys(occupiedCoordinates).some((coordinate) =>
+        /^\d+-\d+$/.test(coordinate),
+      );
+
     // Generate coordinate labels based on position schema hint
     const getCoordinateLabel = (rowIdx, colIdx) => {
-      const hint = selectedBox.positionSchemaHint || "letter-number";
       if (hint === "letter-number") {
         // A1, A2, ..., B1, B2, etc.
         const letter = String.fromCharCode(65 + rowIdx); // A=65
         return `${letter}${colIdx + 1}`;
-      } else {
-        // 1-1, 1-2, etc.
+      }
+
+      if (hasLegacyNumberCoordinates) {
+        // Backward compatibility for boxes that already stored positions as 1-1, 1-2, ...
         return `${rowIdx + 1}-${colIdx + 1}`;
       }
+
+      // Continuous numbering for AHRI biorepository boxes: 1, 2, 3, ... in row-major order.
+      return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
     };
 
     return (
