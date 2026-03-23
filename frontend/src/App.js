@@ -79,6 +79,7 @@ import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 import ShipmentReport from "./components/shipment/ShipmentReport";
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
+import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
 
 export default function App() {
   const defaultLocale =
@@ -264,6 +265,38 @@ export default function App() {
 
   const isCheckingLogin = () => {
     return !("authenticated" in userSessionDetails);
+  };
+
+  const routeErrorStorage = {
+    titleKey: "errorBoundary.route.storage.title",
+    messageKey: "errorBoundary.route.storage.message",
+    titleDefault: "Storage could not be loaded",
+    messageDefault:
+      "Something went wrong on this page. Reload to try again, or use the menu to go elsewhere.",
+  };
+
+  const routeErrorPatientResultsViewer = {
+    titleKey: "errorBoundary.route.patientResultsViewer.title",
+    messageKey: "errorBoundary.route.patientResultsViewer.message",
+    titleDefault: "Patient results could not be loaded",
+    messageDefault:
+      "Something went wrong while showing this patient's results. Reload to try again.",
+  };
+
+  const routeErrorResultsSearch = {
+    titleKey: "errorBoundary.route.resultsSearch.title",
+    messageKey: "errorBoundary.route.resultsSearch.message",
+    titleDefault: "Results could not be loaded",
+    messageDefault:
+      "Something went wrong on the results page. Reload to try again.",
+  };
+
+  const routeErrorSamplePatientEntry = {
+    titleKey: "errorBoundary.route.samplePatientEntry.title",
+    messageKey: "errorBoundary.route.samplePatientEntry.message",
+    titleDefault: "Sample entry could not be loaded",
+    messageDefault:
+      "Something went wrong on the sample entry page. Reload to try again.",
   };
 
   return (
@@ -454,7 +487,18 @@ export default function App() {
                 <SecureRoute
                   path="/SamplePatientEntry"
                   exact
-                  component={() => <AddOrder />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorSamplePatientEntry.titleKey}
+                      messageKey={routeErrorSamplePatientEntry.messageKey}
+                      titleDefault={routeErrorSamplePatientEntry.titleDefault}
+                      messageDefault={
+                        routeErrorSamplePatientEntry.messageDefault
+                      }
+                    >
+                      <AddOrder />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
@@ -571,12 +615,30 @@ export default function App() {
                 <SecureRoute
                   path="/Storage"
                   exact
-                  component={() => <StorageDashboard />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorStorage.titleKey}
+                      messageKey={routeErrorStorage.messageKey}
+                      titleDefault={routeErrorStorage.titleDefault}
+                      messageDefault={routeErrorStorage.messageDefault}
+                    >
+                      <StorageDashboard />
+                    </RouteErrorBoundary>
+                  )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/Storage/:tab"
-                  component={() => <StorageDashboard />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorStorage.titleKey}
+                      messageKey={routeErrorStorage.messageKey}
+                      titleDefault={routeErrorStorage.titleDefault}
+                      messageDefault={routeErrorStorage.messageDefault}
+                    >
+                      <StorageDashboard />
+                    </RouteErrorBoundary>
+                  )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
@@ -712,7 +774,18 @@ export default function App() {
                 <SecureRoute
                   path="/PatientResults/:patientId"
                   exact
-                  component={() => <RoutedResultsViewer />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorPatientResultsViewer.titleKey}
+                      messageKey={routeErrorPatientResultsViewer.messageKey}
+                      titleDefault={routeErrorPatientResultsViewer.titleDefault}
+                      messageDefault={
+                        routeErrorPatientResultsViewer.messageDefault
+                      }
+                    >
+                      <RoutedResultsViewer />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RECEPTION}
                 />
 
@@ -743,37 +816,91 @@ export default function App() {
                 <SecureRoute
                   path="/result"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorResultsSearch.titleKey}
+                      messageKey={routeErrorResultsSearch.messageKey}
+                      titleDefault={routeErrorResultsSearch.titleDefault}
+                      messageDefault={routeErrorResultsSearch.messageDefault}
+                    >
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/LogbookResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorResultsSearch.titleKey}
+                      messageKey={routeErrorResultsSearch.messageKey}
+                      titleDefault={routeErrorResultsSearch.titleDefault}
+                      messageDefault={routeErrorResultsSearch.messageDefault}
+                    >
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/PatientResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorResultsSearch.titleKey}
+                      messageKey={routeErrorResultsSearch.messageKey}
+                      titleDefault={routeErrorResultsSearch.titleDefault}
+                      messageDefault={routeErrorResultsSearch.messageDefault}
+                    >
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/AccessionResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorResultsSearch.titleKey}
+                      messageKey={routeErrorResultsSearch.messageKey}
+                      titleDefault={routeErrorResultsSearch.titleDefault}
+                      messageDefault={routeErrorResultsSearch.messageDefault}
+                    >
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/StatusResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorResultsSearch.titleKey}
+                      messageKey={routeErrorResultsSearch.messageKey}
+                      titleDefault={routeErrorResultsSearch.titleDefault}
+                      messageDefault={routeErrorResultsSearch.messageDefault}
+                    >
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/RangeResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary
+                      titleKey={routeErrorResultsSearch.titleKey}
+                      messageKey={routeErrorResultsSearch.messageKey}
+                      titleDefault={routeErrorResultsSearch.titleDefault}
+                      messageDefault={routeErrorResultsSearch.messageDefault}
+                    >
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
