@@ -1,18 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <!-- Inventory Storage Locations -->
-    <inventory_storage_location id="1000"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440101"
-        name="Test Refrigerator 1" location_code="TEST-FRIDGE-01"
-        location_type="REFRIGERATOR" temperature_min="2.0"
-        temperature_max="8.0" is_active="true"
-        last_updated="2025-12-06 00:00:00" />
+    <!-- Note: inventory_storage_location table was removed in favor of unified storage hierarchy -->
+    <!-- Creating minimal self-contained storage hierarchy for inventory test -->
 
-    <inventory_storage_location id="1001"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440102"
-        name="Test Room Temperature" location_code="TEST-ROOM-01"
-        location_type="ROOM" is_active="true"
-        last_updated="2025-12-06 00:00:00" />
+    <!-- Test Storage Room -->
+    <storage_room id="9000"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440201"
+        name="Test Inventory Room" code="TEST-INV"
+        description="Test room for inventory testing" active="true"
+        sys_user_id="1" last_updated="2025-12-06 00:00:00" />
+
+    <!-- Test Storage Devices -->
+    <storage_device id="9000"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440202"
+        name="Test Refrigerator" code="TEST-REF"
+        type="refrigerator" temperature_setting="4.0"
+        active="true" parent_room_id="9000"
+        sys_user_id="1" last_updated="2025-12-06 00:00:00" />
+
+    <storage_device id="9001"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440203"
+        name="Test Cabinet" code="TEST-CAB"
+        type="cabinet" active="true" parent_room_id="9000"
+        sys_user_id="1" last_updated="2025-12-06 00:00:00" />
 
     <!-- Inventory Items -->
     <inventory_item id="1000"
@@ -29,10 +39,11 @@
         category="QC" units="kits" low_stock_threshold="5" is_active="Y"
         last_updated="2025-12-06 00:00:00" />
 
-    <!-- Inventory Lots -->
+    <!-- Inventory Lots using unified storage hierarchy -->
     <inventory_lot id="1000"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440011"
-        inventory_item_id="1000" storage_location_id="1000"
+        inventory_item_id="1000" location_id="9000" location_type="device"
+        storage_path="Test Inventory Room > Test Refrigerator"
         lot_number="LOT-2025-001" expiration_date="2025-12-31 00:00:00"
         receipt_date="2025-01-01 00:00:00" initial_quantity="100.00"
         current_quantity="100.00" qc_status="PASSED" status="ACTIVE"
@@ -40,7 +51,8 @@
 
     <inventory_lot id="1001"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440012"
-        inventory_item_id="1000" storage_location_id="1000"
+        inventory_item_id="1000" location_id="9000" location_type="device"
+        storage_path="Test Inventory Room > Test Refrigerator"
         lot_number="LOT-2025-002" expiration_date="2025-06-30 00:00:00"
         receipt_date="2025-01-15 00:00:00" initial_quantity="50.00"
         current_quantity="50.00" qc_status="PASSED" status="ACTIVE"
@@ -48,7 +60,8 @@
 
     <inventory_lot id="1002"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440013"
-        inventory_item_id="1001" storage_location_id="1001"
+        inventory_item_id="1001" location_id="9001" location_type="device"
+        storage_path="Test Inventory Room > Test Cabinet"
         lot_number="CTRL-2025-001" expiration_date="2026-01-31 00:00:00"
         receipt_date="2025-01-01 00:00:00" initial_quantity="20.00"
         current_quantity="15.00" qc_status="PASSED" status="IN_USE"

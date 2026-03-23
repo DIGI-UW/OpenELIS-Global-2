@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Hibernate;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -262,13 +261,53 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional
     protected NoteBook update(NoteBook noteBook, String auditTrailType) {
-        // Note: Do NOT evict the modified noteBook - it would cause
-        // "collection no longer referenced" errors with orphanRemoval collections.
-        // The parent class handles getting the old object for audit trail comparison.
-        // We just need to ensure lazy collections are initialized on the entity being
-        // saved.
+        // Ensure lazy collections are initialized before passing to parent.
+        // This prevents LazyInitializationException during audit trail comparison.
+        // We initialize after retrieving from DB to ensure proper session management.
+        if (noteBook.getId() != null) {
+            // Get a fresh instance from the database for audit trail comparison
+            Optional<NoteBook> managed = baseObjectDAO.get(noteBook.getId());
+            if (managed.isPresent()) {
+                NoteBook dbCopy = managed.get();
+                initializeLazyCollections(dbCopy);
+                // Copy modified scalar fields from the detached entity to the managed entity
+                // to preserve any changes made before update was called
+                mergeModifiedFields(noteBook, dbCopy);
+                noteBook = dbCopy;
+            }
+        }
         initializeLazyCollections(noteBook);
         return super.update(noteBook, auditTrailType);
+    }
+
+    /**
+     * Merge modified fields from a potentially detached entity to a managed entity.
+     * This preserves field modifications that would otherwise be lost when the
+     * entity is fetched fresh from the database for lazy collection initialization.
+     */
+    private void mergeModifiedFields(NoteBook source, NoteBook target) {
+        if (source == null || target == null) {
+            return;
+        }
+        // Copy scalar fields that are commonly modified
+        if (source.getWorkflowType() != null && !source.getWorkflowType().equals(target.getWorkflowType())) {
+            target.setWorkflowType(source.getWorkflowType());
+        }
+        if (source.getObjective() != null && !source.getObjective().equals(target.getObjective())) {
+            target.setObjective(source.getObjective());
+        }
+        if (source.getProtocol() != null && !source.getProtocol().equals(target.getProtocol())) {
+            target.setProtocol(source.getProtocol());
+        }
+        if (source.getContent() != null && !source.getContent().equals(target.getContent())) {
+            target.setContent(source.getContent());
+        }
+        if (source.getTitle() != null && !source.getTitle().equals(target.getTitle())) {
+            target.setTitle(source.getTitle());
+        }
+        if (source.getStatus() != null && !source.getStatus().equals(target.getStatus())) {
+            target.setStatus(source.getStatus());
+        }
     }
 
     /**
@@ -277,6 +316,9 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
      * transaction (e.g., in audit trail comparison).
      */
     private void initializeLazyCollections(NoteBook noteBook) {
+        if (noteBook == null) {
+            return;
+        }
         Hibernate.initialize(noteBook.getTags());
         Hibernate.initialize(noteBook.getSamples());
         Hibernate.initialize(noteBook.getAnalysers());

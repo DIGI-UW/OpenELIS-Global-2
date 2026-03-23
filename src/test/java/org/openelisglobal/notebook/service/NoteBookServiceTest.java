@@ -387,4 +387,128 @@ public class NoteBookServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(results);
         assertTrue(results.isEmpty());
     }
+
+    @Test
+    public void createInstanceFromTemplate_TemplateWithWorkflowType_PropagatesToInstance() {
+        NoteBook template = noteBookService.get(1);
+        assertNotNull("Test template should exist", template);
+        // Ensure creator is persisted before modification
+        assertNotNull("Template should have creator", template.getCreator());
+
+        template.setWorkflowType("test-workflow-type");
+        noteBookService.save(template);
+
+        // Refetch template to ensure workflowType is persisted
+        NoteBook refreshedTemplate = noteBookService.get(template.getId());
+        assertEquals("Template workflowType should be persisted", "test-workflow-type",
+                refreshedTemplate.getWorkflowType());
+
+        NoteBook instance = noteBookService.createInstanceFromTemplate(template.getId(), "Instance from Test", "1");
+
+        assertNotNull("Instance should be created", instance);
+        assertNotNull("Instance should have workflowType", instance.getWorkflowType());
+        assertEquals("Instance workflowType should match template", "test-workflow-type", instance.getWorkflowType());
+        assertFalse("Instance should not be a template", instance.getIsTemplate());
+    }
+
+    @Test
+    public void createInstanceFromTemplate_TemplateWithoutWorkflowType_InheritsFromParent() {
+        NoteBook template = noteBookService.get(1);
+        assertNotNull("Test template should exist", template);
+        template.setWorkflowType(null);
+        noteBookService.save(template);
+
+        NoteBook instance = noteBookService.createInstanceFromTemplate(template.getId(), "Instance", "1");
+
+        assertNotNull("Instance should be created", instance);
+        assertEquals("Instance should have workflowType field set (may be null/inherited)", null,
+                instance.getWorkflowType());
+    }
+
+    @Test
+    public void createInstanceFromTemplate_MultipleInstances_EachHasWorkflowType() {
+        NoteBook template = noteBookService.get(1);
+        assertNotNull("Test template should exist", template);
+        template.setWorkflowType("hematology-workflow");
+        noteBookService.save(template);
+
+        NoteBook instance1 = noteBookService.createInstanceFromTemplate(template.getId(), "Instance 1", "1");
+        NoteBook instance2 = noteBookService.createInstanceFromTemplate(template.getId(), "Instance 2", "1");
+
+        assertNotNull("First instance should be created", instance1);
+        assertNotNull("Second instance should be created", instance2);
+        assertEquals("First instance should have workflowType", "hematology-workflow", instance1.getWorkflowType());
+        assertEquals("Second instance should have workflowType", "hematology-workflow", instance2.getWorkflowType());
+        assertEquals("Both instances should have same workflowType", instance1.getWorkflowType(),
+                instance2.getWorkflowType());
+    }
+
+    @Test
+    public void createChildInstance_ParentWithWorkflowType_PropagatesToChild() {
+        NoteBook parent = noteBookService.get(1);
+        assertNotNull("Parent should exist", parent);
+        parent.setWorkflowType("immunology-workflow");
+        parent.setIsTemplate(true);
+        noteBookService.save(parent);
+
+        NoteBook child = noteBookService.createChildInstance(parent.getId(), "Child Instance", "1");
+
+        assertNotNull("Child should be created", child);
+        assertNotNull("Child should have workflowType", child.getWorkflowType());
+        assertEquals("Child workflowType should match parent", "immunology-workflow", child.getWorkflowType());
+        assertEquals("Child should reference parent", parent.getId(), child.getParentNotebook().getId());
+        assertFalse("Child should not be a template", child.getIsTemplate());
+    }
+
+    @Test
+    public void createChildInstance_ParentWithoutWorkflowType_HandlesGracefully() {
+        NoteBook parent = noteBookService.get(1);
+        assertNotNull("Parent should exist", parent);
+        parent.setWorkflowType(null);
+        parent.setIsTemplate(true);
+        noteBookService.save(parent);
+
+        NoteBook child = noteBookService.createChildInstance(parent.getId(), "Child", "1");
+
+        assertNotNull("Child should be created even without parent workflowType", child);
+        assertEquals("Child should have workflowType field set (may be null)", null, child.getWorkflowType());
+    }
+
+    @Test
+    public void createChildInstance_VerifiesCompleteInheritance() {
+        NoteBook parent = noteBookService.get(1);
+        assertNotNull("Parent should exist", parent);
+        parent.setWorkflowType("virology-workflow");
+        parent.setObjective("Test objective");
+        parent.setProtocol("Test protocol");
+        parent.setIsTemplate(true);
+        noteBookService.save(parent);
+
+        NoteBook child = noteBookService.createChildInstance(parent.getId(), "Child", "1");
+
+        assertNotNull("Child should be created", child);
+        assertEquals("Child workflowType should be inherited", "virology-workflow", child.getWorkflowType());
+        assertEquals("Child objective should be inherited", "Test objective", child.getObjective());
+        assertEquals("Child protocol should be inherited", "Test protocol", child.getProtocol());
+        assertEquals("Child should reference parent", parent.getId(), child.getParentNotebook().getId());
+    }
+
+    @Test
+    public void createInstanceFromTemplate_InstanceAndChildHaveConsistentWorkflowType() {
+        NoteBook template = noteBookService.get(1);
+        assertNotNull("Template should exist", template);
+        template.setWorkflowType("bacteriology-workflow");
+        template.setIsTemplate(true);
+        noteBookService.save(template);
+
+        NoteBook instance = noteBookService.createInstanceFromTemplate(template.getId(), "Instance", "1");
+        NoteBook child = noteBookService.createChildInstance(template.getId(), "Child", "1");
+
+        assertNotNull("Instance should be created", instance);
+        assertNotNull("Child should be created", child);
+        assertEquals("Instance should have template workflowType", "bacteriology-workflow", instance.getWorkflowType());
+        assertEquals("Child should have template workflowType", "bacteriology-workflow", child.getWorkflowType());
+        assertEquals("Instance and child should have same workflowType", instance.getWorkflowType(),
+                child.getWorkflowType());
+    }
 }

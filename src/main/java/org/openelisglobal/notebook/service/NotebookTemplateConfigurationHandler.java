@@ -25,26 +25,29 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * Each JSON file under {@code volume/configuration/backend/notebook-templates/}
  * describes a single lab template. This handler reads the file and creates or
- * skips/updates the corresponding {@code notebook} and {@code notebook_page} rows —
- * exactly what the per-lab Liquibase changesets do, but without requiring a
- * schema migration for every new lab.
+ * skips/updates the corresponding {@code notebook} and {@code notebook_page}
+ * rows — exactly what the per-lab Liquibase changesets do, but without
+ * requiring a schema migration for every new lab.
  *
  * <p>
- * <strong>Idempotency (default behavior):</strong> If a template with the same title
- * already exists (e.g. seeded by a Liquibase changeset or created in a prior startup),
- * it is skipped. This ensures configuration loading is safe to run repeatedly without
- * overwriting DB-side edits or modifications made since the template was created.
+ * <strong>Idempotency (default behavior):</strong> If a template with the same
+ * title already exists (e.g. seeded by a Liquibase changeset or created in a
+ * prior startup), it is skipped. This ensures configuration loading is safe to
+ * run repeatedly without overwriting DB-side edits or modifications made since
+ * the template was created.
  *
  * <p>
- * <strong>Force update (optional):</strong> Set {@code org.openelisglobal.notebook.templates.forceUpdate=true}
- * to enable updating existing templates. When enabled, templates and all their pages are
+ * <strong>Force update (optional):</strong> Set
+ * {@code org.openelisglobal.notebook.templates.forceUpdate=true} to enable
+ * updating existing templates. When enabled, templates and all their pages are
  * re-processed (metadata updated, pages replaced wholesale) on every startup.
  *
  * <p>
  * <strong>Loading behavior:</strong> Configuration files are processed by
  * {@link org.openelisglobal.configuration.service.ConfigurationInitializationService}
- * at application startup (on {@code ContextRefreshedEvent}). To pick up configuration
- * changes, a full application restart or context refresh is required.
+ * at application startup (on {@code ContextRefreshedEvent}). To pick up
+ * configuration changes, a full application restart or context refresh is
+ * required.
  *
  * <p>
  * <strong>JSON contract:</strong>

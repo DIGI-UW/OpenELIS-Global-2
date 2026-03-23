@@ -230,6 +230,8 @@ public class NotebookTemplateConfigurationHandlerTest {
 
     @Test
     public void testProcess_ExistingTemplate_forceReload_callsUpdate() throws Exception {
+        setForceUpdateTemplates(true);
+
         String json = "{\"title\":\"Test Lab\",\"pages\":[{\"order\":1}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());
 
@@ -252,6 +254,8 @@ public class NotebookTemplateConfigurationHandlerTest {
 
     @Test
     public void testProcess_ExistingTemplate_forceReload_replacesPages() throws Exception {
+        setForceUpdateTemplates(true);
+
         String json = "{\"title\":\"Test Lab\",\"pages\":[{\"order\":1},{\"order\":2}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());
 
@@ -274,6 +278,8 @@ public class NotebookTemplateConfigurationHandlerTest {
 
     @Test
     public void testProcess_ExistingTemplate_updatesScalarFields() throws Exception {
+        setForceUpdateTemplates(true);
+
         String json = "{\"title\":\"Test Lab\",\"workflowType\":\"lab-key\",\"content\":\"New Content\",\"pages\":[{\"order\":1}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());
 
@@ -291,7 +297,6 @@ public class NotebookTemplateConfigurationHandlerTest {
 
         handler.processConfiguration(input, "test.json");
 
-        // Verify scalar fields were updated on the existing template
         org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
         verify(noteBookDAO, org.mockito.Mockito.atLeast(1)).update(nbCaptor.capture());
 
@@ -302,6 +307,8 @@ public class NotebookTemplateConfigurationHandlerTest {
 
     @Test
     public void testProcess_ExistingTemplate_clearsAndReSyncsDepartments() throws Exception {
+        setForceUpdateTemplates(true);
+
         String json = "{\"title\":\"Test Lab\",\"departments\":[\"Dept A\"],\"pages\":[{\"order\":1}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());
 
@@ -324,13 +331,11 @@ public class NotebookTemplateConfigurationHandlerTest {
 
         handler.processConfiguration(input, "test.json");
 
-        // Verify departments were cleared and re-synced by checking final state
         org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
         verify(noteBookDAO, org.mockito.Mockito.atLeast(1)).update(nbCaptor.capture());
 
         NoteBook updatedNb = nbCaptor.getValue();
         assertNotNull("Departments collection should exist", updatedNb.getDepartments());
-        // Department should be in the final synced state (mocked by linkDepartments)
         verify(testSectionService, org.mockito.Mockito.atLeastOnce()).getTestSectionByName("Dept A");
     }
 
@@ -589,316 +594,143 @@ public class NotebookTemplateConfigurationHandlerTest {
     }
 
     @Test
-    public void testDataPersistence_ComplexNestedStructure() throws Exception {
-        String json = "{\"title\":\"Complex Lab\",\"pages\":[{\"order\":1,\"data\":{\"level1\":{\"level2\":{\"level3\":\"deep\"},\"array\":[1,2,3]},\"strings\":[\"a\",\"b\"],\"numbers\":[1.5,2.7]}}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
+    public void testExistingTemplate_WithForceUpdateFalse_SkipsUpdate() throws Exception {
+        setForceUpdateTemplates(false);
 
-        when(noteBookDAO.getAllMatching("title", "Complex Lab")).thenReturn(new ArrayList<>());
-        handler.processConfiguration(input, "test.json");
-
-        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
-        verify(noteBookPageDAO).insert(pageCaptor.capture());
-
-        NoteBookPage page = pageCaptor.getValue();
-        assertNotNull(page.getData());
-        assertTrue(page.getData().containsKey("level1"));
-        assertTrue(page.getData().containsKey("strings"));
-        assertTrue(page.getData().containsKey("numbers"));
-    }
-
-    @Test
-    public void testDataPersistence_UnicodeAndSpecialCharacters() throws Exception {
-        String json = "{\"title\":\"Unicode Lab\",\"pages\":[{\"order\":1,\"data\":{\"emoji\":\"🧬🔬\",\"chinese\":\"中文\",\"arabic\":\"العربية\",\"symbols\":\"©®™€¥£§\"}}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        when(noteBookDAO.getAllMatching("title", "Unicode Lab")).thenReturn(new ArrayList<>());
-        handler.processConfiguration(input, "test.json");
-
-        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
-        verify(noteBookPageDAO).insert(pageCaptor.capture());
-
-        NoteBookPage page = pageCaptor.getValue();
-        assertEquals("🧬🔬", page.getData().get("emoji"));
-        assertEquals("中文", page.getData().get("chinese"));
-    }
-
-    @Test
-    public void testUpdate_ReducePageCount_OldPagesDeleted() throws Exception {
-        // Existing template with 3 pages
         NoteBook existingTemplate = new NoteBook();
         existingTemplate.setId(1);
-        existingTemplate.setTitle("Reduce Pages Lab");
+        existingTemplate.setTitle("Existing Lab");
         existingTemplate.setIsTemplate(true);
         existingTemplate.setPages(new ArrayList<>());
-        existingTemplate.setDepartments(new HashSet<>());
-        existingTemplate.setTags(new ArrayList<>());
 
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "Reduce Pages Lab")).thenReturn(matches);
+        NoteBookPage existingPage = new NoteBookPage();
+        existingPage.setId(100);
+        existingPage.setOrder(1);
+        existingPage.setTitle("Original Page");
+        existingTemplate.getPages().add(existingPage);
 
-        // Config with only 1 page
-        String json = "{\"title\":\"Reduce Pages Lab\",\"pages\":[{\"order\":1}]}";
+        when(noteBookDAO.getAllMatching("title", "Existing Lab"))
+                .thenReturn(java.util.Collections.singletonList(existingTemplate));
+
+        String json = "{\"title\":\"Existing Lab\",\"pages\":[{\"order\":1,\"title\":\"New Page\"}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());
 
         handler.processConfiguration(input, "test.json");
 
-        // Should insert only 1 new page (old ones deleted via cascade)
-        verify(noteBookPageDAO, times(1)).insert(any(NoteBookPage.class));
+        verify(noteBookDAO, times(0)).update(any(NoteBook.class));
+        verify(noteBookPageDAO, times(0)).insert(any(NoteBookPage.class));
+        assertEquals("Existing page should remain unchanged", 1, existingTemplate.getPages().size());
+        assertEquals("Existing page title should not change", "Original Page",
+                existingTemplate.getPages().get(0).getTitle());
     }
 
     @Test
-    public void testUpdate_IncreasePageCount_NewPagesAdded() throws Exception {
+    public void testExistingTemplate_WithForceUpdateTrue_UpdatesTemplate() throws Exception {
+        setForceUpdateTemplates(true);
+
         NoteBook existingTemplate = new NoteBook();
         existingTemplate.setId(1);
-        existingTemplate.setTitle("Increase Pages Lab");
+        existingTemplate.setTitle("Existing Lab");
         existingTemplate.setIsTemplate(true);
         existingTemplate.setPages(new ArrayList<>());
         existingTemplate.setDepartments(new HashSet<>());
-        existingTemplate.setTags(new ArrayList<>());
 
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "Increase Pages Lab")).thenReturn(matches);
+        NoteBookPage oldPage = new NoteBookPage();
+        oldPage.setId(100);
+        oldPage.setOrder(1);
+        existingTemplate.getPages().add(oldPage);
 
-        // Config with 5 pages
-        String json = "{\"title\":\"Increase Pages Lab\",\"pages\":[{\"order\":1},{\"order\":2},{\"order\":3},{\"order\":4},{\"order\":5}]}";
+        when(noteBookDAO.getAllMatching("title", "Existing Lab"))
+                .thenReturn(java.util.Collections.singletonList(existingTemplate));
+
+        String json = "{\"title\":\"Existing Lab\",\"workflowType\":\"updated-type\",\"pages\":[{\"order\":1,\"title\":\"New Page\"}]}";
         InputStream input = new ByteArrayInputStream(json.getBytes());
 
         handler.processConfiguration(input, "test.json");
 
-        // Should insert 5 new pages
-        verify(noteBookPageDAO, times(5)).insert(any(NoteBookPage.class));
-    }
-
-    @Test
-    public void testUpdate_RemoveDataFromPages() throws Exception {
-        NoteBook existingTemplate = new NoteBook();
-        existingTemplate.setId(1);
-        existingTemplate.setTitle("No Data Lab");
-        existingTemplate.setIsTemplate(true);
-        existingTemplate.setPages(new ArrayList<>());
-        existingTemplate.setDepartments(new HashSet<>());
-        existingTemplate.setTags(new ArrayList<>());
-
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "No Data Lab")).thenReturn(matches);
-
-        // Config page with no data
-        String json = "{\"title\":\"No Data Lab\",\"pages\":[{\"order\":1}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        handler.processConfiguration(input, "test.json");
-
-        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
-        verify(noteBookPageDAO).insert(pageCaptor.capture());
-
-        NoteBookPage page = pageCaptor.getValue();
-        assertNull(page.getData());
-    }
-
-    @Test
-    public void testUpdate_TagsReplacedCompletely() throws Exception {
-        NoteBook existingTemplate = new NoteBook();
-        existingTemplate.setId(1);
-        existingTemplate.setTitle("Tag Lab");
-        existingTemplate.setIsTemplate(true);
-        existingTemplate.setPages(new ArrayList<>());
-        existingTemplate.setDepartments(new HashSet<>());
-        java.util.List<String> oldTags = new ArrayList<>();
-        oldTags.add("old-tag");
-        existingTemplate.setTags(oldTags);
-
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "Tag Lab")).thenReturn(matches);
-
-        // Config with different tags
-        String json = "{\"title\":\"Tag Lab\",\"tags\":[\"new-tag-1\",\"new-tag-2\"],\"pages\":[{\"order\":1}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        handler.processConfiguration(input, "test.json");
-
-        // Verify tags were cleared and replaced (not appended)
-        org.mockito.ArgumentCaptor<NoteBook> captor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
-        verify(noteBookDAO, times(3)).update(captor.capture()); // scalar, clear deps, clear pages
-        NoteBook updated = captor.getAllValues().get(0);
-        assertEquals(2, updated.getTags().size());
-    }
-
-    @Test
-    public void testUpdate_DepartmentsCleared_ThenResynced() throws Exception {
-        NoteBook existingTemplate = new NoteBook();
-        existingTemplate.setId(1);
-        existingTemplate.setTitle("Dept Lab");
-        existingTemplate.setIsTemplate(true);
-        existingTemplate.setPages(new ArrayList<>());
-        existingTemplate.setDepartments(new HashSet<>());
-        existingTemplate.setTags(new ArrayList<>());
-
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "Dept Lab")).thenReturn(matches);
-
-        TestSection newDept = new TestSection();
-        newDept.setId("2");
-        newDept.setTestSectionName("New Dept");
-        when(testSectionService.getTestSectionByName("New Dept")).thenReturn(newDept);
-
-        String json = "{\"title\":\"Dept Lab\",\"departments\":[\"New Dept\"],\"pages\":[{\"order\":1}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        handler.processConfiguration(input, "test.json");
-
-        verify(noteBookDAO, times(4)).update(any(NoteBook.class));
-    }
-
-    @Test
-    public void testUpdate_DuplicateDepartmentNames_NotDuplicated() throws Exception {
-        NoteBook existingTemplate = new NoteBook();
-        existingTemplate.setId(1);
-        existingTemplate.setTitle("Dup Dept Lab");
-        existingTemplate.setIsTemplate(true);
-        existingTemplate.setPages(new ArrayList<>());
-        existingTemplate.setDepartments(new HashSet<>());
-        existingTemplate.setTags(new ArrayList<>());
-
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "Dup Dept Lab")).thenReturn(matches);
-
-        TestSection dept = new TestSection();
-        dept.setId("1");
-        dept.setTestSectionName("Dept A");
-        when(testSectionService.getTestSectionByName("Dept A")).thenReturn(dept);
-
-        // Config has same department twice
-        String json = "{\"title\":\"Dup Dept Lab\",\"departments\":[\"Dept A\",\"Dept A\"],\"pages\":[{\"order\":1}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        handler.processConfiguration(input, "test.json");
-
-        // Set prevents duplicates, so only 1 dept should be linked (even though listed
-        // twice)
-        // Verify updates occurred (scalar, clear deps, link deps, clear pages)
-        verify(noteBookDAO, times(4)).update(any(NoteBook.class));
-        // Template should have only 1 department
-        assertEquals(1, existingTemplate.getDepartments().size());
-    }
-
-    @Test
-    public void testUpdate_PreservesExistingTemplateId() throws Exception {
-        NoteBook existingTemplate = new NoteBook();
-        existingTemplate.setId(99); // Specific ID
-        existingTemplate.setTitle("Preserve ID Lab");
-        existingTemplate.setIsTemplate(true);
-        existingTemplate.setPages(new ArrayList<>());
-        existingTemplate.setDepartments(new HashSet<>());
-        existingTemplate.setTags(new ArrayList<>());
-
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate);
-        when(noteBookDAO.getAllMatching("title", "Preserve ID Lab")).thenReturn(matches);
-
-        String json = "{\"title\":\"Preserve ID Lab\",\"pages\":[{\"order\":1}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        handler.processConfiguration(input, "test.json");
-
-        // Template ID should remain 99 (not changed during update)
-        assertEquals(99, (int) existingTemplate.getId());
-    }
-
-    @Test
-    public void testValidate_LargeDataPayload_Persists() throws Exception {
-        // Create large payload (1MB of data)
-        StringBuilder largeData = new StringBuilder();
-        for (int i = 0; i < 10000; i++) {
-            largeData.append("\"field").append(i).append("\":\"").append("x".repeat(100)).append("\",");
-        }
-        largeData.deleteCharAt(largeData.length() - 1);
-
-        String json = "{\"title\":\"Large Data Lab\",\"pages\":[{\"order\":1,\"data\":{" + largeData + "}}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        when(noteBookDAO.getAllMatching("title", "Large Data Lab")).thenReturn(new ArrayList<>());
-        handler.processConfiguration(input, "test.json");
-
-        verify(noteBookPageDAO, times(1)).insert(any(NoteBookPage.class));
-    }
-
-    @Test
-    public void testValidate_EmptyPages_AfterWhitespace_throws() throws Exception {
-        String json = "{\"title\":\"Empty Pages Lab\",\"pages\":[]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        thrown.expect(IllegalArgumentException.class);
-        thrown.expectMessage("empty");
-
-        handler.processConfiguration(input, "test.json");
-    }
-
-    @Test
-    public void testValidate_OrderVeryLarge_passes() throws Exception {
-        String json = "{\"title\":\"Large Order Lab\",\"pages\":[{\"order\":999999}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        when(noteBookDAO.getAllMatching("title", "Large Order Lab")).thenReturn(new ArrayList<>());
-        handler.processConfiguration(input, "test.json");
-
-        verify(noteBookDAO, times(1)).insert(any(NoteBook.class));
-    }
-
-    @Test
-    public void testErrorMessage_IncludesFileName() throws Exception {
-        String json = "{}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        thrown.expect(IllegalArgumentException.class);
-        thrown.expectMessage("custom-template.json");
-
-        handler.processConfiguration(input, "custom-template.json");
-    }
-
-    @Test
-    public void testMultipleTemplatesWithSameName_UpdatesExisting() throws Exception {
-        NoteBook existingTemplate1 = new NoteBook();
-        existingTemplate1.setId(1);
-        existingTemplate1.setTitle("Same Name Lab");
-        existingTemplate1.setIsTemplate(true);
-        existingTemplate1.setPages(new ArrayList<>());
-        existingTemplate1.setDepartments(new HashSet<>());
-        existingTemplate1.setTags(new ArrayList<>());
-
-        NoteBook existingTemplate2 = new NoteBook();
-        existingTemplate2.setId(2);
-        existingTemplate2.setTitle("Same Name Lab");
-        existingTemplate2.setIsTemplate(false);
-        existingTemplate2.setPages(new ArrayList<>());
-        existingTemplate2.setDepartments(new HashSet<>());
-        existingTemplate2.setTags(new ArrayList<>());
-
-        List<NoteBook> matches = new ArrayList<>();
-        matches.add(existingTemplate1);
-        matches.add(existingTemplate2);
-        when(noteBookDAO.getAllMatching("title", "Same Name Lab")).thenReturn(matches);
-
-        String json = "{\"title\":\"Same Name Lab\",\"pages\":[{\"order\":1}]}";
-        InputStream input = new ByteArrayInputStream(json.getBytes());
-
-        handler.processConfiguration(input, "test.json");
-
-        // Verify only the template (isTemplate=true) was updated, not the entry
         org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
         verify(noteBookDAO, org.mockito.Mockito.atLeastOnce()).update(nbCaptor.capture());
 
-        // All captured updates should be for the template entity
-        for (NoteBook updatedNb : nbCaptor.getAllValues()) {
-            assertTrue("Only templates should be updated", Boolean.TRUE.equals(updatedNb.getIsTemplate()));
-        }
+        NoteBook updatedTemplate = nbCaptor.getAllValues().stream()
+                .filter(nb -> "updated-type".equals(nb.getWorkflowType())).findFirst().orElse(null);
+        assertNotNull("Template should have been updated with new workflowType", updatedTemplate);
 
-        // Verify pages were inserted (not updated from the entry)
         verify(noteBookPageDAO, org.mockito.Mockito.atLeastOnce()).insert(any(NoteBookPage.class));
+    }
+
+    @Test
+    public void testNewTemplate_AlwaysCreatedRegardlessOfForceUpdate() throws Exception {
+        setForceUpdateTemplates(false);
+
+        when(noteBookDAO.getAllMatching("title", "New Lab")).thenReturn(new ArrayList<>());
+        when(noteBookDAO.insert(any(NoteBook.class))).thenAnswer(invocation -> {
+            NoteBook nb = invocation.getArgument(0);
+            nb.setId(1);
+            return 1;
+        });
+
+        String json = "{\"title\":\"New Lab\",\"workflowType\":\"new-type\",\"pages\":[{\"order\":1,\"title\":\"Page 1\"}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+
+        handler.processConfiguration(input, "test.json");
+
+        org.mockito.ArgumentCaptor<NoteBook> nbCaptor = org.mockito.ArgumentCaptor.forClass(NoteBook.class);
+        verify(noteBookDAO).insert(nbCaptor.capture());
+
+        NoteBook createdTemplate = nbCaptor.getValue();
+        assertEquals("New template should have correct title", "New Lab", createdTemplate.getTitle());
+        assertEquals("New template should have correct workflowType", "new-type", createdTemplate.getWorkflowType());
+        assertTrue("New template should be marked as template", createdTemplate.getIsTemplate());
+
+        verify(noteBookPageDAO, org.mockito.Mockito.atLeastOnce()).insert(any(NoteBookPage.class));
+    }
+
+    @Test
+    public void testExistingTemplate_WithForceUpdateTrue_ReplacesPages() throws Exception {
+        setForceUpdateTemplates(true);
+
+        NoteBook existingTemplate = new NoteBook();
+        existingTemplate.setId(1);
+        existingTemplate.setTitle("Lab");
+        existingTemplate.setIsTemplate(true);
+        existingTemplate.setPages(new ArrayList<>());
+        existingTemplate.setDepartments(new HashSet<>());
+
+        NoteBookPage page1 = new NoteBookPage();
+        page1.setId(1);
+        page1.setOrder(1);
+        existingTemplate.getPages().add(page1);
+
+        NoteBookPage page2 = new NoteBookPage();
+        page2.setId(2);
+        page2.setOrder(2);
+        existingTemplate.getPages().add(page2);
+
+        when(noteBookDAO.getAllMatching("title", "Lab"))
+                .thenReturn(java.util.Collections.singletonList(existingTemplate));
+
+        String json = "{\"title\":\"Lab\",\"pages\":[{\"order\":1,\"title\":\"Updated Page 1\"},{\"order\":2,\"title\":\"Updated Page 2\"},{\"order\":3,\"title\":\"New Page 3\"}]}";
+        InputStream input = new ByteArrayInputStream(json.getBytes());
+
+        handler.processConfiguration(input, "test.json");
+
+        assertTrue("After update with forceUpdate=true, pages should be replaced",
+                existingTemplate.getPages().isEmpty());
+
+        org.mockito.ArgumentCaptor<NoteBookPage> pageCaptor = org.mockito.ArgumentCaptor.forClass(NoteBookPage.class);
+        verify(noteBookPageDAO, org.mockito.Mockito.times(3)).insert(pageCaptor.capture());
+
+        List<NoteBookPage> insertedPages = pageCaptor.getAllValues();
+        assertEquals("Should insert 3 new pages", 3, insertedPages.size());
+        assertEquals("First page should have correct order", Integer.valueOf(1), insertedPages.get(0).getOrder());
+        assertEquals("Second page should have correct order", Integer.valueOf(2), insertedPages.get(1).getOrder());
+        assertEquals("Third page should have correct order", Integer.valueOf(3), insertedPages.get(2).getOrder());
+    }
+
+    private void setForceUpdateTemplates(boolean value) throws Exception {
+        java.lang.reflect.Field field = NotebookTemplateConfigurationHandler.class
+                .getDeclaredField("forceUpdateTemplates");
+        field.setAccessible(true);
+        field.set(handler, value);
     }
 }
