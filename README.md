@@ -188,6 +188,16 @@ accessing any of these links, simply follow these steps:
 - `--skip-tests`: Skip tests (formatting only)
 - `--skip-e2e`: Skip E2E tests (frontend only)
 
+**Coverage helper script:**
+
+```bash
+# Report backend layer instruction coverage from JaCoCo CSV
+./scripts/layer-coverage-gate-all.sh
+
+# Use a custom JaCoCo CSV path
+./scripts/layer-coverage-gate-all.sh path/to/jacoco.csv
+```
+
 **Manual commands** (if you prefer to run steps individually):
 
 1.  Run Code Formatting Check (Backend). This command checks code formatting and
