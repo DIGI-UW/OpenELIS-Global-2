@@ -1,0 +1,14 @@
+---
+description: Playwright and Cypress E2E test execution rules
+globs: ["frontend/playwright/**", "frontend/cypress/**", ".github/workflows/*playwright*", ".github/workflows/*cypress*"]
+---
+
+# E2E Test Execution
+
+See `AGENTS.md` "E2E Tests (Playwright)" for the full execution contract.
+See `.ai/skills/playwright/SKILL.md` for execution invariants and lifecycle.
+
+Key rules:
+- Use `npm run pw:test` scripts, never raw `npx playwright test`.
+- `harness` and `demo` projects require analyzer harness stack preflight.
+- Do not create new Cypress tests (Cypress is deprecated).

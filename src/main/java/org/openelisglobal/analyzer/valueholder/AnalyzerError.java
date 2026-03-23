@@ -30,7 +30,7 @@ public class AnalyzerError extends BaseObject<String> {
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "analyzer_id", nullable = false, referencedColumnName = "id")
+    @JoinColumn(name = "analyzer_id", referencedColumnName = "id")
     private Analyzer analyzer;
 
     @Column(name = "error_type", nullable = false, length = 20)

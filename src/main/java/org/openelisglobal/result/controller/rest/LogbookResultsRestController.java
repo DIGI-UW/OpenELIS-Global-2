@@ -317,29 +317,11 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                             upperRangeAccessionNumber, doRange, finished);
                 } else {
                     resultsLoadUtility.setLockCurrentResults(modifyResultsRoleBased() && userNotInRole(request));
+                    // Keep React accession search aligned with legacy /AccessionResults behavior.
+                    tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                            "Searching for sample with labNumber: " + labNumber);
-                    Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
-                    if (sample != null) {
-                        LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults", "Found sample: id="
-                                + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
-                        if (!GenericValidator.isBlankOrNull(sample.getId())) {
-                            patient = getPatient(sample);
-
-                            tests = resultsLoadUtility.getGroupedTestsForSample(sample, patient);
-                            LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                                    "getGroupedTestsForSample returned " + tests.size() + " tests for sample "
-                                            + sample.getId());
-                            if (patient != null) {
-                                patientName = patientService.getLastFirstName(patient);
-                                patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "
-                                        + patient.getBirthDateForDisplay();
-                            }
-                        }
-                    } else {
-                        LogEvent.logWarn(this.getClass().getSimpleName(), "getLogbookResults",
-                                "No sample found for labNumber: " + labNumber);
-                    }
+                            "getUnfinishedTestResultItemsByAccession returned " + tests.size() + " tests for labNumber "
+                                    + labNumber);
                 }
 
                 // if no test try patientID

@@ -81,7 +81,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<NoteBook> filterNoteBookEntries(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate, Integer noteBookId) {
         List<Integer> entryIds = new ArrayList<>();
@@ -96,7 +96,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<NoteBook> filterNoteBooks(List<NoteBookStatus> statuses, List<String> types, List<String> tags,
             Date fromDate, Date toDate) {
         return baseObjectDAO.filterNoteBooks(statuses, types, tags, fromDate, toDate);
@@ -202,7 +202,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public NoteBookDisplayBean convertToDisplayBean(Integer noteBookId) {
         NoteBookDisplayBean displayBean = new NoteBookDisplayBean();
         Optional<NoteBook> optionalNoteBook = baseObjectDAO.get(noteBookId);
@@ -230,7 +230,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public NoteBookFullDisplayBean convertToFullDisplayBean(Integer noteBookId) {
         NoteBookFullDisplayBean fullDisplayBean = new NoteBookFullDisplayBean();
         NoteBook noteBook = get(noteBookId);
@@ -442,25 +442,25 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public Long getCountWithStatus(List<NoteBookStatus> statuses) {
         return baseObjectDAO.getCountWithStatus(statuses);
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public Long getCountWithStatusBetweenDates(List<NoteBookStatus> statuses, Timestamp from, Timestamp to) {
         return baseObjectDAO.getCountWithStatusBetweenDates(statuses, from, to);
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public Long getTotalCount() {
         return baseObjectDAO.getTotalCount();
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<SampleDisplayBean> searchSampleItems(String accession) {
 
         List<Sample> samples = StringUtils.isNotBlank(accession) ? Optional
@@ -472,13 +472,13 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<NoteBook> getAllTemplateNoteBooks() {
         return baseObjectDAO.getAllMatching("isTemplate", true);
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<NoteBook> getNoteBookEntries(Integer templateId) {
         NoteBook template = get(templateId);
         if (template != null && template.getIsTemplate()) {

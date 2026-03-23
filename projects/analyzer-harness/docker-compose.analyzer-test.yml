@@ -15,8 +15,10 @@ services:
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
+    volumes:
+      - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
     ports:
-      - "${ASTM_SIMULATOR_PORT:-5000}:9600" # ASTM listen (fixture port=9600)
+      - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (fixture port=9600; 5050 avoids macOS AirPlay on 5000)
       - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
     environment:
       - ASTM_PORT=9600
@@ -29,7 +31,7 @@ services:
       --verbose
     networks:
       analyzer-net:
-        ipv4_address: 172.20.1.100
+        ipv4_address: 172.21.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -60,8 +62,12 @@ services:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
       - LOGGING_LEVEL_ORG_ITECH=INFO
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
+      # TEST-ONLY: disables TLS hostname verification for self-signed certs in harness
+      - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
@@ -107,7 +113,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.1.0/24
+        - subnet: 172.21.1.0/24
 
 volumes:
   serial-vol:
