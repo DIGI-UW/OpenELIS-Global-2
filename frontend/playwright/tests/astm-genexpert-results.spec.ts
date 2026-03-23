@@ -11,7 +11,7 @@ import {
   accessionTextRegExp,
   openAnalyzerResultsAndWaitForText,
 } from "../helpers/results-ui";
-import { UI_TIMEOUT } from "../helpers/timeouts";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 const SIMULATOR_URL = "http://localhost:8085";
 const BRIDGE_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
@@ -39,11 +39,11 @@ async function testConnection(
   const testConnectionAction = page
     .locator('[data-testid*="analyzer-action-test-connection"]')
     .first();
-  await expect(testConnectionAction).toBeVisible({ timeout: 3_000 });
+  await expect(testConnectionAction).toBeVisible({ timeout: SHORT_TIMEOUT });
   await testConnectionAction.click();
 
   const connectionModal = page.locator('[data-testid="test-connection-modal"]');
-  await expect(connectionModal).toBeVisible({ timeout: 10_000 });
+  await expect(connectionModal).toBeVisible({ timeout: UI_TIMEOUT });
 
   const testButton = page.locator(
     '[data-testid="test-connection-test-button"]',
@@ -51,13 +51,13 @@ async function testConnection(
   await testButton.click();
 
   const successTag = page.locator('[data-testid="test-connection-success"]');
-  await expect(successTag).toBeVisible({ timeout: 15_000 });
+  await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
   await presentation.pause(1_500);
 
   await connectionModal
     .locator('[data-testid="test-connection-close-button"]')
     .click();
-  await expect(connectionModal).toBeHidden({ timeout: 10_000 });
+  await expect(connectionModal).toBeHidden({ timeout: UI_TIMEOUT });
 }
 
 async function pushAstmMessage(page: Page, presentation: DemoPresentation) {
@@ -76,7 +76,7 @@ async function verifyResults(
     page,
     analyzerName,
     EXPECTED_RESULTS[0].sampleId,
-    { timeoutMs: RESULTS_TIMEOUT, perAttemptTimeoutMs: 15_000 },
+    { timeoutMs: RESULTS_TIMEOUT, perAttemptTimeoutMs: LONG_TIMEOUT },
   );
 
   const resultsRegion = page.locator(".orderLegendBody, table").first();
@@ -90,7 +90,7 @@ async function verifyResults(
     const inputResult = resultsRegion
       .locator(`input[value*="${expected.result}"]`)
       .first();
-    if (await inputResult.isVisible().catch(() => false)) {
+    if (await inputResult.isVisible()) {
       await expect(inputResult).toBeVisible({ timeout: UI_TIMEOUT });
     } else {
       await expect(

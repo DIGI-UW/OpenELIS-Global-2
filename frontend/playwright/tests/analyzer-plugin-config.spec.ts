@@ -5,6 +5,7 @@ import {
   ensureAnalyzerByName,
   GENEXPERT_DEFAULT_ANALYZER,
 } from "../helpers/ensure-analyzer";
+import { QUICK_TIMEOUT, SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 test.describe("Analyzer Plugin Config", () => {
   test("profile selection prefills implemented analyzer fields", async ({
@@ -25,13 +26,13 @@ test.describe("Analyzer Plugin Config", () => {
       await form.expectOpen();
 
       try {
-        await expect(form.pluginTypeDropdown).toBeVisible({ timeout: 5_000 });
+        await expect(form.pluginTypeDropdown).toBeVisible({ timeout: SHORT_TIMEOUT });
       } catch {
         // Modal may have closed — retry
-        if (await form.modal.isVisible()) {
-          await form.cancelButton.click().catch(() => {});
+        if (await form.modal.isVisible() && await form.cancelButton.isVisible()) {
+          await form.cancelButton.click();
         }
-        await expect(form.modal).not.toBeVisible({ timeout: 2_000 });
+        await expect(form.modal).not.toBeVisible({ timeout: QUICK_TIMEOUT });
         continue;
       }
 
@@ -44,22 +45,20 @@ test.describe("Analyzer Plugin Config", () => {
         const genericAstmOption = page
           .getByRole("option", { name: /Generic ASTM/i })
           .first();
-        if (await genericAstmOption.isVisible().catch(() => false)) {
+        if (await genericAstmOption.isVisible()) {
           await genericAstmOption.click();
           selectedPlugin = true;
           break;
         }
         await page.keyboard.press("Escape");
-        await expect(genericAstmOption).not.toBeVisible({ timeout: 2_000 });
+        await expect(genericAstmOption).not.toBeVisible({ timeout: QUICK_TIMEOUT });
       }
       if (selectedPlugin) break;
 
       // Close form and retry
       if (await form.modal.isVisible()) {
-        await form.cancelButton.click().catch(() => {});
-        await expect(form.modal)
-          .not.toBeVisible({ timeout: 2_000 })
-          .catch(() => {});
+        if (await form.cancelButton.isVisible()) await form.cancelButton.click();
+        await expect(form.modal).not.toBeVisible({ timeout: QUICK_TIMEOUT });
       }
     }
     expect(
@@ -76,7 +75,7 @@ test.describe("Analyzer Plugin Config", () => {
     const geneXpertProfile = page
       .getByRole("option", { name: /GeneXpert.*ASTM/i })
       .first();
-    await expect(geneXpertProfile).toBeVisible({ timeout: 10_000 });
+    await expect(geneXpertProfile).toBeVisible({ timeout: UI_TIMEOUT });
     await geneXpertProfile.click();
 
     // Selecting the profile should prefill key analyzer fields.
@@ -107,7 +106,7 @@ test.describe("Analyzer Plugin Config", () => {
     );
 
     const snapshotTile = page.locator('[data-testid="plugin-config-snapshot"]');
-    await expect(snapshotTile).toBeVisible({ timeout: 15_000 });
+    await expect(snapshotTile).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(snapshotTile).toContainText("{");
 
     await expect(

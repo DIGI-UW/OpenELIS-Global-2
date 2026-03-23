@@ -1,6 +1,7 @@
 import { expect, test, Page, Locator, TestInfo } from "@playwright/test";
 import { showSceneLabel, showTitleCard } from "../helpers/title-card";
 import { videoPause } from "../helpers/video-pause";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * OGC-284 — Barcode label quantity workflow (user stories)
@@ -18,7 +19,7 @@ type PauseFn = (ms: number) => Promise<void>;
 async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
   const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
   try {
-    await expect(suggestion).toBeVisible({ timeout: 5_000 });
+    await expect(suggestion).toBeVisible({ timeout: SHORT_TIMEOUT });
     await suggestion.click();
     await pause(500);
   } catch {
@@ -31,7 +32,7 @@ async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
 /** Visible success panel after SamplePatientEntry save (class from OrderSuccessMessage). */
 async function expectOrderEntrySaveSuccess(page: Page) {
   await expect(page.locator(".orderEntrySuccessMsg")).toBeVisible({
-    timeout: 20_000,
+    timeout: LONG_TIMEOUT,
   });
 }
 
@@ -73,16 +74,16 @@ async function scrollToAndPause(
 
 async function waitForSampleStep(page: Page) {
   const sampleSelect = page.locator("select#sampleId_0");
-  await expect(sampleSelect).toBeVisible({ timeout: 15_000 });
+  await expect(sampleSelect).toBeVisible({ timeout: LONG_TIMEOUT });
   await expect(
     sampleSelect.locator("option:not(:first-child)"),
-  ).not.toHaveCount(0, { timeout: 15_000 });
+  ).not.toHaveCount(0, { timeout: LONG_TIMEOUT });
 }
 
 async function waitForOrderDetailsStep(page: Page) {
-  await expect(page.locator("input#labNo")).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("input#labNo")).toBeVisible({ timeout: LONG_TIMEOUT });
   await expect(page.locator("input#order_requestDate")).toBeVisible({
-    timeout: 15_000,
+    timeout: LONG_TIMEOUT,
   });
 }
 
@@ -105,7 +106,7 @@ async function selectPatient(
   }
 
   const lastNameInput = page.locator("input#lastName");
-  await expect(lastNameInput).toBeVisible({ timeout: 8000 });
+  await expect(lastNameInput).toBeVisible({ timeout: UI_TIMEOUT });
   await lastNameInput.fill(lastName);
 
   const firstNameInput = page.locator("input#firstName");
@@ -118,7 +119,7 @@ async function selectPatient(
   await searchBtn.click();
 
   await expect(page.locator('[data-cy="radioButton"]').first()).toBeVisible({
-    timeout: 10_000,
+    timeout: UI_TIMEOUT,
   });
 
   const namedRow = page
@@ -135,29 +136,29 @@ async function selectPatient(
     (await namedRow.count()) > 0
       ? namedRow.locator('[data-cy="radioButton"]').first()
       : page.locator('[data-cy="radioButton"]').first();
-  await expect(firstRadio).toBeVisible({ timeout: 5000 });
+  await expect(firstRadio).toBeVisible({ timeout: SHORT_TIMEOUT });
   await scrollToAndPause(page, firstRadio, pause, 800);
   // Carbon radio: click the visible label sibling instead of forcing the hidden input
   await firstRadio.locator("xpath=..").locator("label").click();
 
   // Wait for patient form hydration before moving to the next wizard step.
   await expect(page.locator('[data-cy="patientSelectionReady"]')).toBeVisible({
-    timeout: 15_000,
+    timeout: LONG_TIMEOUT,
   });
   await expect(page.locator("input#lastName")).toHaveValue(
     new RegExp(lastName, "i"),
     {
-      timeout: 10_000,
+      timeout: UI_TIMEOUT,
     },
   );
   await expect(page.locator("input#firstName")).toHaveValue(
     new RegExp(firstName, "i"),
     {
-      timeout: 10_000,
+      timeout: UI_TIMEOUT,
     },
   );
   await expect(page.locator("input#primaryPhone")).toBeVisible({
-    timeout: 10_000,
+    timeout: UI_TIMEOUT,
   });
 
   // Search results can omit fields that the Add Order validation schema still
@@ -177,7 +178,7 @@ async function selectPatient(
     if (!hasGender && (await genderMale.count()) > 0) {
       // Carbon radio: click the visible label instead of forcing the hidden input
       await expect(page.locator('label[for="radio-1"]')).toBeVisible({
-        timeout: 5_000,
+        timeout: SHORT_TIMEOUT,
       });
       await page.locator('label[for="radio-1"]').click();
     }
@@ -249,7 +250,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   const generateBtn = page.locator("[data-cy='generate-labNumber']");
   if (await generateBtn.isVisible()) {
     await generateBtn.click();
-    await expect(labNoInput).not.toHaveValue("", { timeout: 10_000 });
+    await expect(labNoInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
   }
 
   const requestDate = page.locator("input#order_requestDate");
@@ -298,7 +299,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     if (!(await requesterLookup.inputValue()).trim()) {
       await requesterLookup.fill("Prime, Optimus");
     }
-    await expect(requesterLookup).not.toHaveValue("", { timeout: 5_000 });
+    await expect(requesterLookup).not.toHaveValue("", { timeout: SHORT_TIMEOUT });
   }
 
   // Newer order-entry validation requires explicit selections here.
@@ -326,8 +327,8 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
 /** Click Next and wait for the next page to load. */
 async function clickNext(page: Page) {
   const btn = page.getByRole("button", { name: "Next", exact: true });
-  await expect(btn).toBeVisible({ timeout: 5000 });
-  await expect(btn).toBeEnabled({ timeout: 5_000 });
+  await expect(btn).toBeVisible({ timeout: SHORT_TIMEOUT });
+  await expect(btn).toBeEnabled({ timeout: SHORT_TIMEOUT });
   await btn.click();
 }
 
@@ -338,12 +339,12 @@ async function clickNext(page: Page) {
 async function selectPanelOrTest(page: Page) {
   // Carbon checkbox: the <input> is visually hidden; click the <label> instead.
   const label = page.locator('label:has-text("Bilan Biochimique")');
-  await expect(label).toBeVisible({ timeout: 10_000 });
+  await expect(label).toBeVisible({ timeout: UI_TIMEOUT });
   await label.scrollIntoViewIfNeeded();
-  await label.click({ timeout: 5000 });
+  await label.click({ timeout: SHORT_TIMEOUT });
   await expect(
     page.getByRole("button", { name: "Next", exact: true }),
-  ).toBeEnabled({ timeout: 10_000 });
+  ).toBeEnabled({ timeout: UI_TIMEOUT });
 }
 
 async function gotoBarcodeConfig(page: Page) {
@@ -351,14 +352,14 @@ async function gotoBarcodeConfig(page: Page) {
     waitUntil: "domcontentloaded",
   });
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
-    timeout: 15_000,
+    timeout: LONG_TIMEOUT,
   });
 }
 
 async function gotoSamplePatientEntry(page: Page) {
   await page.goto("/SamplePatientEntry", { waitUntil: "domcontentloaded" });
   await expect(page.locator('[data-cy="searchPatientTabButton"]')).toBeVisible({
-    timeout: 15_000,
+    timeout: LONG_TIMEOUT,
   });
 }
 
@@ -367,7 +368,7 @@ async function gotoPrintBarcode(page: Page) {
   await expect(
     page.getByRole("heading", { name: /print bar code labels/i }),
   ).toBeVisible({
-    timeout: 15_000,
+    timeout: LONG_TIMEOUT,
   });
 }
 
@@ -453,16 +454,16 @@ test("US1 — Admin configures barcode label quantities", async ({
   await showSceneLabel(page, "US1 · FR-003 — Save + Reload", testInfo);
 
   const saveButton = page.getByRole("button", { name: "Save" });
-  await expect(saveButton).toBeEnabled({ timeout: 10_000 });
+  await expect(saveButton).toBeEnabled({ timeout: UI_TIMEOUT });
   await scrollToAndPause(page, saveButton, pause, 800);
   await saveButton.click();
   await expect(
     page.getByText(/bar.?code configurations has been saved/i).first(),
-  ).toBeVisible({ timeout: 10_000 });
+  ).toBeVisible({ timeout: UI_TIMEOUT });
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("button", { name: "Save" })).toBeVisible({
-    timeout: 15_000,
+    timeout: LONG_TIMEOUT,
   });
   await scrollToAndPause(page, defaultOrderInput, pause, 2000);
 
@@ -504,7 +505,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   // Step 1: program selection — skip through (no required input)
   const next2 = page.getByRole("button", { name: "Next", exact: true });
   if (await next2.isVisible()) {
-    await expect(next2).toBeEnabled({ timeout: 5_000 });
+    await expect(next2).toBeEnabled({ timeout: SHORT_TIMEOUT });
     await next2.click();
     await waitForSampleStep(page);
   }
@@ -529,7 +530,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   );
 
   const labelsSection = page.getByTestId("labels-section-root");
-  await expect(labelsSection).toBeVisible({ timeout: 8000 });
+  await expect(labelsSection).toBeVisible({ timeout: UI_TIMEOUT });
   await scrollToAndPause(page, labelsSection, pause, 2000);
 
   // Edit order labels
@@ -560,7 +561,7 @@ test("US2 — Capture label quantities during sample creation", async ({
   // Submit
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 1000);
-  await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
+  await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
   await submitBtn.click();
   await expectOrderEntrySaveSuccess(page);
 
@@ -597,7 +598,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   const next2 = page.getByRole("button", { name: "Next", exact: true });
   if (await next2.isVisible()) {
-    await expect(next2).toBeEnabled({ timeout: 5_000 });
+    await expect(next2).toBeEnabled({ timeout: SHORT_TIMEOUT });
     await next2.click();
     await waitForSampleStep(page);
   }
@@ -616,7 +617,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
 
   const submitBtn = page.getByRole("button", { name: "Submit" });
   await scrollToAndPause(page, submitBtn, pause, 800);
-  await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
+  await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
   await submitBtn.click();
   await expectOrderEntrySaveSuccess(page);
 
@@ -631,7 +632,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   await showSceneLabel(page, "US3 · FR-011 — Print Dialog", testInfo);
 
   const successArea = page.locator(".orderEntrySuccessMsg").first();
-  await expect(successArea).toBeVisible({ timeout: 10_000 });
+  await expect(successArea).toBeVisible({ timeout: UI_TIMEOUT });
   await scrollToAndPause(page, successArea, pause, 1000);
 
   // Scroll to print dialog
@@ -677,7 +678,7 @@ test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) =>
   const printBarcodeHeading = page.getByRole("heading", {
     name: /print bar code labels/i,
   });
-  await expect(printBarcodeHeading).toBeVisible({ timeout: 15_000 });
+  await expect(printBarcodeHeading).toBeVisible({ timeout: LONG_TIMEOUT });
   await scrollToAndPause(page, printBarcodeHeading, pause, 1500);
 
   const siteSearch = page.getByLabel(/search site name/i);
