@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Hibernate;
 import org.openelisglobal.analysis.service.AnalysisService;
@@ -321,7 +322,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 displayBean.setTypeName(noteBook.getType().getDictEntry());
             }
 
-            displayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
+            displayBean.setDateCreated(
+                    noteBook.getDateCreated() != null ? DateUtil.formatDateAsText(noteBook.getDateCreated()) : null);
             displayBean.setStatus(noteBook.getStatus());
             displayBean.setIsTemplate(noteBook.getIsTemplate());
             displayBean.setEntriesCount(noteBook.getEntries().size());
@@ -332,6 +334,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             displayBean.setFundingSource(noteBook.getFundingSource());
             displayBean.setBudget(noteBook.getBudget());
             displayBean.setProjectTimeline(noteBook.getProjectTimeline());
+
+            displayBean.setWorkflowType(getEffectiveWorkflowType(noteBook));
 
             // Handle allowedRoles based on notebook type
             // 1. Parent templates (isTemplate=true, no parentNotebook): use own
@@ -452,7 +456,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 fullDisplayBean.setTypeName(noteBook.getType().getDictEntry());
             }
             fullDisplayBean.setTags(noteBook.getTags());
-            fullDisplayBean.setDateCreated(DateUtil.formatDateAsText(noteBook.getDateCreated()));
+            fullDisplayBean.setDateCreated(
+                    noteBook.getDateCreated() != null ? DateUtil.formatDateAsText(noteBook.getDateCreated()) : null);
             fullDisplayBean.setStatus(noteBook.getStatus());
             fullDisplayBean.setContent(noteBook.getContent());
             fullDisplayBean.setObjective(noteBook.getObjective());
@@ -463,6 +468,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             fullDisplayBean.setFundingSource(noteBook.getFundingSource());
             fullDisplayBean.setBudget(noteBook.getBudget());
             fullDisplayBean.setProjectTimeline(noteBook.getProjectTimeline());
+
+            fullDisplayBean.setWorkflowType(getEffectiveWorkflowType(noteBook));
 
             // Prefer inventory instruments over legacy analyzers
             List<IdValuePair> instrumentList = new ArrayList<>();
@@ -850,7 +857,6 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         try {
             NoteBook notebook = get(notebookId);
             if (notebook != null) {
-                List<NoteBook> allEntries = new ArrayList<>();
 
                 // DEBUG: Log all relevant fields before isParentTemplate check
                 LogEvent.logInfo(this.getClass().getSimpleName(), "getNoteBookEntries",
@@ -864,7 +870,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
                 if (notebook.isParentTemplate()) {
                     // First, add any direct entries on the template itself (legacy support)
                     Hibernate.initialize(notebook.getEntries());
-                    allEntries.addAll(notebook.getEntries());
+                    List<NoteBook> allEntries = new ArrayList<>(notebook.getEntries());
 
                     // Then, aggregate entries from all child instances
                     List<NoteBook> children = baseObjectDAO.findChildrenByParentId(notebookId);
@@ -1197,61 +1203,16 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (pageId == null) {
             return false;
         }
-
         NoteBookPage page = noteBookPageDAO.get(pageId).orElse(null);
         if (page == null) {
             return false;
         }
 
-        // Check if the page title indicates it's a routing page
-        // Note: Routing happens on the "Child Samples" page (order 4) which includes
-        // both child sample creation and destination routing per User Story 4
-        String title = page.getTitle() != null ? page.getTitle().toLowerCase() : "";
-        if (title.contains("routing") || title.contains("route")) {
-            return true;
-        }
-
-        // Check for "child sample" in title since routing is combined with child
-        // sample creation (Immunology workflow)
-        if (title.contains("child sample")) {
-            return true;
-        }
-
-        // Check for "aliquoting" in title since MNTD workflow uses aliquoting page
-        // for routing samples to internal analysis (Processing & Quality Control)
-        // BUT NOT for pharmaceutical workflows where "aliquoting" is just processing
-        if (title.contains("aliquoting")) {
-            // Only treat as routing page for MNTD workflow, not pharmaceuticals
-            NoteBook notebook = page.getNotebook();
-            if (notebook != null) {
-                Hibernate.initialize(notebook);
-                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
-                // Only MNTD uses aliquoting page for routing; pharmaceuticals use it for
-                // processing
-                if (notebookTitle.contains("mntd")) {
-                    return true;
-                }
-            }
-        }
-
-        // Check by page order - order 4 is the Child Samples page where routing
-        // happens, but ONLY for Immunology workflow (not MNTD)
-        // MNTD has "Sample Processing Preparation" at order 4 which is NOT a routing
-        // page
-        if (page.getOrder() != null && page.getOrder() == 4) {
-            // Check if this is an Immunology notebook (not MNTD)
-            NoteBook notebook = page.getNotebook();
-            if (notebook != null) {
-                Hibernate.initialize(notebook);
-                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
-                // Only treat order 4 as routing for Immunology workflows
-                if (notebookTitle.contains("immunology")) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        // Check pageType for routing categorization
+        // (e.g. "BRANCHING", "CHILD_SAMPLE_CREATION")
+        String pageType = StringUtils.trimToEmpty(page.getPageType());
+        return StringUtils.equalsIgnoreCase(pageType, "BRANCHING")
+                || StringUtils.equalsIgnoreCase(pageType, "CHILD_SAMPLE_CREATION");
     }
 
     @Override
@@ -1260,128 +1221,14 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         if (pageId == null) {
             return false;
         }
-
         NoteBookPage page = noteBookPageDAO.get(pageId).orElse(null);
         if (page == null) {
             return false;
         }
 
-        // Check if the page title indicates it's a storage page
-        String title = page.getTitle() != null ? page.getTitle().toLowerCase() : "";
-
-        // For Bacteriology workflow, the "Sample Storage Assignment" page (page 3) is
-        // TEMPORARY storage - samples should proceed to Processing & Quality Control
-        // next,
-        // NOT skip to archiving. Only "Post-Analysis Storage" pages are final storage.
-        // Temporary storage pages contain "temporary" or "assignment" in the title.
-        if (title.contains("temporary") || title.contains("assignment")) {
-            // This is a temporary storage page (bacteriology page 3) - NOT a final storage
-            // page
-            // Samples should proceed to the next processing page, not skip to archiving
-            return false;
-        }
-
-        // Check for final storage pages by title
-        if (title.contains("storage") || title.contains("inventory")) {
-            // Verify this is not bacteriology, traditional medicine, or pharmaceutical
-            // temporary storage by
-            // checking notebook type
-            NoteBook notebook = page.getNotebook();
-            if (notebook != null) {
-                Hibernate.initialize(notebook);
-                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
-                // For bacteriology, only "Post-Analysis Storage" (order 6) is a final storage
-                // page
-                // The "Sample Storage Assignment" page (order 3 or 4) is temporary
-                if (notebookTitle.contains("bacteriology")) {
-                    // For bacteriology, only consider it a storage page if it's late in the
-                    // workflow (order >= 6)
-                    // or if the title explicitly says "post-analysis"
-                    if (title.contains("post-analysis") || title.contains("post analysis")) {
-                        return true;
-                    }
-                    // Early storage pages (order <= 5) in bacteriology are temporary storage
-                    if (page.getOrder() != null && page.getOrder() <= 5) {
-                        return false;
-                    }
-                }
-                // For traditional medicine, "Sample Storage & Herbarium Placement" (order 3) is
-                // TEMPORARY storage - samples should proceed to "Sample Preparation for
-                // Analysis" (page 4)
-                // NOT skip to archiving. Only the final page or higher is final storage.
-                // Check for "Traditional & Modern Medicine Research Lab" or "tmmrd"
-                if ((notebookTitle.contains("traditional") && notebookTitle.contains("medicine"))
-                        || notebookTitle.contains("tmmrd")) {
-                    // Only pages after formulation (order > 7) are final storage pages
-                    if (page.getOrder() != null && page.getOrder() <= 7) {
-                        return false;
-                    }
-                }
-                // For pharmaceutical workflows, "Storage & Inventory Management" (order 5) is
-                // NOT a final storage page - samples should proceed to "Reporting & Performance
-                // Monitoring" (page 6)
-                if (notebookTitle.contains("pharmaceutical")) {
-                    // In pharmaceutical workflows, order 5 storage page is not final
-                    // Samples should proceed to the next page in the workflow
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        // Check by page order - order 5 is typically the Storage & Inventory page
-        // for Pathology and Pharmaceutical workflows (but NOT for Bacteriology,
-        // Immunology, Virology, or MNTD)
-        if (page.getOrder() != null && page.getOrder() == 5) {
-            // Check notebook type - different workflows use order 5 for different purposes
-            NoteBook notebook = page.getNotebook();
-            if (notebook != null) {
-                Hibernate.initialize(notebook);
-                String notebookTitle = notebook.getTitle() != null ? notebook.getTitle().toLowerCase() : "";
-                if (notebookTitle.contains("bacteriology")) {
-                    // In bacteriology, order 5 is "Processing & Quality Control", not storage
-                    return false;
-                }
-                if (notebookTitle.contains("immunology")) {
-                    // In immunology, order 5 is "Plate Setup", not storage
-                    // Samples should proceed to "Analyzer Results" (page 6)
-                    return false;
-                }
-                if (notebookTitle.contains("virology") || notebookTitle.contains("vaccine")) {
-                    // In virology, order 5 is "Virus Culture", not storage
-                    // Samples should proceed to "Dark Room Imaging" (page 6)
-                    return false;
-                }
-                if (notebookTitle.contains("mntd") || notebookTitle.contains("malaria")
-                        || notebookTitle.contains("neglected tropical")) {
-                    // In MNTD, order 5 is "Aliquoting / Bulk Sample Import", not storage
-                    // Samples should proceed to "Processing & Quality Control" (page 6)
-                    return false;
-                }
-                if ((notebookTitle.contains("traditional") && notebookTitle.contains("medicine"))
-                        || notebookTitle.contains("tmmrd")) {
-                    // In Traditional Medicine, order 5 is "Extraction, Filtration & Concentration",
-                    // not storage
-                    // Samples should proceed to "Analytical Pathways" (page 6)
-                    return false;
-                }
-                if (notebookTitle.contains("gbd") || notebookTitle.contains("genomics")
-                        || notebookTitle.contains("bioinformatics")) {
-                    // In GBD, order 5 is "Gel Electrophoresis", not storage
-                    // Samples should proceed to "Library Preparation" (page 6)
-                    return false;
-                }
-                if (notebookTitle.contains("pharmaceutical")) {
-                    // In Pharmaceuticals, order 5 is "Storage & Inventory Management", but it's
-                    // NOT a final storage page
-                    // Samples should proceed to "Reporting & Performance Monitoring" (page 6)
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        return false;
+        String pageType = StringUtils.trimToEmpty(page.getPageType());
+        return StringUtils.equalsIgnoreCase(pageType, "STORAGE_ASSIGNMENT")
+                || StringUtils.equalsIgnoreCase(pageType, "PATHOLOGY_STORAGE_INVENTORY");
     }
 
     @Override
@@ -2066,9 +1913,8 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
     @Override
     @Transactional
     public Integer insert(NoteBook notebook) {
-        Integer id = super.insert(notebook);
         // Note: Audit logging handled by save() method to avoid duplicates
-        return id;
+        return super.insert(notebook);
     }
 
     @Override
@@ -2122,4 +1968,40 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         }
         super.delete(notebook);
     }
+
+    private String getEffectiveWorkflowType(NoteBook noteBook) {
+        String workflowType = getWorkflowTypeIfPresent(noteBook);
+        if (workflowType != null) {
+            return workflowType;
+        }
+
+        if (noteBook.isChildInstance()) {
+            workflowType = getWorkflowTypeIfPresent(noteBook.getParentNotebook());
+            if (workflowType != null) {
+                return workflowType;
+            }
+        }
+
+        if (!Boolean.TRUE.equals(noteBook.getIsTemplate())) {
+            NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
+            workflowType = getWorkflowTypeIfPresent(parentTemplate);
+            if (workflowType != null) {
+                return workflowType;
+            }
+
+            if (parentTemplate != null && parentTemplate.isChildInstance()) {
+                workflowType = getWorkflowTypeIfPresent(parentTemplate.getParentNotebook());
+                if (workflowType != null) {
+                    return workflowType;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private String getWorkflowTypeIfPresent(NoteBook noteBook) {
+        return noteBook != null ? noteBook.getWorkflowType() : null;
+    }
+
 }

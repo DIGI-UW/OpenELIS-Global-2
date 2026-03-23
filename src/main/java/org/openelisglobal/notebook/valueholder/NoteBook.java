@@ -93,6 +93,9 @@ public class NoteBook extends BaseObject<Integer> {
     @Column(name = "project_timeline")
     private String projectTimeline;
 
+    @Column(name = "workflow_type")
+    private String workflowType;
+
     @Column(name = "content")
     private String content;
 
@@ -242,6 +245,14 @@ public class NoteBook extends BaseObject<Integer> {
 
     public void setProjectTimeline(String projectTimeline) {
         this.projectTimeline = projectTimeline;
+    }
+
+    public String getWorkflowType() {
+        return workflowType;
+    }
+
+    public void setWorkflowType(String workflowType) {
+        this.workflowType = workflowType;
     }
 
     public String getContent() {
