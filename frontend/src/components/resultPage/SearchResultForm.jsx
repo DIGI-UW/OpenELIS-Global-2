@@ -2043,6 +2043,22 @@ export function SearchResults(props) {
     if (isSubmitting) {
       return;
     }
+    const hasAccepted = props.results.testResult.some(
+      (row) => row.forceTechApproval && row.forceTechApproval !== "",
+    );
+    if (!hasAccepted) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "result.accept.required",
+          defaultMessage:
+            "Please accept at least one test result before saving.",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
+      return;
+    }
     let newValidationState = { ...validationState };
     let hasError = false;
     props.results.testResult.forEach((row) => {
