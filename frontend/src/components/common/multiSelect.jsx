@@ -1,5 +1,5 @@
 import { Column, MultiSelect } from "@carbon/react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 export default function ResultMultiSelect({
   id,
@@ -24,6 +24,21 @@ export default function ResultMultiSelect({
     [dictionaryValues, selectedIds],
   );
 
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const menu = el.querySelector(".cds--list-box__menu");
+    if (!menu) return;
+    const rect = el.getBoundingClientRect();
+    menu.style.position = "fixed";
+    menu.style.top = rect.top - menu.offsetHeight + "px";
+    menu.style.left = rect.left + "px";
+    menu.style.width = rect.width + "px";
+    menu.style.zIndex = "99999";
+  });
+
   const handleChange = ({ selectedItems }) => {
     const ids = selectedItems.map((i) => String(i.id));
 
@@ -41,22 +56,24 @@ export default function ResultMultiSelect({
   return (
     <>
       <Column lg={16} sm={4} md={8}>
-        <MultiSelect
-          style={{ width: "300px" }}
-          id={id}
-          items={dictionaryValues.map((d) => ({
-            id: d.id,
-            label: d.value,
-          }))}
-          itemToString={(item) => item?.label || ""}
-          selectedItems={selectedItems.map((d) => ({
-            id: d.id,
-            label: d.value,
-          }))}
-          onChange={handleChange}
-          selectionFeedback="top-after-reopen"
-          label=""
-        />
+        <div ref={wrapperRef}>
+          <MultiSelect
+            style={{ width: "300px" }}
+            id={id}
+            items={dictionaryValues.map((d) => ({
+              id: d.id,
+              label: d.value,
+            }))}
+            itemToString={(item) => item?.label || ""}
+            selectedItems={selectedItems.map((d) => ({
+              id: d.id,
+              label: d.value,
+            }))}
+            onChange={handleChange}
+            selectionFeedback="top-after-reopen"
+            label=""
+          />
+        </div>
       </Column>
     </>
   );
