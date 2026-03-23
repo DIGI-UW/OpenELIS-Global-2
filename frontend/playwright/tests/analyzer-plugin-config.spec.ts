@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
 
 test.describe("Analyzer Plugin Config", () => {
   test("profile selection prefills implemented analyzer fields", async ({
@@ -27,7 +31,7 @@ test.describe("Analyzer Plugin Config", () => {
         if (await form.modal.isVisible()) {
           await form.cancelButton.click().catch(() => {});
         }
-        await page.waitForTimeout(1_000);
+        await expect(form.modal).not.toBeVisible({ timeout: 2_000 });
         continue;
       }
 
@@ -46,7 +50,7 @@ test.describe("Analyzer Plugin Config", () => {
           break;
         }
         await page.keyboard.press("Escape");
-        await page.waitForTimeout(1_000);
+        await expect(genericAstmOption).not.toBeVisible({ timeout: 2_000 });
       }
       if (selectedPlugin) break;
 
@@ -85,7 +89,12 @@ test.describe("Analyzer Plugin Config", () => {
   test("mappings page shows plugin-config snapshot and pending-codes panel", async ({
     page,
   }) => {
-    const analyzerId = "2013";
+    const analyzerId = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
+    );
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();

@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
 
 /**
  * Analyzer Simulator E2E
@@ -11,7 +15,12 @@ test.describe("Analyzer Simulator", () => {
   test("GeneXpert preview-mapping shows v1.2 simulator payload", async ({
     page,
   }) => {
-    const GENEXPERT_ID = "2013";
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
+    );
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();

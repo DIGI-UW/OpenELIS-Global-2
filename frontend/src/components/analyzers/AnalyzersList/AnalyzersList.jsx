@@ -505,6 +505,7 @@ const AnalyzersList = () => {
                                   ariaLabel={intl.formatMessage({
                                     id: "analyzer.table.actions",
                                   })}
+                                  data-testid={`analyzer-row-overflow-${row.id}`}
                                 >
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
