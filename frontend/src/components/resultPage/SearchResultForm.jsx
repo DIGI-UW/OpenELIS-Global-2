@@ -1218,6 +1218,7 @@ export function SearchResults(props) {
                 noLabel={true}
                 onChange={(e) => validateResults(e, row.id)}
                 value={row.resultValue}
+                style={validationState[row.id]?.style}
               >
                 {/* {...updateShadowResult(e, this, param.rowId)} */}
                 <SelectItem text="" value="" />
@@ -2078,15 +2079,26 @@ export function SearchResults(props) {
           hasError = true;
         }
       }
+      if (row.resultType === "D" && row.isModified === "true") {
+        const empty =
+          !row.resultValue || row.resultValue === "" || row.resultValue === "0";
+        if (empty) {
+          newValidationState[row.id] = {
+            isInvalid: true,
+            style: { borderColor: "red" },
+          };
+          hasError = true;
+        }
+      }
     });
     if (hasError) {
       setValidationState(newValidationState);
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
-          id: "result.multiselect.required",
+          id: "result.required",
           defaultMessage:
-            "Please select at least one option for all multiselect results.",
+            "Please select a value for all modified result fields before saving.",
         }),
         kind: NotificationKinds.error,
       });
