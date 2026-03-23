@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -19,11 +20,16 @@ import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
 import org.openelisglobal.biorepository.service.ShipmentService;
+import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType;
+import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType.SampleCategory;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
 import org.openelisglobal.biorepository.valueholder.RetentionPolicy;
 import org.openelisglobal.biorepository.valueholder.Shipment;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -78,6 +84,9 @@ public class BioSampleRestController extends BaseRestController {
 
     @Autowired
     private RetentionPolicyService retentionPolicyService;
+
+    @Autowired
+    private LocalizationService localizationService;
 
     /**
      * Get a BioSample extension by ID.
@@ -1146,7 +1155,12 @@ public class BioSampleRestController extends BaseRestController {
             } else {
                 TypeOfSample sampleType = findSampleTypeByNameOrId(sampleTypeId.trim());
                 if (sampleType == null) {
-                    rowResult.addError("Invalid sample type: " + sampleTypeId);
+                    if (isManifestSampleTypeAutoCreatable(sampleTypeId)) {
+                        rowResult.addWarning("New biorepository sample type will be created: "
+                                + normalizeSampleTypeLabel(sampleTypeId));
+                    } else {
+                        rowResult.addError("Invalid sample type: " + sampleTypeId);
+                    }
                 }
             }
 
@@ -1234,8 +1248,8 @@ public class BioSampleRestController extends BaseRestController {
         String barcode = dto.getExternalId() != null ? dto.getExternalId().trim()
                 : generateBarcode().getBody().get("barcode");
 
-        // Find sample type by name or ID
-        TypeOfSample sampleType = findSampleTypeByNameOrId(dto.getSampleTypeId());
+        // Find or create sample type by name or ID for biorepository intake.
+        TypeOfSample sampleType = resolveManifestSampleType(dto.getSampleTypeId(), sysUserId, true);
         if (sampleType == null) {
             throw new IllegalArgumentException("Invalid sample type: " + dto.getSampleTypeId());
         }
@@ -1307,6 +1321,7 @@ public class BioSampleRestController extends BaseRestController {
             return null;
         }
         nameOrId = nameOrId.trim();
+        String normalizedInput = normalizeSampleTypeLabel(nameOrId);
 
         // Try to find by ID first
         try {
@@ -1321,13 +1336,162 @@ public class BioSampleRestController extends BaseRestController {
         // Try to find by description (name)
         List<TypeOfSample> allTypes = typeOfSampleService.getAllTypeOfSamples();
         for (TypeOfSample type : allTypes) {
-            if (nameOrId.equalsIgnoreCase(type.getDescription())
-                    || nameOrId.equalsIgnoreCase(type.getLocalizedName())) {
+            if (matchesSampleTypeIdentifier(nameOrId, normalizedInput, type)) {
                 return type;
             }
         }
 
         return null;
+    }
+
+    private TypeOfSample resolveManifestSampleType(String nameOrId, String sysUserId, boolean createIfMissing) {
+        TypeOfSample existingType = findSampleTypeByNameOrId(nameOrId);
+        if (existingType != null) {
+            ensureBiorepositoryApprovedSampleType(existingType, sysUserId);
+            return existingType;
+        }
+
+        if (!createIfMissing || !isManifestSampleTypeAutoCreatable(nameOrId)) {
+            return null;
+        }
+
+        return createManifestSampleType(nameOrId, sysUserId);
+    }
+
+    private TypeOfSample createManifestSampleType(String requestedType, String sysUserId) {
+        String normalizedType = normalizeSampleTypeLabel(requestedType);
+        if (normalizedType == null || normalizedType.isBlank()) {
+            return null;
+        }
+
+        TypeOfSample existing = findSampleTypeByNameOrId(normalizedType);
+        if (existing != null) {
+            ensureBiorepositoryApprovedSampleType(existing, sysUserId);
+            return existing;
+        }
+
+        TypeOfSample typeOfSample = new TypeOfSample();
+        typeOfSample.setDescription(normalizedType);
+        typeOfSample.setDomain("H");
+        typeOfSample.setLocalAbbreviation(generateUniqueSampleTypeAbbreviation(normalizedType));
+        typeOfSample.setIsActive(true);
+        typeOfSample.setSortOrder(Integer.MAX_VALUE);
+        typeOfSample.setSysUserId(sysUserId);
+        typeOfSample.setNameKey("Sample.type." + normalizedType.replaceAll("[^A-Za-z0-9]+", "_"));
+        typeOfSample.setLocalization(createSampleTypeLocalization(normalizedType, sysUserId));
+
+        TypeOfSample saved = typeOfSampleService.save(typeOfSample);
+        typeOfSampleService.clearCache();
+        refreshSampleTypeLists();
+        ensureBiorepositoryApprovedSampleType(saved, sysUserId);
+        return saved;
+    }
+
+    private void ensureBiorepositoryApprovedSampleType(TypeOfSample sampleType, String sysUserId) {
+        if (sampleType == null || sampleType.getId() == null || sysUserId == null) {
+            return;
+        }
+
+        if (approvedSampleTypeService.getByTypeOfSampleId(sampleType.getId()) != null) {
+            return;
+        }
+
+        BiorepositoryApprovedSampleType approvedType = new BiorepositoryApprovedSampleType();
+        approvedType.setTypeOfSample(sampleType);
+        approvedType.setCategory(determineBiorepositorySampleCategory(sampleType.getDescription()));
+        approvedType.setIsActive(true);
+        approvedType.setDisplayOrder((int) approvedSampleTypeService.countActive() + 1);
+        approvedType.setSysUserId(sysUserId);
+        approvedSampleTypeService.save(approvedType);
+    }
+
+    private SampleCategory determineBiorepositorySampleCategory(String sampleTypeName) {
+        String normalized = normalizeSampleTypeLabel(sampleTypeName).toLowerCase(Locale.ROOT);
+
+        if (normalized.contains("serum") || normalized.contains("plasma") || normalized.contains("blood")
+                || normalized.contains("buffy")) {
+            return SampleCategory.BLOOD_DERIVED;
+        }
+        if (normalized.contains("dna") || normalized.contains("rna") || normalized.contains("cdna")
+                || normalized.contains("nucleic")) {
+            return SampleCategory.NUCLEIC_ACIDS;
+        }
+        if (normalized.contains("tissue") || normalized.contains("biopsy") || normalized.contains("ffpe")
+                || normalized.contains("block")) {
+            return SampleCategory.TISSUE;
+        }
+        if (normalized.contains("cell") || normalized.contains("pbmc")) {
+            return SampleCategory.CELLULAR;
+        }
+        if (normalized.contains("isolate") || normalized.contains("culture") || normalized.contains("bacteria")
+                || normalized.contains("bacterial") || normalized.contains("viral")
+                || normalized.contains("fungal")) {
+            return SampleCategory.MICROBIOLOGICAL;
+        }
+
+        return SampleCategory.OTHER;
+    }
+
+    private boolean matchesSampleTypeIdentifier(String rawInput, String normalizedInput, TypeOfSample type) {
+        return normalizedInput.equalsIgnoreCase(normalizeSampleTypeLabel(type.getDescription()))
+                || normalizedInput.equalsIgnoreCase(normalizeSampleTypeLabel(type.getLocalizedName()))
+                || rawInput.equalsIgnoreCase(type.getLocalAbbreviation());
+    }
+
+    private boolean isManifestSampleTypeAutoCreatable(String sampleType) {
+        if (sampleType == null) {
+            return false;
+        }
+
+        String normalized = normalizeSampleTypeLabel(sampleType);
+        if (normalized == null || normalized.isBlank()) {
+            return false;
+        }
+
+        return !normalized.matches("^\\d+$");
+    }
+
+    private String normalizeSampleTypeLabel(String sampleType) {
+        if (sampleType == null) {
+            return "";
+        }
+
+        return sampleType.trim().replaceAll("\\s+", " ");
+    }
+
+    private String generateUniqueSampleTypeAbbreviation(String sampleTypeName) {
+        String cleaned = sampleTypeName.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]+", "");
+        if (cleaned.isBlank()) {
+            cleaned = "BIOSAMPLE";
+        }
+
+        String base = cleaned.substring(0, Math.min(10, cleaned.length()));
+        String candidate = base;
+        int suffix = 1;
+
+        while (typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(candidate, "H") != null) {
+            String suffixText = Integer.toString(suffix++);
+            int maxBaseLength = Math.max(1, 10 - suffixText.length());
+            String baseCandidate = cleaned.substring(0, Math.min(maxBaseLength, cleaned.length()));
+            candidate = baseCandidate + suffixText;
+        }
+
+        return candidate;
+    }
+
+    private Localization createSampleTypeLocalization(String sampleTypeName, String sysUserId) {
+        Localization localization = new Localization();
+        localization.setEnglish(sampleTypeName);
+        localization.setFrench(sampleTypeName);
+        localization.setDescription("type of sample name");
+        localization.setSysUserId(sysUserId);
+        return localizationService.save(localization);
+    }
+
+    private void refreshSampleTypeLists() {
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.SAMPLE_TYPE_INACTIVE);
     }
 
     // ========== RETENTION & DISPOSAL ENDPOINTS ==========

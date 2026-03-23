@@ -51,6 +51,7 @@ public class ManifestValidationResponse {
         private int rowIndex;
         private boolean valid = true;
         private List<String> errors = new ArrayList<>();
+        private List<String> warnings = new ArrayList<>();
 
         public RowValidationResult(int rowIndex) {
             this.rowIndex = rowIndex;
@@ -83,6 +84,18 @@ public class ManifestValidationResponse {
         public void addError(String error) {
             this.errors.add(error);
             this.valid = false;
+        }
+
+        public List<String> getWarnings() {
+            return warnings;
+        }
+
+        public void setWarnings(List<String> warnings) {
+            this.warnings = warnings;
+        }
+
+        public void addWarning(String warning) {
+            this.warnings.add(warning);
         }
     }
 }
