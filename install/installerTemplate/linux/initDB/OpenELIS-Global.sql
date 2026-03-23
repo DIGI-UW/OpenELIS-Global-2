@@ -9829,10 +9829,10 @@ COPY clinlims.dictionary (id, is_active, dict_entry, lastupdated, local_abbrev, 
 1272	Y	Kaposi's Sarcoma?	2020-01-22 21:46:41.469132	sarcKapo	178	diseases.RTN.kaposisSarcoma	79800	\N
 1273	Y	Marital Status Divorced	2020-01-22 21:46:41.469132	divorced	78	marital.divorced	102000	\N
 1274	Y	Marital Status Single (for ARV)	2020-01-22 21:46:41.469132	celibate	78	marital.single	62400	\N
-1275	Y	Martial Status cohabiting (for ARV)	2020-01-22 21:46:41.469132	cohab	78	marital.cohabitating	62600	\N
-1276	Y	Martial Status Married (for ARV)	2020-01-22 21:46:41.469132	married	78	marital.married	62500	\N
-1277	Y	Martial Status N/A for children (for ARV)	2020-01-22 21:46:41.469132	NA	78	marital.n_a	62800	\N
-1278	Y	Martial Status window(er) (for ARV)	2020-01-22 21:46:41.469132	widow	78	marital.widow	62700	\N
+1275	Y	Marital Status cohabiting (for ARV)	2020-01-22 21:46:41.469132	cohab	78	marital.cohabitating	62600	\N
+1276	Y	Marital Status Married (for ARV)	2020-01-22 21:46:41.469132	married	78	marital.married	62500	\N
+1277	Y	Marital Status N/A for children (for ARV)	2020-01-22 21:46:41.469132	NA	78	marital.n_a	62800	\N
+1278	Y	Marital Status window(er) (for ARV)	2020-01-22 21:46:41.469132	widow	78	marital.widow	62700	\N
 1279	Y	N/A	2020-01-22 21:46:41.469132	na	242	answer.notApplicable	72500	\N
 1280	Y	No Schooling	2020-01-22 21:46:41.469132	NoSchool	240	education.noSchool	62000	\N
 1281	Y	Not applicable (AIDS Prophylaxis)	2020-01-22 21:46:41.469132	NA	83	answer.notApplicable	65800	\N
