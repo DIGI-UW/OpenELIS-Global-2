@@ -338,10 +338,10 @@ function ImmunohistochemistryCaseView() {
                   >
                     <SelectItem disabled value="placeholder" text="Intensity" />
                     <SelectItem value="" text="" />
-                    {intensityList.map((status, index) => {
+                    {intensityList.map((status) => {
                       return (
                         <SelectItem
-                          key={index}
+                          key={status.id}
                           text={status.value}
                           value={status.value}
                         />
@@ -416,10 +416,10 @@ function ImmunohistochemistryCaseView() {
                   >
                     <SelectItem disabled value="placeholder" text="Intensity" />
                     <SelectItem value="" text="" />
-                    {intensityList.map((status, index) => {
+                    {intensityList.map((status) => {
                       return (
                         <SelectItem
-                          key={index}
+                          key={status.id}
                           text={status.value}
                           value={status.value}
                         />
@@ -618,10 +618,10 @@ function ImmunohistochemistryCaseView() {
                   >
                     <SelectItem disabled value="placeholder" text="" />
                     <SelectItem value="" text="" />
-                    {molecularSubTypeList.map((status, index) => {
+                    {molecularSubTypeList.map((status) => {
                       return (
                         <SelectItem
-                          key={index}
+                          key={status.id}
                           text={status.value}
                           value={status.value}
                         />
@@ -1104,10 +1104,10 @@ function ImmunohistochemistryCaseView() {
             >
               <SelectItem disabled value="placeholder" text="Status" />
 
-              {statuses.map((status, index) => {
+              {statuses.map((status) => {
                 return (
                   <SelectItem
-                    key={index}
+                    key={status.id}
                     text={status.value}
                     value={status.id}
                   />
@@ -1131,9 +1131,9 @@ function ImmunohistochemistryCaseView() {
               }}
             >
               <SelectItem />
-              {technicianUsers.map((user, index) => {
+              {technicianUsers.map((user) => {
                 return (
-                  <SelectItem key={index} text={user.value} value={user.id} />
+                  <SelectItem key={user.id} text={user.value} value={user.id} />
                 );
               })}
             </Select>
@@ -1154,9 +1154,9 @@ function ImmunohistochemistryCaseView() {
               }}
             >
               <SelectItem />
-              {pathologistUsers.map((user, index) => {
+              {pathologistUsers.map((user) => {
                 return (
-                  <SelectItem key={index} text={user.value} value={user.id} />
+                  <SelectItem key={user.id} text={user.value} value={user.id} />
                 );
               })}
             </Select>
@@ -1207,10 +1207,10 @@ function ImmunohistochemistryCaseView() {
                       id: "immunohistochemistry.label.addreport",
                     })}
                   />
-                  {reportTypes.map((report, index) => {
+                  {reportTypes.map((report) => {
                     return (
                       <SelectItem
-                        key={index}
+                        key={report.id}
                         text={report.value}
                         value={report.id}
                       />
@@ -1589,9 +1589,9 @@ function ImmunohistochemistryCaseView() {
                       <Column lg={14} md={4} sm={2}>
                         {immunohistochemistrySampleInfo.techniques &&
                           immunohistochemistrySampleInfo.techniques.map(
-                            (technique, index) => (
+                            (technique) => (
                               <>
-                                <Tag key={index}>{technique.value} </Tag>
+                                <Tag key={technique.id}>{technique.value} </Tag>
                               </>
                             ),
                           )}
@@ -1605,9 +1605,12 @@ function ImmunohistochemistryCaseView() {
                       <Column lg={14} md={4} sm={2}>
                         {immunohistochemistrySampleInfo.requests &&
                           immunohistochemistrySampleInfo.requests.map(
-                            (technique, index) => (
+                            (technique) => (
                               <>
-                                <Tag key={index}> {technique.value} </Tag>
+                                <Tag key={technique.id}>
+                                  {" "}
+                                  {technique.value}{" "}
+                                </Tag>
                               </>
                             ),
                           )}
@@ -1641,9 +1644,12 @@ function ImmunohistochemistryCaseView() {
                       <Column lg={14} md={4} sm={2}>
                         {immunohistochemistrySampleInfo.conclusions &&
                           immunohistochemistrySampleInfo.conclusions.map(
-                            (conclusion, index) => (
+                            (conclusion) => (
                               <>
-                                <Tag key={index}> {conclusion.value} </Tag>
+                                <Tag key={conclusion.id}>
+                                  {" "}
+                                  {conclusion.value}{" "}
+                                </Tag>
                               </>
                             ),
                           )}

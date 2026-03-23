@@ -505,9 +505,13 @@ function CytologyCaseView() {
           >
             <SelectItem disabled value="placeholder" text="Status" />
 
-            {statuses.map((status, index) => {
+            {statuses.map((status) => {
               return (
-                <SelectItem key={index} text={status.value} value={status.id} />
+                <SelectItem
+                  key={status.id}
+                  text={status.value}
+                  value={status.id}
+                />
               );
             })}
           </Select>
@@ -527,9 +531,9 @@ function CytologyCaseView() {
             }}
           >
             <SelectItem />
-            {technicianUsers.map((user, index) => {
+            {technicianUsers.map((user) => {
               return (
-                <SelectItem key={index} text={user.value} value={user.id} />
+                <SelectItem key={user.id} text={user.value} value={user.id} />
               );
             })}
           </Select>
@@ -551,9 +555,9 @@ function CytologyCaseView() {
             }}
           >
             <SelectItem />
-            {pathologistUsers.map((user, index) => {
+            {pathologistUsers.map((user) => {
               return (
-                <SelectItem key={index} text={user.value} value={user.id} />
+                <SelectItem key={user.id} text={user.value} value={user.id} />
               );
             })}
           </Select>
@@ -779,10 +783,10 @@ function CytologyCaseView() {
                     id: "immunohistochemistry.label.addreport",
                   })}
                 />
-                {reportTypes.map((report, index) => {
+                {reportTypes.map((report) => {
                   return (
                     <SelectItem
-                      key={index}
+                      key={report.id}
                       text={report.value}
                       value={report.id}
                     />
@@ -960,10 +964,10 @@ function CytologyCaseView() {
                     }}
                   >
                     <SelectItem />
-                    {adequacySatisfactionList.map((user, index) => {
+                    {adequacySatisfactionList.map((user) => {
                       return (
                         <SelectItem
-                          key={index}
+                          key={user.id}
                           text={user.value}
                           value={user.id}
                         />
@@ -1004,8 +1008,8 @@ function CytologyCaseView() {
                       <Column lg={8} md={4} sm={2}>
                         {pathologySampleInfo.specimenAdequacy &&
                           pathologySampleInfo.specimenAdequacy.values.map(
-                            (adequacy, index) => (
-                              <Tag key={index} onClose={() => {}}>
+                            (adequacy) => (
+                              <Tag key={adequacy.id} onClose={() => {}}>
                                 {adequacy.value}
                               </Tag>
                             ),
@@ -1038,7 +1042,7 @@ function CytologyCaseView() {
                     >
                       {satisfactoryForEvaluation.map((adequacy, index) => (
                         <RadioButton
-                          key={index}
+                          key={adequacy.id}
                           index={index}
                           id={"adquacy" + index}
                           labelText={adequacy.value}
@@ -1162,9 +1166,9 @@ function CytologyCaseView() {
                                     (item) => item.id == result.id,
                                   ),
                                 )
-                                ?.map((result, index) => (
+                                ?.map((result) => (
                                   <Tag
-                                    key={index}
+                                    key={result.id}
                                     filter
                                     onClose={() => {
                                       var diagnosisResultsMap =
@@ -1226,9 +1230,9 @@ function CytologyCaseView() {
                                     (item) => item.id == result.id,
                                   ),
                                 )
-                                ?.map((result, index) => (
+                                ?.map((result) => (
                                   <Tag
-                                    key={index}
+                                    key={result.id}
                                     filter
                                     onClose={() => {
                                       var diagnosisResultsMap =
@@ -1405,7 +1409,7 @@ function CytologyCaseView() {
                           "DICTIONARY",
                         )?.results.map((result, index) => (
                           <Tag
-                            key={index}
+                            key={result.id}
                             filter
                             onClose={() => {
                               var diagnosisResultsMap =
@@ -1509,7 +1513,7 @@ function CytologyCaseView() {
                           "DICTIONARY",
                         )?.results.map((result, index) => (
                           <Tag
-                            key={index}
+                            key={result.id}
                             filter
                             onClose={() => {
                               var diagnosisResultsMap =
@@ -1609,7 +1613,7 @@ function CytologyCaseView() {
                           "DICTIONARY",
                         )?.results.map((result, index) => (
                           <Tag
-                            key={index}
+                            key={result.id}
                             filter
                             onClose={() => {
                               var diagnosisResultsMap =
@@ -1708,7 +1712,7 @@ function CytologyCaseView() {
                           "DICTIONARY",
                         )?.results.map((result, index) => (
                           <Tag
-                            key={index}
+                            key={result.id}
                             filter
                             onClose={() => {
                               var diagnosisResultsMap =
