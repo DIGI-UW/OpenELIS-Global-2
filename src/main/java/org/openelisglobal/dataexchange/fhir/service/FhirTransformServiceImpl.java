@@ -1322,11 +1322,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
             Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID)).get(0);
 
-            java.util.Date utilDate = observation.hasEffectiveDateTimeType()
-                    ? observation.getEffectiveDateTimeType().getValue()
-                    : new java.util.Date();
-
-            java.sql.Date effectiveDate = new java.sql.Date(utilDate.getTime());
             Test test = analysis.getTest();
 
             bean.setAnalysisId(analysis.getId());
@@ -1355,7 +1350,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         bean.setTestDate(formattedDate);
 
         if (bean.getTechnician() == null) {
-            bean.setTechnician("Lab Technician");
+            bean.setTechnician("");
         }
 
         if (observation.hasStatus()) {
