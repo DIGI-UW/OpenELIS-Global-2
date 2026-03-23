@@ -88,7 +88,15 @@ async function navigateUntilVisible(
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    await page.goto(url, { waitUntil: "load" });
+    // First attempt navigates; retries reload the same page context.
+    // page.reload() reuses the existing frame, avoiding the dispatcher
+    // object churn from repeated goto() that causes
+    // "Object with guid response@… was not bound in the connection".
+    if (attempt === 1) {
+      await page.goto(url, { waitUntil: "load" });
+    } else {
+      await page.reload({ waitUntil: "load" });
+    }
 
     try {
       await expect(visibleLocator()).toBeVisible({
