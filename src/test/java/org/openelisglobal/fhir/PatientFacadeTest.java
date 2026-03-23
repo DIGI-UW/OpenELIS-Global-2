@@ -340,17 +340,16 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
-        // Should return error response with OperationOutcome
-        assertTrue(response.getStatus() == 200 || response.getStatus() == 422);
+        // PatientProvider rejects nameless patients with 422 UnprocessableEntity
+        assertEquals(422, response.getStatus());
 
+        // Response body must be an OperationOutcome with at least one ERROR issue
         JsonNode json = objectMapper.readTree(response.getContentAsString());
-
-        // Check if response contains OperationOutcome with validation error
-        if (json.has("resourceType") && "OperationOutcome".equals(json.get("resourceType").asText())) {
-            assertTrue(json.has("issue"));
-            assertTrue(json.get("issue").isArray());
-            assertTrue(json.get("issue").size() > 0);
-        }
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+        assertTrue(json.has("issue"));
+        assertTrue(json.get("issue").isArray());
+        assertTrue(json.get("issue").size() > 0);
+        assertEquals("error", json.get("issue").get(0).get("severity").asText());
     }
 
     @Test
@@ -359,7 +358,8 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         MockHttpServletRequest request = buildRequest("POST", "/Patient");
 
-        // Invalid date format (should be YYYY-MM-DD)
+        // Invalid date format — HAPI R4 parser rejects non-date strings before our
+        // code runs and returns 400 Bad Request
         String invalidJson = """
                 {
                   "resourceType": "Patient",
@@ -376,18 +376,18 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
-        // Should handle invalid date gracefully (400 or validation error in
-        // OperationOutcome)
-        assertTrue(response.getStatus() == 400 || response.getStatus() == 422 || response.getStatus() == 200);
+        // HAPI rejects an unparseable birthDate at the deserialisation layer → 400
+        assertEquals(400, response.getStatus());
     }
 
     @Test
-    public void createPatient_withInvalidGender_shouldHandleGracefully() throws Exception {
+    public void createPatient_withInvalidGender_shouldReturn400() throws Exception {
         clearDataBase();
 
         MockHttpServletRequest request = buildRequest("POST", "/Patient");
 
-        // Invalid gender value (FHIR R4 allows: male, female, other, unknown)
+        // FHIR R4 gender is a required value-set (male, female, other, unknown).
+        // HAPI rejects an out-of-set value at deserialisation → 400 Bad Request
         String invalidJson = """
                 {
                   "resourceType": "Patient",
@@ -404,19 +404,20 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
-        // Should return validation error for invalid gender
-        assertTrue(response.getStatus() == 400 || response.getStatus() == 422);
+        assertEquals(400, response.getStatus());
     }
 
     @Test
-    public void updatePatient_withMismatchedId_shouldReturnError() throws Exception {
+    public void updatePatient_withMismatchedBodyAndUrlId_shouldReturn400() throws Exception {
         Patient existingPatient = patientService.get("1");
         String correctUuid = existingPatient.getFhirUuidAsString();
-        String wrongUuid = "11111111-1111-1111-1111-111111111111";
+        String differentBodyId = "11111111-1111-1111-1111-111111111111";
 
         MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + correctUuid);
 
-        // Resource ID doesn't match URL ID
+        // HAPI FHIR enforces that the body id must match the URL id on PUT.
+        // When they differ it rejects the request with 400 Bad Request before
+        // our handler code is even invoked.
         String updateJson = """
                 {
                   "resourceType": "Patient",
@@ -427,14 +428,13 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
                   }],
                   "gender": "male"
                 }
-                """.formatted(wrongUuid);
+                """.formatted(differentBodyId);
 
         request.setContent(updateJson.getBytes());
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
-        // Should return error for ID mismatch (400 or 422)
-        assertTrue(response.getStatus() == 400 || response.getStatus() == 422 || response.getStatus() == 404);
+        assertEquals(400, response.getStatus());
     }
 
     // ========================================================================
@@ -448,15 +448,12 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         fhirServlet.service(request, response);
 
-        // HAPI FHIR routes GET /Patient/ (trailing slash) to the collection/search
-        // endpoint.
-        // In test environments without a live FHIR store the search proxy throws an
-        // internal error, so 500 is also a valid outcome here. The key invariant is
-        // that the server does not crash the JVM — it always produces a structured HTTP
-        // response regardless of the path variant.
-        int status = response.getStatus();
-        assertTrue("Expected 200, 400, 404 or 500 but got: " + status,
-                status == 200 || status == 400 || status == 404 || status == 500);
+        // HAPI routes GET /Patient/ (trailing slash) to the search endpoint, which
+        // proxies to the external FHIR store. In the integration test environment the
+        // store is unavailable, so the proxy throws an IndexOutOfBoundsException that
+        // HAPI catches and maps to 500. This test verifies the server always produces
+        // a structured HTTP response — it never crashes the JVM.
+        assertEquals(500, response.getStatus());
     }
 
     @Test
@@ -481,8 +478,16 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         fhirServlet.service(request, response);
 
-        // Should validate and reject whitespace-only names
-        assertTrue(response.getStatus() == 200 || response.getStatus() == 422 || response.getStatus() == 400);
+        // Whitespace-only names are caught by the blank-name validation → 422
+        assertEquals(422, response.getStatus());
+
+        // Response body must be an OperationOutcome describing the validation failure
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+        assertTrue(json.has("issue"));
+        assertTrue(json.get("issue").isArray());
+        assertTrue(json.get("issue").size() > 0);
+        assertEquals("error", json.get("issue").get(0).get("severity").asText());
     }
 
     // ========================================================================
@@ -490,43 +495,46 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     // ========================================================================
 
     @Test
-    public void searchPatient_withNoParams_shouldReturnBundleOrError() throws Exception {
+    public void searchPatient_withNoParams_routesToSearchHandler() throws Exception {
         MockHttpServletRequest request = buildRequest("GET", "/Patient");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
-        // Search with no params is valid FHIR — server either returns a Bundle (200)
-        // or an internal error when the FHIR store proxy is unavailable in tests (500)
-        int status = response.getStatus();
-        assertTrue("Expected 200 or 500 but got: " + status, status == 200 || status == 500);
+        // HAPI correctly routes GET /Patient to searchPatientBundle. The handler
+        // forwards to the external FHIR store which is unavailable in the integration
+        // test environment, so the proxy throws an exception that HAPI maps to 500.
+        // This test verifies HAPI routing works — the request reaches our handler.
+        assertEquals(500, response.getStatus());
     }
 
     @Test
-    public void searchPatient_withFamilyName_shouldReturnBundleOrError() throws Exception {
+    public void searchPatient_withFamilyName_routesToSearchHandler() throws Exception {
         MockHttpServletRequest request = buildRequest("GET", "/Patient");
         request.setParameter("family", "Smith");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
-        // HAPI parses the param and forwards to search handler; proxy unavailable → 500
-        int status = response.getStatus();
-        assertTrue("Expected 200 or 500 but got: " + status, status == 200 || status == 500);
+        // HAPI parses the 'family' StringAndListParam and routes to
+        // searchPatientBundle.
+        // Proxy unavailable in tests → 500, confirming the param was accepted and
+        // the correct handler was invoked.
+        assertEquals(500, response.getStatus());
     }
 
     @Test
-    public void searchPatient_withIdentifier_shouldReturnBundleOrError() throws Exception {
+    public void searchPatient_withIdentifier_routesToSearchHandler() throws Exception {
         MockHttpServletRequest request = buildRequest("GET", "/Patient");
         request.setParameter("identifier", "http://openelis-global.org/pat_nationalId|ABC123");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         fhirServlet.service(request, response);
 
-        // Identifier search is a supported param — HAPI routes it to
-        // searchPatientBundle
-        int status = response.getStatus();
-        assertTrue("Expected 200 or 500 but got: " + status, status == 200 || status == 500);
+        // HAPI parses the token-format identifier param and routes to
+        // searchPatientBundle.
+        // Proxy unavailable in tests → 500, confirming the param was accepted.
+        assertEquals(500, response.getStatus());
     }
 
     // ========================================================================
