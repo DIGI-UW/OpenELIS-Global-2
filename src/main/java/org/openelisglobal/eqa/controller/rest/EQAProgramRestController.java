@@ -151,15 +151,10 @@ public class EQAProgramRestController extends ControllerUtills {
 
             if (body.containsKey("isActive")) {
                 Boolean isActive = (Boolean) body.get("isActive");
-                if (Boolean.FALSE.equals(isActive)) {
-                    programService.deactivateProgram(id);
-                } else {
-                    programService.activateProgram(id);
-                }
-                program = programService.get(id);
-            } else {
-                program = programService.update(program);
+                program.setIsActive(Boolean.TRUE.equals(isActive));
             }
+
+            program = programService.update(program);
 
             return ResponseEntity.ok(toProgramDto(program));
         } catch (ObjectNotFoundException e) {
