@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Add configurable box label prefix to site_information -->
+  <changeSet author="oe" id="shipment-013-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'boxLabelPrefix'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="boxLabelPrefix" />
+      <column name="description" value="Prefix used for shipping box label IDs (e.g., BOX, SHP). Format: PREFIX-YYYY-NNNN" />
+      <column name="value" value="BOX" />
+      <column name="value_type" value="text" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

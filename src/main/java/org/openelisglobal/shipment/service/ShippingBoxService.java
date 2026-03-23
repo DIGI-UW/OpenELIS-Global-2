@@ -84,18 +84,20 @@ public interface ShippingBoxService {
     /**
      * Delete shipping box (soft delete by archiving)
      *
-     * @param id Box ID
+     * @param id           Box ID
+     * @param systemUserId System user ID for audit trail
      */
-    void deleteBox(Integer id);
+    void deleteBox(Integer id, Integer systemUserId);
 
     /**
      * Change box state
      *
-     * @param id       Box ID
-     * @param newState New state
+     * @param id           Box ID
+     * @param newState     New state
+     * @param systemUserId System user ID for audit trail
      * @return Updated ShippingBox
      */
-    ShippingBox changeBoxState(Integer id, BoxState newState);
+    ShippingBox changeBoxState(Integer id, BoxState newState, Integer systemUserId);
 
     /**
      * Mark box as ready to send (validates box has at least one sample)

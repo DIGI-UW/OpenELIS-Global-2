@@ -1,4 +1,10 @@
-import { Add, Dashboard, Download } from "@carbon/icons-react";
+import {
+  Add,
+  Dashboard,
+  Download,
+  Report,
+  Settings,
+} from "@carbon/icons-react";
 import { Tab, TabList, Tabs } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -20,7 +26,7 @@ const ShipmentNavigation = () => {
       key: "create",
       label: intl.formatMessage({ id: "shipment.nav.createBox" }),
       icon: Add,
-      path: "/SampleShipment/box/create",
+      path: "/SampleShipment/create-box",
     },
     {
       key: "receive",
@@ -28,14 +34,28 @@ const ShipmentNavigation = () => {
       icon: Download,
       path: "/SampleShipment/receive",
     },
+    {
+      key: "reports",
+      label: intl.formatMessage({ id: "shipment.nav.reports" }),
+      icon: Report,
+      path: "/SampleShipment/reports",
+    },
+    {
+      key: "settings",
+      label: intl.formatMessage({ id: "shipment.nav.settings" }),
+      icon: Settings,
+      path: "/SampleShipment/settings",
+    },
   ];
 
   // Determine which tab is currently active based on pathname
   const getActiveIndex = () => {
     const path = location.pathname;
     if (path === "/SampleShipment") return 0;
-    if (path.includes("/box/create")) return 1;
+    if (path.includes("/create-box")) return 1;
     if (path.includes("/receive")) return 2;
+    if (path.includes("/reports")) return 3;
+    if (path.includes("/settings")) return 4;
     // Default to dashboard if viewing box details
     if (path.includes("/SampleShipment/box/")) return 0;
     return 0;

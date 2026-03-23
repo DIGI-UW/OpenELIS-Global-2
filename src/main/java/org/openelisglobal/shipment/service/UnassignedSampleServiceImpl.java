@@ -12,6 +12,8 @@ import org.openelisglobal.referral.dao.ReferralDAO;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.shipment.dao.ShippingBoxDAO;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,8 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service layer for unassigned referral samples
- * Uses the existing referral table instead of a separate unassigned_sample table
+ * Service layer for unassigned referral samples Uses the existing referral
+ * table instead of a separate unassigned_sample table
  */
 @Service
 @Transactional
@@ -30,6 +32,9 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
 
     @Autowired
     private ReferralDAO referralDAO;
+
+    @Autowired
+    private ShippingBoxDAO shippingBoxDAO;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,8 +69,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
             // Note: lost and canceled referrals are already filtered in SQL
             for (Referral referral : referrals) {
                 // Filter by facility
-                if (referral.getOrganization() != null &&
-                    referral.getOrganization().getId().equals(facilityId.toString())) {
+                if (referral.getOrganization() != null
+                        && referral.getOrganization().getId().equals(facilityId.toString())) {
                     Map<String, Object> sampleData = compileSampleData(referral);
                     result.add(sampleData);
                 }
@@ -82,9 +87,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
     @Override
     public void assignSampleToBox(String referralId, String boxId, String currentUserId) {
         try {
-            Referral referral = referralDAO.get(referralId).orElseThrow(
-                () -> new IllegalArgumentException("Referral not found with ID: " + referralId)
-            );
+            Referral referral = referralDAO.get(referralId)
+                    .orElseThrow(() -> new IllegalArgumentException("Referral not found with ID: " + referralId));
 
             if (Boolean.TRUE.equals(referral.getLostStatus())) {
                 throw new IllegalStateException("Cannot assign a lost sample to a box");
@@ -94,7 +98,17 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
                 throw new IllegalStateException("Cannot assign a canceled referral to a box");
             }
 
-            referral.setAssignedToBoxId(boxId);
+            if (referral.isAssignedToBox()) {
+                throw new IllegalStateException("Sample is already assigned to a box");
+            }
+
+            // Load the actual ShippingBox from database to avoid
+            // TransientPropertyValueException
+            ShippingBox box = shippingBoxDAO.get(Integer.valueOf(boxId))
+                    .orElseThrow(() -> new IllegalArgumentException("Shipping box not found with ID: " + boxId));
+
+            // Set the persistent box entity instead of using setAssignedToBoxId
+            referral.setAssignedBox(box);
             referral.setSysUserId(currentUserId);
             referral.setLastupdated(new Timestamp(System.currentTimeMillis()));
 
@@ -109,9 +123,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
     @Override
     public void markSampleAsLost(String referralId, String reason, String currentUserId) {
         try {
-            Referral referral = referralDAO.get(referralId).orElseThrow(
-                () -> new IllegalArgumentException("Referral not found with ID: " + referralId)
-            );
+            Referral referral = referralDAO.get(referralId)
+                    .orElseThrow(() -> new IllegalArgumentException("Referral not found with ID: " + referralId));
 
             if (referral.isAssignedToBox()) {
                 throw new IllegalStateException("Cannot mark as lost a sample already assigned to a box");
@@ -134,9 +147,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
     @Override
     public void cancelReferral(String referralId, String reason, String currentUserId) {
         try {
-            Referral referral = referralDAO.get(referralId).orElseThrow(
-                () -> new IllegalArgumentException("Referral not found with ID: " + referralId)
-            );
+            Referral referral = referralDAO.get(referralId)
+                    .orElseThrow(() -> new IllegalArgumentException("Referral not found with ID: " + referralId));
 
             if (referral.isAssignedToBox()) {
                 throw new IllegalStateException("Cannot cancel a referral already assigned to a box");
@@ -168,8 +180,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
                     continue;
                 }
 
-                if (referral.getOrganization() != null &&
-                    referral.getOrganization().getId().equals(facilityId.toString())) {
+                if (referral.getOrganization() != null
+                        && referral.getOrganization().getId().equals(facilityId.toString())) {
                     count++;
                 }
             }
@@ -182,7 +194,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
     }
 
     /**
-     * Compile all sample data within transaction to prevent LazyInitializationException
+     * Compile all sample data within transaction to prevent
+     * LazyInitializationException
      */
     private Map<String, Object> compileSampleData(Referral referral) {
         Map<String, Object> sampleData = new HashMap<>();
@@ -193,9 +206,8 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
 
         // Calculate days unassigned
         if (referral.getRequestDate() != null) {
-            long daysDiff = TimeUnit.MILLISECONDS.toDays(
-                System.currentTimeMillis() - referral.getRequestDate().getTime()
-            );
+            long daysDiff = TimeUnit.MILLISECONDS
+                    .toDays(System.currentTimeMillis() - referral.getRequestDate().getTime());
             sampleData.put("daysUnassigned", daysDiff);
         } else {
             sampleData.put("daysUnassigned", 0L);
@@ -203,7 +215,7 @@ public class UnassignedSampleServiceImpl implements UnassignedSampleService {
 
         // Get sample information from analysis
         Analysis analysis = referral.getAnalysis();
-        if (analysis != null) {
+        if (analysis != null && analysis.getSampleItem() != null) {
             Sample sample = analysis.getSampleItem().getSample();
             if (sample != null) {
                 sampleData.put("accessionNumber", sample.getAccessionNumber());

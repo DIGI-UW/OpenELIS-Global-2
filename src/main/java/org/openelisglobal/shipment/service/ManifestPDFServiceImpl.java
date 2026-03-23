@@ -18,7 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
-import org.openelisglobal.shipment.valueholder.BoxSample;
+import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Implementation of ManifestPDFService for generating shipping box manifest
  * PDFs
+ *
+ * @deprecated Backend PDF generation is deprecated. Use frontend PDF generation
+ *             via /manifest-data endpoint and pdfGenerator.js instead.
  */
+@Deprecated(since = "3.3.x", forRemoval = true)
 @Service
 public class ManifestPDFServiceImpl implements ManifestPDFService {
 
@@ -43,7 +47,7 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
     private ShippingBoxService shippingBoxService;
 
     @Autowired
-    private BoxSampleService boxSampleService;
+    private BoxSampleItemService boxSampleItemService;
 
     @Override
     @Transactional(readOnly = true)
@@ -62,16 +66,31 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
             throw new IllegalArgumentException("Shipping box not found: " + boxId);
         }
 
-        // Get all samples in this box
-        List<BoxSample> samples = boxSampleService.getBoxSamplesByShippingBoxId(id);
+        // Initialize lazy associations within transaction
+        if (box.getDestinationFacility() != null) {
+            box.getDestinationFacility().getOrganizationName(); // Force initialization
+        }
+        if (box.getCreatedBy() != null) {
+            box.getCreatedBy().getNameForDisplay(); // Force initialization
+        }
 
-        return generatePDF(box, samples);
+        // Get all sample items in this box
+        List<BoxSampleItem> sampleItems = boxSampleItemService.getBoxSampleItemsByShippingBoxId(id);
+
+        // Initialize sample item associations
+        for (BoxSampleItem item : sampleItems) {
+            if (item.getSampleItem() != null && item.getSampleItem().getSample() != null) {
+                item.getSampleItem().getSample().getAccessionNumber(); // Force initialization
+            }
+        }
+
+        return generatePDF(box, sampleItems);
     }
 
     /**
      * Generate PDF manifest document
      */
-    private ByteArrayOutputStream generatePDF(ShippingBox box, List<BoxSample> samples) {
+    private ByteArrayOutputStream generatePDF(ShippingBox box, List<BoxSampleItem> sampleItems) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
 
@@ -80,8 +99,16 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
             document.open();
 
             // Title
-            Paragraph title = new Paragraph(MessageUtil.getMessage("shipment.manifest.title", "Shipping Manifest"),
-                    TITLE_FONT);
+            String titleText = "Shipping Manifest";
+            try {
+                String msg = MessageUtil.getMessage("shipment.manifest.title");
+                if (msg != null && !msg.isEmpty()) {
+                    titleText = msg;
+                }
+            } catch (Exception ex) {
+                // Use default title
+            }
+            Paragraph title = new Paragraph(titleText, TITLE_FONT);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(20f);
             document.add(title);
@@ -90,10 +117,10 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
             document.add(createBoxInfoSection(box));
 
             // Samples table
-            document.add(createSamplesTable(samples));
+            document.add(createSamplesTable(sampleItems));
 
             // Footer with summary
-            document.add(createFooter(box, samples));
+            document.add(createFooter(box, sampleItems));
 
             document.close();
 
@@ -116,28 +143,46 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
         table.setSpacingAfter(20f);
 
         // Box ID
-        addInfoRow(table, MessageUtil.getMessage("shipment.box.id", "Box ID:"), box.getBoxId());
+        addInfoRow(table, "Box ID:", box.getBoxId() != null ? box.getBoxId() : "-");
 
         // Destination
-        String destination = box.getDestinationFacility() != null ? box.getDestinationFacility().getOrganizationName()
-                : "-";
-        addInfoRow(table, MessageUtil.getMessage("shipment.box.destination", "Destination:"), destination);
+        String destination = "-";
+        try {
+            if (box.getDestinationFacility() != null) {
+                destination = box.getDestinationFacility().getOrganizationName();
+                if (destination == null)
+                    destination = "-";
+            }
+        } catch (Exception e) {
+            LogEvent.logDebug("ManifestPDFServiceImpl", "createBoxInfoSection",
+                    "Could not get destination facility name");
+        }
+        addInfoRow(table, "Destination:", destination);
 
         // State
         String state = box.getState() != null ? box.getState().toString() : "-";
-        addInfoRow(table, MessageUtil.getMessage("shipment.box.state", "State:"), state);
+        addInfoRow(table, "State:", state);
 
         // Temperature
         String temperature = box.getTemperatureRequirement() != null ? box.getTemperatureRequirement() : "AMBIENT";
-        addInfoRow(table, MessageUtil.getMessage("shipment.box.temperature", "Temperature:"), temperature);
+        addInfoRow(table, "Temperature:", temperature);
 
         // Created date
         String createdDate = box.getCreatedDate() != null ? DATE_FORMAT.format(box.getCreatedDate()) : "-";
-        addInfoRow(table, MessageUtil.getMessage("shipment.box.created", "Created:"), createdDate);
+        addInfoRow(table, "Created:", createdDate);
 
         // Created by
-        String createdBy = box.getCreatedBy() != null ? box.getCreatedBy().getNameForDisplay() : "-";
-        addInfoRow(table, MessageUtil.getMessage("shipment.box.createdBy", "Created By:"), createdBy);
+        String createdBy = "-";
+        try {
+            if (box.getCreatedBy() != null) {
+                createdBy = box.getCreatedBy().getNameForDisplay();
+                if (createdBy == null)
+                    createdBy = "-";
+            }
+        } catch (Exception e) {
+            LogEvent.logDebug("ManifestPDFServiceImpl", "createBoxInfoSection", "Could not get created by name");
+        }
+        addInfoRow(table, "Created By:", createdBy);
 
         return table;
     }
@@ -160,32 +205,41 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
     /**
      * Create samples table
      */
-    private PdfPTable createSamplesTable(List<BoxSample> samples) throws DocumentException {
+    private PdfPTable createSamplesTable(List<BoxSampleItem> sampleItems) throws DocumentException {
         PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
         table.setWidths(new int[] { 10, 30, 30, 30 });
         table.setSpacingAfter(20f);
 
         // Header row
-        addHeaderCell(table, MessageUtil.getMessage("shipment.manifest.number", "#"));
-        addHeaderCell(table, MessageUtil.getMessage("sample.label.accessionNumber", "Accession Number"));
-        addHeaderCell(table, MessageUtil.getMessage("shipment.label.referralTest", "Referral Test"));
-        addHeaderCell(table, MessageUtil.getMessage("shipment.label.addedDate", "Added Date"));
+        addHeaderCell(table, "#");
+        addHeaderCell(table, "Accession Number");
+        addHeaderCell(table, "Referral Test");
+        addHeaderCell(table, "Added Date");
 
         // Sample rows
         int index = 1;
-        for (BoxSample boxSample : samples) {
+        for (BoxSampleItem item : sampleItems) {
             addDataCell(table, String.valueOf(index++));
 
-            String accessionNumber = boxSample.getSample() != null ? boxSample.getSample().getAccessionNumber() : "-";
+            String accessionNumber = "-";
+            try {
+                if (item.getSampleItem() != null && item.getSampleItem().getSample() != null) {
+                    accessionNumber = item.getSampleItem().getSample().getAccessionNumber();
+                    if (accessionNumber == null)
+                        accessionNumber = "-";
+                }
+            } catch (Exception e) {
+                LogEvent.logDebug("ManifestPDFServiceImpl", "createSamplesTable", "Could not get accession number");
+            }
             addDataCell(table, accessionNumber);
 
             // For now, we'll show a placeholder for referral test - this would need to be
-            // fetched from the sample's analyses
+            // fetched from the sample item's analyses
             String referralTest = "-";
             addDataCell(table, referralTest);
 
-            String addedDate = boxSample.getAddedDate() != null ? DATE_FORMAT.format(boxSample.getAddedDate()) : "-";
+            String addedDate = item.getAddedDate() != null ? DATE_FORMAT.format(item.getAddedDate()) : "-";
             addDataCell(table, addedDate);
         }
 
@@ -215,20 +269,18 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
     /**
      * Create footer with summary
      */
-    private Paragraph createFooter(ShippingBox box, List<BoxSample> samples) {
+    private Paragraph createFooter(ShippingBox box, List<BoxSampleItem> sampleItems) {
         Paragraph footer = new Paragraph();
         footer.setSpacingBefore(20f);
 
         // Total samples
-        footer.add(
-                new Chunk(MessageUtil.getMessage("shipment.manifest.totalSamples", "Total Samples: ") + samples.size(),
-                        HEADER_FONT));
+        footer.add(new Chunk("Total Sample Items: " + sampleItems.size(), HEADER_FONT));
         footer.add(Chunk.NEWLINE);
         footer.add(Chunk.NEWLINE);
 
         // Notes
         if (box.getNotes() != null && !box.getNotes().trim().isEmpty()) {
-            footer.add(new Chunk(MessageUtil.getMessage("shipment.box.notes", "Notes: "), HEADER_FONT));
+            footer.add(new Chunk("Notes: ", HEADER_FONT));
             footer.add(Chunk.NEWLINE);
             footer.add(new Chunk(box.getNotes(), NORMAL_FONT));
             footer.add(Chunk.NEWLINE);
@@ -236,8 +288,7 @@ public class ManifestPDFServiceImpl implements ManifestPDFService {
         }
 
         // Generated timestamp
-        footer.add(new Chunk(MessageUtil.getMessage("shipment.manifest.generated", "Generated: ")
-                + DATE_FORMAT.format(new java.util.Date()), SMALL_FONT));
+        footer.add(new Chunk("Generated: " + DATE_FORMAT.format(new java.util.Date()), SMALL_FONT));
 
         return footer;
     }

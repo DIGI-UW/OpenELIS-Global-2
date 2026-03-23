@@ -2,6 +2,8 @@ import {
   Button,
   Column,
   DataTable,
+  DatePicker,
+  DatePickerInput,
   Dropdown,
   Grid,
   Loading,
@@ -28,6 +30,9 @@ import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
+import AddToBoxModal from "./AddToBoxModal";
+import CancelReferralModal from "./CancelReferralModal";
+import MarkAsLostModal from "./MarkAsLostModal";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 
@@ -66,11 +71,25 @@ const ShipmentDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterState, setFilterState] = useState("");
   const [filterFacility, setFilterFacility] = useState("");
+  const [filterDateFrom, setFilterDateFrom] = useState(null);
+  const [filterDateTo, setFilterDateTo] = useState(null);
 
   // Facilities dropdown data
   const [facilities, setFacilities] = useState([]);
 
   const [loading, setLoading] = useState(true);
+
+  // Add to Box modal state
+  const [showAddToBoxModal, setShowAddToBoxModal] = useState(false);
+  const [selectedSample, setSelectedSample] = useState(null);
+
+  // Mark as Lost modal state
+  const [showMarkAsLostModal, setShowMarkAsLostModal] = useState(false);
+  const [sampleToMarkLost, setSampleToMarkLost] = useState(null);
+
+  // Cancel Referral modal state
+  const [showCancelReferralModal, setShowCancelReferralModal] = useState(false);
+  const [sampleToCancel, setSampleToCancel] = useState(null);
 
   // Box states for filtering
   const boxStates = [
@@ -82,12 +101,28 @@ const ShipmentDashboard = () => {
     },
     { id: "SENT", text: intl.formatMessage({ id: "shipment.state.sent" }) },
     {
+      id: "IN_TRANSIT",
+      text: intl.formatMessage({ id: "shipment.state.inTransit" }),
+    },
+    {
+      id: "PARTIALLY_RECEIVED",
+      text: intl.formatMessage({ id: "shipment.state.partiallyReceived" }),
+    },
+    {
       id: "RECEIVED",
       text: intl.formatMessage({ id: "shipment.state.received" }),
     },
     {
       id: "RECONCILED",
       text: intl.formatMessage({ id: "shipment.state.reconciled" }),
+    },
+    {
+      id: "CANCELLED",
+      text: intl.formatMessage({ id: "shipment.state.cancelled" }),
+    },
+    {
+      id: "LOST_IN_TRANSIT",
+      text: intl.formatMessage({ id: "shipment.state.lostInTransit" }),
     },
   ];
 
@@ -120,6 +155,7 @@ const ShipmentDashboard = () => {
 
   // Fetch data when tab changes or filters change
   useEffect(() => {
+    setSearchTerm(""); // Reset search when switching tabs
     if (selectedTab === 0) {
       fetchBoxes();
     } else if (selectedTab === 1) {
@@ -178,9 +214,10 @@ const ShipmentDashboard = () => {
 
   const fetchUnassignedSamples = () => {
     setLoading(true);
-    let url = "/rest/unassigned-sample";
+    // Use new SampleItem-based endpoint
+    let url = "/rest/unassigned-sample/items";
     if (filterFacility) {
-      url = `/rest/unassigned-sample/by-facility/${filterFacility}`;
+      url = `/rest/unassigned-sample/items/by-facility/${filterFacility}`;
     }
 
     getFromOpenElisServer(url, (response) => {
@@ -193,15 +230,38 @@ const ShipmentDashboard = () => {
     });
   };
 
-  // Filter data based on search term
+  // Filter data based on search term and date range
   const getFilteredBoxes = () => {
-    if (!searchTerm) return boxes;
-    const lowerSearch = searchTerm.toLowerCase();
-    return boxes.filter(
-      (box) =>
-        box.boxId?.toLowerCase().includes(lowerSearch) ||
-        box.destinationFacilityName?.toLowerCase().includes(lowerSearch),
-    );
+    let filtered = boxes;
+
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (box) =>
+          box.boxId?.toLowerCase().includes(lowerSearch) ||
+          box.destinationFacilityName?.toLowerCase().includes(lowerSearch),
+      );
+    }
+
+    if (filterDateFrom) {
+      const from = new Date(filterDateFrom);
+      from.setHours(0, 0, 0, 0);
+      filtered = filtered.filter((box) => {
+        if (!box.createdDate) return false;
+        return new Date(box.createdDate) >= from;
+      });
+    }
+
+    if (filterDateTo) {
+      const to = new Date(filterDateTo);
+      to.setHours(23, 59, 59, 999);
+      filtered = filtered.filter((box) => {
+        if (!box.createdDate) return false;
+        return new Date(box.createdDate) <= to;
+      });
+    }
+
+    return filtered;
   };
 
   const getFilteredUnassignedSamples = () => {
@@ -214,9 +274,29 @@ const ShipmentDashboard = () => {
     );
   };
 
+  // Handle scan/search box ID — navigate directly if exact match found
+  const handleScanBoxId = () => {
+    if (!searchTerm.trim()) return;
+    const exactMatch = boxes.find(
+      (box) => box.boxId?.toLowerCase() === searchTerm.trim().toLowerCase(),
+    );
+    if (exactMatch) {
+      history.push(`/SampleShipment/box/${exactMatch.id}`);
+    } else {
+      addNotification({
+        kind: "info",
+        title: intl.formatMessage({ id: "notification.info" }),
+        message: intl.formatMessage(
+          { id: "shipment.dashboard.boxNotFound" },
+          { boxId: searchTerm.trim() },
+        ),
+      });
+    }
+  };
+
   // Handle create new box
   const handleCreateBox = () => {
-    history.push("/SampleShipment/box/create");
+    history.push("/SampleShipment/create-box");
   };
 
   // Handle view box details
@@ -224,18 +304,103 @@ const ShipmentDashboard = () => {
     history.push(`/SampleShipment/box/${boxId}`);
   };
 
+  // Handle add sample to box
+  const handleAddToBox = (sample) => {
+    setSelectedSample(sample);
+    setShowAddToBoxModal(true);
+  };
+
+  const handleAddToBoxSuccess = () => {
+    fetchUnassignedSamples();
+    setShowAddToBoxModal(false);
+    setSelectedSample(null);
+  };
+
+  // Handle mark sample as lost
+  const handleMarkAsLost = (sample) => {
+    setSampleToMarkLost(sample);
+    setShowMarkAsLostModal(true);
+  };
+
+  const handleMarkAsLostSuccess = () => {
+    fetchUnassignedSamples();
+    setShowMarkAsLostModal(false);
+    setSampleToMarkLost(null);
+  };
+
+  // Handle cancel referral
+  const handleCancelReferral = (sample) => {
+    setSampleToCancel(sample);
+    setShowCancelReferralModal(true);
+  };
+
+  const handleCancelReferralSuccess = () => {
+    fetchUnassignedSamples();
+    setShowCancelReferralModal(false);
+    setSampleToCancel(null);
+  };
+
   // Render box state tag
   const renderStateTag = (state) => {
     const stateConfig = {
-      DRAFT: { type: "gray", label: "Draft" },
-      READY_TO_SEND: { type: "blue", label: "Ready to Send" },
-      SENT: { type: "purple", label: "Sent" },
-      RECEIVED: { type: "green", label: "Received" },
-      RECONCILED: { type: "teal", label: "Reconciled" },
+      DRAFT: {
+        type: "gray",
+        label: intl.formatMessage({ id: "shipment.state.draft" }),
+      },
+      READY_TO_SEND: {
+        type: "blue",
+        label: intl.formatMessage({ id: "shipment.state.readyToSend" }),
+      },
+      SENT: {
+        type: "purple",
+        label: intl.formatMessage({ id: "shipment.state.sent" }),
+      },
+      IN_TRANSIT: {
+        type: "cyan",
+        label: intl.formatMessage({ id: "shipment.state.inTransit" }),
+      },
+      PARTIALLY_RECEIVED: {
+        type: "warm-gray",
+        label: intl.formatMessage({ id: "shipment.state.partiallyReceived" }),
+      },
+      RECEIVED: {
+        type: "green",
+        label: intl.formatMessage({ id: "shipment.state.received" }),
+      },
+      RECONCILED: {
+        type: "teal",
+        label: intl.formatMessage({ id: "shipment.state.reconciled" }),
+      },
+      CANCELLED: {
+        type: "red",
+        label: intl.formatMessage({ id: "shipment.state.cancelled" }),
+      },
+      LOST_IN_TRANSIT: {
+        type: "magenta",
+        label: intl.formatMessage({ id: "shipment.state.lostInTransit" }),
+      },
     };
 
-    const config = stateConfig[state] || { type: "gray", label: state };
-    return <Tag type={config.type}>{config.label}</Tag>;
+    const cfg = stateConfig[state] || { type: "gray", label: state };
+    return <Tag type={cfg.type}>{cfg.label}</Tag>;
+  };
+
+  // Render days unassigned with visual indicators
+  const renderDaysUnassigned = (days) => {
+    if (days === undefined || days === null) return "-";
+
+    let tagType = "gray"; // Default
+    if (days >= 30) {
+      tagType = "red"; // Critical - 30+ days
+    } else if (days >= 7) {
+      tagType = "yellow"; // Warning - 7-29 days
+    }
+
+    return (
+      <Tag type={tagType}>
+        {days} {intl.formatMessage({ id: "label.days" })}
+      </Tag>
+    );
   };
 
   // Boxes table headers
@@ -273,20 +438,16 @@ const ShipmentDashboard = () => {
       header: intl.formatMessage({ id: "sample.label.accessionNumber" }),
     },
     {
-      key: "referralTestName",
-      header: intl.formatMessage({ id: "shipment.label.referralTest" }),
+      key: "typeOfSample",
+      header: intl.formatMessage({ id: "sample.label.typeOfSample" }),
     },
     {
-      key: "destinationFacilityName",
-      header: intl.formatMessage({ id: "shipment.label.destination" }),
+      key: "referralTests",
+      header: intl.formatMessage({ id: "shipment.label.tests" }),
     },
     {
-      key: "priority",
-      header: intl.formatMessage({ id: "shipment.label.priority" }),
-    },
-    {
-      key: "createdDate",
-      header: intl.formatMessage({ id: "shipment.label.createdDate" }),
+      key: "collectionDate",
+      header: intl.formatMessage({ id: "sample.label.collectionDate" }),
     },
     {
       key: "actions",
@@ -323,23 +484,40 @@ const ShipmentDashboard = () => {
   const renderUnassignedRows = () => {
     const filteredSamples = getFilteredUnassignedSamples();
     return filteredSamples.map((sample) => ({
-      id: sample.id.toString(),
+      id: sample.sampleItemId || sample.id?.toString() || "-",
       accessionNumber: sample.accessionNumber || "-",
-      referralTestName: sample.referralTestName || "-",
-      destinationFacilityName: sample.destinationFacilityName || "-",
-      priority: sample.priority || "-",
-      createdDate: sample.referralDate
-        ? new Date(sample.referralDate).toLocaleDateString()
+      typeOfSample: sample.typeOfSample || "-",
+      referralTests: sample.referralTests
+        ? sample.referralTests.map((t) => t.testName).join(", ")
+        : "-",
+      collectionDate: sample.collectionDate
+        ? new Date(sample.collectionDate).toLocaleDateString()
         : "-",
       actions: (
-        <Button
-          kind="ghost"
-          size="sm"
-          onClick={() => console.log("Add to box:", sample.id)}
-          style={{ paddingLeft: 0 }}
-        >
-          <FormattedMessage id="shipment.action.addToBox" />
-        </Button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleAddToBox(sample)}
+            style={{ paddingLeft: 0 }}
+          >
+            <FormattedMessage id="shipment.action.addToBox" />
+          </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleMarkAsLost(sample)}
+          >
+            <FormattedMessage id="shipment.action.markAsLost" />
+          </Button>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() => handleCancelReferral(sample)}
+          >
+            <FormattedMessage id="shipment.action.cancelReferral" />
+          </Button>
+        </div>
       ),
     }));
   };
@@ -412,8 +590,13 @@ const ShipmentDashboard = () => {
               <Tab>
                 <FormattedMessage id="shipment.tab.boxes" />
               </Tab>
-              <Tab>
-                <FormattedMessage id="shipment.tab.unassignedSamples" />
+              <Tab className="unassigned-tab">
+                <span className="tab-label-with-badge">
+                  <FormattedMessage id="shipment.tab.unassignedSamples" />
+                  <Tag size="sm" type="red">
+                    {unassignedSamples.length}
+                  </Tag>
+                </span>
               </Tab>
             </TabList>
 
@@ -424,10 +607,13 @@ const ShipmentDashboard = () => {
                   <Search
                     size="lg"
                     placeholder={intl.formatMessage({
-                      id: "search.placeholder",
+                      id: "shipment.dashboard.scanBoxPlaceholder",
                     })}
                     labelText={intl.formatMessage({ id: "search.label" })}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleScanBoxId();
+                    }}
                     value={searchTerm}
                   />
                   <Dropdown
@@ -458,6 +644,46 @@ const ShipmentDashboard = () => {
                       setFilterFacility(selectedItem?.id || "")
                     }
                   />
+                  <DatePicker
+                    datePickerType="single"
+                    onChange={([date]) => setFilterDateFrom(date)}
+                    value={filterDateFrom}
+                  >
+                    <DatePickerInput
+                      id="date-from"
+                      placeholder="mm/dd/yyyy"
+                      labelText={intl.formatMessage({
+                        id: "shipment.filter.dateFrom",
+                      })}
+                      size="md"
+                    />
+                  </DatePicker>
+                  <DatePicker
+                    datePickerType="single"
+                    onChange={([date]) => setFilterDateTo(date)}
+                    value={filterDateTo}
+                  >
+                    <DatePickerInput
+                      id="date-to"
+                      placeholder="mm/dd/yyyy"
+                      labelText={intl.formatMessage({
+                        id: "shipment.filter.dateTo",
+                      })}
+                      size="md"
+                    />
+                  </DatePicker>
+                  {(filterDateFrom || filterDateTo) && (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFilterDateFrom(null);
+                        setFilterDateTo(null);
+                      }}
+                    >
+                      <FormattedMessage id="shipment.filter.clear" />
+                    </Button>
+                  )}
                   <Button onClick={handleCreateBox}>
                     <FormattedMessage id="shipment.action.createBox" />
                   </Button>
@@ -525,6 +751,7 @@ const ShipmentDashboard = () => {
                     })}
                     label={intl.formatMessage({ id: "label.select" })}
                     items={facilities}
+                    itemToString={(item) => (item ? item.text : "")}
                     selectedItem={facilities.find(
                       (f) => f.id === filterFacility,
                     )}
@@ -583,6 +810,45 @@ const ShipmentDashboard = () => {
           </Tabs>
         </Column>
       </Grid>
+
+      {/* Add to Box Modal */}
+      {showAddToBoxModal && (
+        <AddToBoxModal
+          open={showAddToBoxModal}
+          onClose={() => {
+            setShowAddToBoxModal(false);
+            setSelectedSample(null);
+          }}
+          sample={selectedSample}
+          onSuccess={handleAddToBoxSuccess}
+        />
+      )}
+
+      {/* Mark as Lost Modal */}
+      {showMarkAsLostModal && (
+        <MarkAsLostModal
+          open={showMarkAsLostModal}
+          onClose={() => {
+            setShowMarkAsLostModal(false);
+            setSampleToMarkLost(null);
+          }}
+          sample={sampleToMarkLost}
+          onSuccess={handleMarkAsLostSuccess}
+        />
+      )}
+
+      {/* Cancel Referral Modal */}
+      {showCancelReferralModal && (
+        <CancelReferralModal
+          open={showCancelReferralModal}
+          onClose={() => {
+            setShowCancelReferralModal(false);
+            setSampleToCancel(null);
+          }}
+          sample={sampleToCancel}
+          onSuccess={handleCancelReferralSuccess}
+        />
+      )}
     </div>
   );
 };

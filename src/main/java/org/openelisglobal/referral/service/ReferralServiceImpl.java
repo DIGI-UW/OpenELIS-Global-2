@@ -70,19 +70,22 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
     @Override
     @Transactional(readOnly = true)
     public Referral getReferralById(String referralId) {
-        return getBaseObjectDAO().getReferralById(referralId);
+        Integer id = Integer.parseInt(referralId);
+        return getBaseObjectDAO().getReferralById(id);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Referral> getReferralsBySampleId(String id) {
-        return getBaseObjectDAO().getAllReferralsBySampleId(id);
+        Integer intId = Integer.parseInt(id);
+        return getBaseObjectDAO().getAllReferralsBySampleId(intId);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Referral> getReferralsByOrganization(String organizationId, Date lowDate, Date highDate) {
-        return getBaseObjectDAO().getAllReferralsByOrganization(organizationId, lowDate, highDate);
+        Integer orgId = Integer.parseInt(organizationId);
+        return getBaseObjectDAO().getAllReferralsByOrganization(orgId, lowDate, highDate);
     }
 
     @Override
@@ -99,7 +102,10 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
     @Override
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startTimestamp,
             Timestamp endTimestamp, List<String> testUnitIds, List<String> testIds) {
-        return baseObjectDAO.getReferralsByTestAndDate(dateType, startTimestamp, endTimestamp, testUnitIds, testIds);
+        List<Integer> testUnitIdInts = testUnitIds.stream().map(Integer::parseInt).collect(Collectors.toList());
+        List<Integer> testIdInts = testIds.stream().map(Integer::parseInt).collect(Collectors.toList());
+        return baseObjectDAO.getReferralsByTestAndDate(dateType, startTimestamp, endTimestamp, testUnitIdInts,
+                testIdInts);
     }
 
     @Override
@@ -107,8 +113,8 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
         if (sample != null) {
             List<Analysis> analysises = analysisService.getAnalysesBySampleId(sample.getId());
-            return baseObjectDAO
-                    .getReferralsByAnalysisIds(analysises.stream().map(e -> e.getId()).collect(Collectors.toList()));
+            return baseObjectDAO.getReferralsByAnalysisIds(
+                    analysises.stream().map(e -> Integer.parseInt(e.getId())).collect(Collectors.toList()));
         }
         return new ArrayList<>();
     }
@@ -121,8 +127,8 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
         for (Sample sample : samples) {
             analysises.addAll(analysisService.getAnalysesBySampleId(sample.getId()));
         }
-        return baseObjectDAO
-                .getReferralsByAnalysisIds(analysises.stream().map(e -> e.getId()).collect(Collectors.toList()));
+        return baseObjectDAO.getReferralsByAnalysisIds(
+                analysises.stream().map(e -> Integer.parseInt(e.getId())).collect(Collectors.toList()));
     }
 
     @Override

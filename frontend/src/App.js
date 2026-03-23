@@ -1,58 +1,59 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import { IntlProvider } from "react-intl";
+import { useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
-import Layout from "./components/layout/Layout";
+import { IntlProvider } from "react-intl";
+import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import "./App.css";
+import RedirectOldUI from "./RedirectOldUI";
+import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import { Admin } from "./components";
+import ChangePassword from "./components/ChangePassword.js";
 import Home from "./components/Home";
-import StorageDashboard from "./components/storage/StorageDashboard";
-import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
+import Login from "./components/Login";
+import AddOrder from "./components/addOrder/Index";
+import AnalyserResultIndex from "./components/analyserResults/Index";
+import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
+import CytologyCaseView from "./components/cytology/CytologyCaseView";
+import CytologyDashboard from "./components/cytology/CytologyDashBoard";
+import EOrderPage from "./components/eOrder/Index";
+import LandingPage from "./components/home/LandingPage";
+import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
+import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
+import Layout from "./components/layout/Layout";
+import FindOrder from "./components/modifyOrder/Index";
+import ModifyOrder from "./components/modifyOrder/ModifyOrder";
+import NonConformIndex from "./components/nonconform/index";
+import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
+import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
+import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import PathologyCaseView from "./components/pathology/PathologyCaseView";
+import PathologyDashboard from "./components/pathology/PathologyDashboard";
+import PatientHistory from "./components/patient/PatientHistory";
+import PatientManagement from "./components/patient/PatientManagement";
+import RoutedResultsViewer from "./components/patient/resultsViewer/results-viewer.tsx";
+import PrintBarcode from "./components/printBarcode/Index";
+import ReportIndex from "./components/reports/Index.js";
+import RoutineReports from "./components/reports/Routine";
+import StudyReports from "./components/reports/Study";
+import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
+import RoutineIndex from "./components/reports/routine/Index.js";
+import StudyIndex from "./components/reports/study/index.js";
+import ResultSearch from "./components/resultPage/ResultSearch";
+import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
+import Aliquot from "./components/sample/Aliquot";
+import { SecureRoute } from "./components/security";
 import BoxCreation from "./components/shipment/BoxCreation";
 import BoxDetails from "./components/shipment/BoxDetails";
 import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
-import Login from "./components/Login";
-import LandingPage from "./components/home/LandingPage";
-import { Admin } from "./components";
-import ResultSearch from "./components/resultPage/ResultSearch";
-import UserSessionDetailsContext from "./UserSessionDetailsContext";
-import { getFromOpenElisServer } from "./components/utils/Utils";
-import "./App.css";
-import { languages } from "./languages";
-import config from "./config.json";
-import { SecureRoute } from "./components/security";
-import "./index.scss";
-import RedirectOldUI from "./RedirectOldUI";
-import PatientManagement from "./components/patient/PatientManagement";
-import PatientHistory from "./components/patient/PatientHistory";
-import Aliquot from "./components/sample/Aliquot";
-import Workplan from "./components/workplan/Workplan";
-import AddOrder from "./components/addOrder/Index";
-import FindOrder from "./components/modifyOrder/Index";
-import ModifyOrder from "./components/modifyOrder/ModifyOrder";
-import RoutineReports from "./components/reports/Routine";
-import StudyReports from "./components/reports/Study";
+import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
+import ShipmentReport from "./components/shipment/ShipmentReport";
+import ShipmentSettings from "./components/shipment/ShipmentSettings";
+import StorageDashboard from "./components/storage/StorageDashboard";
+import { getFromOpenElisServer, Roles } from "./components/utils/Utils";
 import StudyValidation from "./components/validation/Index";
-import AnalyserResultIndex from "./components/analyserResults/Index";
-import PathologyDashboard from "./components/pathology/PathologyDashboard";
-import CytologyDashboard from "./components/cytology/CytologyDashBoard";
-import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
-import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
-import CytologyCaseView from "./components/cytology/CytologyCaseView";
-import PathologyCaseView from "./components/pathology/PathologyCaseView";
-import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
-import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
-import RoutedResultsViewer from "./components/patient/resultsViewer/results-viewer.tsx";
-import EOrderPage from "./components/eOrder/Index";
-import RoutineIndex from "./components/reports/routine/Index.js";
-import StudyIndex from "./components/reports/study/index.js";
-import ReportIndex from "./components/reports/Index.js";
-import PrintBarcode from "./components/printBarcode/Index";
-import NonConformIndex from "./components/nonconform/index";
-import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
-import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
-import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
-import ChangePassword from "./components/ChangePassword.js";
-import { Roles } from "./components/utils/Utils";
-import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
+import Workplan from "./components/workplan/Workplan";
+import config from "./config.json";
+import "./index.scss";
+import { languages } from "./languages";
 
 export default function App() {
   let i18nConfig = {
@@ -434,7 +435,7 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/SampleShipment/box/create"
+                  path="/SampleShipment/create-box"
                   exact
                   component={() => <BoxCreation />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
@@ -450,6 +451,18 @@ export default function App() {
                   exact
                   component={() => <ReceptionWorkflow />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/reports"
+                  exact
+                  component={() => <ShipmentReport />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/settings"
+                  exact
+                  component={() => <ShipmentSettings />}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleShipment/:tab"

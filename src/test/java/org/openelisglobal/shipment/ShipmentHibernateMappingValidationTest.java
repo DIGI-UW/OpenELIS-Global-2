@@ -1,6 +1,8 @@
 package org.openelisglobal.shipment;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -13,7 +15,12 @@ import org.hibernate.cfg.Configuration;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.openelisglobal.shipment.valueholder.*;
+import org.openelisglobal.shipment.valueholder.BoxSampleItem;
+import org.openelisglobal.shipment.valueholder.BoxState;
+import org.openelisglobal.shipment.valueholder.ReceptionStatus;
+import org.openelisglobal.shipment.valueholder.Shipment;
+import org.openelisglobal.shipment.valueholder.ShipmentStatus;
+import org.openelisglobal.shipment.valueholder.ShippingBox;
 
 /**
  * Validates Hibernate ORM mappings for shipment module WITHOUT requiring
@@ -37,11 +44,12 @@ public class ShipmentHibernateMappingValidationTest {
         // Add all shipment entity mappings using annotation-based approach
         configuration.addAnnotatedClass(ShippingBox.class);
         configuration.addAnnotatedClass(Shipment.class);
-        configuration.addAnnotatedClass(BoxSample.class);
-        configuration.addAnnotatedClass(UnassignedSample.class);
+        // BoxSample.class removed - entity deprecated and table dropped in 3.3.x
+        configuration.addAnnotatedClass(BoxSampleItem.class);
 
         // Add dependent entity mappings
         configuration.addResource("hibernate/hbm/Sample.hbm.xml");
+        configuration.addResource("hibernate/hbm/SampleItem.hbm.xml");
         configuration.addResource("hibernate/hbm/Organization.hbm.xml");
         configuration.addResource("hibernate/hbm/SystemUser.hbm.xml");
         configuration.addResource("hibernate/hbm/Test.hbm.xml");
@@ -75,9 +83,8 @@ public class ShipmentHibernateMappingValidationTest {
         // Verify each entity is registered in Hibernate metamodel
         assertNotNull("ShippingBox should be registered", sessionFactory.getMetamodel().entity(ShippingBox.class));
         assertNotNull("Shipment should be registered", sessionFactory.getMetamodel().entity(Shipment.class));
-        assertNotNull("BoxSample should be registered", sessionFactory.getMetamodel().entity(BoxSample.class));
-        assertNotNull("UnassignedSample should be registered",
-                sessionFactory.getMetamodel().entity(UnassignedSample.class));
+        // BoxSample removed - entity deprecated and table dropped in 3.3.x
+        assertNotNull("BoxSampleItem should be registered", sessionFactory.getMetamodel().entity(BoxSampleItem.class));
     }
 
     /**
@@ -86,7 +93,7 @@ public class ShipmentHibernateMappingValidationTest {
      */
     @Test
     public void testShipmentEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { ShippingBox.class, Shipment.class, BoxSample.class, UnassignedSample.class };
+        Class<?>[] entities = { ShippingBox.class, Shipment.class, BoxSampleItem.class };
 
         for (Class<?> entityClass : entities) {
             validateNoGetterConflicts(entityClass);

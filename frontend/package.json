@@ -16,6 +16,7 @@
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
+    "bwip-js": "^4.8.0",
     "carbon-components": "^10.58.12",
     "cors": "^2.8.5",
     "d3": "^7.6.1",
@@ -25,6 +26,8 @@
     "formik-error-focus": "2.0.0",
     "geopattern": "1.2.3",
     "jsonpath": "^1.1.1",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.3",
     "lodash-es": "^4.17.15",
     "prettier-eslint": "15.0.1",
     "qs": "6.11.0",
@@ -46,6 +49,7 @@
     "styled-components": "^5.3.6",
     "swr": "2.0.3",
     "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5",
     "yup": "^0.29.2"
   },
   "scripts": {

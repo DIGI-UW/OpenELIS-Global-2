@@ -11,11 +11,12 @@ import {
   TableHeader,
   TableRow,
   TableSelectRow,
+  Tag,
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServerV2 } from "../utils/Utils";
 import "./SampleAssignmentModal.css";
 
 const SampleAssignmentModal = ({
@@ -41,12 +42,10 @@ const SampleAssignmentModal = ({
   const fetchUnassignedSamples = async () => {
     setLoading(true);
     try {
-      let url = "/rest/unassigned-sample";
-      if (destinationFacilityId) {
-        url = `/rest/unassigned-sample/by-facility/${destinationFacilityId}`;
-      }
+      // Use new SampleItem-based endpoint
+      const url = "/rest/unassigned-sample/items";
 
-      const response = await getFromOpenElisServer(url);
+      const response = await getFromOpenElisServerV2(url);
       if (response) {
         setUnassignedSamples(response);
       }
@@ -71,7 +70,10 @@ const SampleAssignmentModal = ({
     return unassignedSamples.filter(
       (sample) =>
         sample.accessionNumber?.toLowerCase().includes(lowerSearch) ||
-        sample.referralTestName?.toLowerCase().includes(lowerSearch),
+        sample.typeOfSample?.toLowerCase().includes(lowerSearch) ||
+        sample.referralTests?.some((t) =>
+          t.testName?.toLowerCase().includes(lowerSearch),
+        ),
     );
   };
 
@@ -81,37 +83,47 @@ const SampleAssignmentModal = ({
       header: intl.formatMessage({ id: "sample.label.accessionNumber" }),
     },
     {
-      key: "referralTestName",
-      header: intl.formatMessage({ id: "shipment.label.referralTest" }),
+      key: "typeOfSample",
+      header: intl.formatMessage({ id: "sample.label.typeOfSample" }),
     },
     {
-      key: "priority",
-      header: intl.formatMessage({ id: "shipment.label.priority" }),
+      key: "referralTests",
+      header: intl.formatMessage({ id: "shipment.label.tests" }),
     },
     {
-      key: "createdDate",
-      header: intl.formatMessage({ id: "shipment.label.createdDate" }),
+      key: "collectionDate",
+      header: intl.formatMessage({ id: "sample.label.collectionDate" }),
     },
   ];
 
   const renderRows = () => {
     const filtered = filterSamples();
+
+    // SampleItemDTO already groups by SampleItem — no need to re-group
     return filtered.map((sample) => ({
-      id: sample.sampleId.toString(),
+      id: sample.sampleItemId || sample.id?.toString(),
       accessionNumber: sample.accessionNumber,
-      referralTestName: sample.referralTestName || "-",
-      priority: sample.priority || "NORMAL",
-      createdDate: sample.referralDate
-        ? new Date(sample.referralDate).toLocaleDateString()
+      typeOfSample: sample.typeOfSample || "-",
+      referralTests:
+        sample.referralTests && sample.referralTests.length > 0 ? (
+          <div className="test-tags">
+            {sample.referralTests.map((test, index) => (
+              <Tag
+                key={`${sample.sampleItemId}-test-${index}`}
+                type="blue"
+                size="sm"
+              >
+                {test.testName}
+              </Tag>
+            ))}
+          </div>
+        ) : (
+          "-"
+        ),
+      collectionDate: sample.collectionDate
+        ? new Date(sample.collectionDate).toLocaleDateString()
         : "-",
     }));
-  };
-
-  const handleSelectionChange = (selectedRows) => {
-    const selectedIds = Object.keys(selectedRows).filter(
-      (key) => selectedRows[key],
-    );
-    setSelectedSamples(selectedIds);
   };
 
   const handleSubmit = () => {
@@ -124,10 +136,13 @@ const SampleAssignmentModal = ({
       return;
     }
 
-    // Add samples one by one
-    selectedSamples.forEach((sampleId) => {
-      onAddSample(parseInt(sampleId));
+    // Add sample items one by one (selectedSamples contains sampleItemIds)
+    selectedSamples.forEach((sampleItemId) => {
+      onAddSample(sampleItemId);
     });
+
+    // Close modal after adding samples
+    onClose();
   };
 
   const handleClose = () => {

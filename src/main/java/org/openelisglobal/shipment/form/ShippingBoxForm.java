@@ -50,6 +50,8 @@ public class ShippingBoxForm extends BaseForm {
 
     private Integer sampleCount;
 
+    private String contents;
+
     private List<BoxSampleInfo> samples;
 
     // Nested class for sample information
@@ -254,6 +256,14 @@ public class ShippingBoxForm extends BaseForm {
 
     public void setSampleCount(Integer sampleCount) {
         this.sampleCount = sampleCount;
+    }
+
+    public String getContents() {
+        return contents;
+    }
+
+    public void setContents(String contents) {
+        this.contents = contents;
     }
 
     public List<BoxSampleInfo> getSamples() {

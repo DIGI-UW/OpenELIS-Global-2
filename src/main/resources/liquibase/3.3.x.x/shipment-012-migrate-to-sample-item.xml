@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="pkomena">
+        <comment>Create box_sample_item table to replace box_sample - using SampleItem as correct granularity</comment>
+
+        <createSequence sequenceName="box_sample_item_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="box_sample_item">
+            <column name="id" type="int">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="shipping_box_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_item_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="added_date" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+            <column name="position_in_box" type="int"/>
+            <column name="reception_status" type="varchar(50)" defaultValue="PENDING"/>
+            <column name="reception_notes" type="text"/>
+            <column name="sys_user_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="timestamp"/>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableName="box_sample_item"
+            baseColumnNames="shipping_box_id"
+            constraintName="fk_box_sample_item_box"
+            referencedTableName="shipping_box"
+            referencedColumnNames="id"/>
+
+        <addForeignKeyConstraint
+            baseTableName="box_sample_item"
+            baseColumnNames="sample_item_id"
+            constraintName="fk_box_sample_item_sample_item"
+            referencedTableName="sample_item"
+            referencedColumnNames="id"/>
+
+        <addUniqueConstraint
+            tableName="box_sample_item"
+            columnNames="sample_item_id"
+            constraintName="uk_box_sample_item_sample_item"/>
+
+        <createIndex tableName="box_sample_item" indexName="idx_box_sample_item_box">
+            <column name="shipping_box_id"/>
+        </createIndex>
+
+        <createIndex tableName="box_sample_item" indexName="idx_box_sample_item_sample_item">
+            <column name="sample_item_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="2" author="pkomena">
+        <comment>Migrate data from box_sample to box_sample_item - create entry for each SampleItem of the Sample</comment>
+
+        <sql>
+            -- For each Sample in box_sample, create entries for all its SampleItems
+            INSERT INTO box_sample_item (
+                id, shipping_box_id, sample_item_id, added_date,
+                position_in_box, reception_status, reception_notes,
+                sys_user_id, lastupdated
+            )
+            SELECT
+                nextval('box_sample_item_seq'),
+                bs.shipping_box_id,
+                si.id as sample_item_id,
+                bs.added_date,
+                bs.position_in_box,
+                bs.reception_status,
+                bs.reception_notes,
+                bs.sys_user_id,
+                bs.lastupdated
+            FROM box_sample bs
+            JOIN sample_item si ON si.samp_id::text = bs.sample_id::text
+            WHERE (si.rejected IS NULL OR si.rejected = false)
+              AND (si.voided IS NULL OR si.voided = false)
+            ORDER BY bs.id, si.id;
+        </sql>
+    </changeSet>
+
+    <changeSet id="3" author="pkomena">
+        <comment>Drop old box_sample table after migration to box_sample_item</comment>
+
+        <dropTable tableName="box_sample"/>
+    </changeSet>
+
+</databaseChangeLog>

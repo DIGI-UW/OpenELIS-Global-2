@@ -131,6 +131,30 @@
   justify-content: center;
 }
 
+.tab-label-with-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 12rem;
+}
+
+.tab-label-with-badge .cds--tag {
+  min-width: auto;
+  padding: 0 0.5rem;
+}
+
+.unassigned-tab .cds--tabs__nav-link {
+  min-width: 14rem;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  white-space: normal;
+}
+
+.unassigned-tab {
+  min-width: 14rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .tab-toolbar {

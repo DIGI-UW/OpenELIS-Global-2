@@ -1015,6 +1015,16 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         specimen.setReceivedTime(new Date());
         specimen.setCollection(transformToCollection(sampleItem.getCollectionDate(), sampleItem.getCollector()));
 
+        // Add container type using SNOMED CT 434711009 (Specimen container)
+        if (sampleItem.getTypeOfSample() != null) {
+            Specimen.SpecimenContainerComponent container = new Specimen.SpecimenContainerComponent();
+            CodeableConcept containerType = new CodeableConcept();
+            containerType.addCoding().setSystem("http://snomed.info/sct").setCode("434711009")
+                    .setDisplay("Specimen container (physical object)");
+            container.setType(containerType);
+            specimen.addContainer(container);
+        }
+
         for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
             specimen.addRequest(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         }

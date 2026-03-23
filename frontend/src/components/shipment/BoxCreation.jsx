@@ -1,4 +1,4 @@
-import { Close, Document, Scan, TrashCan } from "@carbon/icons-react";
+import { Checkmark, Document, Scan, TrashCan } from "@carbon/icons-react";
 import {
   Button,
   Column,
@@ -20,6 +20,7 @@ import {
   TextArea,
   TextInput,
   Tile,
+  Toggle,
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -42,6 +43,7 @@ const BoxCreation = () => {
 
   // Auto-generated box number
   const [boxNumber, setBoxNumber] = useState("");
+  const [boxLabelPrefix, setBoxLabelPrefix] = useState("BOX");
   const [loading, setLoading] = useState(false);
   const [facilities, setFacilities] = useState([]);
 
@@ -64,6 +66,10 @@ const BoxCreation = () => {
 
   // Validation messages
   const [validationMessages, setValidationMessages] = useState([]);
+
+  // Scan existing box ID mode
+  const [useExistingBoxId, setUseExistingBoxId] = useState(false);
+  const [manualBoxId, setManualBoxId] = useState("");
 
   // Temperature options
   const temperatureOptions = [
@@ -95,6 +101,7 @@ const BoxCreation = () => {
   useEffect(() => {
     fetchFacilities();
     fetchRejectionReasons();
+    fetchBoxLabelPrefix();
     generateBoxNumber();
   }, []);
 
@@ -117,6 +124,14 @@ const BoxCreation = () => {
       });
     }
   }, [capacity]);
+
+  const fetchBoxLabelPrefix = () => {
+    getFromOpenElisServer("/rest/shipping-box/box-label-prefix", (response) => {
+      if (response) {
+        setBoxLabelPrefix(response);
+      }
+    });
+  };
 
   const generateBoxNumber = () => {
     getFromOpenElisServer(
@@ -185,9 +200,9 @@ const BoxCreation = () => {
     setSearching(true);
 
     try {
-      // Search for sample by accession number
+      // Search for sample items by accession number using new SampleItem-based API
       const response = await fetch(
-        `${config.serverBaseUrl}/rest/sample/by-accession/${sampleSearchTerm}`,
+        `${config.serverBaseUrl}/rest/unassigned-sample/items/search?accessionNumber=${encodeURIComponent(sampleSearchTerm)}`,
         {
           credentials: "include",
           method: "GET",
@@ -199,27 +214,25 @@ const BoxCreation = () => {
 
       setSearching(false);
 
-      // Handle 404 - Sample not found
-      if (response.status === 404) {
-        const message = intl.formatMessage({
-          id: "shipment.error.sampleNotFound",
-        });
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "notification.error" }),
-          message: `${message}: ${sampleSearchTerm}`,
-        });
-        return;
-      }
-
-      // Handle other errors
+      // Handle errors
       if (!response.ok) {
+        if (response.status === 404) {
+          const message = intl.formatMessage({
+            id: "shipment.error.sampleNotFound",
+          });
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: `${message}: ${sampleSearchTerm}`,
+          });
+          return;
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
 
-      // Backend now returns an array of samples
+      // Backend returns SampleItemDTO array
       if (!data || !Array.isArray(data) || data.length === 0) {
         addNotification({
           kind: "error",
@@ -229,30 +242,18 @@ const BoxCreation = () => {
         return;
       }
 
-      // Group tests by accessionNumber - ONE sample per accession
-      const samplesByAccession = {};
-      data.forEach((item) => {
-        if (!samplesByAccession[item.accessionNumber]) {
-          samplesByAccession[item.accessionNumber] = {
-            id: item.id,
-            accessionNumber: item.accessionNumber,
-            sampleType: item.sampleType || "-",
-            tests: [],
-            analysisIds: [],
-          };
-        }
-        samplesByAccession[item.accessionNumber].tests.push(
-          item.referralTest || "-",
-        );
-        if (item.analysisId) {
-          samplesByAccession[item.accessionNumber].analysisIds.push(
-            item.analysisId,
-          );
-        }
-      });
-
-      // Get the first (and should be only) sample
-      const sampleToAdd = Object.values(samplesByAccession)[0];
+      // Each SampleItemDTO already groups referral tests
+      // Use the first result as the sample to add
+      const item = data[0];
+      const sampleToAdd = {
+        id: item.sampleItemId,
+        sampleItemId: item.sampleItemId,
+        accessionNumber: item.accessionNumber,
+        sampleType: item.typeOfSample || "-",
+        tests: item.referralTests
+          ? item.referralTests.map((t) => t.testName)
+          : [],
+      };
 
       // Check if sample already in box
       const existingSample = addedSamples.find(
@@ -367,7 +368,8 @@ const BoxCreation = () => {
     setLoading(true);
 
     const boxData = {
-      boxId: boxNumber,
+      boxId:
+        useExistingBoxId && manualBoxId.trim() ? manualBoxId.trim() : boxNumber,
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
@@ -391,14 +393,38 @@ const BoxCreation = () => {
         }
 
         if (response && response.id) {
-          // Add samples to the box - one BoxSample per sample (not per test)
-          let samplesProcessed = 0;
-          const totalSamples = addedSamples.length;
+          // Add samples sequentially
+          const addSamplesAndNavigate = async () => {
+            let errors = 0;
+            for (const sample of addedSamples) {
+              try {
+                const res = await fetch(
+                  `${config.serverBaseUrl}/rest/box-sample/items`,
+                  {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "X-CSRF-Token": localStorage.getItem("CSRF"),
+                    },
+                    body: JSON.stringify({
+                      shippingBoxId: response.id,
+                      sampleItemId: sample.sampleItemId || sample.id,
+                    }),
+                  },
+                );
+                if (!res.ok) {
+                  console.error("Error adding sample to box:", res.status);
+                  errors++;
+                }
+              } catch (err) {
+                console.error("Error adding sample to box:", err);
+                errors++;
+              }
+            }
 
-          if (totalSamples === 0) {
-            // No samples to add, just navigate
             addNotification({
-              kind: "success",
+              kind: errors > 0 ? "warning" : "success",
               title: intl.formatMessage({ id: "notification.success" }),
               message: intl.formatMessage({
                 id: "shipment.notification.boxCreated",
@@ -406,42 +432,92 @@ const BoxCreation = () => {
             });
             setLoading(false);
             history.push(`/SampleShipment/box/${response.id}`);
+          };
+
+          addSamplesAndNavigate();
+        } else {
+          setLoading(false);
+        }
+      },
+    );
+  };
+
+  const handleSaveAndMarkReady = () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+
+    const boxData = {
+      boxId:
+        useExistingBoxId && manualBoxId.trim() ? manualBoxId.trim() : boxNumber,
+      destinationFacilityId: Number.parseInt(selectedFacility.id),
+      temperatureRequirement: selectedTemperature?.id || "AMBIENT",
+      capacity: capacity,
+      actualSampleCount: addedSamples.length,
+      notes: notes,
+      state: "DRAFT",
+    };
+
+    postToOpenElisServerJsonResponse(
+      "/rest/shipping-box",
+      JSON.stringify(boxData),
+      (response) => {
+        if (response.error || response.status >= 400) {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.createBox" }),
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (response && response.id) {
+          let samplesProcessed = 0;
+          const totalSamples = addedSamples.length;
+
+          const markReady = () => {
+            fetch(
+              `${config.serverBaseUrl}/rest/shipping-box/${response.id}/state?newState=READY_TO_SEND`,
+              {
+                credentials: "include",
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": localStorage.getItem("CSRF"),
+                },
+              },
+            ).then(() => {
+              addNotification({
+                kind: "success",
+                title: intl.formatMessage({ id: "notification.success" }),
+                message: intl.formatMessage({
+                  id: "shipment.notification.boxReadyToSend",
+                }),
+              });
+              setLoading(false);
+              history.push(`/SampleShipment/box/${response.id}`);
+            });
+          };
+
+          if (totalSamples === 0) {
+            markReady();
             return;
           }
 
           addedSamples.forEach((sample) => {
-            const boxSampleData = {
-              shippingBoxId: response.id,
-              sampleId: sample.id,
-            };
-
-            // Include all analysisIds for referral tracking
-            if (sample.analysisIds && sample.analysisIds.length > 0) {
-              boxSampleData.analysisIds = sample.analysisIds;
-            }
-
             postToOpenElisServerJsonResponse(
-              "/rest/box-sample",
-              JSON.stringify(boxSampleData),
-              (sampleResponse) => {
+              "/rest/box-sample/items",
+              JSON.stringify({
+                shippingBoxId: response.id,
+                sampleItemId: sample.sampleItemId || sample.id,
+              }),
+              () => {
                 samplesProcessed++;
-
-                if (sampleResponse.error || sampleResponse.status >= 400) {
-                  console.error("Error adding sample to box:", sampleResponse);
-                }
-
-                // When all samples are processed
                 if (samplesProcessed === totalSamples) {
-                  addNotification({
-                    kind: "success",
-                    title: intl.formatMessage({ id: "notification.success" }),
-                    message: intl.formatMessage({
-                      id: "shipment.notification.boxCreated",
-                    }),
-                  });
-                  setLoading(false);
-                  // Redirect to box details page
-                  history.push(`/SampleShipment/box/${response.id}`);
+                  markReady();
                 }
               },
             );
@@ -455,11 +531,6 @@ const BoxCreation = () => {
 
   const handleCancel = () => {
     history.push("/SampleShipment/boxes");
-  };
-
-  const handlePrintManifest = () => {
-    // Will be enabled only when box is saved
-    // TODO: Implement manifest printing
   };
 
   // Calculate remaining capacity
@@ -541,7 +612,7 @@ const BoxCreation = () => {
         breadcrumbs={[
           { label: "home.label", link: "/" },
           { label: "shipment.breadcrumb", link: "/SampleShipment" },
-          { label: "shipment.box.create", link: "/SampleShipment/box/create" },
+          { label: "shipment.box.create", link: "/SampleShipment/create-box" },
         ]}
       />
       <ShipmentNavigation />
@@ -578,13 +649,62 @@ const BoxCreation = () => {
 
           {/* Box Details Form */}
           <div className="form-section">
-            <TextInput
-              id="boxNumber"
-              labelText={intl.formatMessage({ id: "shipment.box.number" })}
-              value={boxNumber}
-              readOnly
-              disabled
+            <Toggle
+              id="useExistingBoxId"
+              labelText={intl.formatMessage({
+                id: "shipment.box.useExistingId",
+              })}
+              labelA={intl.formatMessage({
+                id: "shipment.box.autoGenerate",
+              })}
+              labelB={intl.formatMessage({
+                id: "shipment.box.scanExisting",
+              })}
+              toggled={useExistingBoxId}
+              onToggle={(checked) => setUseExistingBoxId(checked)}
+              size="sm"
             />
+
+            {!useExistingBoxId && (
+              <>
+                <TextInput
+                  id="labelPrefix"
+                  labelText={intl.formatMessage({
+                    id: "shipment.box.labelPrefix",
+                  })}
+                  value={boxLabelPrefix}
+                  readOnly
+                  disabled
+                  helperText={intl.formatMessage({
+                    id: "shipment.box.labelPrefixHelper",
+                  })}
+                />
+
+                <TextInput
+                  id="boxNumber"
+                  labelText={intl.formatMessage({
+                    id: "shipment.box.number",
+                  })}
+                  value={boxNumber}
+                  readOnly
+                  disabled
+                />
+              </>
+            )}
+
+            {useExistingBoxId && (
+              <TextInput
+                id="manualBoxId"
+                labelText={intl.formatMessage({
+                  id: "shipment.box.scanExistingId",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "shipment.box.scanExistingIdPlaceholder",
+                })}
+                value={manualBoxId}
+                onChange={(e) => setManualBoxId(e.target.value)}
+              />
+            )}
 
             <NumberInput
               id="capacity"
@@ -762,30 +882,34 @@ const BoxCreation = () => {
                   <FormattedMessage id="shipment.box.temperature" />:
                 </span>
                 <span className="summary-value">
-                  {selectedTemperature?.label || "Ambient"}
+                  {selectedTemperature?.label ||
+                    intl.formatMessage({
+                      id: "shipment.temperature.ambient",
+                    })}
                 </span>
               </div>
             </div>
 
             <div className="summary-actions">
               <Button
-                kind="tertiary"
-                renderIcon={Document}
-                onClick={handlePrintManifest}
-                disabled
+                kind="primary"
+                renderIcon={Checkmark}
+                onClick={handleSaveAndMarkReady}
+                disabled={!isFormValid || loading}
               >
-                <FormattedMessage id="shipment.action.printManifest" />
+                <FormattedMessage id="shipment.action.saveAndMarkReady" />
               </Button>
 
               <Button
-                kind="primary"
+                kind="secondary"
+                renderIcon={Document}
                 onClick={handleSaveBox}
                 disabled={!isFormValid || loading}
               >
-                <FormattedMessage id="shipment.action.saveBox" />
+                <FormattedMessage id="shipment.action.saveDraft" />
               </Button>
 
-              <Button kind="secondary" onClick={handleCancel}>
+              <Button kind="ghost" onClick={handleCancel}>
                 <FormattedMessage id="label.cancel" />
               </Button>
             </div>

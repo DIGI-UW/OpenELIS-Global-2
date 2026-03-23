@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Move Shipment menu from child of menu_sample to top-level menu -->
+    <!-- Position it after Patient Management (presentation_order=20) and before Non-Conformity (presentation_order=30) -->
+    <changeSet author="pkomena" id="shipment-014-move-menu-to-top-level">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_sample_shipment'
+            </sqlCheck>
+        </preConditions>
+        <comment>Move Sample Shipment menu to top-level, positioned after Patient Management</comment>
+        <sql>
+            UPDATE clinlims.menu
+            SET parent_id = NULL, presentation_order = 25
+            WHERE element_id = 'menu_sample_shipment';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
