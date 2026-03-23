@@ -65,6 +65,9 @@ jobs:
           cd ..
           mvn clean install -DskipTests -Dmaven.test.skip=true
           cd ..
+          # NOTE: Do NOT add -Dmaven.test.skip=true here — the root build must
+          # compile test classes so maven-jar-plugin produces the test-jar
+          # (openelisglobal:jar:tests) required by GenericASTM/File/HL7 plugins.
           mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
 
       - name: Build plugins

@@ -58,6 +58,13 @@ mvn clean install -DskipTests
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
 
+**Exception — CI shared-build root project:** The E2E `shared-build` step in
+both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
+`-Dmaven.test.skip=true` on the root project build because the `test-jar`
+artifact must be produced for plugin compilation (GenericASTM, GenericFile,
+GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
+both flags.
+
 ### Pre-Commit Formatting (MANDATORY)
 
 **MUST run BEFORE EVERY commit:**
