@@ -46,7 +46,6 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.provider.service.ProviderService;
@@ -109,9 +108,6 @@ public class ObservationProvider implements IResourceProvider {
 
     @Autowired
     private DictionaryService dictionaryService;
-
-    @Autowired
-    private FhirPersistanceService fhirPersistenceService;
 
     @Autowired
     private ResultService resultService;
