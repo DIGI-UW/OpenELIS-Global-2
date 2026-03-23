@@ -14,6 +14,7 @@ import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +25,26 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * Each JSON file under {@code volume/configuration/backend/notebook-templates/}
  * describes a single lab template. This handler reads the file and creates or
- * updates the corresponding {@code notebook} and {@code notebook_page} rows —
+ * skips/updates the corresponding {@code notebook} and {@code notebook_page} rows —
  * exactly what the per-lab Liquibase changesets do, but without requiring a
  * schema migration for every new lab.
  *
  * <p>
- * <strong>Behavior:</strong> if a template with the same title already exists
- * (e.g. seeded by a Liquibase changeset), the template and all its pages are
- * re-processed (metadata updated, pages replaced wholesale).
+ * <strong>Idempotency (default behavior):</strong> If a template with the same title
+ * already exists (e.g. seeded by a Liquibase changeset or created in a prior startup),
+ * it is skipped. This ensures configuration loading is safe to run repeatedly without
+ * overwriting DB-side edits or modifications made since the template was created.
+ *
+ * <p>
+ * <strong>Force update (optional):</strong> Set {@code org.openelisglobal.notebook.templates.forceUpdate=true}
+ * to enable updating existing templates. When enabled, templates and all their pages are
+ * re-processed (metadata updated, pages replaced wholesale) on every startup.
  *
  * <p>
  * <strong>Loading behavior:</strong> Configuration files are processed by
  * {@link org.openelisglobal.configuration.service.ConfigurationInitializationService}
  * at application startup (on {@code ContextRefreshedEvent}). To pick up configuration
- * changes, a full application restart or context refresh is required. Files are
- * tracked via MD5 checksums to skip unchanged files unless {@code forceReload=true}
- * is configured.
+ * changes, a full application restart or context refresh is required.
  *
  * <p>
  * <strong>JSON contract:</strong>
@@ -81,6 +86,9 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
     @Autowired
     private TestSectionService testSectionService;
 
+    @Value("${org.openelisglobal.notebook.templates.forceUpdate:false}")
+    private boolean forceUpdateTemplates;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -107,7 +115,13 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
         String title = textOrNull(root, "title");
         NoteBook template = findTemplate(title);
         if (template != null) {
-            updateTemplate(root, template, title, fileName);
+            if (forceUpdateTemplates) {
+                updateTemplate(root, template, title, fileName);
+            } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
+                        "Template '" + title + "' already exists; skipping " + fileName
+                                + " (set org.openelisglobal.notebook.templates.forceUpdate=true to override)");
+            }
         } else {
             template = createTemplate(root, title, fileName);
             linkDepartments(root, template, title, fileName);

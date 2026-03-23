@@ -950,6 +950,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         instance.setObjective(template.getObjective());
         instance.setProtocol(template.getProtocol());
         instance.setQuestionnaireFhirUuid(template.getQuestionnaireFhirUuid());
+        instance.setWorkflowType(getEffectiveWorkflowType(template));
 
         // Copy tags
         if (template.getTags() != null) {
@@ -1636,6 +1637,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
         child.setStatus(NoteBookStatus.ACTIVE);
         child.setDateCreated(new Date());
         child.setType(parent.getType());
+        child.setWorkflowType(getEffectiveWorkflowType(parent));
 
         // Copy metadata (editable by child)
         child.setObjective(parent.getObjective());
