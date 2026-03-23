@@ -186,6 +186,21 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
         Result result = resultService.getResultByFhirUuid(fhirUuid);
         assertNotNull("Result not found in test data", result);
 
+        assertNotNull("Result not found in test data", result);
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
         MockHttpServletRequest request = buildFhirRequest("DELETE", "/Observation/" + fhirUuid);
 
         MockHttpServletResponse response = new MockHttpServletResponse();

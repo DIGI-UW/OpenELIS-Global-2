@@ -24,7 +24,9 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import org.hl7.fhir.r4.model.Bundle;
@@ -32,12 +34,13 @@ import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.Encounter;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Observation;
-import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Patient;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -45,6 +48,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.result.action.util.ResultSet;
@@ -98,7 +102,13 @@ public class ObservationProvider implements IResourceProvider {
     private SampleHumanService sampleHumanService;
 
     @Autowired
+    private IStatusService statusService;
+
+    @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private DictionaryService dictionaryService;
 
     @Autowired
     private FhirPersistanceService fhirPersistenceService;
@@ -313,17 +323,26 @@ public class ObservationProvider implements IResourceProvider {
             FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
 
             Result result = resultService.getResultByFhirUuid(theId.getIdPart());
+
             if (result == null) {
                 throw new ResourceNotFoundException("Observation/" + theId.getIdPart());
             }
 
-            result.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            resultService.save(result);
+            ResultsUpdateDataSet actionDataSet = handleObservationDeletePersistence(result, request, method);
 
-            Observation fhirObservation = fhirTransformService.transformResultToObservation(result);
-            fhirObservation.setStatus(ObservationStatus.CANCELLED);
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, fhirObservation, this.getClass().getSimpleName(),
-                    method);
+            String sysUserId = FhirProviderUtils.getSysUserId(request);
+
+            List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Persisting dataset with updaters count=" + updaters.size());
+
+            logbookResultsPersistService.persistDataSet(actionDataSet, updaters, sysUserId);
+
+            fhirTransformService.transformPersistResultsEntryFhirObjects(actionDataSet);
+
+            LogEvent.logInfo(getClass().getSimpleName(), method,
+                    "Deleting Observation from FHIR store with ID: " + theId.getIdPart());
 
             LogEvent.logInfo(this.getClass().getSimpleName(), method,
                     "Successfully deleted Observation with ID: " + theId.getIdPart());
@@ -367,20 +386,17 @@ public class ObservationProvider implements IResourceProvider {
             HttpServletRequest request) {
         String method = "search";
         try {
-            // forward request to FHIR store
+
             Bundle resultBundle = util.forwardSearchToFhirStore(request);
 
-            // Ensure bundle is never null
             if (resultBundle == null) {
                 resultBundle = new Bundle();
             }
 
-            // Ensure bundle has a type (SEARCHSET is required)
             if (resultBundle.getType() == null) {
                 resultBundle.setType(Bundle.BundleType.SEARCHSET);
             }
 
-            // Ensure entries list is non-null
             if (resultBundle.getEntry() == null) {
                 resultBundle.setEntry(new ArrayList<>());
             }
@@ -528,6 +544,92 @@ public class ObservationProvider implements IResourceProvider {
         if (existingResult != null) {
             LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createAnalysisOnlyUpdates");
         }
+
+        ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
+
+        return actionDataSet;
+    }
+
+    private ResultsUpdateDataSet handleObservationDeletePersistence(Result result, HttpServletRequest request,
+            String method) {
+
+        if (result == null) {
+            throw new ResourceNotFoundException("Observation result not found for delete");
+        }
+
+        TestResultItem item = new TestResultItem();
+        item.setResult(result);
+        item.setRejected(true);
+        item.setShadowRejected(true);
+        item.setShadowResultValue(result.getValue());
+        item.setModified(true);
+        item.setAnalysisId(result.getAnalysis().getId());
+        item.setRejectReasonId(dictionaryService
+                .getDictionaryByDictEntry("Free sample request form or vice versa. Please submit another sample.")
+                .getId());
+        item.setTestId(result.getAnalysis().getTest().getId());
+        item.setAccessionNumber(result.getAnalysis().getSampleItem().getSample().getAccessionNumber());
+        item.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
+
+        String locale = ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.DEFAULT_DATE_LOCALE);
+
+        String pattern = "en-US".equals(locale) ? "MM/dd/yyyy" : "dd/MM/yyyy";
+        String formattedDate = new SimpleDateFormat(pattern).format(new Date());
+        item.setTestDate(formattedDate);
+
+        String sysUserId = FhirProviderUtils.getSysUserId(request);
+
+        List<TestResultItem> items = new ArrayList<>();
+        items.add(item);
+
+        ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
+
+        actionDataSet.filterModifiedItems(items);
+
+        LogEvent.logInfo(getClass().getSimpleName(), method,
+                "Filtered modified items count=" + actionDataSet.getModifiedItems().size());
+
+        if (actionDataSet.getModifiedItems().isEmpty()) {
+            LogEvent.logWarn(getClass().getSimpleName(), method, "No modified items after filtering");
+            throw new UnprocessableEntityException("No valid results found to process");
+        }
+
+        Errors errors = actionDataSet.validateModifiedItems();
+
+        if (errors != null && errors.hasErrors()) {
+            LogEvent.logError(getClass().getSimpleName(), method,
+                    "Validation errors detected: count=" + errors.getErrorCount());
+
+            OperationOutcome outcome = new OperationOutcome();
+
+            for (ObjectError error : errors.getAllErrors()) {
+                LogEvent.logError("FHIR_VALIDATION", "ERROR",
+                        "code=" + error.getCode() + ", message=" + error.getDefaultMessage());
+
+                outcome.addIssue().setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                        .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
+            }
+
+            throw new InternalErrorException("Unexpected Error during validation");
+        }
+
+        boolean useTechnicianName = ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(Property.resultTechnicianName, "true");
+
+        boolean alwaysValidate = ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(Property.ALWAYS_VALIDATE_RESULTS, "true");
+
+        boolean supportReferrals = FormFields.getInstance().useField(Field.ResultsReferral);
+
+        String statusRuleSet = ConfigurationProperties.getInstance().getPropertyValueUpperCase(Property.StatusRules);
+
+        LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createResultsFromItems");
+
+        ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
+                statusRuleSet, request);
+
+        LogEvent.logInfo(getClass().getSimpleName(), method, "Running ResultUtil.createAnalysisOnlyUpdates");
 
         ResultUtil.createAnalysisOnlyUpdates(actionDataSet, request);
 

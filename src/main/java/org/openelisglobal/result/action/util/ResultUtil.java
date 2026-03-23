@@ -413,6 +413,29 @@ public class ResultUtil {
         actionDataSet.setPreviousAnalysis(analysis);
     }
 
+    public static void getSelectedReflexes(String reflexJSONResult, Map<String, List<String>> triggersToReflexesMap) {
+        if (!GenericValidator.isBlankOrNull(reflexJSONResult)) {
+            JSONParser parser = new JSONParser();
+            try {
+                JSONObject jsonResult = (JSONObject) parser.parse(reflexJSONResult.replaceAll("'", "\""));
+
+                for (Object compoundReflexes : jsonResult.values()) {
+                    if (compoundReflexes != null) {
+                        String triggerIds = (String) ((JSONObject) compoundReflexes).get("triggerIds");
+                        List<String> selectedReflexIds = new ArrayList<>();
+                        JSONArray selectedReflexes = (JSONArray) ((JSONObject) compoundReflexes).get("selected");
+                        for (Object selectedReflex : selectedReflexes) {
+                            selectedReflexIds.add(((String) selectedReflex));
+                        }
+                        triggersToReflexesMap.put(triggerIds.trim(), selectedReflexIds);
+                    }
+                }
+            } catch (ParseException e) {
+                LogEvent.logDebug(e);
+            }
+        }
+    }
+
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate) {
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
@@ -437,29 +460,6 @@ public class ResultUtil {
             }
 
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
-        }
-    }
-
-    public static void getSelectedReflexes(String reflexJSONResult, Map<String, List<String>> triggersToReflexesMap) {
-        if (!GenericValidator.isBlankOrNull(reflexJSONResult)) {
-            JSONParser parser = new JSONParser();
-            try {
-                JSONObject jsonResult = (JSONObject) parser.parse(reflexJSONResult.replaceAll("'", "\""));
-
-                for (Object compoundReflexes : jsonResult.values()) {
-                    if (compoundReflexes != null) {
-                        String triggerIds = (String) ((JSONObject) compoundReflexes).get("triggerIds");
-                        List<String> selectedReflexIds = new ArrayList<>();
-                        JSONArray selectedReflexes = (JSONArray) ((JSONObject) compoundReflexes).get("selected");
-                        for (Object selectedReflex : selectedReflexes) {
-                            selectedReflexIds.add(((String) selectedReflex));
-                        }
-                        triggersToReflexesMap.put(triggerIds.trim(), selectedReflexIds);
-                    }
-                }
-            } catch (ParseException e) {
-                LogEvent.logDebug(e);
-            }
         }
     }
 
@@ -525,7 +525,7 @@ public class ResultUtil {
     }
 
     public static ResultSignature createTechnicianSignatureFromResultItem(TestResultItem testResult,
-            HttpServletRequest requset) {
+            HttpServletRequest request) {
         ResultSignature sig = null;
 
         // The technician signature may be blank if the user changed a
@@ -541,7 +541,7 @@ public class ResultUtil {
             sig.setIsSupervisor(false);
             sig.setNonUserName(testResult.getTechnician());
 
-            sig.setSysUserId(ControllerUtills.getSysUserId(requset));
+            sig.setSysUserId(ControllerUtills.getSysUserId(request));
         }
         return sig;
     }

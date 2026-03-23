@@ -1434,7 +1434,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (bean.getAnalysisId() == null || bean.getTestId() == null || bean.getSampleItemId() == null) {
             throw new UnprocessableEntityException("Missing required fields for result creation");
         }
-
         return bean;
     }
 
