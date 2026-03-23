@@ -98,7 +98,9 @@ test.describe("Analyzer Test Connection", () => {
           await expect(retryButton).toBeVisible({ timeout: SHORT_TIMEOUT });
           await retryButton.click();
         } catch {
-          await expect(successTag.or(errorTag)).toBeVisible({ timeout: SHORT_TIMEOUT });
+          await expect(successTag.or(errorTag)).toBeVisible({
+            timeout: SHORT_TIMEOUT,
+          });
         }
       }
     }

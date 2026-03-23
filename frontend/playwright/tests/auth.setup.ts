@@ -41,7 +41,9 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
     .poll(
       async () => {
         try {
-          const health = await request.get("/health", { timeout: SHORT_TIMEOUT });
+          const health = await request.get("/health", {
+            timeout: SHORT_TIMEOUT,
+          });
           return health.ok();
         } catch {
           return false;
@@ -135,7 +137,9 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
 
   // ── Step 4: Verify authenticated state ────────────────────────
   await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: LONG_TIMEOUT });
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
+    timeout: LONG_TIMEOUT,
+  });
 
   // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });

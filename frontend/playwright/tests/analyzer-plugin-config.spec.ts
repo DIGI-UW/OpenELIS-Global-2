@@ -5,7 +5,12 @@ import {
   ensureAnalyzerByName,
   GENEXPERT_DEFAULT_ANALYZER,
 } from "../helpers/ensure-analyzer";
-import { QUICK_TIMEOUT, SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import {
+  QUICK_TIMEOUT,
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../helpers/timeouts";
 
 test.describe("Analyzer Plugin Config", () => {
   test("profile selection prefills implemented analyzer fields", async ({
@@ -26,10 +31,15 @@ test.describe("Analyzer Plugin Config", () => {
       await form.expectOpen();
 
       try {
-        await expect(form.pluginTypeDropdown).toBeVisible({ timeout: SHORT_TIMEOUT });
+        await expect(form.pluginTypeDropdown).toBeVisible({
+          timeout: SHORT_TIMEOUT,
+        });
       } catch {
         // Modal may have closed — retry
-        if (await form.modal.isVisible() && await form.cancelButton.isVisible()) {
+        if (
+          (await form.modal.isVisible()) &&
+          (await form.cancelButton.isVisible())
+        ) {
           await form.cancelButton.click();
         }
         await expect(form.modal).not.toBeVisible({ timeout: QUICK_TIMEOUT });
@@ -45,19 +55,31 @@ test.describe("Analyzer Plugin Config", () => {
         const genericAstmOption = page
           .getByRole("option", { name: /Generic ASTM/i })
           .first();
-        if (await genericAstmOption.isVisible()) {
+        let optionVisible = false;
+        try {
+          await expect(genericAstmOption).toBeVisible({
+            timeout: QUICK_TIMEOUT,
+          });
+          optionVisible = true;
+        } catch {
+          // Option not rendered in this attempt — retry
+        }
+        if (optionVisible) {
           await genericAstmOption.click();
           selectedPlugin = true;
           break;
         }
         await page.keyboard.press("Escape");
-        await expect(genericAstmOption).not.toBeVisible({ timeout: QUICK_TIMEOUT });
+        await expect(genericAstmOption).not.toBeVisible({
+          timeout: QUICK_TIMEOUT,
+        });
       }
       if (selectedPlugin) break;
 
       // Close form and retry
       if (await form.modal.isVisible()) {
-        if (await form.cancelButton.isVisible()) await form.cancelButton.click();
+        if (await form.cancelButton.isVisible())
+          await form.cancelButton.click();
         await expect(form.modal).not.toBeVisible({ timeout: QUICK_TIMEOUT });
       }
     }

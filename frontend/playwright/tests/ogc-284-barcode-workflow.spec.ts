@@ -81,7 +81,9 @@ async function waitForSampleStep(page: Page) {
 }
 
 async function waitForOrderDetailsStep(page: Page) {
-  await expect(page.locator("input#labNo")).toBeVisible({ timeout: LONG_TIMEOUT });
+  await expect(page.locator("input#labNo")).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
   await expect(page.locator("input#order_requestDate")).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
@@ -299,7 +301,9 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     if (!(await requesterLookup.inputValue()).trim()) {
       await requesterLookup.fill("Prime, Optimus");
     }
-    await expect(requesterLookup).not.toHaveValue("", { timeout: SHORT_TIMEOUT });
+    await expect(requesterLookup).not.toHaveValue("", {
+      timeout: SHORT_TIMEOUT,
+    });
   }
 
   // Newer order-entry validation requires explicit selections here.

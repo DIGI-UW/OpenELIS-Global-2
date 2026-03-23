@@ -1,7 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { videoPause } from "../helpers/video-pause";
 import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
-import { QUICK_TIMEOUT, SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import {
+  QUICK_TIMEOUT,
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../helpers/timeouts";
 
 /**
  * QuantStudio 7 MVP Workflow E2E
@@ -79,10 +84,19 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
       '[role="listbox"]:visible [role="option"]',
     );
     const fileOption = dropdownOptions.filter({ hasText: /FILE/i }).first();
-    if (await fileOption.isVisible()) {
+    let fileVisible = false;
+    try {
+      await expect(fileOption).toBeVisible({ timeout: QUICK_TIMEOUT });
+      fileVisible = true;
+    } catch {
+      // FILE option not available — fall back to first option
+    }
+    if (fileVisible) {
       await fileOption.click();
     } else {
-      await expect(dropdownOptions.first()).toBeVisible({ timeout: QUICK_TIMEOUT });
+      await expect(dropdownOptions.first()).toBeVisible({
+        timeout: QUICK_TIMEOUT,
+      });
       await dropdownOptions.first().click();
     }
     await videoPause(page, 500, testInfo);
@@ -97,12 +111,19 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     const molecularOption = dropdownOptions
       .filter({ hasText: /Molecular/i })
       .first();
-    if (
-      await molecularOption.isVisible()
-    ) {
+    let molecularVisible = false;
+    try {
+      await expect(molecularOption).toBeVisible({ timeout: QUICK_TIMEOUT });
+      molecularVisible = true;
+    } catch {
+      // Molecular option not available — fall back to first option
+    }
+    if (molecularVisible) {
       await molecularOption.click();
     } else {
-      await expect(dropdownOptions.first()).toBeVisible({ timeout: QUICK_TIMEOUT });
+      await expect(dropdownOptions.first()).toBeVisible({
+        timeout: QUICK_TIMEOUT,
+      });
       await dropdownOptions.first().click();
     }
     await videoPause(page, 1_500, testInfo);
@@ -156,10 +177,19 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await videoPause(page, 500, testInfo);
 
     const excelOption = dropdownOptions.filter({ hasText: /Excel/i }).first();
-    if (await excelOption.isVisible()) {
+    let excelVisible = false;
+    try {
+      await expect(excelOption).toBeVisible({ timeout: QUICK_TIMEOUT });
+      excelVisible = true;
+    } catch {
+      // Excel option not available — fall back to first option
+    }
+    if (excelVisible) {
       await excelOption.click();
     } else {
-      await expect(dropdownOptions.first()).toBeVisible({ timeout: QUICK_TIMEOUT });
+      await expect(dropdownOptions.first()).toBeVisible({
+        timeout: QUICK_TIMEOUT,
+      });
       await dropdownOptions.first().click();
     }
     await videoPause(page, 500, testInfo);

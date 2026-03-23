@@ -90,8 +90,15 @@ async function verifyResults(
     const inputResult = resultsRegion
       .locator(`input[value*="${expected.result}"]`)
       .first();
-    if (await inputResult.isVisible()) {
-      await expect(inputResult).toBeVisible({ timeout: UI_TIMEOUT });
+    let inputVisible = false;
+    try {
+      await expect(inputResult).toBeVisible({ timeout: SHORT_TIMEOUT });
+      inputVisible = true;
+    } catch {
+      // Input field not found — try text match instead
+    }
+    if (inputVisible) {
+      // Already verified visible above
     } else {
       await expect(
         resultsRegion.getByText(expected.result, { exact: false }).first(),

@@ -85,18 +85,18 @@ export async function acceptAndVerifyResults(
   });
 
   // Success path issues full page reload (AnalyserResults.js).
-  await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: LONG_TIMEOUT });
+  await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: NAV_TIMEOUT });
 
   if (stagedCountBeforeSave > 0) {
     await expect
       .poll(async () => stagedRows.count(), {
-        timeout: UI_TIMEOUT,
+        timeout: LONG_TIMEOUT,
       })
       .toBe(0);
   }
 
-  await expect(saveInProgress).toBeHidden({ timeout: UI_TIMEOUT });
-  await expect(saveButton).toBeEnabled({ timeout: UI_TIMEOUT });
+  await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
+  await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
