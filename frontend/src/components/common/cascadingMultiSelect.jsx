@@ -8,6 +8,7 @@ export default function CascadingMultiSelect({
   dictionaryValues = [],
   value = "{}",
   onChange,
+  style,
 }) {
   const items = useMemo(
     () =>
@@ -75,7 +76,7 @@ export default function CascadingMultiSelect({
   return (
     <>
       <Column lg={16} sm={4} md={8}>
-        <div>
+        <div style={style}>
           {cascadeKeys.map((key) => {
             const selectedItems = items.filter((i) =>
               cascades[key]?.includes(i.id),

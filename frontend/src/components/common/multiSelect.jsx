@@ -7,6 +7,7 @@ export default function ResultMultiSelect({
   dictionaryValues = [],
   value = "{}",
   onChange,
+  style,
 }) {
   const selectedIds = useMemo(() => {
     try {
@@ -58,7 +59,7 @@ export default function ResultMultiSelect({
       <Column lg={16} sm={4} md={8}>
         <div ref={wrapperRef}>
           <MultiSelect
-            style={{ width: "300px" }}
+            style={{ width: "300px", ...style }}
             id={id}
             items={dictionaryValues.map((d) => ({
               id: d.id,

@@ -1240,6 +1240,7 @@ export function SearchResults(props) {
                 name={`testResult[${row.id}].multiSelectResultValues`}
                 dictionaryValues={row.dictionaryResults}
                 value={row.multiSelectResultValues}
+                style={validationState[row.id]?.style}
                 onChange={(e) => handleChange(e, row.id)}
               />
             );
@@ -1251,6 +1252,7 @@ export function SearchResults(props) {
                 name={`testResult[${row.id}].multiSelectResultValues`}
                 dictionaryValues={row.dictionaryResults}
                 value={row.multiSelectResultValues}
+                style={validationState[row.id]?.style}
                 onChange={(e) => handleChange(e, row.id)}
               />
             );
@@ -2039,6 +2041,40 @@ export function SearchResults(props) {
 
   const handleSave = () => {
     if (isSubmitting) {
+      return;
+    }
+    let newValidationState = { ...validationState };
+    let hasError = false;
+    props.results.testResult.forEach((row) => {
+      if (
+        (row.resultType === "M" || row.resultType === "C") &&
+        row.isModified === "true"
+      ) {
+        const empty =
+          !row.multiSelectResultValues ||
+          row.multiSelectResultValues === "{}" ||
+          row.multiSelectResultValues === "";
+        if (empty) {
+          newValidationState[row.id] = {
+            isInvalid: true,
+            style: { borderColor: "red" },
+          };
+          hasError = true;
+        }
+      }
+    });
+    if (hasError) {
+      setValidationState(newValidationState);
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "result.multiselect.required",
+          defaultMessage:
+            "Please select at least one option for all multiselect results.",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
       return;
     }
     setIsSubmitting(true);
