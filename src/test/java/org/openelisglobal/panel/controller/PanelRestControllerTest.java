@@ -298,8 +298,11 @@ public class PanelRestControllerTest extends BaseWebContextSensitiveTest {
                 .andReturn();
 
         assertEquals(200, result.getResponse().getStatus());
-        assertTrue("CSV should start with header",
-                result.getResponse().getContentAsString().startsWith("panelId,panelName,panelCode"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = mapFromJson(result.getResponse().getContentAsString(), Map.class);
+        String csvData = (String) response.get("csvData");
+        assertThat(csvData, notNullValue());
+        assertTrue("CSV should start with header", csvData.startsWith("panelId,panelName,panelCode"));
     }
 
     @Test
