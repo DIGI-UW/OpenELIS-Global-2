@@ -1,6 +1,3 @@
-firstName,studyId,piName,participantAnimalId,specimenType,specimenSite,collectionDateTime,ethicalApprovalRef,receivedDateTime,receivedBy,sourceFacility
-Participant001,LEPROSY-2025,Dr. James Wilson,PART-001,Human tissue (fresh),Skin lesion - forearm,2025-01-15 13:00,IRB-2025-0042,2025-01-15 14:00,Mary Johnson,Research project
-MouseMF015,MLEPRAE-STUDY,Dr. James Wilson,MOUSE-MF-015,Animal tissue (mouse footpad),Left hind footpad,2025-01-15 12:30,IACUC-2024-108,2025-01-15 14:30,Mary Johnson,Research project
-Culture042,MLEPRAE-STUDY,Dr. James Wilson,CULTURE-042,Bacterial/cellular pellet,M. leprae culture,2025-01-15 14:00,IRB-2025-0042,2025-01-15 15:00,Mary Johnson,Research project
-Participant002,LEPROSY-2025,Dr. James Wilson,PART-002,Human tissue (frozen),Skin biopsy - arm,2025-01-15 10:00,IRB-2025-0042,2025-01-15 11:00,Mary Johnson,Research project
-RatModel01,RAT-NERVE-STUDY,Dr. Sarah Chen,RAT-001,Animal tissue (nerve),Sciatic nerve,2025-01-15 09:00,IACUC-2024-115,2025-01-15 10:30,John Doe,Research project
+firstName,surname,studyId,piName,participantAnimalId,specimenType,specimenSite,collectionDateTime,collectionMethod,collector,processingCondition,laboratoryMaterial,ethicalApprovalRef,receivedDateTime,receivedBy,sourceFacility
+John,Doe,LPRP-2025-01,Dr. Smith,LPRP-P001,Tissue,Left forearm skin,2025-01-15 09:30,Biopsy,Dr. Kebede,Fresh,Blocks,IRB-2024-0567,2025-01-15 14:00,Lab Tech Abebe,ALERT Hospital
+Ahmed,Hassan,LPRP-2025-01,Dr. Smith,LPRP-P003,Tissue,Ear lobe,2025-01-16 08:45,Biopsy,Dr. Alemayehu,FFPE,Blocks,IRB-2024-0567,2025-01-16 12:00,Lab Tech Fatuma,St. Paul Hospital
