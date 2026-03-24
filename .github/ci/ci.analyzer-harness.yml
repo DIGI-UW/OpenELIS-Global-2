@@ -49,6 +49,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
+      - BRIDGE_FILE_ENABLED=true
+      - BRIDGE_OPENELIS_URL=https://oe.openelis.org:8443/OpenELIS-Global
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
       # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer

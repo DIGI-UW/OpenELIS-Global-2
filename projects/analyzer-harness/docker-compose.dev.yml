@@ -44,6 +44,7 @@ services:
       - DEFAULT_PW=adminADMIN!
       - TZ=Africa/Nairobi
       - SPRING_LIQUIBASE_CONTEXTS=test
+      - FILE_IMPORT_POLLING_ENABLED=false
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
     volumes:
       - key_trust-store-volume:/etc/openelis-global

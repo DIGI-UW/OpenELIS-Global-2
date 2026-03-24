@@ -31,6 +31,9 @@ public class FileImportWatchService {
     @Autowired
     private FileImportService fileImportService;
 
+    @Value("${file.import.polling.enabled:false}")
+    private boolean pollingEnabled;
+
     @Value("${file.import.poll.interval:60000}")
     private long pollIntervalMillis;
 
@@ -43,6 +46,9 @@ public class FileImportWatchService {
      */
     @Scheduled(fixedRateString = "${file.import.poll.interval:60000}")
     public void pollImportDirectories() {
+        if (!pollingEnabled) {
+            return;
+        }
         try {
             List<FileImportConfiguration> activeConfigs = fileImportService.getAllActive();
             if (activeConfigs.isEmpty()) {
