@@ -66,8 +66,19 @@ services:
         - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
         -  key_trust-store-volume:/etc/openelis-global
+        - ./volume/lucene:/var/lib/lucene_index
         - ./volume/plugins/:/var/lib/openelis-global/plugins
-        -  lucene_index-vol:/var/lib/lucene_index
+        - ./volume/prorams/:/var/lib/openelis-global/programs
+        - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+        - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
+        - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
+        - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+        - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
+        - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
+        - ./volume/configuration:/var/lib/openelis-global/configuration
+        - ./volume/branding:/var/lib/openelis-global/branding
+        - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+        - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
     secrets:
         - source: common.properties
     healthcheck:
