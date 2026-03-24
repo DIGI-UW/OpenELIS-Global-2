@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer Simulator E2E
@@ -11,38 +16,11 @@ test.describe("Analyzer Simulator", () => {
   test("GeneXpert preview-mapping shows v1.2 simulator payload", async ({
     page,
   }) => {
-    // Find or create a GeneXpert analyzer for testing
-    const listResp = await page.request.get(
-      "/api/OpenELIS-Global/rest/analyzer/analyzers",
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
     );
-    const data = await listResp.json();
-    const existing = (data.analyzers ?? []).find(
-      (a: any) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
-    );
-
-    let GENEXPERT_ID: string;
-    if (existing) {
-      GENEXPERT_ID = String(existing.id);
-    } else {
-      const createResp = await page.request.post(
-        "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        {
-          data: {
-            name: "Cepheid GeneXpert (ASTM Mode)",
-            analyzerType: "MOLECULAR",
-            pluginTypeId: "generic-astm",
-            ipAddress: "172.21.1.100",
-            port: 9600,
-            protocolVersion: "ASTM_LIS2_A2",
-            identifierPattern: "GENEXPERT|CEPHEID",
-            status: "ACTIVE",
-            defaultConfigId: "astm/genexpert-astm",
-          },
-        },
-      );
-      const created = await createResp.json();
-      GENEXPERT_ID = String(created.id);
-    }
 
     const list = new AnalyzerListPage(page);
 
@@ -58,7 +36,7 @@ test.describe("Analyzer Simulator", () => {
 
     await page
       .locator('[data-testid="field-mapping-test-button"]')
-      .click({ timeout: 10_000 });
+      .click({ timeout: UI_TIMEOUT });
     await expect(
       page.locator('[data-testid="test-mapping-modal"]'),
     ).toBeVisible();
@@ -71,11 +49,11 @@ test.describe("Analyzer Simulator", () => {
     await page.locator('[data-testid="test-mapping-preview-button"]').click();
 
     const results = page.locator('[data-testid="test-mapping-results"]');
-    await expect(results).toBeVisible({ timeout: 15_000 });
+    await expect(results).toBeVisible({ timeout: LONG_TIMEOUT });
 
     // Ensure preview produced actual parsed rows.
     await expect(results.locator("tbody tr").first()).toBeVisible({
-      timeout: 10_000,
+      timeout: UI_TIMEOUT,
     });
 
     // Plugin config details may render either in-modal (legacy test-id blocks)

@@ -57,7 +57,8 @@ test.describe("Barcode configuration", () => {
     await expect(collectionDateCheckbox).toBeChecked();
 
     await maxOrderInput.fill("22");
-    await collectionDateCheckbox.setChecked(false, { force: true });
+    // Carbon checkbox: click the specific associated label instead of forcing the hidden input
+    await page.locator('label[for="specimenCollectionDateCheck"]').click();
     await page.getByRole("button", { name: "Save" }).click();
 
     await page.reload();

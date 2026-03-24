@@ -1,6 +1,7 @@
 package org.openelisglobal.result.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.sql.Date;
@@ -618,13 +619,13 @@ public class AnalyzerResultsController extends BaseController {
 
     private String getSignificantDigitsFromAnalyzerResults(AnalyzerResults result) {
         if (result.getTestId() == null) {
-            return result.getResult();
+            return null;
         }
 
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
 
         if (GenericValidator.isBlankOrNull(result.getResult()) || testResults.isEmpty()) {
-            return result.getResult();
+            return null;
         }
 
         TestResult testResult = testResults.get(0);
@@ -726,6 +727,16 @@ public class AnalyzerResultsController extends BaseController {
         return analyzerId;
     }
 
+    private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
+        try {
+            response.setContentType("text/plain");
+            response.getWriter().write(safeMessage);
+        } catch (Exception writeError) {
+            LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "writeErrorResponse",
+                    "Failed to write error response body: " + writeError.getMessage());
+        }
+    }
+
     private boolean getQaEventByTestSection(Analysis analysis) {
         if (analysis == null) {
             return false;
@@ -751,35 +762,40 @@ public class AnalyzerResultsController extends BaseController {
 
     @RequestMapping(value = "/rest/AnalyzerResults", method = RequestMethod.POST)
     @ResponseBody
-    public void showRestAnalyzerResultsSave(HttpServletRequest request, @Validated({ Paging.class,
-            AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
-
-        AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
-        paging.updatePagedResults(request, form);
-        List<AnalyzerResultItem> resultItemList = paging.getResults(request);
-
-        List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
-
-        if (actionableResults.isEmpty()) {
-            return;
-        }
-
-        List<SampleGrouping> sampleGroupList = new ArrayList<>();
-
-        resultItemList.removeAll(actionableResults);
-        List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
-        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
-                childlessControls);
-
-        createResultsFromItems(actionableResults, sampleGroupList);
+    public void showRestAnalyzerResultsSave(HttpServletRequest request, HttpServletResponse response, @Validated({
+            Paging.class, AnalyzerResultsForm.AnalyzerResuts.class }) @RequestBody AnalyzerResultsForm form) {
 
         try {
+            AnalyzerResultsPaging paging = new AnalyzerResultsPaging();
+            paging.updatePagedResults(request, form);
+            List<AnalyzerResultItem> resultItemList = paging.getResults(request);
+
+            List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
+
+            if (actionableResults.isEmpty()) {
+                return;
+            }
+
+            List<SampleGrouping> sampleGroupList = new ArrayList<>();
+
+            resultItemList.removeAll(actionableResults);
+            List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
+            List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
+                    childlessControls);
+
+            createResultsFromItems(actionableResults, sampleGroupList);
+
             analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
                     getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
-
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeErrorResponse(response, "Error saving analyzer results");
+        } catch (Exception e) {
+            LogEvent.logError("Unexpected error saving analyzer results", e);
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            writeErrorResponse(response, "Unexpected error saving analyzer results");
         }
 
     }
@@ -1004,7 +1020,7 @@ public class AnalyzerResultsController extends BaseController {
         int maxSampleItemSortOrder = 0;
 
         for (Analysis dbAnalysis : dBAnalysisList) {
-            if (GenericValidator.isBlankOrNull(dbAnalysis.getSampleItem().getSortOrder())) {
+            if (!GenericValidator.isBlankOrNull(dbAnalysis.getSampleItem().getSortOrder())) {
                 maxSampleItemSortOrder = Math.max(maxSampleItemSortOrder,
                         Integer.parseInt(dbAnalysis.getSampleItem().getSortOrder()));
             }
@@ -1298,8 +1314,14 @@ public class AnalyzerResultsController extends BaseController {
                 result = resultList.get(resultList.size() - 1);
                 // this should be refactored -- it's very close to createNewResult
                 String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
-                result.setValue(resultValue);
-                result.setTestResult(getTestResultForResult(resultItem));
+                TestResult resolvedTestResult = getTestResultForResult(resultItem);
+                result.setTestResult(resolvedTestResult);
+                if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null
+                        && !resultItem.getIsRejected()) {
+                    result.setValue(resolvedTestResult.getValue());
+                } else {
+                    result.setValue(resultValue);
+                }
                 result.setSysUserId(getSysUserId(request));
 
                 setAnalyte(result);
@@ -1323,14 +1345,24 @@ public class AnalyzerResultsController extends BaseController {
 
     private Result createNewResult(AnalyzerResultItem resultItem, Patient patient) {
         Result result = new Result();
-        String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
-        result.setValue(resultValue);
-        result.setTestResult(getTestResultForResult(resultItem));
+        String rawValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
+        TestResult resolvedTestResult = getTestResultForResult(resultItem);
+        result.setTestResult(resolvedTestResult);
+        if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null && !resultItem.getIsRejected()) {
+            result.setValue(resolvedTestResult.getValue());
+        } else {
+            result.setValue(rawValue);
+        }
         result.setResultType(resultItem.getTestResultType());
         // the results table is not autmatically updated with the significant digits
         // from TestResult so we must do this
         if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
+                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+            } else {
+                LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "createNewResult",
+                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
+            }
         }
 
         addMinMaxNormal(result, resultItem, patient);
@@ -1360,9 +1392,29 @@ public class AnalyzerResultsController extends BaseController {
 
     private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
         if ("D".equals(resultItem.getTestResultType())) {
-            TestResult testResult;
-            testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
+            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
                     resultItem.getResult());
+            // ASTM/file imports often store display text (e.g. "NEGATIVE") while
+            // getTestResultsByTestAndDictonaryResult only matches numeric dictionary IDs.
+            // Resolve against this test's dictionary options so we pick the correct entry
+            // when multiple "NEGATIVE" rows exist for different categories.
+            if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
+                String desired = resultItem.getResult().trim();
+                List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
+                if (candidates != null) {
+                    for (TestResult candidate : candidates) {
+                        if (!"D".equals(candidate.getTestResultType())) {
+                            continue;
+                        }
+                        Dictionary dict = dictionaryService.get(candidate.getValue());
+                        if (dict != null && dict.getDictEntry() != null
+                                && desired.equalsIgnoreCase(dict.getDictEntry().trim())) {
+                            testResult = candidate;
+                            break;
+                        }
+                    }
+                }
+            }
             return testResult;
         } else {
             List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
