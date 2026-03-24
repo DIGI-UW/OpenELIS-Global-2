@@ -20,6 +20,7 @@ on:
 permissions:
   contents: read
   packages: read
+  actions: read
 
 jobs:
   demo-shards:
