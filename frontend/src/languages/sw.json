@@ -1275,7 +1275,7 @@
   "patient.emergency.additional.camp": "Enter Camp/Commune",
   "patient.emergency.additional.district": "Enter District",
   "patient.emergency.additional.education": "Enter Education",
-  "patient.emergency.additional.maritalstatus": "Enter Martial Status",
+  "patient.emergency.additional.maritalstatus": "Enter marital status",
   "patient.emergency.additional.nationnality": "Enter Nationality",
   "patient.emergency.additional.othernationality": "Enter Other Nationality",
   "patient.emergency.additional.region": "Enter Region",
