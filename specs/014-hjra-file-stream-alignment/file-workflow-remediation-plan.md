@@ -1,10 +1,8 @@
 # File Workflow Remediation Archive Header
 
-- Source worktree:
-  `/Users/pmanko/.cursor/worktrees/OpenELIS-Global-2/014-file-workflow-remediation`
+- Source worktree: `<worktree-path>`
 - Source branch: `feat/014-file-workflow-remediation`
-- Source plan:
-  `/Users/pmanko/.cursor/plans/014_file_workflow_remediation_(worktree-first)_9d740592.plan.md`
+- Source plan: `<plan-path>`
 - Date archived: `2026-03-18`
 - Statement: This archived specs plan is the execution source of truth for 014
   remediation.
