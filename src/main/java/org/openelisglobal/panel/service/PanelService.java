@@ -5,8 +5,11 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.form.PanelCreateForm;
 import org.openelisglobal.panel.form.PanelExportRequest;
+import org.openelisglobal.panel.form.PanelExportResponse;
 import org.openelisglobal.panel.form.PanelForm;
+import org.openelisglobal.panel.form.PanelImportPreviewResponse;
 import org.openelisglobal.panel.form.PanelImportRequest;
+import org.openelisglobal.panel.form.PanelImportResponse;
 import org.openelisglobal.panel.form.PanelTestForm;
 import org.openelisglobal.panel.valueholder.Panel;
 
@@ -81,10 +84,10 @@ public interface PanelService extends BaseObjectService<Panel, String> {
 
     void reorderPanelTests(String panelId, List<String> testIdsInOrder);
 
-    Object exportPanels(PanelExportRequest request);
+    PanelExportResponse exportPanels(PanelExportRequest request);
 
-    Object validateImport(PanelImportRequest request);
+    PanelImportPreviewResponse validateImport(PanelImportRequest request);
 
-    Object executeImport(PanelImportRequest request);
+    PanelImportResponse executeImport(PanelImportRequest request);
 
 }

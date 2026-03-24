@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="panel-012-backfill-lastupdated-v1" author="Agaba-Derrick">
+        <!-- Legacy version placeholder -->
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="true">SELECT false</sqlCheck>
+        </preConditions>
+        <rollback/>
+    </changeSet>
+
+    <changeSet id="panel-013-backfill-lastupdated-v2" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <!-- Check if panel table exists first -->
+            <tableExists tableName="panel"/>
+        </preConditions>
+
+        <!-- Backfill Hibernate version column -->
+        <sql>UPDATE panel SET lastupdated = CURRENT_TIMESTAMP WHERE lastupdated IS NULL</sql>
+
+        <!-- Backfill business timestamp column -->
+        <sql>UPDATE panel SET last_updated = CURRENT_TIMESTAMP WHERE last_updated IS NULL</sql>
+
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

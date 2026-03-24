@@ -20,8 +20,12 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.dao.PanelDAO;
 import org.openelisglobal.panel.form.PanelCreateForm;
 import org.openelisglobal.panel.form.PanelExportRequest;
+import org.openelisglobal.panel.form.PanelExportResponse;
 import org.openelisglobal.panel.form.PanelForm;
+import org.openelisglobal.panel.form.PanelImportPreviewItem;
+import org.openelisglobal.panel.form.PanelImportPreviewResponse;
 import org.openelisglobal.panel.form.PanelImportRequest;
+import org.openelisglobal.panel.form.PanelImportResponse;
 import org.openelisglobal.panel.form.PanelTestForm;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelimport.service.PanelImportLogService;
@@ -30,13 +34,14 @@ import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.panellabunit.service.PanelLabUnitService;
 import org.openelisglobal.panellabunit.valueholder.PanelLabUnit;
-import org.openelisglobal.test.dao.TestDAO;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSamplePanel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,7 +65,8 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     private PanelItemService panelItemService;
 
     @Autowired
-    private TestDAO testDAO;
+    @Lazy
+    private TestService testService;
 
     @Autowired
     private PanelImportLogService panelImportLogService;
@@ -151,54 +157,27 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     @Override
     public String insert(Panel panel) {
-        // set version fields early to avoid optimistic locking issues when duplicate
-        // checks trigger a flush
-        if (panel.getLastupdated() == null) {
-            panel.setLastupdatedFields();
-        }
-
-        if (getBaseObjectDAO().duplicatePanelExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for " + panel.getPanelName());
-        }
-        if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
-        }
-        if (getBaseObjectDAO().duplicatePanelCodeExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel code: " + panel.getCode());
-        }
+        validateNoDuplicates(panel);
         baseObjectDAO.clearIDMaps();
         return super.insert(panel);
     }
 
     @Override
     public Panel save(Panel panel) {
-        // set version fields early to avoid optimistic locking issues when duplicate
-        // checks trigger a flush
-        if (panel.getLastupdated() == null) {
-            panel.setLastupdatedFields();
-        }
-
-        if (getBaseObjectDAO().duplicatePanelExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for " + panel.getPanelName());
-        }
-        if (getBaseObjectDAO().duplicatePanelDescriptionExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel description");
-        }
-        if (getBaseObjectDAO().duplicatePanelCodeExists(panel)) {
-            throw new LIMSDuplicateRecordException("Duplicate record exists for panel code: " + panel.getCode());
-        }
+        validateNoDuplicates(panel);
         baseObjectDAO.clearIDMaps();
         return super.save(panel);
     }
 
     @Override
     public Panel update(Panel panel) {
-        // set version fields early to avoid optimistic locking issues when duplicate
-        // checks trigger a flush
-        if (panel.getLastupdated() == null) {
-            panel.setLastupdatedFields();
-        }
+        validateNoDuplicates(panel);
+        baseObjectDAO.clearIDMaps();
+        baseObjectDAO.update(panel);
+        return getPanelById(panel.getId());
+    }
 
+    private void validateNoDuplicates(Panel panel) {
         if (getBaseObjectDAO().duplicatePanelExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + panel.getPanelName());
         }
@@ -208,13 +187,6 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         if (getBaseObjectDAO().duplicatePanelCodeExists(panel)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for panel code: " + panel.getCode());
         }
-        baseObjectDAO.clearIDMaps();
-        // Use a DAO bulk update to avoid optimistic locking failures when legacy rows
-        // have null version timestamps. This updates the key fields and sets
-        // lastupdated
-        // to the current time in a single statement.
-        baseObjectDAO.updatePanelFields(panel);
-        return getPanelById(panel.getId());
     }
 
     @Override
@@ -479,17 +451,13 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
             return null;
         }
 
-        Panel toUpdate = new Panel();
-        toUpdate.setId(id);
-        toUpdate.setPanelName(req.getName());
-        toUpdate.setCode(req.getCode());
-        toUpdate.setDescription(req.getDescription() != null ? req.getDescription() : "");
-        toUpdate.setLoinc(req.getLoincCode());
-        toUpdate.setIsActive(req.isActive() ? IActionConstants.YES : IActionConstants.NO);
+        existing.setPanelName(req.getName());
+        existing.setCode(req.getCode());
+        existing.setDescription(req.getDescription() != null ? req.getDescription() : "");
+        existing.setLoinc(req.getLoincCode());
+        existing.setIsActive(req.isActive() ? IActionConstants.YES : IActionConstants.NO);
 
-        toUpdate.setLastupdated(existing.getLastupdated());
-
-        Panel saved = update(toUpdate);
+        Panel saved = update(existing);
         if (saved == null) {
             return null;
         }
@@ -735,6 +703,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void updateLabUnits(String panelId, List<String> labUnitIds) {
         syncLabUnits(panelId, labUnitIds);
     }
@@ -750,6 +719,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void updateSampleTypes(String panelId, List<String> sampleTypeIds) {
         syncSampleTypes(panelId, sampleTypeIds);
     }
@@ -786,7 +756,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     @Transactional
     public void addPanelTest(String panelId, String testId, Integer displayOrder, String panelLoincCode) {
         Panel panel = getPanelById(panelId);
-        Test test = testDAO.getTestById(testId);
+        Test test = testService.getTestById(testId);
         if (panel == null || test == null) {
             throw new IllegalArgumentException("Panel or test not found");
         }
@@ -808,6 +778,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void updatePanelTest(String panelId, String testId, Integer displayOrder, String panelLoincCode) {
         List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(panelId);
         for (PanelItem item : panelItems) {
@@ -822,6 +793,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void updateAllPanelTests(String panelId, List<PanelTestForm> tests) {
         List<PanelItem> existingItems = panelItemService.getPanelItemsForPanel(panelId);
 
@@ -844,7 +816,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
         Panel panel = getPanelById(panelId);
         for (PanelTestForm form : testFormMap.values()) {
-            Test test = testDAO.getTestById(form.getTestId());
+            Test test = testService.getTestById(form.getTestId());
             if (test != null) {
                 PanelItem newItem = new PanelItem();
                 newItem.setPanel(panel);
@@ -857,6 +829,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void removePanelTest(String panelId, String testId) {
         List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(panelId);
         for (PanelItem item : panelItems) {
@@ -869,6 +842,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
     }
 
     @Override
+    @Transactional
     public void reorderPanelTests(String panelId, List<String> testIdsInOrder) {
         List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(panelId);
 
@@ -888,7 +862,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     @Override
     @Transactional(readOnly = true)
-    public Object exportPanels(PanelExportRequest request) {
+    public PanelExportResponse exportPanels(PanelExportRequest request) {
         List<String> panelIds = request.getPanelIds();
         boolean includeTests = request.isIncludeTests();
         String format = request.getFormat() != null ? request.getFormat().toLowerCase() : "json";
@@ -901,10 +875,16 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
             panels = getAllPanels();
         }
 
+        PanelExportResponse response = new PanelExportResponse();
         if ("csv".equals(format)) {
-            return buildCsvExport(panels, includeTests);
+            response.setCsvData(buildCsvExport(panels, includeTests));
+        } else {
+            Map<String, Object> json = buildJsonExport(panels, includeTests);
+            response.setPanels((List<PanelForm>) json.get("panels"));
+            response.setExportedAt((String) json.get("exportedAt"));
+            response.setCount((Integer) json.get("count"));
         }
-        return buildJsonExport(panels, includeTests);
+        return response;
     }
 
     /**
@@ -993,8 +973,8 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     @Override
     @Transactional(readOnly = true)
-    public Object validateImport(PanelImportRequest request) {
-        List<Map<String, Object>> preview = new ArrayList<>();
+    public PanelImportPreviewResponse validateImport(PanelImportRequest request) {
+        List<PanelImportPreviewItem> items = new ArrayList<>();
         List<Map<String, Object>> panelDataList = extractPanelList(request.getData());
         String mode = request.getMode() != null ? request.getMode() : "both";
 
@@ -1015,31 +995,29 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
                     reason = "mode=" + mode + " does not allow update";
             }
 
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("code", code);
-            row.put("name", name);
-            row.put("action", action);
-            if (reason != null)
-                row.put("reason", reason);
-            preview.add(row);
+            PanelImportPreviewItem item = new PanelImportPreviewItem();
+            item.setCode(code);
+            item.setName(name);
+            item.setAction(action);
+            item.setReason(reason);
+            items.add(item);
         }
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("preview", preview);
-        result.put("counts",
-                Map.of("create", preview.stream().filter(r -> "create".equals(r.get("action"))).count(), "update",
-                        preview.stream().filter(r -> "update".equals(r.get("action"))).count(), "skip",
-                        preview.stream().filter(r -> "skip".equals(r.get("action"))).count()));
-        return result;
+        PanelImportPreviewResponse response = new PanelImportPreviewResponse();
+        response.setPreview(items);
+        response.setCounts(Map.of("create", items.stream().filter(r -> "create".equals(r.getAction())).count(),
+                "update", items.stream().filter(r -> "update".equals(r.getAction())).count(), "skip",
+                items.stream().filter(r -> "skip".equals(r.getAction())).count()));
+        return response;
     }
 
     @Override
     @Transactional
-    public Object executeImport(PanelImportRequest request) {
+    public PanelImportResponse executeImport(PanelImportRequest request) {
         List<Map<String, Object>> panelDataList = extractPanelList(request.getData());
         String mode = request.getMode() != null ? request.getMode() : "both";
 
-        int created = 0, updated = 0, skipped = 0;
+        int createdCount = 0, updatedCount = 0, skippedCount = 0;
         List<String> warnings = new ArrayList<>();
 
         for (Map<String, Object> panelData : panelDataList) {
@@ -1048,7 +1026,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
             if (code == null || code.isBlank() || name == null || name.isBlank()) {
                 warnings.add("Skipped panel with missing code or name: " + panelData);
-                skipped++;
+                skippedCount++;
                 continue;
             }
 
@@ -1058,9 +1036,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
                     if ("create".equals(mode) || "both".equals(mode)) {
                         PanelCreateForm req = buildCreateFormFromMap(panelData);
                         createForm(req);
-                        created++;
+                        createdCount++;
                     } else {
-                        skipped++;
+                        skippedCount++;
                     }
                 } else {
                     if ("update".equals(mode) || "both".equals(mode)) {
@@ -1068,14 +1046,14 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
                         updateForm(existing.getId(), req);
                         // Re-import tests if present
                         importPanelTests(existing.getId(), panelData);
-                        updated++;
+                        updatedCount++;
                     } else {
-                        skipped++;
+                        skippedCount++;
                     }
                 }
             } catch (Exception e) {
                 warnings.add("Error importing panel '" + code + "': " + e.getMessage());
-                skipped++;
+                skippedCount++;
                 LogEvent.logError(e);
             }
         }
@@ -1083,9 +1061,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         // Write import log
         PanelImportLog log = new PanelImportLog();
         log.setImportDate(new Timestamp(System.currentTimeMillis()));
-        log.setPanelsCreated(created);
-        log.setPanelsUpdated(updated);
-        log.setPanelsSkipped(skipped);
+        log.setPanelsCreated(createdCount);
+        log.setPanelsUpdated(updatedCount);
+        log.setPanelsSkipped(skippedCount);
         log.setWarnings(warnings.isEmpty() ? null : String.join("; ", warnings));
         try {
             log.setImportData(objectMapper.writeValueAsString(request.getData()));
@@ -1094,13 +1072,13 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         }
         panelImportLogService.insert(log);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("panelsCreated", created);
-        result.put("panelsUpdated", updated);
-        result.put("panelsSkipped", skipped);
+        PanelImportResponse response = new PanelImportResponse();
+        response.setPanelsCreated(createdCount);
+        response.setPanelsUpdated(updatedCount);
+        response.setPanelsSkipped(skippedCount);
         if (!warnings.isEmpty())
-            result.put("warnings", warnings);
-        return result;
+            response.setWarnings(warnings);
+        return response;
     }
 
     @SuppressWarnings("unchecked")
@@ -1128,15 +1106,9 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
         return val != null ? val.toString().trim() : null;
     }
 
-    /** Find a panel by its unique short code (reuses DAO). */
+    /** Find a panel by its unique short code (optimized using DAO). */
     private Panel getPanelByCode(String code) {
-        // Use existing LOINC lookup fallback: iterate all panels
-        // This is safe for import operations (not in hot path)
-        for (Panel p : getAllPanels()) {
-            if (code.equals(p.getCode()))
-                return p;
-        }
-        return null;
+        return getBaseObjectDAO().getPanelByCode(code);
     }
 
     @SuppressWarnings("unchecked")

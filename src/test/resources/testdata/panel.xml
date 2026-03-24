@@ -24,22 +24,27 @@
     <panel id="1" name="Test Panel" code="P-001"
         description="This is a test panel." is_active="Y"
         name_localization_id="1" loinc="12345"
-        last_updated="2026-01-01 00:00:00" />
+        last_updated="2026-01-01 00:00:00" LASTUPDATED="2026-03-23 00:00:00.0" />
     <panel id="2" name="Duplicate Panel" code="P-002"
         description="Duplicate description" is_active="N"
-        name_localization_id="1" loinc="67890" />
+        name_localization_id="1" loinc="67890"
+        LASTUPDATED="2026-03-23 00:00:00.0" />
     <panel id="3" name="New Panel Name" code="P-003"
         description="A test panel from dataset." is_active="Y"
-        name_localization_id="1" loinc="11111" />
+        name_localization_id="1" loinc="11111"
+        LASTUPDATED="2026-03-23 00:00:00.0" />
     <panel id="4" name="Unique Panel" code="P-004"
         description="This panel has a unique name." is_active="Y"
-        name_localization_id="1" loinc="54321" />
+        name_localization_id="1" loinc="54321"
+        LASTUPDATED="2026-03-23 00:00:00.0" />
     <!-- Dataset Panel 1 -->
     <panel id="5" name="Dataset Panel 1" code="P-005"
         description="This is the first dataset panel." is_active="Y"
-        name_localization_id="1" loinc="98765" />
+        name_localization_id="1" loinc="98765"
+        LASTUPDATED="2026-03-23 00:00:00.0" />
     <!-- Add the Duplicate Panel 1 -->
     <panel id="6" name="Duplicate Panel 1" code="P-006"
         description="This is a duplicate panel." is_active="Y"
-        name_localization_id="1" loinc="11223" />
+        name_localization_id="1" loinc="11223"
+        LASTUPDATED="2026-03-23 00:00:00.0" />
 </dataset>

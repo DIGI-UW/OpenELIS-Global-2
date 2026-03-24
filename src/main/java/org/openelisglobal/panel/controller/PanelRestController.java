@@ -6,8 +6,11 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.panel.form.PanelAddTestRequest;
 import org.openelisglobal.panel.form.PanelCreateForm;
 import org.openelisglobal.panel.form.PanelExportRequest;
+import org.openelisglobal.panel.form.PanelExportResponse;
 import org.openelisglobal.panel.form.PanelForm;
+import org.openelisglobal.panel.form.PanelImportPreviewResponse;
 import org.openelisglobal.panel.form.PanelImportRequest;
+import org.openelisglobal.panel.form.PanelImportResponse;
 import org.openelisglobal.panel.form.PanelTestForm;
 import org.openelisglobal.panel.service.PanelService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -157,17 +160,17 @@ public class PanelRestController extends BaseRestController {
     // -------------------------------------------------------------------------
 
     @PostMapping("/export")
-    public ResponseEntity<Object> exportPanels(@Valid @RequestBody PanelExportRequest request) {
+    public ResponseEntity<PanelExportResponse> exportPanels(@Valid @RequestBody PanelExportRequest request) {
         return ResponseEntity.ok(panelService.exportPanels(request));
     }
 
     @PostMapping("/import/validate")
-    public ResponseEntity<Object> validateImport(@Valid @RequestBody PanelImportRequest request) {
+    public ResponseEntity<PanelImportPreviewResponse> validateImport(@Valid @RequestBody PanelImportRequest request) {
         return ResponseEntity.ok(panelService.validateImport(request));
     }
 
     @PostMapping("/import")
-    public ResponseEntity<Object> executeImport(@Valid @RequestBody PanelImportRequest request) {
+    public ResponseEntity<PanelImportResponse> executeImport(@Valid @RequestBody PanelImportRequest request) {
         return ResponseEntity.ok(panelService.executeImport(request));
     }
 }

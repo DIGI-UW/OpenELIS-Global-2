@@ -13,7 +13,6 @@
  */
 package org.openelisglobal.panel.daoimpl;
 
-import jakarta.persistence.OptimisticLockException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -75,6 +74,20 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             handleException(e, "getDataById");
         }
 
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Panel getPanelByCode(String code) throws LIMSRuntimeException {
+        try {
+            String sql = "from Panel p where p.code = :code";
+            Query<Panel> query = entityManager.unwrap(Session.class).createQuery(sql, Panel.class);
+            query.setParameter("code", code);
+            return query.uniqueResult();
+        } catch (HibernateException e) {
+            handleException(e, "getPanelByCode");
+        }
         return null;
     }
 
@@ -319,36 +332,6 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
         }
 
         return false;
-    }
-
-    @Override
-    public void updatePanelFields(Panel panel) throws LIMSRuntimeException {
-        try {
-            Session session = entityManager.unwrap(Session.class);
-
-            String sql = "UPDATE panel SET name = :name, code = :code, description = :description, loinc = :loinc, is_active = :active, lastupdated = :now WHERE id = :id";
-
-            int updated = session.createNativeQuery(sql).setParameter("name", panel.getPanelName())
-                    .setParameter("code", panel.getCode()).setParameter("description", panel.getDescription())
-                    .setParameter("loinc", panel.getLoinc()).setParameter("active", panel.getIsActive())
-                    .setParameter("now", new java.sql.Timestamp(System.currentTimeMillis()))
-                    .setParameter("id", Integer.parseInt(panel.getId())).executeUpdate();
-
-            if (updated != 1) {
-                throw new OptimisticLockException("Panel was modified concurrently");
-            }
-
-            // Evict from session to ensure subsequent gets fetch fresh data from DB
-            // (since native query bypasses L1 cache)
-            Panel managed = session.get(Panel.class, panel.getId());
-            if (managed != null) {
-                session.evict(managed);
-            }
-
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in updatePanelFields()", e);
-        }
     }
 
     @Override

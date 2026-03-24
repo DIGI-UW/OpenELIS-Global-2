@@ -15,8 +15,12 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.panel.form.PanelCreateForm;
 import org.openelisglobal.panel.form.PanelExportRequest;
+import org.openelisglobal.panel.form.PanelExportResponse;
 import org.openelisglobal.panel.form.PanelForm;
+import org.openelisglobal.panel.form.PanelImportPreviewItem;
+import org.openelisglobal.panel.form.PanelImportPreviewResponse;
 import org.openelisglobal.panel.form.PanelImportRequest;
+import org.openelisglobal.panel.form.PanelImportResponse;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -393,14 +397,11 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         request.setFormat("json");
         request.setIncludeTests(true);
 
-        Object result = panelService.exportPanels(request);
+        PanelExportResponse result = panelService.exportPanels(request);
         assertNotNull("Export result should not be null", result);
-        assertTrue("Result should be a Map", result instanceof java.util.Map);
-
-        Map<String, Object> map = (Map<String, Object>) result;
-        assertTrue("JSON export should contain 'panels' key", map.containsKey("panels"));
-        assertTrue("JSON export should contain 'count' key", map.containsKey("count"));
-        assertEquals("Exported count should match panel list", 1, ((Number) map.get("count")).intValue());
+        assertNotNull("JSON export should contain panels", result.getPanels());
+        assertNotNull("JSON export should contain count", result.getCount());
+        assertEquals("Exported count should match panel list", 1, result.getCount().intValue());
     }
 
     @Test
@@ -409,10 +410,10 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         request.setFormat("csv");
         request.setIncludeTests(false);
 
-        Object result = panelService.exportPanels(request);
+        PanelExportResponse result = panelService.exportPanels(request);
         assertNotNull("CSV export result should not be null", result);
-        assertTrue("CSV export should return a String", result instanceof String);
-        assertTrue("CSV header row should be present", ((String) result).startsWith("panelId,panelName,panelCode"));
+        assertNotNull("CSV export should return CSV data", result.getCsvData());
+        assertTrue("CSV header row should be present", result.getCsvData().startsWith("panelId,panelName,panelCode"));
     }
 
     @Test
@@ -422,15 +423,11 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         request.setMode("create");
         request.setData(List.of(Map.of("code", "IMPORT-NEW-001", "name", "Import New Panel")));
 
-        Object result = panelService.validateImport(request);
+        PanelImportPreviewResponse result = panelService.validateImport(request);
         assertNotNull(result);
-        Map<String, Object> map = (Map<String, Object>) result;
-        assertTrue("Validate result should have 'preview' key", map.containsKey("preview"));
-
-        List<Map<String, Object>> preview = (List<Map<String, Object>>) map.get("preview");
+        List<PanelImportPreviewItem> preview = result.getPreview();
         assertFalse("Preview should not be empty", preview.isEmpty());
-        assertEquals("Action for a new panel in create mode should be 'create'", "create",
-                preview.get(0).get("action"));
+        assertEquals("Action for a new panel in create mode should be 'create'", "create", preview.get(0).getAction());
     }
 
     @Test
@@ -449,12 +446,11 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         request.setMode("update");
         request.setData(List.of(Map.of("code", "IMPORT-UPD-001", "name", "Import Update Subject Updated")));
 
-        Object result = panelService.validateImport(request);
-        Map<String, Object> map = (Map<String, Object>) result;
-        List<Map<String, Object>> preview = (List<Map<String, Object>>) map.get("preview");
+        PanelImportPreviewResponse result = panelService.validateImport(request);
+        List<PanelImportPreviewItem> preview = result.getPreview();
         assertFalse(preview.isEmpty());
         assertEquals("Action for an existing panel in update mode should be 'update'", "update",
-                preview.get(0).get("action"));
+                preview.get(0).getAction());
     }
 
     @Test
@@ -467,11 +463,10 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         request.setData(List.of(Map.of("code", "EXEC-CREATE-001", "name", "Exec Create Panel 1"),
                 Map.of("code", "EXEC-CREATE-002", "name", "Exec Create Panel 2")));
 
-        Object result = panelService.executeImport(request);
+        PanelImportResponse result = panelService.executeImport(request);
         assertNotNull(result);
-        Map<String, Object> map = (Map<String, Object>) result;
-        assertEquals("Two panels should have been created", 2, ((Number) map.get("panelsCreated")).intValue());
-        assertEquals("No panels should have been updated", 0, ((Number) map.get("panelsUpdated")).intValue());
+        assertEquals("Two panels should have been created", 2, result.getPanelsCreated());
+        assertEquals("No panels should have been updated", 0, result.getPanelsUpdated());
 
         int after = panelService.getAllPanels().size();
         assertEquals("Total panel count should increase by 2", before + 2, after);
@@ -495,10 +490,9 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         request.setData(List
                 .of(Map.of("code", "EXEC-UPD-001", "name", "Import Subject", "description", "Updated description")));
 
-        Object result = panelService.executeImport(request);
-        Map<String, Object> map = (Map<String, Object>) result;
-        assertEquals("One panel should have been updated", 1, ((Number) map.get("panelsUpdated")).intValue());
-        assertEquals("No panels should have been created", 0, ((Number) map.get("panelsCreated")).intValue());
+        PanelImportResponse result = panelService.executeImport(request);
+        assertEquals("One panel should have been updated", 1, result.getPanelsUpdated());
+        assertEquals("No panels should have been created", 0, result.getPanelsCreated());
 
         Panel updated = panelService.getPanelById(created.getId());
         assertEquals("Description should be updated", "Updated description", updated.getDescription());

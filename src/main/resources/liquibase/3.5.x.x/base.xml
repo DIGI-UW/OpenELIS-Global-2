@@ -85,4 +85,7 @@
   <!-- OGC-669 (LO-01-01): add Madagascar address columns (province, fokontany, hamlet_or_lot) on person -->
   <include relativeToChangelogFile="true" file="023-add-patient-madagascar-address-fields.xml"/>
 
+  <!-- Backfill lastupdated for panels to support standard Hibernate updates -->
+  <include relativeToChangelogFile="true" file="005-backfill-panel-lastupdated.xml"/>
+
 </databaseChangeLog>
