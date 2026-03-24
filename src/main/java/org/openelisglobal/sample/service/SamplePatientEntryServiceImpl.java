@@ -16,7 +16,6 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -64,6 +63,7 @@ import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
+import org.openelisglobal.sampleitem.dao.SampleItemDAO;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
@@ -100,6 +100,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private SampleHumanService sampleHumanService;
     @Autowired
     private SampleItemService sampleItemService;
+    @Autowired
+    private SampleItemDAO sampleItemDAO;
     @Autowired
     private NoteService noteService;
     @Autowired
@@ -333,33 +335,23 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 savedItem = sampleItemService.get(sampleTestCollection.existingSampleItemId);
                 if (savedItem != null) {
                     sampleItemId = savedItem.getId();
-                    LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
-                            "DEBUG: Found existing SampleItem by ID: " + sampleItemId);
                     // Update existing sample item with new collection data
                     savedItem.setSysUserId(sampleTestCollection.item.getSysUserId());
                     // Copy collection details from the incoming item
-                    if (sampleTestCollection.item.getCollectionDate() != null) {
-                        savedItem.setCollectionDate(sampleTestCollection.item.getCollectionDate());
-                    }
-                    if (sampleTestCollection.item.getCollector() != null) {
-                        savedItem.setCollector(sampleTestCollection.item.getCollector());
-                    }
-                    if (sampleTestCollection.item.getQuantity() != null) {
-                        savedItem.setQuantity(sampleTestCollection.item.getQuantity());
-                    }
-                    if (sampleTestCollection.item.getUnitOfMeasure() != null) {
-                        savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
-                    }
+                    savedItem.setCollectionDate(sampleTestCollection.item.getCollectionDate());
+                    savedItem.setCollector(sampleTestCollection.item.getCollector());
+                    savedItem.setQuantity(sampleTestCollection.item.getQuantity());
+                    savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
+                    savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
+                    savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
+                    // Keep existing typeOfSample if incoming is null (don't change sample type
+                    // during collection)
                     if (sampleTestCollection.item.getTypeOfSample() != null) {
                         savedItem.setTypeOfSample(sampleTestCollection.item.getTypeOfSample());
                     }
-                    if (sampleTestCollection.item.getCollectionConditions() != null) {
-                        savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
-                    }
-                    if (sampleTestCollection.item.getReceivedDate() != null) {
-                        savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
-                    }
-                    sampleItemService.update(savedItem);
+                    // Use DAO directly to bypass the service layer's audit trail evict/merge
+                    // which can cause state loss when the same entity instance is fetched twice
+                    savedItem = sampleItemDAO.update(savedItem);
                 }
             }
 
@@ -369,8 +361,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
                 }
                 sampleItemId = sampleItemService.insert(sampleTestCollection.item);
-                LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
-                        "DEBUG: Inserted new SampleItem with id: " + sampleItemId);
                 savedItem = sampleItemService.get(sampleItemId);
             }
 
@@ -405,9 +395,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(),
                         test.getId());
                 if (existingAnalysis != null) {
-                    LogEvent.logInfo(this.getClass().getName(), "persistSampleData",
-                            "DEBUG: Analysis already exists for sampleItem " + savedItem.getId() + " and test "
-                                    + test.getId() + ", skipping insert");
                     sampleTestCollection.analysises.add(existingAnalysis);
                     continue;
                 }

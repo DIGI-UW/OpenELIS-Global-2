@@ -5,7 +5,7 @@
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <!-- Add collection_conditions column to sample_item table -->
-  <changeSet id="3.4.0.0-add-collection-conditions-to-sample-item" author="claude">
+  <changeSet id="3.4.0.0-add-collection-conditions-to-sample-item" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
       <not>
         <columnExists tableName="sample_item" columnName="collection_conditions" schemaName="clinlims"/>

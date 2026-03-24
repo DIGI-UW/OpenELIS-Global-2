@@ -306,13 +306,16 @@ const SampleCollectionCard = ({
             id="collect.sample.receivedAtLab"
             defaultMessage="Received at Lab"
           />
-          <span className="helper-inline">
-            {" "}
-            <FormattedMessage
-              id="collect.sample.receivedAtLab.helper"
-              defaultMessage="(auto-populated from server — editable)"
-            />
-          </span>
+          {/* Only show auto-populated hint for new samples */}
+          {!sample.sampleItemId && (
+            <span className="helper-inline">
+              {" "}
+              <FormattedMessage
+                id="collect.sample.receivedAtLab.helper"
+                defaultMessage="(auto-populated from server — editable)"
+              />
+            </span>
+          )}
         </h6>
         <Grid>
           <Column lg={4} md={4} sm={4}>
@@ -338,17 +341,22 @@ const SampleCollectionCard = ({
                 })}
                 placeholder="mm/dd/yyyy"
                 value={formatDateForPicker(
-                  sample.receivedDate || serverReceivedDate,
+                  // Use stored value if editing existing sample, otherwise use server time for new samples
+                  sample.receivedDate ||
+                    (sample.sampleItemId ? "" : serverReceivedDate),
                 )}
                 disabled={isReadOnly}
               />
             </DatePicker>
-            <span className="auto-filled-hint">
-              <FormattedMessage
-                id="label.autoFilledFromServer"
-                defaultMessage="Auto-filled from server"
-              />
-            </span>
+            {/* Only show auto-filled hint for new samples without sampleItemId */}
+            {!sample.sampleItemId && (
+              <span className="auto-filled-hint">
+                <FormattedMessage
+                  id="label.autoFilledFromServer"
+                  defaultMessage="Auto-filled from server"
+                />
+              </span>
+            )}
           </Column>
 
           <Column lg={3} md={2} sm={2}>
@@ -358,18 +366,26 @@ const SampleCollectionCard = ({
                 id: "collect.sample.receivedTime",
                 defaultMessage: "Received Time",
               })}
-              value={sample.receivedTime || serverReceivedTime || ""}
+              value={
+                // Use stored value if editing existing sample, otherwise use server time for new samples
+                sample.receivedTime ||
+                (sample.sampleItemId ? "" : serverReceivedTime) ||
+                ""
+              }
               onChange={(e) =>
                 handleFieldChange("receivedTime", e.target.value)
               }
               disabled={isReadOnly}
             />
-            <span className="auto-filled-hint">
-              <FormattedMessage
-                id="label.autoFilledFromServer"
-                defaultMessage="Auto-filled from server"
-              />
-            </span>
+            {/* Only show auto-filled hint for new samples without sampleItemId */}
+            {!sample.sampleItemId && (
+              <span className="auto-filled-hint">
+                <FormattedMessage
+                  id="label.autoFilledFromServer"
+                  defaultMessage="Auto-filled from server"
+                />
+              </span>
+            )}
           </Column>
         </Grid>
       </div>

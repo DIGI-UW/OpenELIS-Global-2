@@ -23,4 +23,5 @@
   <include relativeToChangelogFile="true" file="015-add-sample-collection-uoms.xml"/>
   <include relativeToChangelogFile="true" file="016-add-collection-conditions-column.xml"/>
   <include relativeToChangelogFile="true" file="017-add-received-date-to-sample-item.xml"/>
+  <include relativeToChangelogFile="true" file="018-uom-type-mapping-table.xml"/>
 </databaseChangeLog>

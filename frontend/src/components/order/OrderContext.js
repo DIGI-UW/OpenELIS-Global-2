@@ -280,13 +280,22 @@ export const OrderProvider = ({ children }) => {
    * Convert samples array to XML format expected by backend
    */
   const buildSampleXML = useCallback((samplesArray) => {
+    console.log(
+      "buildSampleXML called with samples:",
+      JSON.stringify(samplesArray, null, 2),
+    );
+
     if (!samplesArray || samplesArray.length === 0) {
+      console.log("buildSampleXML: No samples array, returning empty");
       return "";
     }
 
     // Check if any sample has a sample type (required for saving)
     const hasSampleType = samplesArray.some((s) => s.sampleTypeId);
     if (!hasSampleType) {
+      console.log(
+        "buildSampleXML: No sample has sampleTypeId, returning empty",
+      );
       return "";
     }
 
@@ -346,11 +355,19 @@ export const OrderProvider = ({ children }) => {
         // Include sampleItemId for updates - this identifies which existing sample_item to update
         const sampleItemId = sampleItem.sampleItemId || "";
 
+        console.log(
+          "buildSampleXML: Building sample element with sampleItemId:",
+          sampleItemId,
+          "sampleTypeId:",
+          sampleItem.sampleTypeId,
+        );
+
         sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}'/>`;
       }
     });
 
     sampleXmlString += "</samples>";
+    console.log("buildSampleXML: Final XML:", sampleXmlString);
     return sampleXmlString;
   }, []);
 
@@ -479,7 +496,42 @@ export const OrderProvider = ({ children }) => {
               orderData,
               samples,
             });
-            resolve({ success: true });
+
+            // Reload order to get created sampleItemIds and orderId for subsequent saves
+            const labNo = orderData?.sampleOrderItems?.labNo;
+            console.log("saveOrder: Success, labNo for reload:", labNo);
+            if (labNo) {
+              getFromOpenElisServer(
+                `/rest/order/search?labNumber=${encodeURIComponent(labNo)}`,
+                (response) => {
+                  console.log(
+                    "saveOrder: Reload response - id:",
+                    response?.id,
+                    "samples:",
+                    JSON.stringify(response?.samples, null, 2),
+                  );
+                  if (response) {
+                    // CRITICAL: Update orderId from the response - needed for Step 2 to work correctly
+                    // The orderId is used to set sampleOrderItems.sampleId which tells the backend
+                    // this is an UPDATE (not insert), so it loads the existing sample and skips
+                    // accession number validation
+                    if (response.id) {
+                      console.log(
+                        "saveOrder: Setting orderId to:",
+                        response.id,
+                      );
+                      setOrderId(response.id);
+                    }
+                    if (response.samples) {
+                      setSamplesState(response.samples);
+                    }
+                  }
+                  resolve({ success: true });
+                },
+              );
+            } else {
+              resolve({ success: true });
+            }
           } else {
             setSaveStatus(SaveStatus.ERROR);
             const errorMsg = "Failed to save order";

@@ -350,9 +350,6 @@ public class OrderSearchRestController extends BaseRestController {
                 List<Map<String, Object>> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
-                LogEvent.logInfo(this.getClass().getName(), "searchOrder",
-                        "DEBUG: Found " + analyses.size() + " analyses for sampleItem " + sampleItem.getId());
-
                 for (Analysis analysis : analyses) {
                     if (analysis.getTest() != null) {
                         Map<String, Object> testData = new HashMap<>();
@@ -551,23 +548,16 @@ public class OrderSearchRestController extends BaseRestController {
         sampleOrderItems.put("receivedTime", sample.getReceivedTimeForDisplay());
 
         String sampleId = sample.getId();
-        LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                "=== DEBUG: Building sampleOrderItems for sampleId: " + sampleId);
 
         // Provider - get from SampleHuman.providerId via
         // sampleHumanService.getProviderForSample()
         // This is the correct approach since SamplePatientUpdateData stores provider in
         // SampleHuman
         Provider provider = sampleHumanService.getProviderForSample(sample);
-        LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                "DEBUG: Provider from sampleHuman: " + (provider != null ? provider.getId() : "NULL"));
         if (provider != null && provider.getPerson() != null) {
             Person providerPerson = provider.getPerson();
             // Ensure person data is loaded
             personService.getData(providerPerson);
-            LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                    "DEBUG: Provider person: " + providerPerson.getId() + " - " + providerPerson.getFirstName() + " "
-                            + providerPerson.getLastName());
             sampleOrderItems.put("providerPersonId", providerPerson.getId());
             sampleOrderItems.put("providerFirstName", providerPerson.getFirstName());
             sampleOrderItems.put("providerLastName", providerPerson.getLastName());
@@ -607,8 +597,6 @@ public class OrderSearchRestController extends BaseRestController {
         // 2. If found, use ProgramSampleService to get the Program.id
         // 3. If not found in observation_history, check program_sample table directly
         String programName = observationHistoryService.getRawValueForSample(ObservationType.PROGRAM, sampleId);
-        LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                "DEBUG: programName from observation_history: '" + programName + "'");
 
         if (programName != null && !programName.isEmpty()) {
             sampleOrderItems.put("program", programName); // Keep the name for display
@@ -618,8 +606,6 @@ public class OrderSearchRestController extends BaseRestController {
                         programName);
                 if (programSample != null && programSample.getProgram() != null) {
                     String programId = programSample.getProgram().getId();
-                    LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                            "DEBUG: Resolved programId from ProgramSample: " + programId);
                     sampleOrderItems.put("programId", programId);
 
                     // Load questionnaire response if available
@@ -629,13 +615,11 @@ public class OrderSearchRestController extends BaseRestController {
                                     .resource(QuestionnaireResponse.class)
                                     .withId(programSample.getQuestionnaireResponseUuid().toString()).execute();
                             if (qr != null) {
-                                LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                                        "DEBUG: Loaded QuestionnaireResponse: " + qr.getId());
                                 sampleOrderItems.put("additionalQuestions", qr);
                             }
                         } catch (Exception qrEx) {
                             LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
-                                    "DEBUG: Error loading QuestionnaireResponse: " + qrEx.getMessage());
+                                    "Error loading QuestionnaireResponse: " + qrEx.getMessage());
                         }
                     }
                 } else {
@@ -643,8 +627,6 @@ public class OrderSearchRestController extends BaseRestController {
                     List<Program> allPrograms = programService.getAll();
                     for (Program p : allPrograms) {
                         if (p.getProgramName() != null && p.getProgramName().equals(programName)) {
-                            LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                                    "DEBUG: Found program by name lookup: " + p.getId());
                             sampleOrderItems.put("programId", p.getId());
                             break;
                         }
@@ -652,13 +634,10 @@ public class OrderSearchRestController extends BaseRestController {
                 }
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
-                        "DEBUG: Exception resolving program ID: " + e.getMessage());
+                        "Exception resolving program ID: " + e.getMessage());
             }
         } else {
             // No program in observation_history - check program_sample table directly
-            // This handles cases where program was stored differently
-            LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                    "DEBUG: No program in observation_history, checking program_sample table");
             try {
                 // Get all program samples and filter by sample ID
                 List<ProgramSample> programSamples = programSampleService
@@ -666,8 +645,6 @@ public class OrderSearchRestController extends BaseRestController {
                 if (programSamples != null && !programSamples.isEmpty()) {
                     ProgramSample ps = programSamples.get(0);
                     if (ps.getProgram() != null) {
-                        LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                                "DEBUG: Found program in program_sample table: " + ps.getProgram().getId());
                         sampleOrderItems.put("programId", ps.getProgram().getId());
                         sampleOrderItems.put("program", ps.getProgram().getProgramName());
 
@@ -678,28 +655,23 @@ public class OrderSearchRestController extends BaseRestController {
                                         .resource(QuestionnaireResponse.class)
                                         .withId(ps.getQuestionnaireResponseUuid().toString()).execute();
                                 if (qr != null) {
-                                    LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                                            "DEBUG: Loaded QuestionnaireResponse from fallback: " + qr.getId());
                                     sampleOrderItems.put("additionalQuestions", qr);
                                 }
                             } catch (Exception qrEx) {
                                 LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
-                                        "DEBUG: Error loading QuestionnaireResponse from fallback: "
-                                                + qrEx.getMessage());
+                                        "Error loading QuestionnaireResponse: " + qrEx.getMessage());
                             }
                         }
                     }
                 }
             } catch (Exception e) {
                 LogEvent.logError(this.getClass().getName(), "buildSampleOrderItems",
-                        "DEBUG: Exception checking program_sample: " + e.getMessage());
+                        "Exception checking program_sample: " + e.getMessage());
             }
         }
 
         // Payment status
         String paymentStatus = observationHistoryService.getRawValueForSample(ObservationType.PAYMENT_STATUS, sampleId);
-        LogEvent.logInfo(this.getClass().getName(), "buildSampleOrderItems",
-                "DEBUG: paymentStatus: '" + paymentStatus + "'");
         if (paymentStatus != null) {
             sampleOrderItems.put("paymentOptionSelection", paymentStatus);
         }

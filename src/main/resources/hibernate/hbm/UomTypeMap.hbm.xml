@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+"http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+
+<hibernate-mapping>
+    <class
+        name="org.openelisglobal.unitofmeasure.valueholder.UomTypeMap"
+        table="UOM_TYPE_MAP" optimistic-lock="version" dynamic-update="true">
+        <id name="id"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ID" precision="10" scale="0" />
+            <generator
+                class="org.openelisglobal.hibernate.resources.StringSequenceGenerator">
+                <param name="sequence_name">uom_type_map_seq</param>
+            </generator>
+        </id>
+        <version name="lastupdated" column="LASTUPDATED"
+            type="timestamp" access="field" />
+
+        <many-to-one name="unitOfMeasure"
+            class="org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure">
+            <column name="UOM_ID" precision="10" scale="0" not-null="true" />
+        </many-to-one>
+        <property name="uomType" type="java.lang.String">
+            <column name="UOM_TYPE" length="20" not-null="true" />
+        </property>
+    </class>
+</hibernate-mapping>

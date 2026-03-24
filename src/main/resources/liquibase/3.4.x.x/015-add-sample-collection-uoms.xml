@@ -6,7 +6,7 @@
 
   <!-- Add uom_type column to distinguish between result UOMs and sample collection UOMs -->
 
-  <changeSet id="3.4.0.0-add-uom-type-column" author="claude">
+  <changeSet id="3.4.0.0-add-uom-type-column" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
       <not>
         <columnExists tableName="unit_of_measure" columnName="uom_type" schemaName="clinlims"/>
@@ -23,7 +23,7 @@
   </changeSet>
 
   <!-- Set existing UOMs to RESULT type -->
-  <changeSet id="3.4.0.0-set-existing-uoms-to-result" author="claude">
+  <changeSet id="3.4.0.0-set-existing-uoms-to-result" author="reagan-meant">
     <comment>Set existing UOMs to RESULT type</comment>
     <update tableName="unit_of_measure" schemaName="clinlims">
       <column name="uom_type" value="RESULT"/>
@@ -32,7 +32,7 @@
   </changeSet>
 
   <!-- Add sample collection units of measure -->
-  <changeSet id="3.4.0.0-add-sample-collection-uoms" author="claude">
+  <changeSet id="3.4.0.0-add-sample-collection-uoms" author="reagan-meant">
     <preConditions onFail="MARK_RAN">
       <sqlCheck expectedResult="0">
         SELECT COUNT(*) FROM clinlims.unit_of_measure WHERE name = 'mL' AND uom_type = 'SAMPLE_COLLECTION'

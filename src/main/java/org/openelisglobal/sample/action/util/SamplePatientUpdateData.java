@@ -24,7 +24,6 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService;
@@ -557,24 +556,11 @@ public class SamplePatientUpdateData {
 
     public void initSampleData(String sampleXML, String receivedDate, boolean trackPayments,
             SampleOrderItem sampleOrder) {
-        LogEvent.logInfo(this.getClass().getName(), "initSampleData",
-                "DEBUG: sampleOrder.getSampleId(): " + sampleOrder.getSampleId());
         createPopulatedSample(receivedDate, sampleOrder);
-        LogEvent.logInfo(this.getClass().getName(), "initSampleData",
-                "DEBUG: After createPopulatedSample - sample.getId(): " + (sample != null ? sample.getId() : "null"));
-
         addObservations(sampleOrder, trackPayments);
 
         SampleAddService sampleAddService = new SampleAddService(sampleXML, currentUserId, getSample(), receivedDate);
         List<SampleTestCollection> sampleItems = sampleAddService.createSampleTestCollection();
-        LogEvent.logInfo(this.getClass().getName(), "initSampleData",
-                "DEBUG: Created " + sampleItems.size() + " sample items from XML");
-        for (SampleTestCollection stc : sampleItems) {
-            LogEvent.logInfo(this.getClass().getName(), "initSampleData",
-                    "DEBUG: SampleTestCollection - item.sample.id: "
-                            + (stc.item != null && stc.item.getSample() != null ? stc.item.getSample().getId() : "null")
-                            + ", tests count: " + (stc.tests != null ? stc.tests.size() : 0));
-        }
         setSampleItemsTests(sampleItems);
         setSampleAddService(sampleAddService);
     }
@@ -588,9 +574,6 @@ public class SamplePatientUpdateData {
         if (sample != null && sample.getId() != null) {
             existingProgramSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sample.getId()),
                     program.getProgramName());
-            LogEvent.logInfo(this.getClass().getName(), "initProgramQuestions",
-                    "DEBUG: Existing ProgramSample for sampleId " + sample.getId() + ": "
-                            + (existingProgramSample != null ? existingProgramSample.getId() : "null"));
         }
 
         if (existingProgramSample != null) {

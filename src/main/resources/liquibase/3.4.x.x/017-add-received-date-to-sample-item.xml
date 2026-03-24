@@ -6,7 +6,7 @@
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- Add received_date column to sample_item for per-sample lab receipt tracking -->
-    <changeSet id="20260320-001" author="claude">
+    <changeSet id="20260320-001" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="sample_item" schemaName="clinlims" columnName="received_date"/>

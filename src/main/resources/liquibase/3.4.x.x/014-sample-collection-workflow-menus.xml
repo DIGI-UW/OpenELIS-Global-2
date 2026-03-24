@@ -15,7 +15,7 @@
     -->
 
     <!-- Create parent menu for Order Workflow under Sample menu -->
-    <changeSet id="nav-001-create-order-workflow-parent" author="dev-team">
+    <changeSet id="nav-001-create-order-workflow-parent" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -37,7 +37,7 @@
     </changeSet>
 
     <!-- Clear parent action_url so it only expands (doesn't navigate) -->
-    <changeSet id="nav-001a-clear-parent-action-url" author="dev-team">
+    <changeSet id="nav-001a-clear-parent-action-url" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="1">
@@ -52,7 +52,7 @@
     </changeSet>
 
     <!-- Dashboard: Order Dashboard -->
-    <changeSet id="nav-001b-create-order-dashboard-menu" author="dev-team">
+    <changeSet id="nav-001b-create-order-dashboard-menu" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -74,7 +74,7 @@
     </changeSet>
 
     <!-- Step 1: Enter Order -->
-    <changeSet id="nav-002-create-order-enter-menu" author="dev-team">
+    <changeSet id="nav-002-create-order-enter-menu" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -96,7 +96,7 @@
     </changeSet>
 
     <!-- Step 2: Collect Sample -->
-    <changeSet id="nav-003-create-order-collect-menu" author="dev-team">
+    <changeSet id="nav-003-create-order-collect-menu" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -118,7 +118,7 @@
     </changeSet>
 
     <!-- Step 3: Label & Store -->
-    <changeSet id="nav-004-create-order-label-menu" author="dev-team">
+    <changeSet id="nav-004-create-order-label-menu" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -140,7 +140,7 @@
     </changeSet>
 
     <!-- Step 4: QA Review -->
-    <changeSet id="nav-005-create-order-qa-menu" author="dev-team">
+    <changeSet id="nav-005-create-order-qa-menu" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="menu" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
