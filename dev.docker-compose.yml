@@ -58,7 +58,6 @@ services:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
             - SPRING_LIQUIBASE_CONTEXTS=test
-            - FILE_IMPORT_POLLING_ENABLED=false
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
             - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
