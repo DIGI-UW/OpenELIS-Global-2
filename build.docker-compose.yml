@@ -112,15 +112,10 @@ services:
     image: frontend
     build:
       context: ./frontend
-      dockerfile: ./Dockerfile
+      dockerfile: ./Dockerfile.prod
     container_name: openelisglobal-front-end  
-    # ports:
-    #   - 3000:3000
     networks:
         - default
-    volumes:
-        - './frontend/src:/app/src'
-        - './frontend/public:/app/public'
     environment:
         - CHOKIDAR_USEPOLLING=true
     tty: true
@@ -138,7 +133,7 @@ services:
     volumes:
         - certs-vol:/etc/nginx/certs/
         - keys-vol:/etc/nginx/keys/
-        - ./volume/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+        - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
     networks:
         - default  
     restart: unless-stopped
