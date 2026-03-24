@@ -38,12 +38,14 @@ class UserManagementPage {
       allHemaPermissions: "[data-testid='all-permissions-Hematology']",
       allSeroPermissions: "[data-testid='all-permissions-Serology']",
       allImmunoPermissions: "[data-testid='all-permissions-Immunology']",
-      allMolecularPermissions: "[data-testid='all-permissions-Molecular-Biology']",
+      allMolecularPermissions:
+        "[data-testid='all-permissions-Molecular-Biology']",
       allCytoPermissions: "[data-testid='all-permissions-Cytology']",
       allSerologyPermissions: "[data-testid='all-permissions-Serology']",
       allViroPermissions: "[data-testid='all-permissions-Virology']",
       allPathoPermissions: "[data-testid='all-permissions-Pathology']",
-      allImmunoHistoPermissions: "[data-testid='all-permissions-Immunohistochemistry']",
+      allImmunoHistoPermissions:
+        "[data-testid='all-permissions-Immunohistochemistry']",
       loginButton: "[data-cy='loginButton']",
       uncheckActiveUser: "#only-active",
       uncheckAdminUser: "#only-administrator",
