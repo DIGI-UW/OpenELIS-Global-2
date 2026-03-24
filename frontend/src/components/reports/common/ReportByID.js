@@ -14,13 +14,15 @@ function ReportByID(props) {
 
   const handleSubmit = () => {
     if (!nationalId) {
-      setErrors({ nationalId: "National ID is required" });
+      setErrors({
+        nationalId: intl.formatMessage({ id: "error.field.required" }),
+      });
       return;
     }
 
     setLoading(true);
 
-    console.log("National ID:", nationalId);
+
     const baseParams = `report=${props.report}&type=patient`;
     const baseUrl = `${config.serverBaseUrl}/ReportPrint`;
     const url = `${baseUrl}?${baseParams}&patientNumberDirect=${nationalId}`;
