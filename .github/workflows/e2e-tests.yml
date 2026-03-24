@@ -79,7 +79,7 @@ jobs:
   set-pending-status:
     name: Set Pending Status
     needs: setup
-    if: needs.setup.outputs.image_transfer != 'none' && needs.setup.outputs.pr_sha != ''
+    if: needs.setup.outputs.image_transfer != 'none' && needs.setup.outputs.head_sha != ''
     runs-on: ubuntu-latest
     steps:
       - name: Post pending commit status
@@ -89,7 +89,7 @@ jobs:
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ needs.setup.outputs.pr_sha }}',
+              sha: '${{ needs.setup.outputs.head_sha }}',
               state: 'pending',
               context: '03 Checkpoint - E2E',
               description: 'E2E tests running...',
@@ -542,7 +542,7 @@ jobs:
   # workflow_run checks don't automatically appear on PRs.
   report-status:
     name: Report Status
-    if: always() && needs.setup.outputs.pr_sha != ''
+    if: always() && needs.setup.outputs.head_sha != ''
     needs: [setup, e2e-gate]
     runs-on: ubuntu-latest
     steps:
@@ -553,19 +553,21 @@ jobs:
             const gateResult = '${{ needs.e2e-gate.result }}';
             const imageTransfer = '${{ needs.setup.outputs.image_transfer }}';
 
-            // If build produced no usable images, report as skipped
+            let state, description;
             if (imageTransfer === 'none') {
-              return;
+              state = 'failure';
+              description = 'E2E build failed — no images produced';
+            } else if (gateResult === 'success') {
+              state = 'success';
+              description = 'E2E tests passed';
+            } else {
+              state = 'failure';
+              description = 'E2E tests failed';
             }
-
-            const state = gateResult === 'success' ? 'success' : 'failure';
-            const description = state === 'success'
-              ? 'E2E tests passed'
-              : 'E2E tests failed';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ needs.setup.outputs.pr_sha }}',
+              sha: '${{ needs.setup.outputs.head_sha }}',
               state,
               context: '03 Checkpoint - E2E',
               description,
