@@ -421,6 +421,7 @@ jobs:
     with:
       build_run_id: ${{ needs.setup.outputs.build_run_id }}
       is_fork: ${{ needs.setup.outputs.is_fork }}
+      head_sha: ${{ needs.setup.outputs.head_sha }}
     secrets: inherit
 
   # ─── Cypress (Deprecated) ───────────────────────────────────────────────────
@@ -437,6 +438,7 @@ jobs:
     with:
       build_run_id: ${{ needs.setup.outputs.build_run_id }}
       is_fork: ${{ needs.setup.outputs.is_fork }}
+      head_sha: ${{ needs.setup.outputs.head_sha }}
     secrets: inherit
 
   # ─── Gate ───────────────────────────────────────────────────────────────────

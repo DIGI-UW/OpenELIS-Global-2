@@ -45,6 +45,7 @@ services:
       - "12000:12001"
     volumes:
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
