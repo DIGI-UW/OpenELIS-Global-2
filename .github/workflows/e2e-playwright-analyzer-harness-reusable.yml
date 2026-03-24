@@ -16,6 +16,11 @@ on:
         required: false
         type: string
         default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures harness uses PR's compose/test files, not develop)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -40,6 +45,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_sha || github.sha }}
           submodules: recursive
 
       - name: Set up Node.js
