@@ -474,4 +474,3 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertTrue(result == null || result instanceof Result);
     }
 }
-
