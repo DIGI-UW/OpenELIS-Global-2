@@ -81,7 +81,6 @@ const SamplesCollectionSection = ({
   // Handle print labels for a specific sample
   const handlePrintLabels = (sampleIndex) => {
     // TODO: Implement label printing
-    console.log("Print labels for sample", sampleIndex);
   };
 
   // Handle add new sample
@@ -101,7 +100,6 @@ const SamplesCollectionSection = ({
   // Handle print more sample labels
   const handlePrintMoreLabels = () => {
     // TODO: Implement printing additional labels
-    console.log("Print more sample labels");
   };
 
   return (

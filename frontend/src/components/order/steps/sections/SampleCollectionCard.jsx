@@ -396,7 +396,6 @@ const SampleCollectionCard = ({
           className="nce-link"
           onClick={() => {
             // TODO: Navigate to NCE form
-            console.log("Navigate to NCE for sample", sampleIndex);
           }}
         >
           <FormattedMessage

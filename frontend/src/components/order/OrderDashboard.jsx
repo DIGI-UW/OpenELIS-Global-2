@@ -139,11 +139,8 @@ const OrderDashboardContent = () => {
   const handleContinueOrder = async (order) => {
     // Load the order into context, then navigate to the appropriate step
     try {
-      console.log("handleContinueOrder: Loading order", order.labNumber);
-      const result = await loadOrder(order.labNumber, false); // false = editable
-      console.log("handleContinueOrder: loadOrder result", result);
+      await loadOrder(order.labNumber, false); // false = editable
       const nextStep = getNextStep(order);
-      console.log("handleContinueOrder: navigating to", `/order/${nextStep}`);
       history.push(`/order/${nextStep}`);
     } catch (error) {
       console.error("handleContinueOrder: Error loading order", error);
