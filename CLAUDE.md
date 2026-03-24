@@ -105,8 +105,8 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 
 ### Post-Compaction Context Recovery (MANDATORY)
 
-**After any context compaction or session resume**, run these commands
-FIRST — before reading files, editing code, or starting analysis:
+**After any context compaction or session resume**, run these commands FIRST —
+before reading files, editing code, or starting analysis:
 
 ```bash
 # 1. Discover all active worktrees and their branches
