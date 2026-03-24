@@ -32,19 +32,9 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
     }
 
     @Test
-    public void getAlertNotificationConfig_ShouldReturnAllExpectedAlertTypes() throws Exception {
+    public void saveThenGetAlertNotificationConfig_ShouldReturnAllExpectedAlertTypes() throws Exception {
         Map<String, Object> payload = createConfigPayload(false, true, false, 20, "get@lab.com");
-
-        mockMvc.perform(post(BASE_PATH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(payload)))
-            .andExpect(status().isOk());
-
-        MvcResult result = mockMvc.perform(get(BASE_PATH).accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        JsonNode root = saveAndFetchConfig(payload);
 
         assertNotNull("Response body should exist", root);
         assertNotNull("alertConfigs should exist", root.get("alertConfigs"));
@@ -81,17 +71,7 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
     @Test
     public void saveThenGetAlertNotificationConfig_ShouldPersistUpdatedValues() throws Exception {
         Map<String, Object> payload = createConfigPayload(true, false, true, 45, "alerts@openelis.org");
-
-        mockMvc.perform(post(BASE_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isOk());
-
-        MvcResult result = mockMvc.perform(get(BASE_PATH).accept(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andReturn();
-
-        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        JsonNode root = saveAndFetchConfig(payload);
 
         assertEquals(
                 "FREEZER_TEMPERATURE_ALERT email should be true",
@@ -104,6 +84,19 @@ public class AlertNotificationConfigRestControllerIntegrationTest extends BaseWe
         assertEquals("Escalation should be enabled", true, root.path("escalationEnabled").asBoolean());
         assertEquals("Escalation delay should be updated", 45, root.path("escalationDelayMinutes").asInt());
         assertEquals("Supervisor email should be updated", "alerts@openelis.org", root.path("supervisorEmail").asText());
+    }
+
+    private JsonNode saveAndFetchConfig(Map<String, Object> payload) throws Exception {
+        mockMvc.perform(post(BASE_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(payload)))
+                .andExpect(status().isOk());
+
+        MvcResult result = mockMvc.perform(get(BASE_PATH).accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
     private Map<String, Object> createConfigPayload(
