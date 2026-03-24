@@ -51,10 +51,13 @@ jobs:
         id: context
         run: |
           if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
-            echo "No build context artifact — build likely failed. Skipping."
+            echo "No build context artifact — build likely failed."
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
             echo "image_transfer=none" >> "$GITHUB_OUTPUT"
             echo "event_name=unknown" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            echo "pr_sha=" >> "$GITHUB_OUTPUT"
+            echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -66,6 +69,11 @@ jobs:
           PR_SHA="$(cat /tmp/e2e-build-context/pr_sha 2>/dev/null || echo '')"
           HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
 
+          # For push/release events, head_sha is empty — fall back to the workflow_run SHA
+          if [ -z "$HEAD_SHA" ]; then
+            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          fi
+
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
           echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
           echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
@@ -73,7 +81,7 @@ jobs:
           echo "pr_sha=$PR_SHA" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
-          echo "Build context: is_fork=$IS_FORK image_transfer=$IMAGE_TRANSFER event=$EVENT_NAME pr=#$PR_NUMBER"
+          echo "Build context: is_fork=$IS_FORK image_transfer=$IMAGE_TRANSFER event=$EVENT_NAME pr=#$PR_NUMBER head_sha=$HEAD_SHA"
 
   # ─── Set pending status on PR ───────────────────────────────────────────────
   set-pending-status:
