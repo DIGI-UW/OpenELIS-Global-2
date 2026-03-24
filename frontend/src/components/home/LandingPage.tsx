@@ -122,12 +122,12 @@ const LandingPage: React.FC = () => {
             boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
           }}
         >
-          <h2>Welcome!</h2>
-          <p>Please select a unit to continue</p>
+          <h2>{intl.formatMessage({ id: "landing.welcome" })}</h2>
+          <p>{intl.formatMessage({ id: "landing.selectUnit" })}</p>
           <Form>
             <TextInput
               id="department-search"
-              labelText="Search for a department"
+              labelText={intl.formatMessage({ id: "landing.searchDepartment" })}
               value={searchTerm}
               onChange={handleSearch}
               light
@@ -182,7 +182,7 @@ const LandingPage: React.FC = () => {
               disabled={!selectedDepartment}
               style={{ marginTop: "1rem", width: "100%", maxWidth: "100%" }}
             >
-              Continue
+              {intl.formatMessage({ id: "landing.continue" })}
             </Button>
           </Form>
         </Tile>
