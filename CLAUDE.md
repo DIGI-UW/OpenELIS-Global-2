@@ -58,6 +58,13 @@ mvn clean install -DskipTests
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
 
+**Exception — CI shared-build root project:** The E2E `shared-build` step in
+both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
+`-Dmaven.test.skip=true` on the root project build because the `test-jar`
+artifact must be produced for plugin compilation (GenericASTM, GenericFile,
+GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
+both flags.
+
 ### Pre-Commit Formatting (MANDATORY)
 
 **MUST run BEFORE EVERY commit:**
@@ -107,6 +114,22 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 > See [AGENTS.md](AGENTS.md) "E2E Tests (Playwright)" for the full execution
 > contract, scripts, and project descriptions. Key invariant: always use
 > `npm run pw:test` scripts, never raw `npx playwright test`.
+
+### Playwright Anti-Patterns (CRITICAL)
+
+**DO NOT** introduce these patterns — they cause flaky tests:
+
+1. **`response.ok()` as pass/fail** — Use `waitForResponse` for sync only, then
+   assert on visible UI state (`toBeVisible`, `toHaveURL`, `toHaveText`)
+2. **`{ force: true }` on Carbon inputs** — Click the `<label>` instead; Carbon
+   hides `<input>` elements with `visually-hidden`
+3. **`.catch(() => false)` on `isVisible()`** — `isVisible()` already returns
+   boolean; the catch hides real errors
+4. **`isVisible({ timeout: N })`** — The timeout parameter is deprecated and
+   ignored; use `expect(el).toBeVisible({ timeout: N })` for waiting
+
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ---
 

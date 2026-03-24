@@ -1,4 +1,5 @@
 import { test as setup, expect } from "@playwright/test";
+import { SHORT_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 const AUTH_FILE = "playwright/.auth/user.json";
 
@@ -22,7 +23,7 @@ const AUTH_FILE = "playwright/.auth/user.json";
  *     and add it to the browser context with path=/ so all routes work.
  */
 setup("authenticate", async ({ page, request, context }, testInfo) => {
-  testInfo.setTimeout(60_000);
+  testInfo.setTimeout(NAV_TIMEOUT);
 
   const username = process.env.TEST_USER;
   const password = process.env.TEST_PASS;
@@ -36,25 +37,29 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   }
 
   // ── Step 1: Backend health check ──────────────────────────────
-  let backendReady = false;
-  for (let attempt = 1; attempt <= 12; attempt++) {
-    try {
-      const health = await request.get("/health", { timeout: 5_000 });
-      if (health.ok()) {
-        backendReady = true;
-        break;
-      }
-    } catch {
-      // connection refused or timeout
-    }
-    if (attempt % 4 === 0) {
-      console.log(
-        `  auth-setup: waiting for backend... (${attempt * 5}s elapsed)`,
-      );
-    }
-    await page.waitForTimeout(5_000);
-  }
-  if (!backendReady) {
+  const healthCheckResult = await expect
+    .poll(
+      async () => {
+        try {
+          const health = await request.get("/health", {
+            timeout: SHORT_TIMEOUT,
+          });
+          return health.ok();
+        } catch {
+          return false;
+        }
+      },
+      {
+        timeout: NAV_TIMEOUT,
+        intervals: [1_000, 2_000, 5_000],
+        message: "Waiting for backend /health endpoint to become ready",
+      },
+    )
+    .toBeTruthy()
+    .then(() => true)
+    .catch(() => false);
+
+  if (!healthCheckResult) {
     throw new Error(
       "Backend health check failed after 60s.\n" +
         "  Ensure the OE container is running and accessible at the baseURL.",
@@ -117,11 +122,12 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   }
 
   // Add the cookie to the browser context with root path
+  const host = new URL(process.env.BASE_URL || "https://localhost").hostname;
   await context.addCookies([
     {
       name: "JSESSIONID",
       value: jsessionId,
-      domain: "localhost",
+      domain: host,
       path: "/",
       httpOnly: true,
       secure: true,
@@ -131,7 +137,9 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
 
   // ── Step 4: Verify authenticated state ────────────────────────
   await page.goto("analyzers", { waitUntil: "domcontentloaded" });
-  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
+    timeout: LONG_TIMEOUT,
+  });
 
   // ── Step 5: Save session ──────────────────────────────────────
   await page.context().storageState({ path: AUTH_FILE });
