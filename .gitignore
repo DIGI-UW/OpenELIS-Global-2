@@ -63,14 +63,12 @@ volume/lucene/*
 # AI agent directories -- tracked config (persists across branches/worktrees)
 # .cursor/rules/           -> tracked (Cursor rules for agent guardrails)
 # .cursor/worktrees.json   -> tracked (Cursor worktree setup config)
-# .claude/settings.local.json -> tracked (Claude Code permissions + prefs)
 
 # Ignore everything else in .cursor/ and .claude/
 .cursor/*
 !.cursor/rules/
 !.cursor/worktrees.json
 .claude/*
-!.claude/settings.local.json
 **/*checksum*.properties
 **/*checksums*.properties
 
