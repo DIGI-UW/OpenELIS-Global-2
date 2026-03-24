@@ -553,15 +553,17 @@ jobs:
             const gateResult = '${{ needs.e2e-gate.result }}';
             const imageTransfer = '${{ needs.setup.outputs.image_transfer }}';
 
-            // If build produced no usable images, report as skipped
+            let state, description;
             if (imageTransfer === 'none') {
-              return;
+              state = 'failure';
+              description = 'E2E build failed — no images produced';
+            } else if (gateResult === 'success') {
+              state = 'success';
+              description = 'E2E tests passed';
+            } else {
+              state = 'failure';
+              description = 'E2E tests failed';
             }
-
-            const state = gateResult === 'success' ? 'success' : 'failure';
-            const description = state === 'success'
-              ? 'E2E tests passed'
-              : 'E2E tests failed';
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
