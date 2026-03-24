@@ -36,7 +36,7 @@ class UserManagementPage {
       allPermissions: "[data-testid='all-permissions-All-Lab-Units']",
       allBioPermissions: "[data-testid='all-permissions-Biochemistry']",
       allHemaPermissions: "[data-testid='all-permissions-Hematology']",
-      allSeroPermissions: "[data-testid='all-permissions-Serology']",
+      allSeroPermissions: "[data-testid='all-permissions-Serology-Immunology']",
       allImmunoPermissions: "[data-testid='all-permissions-Immunology']",
       allMolecularPermissions:
         "[data-testid='all-permissions-Molecular-Biology']",
@@ -160,6 +160,10 @@ class UserManagementPage {
   //All Lab Units
   addNewPermission() {
     cy.get(this.selectors.addNewPermission).click();
+  }
+
+  selectTestSection(sectionName) {
+    cy.get('select[id^="select-"]').last().select(sectionName);
   }
 
   allPermissions() {
