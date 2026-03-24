@@ -1,3 +1,6 @@
+# Build-only workflow for E2E pipeline. Builds Docker images and pushes to GHCR.
+# Tests run in the separate "E2E / Tests" workflow (triggered via workflow_run).
+# This split ensures fork and non-fork PRs see identical CI checks.
 name: 03 - E2E
 
 on:
@@ -13,18 +16,15 @@ permissions:
   contents: read
   packages: write
 
-env:
-  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   # ─── Shared Build ───────────────────────────────────────────────────────────
-  # Single image producer for the entire E2E run. All downstream jobs
-  # (Playwright core, analyzer harness shards, Cypress shards) pull from
-  # the image-map artifact this job publishes.
+  # Single image producer for the entire E2E run. Builds all Docker images,
+  # pushes to GHCR (non-fork) or signals fork-fallback. Downstream test jobs
+  # run in the "E2E / Tests" workflow_run workflow.
   shared-build:
     name: Shared Build
     runs-on: ubuntu-latest
@@ -146,35 +146,52 @@ jobs:
             echo "Pushed image mappings:"
             cat /tmp/e2e-image-map.txt
           elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            # Fork PRs can't push to GHCR (read-only token) — delegate to workflow_run
+            # Fork PRs can't push to GHCR (read-only token) — tests will rebuild via workflow_run
             echo "mode=fork-fallback" >> "$GITHUB_OUTPUT"
-            echo "::warning::GHCR push denied (fork PR) — E2E tests will run via 'E2E (Fork PR)' workflow"
-
-            # Write placeholder image maps so artifact uploads don't fail
-            for img in $(cat /tmp/e2e-images-full.txt); do printf "%s|fork-pending\n" "$img"; done > /tmp/e2e-image-map.txt
-            for img in $(cat /tmp/e2e-images-base.txt); do printf "%s|fork-pending\n" "$img"; done > /tmp/e2e-image-map-base.txt
+            echo "::warning::GHCR push denied (fork PR) — E2E tests will rebuild from cache in 'E2E / Tests' workflow"
           else
             echo "::error::GHCR push failed (not a fork PR — this is a real failure)"
             exit 1
           fi
 
-      - name: Prepare fork signal data
-        if: steps.push-images.outputs.mode == 'fork-fallback' && github.event_name == 'pull_request'
+      - name: Prepare build context data
+        if: always() && steps.push-images.outputs.mode != ''
         run: |
-          mkdir -p /tmp/e2e-fork-signal
-          echo "${{ github.event.pull_request.number }}" > /tmp/e2e-fork-signal/pr_number
-          echo "${{ github.sha }}" > /tmp/e2e-fork-signal/sha
-          echo "${{ github.event.pull_request.head.sha }}" > /tmp/e2e-fork-signal/head_sha
+          mkdir -p /tmp/e2e-build-context
+          echo "${{ steps.push-images.outputs.mode }}" > /tmp/e2e-build-context/image_transfer
+          echo "${{ github.event_name }}" > /tmp/e2e-build-context/event_name
 
-      - name: Upload fork signal (fork PRs only)
-        if: steps.push-images.outputs.mode == 'fork-fallback'
+          IS_FORK="false"
+          PR_NUMBER=""
+          PR_SHA=""
+          HEAD_SHA=""
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            PR_SHA="${{ github.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+              IS_FORK="true"
+            fi
+          fi
+
+          echo "$IS_FORK" > /tmp/e2e-build-context/is_fork
+          echo "$PR_NUMBER" > /tmp/e2e-build-context/pr_number
+          echo "$PR_SHA" > /tmp/e2e-build-context/pr_sha
+          echo "$HEAD_SHA" > /tmp/e2e-build-context/head_sha
+
+          echo "Build context: mode=${{ steps.push-images.outputs.mode }} event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
+
+      - name: Upload build context for test workflow
+        if: always() && steps.push-images.outputs.mode != ''
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-fork-signal
-          path: /tmp/e2e-fork-signal/
+          name: e2e-build-context
+          path: /tmp/e2e-build-context/
           retention-days: 1
 
       - name: Upload plugin jars artifact
+        if: steps.push-images.outputs.mode == 'ghcr'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-plugin-jars
@@ -183,6 +200,7 @@ jobs:
           retention-days: 1
 
       - name: Upload Docker image map artifact
+        if: steps.push-images.outputs.mode == 'ghcr'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-image-map
@@ -191,284 +209,10 @@ jobs:
           retention-days: 1
 
       - name: Upload base Docker image map artifact
+        if: steps.push-images.outputs.mode == 'ghcr'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt
           if-no-files-found: error
           retention-days: 1
-
-  # ─── Playwright Core (sharded) ──────────────────────────────────────────────
-  playwright-core:
-    name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
-    needs: shared-build
-    if: needs.shared-build.outputs.image_transfer != 'fork-fallback'
-    runs-on: ubuntu-latest
-    environment: e2e
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - shard_index: 1
-            shard_total: 2
-          - shard_index: 2
-            shard_total: 2
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Enforce Playwright guards
-        run: npm run pw:guard
-        working-directory: frontend
-
-      - name: Restore Playwright browser cache
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-        working-directory: frontend
-
-      - name: Prepare .env from template
-        run: cp .env.example .env
-
-      - name: Download Docker image map artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map-base
-          path: /tmp/e2e-image-map
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull and retag prebuilt compose images
-        run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
-
-      - name: Start OpenELIS containers (no rebuild)
-        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
-
-      - name: Wait for application to be ready
-        run: |
-          echo "Waiting for application to respond..."
-          timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
-          echo "Application is ready"
-
-      - name: Load E2E foundational + demo patient data (order entry / OGC-284)
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/e2e-foundational-data.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/analyzer-harness-e2e.sql
-
-      - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/fixtures/file-import-e2e.sql
-
-      - name: Create analyzer import directories in container
-        run: |
-          docker exec openelisglobal-webapp mkdir -p \
-            /data/analyzer-imports/e2e-qs5/incoming \
-            /data/analyzer-imports/e2e-qs7/incoming \
-            /data/analyzer-imports/e2e-fluorocycler/incoming
-
-      - name: Run Playwright tests
-        run: npm run pw:test -- --project=core-app --project=core-demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
-        working-directory: frontend
-        env:
-          CI: true
-          BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS }}
-
-      - name: Upload blob report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-blob-report-${{ matrix.shard_index }}
-          path: frontend/blob-report
-          if-no-files-found: ignore
-          retention-days: 1
-
-      - name: Upload failure screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-screenshots-${{ matrix.shard_index }}
-          path: frontend/test-results/**/test-failed-*.png
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload test traces
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-traces-${{ matrix.shard_index }}
-          path: frontend/test-results/**/trace.zip
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Dump docker logs on failure
-        if: failure()
-        uses: jwalton/gh-docker-logs@v2
-        with:
-          tail: "100"
-
-  # ─── Analyzer Harness ──────────────────────────────────────────────────────
-  analyzer-harness:
-    name: Analyzer Harness
-    if: ${{ needs.shared-build.outputs.image_transfer != 'fork-fallback' && (github.event_name != 'pull_request' || !contains(github.event.pull_request.labels.*.name, 'skip-analyzer-e2e')) }}
-    needs: shared-build
-    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
-    secrets: inherit
-
-  # ─── Cypress (Deprecated) ──────────────────────────────────────────────────
-  cypress:
-    name: Cypress
-    needs: shared-build
-    if: needs.shared-build.outputs.image_transfer != 'fork-fallback'
-    uses: ./.github/workflows/e2e-cypress-deprecated.yml
-    secrets: inherit
-
-  # ─── Gate ──────────────────────────────────────────────────────────────────
-  e2e-gate:
-    name: 03 Checkpoint - E2E
-    if: always()
-    needs: [shared-build, playwright-core, analyzer-harness, cypress]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Enforce all E2E results
-        run: |
-          # Fork PRs: E2E tests run in the separate 'E2E (Fork PR)' workflow
-          if [[ "${{ needs.shared-build.outputs.image_transfer }}" == "fork-fallback" ]]; then
-            echo "Fork PR detected — E2E tests delegated to 'E2E (Fork PR)' workflow_run."
-            echo "See the 'E2E (Fork PR)' check on this PR for results."
-            exit 0
-          fi
-
-          if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
-            echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.analyzer-harness.result }}" != "success" && "${{ needs.analyzer-harness.result }}" != "skipped" ]]; then
-            echo "Analyzer Harness failed: ${{ needs.analyzer-harness.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.cypress.result }}" != "success" ]]; then
-            echo "Cypress failed: ${{ needs.cypress.result }}"
-            exit 1
-          fi
-          echo "E2E gate passed."
-
-  publish-images:
-    name: Publish ${{ matrix.dockerhub_suffix || 'backend' }}
-    if: >-
-      ${{
-        always() &&
-        needs.e2e-gate.result == 'success' &&
-        github.repository == 'DIGI-UW/OpenELIS-Global-2' &&
-        (github.event_name == 'push' || github.event_name == 'release')
-      }}
-    needs: [shared-build, e2e-gate]
-    runs-on: ubuntu-latest
-    environment: e2e
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - compose_image: openelisglobal-webapp.build
-            dockerhub_suffix: backend
-            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2
-          - compose_image: frontend
-            dockerhub_suffix: frontend
-            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-frontend
-          - compose_image: openelisglobal-proxy.build
-            dockerhub_suffix: proxy
-            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-proxy
-          - compose_image: external-fhir-api.build
-            dockerhub_suffix: fhir
-            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-fhir
-          - compose_image: openelisglobal-databse.build
-            dockerhub_suffix: database
-            dockerhub_image: ${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2-database
-    steps:
-      - name: Download Docker image map artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map
-          path: /tmp/e2e-image-map
-
-      - name: Resolve GHCR source image for matrix target
-        id: source
-        run: |
-          SOURCE_GHCR_IMAGE="$(awk -F'|' -v src='${{ matrix.compose_image }}' '$1 == src {print $2; exit}' /tmp/e2e-image-map/e2e-image-map.txt)"
-          if [ -z "$SOURCE_GHCR_IMAGE" ]; then
-            echo "No GHCR mapping found for compose image: ${{ matrix.compose_image }}"
-            echo "Available mappings:"
-            cat /tmp/e2e-image-map/e2e-image-map.txt
-            exit 1
-          fi
-          echo "ghcr_source=$SOURCE_GHCR_IMAGE" >> "$GITHUB_OUTPUT"
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          registry: docker.io
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ matrix.dockerhub_image }}
-
-      - name: Pull tested image from GHCR
-        run: docker pull "${{ steps.source.outputs.ghcr_source }}"
-
-      - name: Retag and publish tested image to DockerHub
-        run: |
-          while IFS= read -r target_tag; do
-            [ -z "$target_tag" ] && continue
-            echo "Publishing $target_tag from ${{ steps.source.outputs.ghcr_source }}"
-            docker tag "${{ steps.source.outputs.ghcr_source }}" "$target_tag"
-            docker push "$target_tag"
-          done <<< "${{ steps.meta.outputs.tags }}"
