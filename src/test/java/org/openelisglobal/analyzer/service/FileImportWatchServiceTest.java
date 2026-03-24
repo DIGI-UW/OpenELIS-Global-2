@@ -36,6 +36,7 @@ public class FileImportWatchServiceTest {
     public void setUp() throws Exception {
         tempBaseDir = Files.createTempDirectory("file-import-watch-test");
         ReflectionTestUtils.setField(fileImportWatchService, "baseImportDir", tempBaseDir.toString());
+        ReflectionTestUtils.setField(fileImportWatchService, "pollingEnabled", true);
     }
 
     @Test
