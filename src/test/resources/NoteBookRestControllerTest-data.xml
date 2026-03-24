@@ -1,0 +1,13 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <notebook
+            id="1"
+            title="Integration Test Notebook"
+            objective="Testing"
+            status="DRAFT"
+            is_template="0"
+            date_created="2026-03-24 10:00:00"
+            last_updated="2026-03-24 10:00:00"
+            creator_id="1"
+    />
+</dataset>

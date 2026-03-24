@@ -79,8 +79,8 @@ services:
             - db.openelis.org
             - certs
         ports:
-            - "8081:8080"
-            - "8444:8443"
+            - "9081:8080"
+            - "9445:8443"
         networks:
             - default
         restart: always
