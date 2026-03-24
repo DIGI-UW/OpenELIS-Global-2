@@ -68,17 +68,19 @@ services:
         -  key_trust-store-volume:/etc/openelis-global
         - ./volume/lucene:/var/lib/lucene_index
         - ./volume/plugins/:/var/lib/openelis-global/plugins
-        - ./volume/prorams/:/var/lib/openelis-global/programs
+        - ./volume/programs/:/var/lib/openelis-global/programs
         - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
         - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
         - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
         - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
         - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
         - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
-        - ./volume/configuration:/var/lib/openelis-global/configuration
+        # NOTE: Do NOT bind-mount ./volume/configuration here — it overrides the
+        # container's built-in config templates and causes permission errors on
+        # checksum files. The container manages its own /var/lib/.../configuration.
         - ./volume/branding:/var/lib/openelis-global/branding
         - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
-        - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
+        - ./volume/analyzer-imports:/data/analyzer-imports
     secrets:
         - source: common.properties
     healthcheck:
