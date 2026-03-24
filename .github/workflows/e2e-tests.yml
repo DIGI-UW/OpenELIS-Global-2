@@ -418,6 +418,9 @@ jobs:
         (needs.setup.outputs.event_name != 'pull_request' || true)
       }}
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
+    with:
+      build_run_id: ${{ needs.setup.outputs.build_run_id }}
+      is_fork: ${{ needs.setup.outputs.is_fork }}
     secrets: inherit
 
   # ─── Cypress (Deprecated) ───────────────────────────────────────────────────
@@ -431,6 +434,9 @@ jobs:
         (needs.fork-rebuild.result == 'success' || needs.fork-rebuild.result == 'skipped')
       }}
     uses: ./.github/workflows/e2e-cypress-deprecated.yml
+    with:
+      build_run_id: ${{ needs.setup.outputs.build_run_id }}
+      is_fork: ${{ needs.setup.outputs.is_fork }}
     secrets: inherit
 
   # ─── Gate ───────────────────────────────────────────────────────────────────

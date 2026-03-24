@@ -6,10 +6,22 @@ name: E2E / Cypress (Deprecated)
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      build_run_id:
+        description: "Run ID of the build workflow (for cross-run artifact download). Empty = same run."
+        required: false
+        type: string
+        default: ""
+      is_fork:
+        description: "Whether this is a fork PR (artifacts in same run from fork-rebuild)"
+        required: false
+        type: string
+        default: "false"
 
 permissions:
   contents: read
   packages: read
+  actions: read
 
 jobs:
   e2e-cypress:
@@ -94,7 +106,17 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download Docker image map artifact
+      - name: Download image map from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map-base
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map-base
