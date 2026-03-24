@@ -68,9 +68,8 @@ services:
     environment:
       - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
-      # file.import.poll.interval: harness-only fast poll; production default remains in application.properties.
-      # MUST stay aligned with FILE_IMPORT_POLL_MS in e2e-playwright-analyzer-harness-reusable.yml.
-      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass} -Dfile.import.poll.interval=5000
+      # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
+      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
       - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro

@@ -193,7 +193,7 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
-          # Must match -Dfile.import.poll.interval on oe.openelis.org (ci.analyzer-harness.yml)
+          # Must match bridge.file.pollIntervalMs (bridge default: 5000ms)
           FILE_IMPORT_POLL_MS: "5000"
           FILE_IMPORT_DROP_BUFFER_MS: "45000"
 

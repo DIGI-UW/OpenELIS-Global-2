@@ -60,9 +60,11 @@ services:
       - "12000:12001" # ASTM listen port (inbound from analyzers)
     volumes:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - ./volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
+      - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
@@ -101,6 +103,7 @@ services:
       analyzer-net:
     volumes:
       - serial-vol:/dev/serial
+      - ./volume/analyzer-imports:/data/analyzer-imports
 
   # Proxy needs both networks to reach OE.
   proxy:
