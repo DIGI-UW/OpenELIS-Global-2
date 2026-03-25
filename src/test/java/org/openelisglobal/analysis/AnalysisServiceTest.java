@@ -375,6 +375,75 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("resultfile.txt", updatedAnalysis.getResultFile().getFileName());
     }
 
+    @Test
+    public void getAnalysisType_shouldReturnEmpty_whenAnalysisIsNull() {
+        String result = aService.getAnalysisType(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getAnalysisType_shouldReturnCorrectValue() {
+        Analysis analysis = new Analysis();
+        analysis.setAnalysisType("MANUAL");
+
+        String result = aService.getAnalysisType(analysis);
+
+        Assert.assertEquals("MANUAL", result);
+    }
+
+    @Test
+    public void getStatusId_shouldReturnEmpty_whenNull() {
+        String result = aService.getStatusId(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getStatusId_shouldReturnValue() {
+        Analysis analysis = new Analysis();
+        analysis.setStatusId("1");
+
+        String result = aService.getStatusId(analysis);
+
+        Assert.assertEquals("1", result);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnFalse_whenNull() {
+        Boolean result = aService.getTriggeredReflex(null);
+        Assert.assertFalse(result);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnTrue() {
+        Analysis analysis = new Analysis();
+        analysis.setTriggeredReflex(true);
+
+        Boolean result = aService.getTriggeredReflex(analysis);
+
+        Assert.assertTrue(result);
+    }
+
+    @Test
+    public void getCompletedDateForDisplay_shouldReturnEmpty_whenNull() {
+        String result = aService.getCompletedDateForDisplay(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnEmpty_whenAnalysisNull() {
+        String result = aService.getMethodId(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnEmpty_whenMethodNull() {
+        Analysis analysis = new Analysis();
+        analysis.setMethod(null);
+
+        String result = aService.getMethodId(analysis);
+        Assert.assertEquals("", result);
+    }
+
     public Analysis createDemoAnalysis() {
         Analysis analysis1 = aService.getAnalysisById("2");
         aService.delete(analysis1);
