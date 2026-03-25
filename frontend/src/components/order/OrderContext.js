@@ -237,8 +237,11 @@ export const OrderProvider = ({ children }) => {
                 ...SampleOrderFormValues.patientProperties,
                 ...(response.patientProperties || {}),
                 ...(response.orderData?.patientProperties || {}),
+                // Keep patient status from response or default to NO_ACTION for subsequent saves
+                // Only set UPDATE when patient data has actually been modified
+                patientUpdateStatus:
+                  response.patientProperties?.patientUpdateStatus || "NO_ACTION",
               },
-              patientUpdateStatus: "UPDATE",
               sampleOrderItems: {
                 ...SampleOrderFormValues.sampleOrderItems,
                 ...(response.sampleOrderItems || {}),
@@ -497,6 +500,19 @@ export const OrderProvider = ({ children }) => {
                     if (response.samples) {
                       setSamplesState(response.samples);
                     }
+                    // CRITICAL: Update patientUpdateStatus to NO_ACTION after first save
+                    // This prevents "stale state" errors when saving again (patient already exists)
+                    setOrderDataState((prev) => ({
+                      ...prev,
+                      patientProperties: {
+                        ...prev.patientProperties,
+                        patientUpdateStatus: "NO_ACTION",
+                        // Also update patientPK if available
+                        patientPK:
+                          response.patientProperties?.patientPK ||
+                          prev.patientProperties?.patientPK,
+                      },
+                    }));
                   }
                   resolve({ success: true });
                 },
