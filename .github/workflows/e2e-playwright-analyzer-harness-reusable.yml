@@ -137,6 +137,10 @@ jobs:
       - name: Create analyzer import bind mount directories
         run: |
           mkdir -p projects/analyzer-harness/volume/analyzer-imports
+          # Pre-create incoming/ dirs so the bridge doesn't have to (avoids async timeout)
+          for slug in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+            mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
+          done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
@@ -163,14 +167,14 @@ jobs:
           # Bridge creates incoming/ dirs asynchronously after seed registration.
           # Wait for all expected directories to appear, then fix permissions.
           for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
-            timeout 30 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
+            timeout 120 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
             echo "Found: $dir/incoming"
           done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Verify analyzer test mappings exist (prevent unmapped-result race)
         run: |
-          for analyzer in "Cepheid GeneXpert (ASTM Mode)" "QuantStudio 5" "QuantStudio 7" "FluoroCycler XT"; do
+          for analyzer in "Cepheid GeneXpert (ASTM Mode)" "QuantStudio 5" "QuantStudio 7" "FluoroCycler XT" "Mindray BC-5380" "Mindray BS-200" "Mindray BS-300"; do
             MAPPINGS=$(curl -sk -u "$TEST_USER:$TEST_PASS" \
               "$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers" | \
               python3 -c "import json,sys; data=json.load(sys.stdin); a=[x for x in data if x.get('name')=='$analyzer']; print(len(a[0].get('testMappings',[])) if a else 0)" 2>/dev/null || echo "0")
