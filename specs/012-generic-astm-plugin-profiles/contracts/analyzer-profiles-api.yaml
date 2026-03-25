@@ -347,7 +347,11 @@ paths:
               properties:
                 accessionNumber:
                   type: string
-                  description: Sample accession number to send orders for
+                  description: >
+                    Sample accession number to send orders for. Service builds
+                    ASTM H/P/O/L from pending analyses for this accession
+                    (`ServiceRequest` where available, otherwise `sample` +
+                    `analysis` records).
                   maxLength: 60
       responses:
         "201":

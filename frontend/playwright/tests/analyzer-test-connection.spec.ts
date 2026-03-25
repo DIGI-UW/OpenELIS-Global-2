@@ -1,10 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
-import {
-  ensureAnalyzerByName,
-  GENEXPERT_DEFAULT_ANALYZER,
-} from "../helpers/ensure-analyzer";
+import { GENEXPERT_FIXTURE_ID } from "../fixtures/analyzer-constants";
 import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
@@ -23,22 +20,16 @@ const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
-    const GENEXPERT_ID = await ensureAnalyzerByName(
-      page.request,
-      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
-      GENEXPERT_DEFAULT_ANALYZER,
-    );
-
     const list = new AnalyzerListPage(page);
 
     await list.goto();
     await list.expectLoaded();
 
-    const row = list.getRow(GENEXPERT_ID);
+    const row = list.getRow(GENEXPERT_FIXTURE_ID);
     await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
 
-    await list.openOverflowMenu(GENEXPERT_ID);
-    await list.clickAction(GENEXPERT_ID, "test-connection");
+    await list.openOverflowMenu(GENEXPERT_FIXTURE_ID);
+    await list.clickAction(GENEXPERT_FIXTURE_ID, "test-connection");
 
     const modal = page.locator('[data-testid="test-connection-modal"]');
     await expect(modal).toBeVisible();

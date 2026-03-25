@@ -77,6 +77,15 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
     List<AnalyzerType> getAllWithInitializedInstances();
 
     /**
+     * Get analyzer type by ID with instances collection eagerly loaded. Use when
+     * building response maps that need instanceCount or instance data.
+     *
+     * @param id Analyzer type ID
+     * @return Optional containing the type with initialized instances, or empty
+     */
+    Optional<AnalyzerType> getWithInitializedInstances(String id);
+
+    /**
      * Get all analyzer instances for a given type.
      *
      * @param analyzerTypeId The ID of the analyzer type

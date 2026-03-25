@@ -95,6 +95,12 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<AnalyzerType> getWithInitializedInstances(String id) {
+        return baseObjectDAO.findByIdWithInstances(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analyzer> getInstancesForType(String analyzerTypeId) {
         AnalyzerType type = get(analyzerTypeId);
         if (type == null) {

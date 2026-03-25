@@ -179,8 +179,8 @@ After create/save, DB state is authoritative for the instance.
 
 1. Apply 009 migration before any 010/011 changesets.
 2. Add new changesets:
-   - `010-create-analyzer-plugin-config.xml`
-   - `011-create-analyzer-pending-code.xml`
+   - `src/main/resources/liquibase/3.4.14.x/010-create-analyzer-plugin-config.xml`
+   - `src/main/resources/liquibase/3.4.14.x/011-create-analyzer-pending-code.xml`
 3. No DB profile bootstrap is needed for MVP; built-in profiles are read from
    `projects/analyzer-profiles/`.
 4. DB-backed profile library (`analyzer_profile*`) and lab-unit model are

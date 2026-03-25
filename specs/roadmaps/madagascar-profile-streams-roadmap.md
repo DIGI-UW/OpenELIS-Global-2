@@ -168,9 +168,18 @@ Use this section as the first-stop index before running SpecKit commands.
 
 | Stream      | Coordination ID | Goal For This Stage                                                                                                          | Start Point                                                               | Stop Point For Planning                                                                                           |
 | ----------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| ASTM        | `012`           | Recover and complete the profile-driven `GenericASTM` pathway, using GeneXpert XVI as the proving path                       | Existing `012` artifacts plus `OGC-337` and `OGC-335`                     | `analyze` complete, branch strategy aligned to the current `012` implementation plan                              |
+| ASTM        | `012`           | Complete the profile-driven `GenericASTM` pathway, using GeneXpert XVI as the proving path                                   | M1+M2 merged (PR #2972); M3 bidirectional in progress                     | M3 complete, M4 regression gate passed                                                                            |
 | HL7         | `013`           | Reconcile the repo's GenericHL7 direction with the real Jira bundle for BC-5380, BS-200, and shared HL7 infrastructure       | Existing Jira/Confluence artifacts plus repo GenericHL7 code and profiles | Issue bundle, scope boundary, and sequence frozen; create targeted follow-on plan/spec only if a real gap remains |
 | File Import | `014`           | Reconcile the desired GenericFlatFile direction with the current Jira-backed file import infrastructure and analyzer stories | Existing Jira/Confluence artifacts plus current file-import code          | Architecture delta frozen, issue bundle sequenced, analyzer blockers surfaced explicitly                          |
+
+## ASTM Stream Progress (Updated 2026-03-05)
+
+| Milestone | Status          | PR                                                                        | Key Deliverables                                                                                   |
+| --------- | --------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| M1        | **Merged**      | #2972                                                                     | Plugin config JSONB, pending-code entity, RBAC, 009 decouple, profile rename, services, controller |
+| M2        | **Merged**      | #2972 (combined with M1)                                                  | UI plugin-config consumption, simulator preview, pending-code UI, i18n, Jest/Playwright            |
+| M3        | **In Progress** | Branch: `feat/012-ogc-337-generic-astm-plugin-profiles-m3-bidi-genexpert` | Bidirectional GeneXpert ASTM (4 pathways)                                                          |
+| M4        | Pending         | -                                                                         | Regression gating across UI + bidirectional                                                        |
 
 ## Primary Stream Allocation Matrix
 
@@ -197,13 +206,45 @@ so planning does not fragment.
 | Tecan Infinite F50       | File Import (`014`) | `OGC-417` has low-confidence spec and no real Magellan exports yet                        | Keep provisional until real files and plate-to-accession mapping are validated.     |
 | Multiskan FC             | File Import (`014`) | `OGC-418` has low-confidence spec and no real SkanIt exports yet                          | Keep provisional until real files and site software version are confirmed.          |
 
-### Conflicts And Cleanup Required
+### Conflicts And Cleanup Required (Resolved 2026-03-05)
 
-| Analyzer / Name                       | Current Status                                                                                                                                                           | Planning Rule                                                                                                                           |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Wondfo Finecare FIA III Plus / FS-205 | Tracker and Jira disagree on sequencing. The tracker describes ASTM Phase 1 and CSV Phase 2, but `OGC-345` explicitly says ASTM is blocked by `OGC-344` flat-file first. | Do not freeze this analyzer into ASTM-only or File-only planning until the sequence conflict is resolved.                               |
-| Mindray BS-300                        | User scope includes BS-300, but the current Jira-backed BS-series work is strongest for BS-200 and not explicit about BS-300                                             | Keep the HL7 stream assignment likely, but do not assume the shared `BS-200/BS-300` profile is already validated by Atlassian evidence. |
-| `LA2M Central`                        | Not backed by Jira as an analyzer; Confluence uses `LA2M` as a laboratory/site label                                                                                     | Remove it from analyzer implementation scope. Treat it as a site/workstream reference, not an analyzer.                                 |
+| Analyzer / Name                       | Resolution                                                                                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Wondfo Finecare FIA III Plus / FS-205 | **Resolved: FILE stream (CSV first)**. OGC-344 CSV import is the primary path. ASTM (OGC-345) deferred.                                                |
+| Mindray BS-300                        | **Resolved: HL7 stream**. BS-200 and BS-300 are the correct target models (supersede BS-360E from 011 contract). Shares BS-series profile with BS-200. |
+| FluoroCycler XT                       | **Resolved: FILE stream (optimistic)**. Assumes CSV export exists despite `.at` native format concern.                                                 |
+| Attune CytPix                         | **Resolved: FILE stream (optimistic)**. Assumes viable export exists despite FCS-only native output.                                                   |
+| `LA2M Central`                        | **Resolved: removed**. Not an analyzer. Confluence uses `LA2M` as a laboratory/site label only.                                                        |
+
+## Operational Goal (Updated 2026-03-05)
+
+Get result import working ASAP for these analyzers at two lab sites (HJRA,
+LA2M):
+
+| #   | Analyzer           | Stream | Generic Plugin     | Profile                     | Legacy Plugin     | Ready?                  |
+| --- | ------------------ | ------ | ------------------ | --------------------------- | ----------------- | ----------------------- |
+| 7   | GeneXpert XVI      | ASTM   | GenericASTM        | `genexpert-astm.json`       | GeneXpert/        | **YES**                 |
+| 1   | Mindray BC-5380    | HL7    | GenericHL7         | `mindray-bc5380.json`       | Mindray/          | Likely — needs E2E      |
+| 2   | Mindray BS-200     | HL7    | GenericHL7         | **MISSING** (bs360e exists) | Mindray/          | **NO** — need profile   |
+| 2   | Mindray BS-300     | HL7    | GenericHL7         | **MISSING**                 | Mindray/          | **NO** — need profile   |
+| 3   | Wondfo CSV         | FILE   | **NO GenericFile** | **MISSING**                 | **NONE**          | **NO**                  |
+| 4   | FluoroCycler XT    | FILE   | **NO GenericFile** | **MISSING**                 | FluoroCyclerXT/   | Maybe — validate legacy |
+| 5   | QuantStudio 7 Flex | FILE   | **NO GenericFile** | **MISSING**                 | QuantStudio7Flex/ | Maybe — validate legacy |
+| 6   | QuantStudio 5      | FILE   | **NO GenericFile** | **MISSING**                 | QuantStudio3/     | **NO** — no QS5 plugin  |
+| 8   | Attune CytPix      | FILE   | **NO GenericFile** | **MISSING**                 | **NONE**          | **NO** — FCS-only       |
+| -   | Tecan F50          | TBD    | **NO**             | **MISSING**                 | **NONE**          | **NO** — TBD            |
+| -   | Multiskan FC       | TBD    | **NO**             | **MISSING**                 | **NONE**          | **NO** — TBD            |
+
+### Critical Gaps
+
+1. **No GenericFile plugin.** GenericASTM and GenericHL7 exist but GenericFile
+   does not. The 5+ file analyzers either need a new generic plugin or continued
+   per-analyzer legacy plugins with hardcoded parsers.
+2. **No BS-200/BS-300 HL7 profiles.** BS-360E profile exists and may be reusable
+   if the Mindray HL7 format is shared across BS-series.
+3. **File legacy plugins need validation.** FluoroCyclerXT and QuantStudio7Flex
+   exist but need testing with real Madagascar lab exports.
+4. **Wondfo, Attune, QS5 have no plugin or profile at all.**
 
 ## Stream Charters
 
@@ -211,11 +252,10 @@ so planning does not fragment.
 
 Purpose:
 
-- Keep `012` focused on `GenericASTM`
-- Use the current `012` spec family as recovery input rather than rewriting the
-  feature
-- Make GeneXpert XVI the primary proving path for this stage
-- Keep `OGC-337` and `OGC-335` aligned rather than mixing in unrelated HL7 work
+- Complete the profile-driven `GenericASTM` pathway with GeneXpert XVI as the
+  proving path
+- M1+M2 merged (PR #2972); M3 bidirectional in progress
+- GeneXpert result import already works; M3 adds orders/query capability
 
 Inputs:
 
@@ -226,11 +266,11 @@ Inputs:
 - Jira `OGC-337`
 - Jira `OGC-335`
 
-Planning outputs expected from this stream:
+Remaining scope:
 
-- A clean statement of remaining ASTM scope
-- Recovery sequencing for the existing `012` foundation
-- Alignment between the roadmap and the current `012` branch strategy
+- M3: Bidirectional GeneXpert (Q-segment responder, order send, results query)
+- M4: Regression gating
+- GenericASTM plugin itself may need updates/testing for profile-driven config
 
 ### HL7 Stream - Coordination `013`
 

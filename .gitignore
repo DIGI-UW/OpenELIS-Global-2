@@ -48,6 +48,8 @@ volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+# Spec scratch / draft docs (do not commit)
+specs/**/.tmp/
 .specify/audit-reports/*.md
 volume/branding/*
 volume/lucene/*
@@ -56,6 +58,7 @@ volume/lucene/*
 # These are compiled from legacy .specify sources and packaged skills, and should not be tracked
 .cursor/commands/
 .cursor/skills/
+.claude/
 .claude/commands/
 .claude/skills/
 .claude/logs.txt

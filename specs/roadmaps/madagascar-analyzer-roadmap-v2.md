@@ -11,17 +11,17 @@ todos:
     content:
       Commit this roadmap to specs/roadmaps/madagascar-analyzer-roadmap-v2.md as
       the first action
-    status: in_progress
+    status: completed
   - id: develop-sync
     content:
       Pull origin/develop (4 commits behind), update plugins submodule to
       include plugin PR 62, rebase all worktrees on updated develop
-    status: pending
+    status: in_progress
   - id: astm-spec-sync
     content:
       Commit uncommitted 012 spec changes, update spec status from Draft to In
       Progress, reconcile tasks.md with current reality
-    status: pending
+    status: in_progress
   - id: hl7-speckit
     content:
       Run SpecKit specify/clarify/plan/tasks in oe-hl7-013 to create the 013
@@ -45,7 +45,7 @@ todos:
       conflicts), replace the GenericASTM buildResponse() placeholder with real
       GeneXpert bidirectional results logic, polish/test end-to-end, add missing
       ASTM profiles
-    status: pending
+    status: in_progress
   - id: hl7-lane
     content:
       Implement and test the full HL7 lane around OGC-325 plus GenericHL7, then
@@ -76,6 +76,22 @@ isProject: false
 This document is both the execution plan and the daily operational roadmap for
 Madagascar analyzer integration. The first execution step is to commit this file
 to `specs/roadmaps/madagascar-analyzer-roadmap-v2.md`.
+
+## Execution Checkpoint (2026-03-10)
+
+- ASTM lane branch
+  `feat/012-ogc-337-generic-astm-plugin-profiles-m3-bidi-genexpert` has been
+  rebased on `origin/develop` and force-pushed (`3c1cd1da4`) to keep PR `#3032`
+  current.
+- PR `#3032` remains open and in review-required state; checks must re-run after
+  the rebase.
+- 012 docs/spec lane received sync updates during M3 work:
+  - added bidi QA gate checklist at
+    `specs/012-generic-astm-plugin-profiles/checklists/analyzer-bidi-e2e-qa.md`
+  - moved real-device validation doc to
+    `specs/012-generic-astm-plugin-profiles/real-device-validation.md`
+- Immediate 012 next step: merge PR `#3032`, then continue ASTM profile-addition
+  work and remaining PR-remediation items listed in this roadmap.
 
 ## Source-of-Truth Links
 
@@ -194,13 +210,13 @@ HJRA + LA2M site focus. `LA2M Central` is a site label, not an analyzer.
 
 All worktrees exist on this server. Exact state as of 2026-03-10:
 
-| Worktree      | Path                             | Branch                                                            | Commit      | Lane    | Status                                              |
-| ------------- | -------------------------------- | ----------------------------------------------------------------- | ----------- | ------- | --------------------------------------------------- |
-| ASTM (active) | `/home/ubuntu/OpenELIS-Global-2` | `feat/012-ogc-337-generic-astm-plugin-profiles-m3-bidi-genexpert` | `b1dcc0d61` | ASTM    | Uncommitted changes to 012 spec/tasks/contracts     |
-| ASTM (legacy) | `/home/ubuntu/oe-astm-012`       | `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  | `b64045730` | Archive | Untracked `analysis-report-2026-03-05.md`; preserve |
-| Roadmap       | `/home/ubuntu/oe-roadmap-012`    | `spec/012-ogc-337-generic-astm-plugin-profiles`                   | `b64045730` | Docs    | Clean; will hold this roadmap                       |
-| HL7           | `/home/ubuntu/oe-hl7-013`        | `spec/013-hjra-hl7-stream-alignment`                              | `b64045730` | HL7     | Clean; no spec artifacts yet                        |
-| File          | `/home/ubuntu/oe-file-014`       | `spec/014-hjra-file-stream-alignment`                             | `b64045730` | File    | Clean; no spec artifacts yet                        |
+| Worktree      | Path                             | Branch                                                            | Commit      | Lane    | Status                                                    |
+| ------------- | -------------------------------- | ----------------------------------------------------------------- | ----------- | ------- | --------------------------------------------------------- |
+| ASTM (active) | `/home/ubuntu/OpenELIS-Global-2` | `feat/012-ogc-337-generic-astm-plugin-profiles-m3-bidi-genexpert` | `3c1cd1da4` | ASTM    | Rebased on develop; PR #3032 open, awaiting review/checks |
+| ASTM (legacy) | `/home/ubuntu/oe-astm-012`       | `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  | `b64045730` | Archive | Untracked `analysis-report-2026-03-05.md`; preserve       |
+| Roadmap       | `/home/ubuntu/oe-roadmap-012`    | `spec/012-ogc-337-generic-astm-plugin-profiles`                   | `b64045730` | Docs    | Clean; will hold this roadmap                             |
+| HL7           | `/home/ubuntu/oe-hl7-013`        | `spec/013-hjra-hl7-stream-alignment`                              | `b64045730` | HL7     | Clean; no spec artifacts yet                              |
+| File          | `/home/ubuntu/oe-file-014`       | `spec/014-hjra-file-stream-alignment`                             | `b64045730` | File    | Clean; no spec artifacts yet                              |
 
 All worktrees except main repo are at `b64045730` (the roadmap v1 commit).
 `origin/develop` is 4 commits ahead at `3cb0b683c`.
@@ -293,10 +309,11 @@ during lane work:
 ### What Each Lane Must Do With Upstream PRs
 
 - **ASTM**: Adopt `GenericASTMAnalyzer` as the base (including #62 fixes).
-  Replace the placeholder `buildResponse()` in `GenericASTMLineInserter` with
-  real ASTM query-response logic. Resolve merge conflicts in
-  `AnalyzerServiceImpl.java` during rebase. Fix the EAGER fetch and
-  controller-layer architecture violations as part of ASTM lane work.
+  Replace the placeholder query-response behavior with real ASTM logic through
+  `GenericASTMResponder` (while keeping `GenericASTMLineInserter` focused on
+  result ingest parsing). Resolve merge conflicts in `AnalyzerServiceImpl.java`
+  during rebase. Fix the EAGER fetch and controller-layer architecture
+  violations as part of ASTM lane work.
 - **HL7**: Verify `PluginMenuService` handles GenericHL7 registration correctly.
   Confirm `AnalyzerTypesPage` workflow is consistent with HL7 analyzer setup.
   Adopt GenericHL7 test updates from #62.
@@ -308,12 +325,12 @@ during lane work:
 - [GenericASTMAnalyzer.java](plugins/analyzers/GenericASTM/src/main/java/org/openelisglobal/plugins/analyzer/genericastm/GenericASTMAnalyzer.java):
   Implements `AnalyzerImporterPlugin` with `isTargetAnalyzer()` (H-segment
   pattern match), `getAnalyzerLineInserter()`, and `getAnalyzerResponder()`. The
-  responder returns the `GenericASTMLineInserter` instance.
+  responder returns a dedicated `GenericASTMResponder` instance.
 - [GenericASTMLineInserter.java](plugins/analyzers/GenericASTM/src/main/java/org/openelisglobal/plugins/analyzer/genericastm/GenericASTMLineInserter.java):
-  Handles result-record processing. PR #62 added `AnalyzerResponder`
-  implementation with a **placeholder** `buildResponse()` that returns only the
-  analyzer name string. This stub is not functional ASTM query-response logic
-  and must be replaced before bidirectional queries are safe.
+  Handles result-record processing only.
+- [GenericASTMResponder.java](plugins/analyzers/GenericASTM/src/main/java/org/openelisglobal/plugins/analyzer/genericastm/GenericASTMResponder.java):
+  Provides ASTM Q-record query-response behavior for bidirectional order
+  handling. This is the replacement for the old placeholder responder behavior.
 - The AnalyzerType-ID mapping direction looks intentional: test mappings are
   keyed by analyzer type, physical analyzer IDs are injected later during
   persistence. Treat as validated baseline. Note the `MappedTestName.analyzerId`
@@ -502,10 +519,9 @@ repo as the implementation lane.
 
 Primary goals:
 
-- Replace the placeholder `buildResponse()` in `GenericASTMLineInserter` (added
-  by PR #62) with real GeneXpert bidirectional **results** logic. The current
-  stub returns only the analyzer name and is not functional ASTM query-response
-  behavior.
+- Replace the old placeholder query-response behavior with real GeneXpert
+  bidirectional logic in `GenericASTMResponder`, while keeping
+  `GenericASTMLineInserter` as the ASTM result parser.
 - Rebase on updated develop (including the recently merged PRs). Expect merge
   conflicts in `AnalyzerServiceImpl.java`.
 - Polish and test GenericASTM end-to-end after rebasing.
@@ -649,11 +665,15 @@ After the three plugin lanes are stable:
 
 ### Today
 
-_(empty; populate when execution begins)_
+- Rebased ASTM 012 M3 branch on latest `origin/develop` and force-pushed PR
+  branch head (`#3032`).
+- Synced roadmap status to reflect current ASTM branch/PR state.
 
 ### In Progress
 
-_(empty)_
+- 012 ASTM M3 review + merge (`#3032`)
+- 012 ASTM spec/doc sync follow-through (`spec.md` status alignment and final
+  tasks reconciliation)
 
 ### Blocked
 

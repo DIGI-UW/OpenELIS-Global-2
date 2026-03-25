@@ -24,6 +24,8 @@ import { useHistory } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
 import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
+import SendOrderModal from "../SendOrderModal/SendOrderModal";
+import QueryResultsModal from "../QueryResultsModal/QueryResultsModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 import FileImportConfiguration from "../FileImportConfiguration/FileImportConfiguration";
@@ -65,6 +67,14 @@ const AnalyzersList = () => {
     analyzer: null,
   });
   const [fileImportModal, setFileImportModal] = useState({
+    open: false,
+    analyzer: null,
+  });
+  const [sendOrderModal, setSendOrderModal] = useState({
+    open: false,
+    analyzer: null,
+  });
+  const [queryResultsModal, setQueryResultsModal] = useState({
     open: false,
     analyzer: null,
   });
@@ -546,6 +556,30 @@ const AnalyzersList = () => {
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
+                                      id: "analyzer.action.sendOrder",
+                                    })}
+                                    onClick={() => {
+                                      setSendOrderModal({
+                                        open: true,
+                                        analyzer: analyzer,
+                                      });
+                                    }}
+                                    data-testid={`analyzer-action-send-order-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.queryResults",
+                                    })}
+                                    onClick={() => {
+                                      setQueryResultsModal({
+                                        open: true,
+                                        analyzer: analyzer,
+                                      });
+                                    }}
+                                    data-testid={`analyzer-action-query-results-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
                                       id: "analyzer.action.copyMappings",
                                     })}
                                     onClick={() => {
@@ -618,6 +652,26 @@ const AnalyzersList = () => {
           open={testConnectionModal.open}
           onClose={() => {
             setTestConnectionModal({ open: false, analyzer: null });
+          }}
+        />
+      )}
+
+      {sendOrderModal.open && (
+        <SendOrderModal
+          analyzer={sendOrderModal.analyzer}
+          open={sendOrderModal.open}
+          onClose={() => {
+            setSendOrderModal({ open: false, analyzer: null });
+          }}
+        />
+      )}
+
+      {queryResultsModal.open && (
+        <QueryResultsModal
+          analyzer={queryResultsModal.analyzer}
+          open={queryResultsModal.open}
+          onClose={() => {
+            setQueryResultsModal({ open: false, analyzer: null });
           }}
         />
       )}

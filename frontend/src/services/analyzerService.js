@@ -238,6 +238,48 @@ export const testConnection = (id, callback, extraParams) => {
 };
 
 /**
+ * Send ASTM order message to analyzer (orders-push pathway).
+ * @param {String} analyzerId - Analyzer ID
+ * @param {String} accessionNumber - Sample accession number
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams - Optional parameters passed to callback
+ */
+export const sendOrder = (
+  analyzerId,
+  accessionNumber,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/send-order`;
+  const payload = JSON.stringify({ accessionNumber: accessionNumber || "" });
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+/**
+ * Query analyzer for results via ASTM Q-segment (results-pull pathway).
+ * @param {String} analyzerId - Analyzer ID
+ * @param {String} accessionNumber - Sample accession number
+ * @param {String[]} testCodes - Optional filter; omit for ALL
+ * @param {Function} callback - Callback function (response, extraParams) => void
+ * @param {*} extraParams - Optional parameters passed to callback
+ */
+export const queryResults = (
+  analyzerId,
+  accessionNumber,
+  testCodes,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/query-results`;
+  const body = { accessionNumber: accessionNumber || "" };
+  if (testCodes && testCodes.length > 0) {
+    body.testCodes = testCodes;
+  }
+  const payload = JSON.stringify(body);
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+/**
  * Query analyzer for available fields (ASTM query)
  * @param {String} id - Analyzer ID
  * @param {Function} callback - Callback function (response, extraParams) => void

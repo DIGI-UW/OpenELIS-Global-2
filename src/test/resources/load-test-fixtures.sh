@@ -7,9 +7,11 @@
 # Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--analyzers=MODE]
 #
 # Analyzer modes (--analyzers=MODE):
-#   full     - Analyzer type safety net + cleanup + type linking (default)
-#   minimal  - analyzer-minimal.sql only (3 generic types, no cleanup)
-#   none     - Skip all analyzer fixtures (storage/patient only)
+#   minimal   - analyzer-minimal.sql only (3 generic types, no cleanup)
+#   legacy    - analyzer-test-data.sql only (Feature 004 UI testing, IDs 1000-1004)
+#   full      - minimal + file-import cleanup + harness lane (default; develop baseline)
+#   astm-full - minimal + analyzer-astm-full.sql (IDs 2013-2017, multi-port ASTM mock)
+#   none      - Skip all analyzer fixtures (storage/patient only)
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
@@ -24,6 +26,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
+ANALYZER_SQL_FILE="$SCRIPT_DIR/analyzer-test-data.sql"
+ANALYZER_ASTM_FULL_SQL_FILE="$SCRIPT_DIR/analyzer-astm-full.sql"
 FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
 ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
@@ -45,16 +49,16 @@ while [[ $# -gt 0 ]]; do
             ;;
         --analyzers=*)
             ANALYZER_MODE="${1#*=}"
-            if [[ ! "$ANALYZER_MODE" =~ ^(minimal|full|none)$ ]]; then
+            if [[ ! "$ANALYZER_MODE" =~ ^(minimal|legacy|full|astm-full|none)$ ]]; then
                 echo "ERROR: Invalid analyzer mode: $ANALYZER_MODE"
-                echo "Valid modes: minimal, full, none"
+                echo "Valid modes: minimal, legacy, full, astm-full, none"
                 exit 1
             fi
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--reset] [--no-verify] [--analyzers=minimal|full|none]"
+            echo "Usage: $0 [--reset] [--no-verify] [--analyzers=minimal|legacy|full|astm-full|none]"
             exit 1
             ;;
     esac
@@ -283,6 +287,9 @@ load_analyzer_fixtures() {
             # 3 generic analyzer types (ASTM, HL7, File) — safety net for plugin loader
             load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
             ;;
+        legacy)
+            load_sql_file "$ANALYZER_SQL_FILE" "analyzer-test-data.sql (Feature 004, IDs 1000-1004)"
+            ;;
         full)
             # 3 generic analyzer types + cleanup + deactivation of non-generic types
             load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
@@ -290,6 +297,12 @@ load_analyzer_fixtures() {
             # Clean up stale E2E/legacy analyzers + deactivate non-generic types
             if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
                 load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (cleanup + dashboard deactivation)"
+            fi
+            ;;
+        astm-full)
+            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 analyzers + GeneXpert 2013)"
+            if [ -f "$ANALYZER_ASTM_FULL_SQL_FILE" ]; then
+                load_sql_file "$ANALYZER_ASTM_FULL_SQL_FILE" "analyzer-astm-full.sql (2014-2017, multi-port mock)"
             fi
             ;;
     esac

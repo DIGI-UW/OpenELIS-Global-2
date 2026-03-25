@@ -13,6 +13,8 @@
  */
 package org.openelisglobal.analyzer.daoimpl;
 
+import jakarta.persistence.TypedQuery;
+import java.util.Optional;
 import org.openelisglobal.analyzer.dao.AnalyzerTypeDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -25,5 +27,14 @@ public class AnalyzerTypeDAOImpl extends BaseDAOImpl<AnalyzerType, String> imple
 
     public AnalyzerTypeDAOImpl() {
         super(AnalyzerType.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerType> findByIdWithInstances(String id) {
+        String hql = "SELECT t FROM AnalyzerType t LEFT JOIN FETCH t.instances WHERE t.id = :id";
+        TypedQuery<AnalyzerType> query = entityManager.createQuery(hql, AnalyzerType.class);
+        query.setParameter("id", id);
+        return query.getResultList().stream().findFirst();
     }
 }

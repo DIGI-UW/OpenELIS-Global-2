@@ -293,10 +293,11 @@ during lane work:
 ### What Each Lane Must Do With Upstream PRs
 
 - **ASTM**: Adopt `GenericASTMAnalyzer` as the base (including #62 fixes).
-  Replace the placeholder `buildResponse()` in `GenericASTMLineInserter` with
-  real ASTM query-response logic. Resolve merge conflicts in
-  `AnalyzerServiceImpl.java` during rebase. Fix the EAGER fetch and
-  controller-layer architecture violations as part of ASTM lane work.
+  Replace the placeholder query-response behavior with real ASTM logic through
+  `GenericASTMResponder` (while keeping `GenericASTMLineInserter` focused on
+  result ingest parsing). Resolve merge conflicts in `AnalyzerServiceImpl.java`
+  during rebase. Fix the EAGER fetch and controller-layer architecture
+  violations as part of ASTM lane work.
 - **HL7**: Verify `PluginMenuService` handles GenericHL7 registration correctly.
   Confirm `AnalyzerTypesPage` workflow is consistent with HL7 analyzer setup.
   Adopt GenericHL7 test updates from #62.
@@ -308,12 +309,12 @@ during lane work:
 - [GenericASTMAnalyzer.java](plugins/analyzers/GenericASTM/src/main/java/org/openelisglobal/plugins/analyzer/genericastm/GenericASTMAnalyzer.java):
   Implements `AnalyzerImporterPlugin` with `isTargetAnalyzer()` (H-segment
   pattern match), `getAnalyzerLineInserter()`, and `getAnalyzerResponder()`. The
-  responder returns the `GenericASTMLineInserter` instance.
+  responder returns a dedicated `GenericASTMResponder` instance.
 - [GenericASTMLineInserter.java](plugins/analyzers/GenericASTM/src/main/java/org/openelisglobal/plugins/analyzer/genericastm/GenericASTMLineInserter.java):
-  Handles result-record processing. PR #62 added `AnalyzerResponder`
-  implementation with a **placeholder** `buildResponse()` that returns only the
-  analyzer name string. This stub is not functional ASTM query-response logic
-  and must be replaced before bidirectional queries are safe.
+  Handles result-record processing only.
+- [GenericASTMResponder.java](plugins/analyzers/GenericASTM/src/main/java/org/openelisglobal/plugins/analyzer/genericastm/GenericASTMResponder.java):
+  Provides ASTM Q-record query-response behavior for bidirectional order
+  handling. This is the replacement for the old placeholder responder behavior.
 - The AnalyzerType-ID mapping direction looks intentional: test mappings are
   keyed by analyzer type, physical analyzer IDs are injected later during
   persistence. Treat as validated baseline. Note the `MappedTestName.analyzerId`
@@ -502,10 +503,9 @@ repo as the implementation lane.
 
 Primary goals:
 
-- Replace the placeholder `buildResponse()` in `GenericASTMLineInserter` (added
-  by PR #62) with real GeneXpert bidirectional **results** logic. The current
-  stub returns only the analyzer name and is not functional ASTM query-response
-  behavior.
+- Replace the old placeholder query-response behavior with real GeneXpert
+  bidirectional logic in `GenericASTMResponder`, while keeping
+  `GenericASTMLineInserter` as the ASTM result parser.
 - Rebase on updated develop (including the recently merged PRs). Expect merge
   conflicts in `AnalyzerServiceImpl.java`.
 - Polish and test GenericASTM end-to-end after rebasing.
@@ -631,8 +631,8 @@ After the three plugin lanes are stable:
 
 ### Phase 2: Implementation (lanes run in parallel)
 
-1. **ASTM lane**: Replace the `buildResponse()` placeholder with real GeneXpert
-   bidirectional results logic, test end-to-end, then add missing ASTM profiles
+1. **ASTM lane**: Finalize GeneXpert bidirectional logic on the responder path
+   (`GenericASTMResponder`), test end-to-end, then add missing ASTM profiles
 2. **HL7 lane**: Implement full listener + GenericHL7 path, validate BC-5380,
    add BS-200 profile (and BS-300 if validated). Spawn issue-specific branches
    as defined in the branch naming section.

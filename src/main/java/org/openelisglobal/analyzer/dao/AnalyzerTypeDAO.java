@@ -17,4 +17,12 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.dao.BaseDAO;
 
 public interface AnalyzerTypeDAO extends BaseDAO<AnalyzerType, String> {
+
+    /**
+     * Fetch analyzer type by ID with instances collection eagerly loaded.
+     *
+     * @param id Analyzer type ID
+     * @return Optional containing the type with initialized instances, or empty
+     */
+    java.util.Optional<AnalyzerType> findByIdWithInstances(String id);
 }

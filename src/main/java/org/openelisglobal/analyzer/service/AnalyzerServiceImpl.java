@@ -24,6 +24,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.common.services.PluginMenuService;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -64,6 +65,9 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Autowired
     private NoteBookDAO noteBookDAO;
 
+    @Autowired
+    private PluginMenuService pluginMenuService;
+
     AnalyzerServiceImpl() {
         super(Analyzer.class);
     }
@@ -71,6 +75,14 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Override
     protected AnalyzerDAO getBaseObjectDAO() {
         return baseObjectDAO;
+    }
+
+    @Override
+    @Transactional
+    public String insert(Analyzer analyzer) {
+        String id = super.insert(analyzer);
+        pluginMenuService.registerAnalyzerMenuAndPermission(analyzer.getName());
+        return id;
     }
 
     @Override

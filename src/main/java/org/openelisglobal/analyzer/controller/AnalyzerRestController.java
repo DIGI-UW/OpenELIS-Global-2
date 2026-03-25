@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
+import org.openelisglobal.analyzer.service.AnalyzerBidirectionalService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
@@ -45,6 +46,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -71,6 +73,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerQueryService analyzerQueryService;
+
+    @Autowired
+    private AnalyzerBidirectionalService analyzerBidirectionalService;
 
     @Autowired
     private PluginAnalyzerService pluginAnalyzerService;
@@ -239,7 +244,6 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
-            pluginService.registerAnalyzerMenuAndPermission(analyzer.getName());
 
             // Auto-create test mappings and file import config from default profile if
             // provided
@@ -1046,6 +1050,48 @@ public class AnalyzerRestController extends BaseRestController {
             Map<String, Object> error = new LinkedHashMap<>();
             error.put("error", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @PostMapping("/analyzers/{id}/send-order")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> sendOrder(@PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String accessionNumber = request == null ? null : (String) request.get("accessionNumber");
+            Map<String, Object> response = analyzerBidirectionalService.sendOrder(id, accessionNumber);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (LIMSRuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error sending order for analyzer {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    @PostMapping("/analyzers/{id}/query-results")
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
+    public ResponseEntity<Map<String, Object>> queryResults(@PathVariable String id,
+            @RequestBody Map<String, Object> requestBody, HttpServletRequest httpRequest) {
+        try {
+            String accessionNumber = requestBody == null ? null : (String) requestBody.get("accessionNumber");
+            List<String> testCodes = null;
+            if (requestBody != null && requestBody.get("testCodes") instanceof List) {
+                testCodes = (List<String>) requestBody.get("testCodes");
+            }
+            Map<String, Object> response = analyzerBidirectionalService.queryResults(id, accessionNumber, testCodes,
+                    getSysUserId(httpRequest));
+            return ResponseEntity.ok(response);
+        } catch (LIMSRuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error querying results for analyzer {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 

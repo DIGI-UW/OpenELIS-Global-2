@@ -81,7 +81,7 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "has_setup_page", length = 1)
     private boolean hasSetupPage;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 

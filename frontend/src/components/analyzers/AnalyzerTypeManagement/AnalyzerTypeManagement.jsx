@@ -209,7 +209,7 @@ const AnalyzerTypeManagement = () => {
             title={notification.title}
             subtitle={notification.subtitle}
             onCloseButtonClick={() => setNotification(null)}
-            style={{ marginBottom: "1rem" }}
+            style={{ marginBottom: "var(--cds-spacing-05)" }}
           />
         )}
 
@@ -218,7 +218,7 @@ const AnalyzerTypeManagement = () => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "1rem",
+            marginBottom: "var(--cds-spacing-05)",
           }}
         >
           <Search
@@ -229,7 +229,7 @@ const AnalyzerTypeManagement = () => {
             labelText=""
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ maxWidth: "400px" }}
+            style={{ maxWidth: "25rem" }}
           />
           <Button renderIcon={Add} onClick={() => setModalOpen(true)}>
             <FormattedMessage id="analyzerType.button.create" />
@@ -306,7 +306,7 @@ const AnalyzerTypeManagement = () => {
               }
               invalid={!!formErrors.name}
               invalidText={formErrors.name}
-              style={{ marginBottom: "1rem" }}
+              style={{ marginBottom: "var(--cds-spacing-05)" }}
             />
             <TextInput
               id="analyzerType-description"
@@ -317,7 +317,7 @@ const AnalyzerTypeManagement = () => {
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              style={{ marginBottom: "1rem" }}
+              style={{ marginBottom: "var(--cds-spacing-05)" }}
             />
             <Dropdown
               id="analyzerType-protocol"
@@ -335,7 +335,7 @@ const AnalyzerTypeManagement = () => {
               onChange={({ selectedItem }) =>
                 setFormData({ ...formData, protocol: selectedItem.id })
               }
-              style={{ marginBottom: "1rem" }}
+              style={{ marginBottom: "var(--cds-spacing-05)" }}
             />
             <TextInput
               id="analyzerType-pluginClassName"
@@ -346,7 +346,7 @@ const AnalyzerTypeManagement = () => {
               onChange={(e) =>
                 setFormData({ ...formData, pluginClassName: e.target.value })
               }
-              style={{ marginBottom: "1rem" }}
+              style={{ marginBottom: "var(--cds-spacing-05)" }}
             />
             <TextInput
               id="analyzerType-identifierPattern"
@@ -363,7 +363,7 @@ const AnalyzerTypeManagement = () => {
               helperText={intl.formatMessage({
                 id: "analyzerType.field.identifierPatternHelper",
               })}
-              style={{ marginBottom: "1rem" }}
+              style={{ marginBottom: "var(--cds-spacing-05)" }}
             />
             <Checkbox
               id="analyzerType-isGenericPlugin"
@@ -374,7 +374,7 @@ const AnalyzerTypeManagement = () => {
               onChange={(_, { checked }) =>
                 setFormData({ ...formData, isGenericPlugin: checked })
               }
-              style={{ marginBottom: "1rem" }}
+              style={{ marginBottom: "var(--cds-spacing-05)" }}
             />
             <Checkbox
               id="analyzerType-isActive"

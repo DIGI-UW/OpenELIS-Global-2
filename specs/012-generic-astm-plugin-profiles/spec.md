@@ -1,8 +1,10 @@
 # Feature Specification: Generic ASTM Plugin v1.2 — Plugin Config Foundation
 
-**Feature Branch**: `spec/012-ogc-337-generic-astm-plugin-profiles` **Demo
-Branch**: `feat/012-genexpert-astm-demo` (E2E demo + test catalog work)
-**Created**: 2026-02-27 **Status**: Draft **Jira**: OGC-337
+**Feature Branch**: `spec/012-ogc-337-generic-astm-plugin-profiles`  
+**Demo Branch**: `feat/012-genexpert-astm-demo` (E2E demo + test catalog work)  
+**Created**: 2026-02-27  
+**Status**: In Progress  
+**Jira**: OGC-337
 
 **Extends**: `004-astm-analyzer-mapping` (v1.0 complete)  
 **Relationship to 011**: Independent but complementary to
@@ -155,6 +157,23 @@ API actions.
 3. **Given** pending code action is `MAP` or `IGNORE`, **When** API action is
    executed, **Then** status transitions and timestamps update accordingly.
 
+### ASTM Query Terminology Clarification
+
+To avoid ambiguity in M3 scope, this specification distinguishes similarly named
+records:
+
+- **ASTM query record (Q-record query)**: LIS2-A2 query segment used for
+  bidirectional order and result exchange, for example
+  `Q|1|SampleID^PatientID||ALL`.
+- **QC record**: quality-control data record with a different field structure,
+  parsed by `ASTMQSegmentParserImpl` as a separate concern.
+- **Field query**: header-only analyzer capability/discovery request used by
+  existing query workflows; not equivalent to ASTM Q-record order/result
+  queries.
+
+Q-record queries and QC records are not interchangeable and use different
+formats and processing paths.
+
 ### User Story 7 - Bidirectional ASTM communication with GeneXpert (Priority: P1)
 
 As a laboratory administrator, I want OpenELIS to support bidirectional ASTM
@@ -175,6 +194,26 @@ verification evidence for release.
    protocol-compliant exchange.
 3. **Given** release readiness checks run, **When** pathway validations
    complete, **Then** mock and real-device evidence is captured for sign-off.
+
+**Orders PUSH ASTM message format (LIS2-A2)**:
+
+```
+H|\^&|||OpenELIS^OrderSend^1.0|||||||LIS2-A2
+P|1|PatientID||LastName^FirstName
+O|1|AccessionNumber||^^^TestCode1\^^^TestCode2|R|timestamp||||A
+L|1|N
+```
+
+Data source for order construction is pending order data for the accession
+(`ServiceRequest` where available, or `sample` + `analysis` records).
+
+**Outbound query type distinction**:
+
+- **Field query** (existing): header-only message used for analyzer field
+  discovery and capability checks.
+- **Results query** (M3): `H|\^&|||OpenELIS^ResultsQuery^1.0` with
+  `Q|1|AccessionNumber||ALL`, expecting `P/O/R` response segments with values
+  for ingest through the existing mapping flow.
 
 ## Deferred User Stories
 

@@ -165,7 +165,7 @@ bridge.
       `____________`)
 - [ ] **Action**: Send order via API:
   ```bash
-  curl -sf -X POST "https://localhost/rest/analyzer/${ANALYZER_ID}/send-order" \
+  curl -sf -X POST "https://localhost/rest/analyzer/analyzers/${ANALYZER_ID}/send-order" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer ${TOKEN}" \
     -d '{"accessionNumber": "ACCESSION_HERE"}' | python3 -m json.tool
@@ -220,7 +220,7 @@ bridge, captures response, and feeds into standard ASTM ingest pipeline.
       (accession: `____________`)
 - [ ] **Action**: Query results via API:
   ```bash
-  curl -sf -X POST "https://localhost/rest/analyzer/${ANALYZER_ID}/query-results" \
+  curl -sf -X POST "https://localhost/rest/analyzer/analyzers/${ANALYZER_ID}/query-results" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer ${TOKEN}" \
     -d '{"accessionNumber": "ACCESSION_HERE"}' | python3 -m json.tool
