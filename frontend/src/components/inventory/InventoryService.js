@@ -337,12 +337,54 @@ export const UsageAPI = {
 
 export const ReportsAPI = {
   generate: async (params) => {
+    const formatLocalDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const normalizeDateValue = (value) => {
+      if (!value) return null;
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return formatLocalDate(value);
+      }
+      return value;
+    };
+
+    const parseFilename = (contentDisposition) => {
+      if (!contentDisposition) {
+        return "inventory-report";
+      }
+
+      const utf8Match = contentDisposition.match(
+        /filename\*\s*=\s*UTF-8''([^;]+)/i,
+      );
+      if (utf8Match?.[1]) {
+        return decodeURIComponent(utf8Match[1]).trim();
+      }
+
+      const quotedMatch = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i);
+      if (quotedMatch?.[1]) {
+        return quotedMatch[1].trim();
+      }
+
+      const plainMatch = contentDisposition.match(/filename\s*=\s*([^;]+)/i);
+      if (plainMatch?.[1]) {
+        return plainMatch[1].trim().replace(/^["']|["']$/g, "");
+      }
+
+      return "inventory-report";
+    };
+
     const queryParams = new URLSearchParams();
     if (params.reportType) queryParams.append("reportType", params.reportType);
     if (params.exportFormat)
       queryParams.append("exportFormat", params.exportFormat);
-    if (params.startDate) queryParams.append("startDate", params.startDate);
-    if (params.endDate) queryParams.append("endDate", params.endDate);
+    if (params.startDate)
+      queryParams.append("startDate", normalizeDateValue(params.startDate));
+    if (params.endDate)
+      queryParams.append("endDate", normalizeDateValue(params.endDate));
     if (params.includeInactive !== undefined)
       queryParams.append("includeInactive", params.includeInactive);
     if (params.includeExpired !== undefined)
@@ -364,20 +406,11 @@ export const ReportsAPI = {
           const contentDisposition = response.headers.get(
             "Content-Disposition",
           );
-          let filename = "inventory-report";
-
-          if (contentDisposition) {
-            const filenameMatch =
-              contentDisposition.match(/filename="?(.+)"?/i);
-            if (filenameMatch) {
-              filename = filenameMatch[1];
-            }
-          }
 
           resolve({
             data: blob,
             contentType,
-            filename,
+            filename: parseFilename(contentDisposition),
           });
         },
         (error) => {

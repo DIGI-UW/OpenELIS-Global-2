@@ -13,14 +13,8 @@ import {
   InlineNotification,
   Loading,
   Tag,
-  Link,
 } from "@carbon/react";
-import {
-  DocumentImport,
-  Checkmark,
-  Warning,
-  Download,
-} from "@carbon/icons-react";
+import { Checkmark, Warning, Download } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
@@ -41,9 +35,9 @@ import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const intl = useIntl();
 
-  const [file, setFile] = useState(null);
   const [parsedData, setParsedData] = useState([]);
   const [validationErrors, setValidationErrors] = useState([]);
+  const [validationWarnings, setValidationWarnings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [importStatus, setImportStatus] = useState(null); // null, 'parsed', 'validating', 'preview', 'importing', 'complete'
@@ -79,33 +73,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     "notes",
   ];
 
-  // All fields supported by the backend DTO (used for validation)
-  // This MUST match SampleRegistrationDTO.java fields exactly
-  const supportedBackendFields = new Set([
-    // Required
-    "externalId",
-    "sampleTypeId", // Maps from CSV "sampleType"
-    "biosafetyLevel",
-    "collectionDate",
-    "originLab",
-    // Conditional
-    "consentId",
-    "ethicsApprovalRef",
-    "mtaReference",
-    // Optional
-    "projectId",
-    "principalInvestigator",
-    "preservationMedium",
-    "arrivalCondition",
-    "specialHandling", // Maps from CSV "notes"
-    // System fields (set by backend, not from CSV)
-    "barcode",
-    "receiptDate",
-    "requiredTempMin",
-    "requiredTempMax",
-    "shipmentId",
-  ]);
-
   // CSV column to backend field mapping
   const csvToBackendFieldMap = {
     externalId: "externalId",
@@ -122,33 +89,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     arrivalCondition: "arrivalCondition",
     notes: "specialHandling",
   };
-
-  // Supported sample types per spec (Sample Type Classifications)
-  const supportedSampleTypes = [
-    {
-      category: "Blood-derived",
-      types: ["Serum", "Plasma", "Whole Blood", "Buffy Coat"],
-    },
-    { category: "Nucleic Acids", types: ["DNA", "RNA", "cDNA"] },
-    { category: "Tissue", types: ["Biopsy", "FFPE Block", "Fresh Frozen"] },
-    { category: "Cellular", types: ["Cell Line", "PBMCs", "Primary Cells"] },
-    {
-      category: "Microbiological",
-      types: ["Bacterial Isolate", "Viral Culture", "Fungal Isolate"],
-    },
-    {
-      category: "Other",
-      types: [
-        "Urine",
-        "CSF",
-        "Saliva",
-        "Stool",
-        "Respiratory Swab",
-        "Fluid",
-        "Environmental",
-      ],
-    },
-  ];
 
   // All expected CSV headers (for template generation)
   const expectedHeaders = Object.keys(csvToBackendFieldMap);
@@ -313,7 +253,6 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         return;
       }
 
-      setFile(uploadedFile);
       setError(null);
 
       const reader = new FileReader();
@@ -322,6 +261,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           const { data, errors } = parseCSV(e.target.result);
           setParsedData(data);
           setValidationErrors(errors);
+          setValidationWarnings([]);
           setBackendValidationDone(false);
           // Set to 'parsed' - user must click Preview & Validate to proceed
           setImportStatus("parsed");
@@ -411,7 +351,13 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     validateWithBackend(samples, (validationResult) => {
       setLoading(false);
 
-      if (!validationResult) {
+      if (validationResult?.error) {
+        setError(validationResult.message || validationResult.error);
+        setImportStatus("parsed");
+        return;
+      }
+
+      if (!validationResult || !Array.isArray(validationResult.rows)) {
         setError(
           intl.formatMessage({
             id: "biorepository.manifest.error.validationFailed",
@@ -425,6 +371,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
 
       // Process backend validation results
       const backendErrors = [];
+      const backendWarnings = [];
       const updatedData = parsedData.map((row, index) => {
         const backendRow = validationResult.rows?.[index];
         if (backendRow && !backendRow.valid && backendRow.errors) {
@@ -436,15 +383,26 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             });
           });
         }
+        if (backendRow?.warnings) {
+          backendRow.warnings.forEach((warningMsg) => {
+            backendWarnings.push({
+              row: row._rowNumber,
+              field: "sampleType",
+              message: warningMsg,
+            });
+          });
+        }
         return {
           ...row,
           _valid: backendRow?.valid ?? row._valid,
           _backendErrors: backendRow?.errors || [],
+          _backendWarnings: backendRow?.warnings || [],
         };
       });
 
       setParsedData(updatedData);
       setValidationErrors((prev) => [...prev, ...backendErrors]);
+      setValidationWarnings(backendWarnings);
       setBackendValidationDone(true);
       setImportStatus("preview");
 
@@ -513,8 +471,17 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       }),
       (response) => {
         setLoading(false);
-        if (response?.error) {
-          setError(response.error);
+        if (!response) {
+          setError(
+            intl.formatMessage({
+              id: "biorepository.manifest.error.importFailed",
+              defaultMessage:
+                "Failed to import samples with server. Please try again.",
+            }),
+          );
+          setImportStatus("preview");
+        } else if (response?.error) {
+          setError(response.message || response.error);
           setImportStatus("preview");
         } else {
           setImportStatus("complete");
@@ -538,9 +505,9 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   ]);
 
   const handleClear = useCallback(() => {
-    setFile(null);
     setParsedData([]);
     setValidationErrors([]);
+    setValidationWarnings([]);
     setImportStatus(null);
     setError(null);
     setBackendValidationDone(false);
@@ -597,12 +564,20 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     sampleType: row.sampleType || "-",
     originLab: row.originLab || "-",
     biosafetyLevel: row.biosafetyLevel || "BSL_1",
-    status: row._valid ? "valid" : "error",
+    status: row._valid
+      ? row._backendWarnings?.length > 0
+        ? "warning"
+        : "valid"
+      : "error",
   }));
 
   // Show errors for specific rows
   const getRowErrors = (rowNumber) => {
     return validationErrors.filter((e) => e.row === rowNumber);
+  };
+
+  const getRowWarnings = (rowNumber) => {
+    return validationWarnings.filter((e) => e.row === rowNumber);
   };
 
   return (
@@ -772,7 +747,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           <div
             style={{
               padding: "1rem",
-              backgroundColor: "#e0f0e0",
+              backgroundColor: "#e8f3ff",
               borderRadius: "4px",
               marginBottom: "1rem",
             }}
@@ -780,28 +755,15 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             <h6 style={{ marginBottom: "0.5rem" }}>
               <FormattedMessage
                 id="biorepository.manifest.sampleTypes.title"
-                defaultMessage="Supported Sample Types:"
+                defaultMessage="Sample Type Handling:"
               />
             </h6>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                gap: "0.5rem",
-              }}
-            >
-              {supportedSampleTypes.map((category) => (
-                <div key={category.category}>
-                  <strong style={{ fontSize: "0.75rem", color: "#161616" }}>
-                    {category.category}:
-                  </strong>
-                  <br />
-                  <span style={{ fontSize: "0.75rem", color: "#525252" }}>
-                    {category.types.join(", ")}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <p style={{ margin: 0, fontSize: "0.875rem", color: "#393939" }}>
+              <FormattedMessage
+                id="biorepository.manifest.sampleTypes.help"
+                defaultMessage="The manifest accepts the sample type labels used by AHRI. Existing sample types are matched by ID, name, localized name, or abbreviation. If a biorepository sample type is not already configured, validation will mark it for creation and the import will register it automatically."
+              />
+            </p>
           </div>
           <FileUploader
             labelTitle={intl.formatMessage({
@@ -927,6 +889,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                       {rows.map((row) => {
                         const rowNumber = parseInt(row.id);
                         const rowErrors = getRowErrors(rowNumber);
+                        const rowWarnings = getRowWarnings(rowNumber);
                         return (
                           <React.Fragment key={row.id}>
                             <TableRow {...getRowProps({ row })}>
@@ -938,6 +901,13 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                         <FormattedMessage
                                           id="biorepository.manifest.status.pending"
                                           defaultMessage="Pending"
+                                        />
+                                      </Tag>
+                                    ) : cell.value === "warning" ? (
+                                      <Tag type="warm-gray" size="sm">
+                                        <FormattedMessage
+                                          id="biorepository.manifest.status.warning"
+                                          defaultMessage="Will Create Type"
                                         />
                                       </Tag>
                                     ) : (
@@ -968,6 +938,23 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                       <div key={idx}>
                                         • {err.field}: {err.message}
                                       </div>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                            {rowWarnings.length > 0 && (
+                              <TableRow>
+                                <TableCell colSpan={headers.length}>
+                                  <div
+                                    style={{
+                                      backgroundColor: "#fff8e1",
+                                      padding: "0.5rem",
+                                      fontSize: "0.875rem",
+                                    }}
+                                  >
+                                    {rowWarnings.map((warning, idx) => (
+                                      <div key={idx}>• {warning.message}</div>
                                     ))}
                                   </div>
                                 </TableCell>
@@ -1050,6 +1037,12 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                 />
               </Tag>
             )}
+            {validationWarnings.length > 0 && (
+              <Tag type="warm-gray" style={{ marginLeft: "0.5rem" }}>
+                <Warning size={16} style={{ marginRight: "0.25rem" }} />
+                {validationWarnings.length} warning(s)
+              </Tag>
+            )}
           </div>
 
           {validationErrors.length > 0 && (
@@ -1063,6 +1056,45 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                 id: "biorepository.manifest.validation.subtitle",
                 defaultMessage:
                   "Please fix the errors below before importing. Rows with errors are highlighted.",
+              })}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+
+          {validationErrors.length > 0 && validSampleCount > 0 && (
+            <InlineNotification
+              kind="info"
+              title={intl.formatMessage({
+                id: "biorepository.manifest.partialImport.title",
+                defaultMessage: "Partial Import Available",
+              })}
+              subtitle={intl.formatMessage(
+                {
+                  id: "biorepository.manifest.partialImport.subtitle",
+                  defaultMessage:
+                    "{count} valid sample(s) can still be imported. Rows marked Error will be skipped.",
+                },
+                { count: validSampleCount },
+              )}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem" }}
+            />
+          )}
+
+          {validationWarnings.length > 0 && (
+            <InlineNotification
+              kind="info"
+              title={intl.formatMessage({
+                id: "biorepository.manifest.warnings.title",
+                defaultMessage: "Validation Warnings",
+              })}
+              subtitle={intl.formatMessage({
+                id: "biorepository.manifest.warnings.subtitle",
+                defaultMessage:
+                  "Some rows introduce new sample types. Those sample types will be created automatically during import and added to the biorepository-approved list.",
               })}
               lowContrast
               hideCloseButton
@@ -1096,6 +1128,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                     {rows.map((row) => {
                       const rowNumber = parseInt(row.id);
                       const rowErrors = getRowErrors(rowNumber);
+                      const rowWarnings = getRowWarnings(rowNumber);
                       return (
                         <React.Fragment key={row.id}>
                           <TableRow {...getRowProps({ row })}>
@@ -1107,6 +1140,13 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                       <FormattedMessage
                                         id="biorepository.manifest.status.valid"
                                         defaultMessage="Valid"
+                                      />
+                                    </Tag>
+                                  ) : cell.value === "warning" ? (
+                                    <Tag type="warm-gray" size="sm">
+                                      <FormattedMessage
+                                        id="biorepository.manifest.status.warning"
+                                        defaultMessage="Will Create Type"
                                       />
                                     </Tag>
                                   ) : (
@@ -1137,6 +1177,23 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
                                     <div key={idx}>
                                       • {err.field}: {err.message}
                                     </div>
+                                  ))}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {rowWarnings.length > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={headers.length}>
+                                <div
+                                  style={{
+                                    backgroundColor: "#fff8e1",
+                                    padding: "0.5rem",
+                                    fontSize: "0.875rem",
+                                  }}
+                                >
+                                  {rowWarnings.map((warning, idx) => (
+                                    <div key={idx}>• {warning.message}</div>
                                   ))}
                                 </div>
                               </TableCell>

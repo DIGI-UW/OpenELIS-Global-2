@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
  * label,type,rows,columns,positionSchemaHint,code,active,parentRackCode Plate
  * ULF1-S1-R1-001,96-well,8,12,letter-number,P001,true,R1 Box
  * ULF1-S2-R1-001,9x9,9,9,number-number,B001,true,R1 Archive
- * 2024-001,10x10,10,10,number-number,A2024-001,true,AR1
+ * 2024-001,10x10,10,10,continuous,A2024-001,true,AR1
  */
 @Component
 @Transactional

@@ -96,6 +96,16 @@ const InventoryReports = () => {
     setSuccess(null);
   };
 
+  const handleDateRangeChange = (dates) => {
+    setFormData((prev) => ({
+      ...prev,
+      startDate: dates && dates.length > 0 ? dates[0] || null : null,
+      endDate: dates && dates.length > 1 ? dates[1] || null : null,
+    }));
+    setError(null);
+    setSuccess(null);
+  };
+
   // Validate form
   const validate = () => {
     // Date range reports require dates
@@ -230,10 +240,7 @@ const InventoryReports = () => {
                   <DatePicker
                     datePickerType="range"
                     value={[formData.startDate, formData.endDate]}
-                    onChange={(dates) => {
-                      handleChange("startDate", dates[0] || null);
-                      handleChange("endDate", dates[1] || null);
-                    }}
+                    onChange={handleDateRangeChange}
                   >
                     <DatePickerInput
                       id="startDate"
@@ -319,6 +326,7 @@ const InventoryReports = () => {
                     lowContrast
                   />
                 )}
+
 
                 {/* Success notification */}
                 {success && (

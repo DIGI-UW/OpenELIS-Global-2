@@ -86,5 +86,6 @@
     <!-- ======================================================== -->
 
     <include file="liquibase/3.5.x.x/029-electronic-signature.xml"/>
+    <include file="liquibase/3.5.x.x/030-fix-biorepository-approved-sample-type-lastupdated.xml"/>
 
 </databaseChangeLog>
