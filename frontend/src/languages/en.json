@@ -3706,6 +3706,7 @@
   "validation.field.required": "This field is required",
   "validation.ignore.all": "Ignore All Results",
   "validation.label.nonconform": "= Sample or Order is nonconforming or Test has been rejected",
+  "validation.outOfRange": "Out of valid range",
   "validation.password.match": "Passwords must match",
   "validation.password.minLength": "Password must be at least 7 characters",
   "validation.password.notSameAsOld": "New password must not be the same as the old password",

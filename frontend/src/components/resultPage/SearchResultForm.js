@@ -41,6 +41,7 @@ import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
+import {intl} from "react-intl";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -1212,6 +1213,7 @@ export function SearchResults(props) {
 
           case "N":
             return (
+              <>
               <TextInput
                 id={"ResultValue" + row.id}
                 name={"testResult[" + row.id + "].resultValue"}
@@ -1261,6 +1263,12 @@ export function SearchResults(props) {
                   }
                 }}
               />
+              {validationState[row.id]?.outsideValid && (
+                <div style={{ color: "red", fontSize: "12px" }}>
+                  {intl.formatMessage({ id: "validation.outOfRange" })}
+                </div>
+              )}
+            </>
             );
 
           case "R":
