@@ -240,7 +240,8 @@ export const OrderProvider = ({ children }) => {
                 // Keep patient status from response or default to NO_ACTION for subsequent saves
                 // Only set UPDATE when patient data has actually been modified
                 patientUpdateStatus:
-                  response.patientProperties?.patientUpdateStatus || "NO_ACTION",
+                  response.patientProperties?.patientUpdateStatus ||
+                  "NO_ACTION",
               },
               sampleOrderItems: {
                 ...SampleOrderFormValues.sampleOrderItems,
