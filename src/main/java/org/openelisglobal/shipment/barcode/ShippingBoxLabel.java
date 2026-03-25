@@ -32,9 +32,9 @@ public class ShippingBoxLabel extends Label {
         // Set dimensions from configuration properties or use defaults
         try {
             String widthStr = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.STORAGE_LOCATION_BARCODE_WIDTH);
+                    .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_WIDTH);
             String heightStr = ConfigurationProperties.getInstance()
-                    .getPropertyValue(Property.STORAGE_LOCATION_BARCODE_HEIGHT);
+                    .getPropertyValue(Property.STORAGE_LOCATION_LABEL_BARCODE_HEIGHT);
 
             if (widthStr != null && !widthStr.isEmpty()) {
                 width = Float.parseFloat(widthStr);
