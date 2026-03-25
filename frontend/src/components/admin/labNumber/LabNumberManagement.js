@@ -80,8 +80,14 @@ function LabNumberManagement() {
   useEffect(() => {
     if (testInput && labNumberValues.customAccessionRegex) {
       try {
-        const regex = new RegExp(labNumberValues.customAccessionRegex);
-        setIsTestValid(regex.test(testInput));
+        const regexStr = labNumberValues.customAccessionRegex.trim();
+        if (!regexStr) {
+          setIsTestValid(null);
+          return;
+        }
+        const regex = new RegExp(regexStr);
+        const isValid = regex.test(testInput);
+        setIsTestValid(isValid);
       } catch (e) {
         setIsTestValid(false);
       }
