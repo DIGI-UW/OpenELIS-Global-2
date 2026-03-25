@@ -2906,12 +2906,6 @@ const StorageDashboard = () => {
       Object.keys(occupiedCoordinates).some((coordinate) =>
         /^\d+-\d+$/.test(coordinate),
       );
-    const hasLegacyContinuousCoordinates =
-      hint === "number-number" &&
-      Object.keys(occupiedCoordinates).some((coordinate) =>
-        /^\d+$/.test(coordinate),
-      );
-
     // Generate coordinate labels based on position schema hint
     const getCoordinateLabel = (rowIdx, colIdx) => {
       if (hint === "letter-number") {
@@ -2920,13 +2914,12 @@ const StorageDashboard = () => {
         return `${letter}${colIdx + 1}`;
       }
 
-      if (hint === "number-number" && !hasLegacyContinuousCoordinates) {
+      if (hint === "number-number") {
         // Existing number-number schema uses row-column coordinates like 1-1, 1-2, ...
         return `${rowIdx + 1}-${colIdx + 1}`;
       }
 
-      if (hint === "continuous" || hasLegacyContinuousCoordinates) {
-        // Backward compatibility for boxes created before the explicit continuous schema type existed.
+      if (hint === "continuous") {
         return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
       }
 
