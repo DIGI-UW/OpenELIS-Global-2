@@ -5,9 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Seed data: menu items and system configuration entries -->
-
-    <!-- Menu items for analyzer navigation -->
     <changeSet author="madagascar-analyzer-integration" id="011-007-01-add-menu-items-parent">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
@@ -85,8 +82,33 @@
         </rollback>
     </changeSet>
 
-    <!-- System configuration entries for analyzer query functionality -->
-    <changeSet author="madagascar-analyzer-integration" id="011-007-04-add-query-timeout-config">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-04-add-menu-items-types">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_types'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Analyzer Types sub-menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers')"/>
+            <column name="presentation_order" value="3"/>
+            <column name="element_id" value="menu_analyzers_types"/>
+            <column name="action_url" value="/analyzers/types"/>
+            <column name="display_key" value="analyzer.navigation.analyzerTypes"/>
+            <column name="tool_tip_key" value="analyzer.navigation.analyzerTypes"/>
+            <column name="new_window" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="hide_in_old_ui" valueBoolean="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_analyzers_types'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="madagascar-analyzer-integration" id="011-007-05-add-query-timeout-config">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_configuration" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -108,7 +130,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="madagascar-analyzer-integration" id="011-007-05-add-query-rate-limit-config">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-06-add-query-rate-limit-config">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_configuration" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -130,7 +152,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="madagascar-analyzer-integration" id="011-007-06-add-max-fields-config">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-07-add-max-fields-config">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_configuration" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">

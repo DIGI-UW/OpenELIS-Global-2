@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer Test Connection E2E
@@ -17,20 +22,20 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
-  test.skip(
-    process.env.CI === "true",
-    "Requires analyzer harness with fixture data (not available in CI)",
-  );
-
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
-    const GENEXPERT_ID = "2013";
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
+    );
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();
     await list.expectLoaded();
 
     const row = list.getRow(GENEXPERT_ID);
-    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
 
     await list.openOverflowMenu(GENEXPERT_ID);
     await list.clickAction(GENEXPERT_ID, "test-connection");
@@ -56,17 +61,21 @@ test.describe("Analyzer Test Connection", () => {
 
     // Test connection can be briefly flaky right after harness restarts.
     // Retry a few times, but fail with explicit UI error details if it never succeeds.
+    // Click test and wait for result. The bridge ASTM round-trip takes ~2s,
+    // so we use expect().toBeVisible() which auto-retries (unlike isVisible()
+    // which returns immediately and ignores the timeout option).
     let connected = false;
     let lastError = "";
     for (let attempt = 1; attempt <= 3; attempt++) {
       await testButton.click();
-      if (
-        (await successTag.first().isVisible({ timeout: 15_000 })) ||
-        (await successText.first().isVisible({ timeout: 1_000 }))
-      ) {
+      try {
+        await expect(successTag.first()).toBeVisible({ timeout: LONG_TIMEOUT });
         connected = true;
         break;
+      } catch {
+        // Success tag didn't appear — check logs for details
       }
+
       if (await logsButton.isVisible()) {
         await logsButton.click();
         const logs = page.locator(
@@ -74,10 +83,6 @@ test.describe("Analyzer Test Connection", () => {
         );
         if (await logs.first().isVisible()) {
           const logText = ((await logs.first().textContent()) || "").trim();
-          if (/Connection successful via bridge/i.test(logText)) {
-            connected = true;
-            break;
-          }
           if (logText.length > 0) {
             lastError = `${lastError}\n${logText}`.trim();
           }
@@ -87,11 +92,16 @@ test.describe("Analyzer Test Connection", () => {
         lastError =
           (await errorTag.textContent())?.trim() || "Connection failed";
       }
-      if (attempt < 3 && (await retryButton.isVisible())) {
-        await retryButton.click();
-      }
+      // Wait for "Test Again" button before retrying
       if (attempt < 3) {
-        await page.waitForTimeout(1_000);
+        try {
+          await expect(retryButton).toBeVisible({ timeout: SHORT_TIMEOUT });
+          await retryButton.click();
+        } catch {
+          await expect(successTag.or(errorTag)).toBeVisible({
+            timeout: SHORT_TIMEOUT,
+          });
+        }
       }
     }
 
@@ -172,7 +182,7 @@ test.describe("Real GeneXpert Test Connection", () => {
     // Plugin Type loads async — wait for options before selecting
     await form.pluginTypeDropdown.click();
     const pluginOption = page.getByRole("option", { name: /Generic ASTM/ });
-    await expect(pluginOption.first()).toBeVisible({ timeout: 10_000 });
+    await expect(pluginOption.first()).toBeVisible({ timeout: UI_TIMEOUT });
     await pluginOption.first().click();
 
     await form.selectType("Molecular");
@@ -234,7 +244,7 @@ test.describe("Real GeneXpert Test Connection", () => {
 
     // Real GeneXpert + contention handling may take longer than mock
     const successTag = page.locator('[data-testid="test-connection-success"]');
-    await expect(successTag).toBeVisible({ timeout: 30_000 });
+    await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
 
     const errorTag = page.locator('[data-testid="test-connection-error"]');
     await expect(errorTag).not.toBeVisible();
