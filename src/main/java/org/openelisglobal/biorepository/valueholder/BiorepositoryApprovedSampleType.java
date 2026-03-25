@@ -1,6 +1,5 @@
 package org.openelisglobal.biorepository.valueholder;
 
-import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -28,7 +27,6 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
  */
 @Entity
 @Table(name = "biorepository_approved_sample_type", schema = "clinlims")
-@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
 public class BiorepositoryApprovedSampleType extends BaseObject<Integer> {
 
     /**

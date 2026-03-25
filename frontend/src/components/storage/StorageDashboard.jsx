@@ -2906,6 +2906,11 @@ const StorageDashboard = () => {
       Object.keys(occupiedCoordinates).some((coordinate) =>
         /^\d+-\d+$/.test(coordinate),
       );
+    const hasLegacyContinuousCoordinates =
+      hint === "number-number" &&
+      Object.keys(occupiedCoordinates).some((coordinate) =>
+        /^\d+$/.test(coordinate),
+      );
 
     // Generate coordinate labels based on position schema hint
     const getCoordinateLabel = (rowIdx, colIdx) => {
@@ -2915,13 +2920,21 @@ const StorageDashboard = () => {
         return `${letter}${colIdx + 1}`;
       }
 
-      if (hasLegacyNumberCoordinates) {
-        // Backward compatibility for boxes that already stored positions as 1-1, 1-2, ...
+      if (hint === "number-number" && !hasLegacyContinuousCoordinates) {
+        // Existing number-number schema uses row-column coordinates like 1-1, 1-2, ...
         return `${rowIdx + 1}-${colIdx + 1}`;
       }
 
-      // Continuous numbering for AHRI biorepository boxes: 1, 2, 3, ... in row-major order.
-      return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
+      if (hint === "continuous" || hasLegacyContinuousCoordinates) {
+        // Backward compatibility for boxes created before the explicit continuous schema type existed.
+        return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
+      }
+
+      if (hasLegacyNumberCoordinates) {
+        return `${rowIdx + 1}-${colIdx + 1}`;
+      }
+
+      return `${rowIdx + 1}-${colIdx + 1}`;
     };
 
     return (

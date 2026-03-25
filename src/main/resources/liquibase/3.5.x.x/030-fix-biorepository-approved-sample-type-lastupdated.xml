@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="fix-biorepository-approved-sample-type-lastupdated-column" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_approved_sample_type" schemaName="clinlims"/>
+            <columnExists tableName="biorepository_approved_sample_type" schemaName="clinlims" columnName="lastupdated"/>
+            <not>
+                <columnExists tableName="biorepository_approved_sample_type" schemaName="clinlims" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Rename biorepository_approved_sample_type.lastupdated to last_updated to match BaseObject</comment>
+
+        <renameColumn
+            schemaName="clinlims"
+            tableName="biorepository_approved_sample_type"
+            oldColumnName="lastupdated"
+            newColumnName="last_updated"
+            columnDataType="TIMESTAMP"/>
+
+        <rollback>
+            <renameColumn
+                schemaName="clinlims"
+                tableName="biorepository_approved_sample_type"
+                oldColumnName="last_updated"
+                newColumnName="lastupdated"
+                columnDataType="TIMESTAMP"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

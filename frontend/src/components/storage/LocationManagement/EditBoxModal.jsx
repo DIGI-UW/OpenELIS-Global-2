@@ -103,6 +103,13 @@ const EditBoxModal = ({ open, mode, box, parentRack, onClose, onSave }) => {
         id: "number-number",
         label: intl.formatMessage({
           id: "storage.box.schema.numberNumber",
+          defaultMessage: "Number-Number (1-1)",
+        }),
+      },
+      {
+        id: "continuous",
+        label: intl.formatMessage({
+          id: "storage.box.schema.continuous",
           defaultMessage: "Continuous Number (1, 2, 3)",
         }),
       },
