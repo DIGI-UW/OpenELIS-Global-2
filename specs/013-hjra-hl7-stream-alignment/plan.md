@@ -26,7 +26,7 @@ handling already present in main-repo HL7 codepaths, analyzer profile JSONs
 under `projects/analyzer-profiles/hl7`  
 **Storage**: PostgreSQL 14+ / Liquibase (inherited; no new schema changes in
 this branch)  
-**Testing**: JUnit 4 + Mockito, `BaseWebContextSensitiveTest`, bridge
+**Testing**: JUnit 4/5 + Mockito, `BaseWebContextSensitiveTest`, bridge
 integration testing, harness-based end-to-end evidence, Cypress or Playwright
 only if downstream UI changes are introduced later  
 **Target Platform**: Linux-based OpenELIS deployment plus bridge-managed
@@ -265,9 +265,12 @@ define the minimum evidence contract for downstream implementation branches.
   selection make the E2E run reproducible and evidence-valid (same message
   format as the target analyzer).
 - **BS-Series Validation**: Dedicated `mindray-bs200.json` and
-  `mindray-bs300.json` profiles exist. Strict 013 mock generation derives OBX
-  code/unit semantics from these profiles through a thin adapter in
-  `tools/analyzer-mock-server/profile_adapter.py`.
+  `mindray-bs300.json` profiles exist. Strict 013 mock generation uses
+  `tools/analyzer-mock-server/hl7_generator.py` with JSON templates loaded by
+  `template_loader.py` from `tools/analyzer-mock-server/templates/`. Each
+  BS-series mock template (`mindray_bs200.json`, `mindray_bs300.json`) defines
+  the same OBX code/unit/seedValue fields as the corresponding analyzer profile,
+  ensuring E2E messages match the expected ingestion shape.
 - **Harness Usage**: Use `projects/analyzer-harness/` for environment alignment.
   Use `scripts/test-hl7-profiles.sh` as the canonical strict-013 proof command:
   it enforces fixture/link guards and executes BC-5380, BS-200, and BS-300 via
