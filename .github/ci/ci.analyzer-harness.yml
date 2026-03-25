@@ -45,9 +45,15 @@ services:
       - "12000:12001"
     volumes:
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
+      - BRIDGE_FILE_ENABLED=true
+      - BRIDGE_OPENELIS_URL=https://oe.openelis.org:8443/OpenELIS-Global
+      - BRIDGE_OPENELIS_USERNAME=admin
+      - BRIDGE_OPENELIS_PASSWORD=adminADMIN!
+      - BRIDGE_OPENELIS_INSECURETLS=true
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
       # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
@@ -65,9 +71,8 @@ services:
     environment:
       - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
-      # file.import.poll.interval: harness-only fast poll; production default remains in application.properties.
-      # MUST stay aligned with FILE_IMPORT_POLL_MS in e2e-playwright-analyzer-harness-reusable.yml.
-      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass} -Dfile.import.poll.interval=5000
+      # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
+      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
       - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro

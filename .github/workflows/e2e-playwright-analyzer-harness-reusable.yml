@@ -5,10 +5,27 @@ name: E2E / Playwright / Analyzer Harness (Reusable)
 
 on:
   workflow_call:
+    inputs:
+      build_run_id:
+        description: "Run ID of the build workflow (for cross-run artifact download). Empty = same run."
+        required: false
+        type: string
+        default: ""
+      is_fork:
+        description: "Whether this is a fork PR (artifacts in same run from fork-rebuild)"
+        required: false
+        type: string
+        default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures harness uses PR's compose/test files, not develop)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
   packages: read
+  actions: read
 
 jobs:
   demo-shards:
@@ -28,6 +45,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_sha || github.sha }}
           submodules: recursive
 
       - name: Set up Node.js
@@ -61,13 +79,33 @@ jobs:
       - name: Prepare .env
         run: cp .env.example .env
 
-      - name: Download plugin jars artifact
+      - name: Download plugin jars from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download plugin jars from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
         uses: actions/download-artifact@v4
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
 
-      - name: Download Docker image map artifact
+      - name: Download image map from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map
@@ -120,6 +158,16 @@ jobs:
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
+      - name: Fix analyzer-imports permissions (bridge creates dirs as root)
+        run: |
+          # Bridge creates incoming/ dirs asynchronously after seed registration.
+          # Wait for all expected directories to appear, then fix permissions.
+          for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+            timeout 30 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
+            echo "Found: $dir/incoming"
+          done
+          chmod -R a+rwx projects/analyzer-harness/volume/analyzer-imports
+
       - name: Verify analyzer test mappings exist (prevent unmapped-result race)
         run: |
           for analyzer in "Cepheid GeneXpert (ASTM Mode)" "QuantStudio 5" "QuantStudio 7" "FluoroCycler XT"; do
@@ -145,7 +193,7 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
-          # Must match -Dfile.import.poll.interval on oe.openelis.org (ci.analyzer-harness.yml)
+          # Must match bridge.file.pollIntervalMs (bridge default: 5000ms)
           FILE_IMPORT_POLL_MS: "5000"
           FILE_IMPORT_DROP_BUFFER_MS: "45000"
 
