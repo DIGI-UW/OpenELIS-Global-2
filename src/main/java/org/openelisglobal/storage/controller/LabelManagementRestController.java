@@ -6,10 +6,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.storage.dao.StorageDeviceDAO;
-import org.openelisglobal.storage.dao.StorageRackDAO;
-import org.openelisglobal.storage.dao.StorageShelfDAO;
 import org.openelisglobal.storage.service.LabelManagementService;
+import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageShelf;
@@ -29,19 +27,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/rest/storage")
 public class LabelManagementRestController extends BaseRestController {
 
+    @Autowired
+    private StorageLocationService storageLocationService;
+
     private static final Logger logger = LoggerFactory.getLogger(LabelManagementRestController.class);
 
     @Autowired
     private LabelManagementService labelManagementService;
-
-    @Autowired
-    private StorageDeviceDAO storageDeviceDAO;
-
-    @Autowired
-    private StorageShelfDAO storageShelfDAO;
-
-    @Autowired
-    private StorageRackDAO storageRackDAO;
 
     /**
      * Generate and return PDF label POST /rest/storage/{type}/{id}/print-label
@@ -169,11 +161,11 @@ public class LabelManagementRestController extends BaseRestController {
             Integer locationId = Integer.parseInt(id);
             switch (type) {
             case "device":
-                return storageDeviceDAO.get(locationId).orElse(null);
+                return storageLocationService.get(locationId, StorageDevice.class);
             case "shelf":
-                return storageShelfDAO.get(locationId).orElse(null);
+                return storageLocationService.get(locationId, StorageShelf.class);
             case "rack":
-                return storageRackDAO.get(locationId).orElse(null);
+                return storageLocationService.get(locationId, StorageRack.class);
             default:
                 return null;
             }
