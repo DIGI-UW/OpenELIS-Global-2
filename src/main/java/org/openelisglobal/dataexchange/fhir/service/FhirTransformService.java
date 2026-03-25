@@ -35,6 +35,8 @@ public interface FhirTransformService {
     void transformPersistOrganization(Organization organization)
             throws FhirTransformationException, FhirPersistanceException;
 
+    void transformPersistResult(Result result) throws FhirTransformationException, FhirPersistanceException;
+
     void transformPersistOrderEntryFhirObjects(SamplePatientUpdateData updateData, PatientManagementInfo patientInfo,
             boolean useReferral, List<ReferralItem> referralItems)
             throws FhirTransformationException, FhirPersistanceException;
