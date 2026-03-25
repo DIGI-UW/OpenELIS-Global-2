@@ -960,6 +960,32 @@ function CreatePatientForm(props) {
                   </Field>
                 </Column>
                 <Column lg={8} md={4} sm={4}>
+                  <Field name="email">
+                    {({ field }) => (
+                      <TextInput
+                        value={values.email || ""}
+                        name={field.name}
+                        id="email"
+                        labelText={intl.formatMessage({
+                          id: "patient.label.email",
+                        })}
+                        placeholder={intl.formatMessage({
+                          id: "patient.information.email",
+                        })}
+                        invalid={errors.email && touched.email}
+                        invalidText={errors.email}
+                      />
+                    )}
+                  </Field>
+                  <div className="error">
+                    <ErrorMessage name="email"></ErrorMessage>
+                  </div>
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  {" "}
+                  <br></br>
+                </Column>
+                <Column lg={4} md={4} sm={4}>
                   <Field name="gender">
                     {({ field }) => (
                       <RadioButtonGroup
@@ -994,11 +1020,7 @@ function CreatePatientForm(props) {
                     <ErrorMessage name="gender"></ErrorMessage>
                   </div>
                 </Column>
-                <Column lg={16} md={8} sm={4}>
-                  {" "}
-                  <br></br>
-                </Column>
-                <Column lg={8} md={4} sm={4}>
+                <Column lg={4} md={4} sm={4}>
                   <Field name="birthDateForDisplay">
                     {({ field }) => (
                       <CustomDatePicker
@@ -1028,7 +1050,7 @@ function CreatePatientForm(props) {
                     )}
                   </Field>
                 </Column>
-                <Column lg={2} md={2} sm={2}>
+                <Column lg={3} md={2} sm={2}>
                   <TextInput
                     value={dateOfBirthFormatter.years}
                     name="years"
@@ -1044,7 +1066,7 @@ function CreatePatientForm(props) {
                     })}
                   />
                 </Column>
-                <Column lg={2} md={2} sm={2}>
+                <Column lg={3} md={2} sm={2}>
                   <TextInput
                     value={dateOfBirthFormatter.months}
                     name="months"

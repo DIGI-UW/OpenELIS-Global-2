@@ -3,6 +3,7 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
 import { createDemoPresentation } from "../helpers/demo-presentation";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Demo: QuantStudio 7 — Generic File profile walkthrough.
@@ -89,7 +90,7 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     await presentation.step(4, "Save the analyzer");
     await form.save();
     await form.expectSuccessNotification();
-    await expect(form.modal).not.toBeVisible({ timeout: 15_000 });
+    await expect(form.modal).not.toBeVisible({ timeout: LONG_TIMEOUT });
     await presentation.pause(1_000);
 
     // Step 9: Verify analyzer appears in list
@@ -102,7 +103,7 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
       .locator("tbody tr")
       .filter({ hasText: createdAnalyzerName })
       .first();
-    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(row).toContainText(createdAnalyzerName);
     await expect(row).toContainText("MOLECULAR");
     await presentation.pause(1_000);
@@ -117,13 +118,13 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     const fileImportAction = page
       .locator('[data-testid*="analyzer-action-file-import"]')
       .first();
-    await expect(fileImportAction).toBeVisible({ timeout: 5_000 });
+    await expect(fileImportAction).toBeVisible({ timeout: SHORT_TIMEOUT });
     await fileImportAction.click();
 
     const fileImportForm = page.locator(
       '[data-testid="file-import-configuration-form"]',
     );
-    await expect(fileImportForm).toBeVisible({ timeout: 10_000 });
+    await expect(fileImportForm).toBeVisible({ timeout: UI_TIMEOUT });
 
     const fileFormatDropdown = page.locator(
       '[data-testid="file-import-configuration-file-format-dropdown"]',
@@ -142,10 +143,10 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     );
 
     await expect(fileFormatDropdown).toContainText(/Excel/i);
-    await expect(directoryInput).not.toHaveValue("", { timeout: 10_000 });
-    await expect(patternInput).not.toHaveValue("", { timeout: 10_000 });
-    await expect(archiveInput).not.toHaveValue("", { timeout: 10_000 });
-    await expect(errorInput).not.toHaveValue("", { timeout: 10_000 });
+    await expect(directoryInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
+    await expect(patternInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
+    await expect(archiveInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
+    await expect(errorInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
 
     await presentation.title(
       "Story Complete",
