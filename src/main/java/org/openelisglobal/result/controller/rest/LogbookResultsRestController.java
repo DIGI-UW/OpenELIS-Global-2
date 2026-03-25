@@ -83,6 +83,7 @@ import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -118,7 +119,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class LogbookResultsRestController extends LogbookResultsBaseController {
 
-    private String RESULT_EDIT_ROLE_ID;
+    private final String RESULT_EDIT_ROLE_ID;
 
     private final String[] ALLOWED_FIELDS = new String[] { "accessionNumber", "collectionDate", "recievedDate",
             "selectedTest", "selectedAnalysisStatus", "selectedSampleStatus", "testSectionId", "methodId", "type",
@@ -162,8 +163,6 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     @Autowired
     private UserService userService;
     @Autowired
-    private RoleService roleService;
-    @Autowired
     private SampleService sampleService;
     @Autowired
     PatientService patientService;
@@ -186,12 +185,19 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
     private final String REFERRAL_CONFORMATION_ID;
     private static final String REFLEX_ACCESSIONS = "reflex_accessions";
 
-    private LogbookResultsRestController(ReferralTypeService referralTypeService) {
+    private LogbookResultsRestController(ReferralTypeService referralTypeService, RoleService roleService) {
         ReferralType referralType = referralTypeService.getReferralTypeByName("Confirmation");
         if (referralType != null) {
             REFERRAL_CONFORMATION_ID = referralType.getId();
         } else {
             REFERRAL_CONFORMATION_ID = null;
+        }
+
+        Role editRole = roleService.getRoleByName(Constants.ROLE_RESULTS);
+        if (editRole != null) {
+            RESULT_EDIT_ROLE_ID = editRole.getId();
+        } else {
+            RESULT_EDIT_ROLE_ID = null;
         }
     }
 
