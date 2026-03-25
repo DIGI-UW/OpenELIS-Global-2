@@ -1,10 +1,11 @@
 import React from "react";
-import { withTranslation } from "react-i18next";
+import { injectIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import { Button, Layer, Tile } from "@carbon/react";
 
 /**
  * Catches render errors for a single route subtree so the rest of the app keeps working.
- * Strings use react-i18next (`t`) with English defaults until resources are fully migrated.
+ * Copy uses react-intl message ids from `frontend/src/languages/*.json`.
  */
 class RouteErrorBoundaryClass extends React.Component {
   constructor(props) {
@@ -14,6 +15,17 @@ class RouteErrorBoundaryClass extends React.Component {
 
   static getDerivedStateFromError() {
     return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps) {
+    const { resetKey } = this.props;
+    if (
+      resetKey !== undefined &&
+      resetKey !== prevProps.resetKey &&
+      this.state.hasError
+    ) {
+      this.setState({ hasError: false });
+    }
   }
 
   componentDidCatch(error, errorInfo) {
@@ -26,17 +38,16 @@ class RouteErrorBoundaryClass extends React.Component {
 
   render() {
     const { hasError } = this.state;
-    const { t, children, titleKey, messageKey, titleDefault, messageDefault } =
-      this.props;
+    const { intl, children, titleKey, messageKey } = this.props;
 
     if (hasError) {
       return (
         <Layer>
           <Tile style={{ maxWidth: "32rem", margin: "2rem" }}>
-            <h2>{t(titleKey, titleDefault)}</h2>
-            <p>{t(messageKey, messageDefault)}</p>
+            <h2>{intl.formatMessage({ id: titleKey })}</h2>
+            <p>{intl.formatMessage({ id: messageKey })}</p>
             <Button kind="primary" onClick={this.handleReload}>
-              {t("errorBoundary.reload", "Reload")}
+              {intl.formatMessage({ id: "errorBoundary.reload" })}
             </Button>
           </Tile>
         </Layer>
@@ -47,6 +58,13 @@ class RouteErrorBoundaryClass extends React.Component {
   }
 }
 
-const RouteErrorBoundary = withTranslation()(RouteErrorBoundaryClass);
+const RouteErrorBoundary = injectIntl(RouteErrorBoundaryClass);
 
-export default RouteErrorBoundary;
+function RouteErrorBoundaryWithLocation(props) {
+  const location = useLocation();
+  const resetKey = `${location.pathname}${location.search}`;
+  return <RouteErrorBoundary {...props} resetKey={resetKey} />;
+}
+
+export { RouteErrorBoundary };
+export default RouteErrorBoundaryWithLocation;

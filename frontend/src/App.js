@@ -270,33 +270,21 @@ export default function App() {
   const routeErrorStorage = {
     titleKey: "errorBoundary.route.storage.title",
     messageKey: "errorBoundary.route.storage.message",
-    titleDefault: "Storage could not be loaded",
-    messageDefault:
-      "Something went wrong on this page. Reload to try again, or use the menu to go elsewhere.",
   };
 
   const routeErrorPatientResultsViewer = {
     titleKey: "errorBoundary.route.patientResultsViewer.title",
     messageKey: "errorBoundary.route.patientResultsViewer.message",
-    titleDefault: "Patient results could not be loaded",
-    messageDefault:
-      "Something went wrong while showing this patient's results. Reload to try again.",
   };
 
   const routeErrorResultsSearch = {
     titleKey: "errorBoundary.route.resultsSearch.title",
     messageKey: "errorBoundary.route.resultsSearch.message",
-    titleDefault: "Results could not be loaded",
-    messageDefault:
-      "Something went wrong on the results page. Reload to try again.",
   };
 
   const routeErrorSamplePatientEntry = {
     titleKey: "errorBoundary.route.samplePatientEntry.title",
     messageKey: "errorBoundary.route.samplePatientEntry.message",
-    titleDefault: "Sample entry could not be loaded",
-    messageDefault:
-      "Something went wrong on the sample entry page. Reload to try again.",
   };
 
   return (
@@ -488,14 +476,7 @@ export default function App() {
                   path="/SamplePatientEntry"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorSamplePatientEntry.titleKey}
-                      messageKey={routeErrorSamplePatientEntry.messageKey}
-                      titleDefault={routeErrorSamplePatientEntry.titleDefault}
-                      messageDefault={
-                        routeErrorSamplePatientEntry.messageDefault
-                      }
-                    >
+                    <RouteErrorBoundary {...routeErrorSamplePatientEntry}>
                       <AddOrder />
                     </RouteErrorBoundary>
                   )}
@@ -616,12 +597,7 @@ export default function App() {
                   path="/Storage"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorStorage.titleKey}
-                      messageKey={routeErrorStorage.messageKey}
-                      titleDefault={routeErrorStorage.titleDefault}
-                      messageDefault={routeErrorStorage.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorStorage}>
                       <StorageDashboard />
                     </RouteErrorBoundary>
                   )}
@@ -630,12 +606,7 @@ export default function App() {
                 <SecureRoute
                   path="/Storage/:tab"
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorStorage.titleKey}
-                      messageKey={routeErrorStorage.messageKey}
-                      titleDefault={routeErrorStorage.titleDefault}
-                      messageDefault={routeErrorStorage.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorStorage}>
                       <StorageDashboard />
                     </RouteErrorBoundary>
                   )}
@@ -775,14 +746,7 @@ export default function App() {
                   path="/PatientResults/:patientId"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorPatientResultsViewer.titleKey}
-                      messageKey={routeErrorPatientResultsViewer.messageKey}
-                      titleDefault={routeErrorPatientResultsViewer.titleDefault}
-                      messageDefault={
-                        routeErrorPatientResultsViewer.messageDefault
-                      }
-                    >
+                    <RouteErrorBoundary {...routeErrorPatientResultsViewer}>
                       <RoutedResultsViewer />
                     </RouteErrorBoundary>
                   )}
@@ -817,12 +781,7 @@ export default function App() {
                   path="/result"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorResultsSearch.titleKey}
-                      messageKey={routeErrorResultsSearch.messageKey}
-                      titleDefault={routeErrorResultsSearch.titleDefault}
-                      messageDefault={routeErrorResultsSearch.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
@@ -832,12 +791,7 @@ export default function App() {
                   path="/LogbookResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorResultsSearch.titleKey}
-                      messageKey={routeErrorResultsSearch.messageKey}
-                      titleDefault={routeErrorResultsSearch.titleDefault}
-                      messageDefault={routeErrorResultsSearch.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
@@ -847,12 +801,7 @@ export default function App() {
                   path="/PatientResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorResultsSearch.titleKey}
-                      messageKey={routeErrorResultsSearch.messageKey}
-                      titleDefault={routeErrorResultsSearch.titleDefault}
-                      messageDefault={routeErrorResultsSearch.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
@@ -862,12 +811,7 @@ export default function App() {
                   path="/AccessionResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorResultsSearch.titleKey}
-                      messageKey={routeErrorResultsSearch.messageKey}
-                      titleDefault={routeErrorResultsSearch.titleDefault}
-                      messageDefault={routeErrorResultsSearch.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
@@ -877,12 +821,7 @@ export default function App() {
                   path="/StatusResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorResultsSearch.titleKey}
-                      messageKey={routeErrorResultsSearch.messageKey}
-                      titleDefault={routeErrorResultsSearch.titleDefault}
-                      messageDefault={routeErrorResultsSearch.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
@@ -892,12 +831,7 @@ export default function App() {
                   path="/RangeResults"
                   exact
                   component={() => (
-                    <RouteErrorBoundary
-                      titleKey={routeErrorResultsSearch.titleKey}
-                      messageKey={routeErrorResultsSearch.messageKey}
-                      titleDefault={routeErrorResultsSearch.titleDefault}
-                      messageDefault={routeErrorResultsSearch.messageDefault}
-                    >
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
                       <ResultSearch />
                     </RouteErrorBoundary>
                   )}
