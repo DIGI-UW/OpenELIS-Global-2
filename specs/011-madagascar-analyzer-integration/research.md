@@ -1,5 +1,13 @@
 # Research: Madagascar Analyzer Integration
 
+## 2026-03-18 Addendum: FILE Ownership Alignment
+
+This research note is aligned with the 014 remediation archive plan.
+
+- The OS-level watcher recommendation maps to bridge-owned FILE watching.
+- OpenELIS should not be the default active poller for the same directories.
+- OpenELIS remains responsible for configuration and ingestion/processing.
+
 **Feature**: 011-madagascar-analyzer-integration **Date**: 2026-01-22
 **Purpose**: Resolve technical unknowns and document design decisions
 
