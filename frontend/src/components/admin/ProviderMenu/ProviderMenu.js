@@ -444,6 +444,12 @@ function ProviderMenu() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+          <TextInput
+            id="email"
+            labelText={intl.formatMessage({ id: "provider.email" })}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
           <Dropdown
             className="dropdown-list"
@@ -501,6 +507,12 @@ function ProviderMenu() {
             onBlur={(e) => handlePhoneValidation(e)}
             invalid={!phoneValidation.status}
             invalidText={phoneValidation.status ? "" : phoneValidation.body}
+          />
+          <TextInput
+            id="updateEmail"
+            labelText={intl.formatMessage({ id: "provider.email" })}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <TextInput
             id="updateEmail"
