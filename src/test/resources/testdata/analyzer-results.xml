@@ -31,30 +31,30 @@
         machine_id="COBAS6800-001" analyzer_type="MOLECULAR"
         description="Automated molecular analyzer for PCR testing"
         location="Main Laboratory - Room 101" is_active="true"
-        has_setup_page="true" lastupdated="2023-01-01 12:00:00" />
+        has_setup_page="true" last_updated="2023-01-01 12:00:00" />
     <analyzer id="2002" name="ABL800 FLEX" machine_id="ABL800-123"
         analyzer_type="CHEMISTRY"
         description="Blood gas and electrolyte analyzer"
         location="Emergency Department - Station 3" is_active="true"
-        has_setup_page="false" lastupdated="2023-01-01 12:30:00" />
+        has_setup_page="false" last_updated="2023-01-01 12:30:00" />
 
     <analyzer_results id="1001" analyzer_id="2001"
         accession_number="ACC123456" test_name="Glucose" result="5.6"
-        units="mmol/L" iscontrol="false" lastupdated="2025-07-01 08:00:00"
+        units="mmol/L" iscontrol="false" last_updated="2025-07-01 08:00:00"
         read_only="false" duplicate_id="1001" positive="false"
         complete_date="2025-07-01 08:15:00" test_result_type="N"
         test_id="4001" />
 
     <analyzer_results id="1002" analyzer_id="2002"
         accession_number="ACC789012" test_name="Hemoglobin" result="13.2"
-        units="g/dL" iscontrol="false" lastupdated="2025-07-01 08:30:00"
+        units="g/dL" iscontrol="false" last_updated="2025-07-01 08:30:00"
         read_only="true" duplicate_id="1002" positive="true"
         complete_date="2025-07-01 09:15:00" test_result_type="N"
         test_id="4002" />
 
     <analyzer_results id="1003" analyzer_id="2002"
         accession_number="ACC345678" test_name="Cholesterol" result="190"
-        units="mg/dL" iscontrol="false" lastupdated="2025-07-01 09:00:00"
+        units="mg/dL" iscontrol="false" last_updated="2025-07-01 09:00:00"
         read_only="false" duplicate_id="1003" positive="false"
         complete_date="2025-07-01 09:15:00" test_result_type="N"
         test_id="4002" />

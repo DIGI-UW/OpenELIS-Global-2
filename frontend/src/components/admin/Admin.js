@@ -5,6 +5,7 @@ import { Switch, Route, useRouteMatch, useHistory } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import ProgramManagement from "./program/ProgramManagement";
+import EQAProgramManagement from "../eqa/EQAProgram/ProgramManagement";
 import LabNumberManagement from "./labNumber/LabNumberManagement";
 import {
   GlobalMenuManagement,
@@ -33,6 +34,7 @@ import {
   ResultNew,
   Popup,
   Search,
+  DataCheck,
 } from "@carbon/icons-react";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import {
@@ -44,6 +46,7 @@ import {
 } from "@carbon/react";
 import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
+import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
 import BarcodeConfiguration from "./barcodeConfiguration/BarcodeConfiguration";
 import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName.js";
@@ -60,6 +63,7 @@ import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCance
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
+import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
@@ -88,6 +92,10 @@ import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRename
 import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry.js";
 import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry.js";
 import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry.js";
+import {
+  LanguageManagement,
+  TranslationManagement,
+} from "./localizationManagement";
 
 function Admin() {
   const intl = useIntl();
@@ -157,6 +165,13 @@ function Admin() {
             onClick={handleNavigation(`${path}/program`)}
           >
             <FormattedMessage id="sidenav.label.admin.program" />
+          </SideNavLink>
+          <SideNavLink
+            data-cy="eqaProgramEntry"
+            renderIcon={DataCheck}
+            onClick={handleNavigation(`${path}/eqaProgram`)}
+          >
+            <FormattedMessage id="sidenav.label.admin.eqaProgram" />
           </SideNavLink>
           <SideNavLink
             data-cy="providerMgmnt"
@@ -281,6 +296,12 @@ function Admin() {
               <FormattedMessage id="sidenav.label.admin.formEntry.siteInfoconfig" />
             </SideNavMenuItem>
             <SideNavMenuItem
+              data-cy="siteBrandingMenu"
+              onClick={handleNavigation(`${path}/SiteBrandingMenu`)}
+            >
+              <FormattedMessage id="sidenav.label.admin.formEntry.siteBranding" />
+            </SideNavMenuItem>
+            <SideNavMenuItem
               data-cy="resultConfigMenu"
               onClick={handleNavigation(`${path}/ResultConfigurationMenu`)}
             >
@@ -350,6 +371,38 @@ function Admin() {
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
           <SideNavLink
+            renderIcon={Settings}
+            onClick={handleNavigation(`${path}/loggingManagement`)}
+          >
+            <FormattedMessage id="logging.management.label" />
+          </SideNavLink>
+          <SideNavMenu
+            title={intl.formatMessage({
+              id: "sidenav.label.admin.localization",
+              defaultMessage: "Localization",
+            })}
+            renderIcon={TableOfContents}
+          >
+            <SideNavMenuItem
+              data-cy="languageManagement"
+              onClick={handleNavigation(`${path}/languageManagement`)}
+            >
+              <FormattedMessage
+                id="locale.management.title"
+                defaultMessage="Language Management"
+              />
+            </SideNavMenuItem>
+            <SideNavMenuItem
+              data-cy="translationManagement"
+              onClick={handleNavigation(`${path}/translationManagement`)}
+            >
+              <FormattedMessage
+                id="translation.management.title"
+                defaultMessage="Translation Management"
+              />
+            </SideNavMenuItem>
+          </SideNavMenu>
+          <SideNavLink
             renderIcon={Catalog}
             target="_blank"
             href={config.serverBaseUrl + "/MasterListsPage"}
@@ -367,6 +420,7 @@ function Admin() {
         <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
         <Route path={`${path}/labNumber`} component={LabNumberManagement} />
         <Route path={`${path}/program`} component={ProgramManagement} />
+        <Route path={`${path}/eqaProgram`} component={EQAProgramManagement} />
         <Route path={`${path}/providerMenu`} component={ProviderMenu} />
         <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
         <Route
@@ -398,6 +452,10 @@ function Admin() {
         <Route
           path={`${path}/billingMenuManagement`}
           component={BillingMenuManagement}
+        />
+        <Route
+          path={`${path}/SiteBrandingMenu`}
+          component={SiteBrandingConfig}
         />
         <Route
           path={`${path}/nonConformityMenuManagement`}
@@ -472,6 +530,14 @@ function Admin() {
         <Route
           path={`${path}/MethodRenameEntry`}
           component={MethodRenameEntry}
+        />
+        <Route
+          path={`${path}/languageManagement`}
+          component={LanguageManagement}
+        />
+        <Route
+          path={`${path}/translationManagement`}
+          component={TranslationManagement}
         />
         <Route
           path={`${path}/NonConformityConfigurationMenu`}
@@ -579,6 +645,10 @@ function Admin() {
         <Route
           path={`${path}/SearchIndexManagement`}
           component={SearchIndexManagement}
+        />
+        <Route
+          path={`${path}/loggingManagement`}
+          component={LoggingManagement}
         />
       </Switch>
     </>

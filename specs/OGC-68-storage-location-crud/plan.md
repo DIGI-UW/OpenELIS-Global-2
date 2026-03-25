@@ -157,8 +157,8 @@ src/main/java/org/openelisglobal/storage/
 └── fhir/
     └── StorageLocationFhirTransform.java  # UPDATE: Add connectivity extensions
 
-src/main/resources/liquibase/storage/
-└── storage-device-connectivity.xml  # NEW: Add columns changeset
+src/main/resources/liquibase/3.3.x.x/
+└── 023-storage-device-connectivity.xml  # NEW: Add columns changeset
 
 # Frontend
 frontend/src/components/storage/

@@ -19,6 +19,7 @@ import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
+import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 const ExistingOrder = () => {
   const intl = useIntl();
@@ -92,6 +93,30 @@ const ExistingOrder = () => {
       `/LabelMakerServlet?labNo=${specimenAccessionNumber}&type=specimen&quantity=1`,
     );
     setRenderBarcode(true);
+  };
+
+  const buildReprintDialogOptions = () => {
+    const options = [
+      {
+        labelType: "order",
+        quantity: orderLabels,
+        printUrl: `/LabelMakerServlet?labNo=${accessionNumber}&type=order&quantity=${orderLabels}`,
+      },
+    ];
+
+    if (orderResults) {
+      orderResults
+        .filter((result) => result.accessionNumber)
+        .forEach((result, index) => {
+          options.push({
+            labelType: `specimen-${index + 1}`,
+            quantity: 1,
+            printUrl: `/LabelMakerServlet?labNo=${result.accessionNumber}&type=specimen&quantity=1`,
+          });
+        });
+    }
+
+    return options;
   };
 
   return (
@@ -178,6 +203,23 @@ const ExistingOrder = () => {
                 </Button>
               </Column>
             </div>
+          </Grid>
+        </div>
+      )}
+      {patientSearchResults !== null && orderResults !== null && (
+        <div className="orderLegendBody">
+          <Grid>
+            <Column lg={16} md={8} sm={4}>
+              <h4>
+                <FormattedMessage id="barcode.print.reprint.dialog" />
+              </h4>
+            </Column>
+            <Column lg={16} md={8} sm={4}>
+              <PostSavePrintDialog
+                accessionNumber={accessionNumber}
+                printableLabelTypes={buildReprintDialogOptions()}
+              />
+            </Column>
           </Grid>
         </div>
       )}

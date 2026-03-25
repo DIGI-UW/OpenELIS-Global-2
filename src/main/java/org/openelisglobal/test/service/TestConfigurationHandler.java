@@ -5,12 +5,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -22,28 +25,41 @@ import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handler for loading test configuration files. Supports CSV format for
  * defining laboratory tests with their sample type mappings.
- *
+ * <p>
  * Expected CSV format:
- * testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,englishName,frenchName
+ * testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr
  * Glucose,Biochemistry,Serum,2345-7,Y,Y,1,mg/dL,Glucose,Glucose
  * Hemoglobin,Hematology,Whole Blood,718-7,Y,Y,2,g/dL,Hemoglobin,Hémoglobine HIV
- * Rapid Test,Serology,Whole Blood,68961-2,Y,Y,3,,HIV Rapid Test,Test Rapide VIH
- *
+ * Rapid Test,Serology,Plasma|Serum|Whole Blood,68961-2,Y,Y,3,,HIV Rapid
+ * Test,Test Rapide VIH
+ * <p>
+ * Sample Type Handling: - When multiple sample types are specified (separated
+ * by |), separate tests are created for each sample type - Test names are
+ * suffixed with the sample type: "TestName(SampleType)" (no space) - Example:
+ * "Rapid Test,Serology,Plasma|Serum|Whole Blood" creates: * "Rapid
+ * Test(Plasma)" with sample type Plasma * "Rapid Test(Serum)" with sample type
+ * Serum * "Rapid Test(Whole Blood)" with sample type Whole Blood - Each test
+ * has only one sample type mapping
+ * <p>
  * Notes: - First line is the header (required) - testName and testSection are
  * required fields - sampleType is optional but recommended (can specify
  * multiple separated by |) - loinc is optional but recommended for
  * interoperability - isActive defaults to "Y" if not specified - isOrderable
  * defaults to "Y" if not specified - sortOrder is optional (auto-assigned if
- * not provided) - unitOfMeasure is optional - englishName defaults to testName
- * if not provided - frenchName defaults to englishName if not provided -
- * Existing tests with matching description will be updated
+ * not provided) - unitOfMeasure is optional - localization:xx columns (where xx
+ * is a locale code like en, fr, es) provide translations - If no localization
+ * columns are provided, testName is used as the default value for the fallback
+ * locale (en) - Existing tests with matching description will be updated
  */
 @Component
 public class TestConfigurationHandler implements DomainConfigurationHandler {
+
+    private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
 
     @Autowired
     private TestService testService;
@@ -53,6 +69,9 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
 
     @Autowired
     private TypeOfSampleService typeOfSampleService;
@@ -79,6 +98,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -100,8 +120,9 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         int isOrderableIndex = findColumnIndex(headers, "isOrderable");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int unitOfMeasureIndex = findColumnIndex(headers, "unitOfMeasure");
-        int englishNameIndex = findColumnIndex(headers, "englishName");
-        int frenchNameIndex = findColumnIndex(headers, "frenchName");
+
+        // Detect localization columns (localization:en, localization:fr, etc.)
+        Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         List<Test> processedTests = new ArrayList<>();
         String line;
@@ -110,15 +131,16 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
         while ((line = reader.readLine()) != null) {
             lineNumber++;
-            if (line.trim().isEmpty()) {
+            // Skip empty lines and comments (lines starting with #)
+            if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
 
             try {
                 String[] values = parseCsvLine(line);
                 Test test = processCsvLine(values, testNameIndex, testSectionIndex, sampleTypeIndex, loincIndex,
-                        isActiveIndex, isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, englishNameIndex,
-                        frenchNameIndex, lineNumber, fileName, nextSortOrder);
+                        isActiveIndex, isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, localizationColumns,
+                        lineNumber, fileName, nextSortOrder);
                 if (test != null) {
                     processedTests.add(test);
                     nextSortOrder++;
@@ -191,14 +213,35 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         return -1;
     }
 
+    /**
+     * Detects localization columns from headers. Columns must be in the format
+     * "localization:xx" where xx is a locale code (e.g., en, fr, es).
+     *
+     * @param headers the CSV header row
+     * @return map of locale code to column index
+     */
+    private Map<String, Integer> detectLocalizationColumns(String[] headers) {
+        Map<String, Integer> localizationColumns = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            String header = headers[i].trim().toLowerCase();
+            if (header.startsWith(LOCALIZATION_COLUMN_PREFIX)) {
+                String locale = header.substring(LOCALIZATION_COLUMN_PREFIX.length());
+                if (!locale.isEmpty()) {
+                    localizationColumns.put(locale, i);
+                }
+            }
+        }
+        return localizationColumns;
+    }
+
     private Test processCsvLine(String[] values, int testNameIndex, int testSectionIndex, int sampleTypeIndex,
             int loincIndex, int isActiveIndex, int isOrderableIndex, int sortOrderIndex, int unitOfMeasureIndex,
-            int englishNameIndex, int frenchNameIndex, int lineNumber, String fileName, int defaultSortOrder) {
+            Map<String, Integer> localizationColumns, int lineNumber, String fileName, int defaultSortOrder) {
 
-        String testName = getValueOrEmpty(values, testNameIndex);
+        String baseTestName = getValueOrEmpty(values, testNameIndex);
         String testSectionName = getValueOrEmpty(values, testSectionIndex);
 
-        if (testName.isEmpty()) {
+        if (baseTestName.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
                     "Skipping row " + lineNumber + " in " + fileName + " with missing testName");
             return null;
@@ -218,27 +261,73 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             return null;
         }
 
-        // Check if test already exists
-        Test existingTest = testService.getTestByDescription(testName);
-
-        Test test;
-        if (existingTest != null) {
-            test = updateTest(existingTest, values, testName, testSection, loincIndex, isActiveIndex, isOrderableIndex,
-                    sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Updated existing test: " + testName);
-        } else {
-            test = createTest(values, testName, testSection, loincIndex, isActiveIndex, isOrderableIndex,
-                    sortOrderIndex, unitOfMeasureIndex, englishNameIndex, frenchNameIndex, defaultSortOrder);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Created new test: " + testName);
-        }
-
-        // Handle sample type mappings
         String sampleTypes = getValueOrEmpty(values, sampleTypeIndex);
-        if (!sampleTypes.isEmpty() && test != null) {
-            createSampleTypeMappings(test, sampleTypes, lineNumber, fileName);
-        }
+        if (!sampleTypes.isEmpty()) {
+            String[] sampleTypeNames = sampleTypes.split("\\|");
+            Test lastCreatedTest = null;
 
-        return test;
+            for (String sampleTypeName : sampleTypeNames) {
+                sampleTypeName = sampleTypeName.trim();
+                if (sampleTypeName.isEmpty()) {
+                    continue;
+                }
+
+                TypeOfSample sampleType = findSampleType(sampleTypeName);
+                if (sampleType == null) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
+                            "Sample type '" + sampleTypeName + "' not found for test in line " + lineNumber + " of "
+                                    + fileName + ". Skipping this sample type.");
+                    continue;
+                }
+
+                String testNameWithSampleType = baseTestName + "(" + sampleTypeName + ")"; // to match the
+                                                                                           // buildAugmentedTestName(Test
+                                                                                           // test){} method in
+                                                                                           // TestServiceImpl
+                // Use normalized matching to find existing tests that should be overridden
+                // (e.g., "Stat-Pak(Plasma)" matches "Stat PaK(Plasma)")
+                Test existingTest = testService.getTestByNormalizedDescription(testNameWithSampleType);
+
+                Test test;
+                if (existingTest != null) {
+                    test = updateTest(existingTest, values, testNameWithSampleType, testSection, loincIndex,
+                            isActiveIndex, isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, localizationColumns,
+                            defaultSortOrder);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                            "Updated existing test: " + testNameWithSampleType);
+                } else {
+                    test = createTest(values, testNameWithSampleType, testSection, loincIndex, isActiveIndex,
+                            isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, localizationColumns,
+                            defaultSortOrder);
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                            "Created new test: " + testNameWithSampleType);
+                }
+
+                if (test != null) {
+                    createSingleSampleTypeMapping(test, sampleType);
+                    lastCreatedTest = test;
+                }
+            }
+
+            return lastCreatedTest;
+        } else {
+            Test existingTest = testService.getTestByNormalizedDescription(baseTestName);
+
+            Test test;
+            if (existingTest != null) {
+                test = updateTest(existingTest, values, baseTestName, testSection, loincIndex, isActiveIndex,
+                        isOrderableIndex, sortOrderIndex, unitOfMeasureIndex, localizationColumns, defaultSortOrder);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                        "Updated existing test: " + baseTestName);
+            } else {
+                test = createTest(values, baseTestName, testSection, loincIndex, isActiveIndex, isOrderableIndex,
+                        sortOrderIndex, unitOfMeasureIndex, localizationColumns, defaultSortOrder);
+                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
+                        "Created new test: " + baseTestName);
+            }
+
+            return test;
+        }
     }
 
     private String getValueOrEmpty(String[] values, int index) {
@@ -250,8 +339,8 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private Test updateTest(Test test, String[] values, String testName, TestSection testSection, int loincIndex,
-            int isActiveIndex, int isOrderableIndex, int sortOrderIndex, int unitOfMeasureIndex, int englishNameIndex,
-            int frenchNameIndex, int defaultSortOrder) {
+            int isActiveIndex, int isOrderableIndex, int sortOrderIndex, int unitOfMeasureIndex,
+            Map<String, Integer> localizationColumns, int defaultSortOrder) {
 
         test.setDescription(testName);
         test.setTestSection(testSection);
@@ -289,45 +378,49 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        // Update localization
-        String englishName = getValueOrEmpty(values, englishNameIndex);
-        String frenchName = getValueOrEmpty(values, frenchNameIndex);
-        updateTestLocalization(test, englishName, frenchName, testName);
-
         test.setSysUserId("1");
+
+        // Handle localization
+        processTestLocalization(test, values, testName, localizationColumns);
+
         testService.update(test);
         return test;
     }
 
     private Test createTest(String[] values, String testName, TestSection testSection, int loincIndex,
-            int isActiveIndex, int isOrderableIndex, int sortOrderIndex, int unitOfMeasureIndex, int englishNameIndex,
-            int frenchNameIndex, int defaultSortOrder) {
+            int isActiveIndex, int isOrderableIndex, int sortOrderIndex, int unitOfMeasureIndex,
+            Map<String, Integer> localizationColumns, int defaultSortOrder) {
+
+        // Build translations map
+        Map<String, String> translations = buildTranslationsMap(values, testName, localizationColumns);
 
         // Create localization first
-        String englishName = getValueOrEmpty(values, englishNameIndex);
-        String frenchName = getValueOrEmpty(values, frenchNameIndex);
-
-        if (englishName.isEmpty()) {
-            englishName = testName;
-        }
-        if (frenchName.isEmpty()) {
-            frenchName = englishName;
-        }
-
         Localization localization = new Localization();
         localization.setDescription("test name");
-        localization.setEnglish(englishName);
-        localization.setFrench(frenchName);
+        localization.setEnglish(translations.getOrDefault("en", testName));
+        localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testName)));
         localization.setSysUserId("1");
-        localizationService.insert(localization);
+        String localizationId = localizationService.insert(localization);
+        localization.setId(localizationId);
+
+        // Set all translations using the service (including any beyond en/fr)
+        for (Map.Entry<String, String> entry : translations.entrySet()) {
+            localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
+        }
 
         // Create reporting name localization (same as test name by default)
         Localization reportingLocalization = new Localization();
         reportingLocalization.setDescription("test reporting name");
-        reportingLocalization.setEnglish(englishName);
-        reportingLocalization.setFrench(frenchName);
+        reportingLocalization.setEnglish(translations.getOrDefault("en", testName));
+        reportingLocalization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testName)));
         reportingLocalization.setSysUserId("1");
-        localizationService.insert(reportingLocalization);
+        String reportingLocalizationId = localizationService.insert(reportingLocalization);
+        reportingLocalization.setId(reportingLocalizationId);
+
+        // Set all translations for reporting name
+        for (Map.Entry<String, String> entry : translations.entrySet()) {
+            localizationValueService.setTranslation(reportingLocalizationId, entry.getKey(), entry.getValue(), "1");
+        }
 
         // Create test
         Test test = new Test();
@@ -385,33 +478,60 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         return test;
     }
 
-    private void updateTestLocalization(Test test, String englishName, String frenchName, String defaultName) {
-        if (englishName.isEmpty() && frenchName.isEmpty()) {
-            return;
+    /**
+     * Builds a map of translations from localization columns. If no translations
+     * are provided, uses the default name as the fallback (en) value.
+     */
+    private Map<String, String> buildTranslationsMap(String[] values, String defaultName,
+            Map<String, Integer> localizationColumns) {
+        Map<String, String> translations = new HashMap<>();
+
+        if (localizationColumns.isEmpty()) {
+            // No localization columns provided - use defaultName as the fallback (en) value
+            translations.put("en", defaultName);
+        } else {
+            // Process each localization column
+            for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
+                String locale = entry.getKey();
+                String translationValue = getValueOrEmpty(values, entry.getValue());
+                if (!translationValue.isEmpty()) {
+                    translations.put(locale, translationValue);
+                }
+            }
+
+            // If no valid translations found, use defaultName as fallback
+            if (translations.isEmpty()) {
+                translations.put("en", defaultName);
+            }
         }
 
+        return translations;
+    }
+
+    /**
+     * Processes localization columns and sets up translations for the test.
+     */
+    private void processTestLocalization(Test test, String[] values, String testName,
+            Map<String, Integer> localizationColumns) {
+
+        Map<String, String> translations = buildTranslationsMap(values, testName, localizationColumns);
+
+        // Update test name localization
         Localization localization = test.getLocalizedTestName();
         if (localization != null) {
-            if (!englishName.isEmpty()) {
-                localization.setEnglish(englishName);
+            String localizationId = localization.getId();
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
             }
-            if (!frenchName.isEmpty()) {
-                localization.setFrench(frenchName);
-            }
-            localization.setSysUserId("1");
-            localizationService.update(localization);
         }
 
+        // Update reporting name localization
         Localization reportingLocalization = test.getLocalizedReportingName();
         if (reportingLocalization != null) {
-            if (!englishName.isEmpty()) {
-                reportingLocalization.setEnglish(englishName);
+            String reportingLocalizationId = reportingLocalization.getId();
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(reportingLocalizationId, entry.getKey(), entry.getValue(), "1");
             }
-            if (!frenchName.isEmpty()) {
-                reportingLocalization.setFrench(frenchName);
-            }
-            reportingLocalization.setSysUserId("1");
-            localizationService.update(reportingLocalization);
         }
     }
 
@@ -455,6 +575,19 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "createSampleTypeMappings", "Created mapping: test '"
                         + test.getDescription() + "' -> sample type '" + sampleTypeName + "'");
             }
+        }
+    }
+
+    private void createSingleSampleTypeMapping(Test test, TypeOfSample sampleType) {
+        if (!mappingExists(test.getId(), sampleType.getId())) {
+            TypeOfSampleTest mapping = new TypeOfSampleTest();
+            mapping.setTestId(test.getId());
+            mapping.setTypeOfSampleId(sampleType.getId());
+            mapping.setSysUserId("1");
+            typeOfSampleTestService.insert(mapping);
+            LogEvent.logDebug(this.getClass().getSimpleName(), "createSingleSampleTypeMapping",
+                    "Created mapping: test '" + test.getDescription() + "' -> sample type '"
+                            + sampleType.getLocalizedName() + "'");
         }
     }
 

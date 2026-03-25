@@ -1,0 +1,21 @@
+{
+  "protocolVersions": ["0.3.0"],
+  "name": "CatalystRouterAgent",
+  "description": "Orchestrates multi-agent query flow: SchemaAgent → SQLGenAgent (or single-agent fallback to CatalystAgent)",
+  "url": "http://catalyst-agents:8000",
+  "version": "0.1.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "orchestrate_query",
+      "name": "Orchestrate Query",
+      "description": "Route natural language queries through SchemaAgent → SQLGenAgent (multi-agent mode) or CatalystAgent (single-agent mode)",
+      "tags": ["router", "orchestration", "multi-agent"]
+    }
+  ]
+}

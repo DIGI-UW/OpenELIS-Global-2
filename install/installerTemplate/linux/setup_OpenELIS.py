@@ -82,7 +82,7 @@ DOCKER_OE_CONTAINER_NAME = "openelisglobal-webapp"
 DOCKER_FHIR_API_CONTAINER_NAME = "external-fhir-api"
 DOCKER_NGINX_CONTAINER_NAME = "openelisglobal-proxy"
 DOCKER_FRONTEND_CONTAINER_NAME = "openelisglobal-frontend"
-DOCKER_ASTM_BRIDGE_CONTAINER_NAME = "astm-http-bridge"
+DOCKER_ANALYZER_BRIDGE_CONTAINER_NAME = "openelis-analyzer-bridge"
 DOCKER_AUTOHEAL_CONTAINER_NAME = "autoheal-oe"
 DOCKER_DB_CONTAINER_NAME = "openelisglobal-database" 
 DOCKER_DB_BACKUPS_DIR = "/backups/"  # path in docker container
@@ -90,7 +90,7 @@ DOCKER_DB_HOST_PORT = "5432"
 
 #Behaviour variables
 DOCKER_DB = False 
-ASTM_PROXY = False
+ANALYZER_BRIDGE = False
 LOCAL_DB = True
 PRINT_TO_CONSOLE = True
 MODE = "update-install"
@@ -291,7 +291,7 @@ def create_docker_compose_file():
     
     for line in template_file:
         #set docker db attributes
-        if ASTM_PROXY:
+        if ANALYZER_BRIDGE:
             if line.find("#astm") >= 0:
                 line = line.replace("#astm", "")
         #set docker db attributes
@@ -872,9 +872,9 @@ def uninstall_docker_images():
     cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_FRONTEND_CONTAINER_NAME + '" --format="{{.ID}}"))'
     os.system(cmd)
     
-    if ASTM_PROXY:
-        log("removing astm-bridge image...", PRINT_TO_CONSOLE)
-        cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_ASTM_BRIDGE_CONTAINER_NAME + '" --format="{{.ID}}"))'
+    if ANALYZER_BRIDGE:
+        log("removing analyzer-bridge image...", PRINT_TO_CONSOLE)
+        cmd = 'docker rm $(docker stop $(docker ps -a -q --filter="name=' + DOCKER_ANALYZER_BRIDGE_CONTAINER_NAME + '" --format="{{.ID}}"))'
         os.system(cmd)
     
     log("removing autoheal image...", PRINT_TO_CONSOLE)
@@ -914,7 +914,7 @@ def read_setup_properties_file():
     global DB_DATA_DIR, DB_ENVIRONMENT_DIR, DB_INIT_DIR, DOCKER_DB, DOCKER_DB_BACKUPS_DIR, DOCKER_DB_HOST_PORT
     global DB_HOST, DB_PORT
     global LOCAL_DB
-    global ASTM_PROXY
+    global ANALYZER_BRIDGE
     
     config = configparser.ConfigParser() 
     config.read(OE_ETC_DIR + SETUP_CONFIG_FILE_NAME)
@@ -946,7 +946,7 @@ def read_setup_properties_file():
         LOCAL_DB = False
 
     additional_services_info = "ADDITIONAL_SERVICES"
-    ASTM_PROXY = is_true_string(config.get(additional_services_info,'activate_astm',fallback='False'))
+    ANALYZER_BRIDGE = is_true_string(config.get(additional_services_info,'activate_astm',fallback='False'))
     
     
 def write_setup_properties_file():

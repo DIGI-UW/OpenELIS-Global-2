@@ -1,0 +1,403 @@
+openapi: 3.0.3
+info:
+  title: Catalyst API - LLM-Powered Lab Data Assistant
+  description: |
+    REST API for Catalyst, an LLM-powered data assistant for OpenELIS Global.
+    Converts natural language queries into SQL and returns results.
+    
+    **Privacy Guarantee**: The LLM receives only database schema metadata, 
+    never patient data or query results.
+  version: 1.0.0
+  contact:
+    name: OpenELIS Development Team
+    url: https://github.com/DIGI-UW/OpenELIS-Global-2
+
+servers:
+  - url: https://localhost/rest/catalyst
+    description: Local development
+  - url: https://{hostname}/rest/catalyst
+    description: Production
+    variables:
+      hostname:
+        default: openelis.org
+
+tags:
+  - name: Query
+    description: Natural language query operations
+  - name: History
+    description: Query history operations
+
+paths:
+  /query:
+    post:
+      tags:
+        - Query
+      summary: Submit natural language query
+      description: |
+        Converts a natural language question into SQL, validates it against 
+        guardrails, and optionally executes it against the OpenELIS database.
+        
+        **Query Lifecycle (Review Before Execute)**:
+        1. User submits natural language query with `execute: false`
+        2. Agent generates SQL using LLM (schema context only, no patient data) and pre-validates via MCP
+        3. Agent submits SQL to backend (status: SUBMITTED)
+        4. Backend validates SQL via guardrails (blocked tables, row estimation, syntax)
+        5. If valid: Returns SQL with status VALIDATED, `queryId`, and `confirmationToken` for user review (HTTP 200)
+        6. If invalid: Returns HTTP 400 ErrorResponse with error code BLOCKED or VALIDATION_ERROR; audit status becomes REJECTED
+        7. User confirms execution by resubmitting with `execute: true`, `queryId`, and `confirmationToken`
+        8. Backend validates token, sets status ACCEPTED, then executes and returns results (status: EXECUTED)
+        
+        **Security**: Execution requires both `queryId` and `confirmationToken` to prevent
+        accidental or unauthorized execution without user review.
+      operationId: submitQuery
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+            examples:
+              generateOnly:
+                summary: Generate and validate SQL (Stage A)
+                value:
+                  query: "How many samples were entered today?"
+                  execute: false
+              executeWithConfirmation:
+                summary: Execute with confirmation (Stage B)
+                value:
+                  queryId: "550e8400-e29b-41d4-a716-446655440000"
+                  confirmationToken: "abc123def456..."
+                  execute: true
+                  maxRows: 1000
+      responses:
+        '200':
+          description: Query processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResponse'
+              examples:
+                validated:
+                  summary: SQL validated, ready for review
+                  value:
+                    queryId: "550e8400-e29b-41d4-a716-446655440000"
+                    status: "VALIDATED"
+                    userQuery: "How many samples were entered today?"
+                    generatedSql: "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE"
+                    estimatedRows: 150
+                    confirmationToken: "abc123def456..."
+                    executionTimeMs: null
+                    results: null
+                executed:
+                  summary: SQL executed (after confirmation)
+                  value:
+                    queryId: "550e8400-e29b-41d4-a716-446655440001"
+                    status: "EXECUTED"
+                    userQuery: "How many samples were entered today?"
+                    generatedSql: "SELECT COUNT(*) FROM sample WHERE entered_date = CURRENT_DATE"
+                    estimatedRows: 150
+                    actualRows: 147
+                    executionTimeMs: 45
+                    results:
+                      columns: ["count"]
+                      rows: [[147]]
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emptyQuery:
+                  summary: Empty query
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Query text is required"
+                blockedTable:
+                  summary: SQL rejected by guardrails (blocked table)
+                  value:
+                    error: "BLOCKED"
+                    message: "Access to restricted table 'sys_user' is not permitted. Query status set to REJECTED in audit log."
+                invalidConfirmation:
+                  summary: Invalid confirmation token
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Confirmation token does not match generated SQL. Please review and confirm again."
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /history:
+    get:
+      tags:
+        - History
+      summary: Get user's query history
+      description: Returns the authenticated user's recent query history
+      operationId: getQueryHistory
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: status
+          in: query
+          description: Filter by execution status
+          schema:
+            type: string
+            enum: [SUBMITTED, VALIDATED, REJECTED, ACCEPTED, EXECUTED, FAILED]
+            description: |
+              Query lifecycle status:
+              - SUBMITTED: Agent generated SQL and submitted to system
+              - VALIDATED: Passed guardrails validation, ready for user review
+              - REJECTED: Failed validation (blocked table, too many rows, syntax error)
+              - ACCEPTED: User confirmed execution (token validated)
+              - EXECUTED: Query executed successfully
+              - FAILED: Execution failed (timeout, runtime error)
+      responses:
+        '200':
+          description: Query history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QueryHistoryItem'
+                  total:
+                    type: integer
+
+  /export/{queryId}:
+    get:
+      tags:
+        - Query
+      summary: Export query results
+      description: Export results of an executed query as CSV or JSON
+      operationId: exportResults
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: queryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv, json]
+      responses:
+        '200':
+          description: Export successful
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Query not found or not executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OpenELIS session token
+
+  schemas:
+    QueryRequest:
+      oneOf:
+        - $ref: '#/components/schemas/GenerateRequest'
+        - $ref: '#/components/schemas/ExecuteRequest'
+      discriminator:
+        propertyName: execute
+        mapping:
+          'false': '#/components/schemas/GenerateRequest'
+          'true': '#/components/schemas/ExecuteRequest'
+
+    GenerateRequest:
+      type: object
+      required:
+        - query
+        - execute
+      properties:
+        query:
+          type: string
+          description: Natural language question (required for Stage A: generation)
+          example: "How many samples were entered today?"
+          maxLength: 10000
+        execute:
+          type: boolean
+          enum: [false]
+          description: Must be false for Stage A (generate and validate SQL only)
+        maxRows:
+          type: integer
+          default: 10000
+          description: Maximum rows to return if executing (not used in Stage A)
+
+    ExecuteRequest:
+      type: object
+      required:
+        - queryId
+        - confirmationToken
+        - execute
+      properties:
+        queryId:
+          type: string
+          format: uuid
+          description: Query ID from previous generation (required for Stage B: execution)
+        confirmationToken:
+          type: string
+          description: Confirmation token from previous generation (required for Stage B: execution). Token is computed from generated SQL to ensure user reviewed the exact query before execution.
+        execute:
+          type: boolean
+          enum: [true]
+          description: Must be true for Stage B (execute with confirmation)
+        query:
+          type: string
+          description: Optional - original query text (for reference, not required)
+          maxLength: 10000
+        maxRows:
+          type: integer
+          default: 10000
+          description: Maximum rows to return if executing
+
+    QueryResponse:
+      type: object
+      properties:
+        queryId:
+          type: string
+          format: uuid
+          description: Unique query identifier for audit and follow-up
+        status:
+          type: string
+          enum: [SUBMITTED, VALIDATED, REJECTED, ACCEPTED, EXECUTED, FAILED]
+          description: |
+            Query lifecycle status:
+            - SUBMITTED: Agent generated SQL and submitted to system
+            - VALIDATED: Passed guardrails validation, ready for user review
+            - REJECTED: Failed validation (blocked table, too many rows, syntax error)
+            - ACCEPTED: User confirmed execution (token validated)
+            - EXECUTED: Query executed successfully
+            - FAILED: Execution failed (timeout, runtime error)
+        userQuery:
+          type: string
+          description: Original natural language question
+        generatedSql:
+          type: string
+          description: LLM-generated SQL statement
+        estimatedRows:
+          type: integer
+          description: Estimated row count from EXPLAIN
+        actualRows:
+          type: integer
+          description: Actual row count (if executed)
+        executionTimeMs:
+          type: integer
+          description: Query execution time in milliseconds
+        results:
+          $ref: '#/components/schemas/QueryResults'
+        confirmationToken:
+          type: string
+          description: Confirmation token for this generated SQL (returned in Stage A, required in Stage B)
+        llmProvider:
+          type: string
+          description: LLM provider used (gemini, lmstudio)
+        llmModel:
+          type: string
+          description: Model name used
+
+    QueryResults:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+          description: Column names
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+          description: Result rows (array of arrays)
+        truncated:
+          type: boolean
+          description: Whether results were truncated due to maxRows limit
+
+    QueryHistoryItem:
+      type: object
+      properties:
+        queryId:
+          type: string
+          format: uuid
+        userQuery:
+          type: string
+        status:
+          type: string
+          enum: [SUBMITTED, VALIDATED, REJECTED, ACCEPTED, EXECUTED, FAILED]
+        rowCount:
+          type: integer
+        executionTimeMs:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - BLOCKED
+            - SQL_GENERATION_FAILED
+            - EXECUTION_FAILED
+            - TIMEOUT
+            - NOT_FOUND
+            - UNAUTHORIZED
+            - INTERNAL_ERROR
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          description: Additional error details

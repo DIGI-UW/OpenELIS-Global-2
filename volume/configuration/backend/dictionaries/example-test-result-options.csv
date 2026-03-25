@@ -1,0 +1,128 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# GENERAL TEST RESULTS
+# ============================================================================
+Test Results,Positive,POS,Y,1,LA6576-8,Positive,Positif,Positivo,Positif
+Test Results,Negative,NEG,Y,2,LA6577-6,Negative,Négatif,Negativo,Negatif
+Test Results,Inconclusive,INCON,Y,3,LA11884-6,Inconclusive,Non concluant,Inconcluso,Tidak Meyakinkan
+Test Results,Reactive,REACT,Y,4,LA15255-5,Reactive,Réactif,Reactivo,Reaktif
+Test Results,Non-Reactive,NREACT,Y,5,LA15256-3,Non-Reactive,Non réactif,No Reactivo,Non-Reaktif
+Test Results,Indeterminate,INDET,Y,6,LA11885-3,Indeterminate,Indéterminé,Indeterminado,Tidak Dapat Ditentukan
+# ============================================================================
+# MALARIA RESULTS
+# ============================================================================
+Malaria Results,Plasmodium falciparum,PF,Y,1,,Plasmodium falciparum,Plasmodium falciparum,Plasmodium falciparum,Plasmodium falciparum
+Malaria Results,Plasmodium vivax,PV,Y,2,,Plasmodium vivax,Plasmodium vivax,Plasmodium vivax,Plasmodium vivax
+Malaria Results,Plasmodium malariae,PM,Y,3,,Plasmodium malariae,Plasmodium malariae,Plasmodium malariae,Plasmodium malariae
+Malaria Results,Plasmodium ovale,PO,Y,4,,Plasmodium ovale,Plasmodium ovale,Plasmodium ovale,Plasmodium ovale
+Malaria Results,Mixed infection,MIX,Y,5,,Mixed infection,Infection mixte,Infección mixta,Infeksi Campuran
+Malaria Results,No parasites seen,NPS,Y,6,,No parasites seen,Aucun parasite observé,Sin parásitos observados,Tidak Ada Parasit Terlihat
+# ============================================================================
+# URINALYSIS RESULTS
+# ============================================================================
+Urinalysis Results,Clear,CLR,Y,1,,Clear,Clair,Claro,Jernih
+Urinalysis Results,Slightly Cloudy,SLCL,Y,2,,Slightly Cloudy,Légèrement trouble,Ligeramente Turbio,Sedikit Keruh
+Urinalysis Results,Cloudy,CLD,Y,3,,Cloudy,Trouble,Turbio,Keruh
+Urinalysis Results,Turbid,TURB,Y,4,,Turbid,Très trouble,Muy Turbio,Sangat Keruh
+Urine Color,Yellow,YLW,Y,1,,Yellow,Jaune,Amarillo,Kuning
+Urine Color,Dark Yellow,DYLW,Y,2,,Dark Yellow,Jaune foncé,Amarillo Oscuro,Kuning Tua
+Urine Color,Amber,AMB,Y,3,,Amber,Ambre,Ámbar,Kuning Kecoklatan
+Urine Color,Red,RED,Y,4,,Red,Rouge,Rojo,Merah
+Urine Color,Brown,BRN,Y,5,,Brown,Brun,Marrón,Coklat
+# ============================================================================
+# TITER RESULTS
+# ============================================================================
+Titer Results,1:10,T10,Y,1,,1:10,1:10,1:10,1:10
+Titer Results,1:20,T20,Y,2,,1:20,1:20,1:20,1:20
+Titer Results,1:40,T40,Y,3,,1:40,1:40,1:40,1:40
+Titer Results,1:80,T80,Y,4,,1:80,1:80,1:80,1:80
+Titer Results,1:160,T160,Y,5,,1:160,1:160,1:160,1:160
+Titer Results,1:320,T320,Y,6,,1:320,1:320,1:320,1:320
+Titer Results,1:640,T640,Y,7,,1:640,1:640,1:640,1:640
+# ============================================================================
+# AFB (Acid Fast Bacilli) RESULTS - TB Sputum
+# ============================================================================
+AFB Sputum Results,Negative,NEG,Y,1,,Negative,Négatif,Negativo,Negatif
+AFB Sputum Results,Scanty,SCAN,Y,2,,Scanty,Rare,Escaso,Sedikit
+AFB Sputum Results,1+,1+,Y,3,,1+,1+,1+,1+
+AFB Sputum Results,2+,2+,Y,4,,2+,2+,2+,2+
+AFB Sputum Results,3+,3+,Y,5,,3+,3+,3+,3+
+# ============================================================================
+# AFB RESULTS - Leprosy Skin
+# ============================================================================
+AFB Skin Results,Negative,NEG,Y,1,,Negative,Négatif,Negativo,Negatif
+AFB Skin Results,1+,1+,Y,2,,1+,1+,1+,1+
+AFB Skin Results,2+,2+,Y,3,,2+,2+,2+,2+
+AFB Skin Results,3+,3+,Y,4,,3+,3+,3+,3+
+AFB Skin Results,4+,4+,Y,5,,4+,4+,4+,4+
+AFB Skin Results,5+,5+,Y,6,,5+,5+,5+,5+
+AFB Skin Results,6+,6+,Y,7,,6+,6+,6+,6+
+# ============================================================================
+# GRAM STAIN GENITAL RESULTS - Neisseria gonorrhoeae
+# ============================================================================
+Gram Stain Genital Results,Gram(-) diplococcus found,GND+,Y,1,,Gram(-) diplococcus found,Diplocoque Gram(-) trouvé,Diplococo Gram(-) encontrado,Gram(-) diplococcus ditemukan
+Gram Stain Genital Results,Gram(-) diplococcus not found,GND-,Y,2,,Gram(-) diplococcus not found,Diplocoque Gram(-) non trouvé,Diplococo Gram(-) no encontrado,Gram(-) diplococcus tidak ditemukan
+# ============================================================================
+# TRICHOMONAS RESULTS
+# ============================================================================
+Trichomonas Results,Trichomonas negative,TNEG,Y,1,,Trichomonas negative,Trichomonas négatif,Trichomonas negativo,Trichomonas negatif
+Trichomonas Results,Trichomonas positive,TPOS,Y,2,,Trichomonas positive,Trichomonas positif,Trichomonas positivo,Trichomonas positif
+# ============================================================================
+# CANDIDA KOH RESULTS
+# ============================================================================
+Candida KOH Results,Yeast cell,YEAST,Y,1,,Yeast cell,Cellule de levure,Célula de levadura,Sel ragi
+Candida KOH Results,Hypa,HYPA,Y,2,,Hyphae,Hyphes,Hifas,Hifa
+Candida KOH Results,Spora,SPORA,Y,3,,Spores,Spores,Esporas,Spora
+# ============================================================================
+# HIV RAPID TEST RESULTS - Negative/Positive/Indeterminate
+# ============================================================================
+HIV Rapid Results,Negative,NEG,Y,1,,Negative,Négatif,Negativo,Negatif
+HIV Rapid Results,Positive,POS,Y,2,,Positive,Positif,Positivo,Positif
+HIV Rapid Results,Indeterminate,IND,Y,3,,Indeterminate,Indéterminé,Indeterminado,Tidak Dapat Ditentukan
+# ============================================================================
+# BIOLINE HIV RESULTS - With HIV1/HIV2 differentiation
+# ============================================================================
+Bioline HIV Results,Negative,NEG,Y,1,,Negative,Négatif,Negativo,Negatif
+Bioline HIV Results,HIV 1 Positive,HIV1,Y,2,,HIV 1 Positive,Positif VIH 1,VIH 1 Positivo,HIV 1 Positif
+Bioline HIV Results,HIV 2 Positive,HIV2,Y,3,,HIV 2 Positive,Positif VIH 2,VIH 2 Positivo,HIV 2 Positif
+Bioline HIV Results,HIV 1 and 2 Positive,HIV12,Y,4,,HIV 1 and 2 Positive,Positif VIH 1 et 2,VIH 1 y 2 Positivo,HIV 1 dan 2 Positif
+Bioline HIV Results,Indeterminate,IND,Y,5,,Indeterminate,Indéterminé,Indeterminado,Tidak Dapat Ditentukan
+# ============================================================================
+# GENIE II / CONFIRMATORY HIV RESULTS
+# ============================================================================
+Genie HIV Results,Negative,NEG,Y,1,,Negative,Négatif,Negativo,Negatif
+Genie HIV Results,HIV 1,HIV1,Y,2,,HIV 1,VIH 1,VIH 1,HIV 1
+Genie HIV Results,HIV 2,HIV2,Y,3,,HIV 2,VIH 2,VIH 2,HIV 2
+Genie HIV Results,HIV Dual,HIVD,Y,4,,HIV Dual,VIH Double,VIH Dual,HIV Ganda
+Genie HIV Results,Indeterminate,IND,Y,5,,Indeterminate,Indéterminé,Indeterminado,Tidak Dapat Ditentukan
+Genie HIV Results,Invalid,INV,Y,6,,Invalid,Invalide,Inválido,Tidak Valid
+# ============================================================================
+# GENERAL CONFIRMATORY RESULTS (Vironstika, Murex, Integral, Western blot, DNA PCR)
+# ============================================================================
+Confirmatory Results,Positive,POS,Y,1,,Positive,Positif,Positivo,Positif
+Confirmatory Results,Negative,NEG,Y,2,,Negative,Négatif,Negativo,Negatif
+Confirmatory Results,Indeterminate,IND,Y,3,,Indeterminate,Indéterminé,Indeterminado,Tidak Dapat Ditentukan
+Confirmatory Results,Invalid,INV,Y,4,,Invalid,Invalide,Inválido,Tidak Valid
+# ============================================================================
+# p24Ag RESULTS
+# ============================================================================
+p24Ag Results,HIV 1,HIV1,Y,1,,HIV 1,VIH 1,VIH 1,HIV 1
+p24Ag Results,Negative,NEG,Y,2,,Negative,Négatif,Negativo,Negatif
+p24Ag Results,Indeterminate,IND,Y,3,,Indeterminate,Indéterminé,Indeterminado,Tidak Dapat Ditentukan
+# ============================================================================
+# HBsAg RESULTS (Hepatitis B)
+# ============================================================================
+HBsAg Results,Positive,POS,Y,1,,Positive,Positif,Positivo,Positif
+HBsAg Results,Negative,NEG,Y,2,,Negative,Négatif,Negativo,Negatif
+# ============================================================================
+# PREGNANCY TEST RESULTS
+# ============================================================================
+Pregnancy Test Results,Positive,POS,Y,1,,Positive,Positif,Positivo,Positif
+Pregnancy Test Results,Negative,NEG,Y,2,,Negative,Négatif,Negativo,Negatif
+# ============================================================================
+# PROTEINURIA DIPSTICK RESULTS
+# ============================================================================
+Proteinuria Results,Negative,NEG,Y,1,,Negative,Négatif,Negativo,Negatif
+Proteinuria Results,Positive +,1+,Y,2,,Positive +,Positif +,Positivo +,Positif +
+Proteinuria Results,Positive ++,2+,Y,3,,Positive ++,Positif ++,Positivo ++,Positif ++
+Proteinuria Results,Positive +++,3+,Y,4,,Positive +++,Positif +++,Positivo +++,Positif +++

@@ -156,7 +156,7 @@ public class ReferenceTablesDAOImpl extends BaseDAOImpl<ReferenceTables, String>
             }
 
             if (!isNew) {
-                query.setParameter("param2", referenceTablesId);
+                query.setParameter("param2", Integer.parseInt(referenceTablesId));
             }
             list = query.list();
             if (list.size() > 0) {

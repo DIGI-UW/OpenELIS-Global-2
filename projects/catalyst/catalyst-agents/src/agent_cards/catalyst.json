@@ -1,0 +1,21 @@
+{
+  "protocolVersions": ["0.3.0"],
+  "name": "CatalystAgent",
+  "description": "Generates SQL from natural language using schema context",
+  "url": "http://catalyst-agents:8000",
+  "version": "0.0.1",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["application/json"],
+  "defaultOutputModes": ["application/json"],
+  "skills": [
+    {
+      "id": "generate_sql",
+      "name": "Generate SQL",
+      "description": "Generate SQL using schema context",
+      "tags": ["text-to-sql", "schema"]
+    }
+  ]
+}

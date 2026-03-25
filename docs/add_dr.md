@@ -1,6 +1,6 @@
 # Adding Practitioners into FHIRstore
 
-Ensure OE is set to pull pracrittioners from the Consolidated server by setting
+Ensure OE is set to pull practitioners from the Consolidated server by setting
 org.openelisglobal.providerlist.fhirstore=https://cs-path:5000/fhir/
 
 # Step 1 : Set up a Connection Through OpenHIM

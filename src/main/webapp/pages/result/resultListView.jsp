@@ -1,3 +1,5 @@
+<%-- TODO: Re-enable after new inventory frontend integration --%>
+<%-- import="org.openelisglobal.inventory.form.InventoryKitItem" --%>
 <%@ page language="java" contentType="text/html; charset=UTF-8"
 	import="java.util.List,
 			org.openelisglobal.common.action.IActionConstants,
@@ -5,7 +7,6 @@
 			java.util.ArrayList,
 			java.text.DecimalFormat,
 			org.apache.commons.validator.GenericValidator,
-			org.openelisglobal.inventory.form.InventoryKitItem,
 			org.openelisglobal.test.beanItems.TestResultItem,
 			org.openelisglobal.common.util.IdValuePair,
 			org.openelisglobal.common.formfields.FormFields,
@@ -29,7 +30,7 @@
 
 <c:set var="tests" value="${form.testResult}" />
 <c:set var="testCount" value="${fn:length(tests)}" />
-<c:set var="inventory" value="${form.inventoryItems}" />
+<%-- <c:set var="inventory" value="${form.inventoryItems}" /> --%>
 <c:set var="hivKits" value="${form.hivKits}" />
 <c:set var="syphilisKits" value="${form.syphilisKits}" />
 

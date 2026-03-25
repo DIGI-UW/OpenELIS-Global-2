@@ -1,0 +1,73 @@
+.error-dashboard {
+  padding: 1rem;
+  padding-top: 2rem; /* Add extra top padding to prevent tooltips from being hidden */
+}
+
+/* Ensure consistent content width - all Grid content should align with title */
+.error-dashboard .cds--css-grid,
+.error-dashboard .cds--grid {
+  max-width: none; /* Remove Carbon's default max-width */
+  padding-right: 0; /* Remove Carbon's default side padding */
+  padding-left: 0; /* Remove Carbon's default side padding */
+  margin: 0;
+}
+
+.error-dashboard .cds--col {
+  padding: 0;
+}
+
+.error-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.error-dashboard-header-title {
+  flex: 1;
+  min-width: 0; /* Allow title to shrink if needed */
+}
+
+.error-dashboard-stats {
+  margin-bottom: 1rem;
+}
+
+.error-dashboard-stats .cds--tile {
+  background-color: var(--cds-layer-01);
+  margin-bottom: 1rem;
+}
+
+/* Stats grid uses negative margin for tighter spacing between tiles */
+.error-dashboard-stats .cds--grid {
+  margin: 0 -0.5rem;
+}
+
+.error-dashboard-stats .cds--col {
+  padding: 0 0.5rem;
+}
+
+.error-dashboard-filters {
+  margin-bottom: 1.5rem;
+}
+
+/* Filters grid uses negative margin for tighter spacing between dropdowns */
+.error-dashboard-filters .cds--grid {
+  margin: 0 -0.5rem;
+}
+
+.error-dashboard-filters .cds--col {
+  padding: 0 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
