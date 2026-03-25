@@ -71,10 +71,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
 
     private NotificationPayloadTemplate createSystemDefaultNotificationPayloadTemplate(NotificationPayloadType type) {
         NotificationPayloadTemplate template = new NotificationPayloadTemplate();
-        template.setMessageTemplate(
-                "[testName] testing results have been finalized. If you are not awaiting test results"
-                        + " please call XXXXXXXXXXX and delete this notice.\n\n"
-                        + "[patientFirstName] [patientLastNameInitial]: [testResult]");
+        template.setMessageTemplate("[testName] testing results have been finalized for Patient : "
+                + "[patientFirstName] [patientLastNameInitial].\n\n" + "Result : [testResult]");
         template.setSubjectTemplate("[testName] Testing Results");
         template.setSysUserId("1");
         template.setType(type);

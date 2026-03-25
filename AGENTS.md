@@ -526,6 +526,32 @@ docker compose -f dev.docker-compose.yml up -d
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
 
+### Context Recovery After Session Resume
+
+When resuming work after a context reset (compaction, new session, or tool
+restart), **immediately reconstruct the development context** before doing any
+work:
+
+```bash
+# 1. Discover all active worktrees and their branches
+git worktree list
+
+# 2. Check status of each relevant worktree
+git status  # (run in each worktree directory)
+
+# 3. List open PRs and their branches/CI status
+gh pr list --author @me
+```
+
+**Why this matters:** This project frequently uses git worktrees for
+multi-branch work (e.g., a feature branch + a CI fix branch). After a context
+reset, the agent loses track of which worktrees exist and which maps to which
+PR. Without this recovery step, edits land in the wrong branch.
+
+**Rule:** When directed to work on a specific branch or PR, always check
+`git worktree list` first. If a worktree exists for that branch, ALL edits go
+there — never in the primary working directory.
+
 ### SpecKit Workflow (Specification-Driven Development)
 
 This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
