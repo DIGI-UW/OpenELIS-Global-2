@@ -137,7 +137,7 @@ jobs:
       - name: Create analyzer import bind mount directories
         run: |
           mkdir -p projects/analyzer-harness/volume/analyzer-imports
-          chmod -R a+rwx projects/analyzer-harness/volume/analyzer-imports
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
         run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
@@ -157,6 +157,16 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Fix analyzer-imports permissions (bridge creates dirs as root)
+        run: |
+          # Bridge creates incoming/ dirs asynchronously after seed registration.
+          # Wait for each expected directory to appear, then fix permissions.
+          for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+            timeout 30 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
+            echo "Found: $dir/incoming"
+          done
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Verify analyzer test mappings exist (prevent unmapped-result race)
         run: |
