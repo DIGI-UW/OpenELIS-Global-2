@@ -63,6 +63,7 @@ import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCance
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
+import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
@@ -369,6 +370,12 @@ function Admin() {
           >
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
+          <SideNavLink
+            renderIcon={Settings}
+            onClick={handleNavigation(`${path}/loggingManagement`)}
+          >
+            <FormattedMessage id="logging.management.label" />
+          </SideNavLink>
           <SideNavMenu
             title={intl.formatMessage({
               id: "sidenav.label.admin.localization",
@@ -638,6 +645,10 @@ function Admin() {
         <Route
           path={`${path}/SearchIndexManagement`}
           component={SearchIndexManagement}
+        />
+        <Route
+          path={`${path}/loggingManagement`}
+          component={LoggingManagement}
         />
       </Switch>
     </>

@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * AnalyzerForm Page Object
@@ -85,7 +86,7 @@ export class AnalyzerFormPage {
     const trigger = dropdown.locator(
       'button[role="combobox"], .cds--list-box__field',
     );
-    await expect(trigger).toBeEnabled({ timeout: 10_000 });
+    await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
     await trigger.click();
     const item = this.page.getByRole("option", { name: text });
     await item.first().click();
@@ -123,7 +124,7 @@ export class AnalyzerFormPage {
 
   /** Assert a success notification appeared */
   async expectSuccessNotification() {
-    await expect(this.notification).toBeVisible({ timeout: 10000 });
+    await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
     const cls = await this.notification.getAttribute("class");
     if (cls && /error/i.test(cls)) {
       const text = await this.notification.textContent();
@@ -134,7 +135,7 @@ export class AnalyzerFormPage {
 
   /** Assert a notification of any kind appeared */
   async expectNotification() {
-    await expect(this.notification).toBeVisible({ timeout: 10000 });
+    await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
   }
 
   /** Get the current value of the identifier pattern input */
