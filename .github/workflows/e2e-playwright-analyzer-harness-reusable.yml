@@ -159,7 +159,14 @@ jobs:
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
       - name: Fix analyzer-imports permissions (bridge creates dirs as root)
-        run: chmod -R a+rwx projects/analyzer-harness/volume/analyzer-imports
+        run: |
+          # Bridge creates incoming/ dirs asynchronously after seed registration.
+          # Wait for all expected directories to appear, then fix permissions.
+          for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+            timeout 30 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
+            echo "Found: $dir/incoming"
+          done
+          chmod -R a+rwx projects/analyzer-harness/volume/analyzer-imports
 
       - name: Verify analyzer test mappings exist (prevent unmapped-result race)
         run: |
