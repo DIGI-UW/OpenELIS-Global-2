@@ -3,7 +3,7 @@
 # - Non-fork: images already on GHCR from build workflow, pull and test
 # - Fork: rebuild from GHA cache (fast), push to GHCR, then pull and test
 # Result: identical CI checks for all PR types.
-name: E2E / Tests
+name: E2E / Tests and Publish
 
 on:
   workflow_run:
@@ -26,7 +26,7 @@ jobs:
   # Determines: is this a fork PR? What SHA/PR# are we working with?
   setup:
     name: Setup
-    if: github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure'
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-latest
     outputs:
       is_fork: ${{ steps.context.outputs.is_fork }}

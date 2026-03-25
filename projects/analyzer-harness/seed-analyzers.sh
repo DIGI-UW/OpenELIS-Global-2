@@ -51,27 +51,6 @@ create_analyzer() {
   esac
 }
 
-update_file_import_pattern() {
-  local analyzer_name="$1"
-  local file_pattern="$2"
-  local db_container
-  db_container="$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)"
-  if [ -z "$db_container" ]; then
-    echo "  WARN: could not resolve database container for $analyzer_name" >&2
-    return 1
-  fi
-
-  docker exec "$db_container" psql -U clinlims -d clinlims -c "
-    UPDATE clinlims.file_import_configuration fic
-    SET file_pattern = '${file_pattern}'
-    FROM clinlims.analyzer a
-    WHERE fic.analyzer_id = CAST(a.id AS integer)
-      AND a.name = '${analyzer_name}';
-  " >/dev/null
-
-  echo "  Updated file pattern for ${analyzer_name}: ${file_pattern}"
-}
-
 echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
@@ -97,7 +76,7 @@ create_analyzer "QuantStudio 5" '{
   "defaultConfigId": "file/quantstudio"
 }'
 
-# 3. QuantStudio 7 (FILE/EXCEL .xlsx)
+# 3. QuantStudio 7 (FILE/EXCEL — same profile as QS5, brace glob matches both .xls/.xlsx)
 create_analyzer "QuantStudio 7" '{
   "name": "QuantStudio 7",
   "analyzerType": "MOLECULAR",
@@ -105,7 +84,6 @@ create_analyzer "QuantStudio 7" '{
   "status": "ACTIVE",
   "defaultConfigId": "file/quantstudio"
 }'
-update_file_import_pattern "QuantStudio 7" "*.xlsx"
 
 # 4. FluoroCycler XT (FILE/EXCEL)
 create_analyzer "FluoroCycler XT" '{

@@ -207,7 +207,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
     private void moveConfigFile(String source, String destination) throws IOException {
         Path sourcePath = Paths.get(source);
         if (Files.isRegularFile(sourcePath)) {
-            Files.move(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(sourcePath, Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
