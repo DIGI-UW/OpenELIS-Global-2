@@ -65,6 +65,7 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
       - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
       - BRIDGE_FILE_ENABLED=true
+      - BRIDGE_OPENELIS_URL=https://oe:8443/OpenELIS-Global
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
