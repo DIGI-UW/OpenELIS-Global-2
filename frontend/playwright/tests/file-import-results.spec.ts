@@ -142,7 +142,11 @@ async function dropFixtureFile(
     `${scenario.filePrefix}${Date.now()}${fileExtension}`,
   );
 
-  fs.copyFileSync(fixtureFile, droppedFilePath);
+  // Copy fixture and append a unique timestamp so the bridge's hash-based
+  // dedup doesn't skip re-imports of the same fixture across test runs.
+  const original = fs.readFileSync(fixtureFile);
+  const uniqueSuffix = Buffer.from(`\n${Date.now()}`);
+  fs.writeFileSync(droppedFilePath, Buffer.concat([original, uniqueSuffix]));
   expect(fs.existsSync(droppedFilePath)).toBeTruthy();
   await presentation.pause(1_000);
 
