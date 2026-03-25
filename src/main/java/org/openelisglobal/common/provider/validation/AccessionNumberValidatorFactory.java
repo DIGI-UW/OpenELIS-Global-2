@@ -26,7 +26,7 @@ public class AccessionNumberValidatorFactory implements ConfigurationListener {
 
     public enum AccessionFormat {
         MAIN, GENERAL, SITEYEARNUM, PROGRAMNUM, YEARNUM_SIX, YEARNUM_DASH_SEVEN, YEARNUM_SEVEN, UNFORMATTED, ALT_YEAR,
-        ALPHANUM
+        ALPHANUM, CUSTOM
     }
 
     private AccessionFormat mainAccessionFormat;
@@ -41,7 +41,12 @@ public class AccessionNumberValidatorFactory implements ConfigurationListener {
             return mainGenerator;
         }
         synchronized (this) {
-            if (accessionFormat.equals(AccessionFormat.ALPHANUM.name())) {
+            if (accessionFormat.equals(AccessionFormat.CUSTOM.name())) {
+                if (!mainGeneratorSet) {
+                    mainGenerator = getCustomValidator();
+                    mainAccessionFormat = AccessionFormat.CUSTOM;
+                }
+            } else if (accessionFormat.equals(AccessionFormat.ALPHANUM.name())) {
                 if (!mainGeneratorSet) {
                     mainGenerator = getAlphanumValidator();
                     mainAccessionFormat = AccessionFormat.ALPHANUM;
@@ -93,6 +98,8 @@ public class AccessionNumberValidatorFactory implements ConfigurationListener {
             return getConfiguredMainGenerator();
         case GENERAL:
             return getAllActiveValidator();
+        case CUSTOM:
+            return getCustomValidator();
         case ALPHANUM:
             return getAlphanumValidator();
         case SITEYEARNUM:
@@ -122,6 +129,8 @@ public class AccessionNumberValidatorFactory implements ConfigurationListener {
         switch (accessionFormat) {
         case MAIN:
             return getConfiguredMainGenerator();
+        case CUSTOM:
+            return getCustomValidator();
         case ALPHANUM:
             return getAlphanumValidator();
         case SITEYEARNUM:
@@ -152,6 +161,10 @@ public class AccessionNumberValidatorFactory implements ConfigurationListener {
 
     private IAccessionNumberGenerator getYearNumValidator(int length, Character separator) {
         return new YearNumAccessionValidator(length, separator);
+    }
+
+    private IAccessionNumberGenerator getCustomValidator() {
+        return new CustomAccessionGenerator();
     }
 
     private IAccessionNumberGenerator getAlphanumValidator() {

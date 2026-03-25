@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+      <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="antigravity" id="2893-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'customAccessionRegex'; </sqlCheck>
+        </preConditions>
+        <comment>add custom lab number configuration</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="customAccessionRegex" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="custom regex pattern for lab number validation" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="customAccessionTemplate" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="custom template for lab number generation" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'labNumberManagement')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+</databaseChangeLog>

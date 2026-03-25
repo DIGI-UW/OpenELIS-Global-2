@@ -53,6 +53,8 @@ public abstract class ConfigurationProperties {
         GeographicUnit1Label("Geographic Unit 1 Label", "text"), // The Geographical units for a particular region
         GeographicUnit2Label("Geographic Unit 2 Label", "text"), // The Geographical units for a particular district
         AccessionFormat("acessionFormat", "text"), // Format of accession number can be one of SITEYEARNUM, YEARNUM OR
+        CUSTOM_ACCESSION_REGEX("customAccessionRegex", "text"),
+        CUSTOM_ACCESSION_TEMPLATE("customAccessionTemplate", "text"),
         // PROGRAMNUM, ALPHANUM see AccessionNumberValidatorFactory
         ReflexAction("reflexAction", "text"), // In combination with flags in reflex table determines actual action,
         // should be
