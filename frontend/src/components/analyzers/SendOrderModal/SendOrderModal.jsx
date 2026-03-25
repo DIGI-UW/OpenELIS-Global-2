@@ -93,14 +93,17 @@ const SendOrderModal = ({ analyzer, open, onClose }) => {
           })}
           value={accessionNumber}
           onChange={(e) => setAccessionNumber(e.target.value)}
-          placeholder="e.g. 2026-A01"
+          placeholder={intl.formatMessage({
+            id: "analyzer.sendOrder.accessionPlaceholder",
+          })}
           data-testid="send-order-accession-input"
           disabled={status === "loading"}
         />
         {status === "success" && (
           <Tag type="green" data-testid="send-order-success">
             {message}
-            {orderCount > 0 && ` (${orderCount} order(s))`}
+            {orderCount > 0 &&
+              ` — ${intl.formatMessage({ id: "analyzer.sendOrder.orderCount" }, { count: orderCount })}`}
           </Tag>
         )}
         {status === "error" && (

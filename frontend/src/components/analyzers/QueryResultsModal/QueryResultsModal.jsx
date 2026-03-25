@@ -104,7 +104,9 @@ const QueryResultsModal = ({ analyzer, open, onClose }) => {
           })}
           value={accessionNumber}
           onChange={(e) => setAccessionNumber(e.target.value)}
-          placeholder="e.g. 2026-A01"
+          placeholder={intl.formatMessage({
+            id: "analyzer.queryResults.accessionPlaceholder",
+          })}
           data-testid="query-results-accession-input"
           disabled={status === "loading"}
         />
@@ -115,7 +117,9 @@ const QueryResultsModal = ({ analyzer, open, onClose }) => {
           })}
           value={testCodesRaw}
           onChange={(e) => setTestCodesRaw(e.target.value)}
-          placeholder="e.g. HIV, TB"
+          placeholder={intl.formatMessage({
+            id: "analyzer.queryResults.testCodesPlaceholder",
+          })}
           data-testid="query-results-test-codes-input"
           disabled={status === "loading"}
         />
