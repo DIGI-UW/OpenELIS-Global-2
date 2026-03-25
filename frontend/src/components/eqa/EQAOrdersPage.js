@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   Grid,
   Column,
@@ -110,55 +116,74 @@ const EQAOrdersPage = () => {
     });
   };
 
-  const headers = [
-    {
-      key: "labNumber",
-      header: intl.formatMessage({ id: "eqa.tests.labNumber" }),
-    },
-    {
-      key: "programName",
-      header: intl.formatMessage({ id: "eqa.tests.program" }),
-    },
-    {
-      key: "providerName",
-      header: intl.formatMessage({ id: "eqa.tests.provider" }),
-    },
-    {
-      key: "status",
-      header: intl.formatMessage({ id: "eqa.tests.status" }),
-    },
-    {
-      key: "deadline",
-      header: intl.formatMessage({ id: "eqa.tests.deadline" }),
-    },
-    {
-      key: "priority",
-      header: intl.formatMessage({ id: "eqa.tests.priority" }),
-    },
-    {
-      key: "dateEntered",
-      header: intl.formatMessage({ id: "eqa.tests.dateEntered" }),
-    },
-  ];
+  const headers = useMemo(
+    () => [
+      {
+        key: "labNumber",
+        header: intl.formatMessage({ id: "eqa.tests.labNumber" }),
+      },
+      {
+        key: "programName",
+        header: intl.formatMessage({ id: "eqa.tests.program" }),
+      },
+      {
+        key: "providerName",
+        header: intl.formatMessage({ id: "eqa.tests.provider" }),
+      },
+      {
+        key: "status",
+        header: intl.formatMessage({ id: "eqa.tests.status" }),
+      },
+      {
+        key: "deadline",
+        header: intl.formatMessage({ id: "eqa.tests.deadline" }),
+      },
+      {
+        key: "priority",
+        header: intl.formatMessage({ id: "eqa.tests.priority" }),
+      },
+      {
+        key: "dateEntered",
+        header: intl.formatMessage({ id: "eqa.tests.dateEntered" }),
+      },
+    ],
+    [intl],
+  );
 
-  const rows = orders.map((order) => ({
-    id: String(order.id),
-    labNumber: order.labNumber || "",
-    programName: order.programName || "",
-    providerName: order.providerName || "",
-    status: order.status || "",
-    deadline: order.deadline
-      ? new Date(order.deadline).toLocaleDateString()
-      : "",
-    priority: order.priority || "",
-    dateEntered: order.dateEntered
-      ? new Date(order.dateEntered).toLocaleDateString()
-      : "",
-  }));
+  const rows = useMemo(
+    () =>
+      orders.map((order) => ({
+        id: String(order.id),
+        labNumber: order.labNumber || "",
+        programName: order.programName || "",
+        providerName: order.providerName || "",
+        status: order.status || "",
+        deadline: order.deadline
+          ? new Date(order.deadline).toLocaleDateString()
+          : "",
+        priority: order.priority || "",
+        dateEntered: order.dateEntered
+          ? new Date(order.dateEntered).toLocaleDateString()
+          : "",
+      })),
+    [orders],
+  );
 
-  const handleEnterNewTest = () => {
+  const handleEnterNewTest = useCallback(() => {
     history.push("/SamplePatientEntry?isEQA=true");
-  };
+  }, [history]);
+
+  const handleStatusFilterChange = useCallback((e) => {
+    setStatusFilter(e.target.value);
+  }, []);
+
+  const handleProgramFilterChange = useCallback((e) => {
+    setProgramFilter(e.target.value);
+  }, []);
+
+  const handlePriorityFilterChange = useCallback((e) => {
+    setPriorityFilter(e.target.value);
+  }, []);
 
   if (loading) {
     return <Loading />;
@@ -234,7 +259,7 @@ const EQAOrdersPage = () => {
                 id="eqa-status-filter"
                 labelText={intl.formatMessage({ id: "eqa.filter.status" })}
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={handleStatusFilterChange}
               >
                 <SelectItem
                   value=""
@@ -263,7 +288,7 @@ const EQAOrdersPage = () => {
                 id="eqa-program-filter"
                 labelText={intl.formatMessage({ id: "eqa.filter.program" })}
                 value={programFilter}
-                onChange={(e) => setProgramFilter(e.target.value)}
+                onChange={handleProgramFilterChange}
               >
                 <SelectItem
                   value=""
@@ -283,7 +308,7 @@ const EQAOrdersPage = () => {
                 id="eqa-priority-filter"
                 labelText={intl.formatMessage({ id: "eqa.filter.priority" })}
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
+                onChange={handlePriorityFilterChange}
               >
                 <SelectItem
                   value=""
