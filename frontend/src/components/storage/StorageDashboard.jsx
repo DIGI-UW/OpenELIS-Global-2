@@ -2901,11 +2901,6 @@ const StorageDashboard = () => {
     const occupiedCoordinates = selectedBox.occupiedCoordinates || {};
 
     const hint = selectedBox.positionSchemaHint || "letter-number";
-    const hasLegacyNumberCoordinates =
-      hint === "number-number" &&
-      Object.keys(occupiedCoordinates).some((coordinate) =>
-        /^\d+-\d+$/.test(coordinate),
-      );
     // Generate coordinate labels based on position schema hint
     const getCoordinateLabel = (rowIdx, colIdx) => {
       if (hint === "letter-number") {
@@ -2921,10 +2916,6 @@ const StorageDashboard = () => {
 
       if (hint === "continuous") {
         return String(rowIdx * (selectedBox.columns || 0) + colIdx + 1);
-      }
-
-      if (hasLegacyNumberCoordinates) {
-        return `${rowIdx + 1}-${colIdx + 1}`;
       }
 
       return `${rowIdx + 1}-${colIdx + 1}`;
