@@ -54,43 +54,12 @@
             onDelete="RESTRICT"
             onUpdate="CASCADE"/>
 
-        <!-- Foreign keys for unassigned_sample table -->
-        <addForeignKeyConstraint
-            constraintName="fk_unassigned_sample_sample"
-            baseTableName="unassigned_sample"
-            baseColumnNames="sample_id"
-            referencedTableName="sample"
-            referencedColumnNames="id"
-            onDelete="CASCADE"
-            onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-            constraintName="fk_unassigned_sample_test"
-            baseTableName="unassigned_sample"
-            baseColumnNames="referral_test_id"
-            referencedTableName="test"
-            referencedColumnNames="id"
-            onDelete="RESTRICT"
-            onUpdate="CASCADE"/>
-
-        <addForeignKeyConstraint
-            constraintName="fk_unassigned_sample_destination"
-            baseTableName="unassigned_sample"
-            baseColumnNames="destination_facility_id"
-            referencedTableName="organization"
-            referencedColumnNames="id"
-            onDelete="SET NULL"
-            onUpdate="CASCADE"/>
-
         <rollback>
             <dropForeignKeyConstraint baseTableName="shipping_box" constraintName="fk_shipping_box_destination"/>
             <dropForeignKeyConstraint baseTableName="shipping_box" constraintName="fk_shipping_box_created_by"/>
             <dropForeignKeyConstraint baseTableName="shipment" constraintName="fk_shipment_box"/>
             <dropForeignKeyConstraint baseTableName="box_sample" constraintName="fk_box_sample_box"/>
             <dropForeignKeyConstraint baseTableName="box_sample" constraintName="fk_box_sample_sample"/>
-            <dropForeignKeyConstraint baseTableName="unassigned_sample" constraintName="fk_unassigned_sample_sample"/>
-            <dropForeignKeyConstraint baseTableName="unassigned_sample" constraintName="fk_unassigned_sample_test"/>
-            <dropForeignKeyConstraint baseTableName="unassigned_sample" constraintName="fk_unassigned_sample_destination"/>
         </rollback>
     </changeSet>
 
