@@ -60,9 +60,6 @@
   <!-- EQA Result audit trail columns (T116) -->
   <include relativeToChangelogFile="true" file="eqa-006-add-result-audit-columns.xml"/>
 
-  <!-- Quality Control / Internal Control (005-eqa-module QC/IC) -->
-  <include relativeToChangelogFile="true" file="eqa-005-create-qc-tables.xml"/>
-
   <!-- EQA/QC Menu Items, System Module, and Role Assignments -->
   <include relativeToChangelogFile="true" file="eqa-007-add-eqa-menu-items.xml"/>
 
