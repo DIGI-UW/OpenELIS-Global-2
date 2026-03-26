@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # seed-analyzers.sh — Create harness analyzers via OE REST API
 #
-# Creates 4 analyzers using profile-based defaultConfigId, which triggers:
+# Creates 7 analyzers using profile-based defaultConfigId, which triggers:
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
@@ -51,27 +51,6 @@ create_analyzer() {
   esac
 }
 
-update_file_import_pattern() {
-  local analyzer_name="$1"
-  local file_pattern="$2"
-  local db_container
-  db_container="$(docker ps --format '{{.Names}}' | grep -E '^openelisglobal-database$|analyzer-harness.*-db-' | head -1)"
-  if [ -z "$db_container" ]; then
-    echo "  WARN: could not resolve database container for $analyzer_name" >&2
-    return 1
-  fi
-
-  docker exec "$db_container" psql -U clinlims -d clinlims -c "
-    UPDATE clinlims.file_import_configuration fic
-    SET file_pattern = '${file_pattern}'
-    FROM clinlims.analyzer a
-    WHERE fic.analyzer_id = CAST(a.id AS integer)
-      AND a.name = '${analyzer_name}';
-  " >/dev/null
-
-  echo "  Updated file pattern for ${analyzer_name}: ${file_pattern}"
-}
-
 echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
@@ -97,7 +76,7 @@ create_analyzer "QuantStudio 5" '{
   "defaultConfigId": "file/quantstudio"
 }'
 
-# 3. QuantStudio 7 (FILE/EXCEL .xlsx)
+# 3. QuantStudio 7 (FILE/EXCEL — same profile as QS5, brace glob matches both .xls/.xlsx)
 create_analyzer "QuantStudio 7" '{
   "name": "QuantStudio 7",
   "analyzerType": "MOLECULAR",
@@ -105,7 +84,6 @@ create_analyzer "QuantStudio 7" '{
   "status": "ACTIVE",
   "defaultConfigId": "file/quantstudio"
 }'
-update_file_import_pattern "QuantStudio 7" "*.xlsx"
 
 # 4. FluoroCycler XT (FILE/EXCEL)
 create_analyzer "FluoroCycler XT" '{
@@ -116,5 +94,44 @@ create_analyzer "FluoroCycler XT" '{
   "defaultConfigId": "file/fluorocycler-xt"
 }'
 
+# 5. Mindray BC-5380 (HL7/MLLP — hematology)
+create_analyzer "Mindray BC-5380" '{
+  "name": "Mindray BC-5380",
+  "analyzerType": "HEMATOLOGY",
+  "pluginTypeId": "generic-hl7",
+  "ipAddress": "172.21.1.1",
+  "port": 5380,
+  "protocolVersion": "HL7_V2_3_1",
+  "identifierPattern": "MINDRAY.*BC.?5380|BC.?5380",
+  "status": "ACTIVE",
+  "defaultConfigId": "hl7/mindray-bc5380"
+}'
+
+# 6. Mindray BS-200 (HL7/MLLP — chemistry)
+create_analyzer "Mindray BS-200" '{
+  "name": "Mindray BS-200",
+  "analyzerType": "CHEMISTRY",
+  "pluginTypeId": "generic-hl7",
+  "ipAddress": "172.21.1.1",
+  "port": 6001,
+  "protocolVersion": "HL7_V2_3_1",
+  "identifierPattern": "MINDRAY.*BS.?200|BS200",
+  "status": "ACTIVE",
+  "defaultConfigId": "hl7/mindray-bs200"
+}'
+
+# 7. Mindray BS-300 (HL7/MLLP — chemistry)
+create_analyzer "Mindray BS-300" '{
+  "name": "Mindray BS-300",
+  "analyzerType": "CHEMISTRY",
+  "pluginTypeId": "generic-hl7",
+  "ipAddress": "172.21.1.1",
+  "port": 6002,
+  "protocolVersion": "HL7_V2_3_1",
+  "identifierPattern": "MINDRAY.*BS.?300|BS300",
+  "status": "ACTIVE",
+  "defaultConfigId": "hl7/mindray-bs300"
+}'
+
 echo ""
-echo "Done. 4 analyzers seeded."
+echo "Done. 7 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP)."
