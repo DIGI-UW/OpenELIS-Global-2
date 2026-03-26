@@ -799,7 +799,7 @@ public class ResultsLoadUtility {
                     testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
                 }
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             // Log and ignore to prevent breaking the whole report if EQA lookup fails
             String sampleIdStr = (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
                     ? analysis.getSampleItem().getSample().getId()
