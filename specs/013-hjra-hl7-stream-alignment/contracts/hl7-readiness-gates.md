@@ -19,6 +19,9 @@ from planning into each downstream implementation branch.
 - E2E proof MUST use the analyzer mock (e.g. `tools/analyzer-mock-server` or
   harness); the mock MUST load a profile and MUST mock a specific analyzer type
   so the path is testable and reproducible
+- Mock MUST accept inbound MLLP connections on the analyzer's configured port
+  and respond with proper HL7 ACK (matching MSH-10). This simulates real
+  analyzer behavior where the instrument listens for LIS-initiated messages.
 
 **Gate fails if**:
 
@@ -42,6 +45,8 @@ from planning into each downstream implementation branch.
   end-to-end with a known message format
 - Test-connection for BC-5380 returns genuine TCP connectivity result (not
   hardcoded success). CommunicationMode = ANALYZER_INITIATED.
+- Test-connection verifies both bridge health (HTTPS /actuator/health) and TCP
+  reachability to the mock analyzer's MLLP port.
 
 **Gate fails if**:
 

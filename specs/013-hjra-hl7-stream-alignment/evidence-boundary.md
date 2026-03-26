@@ -183,11 +183,17 @@ The `msh3_pattern` ambiguity only manifests in non-bridge or fallback scenarios.
   test-connection response. TCP failure for ANALYZER_INITIATED is reported but
   bridge health is the primary success criterion.
 - Bridge is mandatory architecture — OE never connects directly to analyzers.
+- Mock server now listens on HL7 analyzer ports (5380, 6001, 6002) with proper
+  MLLP framing and responds with HL7 ACK — matching real analyzer behavior.
+  Previously the mock only pushed MLLP outbound; inbound listening was missing
+  (spec gap: the readiness gates required "mock a specific analyzer type" but
+  didn't explicitly require inbound MLLP listening).
 
 ### Design Decision
 
-- Test-connection does NOT send protocol messages (no HL7, no ASTM ENQ). It
-  verifies TCP reachability (SYN/ACK) and bridge health only.
+- Test-connection verifies TCP reachability (SYN/ACK) and bridge health. It does
+  NOT send protocol messages — the TCP connect to the analyzer port proves the
+  mock is listening, which is sufficient for the test-connection use case.
 - MVP = ANALYZER_INITIATED (one-way result transport). This is a deliberate
   phased approach, not a permanent limitation.
 - LIS_INITIATED and BOTH are documented future capabilities per vendor specs

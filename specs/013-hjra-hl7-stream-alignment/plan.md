@@ -247,7 +247,10 @@ define the minimum evidence contract for downstream implementation branches.
       specific analyzer type so that the full path—mock → transport →
       `/analyzer/hl7` → ingestion—is exercised with a known message format (e.g.
       BC-5380 profile for M2, BS-series profile for M3). Evidence gates accept
-      proof that uses the mock configured with the appropriate HL7 profile.
+      proof that uses the mock configured with the appropriate HL7 profile. The
+      mock MUST also listen on the analyzer's configured port for inbound MLLP
+      connections and respond with proper HL7 ACK, matching real analyzer
+      behavior (test-connection, future LIS-initiated communication).
 - [x] **Test-Connection Parity**: HL7 test-connection exercises TCP connectivity
       validation adapted for communication mode semantics. Bridge health is
       checked for all modes; TCP to analyzer is always attempted when IP/port
