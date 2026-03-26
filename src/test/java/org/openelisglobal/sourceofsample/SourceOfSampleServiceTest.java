@@ -40,9 +40,9 @@ public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
         Mockito.when(analyzerQueryService.startQuery(Mockito.anyString()))
                 .thenReturn("mock-job-id");
 
-        // Mock getStatus to provide a default empty response for the test context
+        // Mock getStatus to provide a default response consistent with the service contract
         Mockito.when(analyzerQueryService.getStatus(Mockito.anyString(), Mockito.anyString()))
-                .thenReturn(new java.util.HashMap<>());
+                .thenReturn(Map.of("state", "COMPLETED", "progress", 100));
 
         executeDataSetWithStateManagement("testdata/source-of-sample.xml");
 
