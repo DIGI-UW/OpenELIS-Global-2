@@ -10,4 +10,7 @@
   <include relativeToChangelogFile="true" file="002-create-analyzer-file-upload.xml"/>
   <include relativeToChangelogFile="true" file="003-create-analyzer-run.xml"/>
   <include relativeToChangelogFile="true" file="004-fix-analyzer-fk-types-and-cascade.xml"/>
+
+  <!-- 013-hjra-hl7-stream-alignment: CommunicationMode for test-connection parity -->
+  <include relativeToChangelogFile="true" file="005-analyzer-communication-mode.xml"/>
 </databaseChangeLog>

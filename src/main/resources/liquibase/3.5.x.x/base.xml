@@ -10,7 +10,5 @@
   <!-- EQA Enabled configuration for Order Entry -->
   <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
 
-  <!-- Analyzer communication mode (ANALYZER_INITIATED, LIS_INITIATED, BOTH) -->
-  <include relativeToChangelogFile="true" file="003-analyzer-communication-mode.xml"/>
 
 </databaseChangeLog>
