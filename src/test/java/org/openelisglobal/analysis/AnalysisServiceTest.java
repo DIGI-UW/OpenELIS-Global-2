@@ -382,7 +382,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAnalysisType_shouldReturnCorrectValue() {
+    public void getAnalysisType_shouldReturnValue_whenAnalysisIsValid() {
         Analysis analysis = new Analysis();
         analysis.setAnalysisType("MANUAL");
 
@@ -392,13 +392,22 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getStatusId_shouldReturnEmpty_whenNull() {
+    public void getStatusId_shouldReturnEmpty_whenAnalysisIsNull() {
         String result = aService.getStatusId(null);
         Assert.assertEquals("", result);
     }
 
     @Test
-    public void getStatusId_shouldReturnValue() {
+    public void getStatusId_shouldReturnValue_WhenStatusIsNull(){
+        Analysis analysis = new Analysis();
+        analysis.setStatusId(null);
+
+        String result = aService.getStatusId(analysis);
+
+        Assert.assertEquals("", result);
+    }
+    @Test
+    public void getStatusId_shouldReturnValue_WhenStatusIsPresent() {
         Analysis analysis = new Analysis();
         analysis.setStatusId("1");
 
@@ -408,13 +417,23 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getTriggeredReflex_shouldReturnFalse_whenNull() {
+    public void getTriggeredReflex_shouldReturnFalse_whenAnalysisIsNull() {
         Boolean result = aService.getTriggeredReflex(null);
         Assert.assertFalse(result);
     }
 
     @Test
-    public void getTriggeredReflex_shouldReturnTrue() {
+    public void getTriggeredReflex_shouldReturnTrue_whenTriggeredReflexIsFalse() {
+        Analysis analysis = new Analysis();
+        analysis.setTriggeredReflex(false);
+
+        Boolean result = aService.getTriggeredReflex(analysis);
+
+        Assert.assertFalse(result);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnTrue_whenTriggeredReflexIsTrue() {
         Analysis analysis = new Analysis();
         analysis.setTriggeredReflex(true);
 
@@ -424,24 +443,53 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getCompletedDateForDisplay_shouldReturnEmpty_whenNull() {
+    public void getCompletedDateForDisplay_shouldReturnEmpty_whenAnalysisIsNull() {
         String result = aService.getCompletedDateForDisplay(null);
         Assert.assertEquals("", result);
     }
 
     @Test
-    public void getMethodId_shouldReturnEmpty_whenAnalysisNull() {
+    public void getCompletedDateForDisplay_shouldReturnEmpty_whenCompletedDateIsNull() {
+        Analysis analysis = new Analysis();
+
+        String result = aService.getCompletedDateForDisplay(analysis);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getCompletedDateForDisplay_shouldReturnFormattedDate_whenCompletedDateIsPresent() {
+        Analysis analysis = new Analysis();
+        Date completedDate = Date.valueOf("2025-10-01");
+        analysis.setCompletedDate(completedDate);
+
+        String result = aService.getCompletedDateForDisplay(analysis);
+        Assert.assertEquals("2025-10-01", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnEmpty_whenAnalysisIsNull() {
         String result = aService.getMethodId(null);
         Assert.assertEquals("", result);
     }
 
     @Test
-    public void getMethodId_shouldReturnEmpty_whenMethodNull() {
+    public void getMethodId_shouldReturnEmpty_whenMethodIsNull() {
         Analysis analysis = new Analysis();
         analysis.setMethod(null);
 
         String result = aService.getMethodId(analysis);
         Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnValue_whenMethodIsPresent() {
+        Analysis analysis = new Analysis();
+        Method method = new Method();
+        method.setId("123");
+        analysis.setMethod(method);
+
+        String result = aService.getMethodId(analysis);
+        Assert.assertEquals("123", result);
     }
 
     public Analysis createDemoAnalysis() {
