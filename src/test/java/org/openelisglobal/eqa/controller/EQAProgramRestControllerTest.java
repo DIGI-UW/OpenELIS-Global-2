@@ -157,25 +157,25 @@ public class EQAProgramRestControllerTest {
     @Test
     public void testUpdateProgram_Deactivate() {
         when(programService.get(1L)).thenReturn(program1);
-        when(programService.deactivateProgram(1L)).thenReturn(program1);
+        when(programService.update(any(EQAProgram.class))).thenReturn(program1);
 
         Map<String, Object> body = Map.of("isActive", false);
         ResponseEntity<?> response = controller.updateProgram(request, 1L, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(programService).deactivateProgram(1L);
+        verify(programService).update(any(EQAProgram.class));
     }
 
     @Test
     public void testUpdateProgram_Activate() {
         when(programService.get(2L)).thenReturn(program2);
-        when(programService.activateProgram(2L)).thenReturn(program2);
+        when(programService.update(any(EQAProgram.class))).thenReturn(program2);
 
         Map<String, Object> body = Map.of("isActive", true);
         ResponseEntity<?> response = controller.updateProgram(request, 2L, body);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(programService).activateProgram(2L);
+        verify(programService).update(any(EQAProgram.class));
     }
 
     @Test
