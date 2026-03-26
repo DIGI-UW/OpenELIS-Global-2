@@ -1,11 +1,21 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <localization id="1" description="Whole blood sample"
-        english="Whole Blood" french="Sang Entier"
-        lastupdated="2023-11-01 12:00:00" />
-
-    <localization id="2" description="Urine sample"
-        english="Urine" french="Urine" lastupdated="2023-11-01 12:00:00" />
+    <localization id="1" description="Whole blood sample" />
+    <localization id="2" description="Urine sample" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Whole Blood" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Sang Entier" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urine" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urine" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <type_of_sample id="1001" description="whole blood"
         domain="H" lastupdated="2023-11-01 12:00:00" local_abbrev="blood"

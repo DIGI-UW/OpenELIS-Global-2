@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Select, SelectItem, Stack } from "@carbon/react";
+import { Select, SelectItem, Stack, Column, Grid } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "../../index.css";
 import "../../App.css";
@@ -48,9 +48,9 @@ export const ProgramSelect = ({
 
   return (
     <>
-      <div className="formInlineDiv">
-        {programs.length > 0 && (
-          <div className="inputText">
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          {programs.length > 0 && (
             <Select
               id="additionalQuestionsSelect"
               labelText={intl.formatMessage({ id: "label.program" })}
@@ -69,9 +69,9 @@ export const ProgramSelect = ({
                 );
               })}
             </Select>
-          </div>
-        )}
-      </div>
+          )}
+        </Column>
+      </Grid>
     </>
   );
 };
@@ -274,29 +274,31 @@ const OrderEntryAdditionalQuestions = ({
 
   return (
     <>
-      <Stack gap={10}>
-        <div className="orderLegendBody">
-          <h3>
-            <FormattedMessage id="select.program" />
-          </h3>
-          <ProgramSelect
-            programChange={handleProgramSelection}
-            orderFormValues={orderFormValues}
-          />
-          <Questionnaire
-            questionnaire={questionnaire}
-            onAnswerChange={answerChange}
-            getAnswer={getAnswer}
-          />
-          {questionnaireResponse && (
-            <input
-              type="hidden"
-              name="additionalQuestions"
-              value={questionnaireResponse}
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <div className="orderLegendBody">
+            <h3>
+              <FormattedMessage id="select.program" />
+            </h3>
+            <ProgramSelect
+              programChange={handleProgramSelection}
+              orderFormValues={orderFormValues}
             />
-          )}
-        </div>
-      </Stack>
+            <Questionnaire
+              questionnaire={questionnaire}
+              onAnswerChange={answerChange}
+              getAnswer={getAnswer}
+            />
+            {questionnaireResponse && (
+              <input
+                type="hidden"
+                name="additionalQuestions"
+                value={questionnaireResponse}
+              />
+            )}
+          </div>
+        </Column>
+      </Grid>
     </>
   );
 };

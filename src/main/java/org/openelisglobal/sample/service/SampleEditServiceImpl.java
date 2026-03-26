@@ -110,6 +110,7 @@ public class SampleEditServiceImpl implements SampleEditService {
     NoteService noteService;
     @Autowired
     private SampleStorageService sampleStorageService;
+    private List<String> analysisList = new ArrayList<>();
 
     @Transactional
     @Override
@@ -169,9 +170,11 @@ public class SampleEditServiceImpl implements SampleEditService {
             sampleItemService.update(sampleItem);
         }
 
+        List<String> analysisIds = new ArrayList<>();
         for (Analysis analysis : cancelAnalysisList) {
             analysisService.update(analysis);
             addExternalResultsToDeleteList(analysis, patient, updatedSample, actionDataSet);
+            analysisIds.add(analysis.getId());
         }
 
         for (IResultUpdate updater : updaters) {
@@ -179,11 +182,13 @@ public class SampleEditServiceImpl implements SampleEditService {
         }
 
         for (Analysis analysis : addAnalysisList) {
-            if (analysis.getId() == null) {
-                analysisService.insert(analysis);
+            String analysisId = analysis.getId();
+            if (analysisId == null) {
+                analysisId = analysisService.insert(analysis);
             } else {
                 analysisService.update(analysis);
             }
+            analysisIds.add(analysisId);
         }
 
         for (SampleItem sampleItem : cancelSampleItemList) {
@@ -222,7 +227,8 @@ public class SampleEditServiceImpl implements SampleEditService {
 
                 Analysis analysis = populateAnalysis(sampleTestCollection, test,
                         sampleTestCollection.testIdToUserSectionMap.get(test.getId()), sampleAddService);
-                analysisService.insert(analysis);
+                String analysisId = analysisService.insert(analysis);
+                analysisIds.add(analysisId);
             }
 
             if (sampleTestCollection.initialSampleConditionIdList != null) {
@@ -303,6 +309,8 @@ public class SampleEditServiceImpl implements SampleEditService {
 
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", patient.getId());
+
+        analysisList = analysisIds;
     }
 
     private void addExternalResultsToDeleteList(Analysis analysis, Patient patient, Sample updatedSample,
@@ -563,5 +571,10 @@ public class SampleEditServiceImpl implements SampleEditService {
                         e.getMessage(), e);
             }
         }
+    }
+
+    @Override
+    public List<String> getUpdatedAnalysisList() {
+        return analysisList;
     }
 }

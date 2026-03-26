@@ -13,7 +13,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { Settings } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { fetchSystemConfig, saveSystemConfig } from "../api";
 import {
   AlertDialog,
@@ -29,7 +29,8 @@ const SESSION_TIMEOUT_OPTIONS = [
   { label: "4 hours", value: 240 },
 ];
 
-function SystemSettings({ intl }) {
+function SystemSettings() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
@@ -82,13 +83,15 @@ function SystemSettings({ intl }) {
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to load system configuration: " + (err.message || ""),
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle:
+          intl.formatMessage({ id: "coldStorage.error.loadConfig" }) +
+          (err.message || ""),
       });
     } finally {
       setLoading(false);
     }
-  }, [notify]);
+  }, [notify, intl]);
 
   useEffect(() => {
     loadConfig();
@@ -109,15 +112,17 @@ function SystemSettings({ intl }) {
       await saveSystemConfig(config);
       notify({
         kind: NotificationKinds.success,
-        title: "Success",
-        subtitle: "System configuration saved successfully",
+        title: intl.formatMessage({ id: "notification.success" }),
+        subtitle: intl.formatMessage({ id: "coldStorage.config.saveSuccess" }),
       });
       await loadConfig();
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
-        title: "Error",
-        subtitle: "Failed to save system configuration: " + (err.message || ""),
+        title: intl.formatMessage({ id: "error.title" }),
+        subtitle:
+          intl.formatMessage({ id: "coldStorage.error.saveConfig" }) +
+          (err.message || ""),
       });
     } finally {
       setSaving(false);
@@ -140,7 +145,11 @@ function SystemSettings({ intl }) {
   };
 
   if (loading) {
-    return <Loading description="Loading system configuration..." />;
+    return (
+      <Loading
+        description={intl.formatMessage({ id: "coldStorage.loadingConfig" })}
+      />
+    );
   }
 
   return (
@@ -157,13 +166,15 @@ function SystemSettings({ intl }) {
           }}
         >
           <Settings size={24} />
-          <Heading>System Configuration</Heading>
+          <Heading>
+            <FormattedMessage id="coldStorage.systemConfiguration" />
+          </Heading>
         </div>
 
         <InlineNotification
           kind="warning"
-          title="Configuration Moved to Admin Panel"
-          subtitle="System-wide settings should be managed in the Admin UI where all global configurations are centralized. This page is read-only and will be removed in a future release."
+          title={intl.formatMessage({ id: "coldStorage.configMoved" })}
+          subtitle={intl.formatMessage({ id: "coldStorage.configMovedDesc" })}
           lowContrast={false}
           hideCloseButton
           style={{ marginBottom: "1.5rem" }}
@@ -180,7 +191,7 @@ function SystemSettings({ intl }) {
               }}
             >
               <Heading style={{ marginBottom: "1rem", fontSize: "1rem" }}>
-                Protocol Configuration
+                <FormattedMessage id="coldStorage.protocolConfiguration" />
               </Heading>
               <div
                 style={{
@@ -191,7 +202,9 @@ function SystemSettings({ intl }) {
               >
                 <TextInput
                   id="modbus-tcp-port"
-                  labelText="Modbus TCP Port"
+                  labelText={intl.formatMessage({
+                    id: "coldStorage.modbusTcpPort",
+                  })}
                   type="number"
                   min="1"
                   max="65535"
@@ -208,7 +221,9 @@ function SystemSettings({ intl }) {
 
                 <TextInput
                   id="bacnet-udp-port"
-                  labelText="BACnet UDP Port"
+                  labelText={intl.formatMessage({
+                    id: "coldStorage.bacnetUdpPort",
+                  })}
                   type="number"
                   min="1"
                   max="65535"
@@ -234,12 +249,14 @@ function SystemSettings({ intl }) {
               }}
             >
               <Heading style={{ marginBottom: "1rem", fontSize: "1rem" }}>
-                Security Settings
+                <FormattedMessage id="coldStorage.securitySettings" />
               </Heading>
 
               <Toggle
                 id="two-factor-auth"
-                labelText="Two-Factor Authentication"
+                labelText={intl.formatMessage({
+                  id: "coldStorage.twoFactorAuth",
+                })}
                 labelA=""
                 labelB=""
                 toggled={config.twoFactorAuthEnabled}
@@ -252,7 +269,9 @@ function SystemSettings({ intl }) {
 
               <Dropdown
                 id="session-timeout"
-                titleText="Session Timeout"
+                titleText={intl.formatMessage({
+                  id: "coldStorage.sessionTimeout",
+                })}
                 label={`${config.sessionTimeoutMinutes} minutes`}
                 items={SESSION_TIMEOUT_OPTIONS}
                 itemToString={(item) => (item ? item.label : "")}
@@ -276,7 +295,7 @@ function SystemSettings({ intl }) {
               }}
             >
               <Heading style={{ marginBottom: "1rem", fontSize: "1rem" }}>
-                System Information
+                <FormattedMessage id="coldStorage.systemInformation" />
               </Heading>
               <div
                 style={{
@@ -293,7 +312,7 @@ function SystemSettings({ intl }) {
                       marginBottom: "0.25rem",
                     }}
                   >
-                    System Version
+                    <FormattedMessage id="coldStorage.systemVersion" />
                   </p>
                   <p style={{ fontWeight: "600" }}>
                     {systemInfo.systemVersion}
@@ -308,7 +327,7 @@ function SystemSettings({ intl }) {
                       marginBottom: "0.25rem",
                     }}
                   >
-                    Database Version
+                    <FormattedMessage id="coldStorage.databaseVersion" />
                   </p>
                   <p style={{ fontWeight: "600" }}>
                     {systemInfo.databaseVersion}
@@ -323,7 +342,7 @@ function SystemSettings({ intl }) {
                       marginBottom: "0.25rem",
                     }}
                   >
-                    Last Update
+                    <FormattedMessage id="coldStorage.lastUpdate" />
                   </p>
                   <p style={{ fontWeight: "600" }}>
                     {formatDateTime(systemInfo.lastUpdate)}
@@ -338,7 +357,7 @@ function SystemSettings({ intl }) {
                       marginBottom: "0.25rem",
                     }}
                   >
-                    Uptime
+                    <FormattedMessage id="coldStorage.uptime" />
                   </p>
                   <p style={{ fontWeight: "600" }}>
                     {formatUptime(systemInfo.uptimeSeconds)}
@@ -349,8 +368,10 @@ function SystemSettings({ intl }) {
 
             <InlineNotification
               kind="info"
-              title="Read-Only Mode"
-              subtitle="To modify these settings, please navigate to Admin → System Configuration"
+              title={intl.formatMessage({ id: "coldStorage.readOnlyMode" })}
+              subtitle={intl.formatMessage({
+                id: "coldStorage.readOnlyModeDesc",
+              })}
               lowContrast
               hideCloseButton
             />

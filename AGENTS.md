@@ -1,5 +1,17 @@
 # AGENTS.md - README for AI Coding Agents
 
+## FILE Ownership Model (014 Remediation)
+
+For FILE-based analyzer workflows in OpenELIS Global 2:
+
+- Bridge is the runtime owner of directory watching/polling and file transport.
+- OpenELIS owns configuration, direct ingestion endpoint, and result processing.
+- OpenELIS app-side polling (`FileImportWatchService`) is fallback-only and
+  disabled by default unless explicitly enabled.
+
+When guidance conflicts, this ownership model takes precedence for remediation
+work in feature 014.
+
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
 > everything an AI agent needs to know to work effectively on OpenELIS Global 2.
@@ -107,6 +119,25 @@ mvn clean install -DskipTests
 - **Node.js 16+**: Frontend development
 - **Git with submodules**: `git submodule update --init --recursive`
 
+### Environment Configuration (.env file) - CRITICAL
+
+**IMPORTANT:** Before running any `docker compose` command, you MUST create a
+`.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Then customize `.env` for your environment (database passwords, domain, etc.).
+
+**Why this matters:**
+
+- `.env` is in `.gitignore` (contains secrets and server-specific settings)
+- **`.env` is intentionally NOT tracked in git** - each developer/server needs
+  their own
+- Docker Compose uses `.env` for `${VAR}` substitution in compose files
+- Missing `.env` causes authentication failures and SSL certificate errors
+
 ---
 
 ## Technology Stack
@@ -175,7 +206,9 @@ mvn clean install -DskipTests
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests)
+- **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
+- **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
+  migrated to Playwright)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -382,8 +415,12 @@ production.
 
 **How:**
 
-- Schema migrations in `src/main/resources/liquibase/{module}/`
-- Changesets with unique IDs: `{module}-{sequence}-{description}`
+- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
+  `3.3.x.x/`)
+- Changesets with unique IDs: `{sequence}-{description}` (e.g.,
+  `023-storage-device-connectivity`)
+- All changesets MUST be placed inside versioned folders - NO module-specific
+  folders outside version directories
 - Use Liquibase XML format (NOT raw SQL unless necessary)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
@@ -474,7 +511,9 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 # Clone repository with submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
+
+# Run workspace setup (initializes submodules, hooks, .env)
+bash scripts/setup-workspace.sh
 
 # Verify Java version
 java -version  # Must be Java 21
@@ -499,6 +538,32 @@ docker compose -f dev.docker-compose.yml up -d
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
 
+### Context Recovery After Session Resume
+
+When resuming work after a context reset (compaction, new session, or tool
+restart), **immediately reconstruct the development context** before doing any
+work:
+
+```bash
+# 1. Discover all active worktrees and their branches
+git worktree list
+
+# 2. Check status of each relevant worktree
+git status  # (run in each worktree directory)
+
+# 3. List open PRs and their branches/CI status
+gh pr list --author @me
+```
+
+**Why this matters:** This project frequently uses git worktrees for
+multi-branch work (e.g., a feature branch + a CI fix branch). After a context
+reset, the agent loses track of which worktrees exist and which maps to which
+PR. Without this recovery step, edits land in the wrong branch.
+
+**Rule:** When directed to work on a specific branch or PR, always check
+`git worktree list` first. If a worktree exists for that branch, ALL edits go
+there — never in the primary working directory.
+
 ### SpecKit Workflow (Specification-Driven Development)
 
 This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
@@ -507,20 +572,36 @@ every stage.
 
 **Setup (Required for AI Agents):**
 
-Before using SpecKit commands, install them to your AI agent's command
-directory:
+Before using SpecKit commands or packaged skills, install agent command assets:
+
+**Cross-platform (Python 3.9+):**
 
 ```bash
-# Install commands for all supported AI agents (Cursor + Claude Code)
-./.specify/scripts/bash/install-commands.sh
+# Install legacy + packaged command assets for all supported AI agents
+python3 scripts/install-agent-skills.py
 
 # Or install for specific agent only
-./.specify/scripts/bash/install-commands.sh cursor   # Cursor IDE
-./.specify/scripts/bash/install-commands.sh claude   # Claude Code CLI
+python3 scripts/install-agent-skills.py cursor   # Cursor IDE
+python3 scripts/install-agent-skills.py claude   # Claude Code CLI
+
+# Skip confirmation prompt (for automation/CI)
+python3 scripts/install-agent-skills.py -y all
+
+# Legacy compatibility (SpecKit-only install path)
+python3 scripts/install-speckit-commands.py -y all
 ```
 
-This copies command definitions from `.specify/commands/` to agent-specific
-directories (`.cursor/commands/`, `.claude/commands/`).
+> **Note:** A `.python-version` file is provided for version managers (pyenv,
+> asdf, uv). If you use one, it will automatically select Python 3.11.
+
+This compiles command definitions from legacy SpecKit sources
+(`.specify/core/commands/` + `.specify/oe/commands/`) and packaged skills in
+`.ai/skills/` into agent-specific directories (`.cursor/commands/`,
+`.claude/commands/`, plus packaged skill mirrors under `.cursor/skills/` and
+`.claude/skills/`).
+
+**CI Validation:** The CI pipeline validates that required legacy and packaged
+commands compile correctly and contain valid paths.
 
 **Available Commands:**
 
@@ -534,6 +615,14 @@ directories (`.cursor/commands/`, `.claude/commands/`).
 - `/speckit.analyze` - Cross-artifact consistency analysis
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
+- `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
+- `/plan-record-playwright` - Plan feature/PR E2E flows and orchestrate
+  write/audit/record lifecycle with correct project usage
+- `/write-playwright-test` - Playwright test authoring from requirements with
+  project registration and narrow-scope validation
+- `/debug-playwright` - Playwright failure diagnosis using source/runtime
+  evidence
+- `/audit-playwright` - Playwright test quality audit and selector hardening
 
 **Standard Workflow:**
 
@@ -1357,7 +1446,13 @@ public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
 }
 ```
 
-### E2E Tests (Cypress)
+### E2E Tests (Cypress) — DEPRECATED
+
+> **STOP: Do NOT create new Cypress tests.** Cypress is deprecated in this
+> repository. All new E2E tests MUST use Playwright. The Cypress docs below are
+> retained only for maintaining existing tests during migration. See the
+> [Playwright section below](#e2e-tests-playwright--recommended) for the
+> recommended approach.
 
 **Location:** `frontend/cypress/e2e/{feature}.cy.js`
 
@@ -1373,18 +1468,46 @@ common patterns and cheat sheets.
 [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
 for E2E testing requirements.
 
+**CRITICAL - Environment Note:**
+
+In Claude Code CLI environment (and some CI environments),
+`ELECTRON_RUN_AS_NODE=1` is set, which breaks Cypress. All `npm run cy:*`
+scripts include `unset ELECTRON_RUN_AS_NODE` to work around this. **ALWAYS use
+the npm scripts.**
+
 **Execution Strategy (Constitution V.5):**
 
-- **Development:** Run INDIVIDUAL test files (max 5-10 test cases)
-- **CI/CD:** Run full suite
+1. **During Development:** Run individual tests for fast feedback
+2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
+3. **In CI/CD:** Automatic via GitHub Actions
+
+**Available npm Scripts (use these, NOT direct cypress commands):**
 
 ```bash
-# Development (CORRECT - run individual test)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# Run specific test file
+npm run cy:spec "cypress/e2e/home.cy.js"
 
-# CI/CD only (NOT during development)
+# Run all admin tests
+npm run cy:admin
+
+# Run all analyzer tests
+npm run cy:analyzer
+
+# Run full suite (development)
 npm run cy:run
+
+# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+npm run cy:failfast
+
+# Run specific test with fail-fast
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+
+# Open Cypress UI (interactive mode)
+npm run cy:open
 ```
+
+**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
+This wastes 60+ minutes of CI time.
 
 **Configuration (`cypress.config.js`):**
 
@@ -1455,10 +1578,222 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### E2E Tests (Playwright) — RECOMMENDED
+
+> **Playwright is the recommended E2E framework** for all new tests. It provides
+> project-based organization, built-in video recording, and faster execution
+> than Cypress.
+>
+> **Execution Contract:**
+>
+> - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
+> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
+>   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
+>   `core-demo-video` run on the build stack only.
+> - `TEST_USER` and `TEST_PASS` are required
+> - Do not create new Cypress tests
+
+**Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
+`frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
+**Canonical Guide (single source of truth):**
+`.specify/guides/playwright-best-practices.md` **Operational Reference:**
+`frontend/playwright/README.md`
+
+**Command-first workflow:** Use `/plan-record-playwright` to scope flows and
+project targets, `/write-playwright-test` to author tests, `/audit-playwright`
+to review selectors/quality, and `/debug-playwright` for runtime failures.
+
+#### Playwright Projects
+
+Tests are organized into projects by infrastructure requirement. New test files
+must be explicitly added to a project's `testMatch` allowlist in
+`playwright.config.ts`.
+
+| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
+| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
+| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
+| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
+| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
+
+#### CI Workflows
+
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+
+#### Key Patterns
+
+- **Allowlist-based `testMatch`**: New test files are NOT auto-discovered. You
+  must add the glob pattern to the appropriate project in
+  `playwright.config.ts`.
+- **`videoPause(page, ms, testInfo)`** (`helpers/video-pause.ts`): Conditional
+  timeout — pauses only in `core-demo-video` / `harness-demo-video`, no-op
+  elsewhere. Use this instead of `page.waitForTimeout()` for video pacing.
+- **`showTitleCard()` / `showStepCard()`** (`helpers/title-card.ts`): DOM
+  overlay helpers for demo videos. Pass `testInfo` to skip overlays in non-video
+  projects.
+- **`testInfo`**: Playwright's 2nd test callback parameter
+  (`async ({ page }, testInfo)`). Provides `testInfo.project.name` to determine
+  which project is running.
+- **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between each demo
+  pair and its `*-demo-video` project — defined in `playwright.config.ts`.
+
+#### Playwright Anti-Patterns (MUST AVOID)
+
+These patterns cause flaky tests and invisible failures. Apply them as hard
+rules when writing or reviewing Playwright code.
+
+**DO NOT: Use `response.ok()` as test pass/fail**
+
+Use `waitForResponse` for synchronization only. The real assertion must be on
+visible UI state. When the backend returns HTTP 500, checking `response.ok()`
+throws before the UI renders its error notification — CI screenshots show stale
+state.
+
+```typescript
+// DO: sync then assert on UI
+const responsePromise = page.waitForResponse("**/api/save");
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+await expect(page.getByText("Saved successfully")).toBeVisible();
+```
+
+**DO NOT: Use `{ force: true }` on Carbon inputs**
+
+Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
+`<input type="radio">`. The visible, clickable element is the associated
+`<label>`. Click the label instead.
+
+```typescript
+// DO: click the label
+await page.locator('label[for="saveallresults"]').click();
+// or for dynamic IDs:
+await input.locator("xpath=..").locator("label").click();
+
+// DO NOT:
+await checkbox.check({ force: true }); // bypasses actionability checks
+await page.getByLabel("text").check(); // targets hidden input — will fail
+```
+
+**DO NOT: Use `.catch(() => false)` on `isVisible()`**
+
+`locator.isVisible()` returns `boolean` without throwing. The `.catch()` is dead
+code that hides real errors (like strict mode violations matching 2+ elements).
+The `timeout` parameter on `isVisible()` is deprecated and ignored.
+
+```typescript
+// DO:
+if (await element.isVisible()) { ... }
+// For waiting: use web-first assertion
+await expect(element).toBeVisible({ timeout: 5_000 });
+
+// DO NOT:
+if (await element.isVisible({ timeout: 3000 }).catch(() => false)) { ... }
+```
+
+**DO NOT: Replace autocomplete selection with type + Tab**
+
+The `AutoComplete` component's `onSelect` callback sets server-side IDs that
+`onChange` (typing) does not. Typing + Tab leaves `referringSiteId` empty. Wait
+for suggestion dropdown items, then click one. Provide a Tab fallback only for
+when no suggestions appear.
+
+**ALWAYS: Include at least one `expect()` assertion per test.**
+
+**Full guide:** `.specify/guides/playwright-best-practices.md`
+
+#### Available npm Scripts
+
+```bash
+cd frontend
+
+# Run all projects
+npm run pw:test
+
+# Run specific project
+npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-demo
+npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-demo
+
+# Record demo videos (local only)
+npm run pw:test -- --project=core-demo-video
+npm run pw:test -- --project=harness-demo-video
+
+# Run specific test file
+npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+
+# Interactive UI mode
+npm run pw:test:ui
+```
+
+#### Local Execution
+
+**Prerequisites:**
+
+1. App running at `https://localhost` (or set `BASE_URL`)
+2. Auth env vars: `TEST_USER` and `TEST_PASS`
+
+**Core-app tests (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+```
+
+**Harness tests (analyzer harness stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+```
+
+**Harness demos:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
+```
+
+**Core demos (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
+```
+
+**Demo video recording:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
+# or full harness demos:
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
+# Videos saved to frontend/test-results/
+```
+
+#### Adding New Tests
+
+1. Create test file in `frontend/playwright/tests/`
+2. Add the glob pattern to the appropriate project's `testMatch` array in
+   `playwright.config.ts`
+3. For demo workflow tests, add globs to `CORE_DEMO_TESTS` or
+   `HARNESS_DEMO_TESTS` (each pairs with its `*-demo-video` project)
+4. Use `videoPause()` instead of `page.waitForTimeout()` for any video pacing
+
 ### Testing Resources
 
 **Comprehensive Guides**:
 
+- **Playwright Best Practices (canonical)**:
+  `.specify/guides/playwright-best-practices.md` — Authoritative Playwright
+  testing guidance for humans and agents
+- **Playwright README (operational details)**: `frontend/playwright/README.md` —
+  Project matrix, CI workflows, fixture loading, and local execution guide
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
   testing guide for all test types (backend and frontend)
 - **Backend Testing Best Practices**:
@@ -1666,24 +2001,37 @@ import { Grid, Column } from "@carbon/react"; // ✅ CORRECT
 </Grid>;
 ```
 
-### Running Full E2E Suite During Development
+### Running Full E2E Suite During Development (Without Pre-Push Validation)
 
-**Symptom:** Slow feedback (>15 minutes), difficult debugging
+**Symptom:** CI failures that could have been caught locally, wasted CI time
 
-**Cause:** Running all E2E tests instead of individual test files
+**Cause:** Running only individual tests during development, then pushing
+without validating the full suite
 
-**Wrong:**
-
-```bash
-npm run cy:run  # Runs ALL tests (60+ test cases)
-```
-
-**Correct:**
+**Wrong Workflow:**
 
 ```bash
-# Run individual test file (5-10 test cases)
-npm run cy:run -- --spec "cypress/e2e/storageAssignment.cy.js"
+# 1. Run individual test (passes)
+npm run cy:spec "cypress/e2e/home.cy.js"
+# 2. Push without running full suite
+git push  # CI fails 60 minutes later
 ```
+
+**Correct Workflow:**
+
+```bash
+# 1. Run individual tests during development
+npm run cy:spec "cypress/e2e/home.cy.js"
+
+# 2. BEFORE PUSHING: Run full suite with fail-fast (MANDATORY)
+npm run cy:failfast
+
+# 3. Only push if full suite passes
+git push
+```
+
+**Note:** In Claude Code CLI environment, `ELECTRON_RUN_AS_NODE=1` breaks
+Cypress. Always use `npm run cy:*` scripts, NOT direct `npx cypress` commands.
 
 ### javax.persistence vs jakarta.persistence
 
@@ -1788,10 +2136,16 @@ Before creating PR, verify ALL items:
 
 **GitHub Actions workflows (MUST pass):**
 
-- `ci.yml` - Maven build + JaCoCo coverage report
-- `publish-and-test.yml` - Docker image build + integration tests
-- `frontend-qa.yml` - Cypress E2E tests
-- `build-installer.yml` - Offline installer packaging
+- `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
+  tests (PR + push)
+- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
+  harness) with required Playwright gate (PR)
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
+  required frontend gate (PR)
+- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
+  deprecated Cypress gate (PR)
+- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
+  releases only)
 
 ### Code Review Standards
 
@@ -1882,8 +2236,12 @@ mvn spotless:apply && cd frontend && npm run format && cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
 
-# Run individual E2E test (development)
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+# E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
+npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
+npm run cy:admin                                # All admin tests
+npm run cy:analyzer                             # All analyzer tests
+npm run cy:failfast                             # Full suite with fail-fast (BEFORE PUSHING)
+npm run cy:failfast:spec "cypress/e2e/..."      # Specific test with fail-fast
 
 # Verify Java version
 java -version  # Must be 21.x.x
@@ -1909,10 +2267,11 @@ sdk env        # SDKMAN auto-switch
 - ✅ React Intl for ALL strings (NO hardcoded text)
 - ✅ Liquibase for ALL schema changes
 - ✅ Format before commit (spotless + prettier)
-- ✅ Individual E2E tests during dev (NOT full suite)
+- ✅ E2E: Use npm scripts (NOT direct cypress commands)
+- ✅ E2E: Run `npm run cy:failfast` BEFORE pushing
 
 ---
 
-**Last Updated:** 2025-12-04 **Constitution Version:** 1.8.0 **Maintained By:**
+**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

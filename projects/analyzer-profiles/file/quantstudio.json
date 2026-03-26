@@ -1,0 +1,93 @@
+{
+  "profileMeta": {
+    "id": "quantstudio",
+    "version": "1.2.0",
+    "displayName": "QuantStudio QS5/QS7",
+    "manufacturer": "Thermo Fisher"
+  },
+  "category": "MOLECULAR",
+  "protocol": {
+    "name": "FILE",
+    "format": "EXCEL"
+  },
+  "supported_extensions": [
+    ".xls",
+    ".xlsx"
+  ],
+  "column_mapping": {
+    "Sample Name": "sampleId",
+    "Target Name": "testCode",
+    "Quantity Mean": "result",
+    "CT": "ctValue",
+    "Well Position": "position",
+    "Task": "qcTask",
+    "Quantity": "quantityRaw",
+    "Ct Mean": "ctMean",
+    "Comments": "comments"
+  },
+  "column_spec": {
+    "reference": "quantstudio-field-mapping-spec-v131",
+    "core_columns": [
+      "Well",
+      "Well Position",
+      "Omit",
+      "Sample Name",
+      "Target Name",
+      "Task",
+      "Reporter",
+      "Quencher",
+      "CT",
+      "Ct Mean",
+      "Ct SD",
+      "Quantity",
+      "Quantity Mean",
+      "Quantity SD",
+      "Automatic Ct Threshold",
+      "Ct Threshold",
+      "Automatic Baseline",
+      "Baseline Start",
+      "Baseline End",
+      "Comments"
+    ],
+    "optional_columns": [
+      "NOAMP",
+      "EXPFAIL",
+      "THOLDFAIL",
+      "HIGHSD",
+      "PRFLOW",
+      "CQCONF",
+      "Amp Score",
+      "Y-Intercept",
+      "R\u00b2",
+      "Slope",
+      "Efficiency"
+    ],
+    "metadata_block": true,
+    "header_marker": "Well",
+    "sheet_name": "Results"
+  },
+  "sheet_detection": {
+    "strategy": "header_scan",
+    "description": "QS7 has results on sheet 'Results' (often index 0). QS5 has results on 3rd sheet (index 2). Both use the same column layout confirmed by Loris on 2026-03-25. The parser should scan sheets for the header_marker row rather than relying on a fixed sheet index.",
+    "preferred_sheet_names": ["Results"],
+    "header_marker": "Well",
+    "max_sheets_to_scan": 5
+  },
+  "line_field_order": [
+    "sampleId",
+    "testCode",
+    "result",
+    "position",
+    "ctValue",
+    "quantityRaw"
+  ],
+  "default_test_mappings": [
+    { "analyzer_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "analyzer_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+  ],
+  "configDefaults": {
+    "fileFormat": "EXCEL",
+    "hasHeader": true,
+    "sheetIndex": null
+  }
+}

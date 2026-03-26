@@ -1,0 +1,70 @@
+{
+  "profileMeta": {
+    "id": "fluorocycler-xt",
+    "version": "1.1.0",
+    "displayName": "Bruker FluoroCycler XT",
+    "manufacturer": "Bruker"
+  },
+  "protocol": {
+    "name": "FILE",
+    "format": "EXCEL"
+  },
+  "supported_extensions": [
+    ".xlsx",
+    ".xls"
+  ],
+  "site_workflow": {
+    "description": "FluoroCycler XT natively exports PDF only. Technicians at LA2M manually copy values from FluoroSoftware into an Excel file with labeled column headers. Loris uploaded the corrected Excel format with headers on 2026-03-25.",
+    "native_export": "PDF",
+    "import_format": "Manual Excel copy with headers"
+  },
+  "column_mapping": {
+    "SampleID": "sampleId",
+    "WellPosition": "position",
+    "AssayName": "assayName",
+    "TargetName": "testCode",
+    "TargetNo": "targetNo",
+    "CP": "result",
+    "Interpretation": "interpretation",
+    "CalcConc": "calcConc",
+    "CalcConcUnit": "calcConcUnit",
+    "RunDate": "testDate",
+    "RunID": "runId",
+    "Notes": "notes"
+  },
+  "required_columns": [
+    "SampleID",
+    "WellPosition",
+    "TargetName",
+    "CP",
+    "Interpretation"
+  ],
+  "optional_columns": [
+    "AssayName",
+    "TargetNo",
+    "CalcConc",
+    "CalcConcUnit",
+    "RunDate",
+    "RunID",
+    "Notes"
+  ],
+  "fallback_mapping": {
+    "description": "If technician uses abbreviated headers or French labels, try these alternates",
+    "CT": "result",
+    "Ct": "result",
+    "Echantillon": "sampleId",
+    "Position": "position",
+    "Cible": "testCode",
+    "Resultat": "result",
+    "Interpretation": "interpretation"
+  },
+  "default_test_mappings": [
+    { "analyzer_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "analyzer_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+  ],
+  "configDefaults": {
+    "fileFormat": "EXCEL",
+    "hasHeader": true,
+    "sheetIndex": 0
+  }
+}

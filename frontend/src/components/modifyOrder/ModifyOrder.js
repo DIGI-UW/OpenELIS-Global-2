@@ -7,6 +7,8 @@ import {
   Stack,
   Section,
   Tag,
+  Grid,
+  Column,
 } from "@carbon/react";
 import EditSample from "./EditSample";
 import AddOrder from "../addOrder/AddOrder";
@@ -278,108 +280,117 @@ const ModifyOrder = () => {
       >
         {" "}
       </PatientHeader>
-      <Stack gap={10}>
-        <div className="pageContent">
-          {notificationVisible === true ? <AlertDialog /> : ""}
-          {orderFormValues?.sampleOrderItems && (
-            <div className="orderWorkFlowDiv">
-              <h2>
-                <FormattedMessage id="order.test.request.heading" />
-              </h2>
-              {page <= orderPageNumber && (
-                <ProgressIndicator
-                  currentIndex={page}
-                  className="ProgressIndicator"
-                  spaceEqually={true}
-                  onChange={(e) => handleTabClickHandler(e)}
-                >
-                  <ProgressStep
-                    disabled={orderFormValues.sampleOrderItems.labNo == ""}
-                    label={intl.formatMessage({
-                      id: "order.step.program.selection",
-                    })}
-                  />
-                  <ProgressStep
-                    disabled={orderFormValues.sampleOrderItems.labNo == ""}
-                    label={intl.formatMessage({ id: "sample.add.action" })}
-                  />
-                  <ProgressStep
-                    disabled={orderFormValues.sampleOrderItems.labNo == ""}
-                    label={intl.formatMessage({ id: "order.label.add" })}
-                  />
-                </ProgressIndicator>
-              )}
-              {page === programPageNumber && (
-                <EditOrderEntryAdditionalQuestions
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                />
-              )}
-              {page === samplePageNumber && (
-                <EditSample
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                  setSamples={setSamples}
-                  samples={samples}
-                  error={elementError}
-                />
-              )}
-              {page === orderPageNumber && (
-                <AddOrder
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                  samples={samples}
-                  error={elementError}
-                  isModifyOrder={true}
-                  changed={changed}
-                  setChanged={setChanged}
-                />
-              )}
+      <Grid>
+        <Column lg={16} md={8} sm={4}>
+          <Stack gap={10}>
+            <div className="pageContent">
+              {notificationVisible === true ? <AlertDialog /> : ""}
+              {orderFormValues?.sampleOrderItems && (
+                <div className="orderWorkFlowDiv">
+                  <h2>
+                    <FormattedMessage id="order.test.request.heading" />
+                  </h2>
+                  {page <= orderPageNumber && (
+                    <ProgressIndicator
+                      currentIndex={page}
+                      className="ProgressIndicator"
+                      spaceEqually={true}
+                      onChange={(e) => handleTabClickHandler(e)}
+                    >
+                      <ProgressStep
+                        disabled={orderFormValues.sampleOrderItems.labNo == ""}
+                        label={intl.formatMessage({
+                          id: "order.step.program.selection",
+                        })}
+                      />
+                      <ProgressStep
+                        disabled={orderFormValues.sampleOrderItems.labNo == ""}
+                        label={intl.formatMessage({ id: "sample.add.action" })}
+                      />
+                      <ProgressStep
+                        disabled={orderFormValues.sampleOrderItems.labNo == ""}
+                        label={intl.formatMessage({ id: "order.label.add" })}
+                      />
+                    </ProgressIndicator>
+                  )}
+                  {page === programPageNumber && (
+                    <EditOrderEntryAdditionalQuestions
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                    />
+                  )}
+                  {page === samplePageNumber && (
+                    <EditSample
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                      setSamples={setSamples}
+                      samples={samples}
+                      error={elementError}
+                    />
+                  )}
+                  {page === orderPageNumber && (
+                    <AddOrder
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                      samples={samples}
+                      error={elementError}
+                      isModifyOrder={true}
+                      changed={changed}
+                      setChanged={setChanged}
+                    />
+                  )}
 
-              {page === successMsgPageNumber && (
-                <OrderSuccessMessage
-                  orderFormValues={orderFormValues}
-                  setOrderFormValues={setOrderFormValues}
-                  setSamples={setSamples}
-                  setPage={setPage}
-                />
+                  {page === successMsgPageNumber && (
+                    <OrderSuccessMessage
+                      orderFormValues={orderFormValues}
+                      setOrderFormValues={setOrderFormValues}
+                      setSamples={setSamples}
+                      setPage={setPage}
+                    />
+                  )}
+                  <div className="navigationButtonsLayout">
+                    {page !== firstPageNumber && page <= orderPageNumber && (
+                      <Button
+                        kind="tertiary"
+                        onClick={() => navigateBackWards()}
+                      >
+                        <FormattedMessage id="back.action.button" />
+                      </Button>
+                    )}
+
+                    {page < orderPageNumber && (
+                      <Button
+                        data-cy="next-button"
+                        kind="primary"
+                        className="forwardButton"
+                        onClick={() => navigateForward()}
+                      >
+                        <FormattedMessage id="next.action.button" />
+                      </Button>
+                    )}
+
+                    {page === orderPageNumber && (
+                      <Button
+                        data-cy="submit-order"
+                        kind="primary"
+                        className="forwardButton"
+                        onClick={handleSubmitOrderForm}
+                        disabled={
+                          isSubmitting || errors?.errors?.length > 0
+                            ? true
+                            : false
+                        }
+                      >
+                        <FormattedMessage id="label.button.submit" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
               )}
-              <div className="navigationButtonsLayout">
-                {page !== firstPageNumber && page <= orderPageNumber && (
-                  <Button kind="tertiary" onClick={() => navigateBackWards()}>
-                    <FormattedMessage id="back.action.button" />
-                  </Button>
-                )}
-
-                {page < orderPageNumber && (
-                  <Button
-                    data-cy="next-button"
-                    kind="primary"
-                    className="forwardButton"
-                    onClick={() => navigateForward()}
-                  >
-                    <FormattedMessage id="next.action.button" />
-                  </Button>
-                )}
-
-                {page === orderPageNumber && (
-                  <Button
-                    data-cy="submit-order"
-                    kind="primary"
-                    className="forwardButton"
-                    onClick={handleSubmitOrderForm}
-                    disabled={
-                      isSubmitting || errors?.errors?.length > 0 ? true : false
-                    }
-                  >
-                    <FormattedMessage id="label.button.submit" />
-                  </Button>
-                )}
-              </div>
             </div>
-          )}
-        </div>
-      </Stack>
+          </Stack>
+        </Column>
+      </Grid>
     </>
   );
 };

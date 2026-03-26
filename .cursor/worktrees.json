@@ -1,0 +1,6 @@
+{
+  "setup-worktree": [
+    "./.githooks/setup.sh",
+    "python3 scripts/install-agent-skills.py -y all"
+  ]
+}

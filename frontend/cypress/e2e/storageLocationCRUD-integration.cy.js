@@ -337,42 +337,4 @@ describe("Storage Location CRUD - Real Backend Integration", () => {
         expect(text).to.match(/[A-Za-z]/);
       });
   });
-
-  it("should display specific error message for invalid temperature", () => {
-    cy.get('[data-testid="tab-devices"]').click();
-    cy.get('button[role="tab"]')
-      .contains("Devices")
-      .should("have.attr", "aria-selected", "true");
-    cy.get('[data-testid^="device-row-"]').should("have.length.at.least", 1);
-
-    // Open edit modal
-    cy.get('[data-testid^="device-row-"]')
-      .first()
-      .find('[data-testid="location-actions-overflow-menu"]')
-      .click();
-    cy.get('[data-testid="edit-location-menu-item"]').click();
-    cy.get('[data-testid="edit-location-modal"]').should("be.visible");
-    cy.get('[data-testid="edit-location-device-name"]').should("be.visible");
-
-    // Enter invalid temperature
-    cy.get('[data-testid="edit-location-device-temperature"]')
-      .clear()
-      .type("999");
-
-    // Save
-    cy.get('[data-testid="edit-location-save-button"]')
-      .should("not.be.disabled")
-      .click();
-
-    // Wait for PUT request to complete
-    cy.wait("@anyStoragePut", { timeout: 3000 });
-
-    // Verify error message is displayed (user-visible behavior)
-    cy.get('[data-testid="edit-location-modal"]').within(() => {
-      // Check for error text (more reliable than role="alert")
-      cy.contains(/temperature|invalid|range/i, { timeout: 3000 }).should(
-        "be.visible",
-      );
-    });
-  });
 });

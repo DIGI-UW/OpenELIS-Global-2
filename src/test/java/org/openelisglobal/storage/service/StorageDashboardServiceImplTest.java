@@ -1,340 +1,252 @@
 package org.openelisglobal.storage.service;
 
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.storage.valueholder.*;
+import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageRoom;
+import org.openelisglobal.storage.valueholder.StorageShelf;
+import org.springframework.beans.factory.annotation.Autowired;
 
-/**
- * Unit tests for StorageDashboardService filter logic. Tests that filter
- * methods correctly combine multiple filter criteria with AND logic (per
- * FR-066).
- * 
- * TDD: These tests are written BEFORE implementation. They should fail
- * initially.
- */
-@RunWith(MockitoJUnitRunner.class)
-public class StorageDashboardServiceImplTest {
+public class StorageDashboardServiceImplTest extends BaseWebContextSensitiveTest {
 
-    @Mock
+    @Autowired
+    private StorageDashboardService storageDashboardService;
+
+    @Autowired
     private SampleStorageService sampleStorageService;
 
-    @Mock
+    @Autowired
     private StorageLocationService storageLocationService;
 
-    @Mock
-    private org.openelisglobal.common.services.IStatusService statusService;
-
-    @InjectMocks
-    private StorageDashboardServiceImpl dashboardService;
-
-    private List<Map<String, Object>> mockSamples;
-    private List<StorageRoom> mockRooms;
-    private List<StorageDevice> mockDevices;
-    private List<StorageShelf> mockShelves;
-    private List<StorageRack> mockRacks;
-
     @Before
-    public void setUp() {
-        dashboardService = new StorageDashboardServiceImpl();
-        // Use reflection or setter injection to set mocks
-        try {
-            java.lang.reflect.Field sampleServiceField = StorageDashboardServiceImpl.class
-                    .getDeclaredField("sampleStorageService");
-            sampleServiceField.setAccessible(true);
-            sampleServiceField.set(dashboardService, sampleStorageService);
+    public void setup() throws Exception {
+        executeDataSetWithStateManagement("testdata/StorageDashboardServiceImplTest.xml");
+    }
 
-            java.lang.reflect.Field locationServiceField = StorageDashboardServiceImpl.class
-                    .getDeclaredField("storageLocationService");
-            locationServiceField.setAccessible(true);
-            locationServiceField.set(dashboardService, storageLocationService);
+    @Test
+    public void filterSamples_shouldReturnSamplesMatchingLocationAndStatus_whenBothAreProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterSamples("Room A", "active");
 
-            java.lang.reflect.Field statusServiceField = StorageDashboardServiceImpl.class
-                    .getDeclaredField("statusService");
-            statusServiceField.setAccessible(true);
-            statusServiceField.set(dashboardService, statusService);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to inject mocks", e);
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        for (Map<String, Object> sample : result) {
+            String status = (String) sample.get("status");
+            String location = (String) sample.get("location");
+            assertTrue("1".equals(status));
+            assertTrue(location.contains("Room A"));
         }
-        setupMockData();
     }
 
-    private void setupMockData() {
-        // Mock samples
-        mockSamples = new ArrayList<>();
-        Map<String, Object> sample1 = new HashMap<>();
-        sample1.put("id", 1);
-        sample1.put("status", "1"); // Status ID (not "active" string)
-        sample1.put("location", "Room1 > Device1 > Position1");
-        mockSamples.add(sample1);
-
-        Map<String, Object> sample2 = new HashMap<>();
-        sample2.put("id", 2);
-        sample2.put("status", "1"); // Status ID (not "active" string)
-        sample2.put("location", "Room2 > Device2 > Position2");
-        mockSamples.add(sample2);
-
-        Map<String, Object> sample3 = new HashMap<>();
-        sample3.put("id", 3);
-        sample3.put("status", "24"); // Disposed status ID
-        sample3.put("location", "Room1 > Device1 > Position3");
-        mockSamples.add(sample3);
-
-        // Mock rooms
-        mockRooms = new ArrayList<>();
-        StorageRoom room1 = new StorageRoom();
-        room1.setId(1);
-        room1.setActive(true);
-        mockRooms.add(room1);
-
-        StorageRoom room2 = new StorageRoom();
-        room2.setId(2);
-        room2.setActive(false);
-        mockRooms.add(room2);
-
-        // Mock devices
-        mockDevices = new ArrayList<>();
-        StorageDevice device1 = new StorageDevice();
-        device1.setId(1);
-        device1.setTypeEnum(StorageDevice.DeviceType.FREEZER);
-        device1.setParentRoom(room1);
-        device1.setActive(true);
-        mockDevices.add(device1);
-
-        StorageDevice device2 = new StorageDevice();
-        device2.setId(2);
-        device2.setTypeEnum(StorageDevice.DeviceType.REFRIGERATOR);
-        device2.setParentRoom(room1);
-        device2.setActive(true);
-        mockDevices.add(device2);
-
-        // Mock shelves
-        mockShelves = new ArrayList<>();
-        StorageShelf shelf1 = new StorageShelf();
-        shelf1.setId(1);
-        shelf1.setParentDevice(device1);
-        shelf1.setActive(true);
-        mockShelves.add(shelf1);
-
-        // Mock racks
-        mockRacks = new ArrayList<>();
-        StorageRack rack1 = new StorageRack();
-        rack1.setId(1);
-        rack1.setParentShelf(shelf1);
-        rack1.setActive(true);
-        mockRacks.add(rack1);
-    }
-
-    /**
-     * Test: filterSamples should combine location and status filters with AND logic
-     */
     @Test
-    public void testFilterSamples_ByLocationAndStatus_CombinesWithAND() {
-        // Given: All samples from service
-        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
-        
-        // Mock statusService.matches() for active samples (status ID "1" is NOT disposed)
-        when(statusService.matches("1", org.openelisglobal.common.services.StatusService.SampleStatus.Disposed))
-                .thenReturn(false);
-        // Mock statusService.matches() for disposed samples (status ID "24" IS disposed)
-        when(statusService.matches("24", org.openelisglobal.common.services.StatusService.SampleStatus.Disposed))
-                .thenReturn(true);
+    public void filterSamples_shouldReturnAllSamplesInLocation_whenOnlyLocationIsProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterSamples("Room B", null);
 
-        // When: Filter by location containing "Room1" AND status "active"
-        List<Map<String, Object>> result = dashboardService.filterSamples(
-                "Room1", "active");
+        assertNotNull(result);
+        assertEquals(3, result.size());
 
-        // Then: Should return only sample1 (matches both filters)
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 sample matching both filters", 1, result.size());
-        assertEquals("Sample ID should be 1", 1, result.get(0).get("id"));
-        assertEquals("Status should be status ID 1", "1", result.get(0).get("status"));
-        assertTrue("Location should contain Room1", 
-                ((String) result.get(0).get("location")).contains("Room1"));
+        for (Map<String, Object> sample : result) {
+            String location = (String) sample.get("location");
+            assertTrue(location.contains("Room B"));
+        }
     }
 
-    /**
-     * Test: filterRooms should filter by status
-     */
     @Test
-    public void testFilterRooms_ByStatus_ReturnsMatching() {
-        // Given: All rooms from service
-        when(storageLocationService.getRooms()).thenReturn(mockRooms);
+    public void filterSamples_shouldReturnSamplesMatchingStatus_whenOnlyStatusIsProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterSamples(null, "disposed");
 
-        // When: Filter by active status
-        List<StorageRoom> result = dashboardService.filterRooms(true);
+        assertNotNull(result);
 
-        // Then: Should return only active rooms
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 active room", 1, result.size());
-        assertTrue("Room should be active", result.get(0).getActive());
+        for (Map<String, Object> sample : result) {
+            String status = (String) sample.get("status");
+            assertEquals("24", status);
+        }
     }
 
-    /**
-     * Test: filterDevices should combine type, roomId, and status filters with AND logic
-     */
     @Test
-    public void testFilterDevices_ByTypeRoomStatus_CombinesWithAND() {
-        // Given: All devices from service
-        when(storageLocationService.getAllDevices()).thenReturn(mockDevices);
+    public void filterRooms_shouldReturnActiveAndInactiveRoomsBasedOnStatusFlag() throws Exception {
+        List<StorageRoom> activeRooms = storageDashboardService.filterRooms(true);
 
-        // When: Filter by type FREEZER, roomId 1, and active status
-        List<StorageDevice> result = dashboardService.filterDevices(
-                StorageDevice.DeviceType.FREEZER, 1, true);
+        assertNotNull(activeRooms);
+        assertEquals(3, activeRooms.size());
 
-        // Then: Should return only device1 (matches all three filters)
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 device matching all filters", 1, result.size());
-        assertEquals("Device type should be FREEZER", 
-                StorageDevice.DeviceType.FREEZER, result.get(0).getTypeEnum());
-        assertEquals("Device roomId should be 1", 
-                Integer.valueOf(1), result.get(0).getParentRoom().getId());
-        assertTrue("Device should be active", result.get(0).getActive());
+        for (StorageRoom room : activeRooms) {
+            assertTrue(room.getActive());
+        }
+
+        List<StorageRoom> inactiveRooms = storageDashboardService.filterRooms(false);
+
+        assertNotNull(inactiveRooms);
+        assertEquals(1, inactiveRooms.size());
+
+        for (StorageRoom room : inactiveRooms) {
+            assertFalse(room.getActive());
+        }
     }
 
-    /**
-     * Test: filterShelves should combine deviceId, roomId, and status filters with AND logic
-     */
     @Test
-    public void testFilterShelves_ByDeviceRoomStatus_CombinesWithAND() {
-        // Given: All shelves from service
-        when(storageLocationService.getAllShelves()).thenReturn(mockShelves);
+    public void filterDevices_shouldReturnDevicesMatchingTypeRoomAndStatus_whenAllAreProvided() throws Exception {
+        List<StorageDevice> result = storageDashboardService.filterDevices(StorageDevice.DeviceType.FREEZER, 1, true);
 
-        // When: Filter by deviceId 1, roomId 1, and active status
-        List<StorageShelf> result = dashboardService.filterShelves(1, 1, true);
+        assertNotNull(result);
+        assertEquals(2, result.size());
 
-        // Then: Should return only shelf1 (matches all three filters)
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 shelf matching all filters", 1, result.size());
-        assertEquals("Shelf deviceId should be 1", 
-                Integer.valueOf(1), result.get(0).getParentDevice().getId());
-        assertEquals("Shelf roomId should be 1", 
-                Integer.valueOf(1), result.get(0).getParentDevice().getParentRoom().getId());
-        assertTrue("Shelf should be active", result.get(0).getActive());
+        for (StorageDevice device : result) {
+            assertEquals(StorageDevice.DeviceType.FREEZER, device.getTypeEnum());
+            assertEquals(Integer.valueOf(1), device.getParentRoom().getId());
+            assertTrue(device.getActive());
+        }
     }
 
-    /**
-     * Test: filterRacks should combine roomId, shelfId, deviceId, and status filters with AND logic
-     */
     @Test
-    public void testFilterRacks_ByRoomShelfDeviceStatus_CombinesWithAND() {
-        // Given: All racks from service
-        when(storageLocationService.getAllRacks()).thenReturn(mockRacks);
+    public void filterDevices_shouldReturnDevicesMatchingType_whenOnlyTypeIsProvided() throws Exception {
+        List<StorageDevice> result = storageDashboardService.filterDevices(StorageDevice.DeviceType.REFRIGERATOR, null,
+                null);
 
-        // When: Filter by roomId 1, shelfId 1, deviceId 1, and active status
-        List<StorageRack> result = dashboardService.filterRacks(1, 1, 1, true);
+        assertNotNull(result);
+        assertEquals(3, result.size());
 
-        // Then: Should return only rack1 (matches all four filters)
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 rack matching all filters", 1, result.size());
-        assertEquals("Rack shelfId should be 1", 
-                Integer.valueOf(1), result.get(0).getParentShelf().getId());
-        assertEquals("Rack deviceId should be 1", 
-                Integer.valueOf(1), result.get(0).getParentShelf().getParentDevice().getId());
-        assertEquals("Rack roomId should be 1", 
-                Integer.valueOf(1), result.get(0).getParentShelf().getParentDevice().getParentRoom().getId());
-        assertTrue("Rack should be active", result.get(0).getActive());
+        for (StorageDevice device : result) {
+            assertEquals(StorageDevice.DeviceType.REFRIGERATOR, device.getTypeEnum());
+        }
     }
 
-    /**
-     * Test: getRacksForAPI should include parentRoomId column (FR-065a)
-     * Note: Uses parentRoomId (not roomId) for consistency with other parent-prefixed keys
-     */
     @Test
-    public void testGetRacks_IncludesRoomColumn() {
-        // Given: All racks from service
-        when(storageLocationService.getAllRacks()).thenReturn(mockRacks);
+    public void filterShelves_shouldReturnShelvesMatchingDeviceRoomAndStatus_whenAllAreProvided() throws Exception {
+        List<StorageShelf> result = storageDashboardService.filterShelves(3, 2, true);
 
-        // When: Get racks for API
-        List<Map<String, Object>> result = dashboardService.getRacksForAPI(null, null, null, null);
+        assertNotNull(result);
+        assertEquals(2, result.size());
 
-        // Then: All racks should have parentRoomId column
-        assertNotNull("Result should not be null", result);
-        assertFalse("Should return at least one rack", result.isEmpty());
+        for (StorageShelf shelf : result) {
+            assertEquals(Integer.valueOf(3), shelf.getParentDevice().getId());
+            assertEquals(Integer.valueOf(2), shelf.getParentDevice().getParentRoom().getId());
+            assertTrue(shelf.getActive());
+        }
+    }
+
+    @Test
+    public void filterRacks_shouldReturnRacksMatchingRoomShelfDeviceAndStatus_whenAllAreProvided() throws Exception {
+        List<StorageRack> result = storageDashboardService.filterRacks(1, 1, 1, true);
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+
+        StorageRack rack = result.get(0);
+        assertEquals(Integer.valueOf(1), rack.getParentShelf().getId());
+        assertEquals(Integer.valueOf(1), rack.getParentShelf().getParentDevice().getId());
+        assertEquals(Integer.valueOf(1), rack.getParentShelf().getParentDevice().getParentRoom().getId());
+        assertTrue(rack.getActive());
+    }
+
+    @Test
+    public void getRacksForAPI_shouldIncludeParentIdentifiers_whenReturningRacks() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.getRacksForAPI(null, null, null, null);
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+
         for (Map<String, Object> rack : result) {
-            assertTrue("Rack should have parentRoomId key", rack.containsKey("parentRoomId"));
-            assertNotNull("Rack parentRoomId should not be null", rack.get("parentRoomId"));
+            assertTrue(rack.containsKey("parentRoomId"));
+            assertNotNull(rack.get("parentRoomId"));
+            assertTrue(rack.containsKey("parentShelfId"));
+            assertTrue(rack.containsKey("parentDeviceId"));
         }
     }
 
-    /**
-     * Test: filterShelvesForAPI should filter by parentDeviceId (not deviceId) This
-     * test verifies the fix for the bug where filterShelvesForAPI was looking for
-     * "deviceId" instead of "parentDeviceId" in the Map objects.
-     */
     @Test
-    public void testFilterShelvesForAPI_ByDeviceId_ReturnsMatchingShelves() {
-        // Given: Mock shelves from getShelvesForAPI (which returns Maps with
-        // parentDeviceId)
-        List<Map<String, Object>> mockShelvesForAPI = new ArrayList<>();
-        Map<String, Object> shelf1 = new HashMap<>();
-        shelf1.put("id", 1);
-        shelf1.put("parentDeviceId", 1); // CRITICAL: Uses parentDeviceId, not deviceId
-        shelf1.put("parentRoomId", 1);
-        shelf1.put("active", true);
-        mockShelvesForAPI.add(shelf1);
+    public void filterShelvesForAPI_shouldReturnShelvesMatchingDeviceId_whenDeviceIdIsProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterShelvesForAPI(2, null, null);
 
-        Map<String, Object> shelf2 = new HashMap<>();
-        shelf2.put("id", 2);
-        shelf2.put("parentDeviceId", 2); // Different device
-        shelf2.put("parentRoomId", 1);
-        shelf2.put("active", true);
-        mockShelvesForAPI.add(shelf2);
+        assertNotNull(result);
+        assertEquals(3, result.size());
 
-        when(storageLocationService.getShelvesForAPI(null)).thenReturn(mockShelvesForAPI);
-
-        // When: Filter by deviceId 1
-        List<Map<String, Object>> result = dashboardService.filterShelvesForAPI(1, null, null);
-
-        // Then: Should return only shelf1 (matches deviceId 1)
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 shelf matching deviceId 1", 1, result.size());
-        assertEquals("Shelf ID should be 1", 1, result.get(0).get("id"));
-        assertEquals("Shelf parentDeviceId should be 1", 1, result.get(0).get("parentDeviceId"));
+        for (Map<String, Object> shelf : result) {
+            assertEquals(Integer.valueOf(2), shelf.get("parentDeviceId"));
+        }
     }
 
-    /**
-     * Test: filterShelvesForAPI should filter by parentRoomId (not roomId)
-     */
     @Test
-    public void testFilterShelvesForAPI_ByRoomId_ReturnsMatchingShelves() {
-        // Given: Mock shelves from getShelvesForAPI (which returns Maps with
-        // parentRoomId)
-        List<Map<String, Object>> mockShelvesForAPI = new ArrayList<>();
-        Map<String, Object> shelf1 = new HashMap<>();
-        shelf1.put("id", 1);
-        shelf1.put("parentDeviceId", 1);
-        shelf1.put("parentRoomId", 1); // CRITICAL: Uses parentRoomId, not roomId
-        shelf1.put("active", true);
-        mockShelvesForAPI.add(shelf1);
+    public void filterShelvesForAPI_shouldReturnShelvesMatchingRoomId_whenRoomIdIsProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterShelvesForAPI(null, 3, null);
 
-        Map<String, Object> shelf2 = new HashMap<>();
-        shelf2.put("id", 2);
-        shelf2.put("parentDeviceId", 2);
-        shelf2.put("parentRoomId", 2); // Different room
-        shelf2.put("active", true);
-        mockShelvesForAPI.add(shelf2);
+        assertNotNull(result);
+        assertEquals(2, result.size());
 
-        when(storageLocationService.getShelvesForAPI(null)).thenReturn(mockShelvesForAPI);
+        for (Map<String, Object> shelf : result) {
+            assertEquals(3, shelf.get("parentRoomId"));
+        }
+    }
 
-        // When: Filter by roomId 1
-        List<Map<String, Object>> result = dashboardService.filterShelvesForAPI(null, 1, null);
+    @Test
+    public void filterShelvesForAPI_shouldReturnShelvesMatchingStatus_whenStatusIsProvided() throws Exception {
+        List<Map<String, Object>> activeShelves = storageDashboardService.filterShelvesForAPI(null, null, true);
 
-        // Then: Should return only shelf1 (matches roomId 1)
-        assertNotNull("Result should not be null", result);
-        assertEquals("Should return 1 shelf matching roomId 1", 1, result.size());
-        assertEquals("Shelf ID should be 1", 1, result.get(0).get("id"));
-        assertEquals("Shelf parentRoomId should be 1", 1, result.get(0).get("parentRoomId"));
+        assertNotNull(activeShelves);
+        assertFalse(activeShelves.isEmpty());
+
+        for (Map<String, Object> shelf : activeShelves) {
+            assertTrue((Boolean) shelf.get("active"));
+        }
+
+        List<Map<String, Object>> inactiveShelves = storageDashboardService.filterShelvesForAPI(null, null, false);
+
+        assertNotNull(inactiveShelves);
+        assertFalse(inactiveShelves.isEmpty());
+
+        for (Map<String, Object> shelf : inactiveShelves) {
+            assertFalse((Boolean) shelf.get("active"));
+        }
+    }
+
+    @Test
+    public void filterShelvesForAPI_shouldReturnShelvesMatchingAllFilters_whenAllAreProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterShelvesForAPI(1, 1, true);
+
+        assertNotNull(result);
+        assertEquals(2, result.size());
+
+        for (Map<String, Object> shelf : result) {
+            assertEquals(Integer.valueOf(1), shelf.get("parentDeviceId"));
+            assertEquals(Integer.valueOf(1), shelf.get("parentRoomId"));
+            assertTrue((Boolean) shelf.get("active"));
+        }
+    }
+
+    @Test
+    public void getRacksForAPI_shouldReturnRacksMatchingAllFilters_whenAllAreProvided() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.getRacksForAPI(1, 1, 1, true);
+
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+
+        for (Map<String, Object> rack : result) {
+            assertEquals(Integer.valueOf(1), rack.get("parentShelfId"));
+            assertEquals(Integer.valueOf(1), rack.get("parentDeviceId"));
+            assertEquals(Integer.valueOf(1), rack.get("parentRoomId"));
+            assertTrue((Boolean) rack.get("active"));
+        }
+    }
+
+    @Test
+    public void filterSamples_shouldReturnEmptyList_whenNoSamplesMatchFilters() throws Exception {
+        List<Map<String, Object>> result = storageDashboardService.filterSamples("NonExistentRoom", "active");
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    public void filterDevices_shouldReturnEmptyList_whenNoDevicesMatchFilters() throws Exception {
+        List<StorageDevice> result = storageDashboardService.filterDevices(StorageDevice.DeviceType.FREEZER, 999, true);
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 }

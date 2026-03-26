@@ -26,29 +26,15 @@ When working on this project, follow this documentation order:
 
 This project uses **GitHub SpecKit** for Specification-Driven Development (SDD).
 
-### Available Slash Commands
+**Setup:** Run `python3 scripts/install-agent-skills.py` to install slash
+commands and packaged skills.
 
-- `/speckit.specify` - Create/update feature specification from description
-- `/speckit.clarify` - Identify underspecified areas (max 5 clarification
-  questions)
-- `/speckit.plan` - Generate implementation plan with constitution check and
-  research
-- `/speckit.tasks` - Generate actionable, dependency-ordered tasks.md
-- `/speckit.implement` - Execute implementation plan (process tasks.md)
-- `/speckit.analyze` - Cross-artifact consistency analysis
-- `/speckit.constitution` - Create/update project constitution
-- `/speckit.checklist` - Generate custom quality validation checklist
+**Full documentation:** See [AGENTS.md](AGENTS.md) § "GitHub SpecKit
+Integration" for:
 
-### Standard Workflow
-
-1. `/speckit.specify "Feature description"` → Creates
-   `specs/{###-feature-name}/spec.md`
-2. `/speckit.clarify` → Resolves ambiguities (max 3 rounds recommended)
-3. `/speckit.plan` → Creates `plan.md` with architecture, research, constitution
-   check
-4. `/speckit.tasks` → Creates `tasks.md` with dependency-ordered task breakdown
-5. `/speckit.implement` → Executes tasks using TDD workflow
-6. `/speckit.analyze` → Validates consistency across spec/plan/tasks
+- Available commands (`/speckit.specify`, `/speckit.plan`, etc.)
+- Standard workflow
+- Command installation options
 
 ---
 
@@ -71,6 +57,13 @@ mvn clean install -DskipTests
 - `-DskipTests`: Skips Surefire unit test execution
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
+
+**Exception — CI shared-build root project:** The E2E `shared-build` step in
+both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
+`-Dmaven.test.skip=true` on the root project build because the `test-jar`
+artifact must be produced for plugin compilation (GenericASTM, GenericFile,
+GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
+both flags.
 
 ### Pre-Commit Formatting (MANDATORY)
 
@@ -110,19 +103,53 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
-### Individual E2E Test Execution (Constitution V.5)
+### Post-Compaction Context Recovery (MANDATORY)
 
-**Development:** Run tests INDIVIDUALLY (NOT full suite)
+**After any context compaction or session resume**, run these commands FIRST —
+before reading files, editing code, or starting analysis:
 
 ```bash
-# CORRECT (individual test file during development)
-npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"
+# 1. Discover all active worktrees and their branches
+git worktree list
 
-# WRONG (full suite, only for CI/CD)
-npm run cy:run
+# 2. Check status of each relevant worktree
+git status  # (in each worktree path)
+
+# 3. List open PRs and their branches
+gh pr list --author @me
 ```
 
-**Why?** Faster feedback (5 minutes vs 15+ minutes), easier debugging
+**Why:** Compaction drops operational state (active worktrees, open PRs, CI
+status). These commands reconstruct the full dev context in seconds. Without
+this, work targets the wrong branch/directory.
+
+### Cypress E2E — DEPRECATED
+
+> **Do not create new Cypress tests.** See [AGENTS.md](AGENTS.md) "E2E Tests
+> (Cypress) — DEPRECATED" for existing test maintenance scripts and execution
+> constraints.
+
+### Playwright E2E — RECOMMENDED
+
+> See [AGENTS.md](AGENTS.md) "E2E Tests (Playwright)" for the full execution
+> contract, scripts, and project descriptions. Key invariant: always use
+> `npm run pw:test` scripts, never raw `npx playwright test`.
+
+### Playwright Anti-Patterns (CRITICAL)
+
+**DO NOT** introduce these patterns — they cause flaky tests:
+
+1. **`response.ok()` as pass/fail** — Use `waitForResponse` for sync only, then
+   assert on visible UI state (`toBeVisible`, `toHaveURL`, `toHaveText`)
+2. **`{ force: true }` on Carbon inputs** — Click the `<label>` instead; Carbon
+   hides `<input>` elements with `visually-hidden`
+3. **`.catch(() => false)` on `isVisible()`** — `isVisible()` already returns
+   boolean; the catch hides real errors
+4. **`isVisible({ timeout: N })`** — The timeout parameter is deprecated and
+   ignored; use `expect(el).toBeVisible({ timeout: N })` for waiting
+
+**Full guide:** `.specify/guides/playwright-best-practices.md` **Quality
+report:** `.specify/guides/playwright-e2e-quality-report.md`
 
 ---
 
@@ -138,4 +165,14 @@ npm run cy:run
 
 ---
 
-**Last Updated:** 2025-11-09 **Constitution Version:** 1.7.0
+## Active Technologies
+
+- Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript) (005-eqa-module)
+- PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
+  (005-eqa-module)
+
+**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+
+## Recent Changes
+
+- 005-eqa-module: Added Java 21 LTS (OpenJDK/Temurin) + React 17 (JavaScript)

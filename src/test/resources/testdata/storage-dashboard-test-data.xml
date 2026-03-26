@@ -3,6 +3,28 @@
     test fixtures for dashboard filtering tests. Uses IDs 1000-1999 for storage
     hierarchy and 10000+ for samples to avoid conflicts. -->
 <dataset>
+    <!-- Required Foreign Key Dependencies -->
+    <localization id="10000" description="sample type" />
+    <localization_value id="1" localization_id="10000"
+        locale="en" value="Test Sample Type" />
+    <localization_value id="2" localization_id="10000"
+        locale="fr" value="Type d'échantillon test" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <status_of_sample id="1" code="1" is_active="1"
+        status_type="Pending" description="Awaiting testing"
+        lastupdated="2024-01-01 00:00:00" name="Pending"
+        display_key="status.pending" />
+
+    <type_of_sample id="1" name_localization_id="10000"
+        description="Test Sample Type" is_active="true"
+        lastupdated="2024-01-01 00:00:00" />
+
     <!-- Storage Hierarchy for Dashboard Tests -->
     <storage_room id="1000"
         fhir_uuid="10000000-0000-0000-0000-000000001000"

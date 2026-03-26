@@ -45,12 +45,13 @@ public class HibernateMappingValidationTest {
 
         // Add dependent entity mappings (Sample and SampleItem still use XML - legacy)
         // SampleItem depends on TypeOfSample and UnitOfMeasure
-        // TypeOfSample depends on Localization
+        // TypeOfSample depends on Localization (JPA entity)
+        configuration.addAnnotatedClass(org.openelisglobal.localization.valueholder.Localization.class);
+        configuration.addAnnotatedClass(org.openelisglobal.localization.valueholder.LocalizationValue.class);
         configuration.addResource("hibernate/hbm/Sample.hbm.xml");
         configuration.addResource("hibernate/hbm/SampleItem.hbm.xml");
         configuration.addResource("hibernate/hbm/TypeOfSample.hbm.xml");
         configuration.addResource("hibernate/hbm/UnitOfMeasure.hbm.xml");
-        configuration.addResource("hibernate/hbm/Localization.hbm.xml");
 
         // Configure minimal properties (no actual DB connection)
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");

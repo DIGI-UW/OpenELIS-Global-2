@@ -18,6 +18,7 @@ const CreatePatientValidationSchema = Yup.object().shape({
 
       return validDate1 || validDate2;
     }),
+  email: Yup.string().email("Patient Email Must Be Valid"),
   patientContact: Yup.object().shape({
     person: Yup.object().shape({
       email: Yup.string().email("Contact Email Must Be Valid"),
