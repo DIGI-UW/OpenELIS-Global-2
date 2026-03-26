@@ -1,5 +1,17 @@
 # Implementation Plan: File Stream Alignment — GenericFile Coordination
 
+## 2026-03-18 Ownership Override (014 Remediation)
+
+This implementation plan is superseded for FILE poller ownership by
+`file-workflow-remediation-plan.md` in this same specs directory.
+
+Current remediation contract:
+
+- Bridge owns FILE watcher runtime and directory polling.
+- OpenELIS owns config, direct ingestion endpoint, and result processing.
+- Any references to OpenELIS as the primary watcher are historical and are being
+  reconciled by this remediation.
+
 **Branch**: `spec/014-hjra-file-stream-alignment` | **Date**: 2026-03-10 |
 **Spec**: [spec.md](spec.md)  
 **Input**: Feature specification from
