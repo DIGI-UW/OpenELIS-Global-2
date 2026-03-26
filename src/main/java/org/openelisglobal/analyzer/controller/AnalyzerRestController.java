@@ -188,6 +188,13 @@ public class AnalyzerRestController extends BaseRestController {
                 validationErrors.add(
                         "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: " + validValues);
             }
+            if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()
+                    && CommunicationMode.fromValue(form.getCommunicationMode()) == null) {
+                String validValues = java.util.Arrays.stream(CommunicationMode.values()).map(CommunicationMode::name)
+                        .collect(Collectors.joining(", "));
+                validationErrors.add("Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
+                        + validValues);
+            }
             if (!validationErrors.isEmpty()) {
                 Map<String, Object> error = AnalyzerControllerHelper.wrapError(String.join("; ", validationErrors));
                 error.put("validationErrors", validationErrors);
@@ -449,6 +456,14 @@ public class AnalyzerRestController extends BaseRestController {
             }
             if (form.getCommunicationMode() != null) {
                 CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
+                if (cm == null && !form.getCommunicationMode().trim().isEmpty()) {
+                    String validValues = java.util.Arrays.stream(CommunicationMode.values())
+                            .map(CommunicationMode::name).collect(Collectors.joining(", "));
+                    Map<String, Object> error = new LinkedHashMap<>();
+                    error.put("error", "Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
+                            + validValues);
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                }
                 analyzer.setCommunicationMode(cm);
             }
             if (form.getTestUnitIds() != null) {
@@ -834,9 +849,22 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            boolean healthy = status == 200 && body.contains("\"UP\"");
+            boolean healthy = false;
+            if (status == 200) {
+                try {
+                    Map<String, Object> healthJson = objectMapper.readValue(body,
+                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                            });
+                    healthy = "UP".equals(healthJson.get("status"));
+                } catch (Exception parseEx) {
+                    logger.warn("Could not parse bridge health JSON: {}", parseEx.getMessage());
+                }
+            }
             result.put("healthy", healthy);
-            result.put("message", healthy ? "Bridge healthy (status UP)" : "Bridge returned " + status + ": " + body);
+            String healthMessage = healthy ? "Bridge healthy (status UP)"
+                    : "Bridge returned HTTP " + status + " (status: "
+                            + (body.length() > 200 ? body.substring(0, 200) + "..." : body) + ")";
+            result.put("message", healthMessage);
             logger.info("Bridge health check: {} (HTTP {})", healthy ? "UP" : "NOT UP", status);
         } catch (Exception e) {
             result.put("healthy", false);

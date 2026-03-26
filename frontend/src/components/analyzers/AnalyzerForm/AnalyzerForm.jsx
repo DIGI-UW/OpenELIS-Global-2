@@ -175,6 +175,15 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     });
   }, [pluginTypes]);
 
+  const communicationModeItems = useMemo(
+    () =>
+      COMMUNICATION_MODES.map((m) => ({
+        ...m,
+        label: intl.formatMessage({ id: m.labelId }),
+      })),
+    [intl],
+  );
+
   const filteredDefaultConfigs = useMemo(() => {
     if (!selectedPluginType?.protocol) return defaultConfigs;
     const proto = selectedPluginType.protocol.toUpperCase();
@@ -592,16 +601,11 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 titleText={intl.formatMessage({
                   id: "analyzer.form.communicationMode",
                 })}
-                items={COMMUNICATION_MODES.map((m) => ({
-                  ...m,
-                  label: intl.formatMessage({ id: m.labelId }),
-                }))}
+                items={communicationModeItems}
                 selectedItem={
-                  COMMUNICATION_MODES.map((m) => ({
-                    ...m,
-                    label: intl.formatMessage({ id: m.labelId }),
-                  })).find((opt) => opt.value === formData.communicationMode) ||
-                  null
+                  communicationModeItems.find(
+                    (opt) => opt.value === formData.communicationMode,
+                  ) || null
                 }
                 itemToString={(item) => (item ? item.label : "")}
                 onChange={({ selectedItem }) => {
