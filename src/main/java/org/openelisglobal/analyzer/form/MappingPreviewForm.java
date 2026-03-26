@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.form;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * Form object for mapping preview request
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.NotBlank;
 public class MappingPreviewForm {
 
     @NotBlank(message = "ASTM message is required")
+    @Size(max = 10240, message = "ASTM message must not exceed 10KB")
     private String astmMessage;
 
     private boolean includeDetailedParsing = false;
