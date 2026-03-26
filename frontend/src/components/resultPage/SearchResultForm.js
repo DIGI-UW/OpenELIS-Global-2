@@ -41,7 +41,7 @@ import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
-import {intl} from "react-intl";
+
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -793,8 +793,6 @@ export function SearchResults(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
-
-  const intl = useIntl();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
