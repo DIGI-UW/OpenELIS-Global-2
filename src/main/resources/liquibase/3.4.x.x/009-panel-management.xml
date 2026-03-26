@@ -7,6 +7,29 @@
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <!-- ========================================================= -->
+    <!-- Panel: Add CODE column if missing                         -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-000-add-code-column" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="panel" columnName="code"/></not>
+        </preConditions>
+        <addColumn tableName="panel">
+            <column name="code" type="varchar(50)"/>
+        </addColumn>
+        <rollback><dropColumn tableName="panel" columnName="code"/></rollback>
+    </changeSet>
+
+    <!-- ========================================================= -->
+    <!-- Panel: Widen LOINC column to 20 if existing is smaller    -->
+    <!-- ========================================================= -->
+    <changeSet id="panel-000b-widen-loinc-column" author="Agaba-Derrick">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="panel" columnName="loinc"/>
+        </preConditions>
+        <modifyDataType tableName="panel" columnName="loinc" newDataType="varchar(20)"/>
+    </changeSet>
+
+    <!-- ========================================================= -->
     <!-- Panel LOINC Code                                         -->
     <!-- ========================================================= -->
     <changeSet id="panel-001-add-loinc-code" author="Agaba-Derrick">

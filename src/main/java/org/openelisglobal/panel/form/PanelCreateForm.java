@@ -2,19 +2,24 @@ package org.openelisglobal.panel.form;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
 
 public class PanelCreateForm extends BaseForm {
 
     @NotBlank
+    @Size(max = 20)
     private String name;
 
     @NotBlank
+    @Size(max = 50)
     private String code;
 
+    @Size(max = 20)
     private String loincCode;
 
+    @Size(max = 60)
     private String description;
 
     @NotEmpty(message = "At least one lab unit is required")
