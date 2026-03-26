@@ -207,6 +207,8 @@ public class AnalyzerImportController implements IActionConstants {
         if (analyzerId != null && !analyzerId.trim().isEmpty()) {
             if (reader instanceof ASTMAnalyzerReader astmReader) {
                 astmReader.setRegisteredAnalyzerId(analyzerId.trim());
+            } else if (reader instanceof HL7AnalyzerReader hl7Reader) {
+                hl7Reader.setRegisteredAnalyzerId(analyzerId.trim());
             }
         }
 

@@ -41,6 +41,7 @@ public class HL7AnalyzerReader extends AnalyzerReader {
 
     private List<String> lines;
     private String error;
+    private String registeredAnalyzerId;
     private String clientIpAddress;
     private Integer clientPort;
 
@@ -124,6 +125,15 @@ public class HL7AnalyzerReader extends AnalyzerReader {
     }
 
     /**
+     * Set registered analyzer ID from bridge X-Analyzer-Id header. When set, this
+     * takes highest priority in identification — direct DB lookup, no pattern
+     * matching.
+     */
+    public void setRegisteredAnalyzerId(String analyzerId) {
+        this.registeredAnalyzerId = analyzerId;
+    }
+
+    /**
      * Set client IP from bridge X-Source-Id header. Used by
      * {@link #identifyAnalyzerFromHeaders()} for deterministic analyzer lookup.
      */
@@ -142,8 +152,8 @@ public class HL7AnalyzerReader extends AnalyzerReader {
     /**
      * Identify analyzer from bridge headers using tiered strategy:
      * <ol>
-     * <li>IP+port exact match (deterministic, from X-Source-Id +
-     * X-Source-Port)</li>
+     * <li>Bridge-registered analyzer ID (X-Analyzer-Id, direct DB lookup)</li>
+     * <li>IP+port exact match (from X-Source-Id + X-Source-Port)</li>
      * <li>IP-only match (from X-Source-Id)</li>
      * </ol>
      * Falls back to empty if no headers set or no match found.
@@ -155,7 +165,22 @@ public class HL7AnalyzerReader extends AnalyzerReader {
                 return Optional.empty();
             }
 
-            // Strategy 0: Exact IP+port lookup
+            // Strategy 0: Bridge X-Analyzer-Id (highest priority).
+            // The bridge sends a composite identifier like "MINDRAY-BC-5380" (from
+            // MSH-3+MSH-4),
+            // not a numeric DB ID. Use pattern matching to resolve it.
+            if (registeredAnalyzerId != null && !registeredAnalyzerId.trim().isEmpty()) {
+                Optional<Analyzer> match = analyzerService.findByIdentifierPatternMatch(registeredAnalyzerId.trim());
+                if (match.isPresent()) {
+                    LogEvent.logInfo(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
+                            "Identified from bridge X-Analyzer-Id: " + match.get().getName());
+                    return match;
+                }
+                LogEvent.logWarn(getClass().getSimpleName(), "identifyAnalyzerFromHeaders",
+                        "X-Analyzer-Id '" + registeredAnalyzerId + "' not found — falling back");
+            }
+
+            // Strategy 1: Exact IP+port lookup
             if (clientIpAddress != null && !clientIpAddress.trim().isEmpty() && clientPort != null) {
                 Optional<Analyzer> match = analyzerService.getByIpAddressAndPort(clientIpAddress.trim(), clientPort);
                 if (match.isPresent()) {
