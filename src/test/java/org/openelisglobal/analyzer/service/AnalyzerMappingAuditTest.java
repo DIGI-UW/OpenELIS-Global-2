@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
+import java.util.Arrays;
+import java.util.List;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -291,19 +293,19 @@ public class AnalyzerMappingAuditTest extends BaseWebContextSensitiveTest {
             analyzerFieldMappingService.update(mapping);
         }
 
-        // Act: Query all mappings individually and verify audit trail entries
-        // Use get() method to retrieve individual mappings with audit trail fields
+        // Query all mappings using batch get for audit trail verification
+        // Batch query avoids N+1 pattern - single query for all 100 mappings
+        long queryStartTime = System.currentTimeMillis();
+        List<AnalyzerFieldMapping> mappings = analyzerFieldMappingService.get(Arrays.asList(mappingIds));
         int mappingsWithAuditTrail = 0;
-        for (int i = 0; i < mappingCount; i++) {
-            AnalyzerFieldMapping mapping = analyzerFieldMappingService.get(mappingIds[i]);
+        for (AnalyzerFieldMapping mapping : mappings) {
             // Note: sysUserId is transient, so we only verify last_updated which is
             // persisted
             if (mapping != null && mapping.getLastupdated() != null) {
                 mappingsWithAuditTrail++;
             }
         }
-
-        long queryTime = System.currentTimeMillis() - startTime;
+        long queryTime = System.currentTimeMillis() - queryStartTime;
 
         // Verify 100% have audit trail entries (all 100 mappings should have
         // sys_user_id and last_updated)

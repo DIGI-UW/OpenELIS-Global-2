@@ -89,6 +89,15 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         return analyzerFieldMappingDAO;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerFieldMapping> get(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return analyzerFieldMappingDAO.get(ids);
+    }
+
     /**
      * Map OpenELISFieldType enum to OpenELISFieldForm.EntityType enum
      * 
