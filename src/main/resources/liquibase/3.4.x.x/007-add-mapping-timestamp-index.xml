@@ -10,7 +10,7 @@
     <changeSet id="011-007-01-add-mapping-timestamp-index" author="performance-fix">
         <preConditions onFail="MARK_RAN">
             <not>
-                <indexExists indexName="idx_analyzer_field_mapping_last_updated"/>
+                <indexExists indexName="idx_analyzer_field_mapping_last_updated" tableName="analyzer_field_mapping"/>
             </not>
         </preConditions>
         <comment>Add index on last_updated column for audit trail query performance - addresses N+1 query pattern in AnalyzerMappingAuditTest</comment>
