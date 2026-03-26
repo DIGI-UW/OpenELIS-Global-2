@@ -60,8 +60,16 @@ public class PatientReportServiceImpl implements PatientReportService {
     @Autowired
     private TestService testService;
 
+    @Autowired
+    private org.openelisglobal.systemuser.service.UserService userService;
+
     @Override
     public ReportingData buildPatientResultsReport(String patientId, String sysUserId) {
+        if (sysUserId == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
         Patient patient = patientService.getData(patientId);
         if (patient == null) {
             return null;
@@ -71,6 +79,8 @@ public class PatientReportServiceImpl implements PatientReportService {
         resultsUtility.setSysUser(sysUserId);
 
         List<TestResultItem> results = resultsUtility.getGroupedTestsForPatient(patient);
+        results = userService.filterResultsByLabUnitRoles(sysUserId, results,
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
 
         List<ReportColumn> columns = resolveColumns();
         return mapToReportingData(results, patient, columns);
@@ -115,30 +125,26 @@ public class PatientReportServiceImpl implements PatientReportService {
         ReportingData data = new ReportingData();
         data.setColumns(columns);
 
-        // Define Rows
-        List<ReportRow> rows = new ArrayList<>();
-        for (TestResultItem item : results) {
-            if (item.getIsGroupSeparator()) {
-                continue;
-            }
+        // Pre-fetch related metadata to avoid N+1 queries
+        java.util.Map<String, String> orgNameMap = new java.util.HashMap<>();
+        java.util.Map<String, String> clinicianMap = new java.util.HashMap<>();
+        java.util.Map<String, String> collectionDateMap = new java.util.HashMap<>();
 
-            ReportRow row = new ReportRow();
+        java.util.Set<String> uniqueAccessions = results.stream()
+                .filter(item -> !item.getIsGroupSeparator() && item.getAccessionNumber() != null)
+                .map(TestResultItem::getAccessionNumber).collect(java.util.stream.Collectors.toSet());
 
-            // Fetch additional metadata per item (Sample, Organization, Provider)
+        for (String accNum : uniqueAccessions) {
             Sample sample = new Sample();
-            sample.setAccessionNumber(item.getAccessionNumber());
+            sample.setAccessionNumber(accNum);
             sampleService.getSampleByAccessionNumber(sample);
-
-            String orgName = "";
-            String clinician = "";
-            String collectionDate = "";
 
             if (sample.getId() != null) {
                 SampleOrganization sampleOrg = new SampleOrganization();
                 sampleOrg.setSample(sample);
                 sampleOrganizationService.getDataBySample(sampleOrg);
                 if (sampleOrg.getOrganization() != null) {
-                    orgName = sampleOrg.getOrganization().getOrganizationName();
+                    orgNameMap.put(accNum, sampleOrg.getOrganization().getOrganizationName());
                 }
 
                 SampleHuman sampleHuman = new SampleHuman();
@@ -149,12 +155,27 @@ public class PatientReportServiceImpl implements PatientReportService {
                     provider.setId(sampleHuman.getProviderId());
                     providerService.getData(provider);
                     if (provider.getPerson() != null) {
-                        clinician = provider.getPerson().getLastName() + ", " + provider.getPerson().getFirstName();
+                        clinicianMap.put(accNum,
+                                provider.getPerson().getLastName() + ", " + provider.getPerson().getFirstName());
                     }
                 }
 
-                collectionDate = sample.getCollectionDateForDisplay();
+                collectionDateMap.put(accNum, sample.getCollectionDateForDisplay());
             }
+        }
+
+        // Define Rows
+        List<ReportRow> rows = new ArrayList<>();
+        for (TestResultItem item : results) {
+            if (item.getIsGroupSeparator()) {
+                continue;
+            }
+
+            ReportRow row = new ReportRow();
+            String accNum = item.getAccessionNumber();
+            String orgName = orgNameMap.getOrDefault(accNum, "");
+            String clinician = clinicianMap.getOrDefault(accNum, "");
+            String collectionDate = collectionDateMap.getOrDefault(accNum, "");
 
             // Build row data by column key so order matches definition
             for (ReportColumn col : columns) {

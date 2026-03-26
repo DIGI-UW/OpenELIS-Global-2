@@ -38,8 +38,15 @@ public final class ReportDefinitionColumnParser {
             if (cols == null || !cols.isArray()) {
                 return columns;
             }
+            java.util.Set<String> seenKeys = new java.util.HashSet<>();
             for (JsonNode c : cols) {
                 String key = c.has("key") ? c.get("key").asText() : "";
+                if (key.isBlank()) {
+                    continue;
+                }
+                if (!seenKeys.add(key)) {
+                    continue;
+                }
                 String header = c.has("header") ? c.get("header").asText() : key;
                 String type = c.has("type") ? c.get("type").asText() : "String";
                 columns.add(new ReportColumn(key, header, type));

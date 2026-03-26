@@ -801,8 +801,11 @@ public class ResultsLoadUtility {
             }
         } catch (Exception e) {
             // Log and ignore to prevent breaking the whole report if EQA lookup fails
-            LogEvent.logError(this.getClass().getSimpleName(), "createTestResultItem",
-                    "Error looking up EQA status for sample: " + e.getMessage());
+            String sampleIdStr = (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
+                    ? analysis.getSampleItem().getSample().getId()
+                    : "null";
+            LogEvent.logError(
+                    "Error looking up EQA status for analysis " + analysis.getId() + ", sample " + sampleIdStr, e);
         }
 
         Result quantifiedResult = analysisService.getQuantifiedResult(analysis);

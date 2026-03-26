@@ -68,19 +68,16 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="reporting-002-add-report-type-and-visibility" author="Agaba_derrick">
+    <changeSet id="reporting-002-add-report-type" author="Agaba_derrick">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="report_definition" schemaName="clinlims"/>
             <not>
                 <columnExists tableName="report_definition" columnName="report_type" schemaName="clinlims"/>
             </not>
         </preConditions>
-        <comment>Add report_type and is_public to report_definition for filtering and visibility</comment>
+        <comment>Add report_type to report_definition for filtering</comment>
         <addColumn tableName="report_definition" schemaName="clinlims">
             <column name="report_type" type="VARCHAR(50)"/>
-        </addColumn>
-        <addColumn tableName="report_definition" schemaName="clinlims">
-            <column name="is_public" type="BOOLEAN" defaultValueBoolean="true"/>
         </addColumn>
         <createIndex tableName="report_definition" schemaName="clinlims" indexName="idx_report_def_report_type">
             <column name="report_type"/>
@@ -90,6 +87,21 @@
             <dropColumn tableName="report_definition" schemaName="clinlims">
                 <column name="report_type"/>
             </dropColumn>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="reporting-002-add-is-public" author="Agaba_derrick">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="report_definition" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="report_definition" columnName="is_public" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add is_public to report_definition for visibility</comment>
+        <addColumn tableName="report_definition" schemaName="clinlims">
+            <column name="is_public" type="BOOLEAN" defaultValueBoolean="true"/>
+        </addColumn>
+        <rollback>
             <dropColumn tableName="report_definition" schemaName="clinlims">
                 <column name="is_public"/>
             </dropColumn>
