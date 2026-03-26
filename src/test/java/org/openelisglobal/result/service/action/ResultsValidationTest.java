@@ -53,6 +53,15 @@ public class ResultsValidationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void validateItem_invalidDate_shouldHaveError() {
+        item.setTestDate("not-a-date");
+        item.setRejected(true);
+        item.setRejectReasonId("1");
+        Errors errors = resultsValidation.validateItem(item);
+        assertTrue(errors.hasErrors());
+    }
+
+    @Test
     public void validateItem_futureDate_shouldHaveError() {
         item.setTestDate("01/01/2099");
         //item.setRejected(true); working
