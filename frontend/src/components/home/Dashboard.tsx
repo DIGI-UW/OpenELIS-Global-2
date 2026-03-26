@@ -309,20 +309,32 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   const averageTimeTileList: Array<Tile> = [
     {
-      title: "Reception To Validation Average Time",
-      subTitle: "Reception To Validation Average Time",
+      title: intl.formatMessage({
+        id: "dashboard.reception.to.validation.avg.label",
+      }),
+      subTitle: intl.formatMessage({
+        id: "dashboard.reception.to.validation.avg.label",
+      }),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToValidation,
     },
     {
-      title: "Reception To Result Average Time",
-      subTitle: "Reception To Result Average Time",
+      title: intl.formatMessage({
+        id: "dashboard.reception.to.result.avg.label",
+      }),
+      subTitle: intl.formatMessage({
+        id: "dashboard.reception.to.result.avg.label",
+      }),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToResult,
     },
     {
-      title: "Result To Validation Average Time",
-      subTitle: "Result To Validation Average Time",
+      title: intl.formatMessage({
+        id: "dashboard.result.to.validation.avg.label",
+      }),
+      subTitle: intl.formatMessage({
+        id: "dashboard.result.to.validation.avg.label",
+      }),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.resultToValidation,
     },
@@ -484,21 +496,25 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const userHeaders = [
     {
       key: "userFirstName",
-      header: "First Name",
+      header: intl.formatMessage({ id: "patient.first.name" }),
     },
     {
       key: "userLastName",
-      header: "Last Name",
+      header: intl.formatMessage({ id: "patient.last.name" }),
     },
     {
       key: "countOfOrdersEntered",
-      header: "Orders Entered",
+      header: intl.formatMessage({ id: "dashboard.user.orders.entered.label" }),
     },
   ];
 
   return (
     <>
-      {loading && <Loading description="Loading Dasboard..." />}
+      {loading && (
+        <Loading
+          description={intl.formatMessage({ id: "dashboard.loading.label" })}
+        />
+      )}
       {notificationVisible === true ? <AlertDialog /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
@@ -587,7 +603,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                               onClick={loadPreviousResultsPage}
                               disabled={previousPage != null ? false : true}
                               renderIcon={ArrowLeft}
-                              iconDescription="previous"
+                              iconDescription={intl.formatMessage({
+                                id: "pagination.backward",
+                              })}
                             ></Button>
                             <Button
                               hasIconOnly
@@ -595,7 +613,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                               onClick={loadNextResultsPage}
                               disabled={nextPage != null ? false : true}
                               renderIcon={ArrowRight}
-                              iconDescription="next"
+                              iconDescription={intl.formatMessage({
+                                id: "pagination.forward",
+                              })}
                             ></Button>
                           </div>
                         </Column>
@@ -611,7 +631,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                             ) ? (
                               <TabList
                                 style={{ width: "100%" }}
-                                aria-label="List of tabs"
+                                aria-label={intl.formatMessage({
+                                  id: "dashboard.list.of.tabs.label",
+                                })}
                                 contained
                               >
                                 <Tab
@@ -636,7 +658,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                             ) : (
                               <TabList
                                 style={{ width: "100%" }}
-                                aria-label="List of tabs"
+                                aria-label={intl.formatMessage({
+                                  id: "dashboard.list.of.tabs.label",
+                                })}
                                 contained
                               >
                                 {testSections?.map((item, id) => {
