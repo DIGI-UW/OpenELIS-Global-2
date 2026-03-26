@@ -43,6 +43,7 @@ services:
     ports:
       - "8442:8443"
       - "12000:12001"
+      - "2575:2575"    # MLLP HL7 listener (OGC-325)
     volumes:
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
@@ -63,6 +64,8 @@ services:
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
+      - ORG_ITECH_AHB_MLLP_ENABLED=true
+      - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
       - analyzer-net
     restart: unless-stopped
