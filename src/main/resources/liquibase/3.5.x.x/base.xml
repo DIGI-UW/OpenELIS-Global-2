@@ -10,4 +10,7 @@
   <!-- EQA Enabled configuration for Order Entry -->
   <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
 
+  <!-- Custom Lab Number Configuration -->
+  <include relativeToChangelogFile="true" file="003-custom-lab-number-config.xml"/>
+
 </databaseChangeLog>
