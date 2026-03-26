@@ -4,9 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -302,14 +301,17 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            // Transport-first routing: check config entities, then use
-            // communication mode for TCP analyzers.
+            // All connectivity checks route through the bridge — OE never
+            // directly tests analyzer transports (bridge is mandatory).
             Map<String, Object> response;
             Integer analyzerIdInt = Integer.valueOf(id);
-            if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
-                response = testFileConfiguration(analyzer);
-            } else if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
-                response = testSerialConfiguration(id);
+            var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
+            var serialConfig = serialPortService.getByAnalyzerId(analyzerIdInt);
+
+            if (fileConfig.isPresent()) {
+                response = testFileViaBridge(fileConfig.get().getImportDirectory());
+            } else if (serialConfig.isPresent()) {
+                response = testSerialViaBridge(serialConfig.get().getPortName());
             } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
                 response = testTcpAnalyzerConnection(analyzer);
             } else {
@@ -674,15 +676,21 @@ public class AnalyzerRestController extends BaseRestController {
             logger.warn("No analyzer.bridge.url configured — bridge is required for production.");
         }
 
-        // Step 2: TCP connect to analyzer (always attempt if IP/port set)
+        // Step 2: Test analyzer reachability via bridge (bridge is on analyzer
+        // networks)
         boolean tcpReachable = false;
         String tcpMessage = null;
-        if (ip != null && port != null) {
-            Map<String, Object> tcpResult = testTcpConnectOnly(ip, port);
-            tcpReachable = Boolean.TRUE.equals(tcpResult.get("success"));
+        if (ip != null && port != null && analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
+            ProtocolVersion pv = analyzer.getProtocolVersion();
+            String protocol = pv != null && pv.isHl7() ? "HL7" : "ASTM";
+            Map<String, Object> tcpResult = testConnectivityViaBridge(ip, port, protocol);
+            tcpReachable = Boolean.TRUE.equals(tcpResult.get("reachable"));
             tcpMessage = (String) tcpResult.get("message");
             response.put("tcpReachable", tcpReachable);
             response.put("tcpMessage", tcpMessage);
+        } else if (ip != null && port != null) {
+            response.put("tcpReachable", false);
+            response.put("tcpMessage", "Bridge not configured — cannot test analyzer reachability");
         }
 
         // Step 3: Interpret results based on communication mode
@@ -760,52 +768,139 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Test TCP connectivity to an analyzer by opening a socket (SYN/ACK only). Does
-     * NOT send any protocol bytes (no ASTM ENQ, no HL7 messages).
+     * Test analyzer connectivity by delegating to the bridge's
+     * {@code /api/test-connectivity} endpoint. The bridge is on analyzer networks
+     * and performs the actual TCP/ASTM/MLLP check. OE never opens direct sockets to
+     * analyzer IPs.
+     *
+     * @param host     Analyzer IP address
+     * @param port     Analyzer port
+     * @param protocol "HL7", "ASTM", or "TCP" (determines handshake type)
+     * @return Map with reachable (boolean) and message (String)
      */
-    private Map<String, Object> testTcpConnectOnly(String ipAddress, Integer port) {
-        Map<String, Object> response = new LinkedHashMap<>();
+    private Map<String, Object> testConnectivityViaBridge(String host, Integer port, String protocol) {
+        String json = String.format("{\"transport\":\"TCP\",\"host\":\"%s\",\"port\":%d,\"protocol\":\"%s\"}", host,
+                port, protocol != null ? protocol : "TCP");
+        return callBridgeTestConnectivity(json);
+    }
 
-        if (NetworkValidationUtil.isBlockedAddress(ipAddress)) {
+    /**
+     * Call the bridge's {@code /api/test-connectivity} endpoint with arbitrary JSON
+     * payload. Used for TCP, FILE, and SERIAL transports.
+     */
+    private Map<String, Object> callBridgeTestConnectivity(String json) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/test-connectivity";
+
+        try {
+            URL url = new URL(endpoint);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
+                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+                } }, new java.security.SecureRandom());
+                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
+                httpsConn.setHostnameVerifier((hostname, session) -> true);
+            }
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(10000);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
+            }
+
+            int status = conn.getResponseCode();
+            String body = "";
+            try (InputStream is = (status < 400) ? conn.getInputStream() : conn.getErrorStream()) {
+                if (is != null) {
+                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+
+            if (status == 200) {
+                try {
+                    Map<String, Object> bridgeResponse = objectMapper.readValue(body,
+                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                            });
+                    result.putAll(bridgeResponse);
+                } catch (Exception parseEx) {
+                    result.put("reachable", false);
+                    result.put("message", "Bridge returned unparseable response");
+                }
+            } else {
+                result.put("reachable", false);
+                result.put("message", "Bridge returned HTTP " + status);
+            }
+
+            logger.info("Bridge test-connectivity: reachable={}", result.get("reachable"));
+        } catch (Exception e) {
+            result.put("reachable", false);
+            result.put("message", "Cannot reach bridge: " + e.getMessage());
+            logger.error("Bridge test-connectivity failed", e);
+        }
+
+        return result;
+    }
+
+    /**
+     * Test FILE analyzer connectivity via bridge. The bridge checks if the import
+     * directory exists and is accessible from its filesystem.
+     */
+    private Map<String, Object> testFileViaBridge(String importDirectory) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
             response.put("success", false);
-            response.put("message", "Connection to this address is not permitted");
+            response.put("message", "Bridge not configured");
             return response;
         }
 
-        Socket socket = null;
-        try {
-            socket = new Socket();
-            socket.connect(new java.net.InetSocketAddress(ipAddress, port), 5000);
-            response.put("success", true);
-            response.put("message", "TCP connection to " + ipAddress + ":" + port + " succeeded");
-            logger.info("TCP connect succeeded for {}:{}", ipAddress, port);
-        } catch (SocketTimeoutException e) {
+        Map<String, Object> result = callBridgeTestConnectivity(
+                String.format("{\"transport\":\"FILE\",\"path\":\"%s\"}", escapeJson(importDirectory)));
+        response.put("success", Boolean.TRUE.equals(result.get("reachable")));
+        response.put("message", result.getOrDefault("message", ""));
+        response.put("connectionType", "FILE via bridge");
+        return response;
+    }
+
+    /**
+     * Test SERIAL analyzer connectivity via bridge. The bridge checks if the serial
+     * device path exists and is accessible.
+     */
+    private Map<String, Object> testSerialViaBridge(String portName) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
             response.put("success", false);
-            response.put("message", "Connection timeout — no response from " + ipAddress + ":" + port);
-            logger.warn("TCP connect timeout for {}:{}", ipAddress, port);
-        } catch (java.net.ConnectException e) {
-            response.put("success", false);
-            response.put("message", "Connection refused at " + ipAddress + ":" + port);
-            logger.warn("TCP connect refused for {}:{}", ipAddress, port);
-        } catch (java.net.UnknownHostException e) {
-            response.put("success", false);
-            response.put("message", "Unknown host: " + ipAddress);
-            logger.warn("TCP connect unknown host: {}", ipAddress);
-        } catch (IOException e) {
-            response.put("success", false);
-            response.put("message", "Connection error: " + e.getMessage());
-            logger.error("TCP connect error for {}:{}", ipAddress, port, e);
-        } finally {
-            if (socket != null && !socket.isClosed()) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    logger.debug("Error closing socket", e);
-                }
-            }
+            response.put("message", "Bridge not configured");
+            return response;
         }
 
+        Map<String, Object> result = callBridgeTestConnectivity(
+                String.format("{\"transport\":\"SERIAL\",\"path\":\"%s\"}", escapeJson(portName)));
+        response.put("success", Boolean.TRUE.equals(result.get("reachable")));
+        response.put("message", result.getOrDefault("message", ""));
+        response.put("connectionType", "Serial via bridge");
         return response;
+    }
+
+    /** Escape a string for safe JSON embedding. */
+    private static String escapeJson(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /**
