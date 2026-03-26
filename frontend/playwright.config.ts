@@ -29,6 +29,7 @@ const HARNESS_DEMO_TESTS = [
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
   "**/astm-genexpert-results.spec.ts",
+  "**/hl7-mindray-results.spec.ts",
 ];
 
 export default defineConfig({
