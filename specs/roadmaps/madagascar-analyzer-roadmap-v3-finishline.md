@@ -4,9 +4,7 @@
 > [`madagascar-analyzer-roadmap-v4-results-first.md`](madagascar-analyzer-roadmap-v4-results-first.md)
 > as of 2026-03-25.
 
-**Status**: Superseded
-**Date**: 2026-03-16
-**Supersedes**:
+**Status**: Superseded **Date**: 2026-03-16 **Supersedes**:
 
 - `specs/roadmaps/madagascar-analyzer-roadmap-v2.md`
 - `specs/roadmaps/parallel_analyzer_lanes_af342372.plan.md` **Companion
