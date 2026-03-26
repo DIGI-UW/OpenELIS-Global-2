@@ -1,5 +1,21 @@
 # Feature Specification: File Stream Alignment — GenericFile Coordination
 
+## 2026-03-18 Ownership Override (014 Remediation)
+
+This document is updated by the FILE workflow remediation plan archived at
+`specs/014-hjra-file-stream-alignment/file-workflow-remediation-plan.md`.
+
+For FILE transport, ownership is now explicit:
+
+- Bridge owns FILE polling/watching, archive/error movement, and transport
+  delivery.
+- OpenELIS owns analyzer/file configuration and ingestion/processing domain
+  logic.
+- OpenELIS app-side polling is fallback-only and disabled by default.
+
+If older sections mention OpenELIS as the active watcher owner, treat this
+section as the authoritative override during remediation.
+
 **Feature Branch**: `spec/014-hjra-file-stream-alignment`  
 **Created**: 2026-03-10  
 **Status**: Draft  

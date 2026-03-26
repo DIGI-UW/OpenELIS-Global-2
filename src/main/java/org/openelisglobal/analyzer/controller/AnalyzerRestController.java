@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
@@ -82,6 +83,10 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    @org.springframework.beans.factory.annotation.Qualifier("bridgeRegistrationExecutor")
+    private Executor bridgeRegistrationExecutor;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -473,8 +478,9 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
-            // Retrieve updated analyzer
+            // Retrieve updated analyzer and re-register transport mapping with bridge.
             Analyzer updatedAnalyzer = analyzerService.get(id);
+            registerWithBridgeAsync(updatedAnalyzer);
             Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
@@ -523,6 +529,7 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setActive(false);
                 analyzerService.update(analyzer);
 
+                unregisterFromBridgeAsync(id, analyzer.getName());
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("message", "Analyzer soft-deleted (has recent results within 90-day window)");
                 response.put("deleted", false); // Soft delete, not hard delete
@@ -531,6 +538,7 @@ public class AnalyzerRestController extends BaseRestController {
                 // Hard delete: remove dependent records first to avoid FK violations,
                 // then delete the analyzer itself.
                 analyzerService.deleteWithDependents(analyzer);
+                unregisterFromBridgeAsync(id, analyzer.getName());
 
                 Map<String, Object> response = new LinkedHashMap<>();
                 response.put("message", "Analyzer permanently deleted");
@@ -845,11 +853,19 @@ public class AnalyzerRestController extends BaseRestController {
      * background — failures are logged but don't prevent analyzer creation.
      */
     private void registerWithBridgeAsync(Analyzer createdAnalyzer) {
-        CompletableFuture.runAsync(() -> registerWithBridge(createdAnalyzer)).exceptionally(e -> {
-            logger.warn("Async bridge registration failed for analyzer {}: {}", createdAnalyzer.getName(),
-                    e.getMessage());
-            return null;
-        });
+        CompletableFuture.runAsync(() -> registerWithBridge(createdAnalyzer), bridgeRegistrationExecutor)
+                .exceptionally(e -> {
+                    logger.warn("Async bridge registration failed for analyzer {}", createdAnalyzer.getName(), e);
+                    return null;
+                });
+    }
+
+    private void unregisterFromBridgeAsync(String analyzerId, String analyzerName) {
+        CompletableFuture.runAsync(() -> bridgeRegistrationService.unregister(analyzerId), bridgeRegistrationExecutor)
+                .exceptionally(e -> {
+                    logger.warn("Async bridge unregister failed for analyzer {} ({})", analyzerName, analyzerId, e);
+                    return null;
+                });
     }
 
     /**
