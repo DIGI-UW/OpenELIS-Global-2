@@ -62,6 +62,7 @@ create_analyzer "Cepheid GeneXpert (ASTM Mode)" '{
   "ipAddress": "172.21.1.100",
   "port": 9600,
   "protocolVersion": "ASTM_LIS2_A2",
+  "communicationMode": "ANALYZER_INITIATED",
   "identifierPattern": "GENEXPERT|CEPHEID",
   "status": "ACTIVE",
   "defaultConfigId": "astm/genexpert-astm"
@@ -102,6 +103,7 @@ create_analyzer "Mindray BC-5380" '{
   "ipAddress": "172.21.1.1",
   "port": 5380,
   "protocolVersion": "HL7_V2_3_1",
+  "communicationMode": "ANALYZER_INITIATED",
   "identifierPattern": "MINDRAY.*BC.?5380|BC.?5380",
   "status": "ACTIVE",
   "defaultConfigId": "hl7/mindray-bc5380"
@@ -115,6 +117,7 @@ create_analyzer "Mindray BS-200" '{
   "ipAddress": "172.21.1.1",
   "port": 6001,
   "protocolVersion": "HL7_V2_3_1",
+  "communicationMode": "ANALYZER_INITIATED",
   "identifierPattern": "MINDRAY.*BS.?200|BS200",
   "status": "ACTIVE",
   "defaultConfigId": "hl7/mindray-bs200"
@@ -128,6 +131,7 @@ create_analyzer "Mindray BS-300" '{
   "ipAddress": "172.21.1.1",
   "port": 6002,
   "protocolVersion": "HL7_V2_3_1",
+  "communicationMode": "ANALYZER_INITIATED",
   "identifierPattern": "MINDRAY.*BS.?300|BS300",
   "status": "ACTIVE",
   "defaultConfigId": "hl7/mindray-bs300"

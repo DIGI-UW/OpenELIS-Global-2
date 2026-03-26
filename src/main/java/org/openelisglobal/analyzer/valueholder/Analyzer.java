@@ -100,6 +100,10 @@ public class Analyzer extends BaseObject<String> {
     @Enumerated(EnumType.STRING)
     private ProtocolVersion protocolVersion = ProtocolVersion.ASTM_LIS2_A2;
 
+    @Column(name = "communication_mode", length = 25)
+    @Enumerated(EnumType.STRING)
+    private CommunicationMode communicationMode;
+
     @Column(name = "test_unit_ids", columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
     private List<String> testUnitIds = new ArrayList<>();
@@ -221,6 +225,22 @@ public class Analyzer extends BaseObject<String> {
 
     public void setProtocolVersion(ProtocolVersion protocolVersion) {
         this.protocolVersion = protocolVersion;
+    }
+
+    public CommunicationMode getCommunicationMode() {
+        return communicationMode;
+    }
+
+    public void setCommunicationMode(CommunicationMode communicationMode) {
+        this.communicationMode = communicationMode;
+    }
+
+    /**
+     * Returns the effective communication mode, falling back to
+     * {@link CommunicationMode#ANALYZER_INITIATED} when not explicitly set.
+     */
+    public CommunicationMode getEffectiveCommunicationMode() {
+        return communicationMode != null ? communicationMode : CommunicationMode.ANALYZER_INITIATED;
     }
 
     public List<String> getTestUnitIds() {

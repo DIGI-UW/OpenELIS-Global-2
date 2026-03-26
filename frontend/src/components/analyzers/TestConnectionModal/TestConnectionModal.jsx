@@ -126,7 +126,7 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
 
         {status === "error" && (
           <Tag type="red" data-testid="test-connection-error">
-            Connection Failed
+            {intl.formatMessage({ id: "analyzer.form.testConnection.error" })}
           </Tag>
         )}
 

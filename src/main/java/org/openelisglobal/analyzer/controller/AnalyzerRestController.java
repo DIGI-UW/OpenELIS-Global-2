@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
@@ -32,6 +31,7 @@ import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
+import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
@@ -97,16 +97,11 @@ public class AnalyzerRestController extends BaseRestController {
      *
      * <p>
      * Set via Spring property {@code analyzer.bridge.url} or env var
-     * {@code ANALYZER_BRIDGE_URL}. Empty/unset = fallback to direct TCP.
+     * {@code ANALYZER_BRIDGE_URL}. The bridge is mandatory — OE never connects
+     * directly to analyzers.
      */
     @Value("${analyzer.bridge.url:}")
     private String analyzerBridgeUrl;
-
-    /** ASTM LIS2-A2 Enquiry — initiates transmission. */
-    private static final byte ENQ = 0x05;
-
-    /** ASTM LIS2-A2 Acknowledge — positive response. */
-    private static final byte ACK = 0x06;
 
     /**
      * GET /rest/analyzer/analyzers Retrieve all analyzers with their
@@ -217,6 +212,10 @@ public class AnalyzerRestController extends BaseRestController {
                 ProtocolVersion pv = ProtocolVersion.fromValue(form.getProtocolVersion());
                 analyzer.setProtocolVersion(pv != null ? pv : ProtocolVersion.ASTM_LIS2_A2);
             }
+            if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()) {
+                CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
+                analyzer.setCommunicationMode(cm);
+            }
             analyzer.setTestUnitIds(form.getTestUnitIds() != null ? form.getTestUnitIds() : new ArrayList<>());
             if (form.getIdentifierPattern() != null) {
                 analyzer.setIdentifierPattern(form.getIdentifierPattern());
@@ -296,9 +295,8 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
             }
 
-            // Transport-first routing: check config entities, then use message
-            // format for handshake selection. Transport (FILE, RS232, TCP) is
-            // orthogonal to message format (ASTM, HL7).
+            // Transport-first routing: check config entities, then use
+            // communication mode for TCP analyzers.
             Map<String, Object> response;
             Integer analyzerIdInt = Integer.valueOf(id);
             if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
@@ -306,13 +304,7 @@ public class AnalyzerRestController extends BaseRestController {
             } else if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                 response = testSerialConfiguration(id);
             } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
-                // Use message format to pick the right handshake
-                ProtocolVersion pv = analyzer.getProtocolVersion();
-                if (pv != null && pv.isHl7()) {
-                    response = testHl7Connection(analyzer);
-                } else {
-                    response = testAstmTcpConnection(analyzer);
-                }
+                response = testTcpAnalyzerConnection(analyzer);
             } else {
                 response = new LinkedHashMap<>();
                 response.put("success", false);
@@ -323,6 +315,7 @@ public class AnalyzerRestController extends BaseRestController {
             response.put("analyzerName", analyzer.getName());
             response.put("protocol",
                     analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
+            response.put("communicationMode", analyzer.getEffectiveCommunicationMode().name());
             if (analyzer.getIpAddress() != null) {
                 response.put("ipAddress", analyzer.getIpAddress());
             }
@@ -453,6 +446,10 @@ public class AnalyzerRestController extends BaseRestController {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
                 }
                 analyzer.setProtocolVersion(updatedPv);
+            }
+            if (form.getCommunicationMode() != null) {
+                CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
+                analyzer.setCommunicationMode(cm);
             }
             if (form.getTestUnitIds() != null) {
                 analyzer.setTestUnitIds(form.getTestUnitIds());
@@ -592,6 +589,9 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("ipAddress", analyzer.getIpAddress());
         map.put("port", analyzer.getPort());
         map.put("protocolVersion", analyzer.getProtocolVersion() != null ? analyzer.getProtocolVersion().name() : null);
+        map.put("communicationMode",
+                analyzer.getCommunicationMode() != null ? analyzer.getCommunicationMode().name() : null);
+        map.put("effectiveCommunicationMode", analyzer.getEffectiveCommunicationMode().name());
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 
@@ -623,15 +623,133 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Test TCP connection to analyzer with ASTM handshake (ENQ/ACK).
+     * Unified TCP analyzer test-connection. Always checks bridge health and always
+     * attempts TCP to the analyzer. The communication mode determines how results
+     * are interpreted:
      *
-     * @param ipAddress IP address of the analyzer
-     * @param port      Port number of the analyzer
-     * @return Map with success status, message, and connection details
+     * <ul>
+     * <li>{@code ANALYZER_INITIATED}: Bridge health is the primary success
+     * criterion. TCP to analyzer is informational (may fail for push-mode analyzers
+     * — they connect to the bridge, not the reverse).</li>
+     * <li>{@code LIS_INITIATED}: TCP to analyzer must succeed (OE needs to reach
+     * the analyzer for queries/orders).</li>
+     * <li>{@code BOTH}: Both bridge health and TCP to analyzer must succeed.</li>
+     * </ul>
      */
-    private Map<String, Object> testTcpConnection(String ipAddress, Integer port) {
+    private Map<String, Object> testTcpAnalyzerConnection(Analyzer analyzer) {
         Map<String, Object> response = new LinkedHashMap<>();
-        Socket socket = null;
+        long startTime = System.currentTimeMillis();
+
+        CommunicationMode mode = analyzer.getEffectiveCommunicationMode();
+        String ip = analyzer.getIpAddress();
+        Integer port = analyzer.getPort();
+
+        // Step 1: Bridge health (bridge is mandatory for all analyzer communication)
+        boolean bridgeHealthy = false;
+        String bridgeMessage = null;
+        if (analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
+            Map<String, Object> bridgeResult = checkBridgeHealth();
+            bridgeHealthy = Boolean.TRUE.equals(bridgeResult.get("healthy"));
+            bridgeMessage = (String) bridgeResult.get("message");
+            response.put("bridgeHealthy", bridgeHealthy);
+            response.put("bridgeMessage", bridgeMessage);
+        } else {
+            response.put("bridgeHealthy", false);
+            response.put("bridgeMessage", "Bridge URL not configured (analyzer.bridge.url)");
+            logger.warn("No analyzer.bridge.url configured — bridge is required for production.");
+        }
+
+        // Step 2: TCP connect to analyzer (always attempt if IP/port set)
+        boolean tcpReachable = false;
+        String tcpMessage = null;
+        if (ip != null && port != null) {
+            Map<String, Object> tcpResult = testTcpConnectOnly(ip, port);
+            tcpReachable = Boolean.TRUE.equals(tcpResult.get("success"));
+            tcpMessage = (String) tcpResult.get("message");
+            response.put("tcpReachable", tcpReachable);
+            response.put("tcpMessage", tcpMessage);
+        }
+
+        // Step 3: Interpret results based on communication mode
+        boolean success;
+        StringBuilder message = new StringBuilder();
+
+        // If IP/port is configured, TCP must succeed — regardless of mode.
+        // Mode affects the messaging context, not whether TCP matters.
+        boolean tcpConfigured = ip != null && port != null;
+        success = bridgeHealthy && (!tcpConfigured || tcpReachable);
+
+        // Build contextual message based on mode
+        switch (mode) {
+        case ANALYZER_INITIATED:
+            response.put("connectionType", "Analyzer-initiated via bridge");
+            if (success) {
+                message.append("Bridge listener ready.");
+                if (tcpReachable) {
+                    message.append(" Analyzer reachable at ").append(ip).append(":").append(port).append(".");
+                }
+                message.append(" Analyzer will connect to bridge when sending results.");
+            } else {
+                if (!bridgeHealthy) {
+                    message.append("Bridge not healthy — analyzer cannot connect. ");
+                    message.append(bridgeMessage != null ? bridgeMessage : "");
+                }
+                if (tcpConfigured && !tcpReachable) {
+                    message.append("Analyzer not reachable at ").append(ip).append(":").append(port).append(". ");
+                    message.append(tcpMessage != null ? tcpMessage : "");
+                }
+            }
+            break;
+
+        case LIS_INITIATED:
+            response.put("connectionType", "LIS-initiated via bridge");
+            if (success) {
+                message.append("Bridge ready. Analyzer reachable at ").append(ip).append(":").append(port)
+                        .append(" — ready for LIS-initiated communication.");
+            } else {
+                if (!bridgeHealthy) {
+                    message.append("Bridge not healthy — cannot route to analyzer. ");
+                    message.append(bridgeMessage != null ? bridgeMessage : "");
+                }
+                if (tcpConfigured && !tcpReachable) {
+                    message.append("Cannot reach analyzer at ").append(ip).append(":").append(port)
+                            .append(" — verify analyzer is powered on and listening. ");
+                    message.append(tcpMessage != null ? tcpMessage : "");
+                }
+            }
+            break;
+
+        case BOTH:
+            response.put("connectionType", "Bidirectional via bridge");
+            if (success) {
+                message.append("Bidirectional communication verified. Bridge ready, analyzer reachable at ").append(ip)
+                        .append(":").append(port).append(".");
+            } else {
+                if (!bridgeHealthy) {
+                    message.append("Bridge not healthy. ");
+                }
+                if (tcpConfigured && !tcpReachable) {
+                    message.append("Analyzer not reachable at ").append(ip).append(":").append(port).append(". ");
+                }
+            }
+            break;
+
+        default:
+            message.append("Unknown communication mode: ").append(mode);
+        }
+
+        response.put("success", success);
+        response.put("message", message.toString().trim());
+        response.put("responseTimeMs", System.currentTimeMillis() - startTime);
+        return response;
+    }
+
+    /**
+     * Test TCP connectivity to an analyzer by opening a socket (SYN/ACK only). Does
+     * NOT send any protocol bytes (no ASTM ENQ, no HL7 messages).
+     */
+    private Map<String, Object> testTcpConnectOnly(String ipAddress, Integer port) {
+        Map<String, Object> response = new LinkedHashMap<>();
 
         if (NetworkValidationUtil.isBlockedAddress(ipAddress)) {
             response.put("success", false);
@@ -639,53 +757,29 @@ public class AnalyzerRestController extends BaseRestController {
             return response;
         }
 
+        Socket socket = null;
         try {
-            // Attempt TCP connection with 5 second timeout
             socket = new Socket();
             socket.connect(new java.net.InetSocketAddress(ipAddress, port), 5000);
-            socket.setSoTimeout(5000); // Read timeout
-
-            // Send ENQ
-            OutputStream out = socket.getOutputStream();
-            out.write(ENQ);
-            out.flush();
-
-            // Wait for ACK response
-            InputStream in = socket.getInputStream();
-            int responseByte = in.read();
-
-            if (responseByte == ACK) {
-                response.put("success", true);
-                response.put("message", "Connection successful - ACK received");
-                logger.info("Connection test successful for {}:{} - ACK received", ipAddress, port);
-            } else {
-                response.put("success", false);
-                response.put("message", "Connection established but invalid response: 0x"
-                        + String.format("%02X", responseByte & 0xFF) + " (expected ACK 0x06)");
-                logger.warn("Connection test failed for {}:{} - Invalid response: 0x{}", ipAddress, port,
-                        String.format("%02X", responseByte & 0xFF));
-            }
-
+            response.put("success", true);
+            response.put("message", "TCP connection to " + ipAddress + ":" + port + " succeeded");
+            logger.info("TCP connect succeeded for {}:{}", ipAddress, port);
         } catch (SocketTimeoutException e) {
             response.put("success", false);
-            response.put("message", "Connection timeout - No response from analyzer");
-            logger.warn("Connection test timeout for {}:{}", ipAddress, port, e);
+            response.put("message", "Connection timeout — no response from " + ipAddress + ":" + port);
+            logger.warn("TCP connect timeout for {}:{}", ipAddress, port);
         } catch (java.net.ConnectException e) {
             response.put("success", false);
-            response.put("message", "Connection refused - Analyzer not reachable at " + ipAddress + ":" + port);
-            logger.warn("Connection test failed for {}:{} - Connection refused", ipAddress, port, e);
+            response.put("message", "Connection refused at " + ipAddress + ":" + port);
+            logger.warn("TCP connect refused for {}:{}", ipAddress, port);
         } catch (java.net.UnknownHostException e) {
             response.put("success", false);
-            response.put("message", "Unknown host - Cannot resolve " + ipAddress);
-            logger.warn("Connection test failed for {}:{} - Unknown host", ipAddress, port, e);
+            response.put("message", "Unknown host: " + ipAddress);
+            logger.warn("TCP connect unknown host: {}", ipAddress);
         } catch (IOException e) {
             response.put("success", false);
             response.put("message", "Connection error: " + e.getMessage());
-            logger.error("Connection test error for {}:{}", ipAddress, port, e);
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Unexpected error: " + e.getMessage());
-            logger.error("Unexpected error during connection test for {}:{}", ipAddress, port, e);
+            logger.error("TCP connect error for {}:{}", ipAddress, port, e);
         } finally {
             if (socket != null && !socket.isClosed()) {
                 try {
@@ -700,81 +794,17 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * Test HL7 analyzer connection.
+     * Check bridge health via Spring Boot Actuator endpoint.
      *
-     * <p>
-     * In OpenELIS, HL7 analyzers are typically push-based (results are posted to
-     * OpenELIS), so there is no reliable outbound "connection test" from OpenELIS
-     * to the analyzer. This returns success when the analyzer is configured.
-     *
-     * @param analyzer Analyzer entity
-     * @return Map with success status and message
+     * @return Map with {@code healthy} (boolean) and {@code message} (String)
      */
-    private Map<String, Object> testHl7Connection(Analyzer analyzer) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", true);
-        response.put("message", "HL7 analyzers are push-based; validate by sending an HL7 message to OpenELIS");
-        return response;
-    }
-
-    /**
-     * Test ASTM analyzer connection. Routes through the bridge when configured
-     * (production architecture), falls back to direct TCP when no bridge is set.
-     *
-     * @param analyzer Analyzer entity with IP/port
-     * @return Map with success status and message
-     */
-    private Map<String, Object> testAstmTcpConnection(Analyzer analyzer) {
-        if (analyzer.getIpAddress() == null || analyzer.getPort() == null) {
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("success", false);
-            response.put("message", "ASTM configuration incomplete - missing IP address or port");
-            return response;
-        }
-
-        if (analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
-            // Production path: route through bridge
-            Map<String, Object> response = testConnectionViaBridge(analyzer);
-            response.put("connectionType", "ASTM via bridge");
-            return response;
-        }
-
-        // Fallback: direct TCP (deployments without bridge)
-        logger.warn("No analyzer.bridge.url configured — using direct TCP for test-connection. "
-                + "Set ANALYZER_BRIDGE_URL for production deployments.");
-        Map<String, Object> response = testTcpConnection(analyzer.getIpAddress(), analyzer.getPort());
-        response.put("connectionType", "ASTM (direct TCP — no bridge)");
-        return response;
-    }
-
-    /**
-     * Test analyzer connection by routing through the ASTM-HTTP bridge.
-     *
-     * <p>
-     * Sends a minimal ASTM header to the bridge's HTTP API with
-     * {@code forwardAddress} and {@code forwardPort} query parameters. The bridge
-     * opens a TCP connection to the analyzer, performs the ASTM ENQ/ACK handshake,
-     * and returns the result.
-     *
-     * @param analyzer Analyzer entity with IP/port
-     * @return Map with success status and message
-     */
-    private Map<String, Object> testConnectionViaBridge(Analyzer analyzer) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        String bridgeEndpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/?forwardAddress=" + analyzer.getIpAddress()
-                + "&forwardPort=" + analyzer.getPort();
+    private Map<String, Object> checkBridgeHealth() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String healthUrl = analyzerBridgeUrl.replaceAll("/+$", "") + "/actuator/health";
 
         try {
-            logger.info("Testing connection via bridge: {} -> {}:{}", bridgeEndpoint, analyzer.getIpAddress(),
-                    analyzer.getPort());
-
-            // Empty body = ping; bridge treats contention + empty message as SUCCESS
-            // (per CLSI LIS1-A §8.2.7.1, instrument has priority on contention)
-            String testMessage = "";
-
-            URL url = new URL(bridgeEndpoint);
+            URL url = new URL(healthUrl);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            // Trust self-signed certs in dev (bridge uses HTTPS)
             if (conn instanceof javax.net.ssl.HttpsURLConnection) {
                 javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
                 javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
@@ -792,17 +822,9 @@ public class AnalyzerRestController extends BaseRestController {
                 httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
                 httpsConn.setHostnameVerifier((hostname, session) -> true);
             }
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
-            conn.setDoOutput(true);
-            conn.setConnectTimeout(10000);
-            // Bridge needs up to 35s for ASTM line contention handling:
-            // ~15s establishment + 20s LINE_CONTENTION_REATTEMPT_TIMEOUT
-            conn.setReadTimeout(45000);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(testMessage.getBytes(StandardCharsets.UTF_8));
-            }
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
 
             int status = conn.getResponseCode();
             String body = "";
@@ -812,42 +834,23 @@ public class AnalyzerRestController extends BaseRestController {
                 }
             }
 
-            if (status >= 200 && status < 300) {
-                response.put("success", true);
-                response.put("message", "Connection successful via bridge");
-                logger.info("Bridge test-connection succeeded for {}:{}", analyzer.getIpAddress(), analyzer.getPort());
-            } else {
-                response.put("success", false);
-                response.put("message", "Bridge returned HTTP " + status + ": " + body);
-                logger.warn("Bridge test-connection failed for {}:{} — HTTP {}: {}", analyzer.getIpAddress(),
-                        analyzer.getPort(), status, body);
-            }
-        } catch (java.net.ConnectException e) {
-            response.put("success", false);
-            response.put("message", "Cannot reach bridge at " + analyzerBridgeUrl + " — " + e.getMessage());
-            logger.error("Bridge unreachable: {}", analyzerBridgeUrl, e);
-        } catch (SocketTimeoutException e) {
-            response.put("success", false);
-            response.put("message", "Bridge timeout — analyzer may be unreachable at " + analyzer.getIpAddress() + ":"
-                    + analyzer.getPort());
-            logger.warn("Bridge test-connection timeout for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
+            boolean healthy = status == 200 && body.contains("\"UP\"");
+            result.put("healthy", healthy);
+            result.put("message", healthy ? "Bridge healthy (status UP)" : "Bridge returned " + status + ": " + body);
+            logger.info("Bridge health check: {} (HTTP {})", healthy ? "UP" : "NOT UP", status);
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Bridge connection error: " + e.getMessage());
-            logger.error("Bridge test-connection error for {}:{}", analyzer.getIpAddress(), analyzer.getPort(), e);
+            result.put("healthy", false);
+            result.put("message", "Cannot reach bridge at " + healthUrl + ": " + e.getMessage());
+            logger.error("Bridge health check failed: {}", healthUrl, e);
         }
 
-        response.put("bridgeUrl", analyzerBridgeUrl);
-        return response;
+        return result;
     }
 
-    /**
-     * Test FILE analyzer configuration. Verifies that the file import directory
-     * exists and is accessible.
-     *
-     * @param analyzer Analyzer entity
-     * @return Map with success status and message
-     */
+    // testConnectionViaBridge() removed — bridge health is now checked via
+    // checkBridgeHealth() in the unified testTcpAnalyzerConnection() method.
+    // The bridge ASTM forwarding endpoint (POST /?forwardAddress=&forwardPort=)
+    // is still available for direct use by the bridge's own ASTM test tooling.
     /**
      * Register analyzer with the bridge for transport-level identification. Runs in
      * background — failures are logged but don't prevent analyzer creation.

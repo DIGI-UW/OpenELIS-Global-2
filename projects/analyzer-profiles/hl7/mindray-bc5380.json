@@ -14,6 +14,11 @@
   "transport_config": {
     "TCP/IP": { "default_port": 5380, "framing": "MLLP" }
   },
+  "communication": {
+    "mode": "ANALYZER_INITIATED",
+    "supports_lis_initiated": true,
+    "notes": "HL7 push (ORU^R01) via MLLP. Bidirectional ORM^O01/ORR^O02 documented in vendor manual but not yet implemented in OE (OGC-327)."
+  },
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
     {

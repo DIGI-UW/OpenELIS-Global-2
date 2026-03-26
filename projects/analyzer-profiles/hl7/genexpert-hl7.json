@@ -15,6 +15,11 @@
     "HTTP": { "default_port": 8080 },
     "TCP/IP": {}
   },
+  "communication": {
+    "mode": "ANALYZER_INITIATED",
+    "supports_lis_initiated": true,
+    "notes": "HL7 push (ORU^R01) + query (QBP^Z01/Z03) per Cepheid LIS spec. Analyzer initiates all connections in current OE implementation. Bidirectional QBP support documented but not yet LIS-initiated (OGC-336)."
+  },
   "msh3_pattern": "GENEXPERT|CEPHEID",
   "default_test_mappings": [
     {
