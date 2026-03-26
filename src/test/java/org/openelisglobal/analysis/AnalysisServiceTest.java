@@ -423,7 +423,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getTriggeredReflex_shouldReturnTrue_whenTriggeredReflexIsFalse() {
+    public void getTriggeredReflex_shouldReturnFalse_whenTriggeredReflexIsFalse() {
         Analysis analysis = new Analysis();
         analysis.setTriggeredReflex(false);
 
