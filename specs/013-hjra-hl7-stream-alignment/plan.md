@@ -97,6 +97,11 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 | M2  | `feat/013-ogc-327-bc5380-hl7`              | First analyzer validation target using BC-5380 profile seed and the proven listener path                                                            | US2, US3     | BC-5380 validation proof accepted on the post-`OGC-325` path                                                          | M1         |
 | M3  | `feat/013-ogc-326-bs-series-hl7`           | Combined BS-series delivery branch committed to BS-200 and BS-300, with early BS-300 evidence validation inside the branch                          | US2, US3     | BS-200 target validated and BS-300 early-equivalence check explicitly passed or rejected with documented scope impact | M2         |
 
+**Cross-Cutting Fix**: `fix/013-hl7-test-connection` (PR #3195) addresses
+test-connection parity before M1. Adds CommunicationMode enum
+(ANALYZER_INITIATED, LIS_INITIATED, BOTH) to the data model, removes direct
+OE→analyzer socket code, and adds unified bridge-routed test-connection.
+
 **Note on branch naming**: These branches intentionally omit the `-mN-`
 milestone numbering from the constitution's
 `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` pattern because each branch maps 1:1 to
@@ -243,6 +248,10 @@ define the minimum evidence contract for downstream implementation branches.
       `/analyzer/hl7` → ingestion—is exercised with a known message format (e.g.
       BC-5380 profile for M2, BS-series profile for M3). Evidence gates accept
       proof that uses the mock configured with the appropriate HL7 profile.
+- [x] **Test-Connection Parity**: HL7 test-connection exercises TCP connectivity
+      validation adapted for communication mode semantics. Bridge health is
+      checked for all modes; TCP to analyzer is always attempted when IP/port
+      configured.
 - [ ] **Frontend Unit Tests**: Only required if downstream HL7 work introduces
       UI changes
 - [ ] **Browser E2E Tests**: Only required if downstream HL7 work introduces

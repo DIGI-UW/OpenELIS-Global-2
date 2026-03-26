@@ -40,6 +40,8 @@ from planning into each downstream implementation branch.
 - E2E validation uses the analyzer mock configured with a BC-5380 HL7 profile
   (mock loads profile, mocks that analyzer type) so the implementation is tested
   end-to-end with a known message format
+- Test-connection for BC-5380 returns genuine TCP connectivity result (not
+  hardcoded success). CommunicationMode = ANALYZER_INITIATED.
 
 **Gate fails if**:
 

@@ -29,8 +29,11 @@ All three Mindray analyzers use **HL7 push** (not query/pull):
 4. OpenELIS parses results and replies with an `ACK` message
 5. Connection closes
 
-There is **no query workflow** -- OpenELIS never sends `QRY` or `ORM` to these
-analyzers. The analyzer initiates all communication.
+There is **no query workflow** in the current implementation -- OpenELIS does
+not yet send `QRY` or `ORM` to these analyzers. The analyzer initiates all
+communication. Bidirectional HL7 (ORM^O01 worklist download, QRY^Q02 order
+download) is documented in vendor manuals but deferred to post-MVP. TCP
+connectivity IS testable via the Admin UI "Test Connection" feature.
 
 ---
 
