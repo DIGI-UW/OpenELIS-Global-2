@@ -1,5 +1,19 @@
 # Quickstart: File Stream Alignment — GenericFile Lane
 
+## 2026-03-18 Ownership Update (Worktree-First Remediation)
+
+Use the remediation archive plan at
+`specs/014-hjra-file-stream-alignment/file-workflow-remediation-plan.md` as the
+current execution source of truth.
+
+FILE flow ownership for this lane:
+
+- Bridge watcher detects files from configured import directories.
+- Bridge delivers files to OpenELIS direct-import path.
+- OpenELIS processes files via existing file import service and plugins.
+
+OpenELIS app-side watcher is fallback-only and not the default runtime owner.
+
 **Feature**: 014-hjra-file-stream-alignment  
 **Date**: 2026-03-10
 
