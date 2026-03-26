@@ -12,16 +12,22 @@ import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.sourceofsample.service.SourceOfSampleService;
 import org.openelisglobal.sourceofsample.valueholder.SourceOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.analyzer.service.AnalyzerQueryServiceImpl;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SourceOfSampleService sourceOfSampleService;
+
+    @MockitoBean
+    private AnalyzerQueryServiceImpl analyzerQueryService;
 
     private List<SourceOfSample> SourceOfSampleList;
     private Map<String, Object> propertyValues;
@@ -30,6 +36,14 @@ public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
+        // Mock startQuery to prevent real network calls and resolve SocketTimeoutException (Issue #3168)
+        Mockito.when(analyzerQueryService.startQuery(Mockito.anyString()))
+                .thenReturn("mock-job-id");
+
+        // Mock getStatus to provide a default empty response for the test context
+        Mockito.when(analyzerQueryService.getStatus(Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(new java.util.HashMap<>());
+
         executeDataSetWithStateManagement("testdata/source-of-sample.xml");
 
         propertyValues = new HashMap<>();
