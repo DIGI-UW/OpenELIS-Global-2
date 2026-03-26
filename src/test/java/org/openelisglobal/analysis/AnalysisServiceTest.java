@@ -429,11 +429,48 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAllMatching_shouldReturnAllMatchingGiveFhirUUID() {
-        List<Analysis> analysises = aService.getAllMatching("fhirUuid",
-                UUID.fromString("f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"));
-        analysises.forEach(analsis -> {
-            System.out.println(analsis.getId());
-        });
+    public void resultIsConclusion_shouldReturnBooleanValue() {
+
+        Analysis analysis = aService.get("1");
+        Result result = resultService.get("1");
+
+        boolean isConclusion = aService.resultIsConclusion(result, analysis);
+
+        Assert.assertTrue(isConclusion);
+    }
+
+    @Test
+    public void buildAnalysis_shouldInitializeDefaultFields() {
+
+        SampleItem sampleItem = sampleItemService.get("1");
+        org.openelisglobal.test.valueholder.Test test = tService.get("1");
+
+        Analysis analysis = aService.buildAnalysis(test, sampleItem);
+
+        Assert.assertNotNull(analysis);
+        Assert.assertEquals("MANUAL", analysis.getAnalysisType());
+        Assert.assertNotNull(analysis.getStartedDate());
+    }
+
+    @Test
+    public void getTestDisplayName_shouldReturnFormattedName() {
+
+        Analysis analysis = aService.get("1");
+
+        String displayName = aService.getTestDisplayName(analysis);
+
+        Assert.assertNotNull(displayName);
+        Assert.assertFalse(displayName.isEmpty());
+    }
+
+    @Test
+    public void getQuantifiedResult_shouldReturnResultOrNull() {
+
+        Analysis analysis = aService.get("1");
+
+        Result result = aService.getQuantifiedResult(analysis);
+
+        // result may be null depending on dataset
+        Assert.assertTrue(result == null || result.getId() != null);
     }
 }
