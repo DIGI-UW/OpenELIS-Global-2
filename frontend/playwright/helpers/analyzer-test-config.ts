@@ -34,8 +34,9 @@ export interface FilePush {
 export type PushConfig = AstmPush | Hl7Push | FilePush;
 
 export interface ExpectedResult {
-  sampleId: string;
+  /** Expected result value to verify on AnalyzerResults page. */
   result: string;
+  /** Optional test name for display. */
   testName?: string;
 }
 

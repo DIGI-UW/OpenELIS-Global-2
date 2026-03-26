@@ -55,7 +55,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
       template: "genexpert_astm",
       destination: ASTM_DESTINATION,
     },
-    expectedResults: [{ sampleId: "HARN-GX-2026-00001", result: "NEGATIVE" }],
+    expectedResults: [{ result: "NEGATIVE" }],
   },
   {
     name: "Mindray BC-5380",
@@ -71,10 +71,10 @@ const CONFIGS: AnalyzerTestConfig[] = [
       destination: MLLP_DESTINATION,
     },
     expectedResults: [
-      { sampleId: "HARN-BC-2026-00001", result: "7.5", testName: "WBC" },
-      { sampleId: "HARN-BC-2026-00001", result: "4.82", testName: "RBC" },
-      { sampleId: "HARN-BC-2026-00001", result: "14.2", testName: "HGB" },
-      { sampleId: "HARN-BC-2026-00001", result: "42", testName: "HCT" },
+      { result: "7.5", testName: "WBC" },
+      { result: "4.82", testName: "RBC" },
+      { result: "14.2", testName: "HGB" },
+      { result: "42", testName: "HCT" },
     ],
   },
   {
@@ -91,10 +91,10 @@ const CONFIGS: AnalyzerTestConfig[] = [
       destination: MLLP_DESTINATION,
     },
     expectedResults: [
-      { sampleId: "HARN-BS2-2026-00001", result: "1.1", testName: "CREA" },
-      { sampleId: "HARN-BS2-2026-00001", result: "32", testName: "ALT" },
-      { sampleId: "HARN-BS2-2026-00001", result: "28", testName: "AST" },
-      { sampleId: "HARN-BS2-2026-00001", result: "92", testName: "GLU" },
+      { result: "1.1", testName: "CREA" },
+      { result: "32", testName: "ALT" },
+      { result: "28", testName: "AST" },
+      { result: "92", testName: "GLU" },
     ],
   },
   {
@@ -111,10 +111,10 @@ const CONFIGS: AnalyzerTestConfig[] = [
       destination: MLLP_DESTINATION,
     },
     expectedResults: [
-      { sampleId: "HARN-BS3-2026-00001", result: "0.8", testName: "CREA" },
-      { sampleId: "HARN-BS3-2026-00001", result: "19", testName: "ALT" },
-      { sampleId: "HARN-BS3-2026-00001", result: "24", testName: "AST" },
-      { sampleId: "HARN-BS3-2026-00001", result: "88", testName: "GLU" },
+      { result: "0.8", testName: "CREA" },
+      { result: "19", testName: "ALT" },
+      { result: "24", testName: "AST" },
+      { result: "88", testName: "GLU" },
     ],
   },
   // FILE analyzers — uncomment when harness bind-mount + fixtures are ready:
@@ -142,23 +142,20 @@ const CONFIGS: AnalyzerTestConfig[] = [
 async function verifyResults(
   page: import("@playwright/test").Page,
   config: AnalyzerTestConfig,
+  sampleId: string,
   presentation: import("../helpers/demo-presentation").DemoPresentation,
 ) {
-  const firstResult = config.expectedResults[0];
-
-  await openAnalyzerResultsAndWaitForText(
-    page,
-    config.name,
-    firstResult.sampleId,
-    { timeoutMs: RESULTS_TIMEOUT, perAttemptTimeoutMs: LONG_TIMEOUT },
-  );
+  await openAnalyzerResultsAndWaitForText(page, config.name, sampleId, {
+    timeoutMs: RESULTS_TIMEOUT,
+    perAttemptTimeoutMs: LONG_TIMEOUT,
+  });
 
   const resultsRegion = page.locator(".orderLegendBody, table").first();
   await expect(resultsRegion).toBeVisible({ timeout: UI_TIMEOUT });
 
   // Verify accession number
   await expect(
-    resultsRegion.getByText(accessionTextRegExp(firstResult.sampleId)).first(),
+    resultsRegion.getByText(accessionTextRegExp(sampleId)).first(),
   ).toBeVisible({ timeout: UI_TIMEOUT });
 
   // Verify each expected result value
@@ -213,25 +210,25 @@ test.describe("Madagascar analyzer demo flows", () => {
       const hasTestConnection = config.protocol === "ASTM";
       let step = hasTestConnection ? 3 : 2;
 
-      // Push result
+      // Push result — mock generates unique sample_id per push
       await presentation.step(
         step,
         `Send ${config.protocol} result → Bridge → OpenELIS`,
       );
-      await pushAnalyzerResult(page, config.push, presentation);
+      const sampleId = await pushAnalyzerResult(
+        page,
+        config.push,
+        presentation,
+      );
+      expect(sampleId).toBeTruthy();
 
-      // Verify results
+      // Verify results using the dynamic sample_id from the push
       step++;
       await presentation.step(step, "Review staged results");
-      await verifyResults(page, config, presentation);
+      await verifyResults(page, config, sampleId!, presentation);
 
       // Accept results
-      await acceptAndVerifyResults(
-        page,
-        presentation,
-        step,
-        config.expectedResults[0].sampleId,
-      );
+      await acceptAndVerifyResults(page, presentation, step, sampleId!);
 
       // Done
       await presentation.title(
