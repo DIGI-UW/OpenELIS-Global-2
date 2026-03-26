@@ -679,9 +679,9 @@ public class AnalyzerRestController extends BaseRestController {
         boolean tcpReachable = false;
         String tcpMessage = null;
         if (ip != null && port != null && analyzerBridgeUrl != null && !analyzerBridgeUrl.isBlank()) {
-            ProtocolVersion pv = analyzer.getProtocolVersion();
-            String protocol = pv != null && pv.isHl7() ? "HL7" : "ASTM";
-            Map<String, Object> tcpResult = testConnectivityViaBridge(ip, port, protocol);
+            // TCP-only for connectivity test — protocol handshakes (ASTM ENQ, MLLP)
+            // can cause contention with active analyzers. Reachability is what matters.
+            Map<String, Object> tcpResult = testConnectivityViaBridge(ip, port, "TCP");
             tcpReachable = Boolean.TRUE.equals(tcpResult.get("reachable"));
             tcpMessage = (String) tcpResult.get("message");
             response.put("tcpReachable", tcpReachable);
