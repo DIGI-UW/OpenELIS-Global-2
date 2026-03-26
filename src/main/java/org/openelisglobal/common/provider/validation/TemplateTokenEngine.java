@@ -14,7 +14,7 @@ public class TemplateTokenEngine {
     public static String processTokens(String template, long sequence) {
         String prefix = "";
         try {
-            prefix = ConfigurationProperties.getInstance().getPropertyValue(Property.ACCESSION_NUMBER_PREFIX);
+            prefix = ConfigurationProperties.getInstance().getPropertyValue(Property.ALPHANUM_ACCESSION_PREFIX);
         } catch (Exception e) {
             // Spring context not available, likely in unit test
         }

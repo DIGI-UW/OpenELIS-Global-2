@@ -35,10 +35,10 @@ test.describe("Custom Lab Number Configuration", () => {
     // 5. Test sandbox
     const testInput = page.locator("#testInput");
     await testInput.fill(expectedPreview);
-    await expect(page.getByText("Matches regex ✅")).toBeVisible();
+    await expect(page.getByText("Matches regex")).toBeVisible();
 
     await testInput.fill("INVALID-NUMBER");
-    await expect(page.getByText("Does not match regex ❌")).toBeVisible();
+    await expect(page.getByText("Does not match regex")).toBeVisible();
 
     // 6. Submit
     const submitButton = page.locator('[data-testid="submit-button"]');

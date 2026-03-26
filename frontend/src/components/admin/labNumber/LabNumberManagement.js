@@ -206,13 +206,25 @@ function LabNumberManagement() {
     ];
   };
 
-  const generateSampleLabNum = () => {
+  const generateSampleLabNum = async () => {
     if (labNumberValues.labNumberType === "CUSTOM") {
-      const preview = generateLivePreview(
-        labNumberValues.customAccessionTemplate,
-        1,
-      );
-      setSampleLabNumForDisplay(preview[0] || "");
+      try {
+        const response = await fetch("/rest/labNumber/preview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            template: labNumberValues.customAccessionTemplate,
+            seqStart: 1,
+            prefix: labNumberValues.alphanumPrefix || "",
+          }),
+        });
+        const previews = await response.json();
+        setSampleLabNumForDisplay(previews[0] || "");
+      } catch (error) {
+        setSampleLabNumForDisplay("");
+      }
       return;
     }
 
@@ -236,10 +248,39 @@ function LabNumberManagement() {
     );
   };
 
-  const customPreviews =
-    labNumberValues.labNumberType === "CUSTOM"
-      ? generateLivePreview(labNumberValues.customAccessionTemplate, 1)
-      : [];
+  const [customPreviews, setCustomPreviews] = useState([]);
+
+  useEffect(() => {
+    if (
+      labNumberValues.labNumberType === "CUSTOM" &&
+      labNumberValues.customAccessionTemplate
+    ) {
+      fetch("/rest/labNumber/preview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          template: labNumberValues.customAccessionTemplate,
+          seqStart: 1,
+          prefix: labNumberValues.alphanumPrefix || "",
+        }),
+      })
+        .then((res) => res.json())
+        .then((previews) => {
+          setCustomPreviews(previews);
+        })
+        .catch(() => {
+          setCustomPreviews([]);
+        });
+    } else {
+      setCustomPreviews([]);
+    }
+  }, [
+    labNumberValues.labNumberType,
+    labNumberValues.customAccessionTemplate,
+    labNumberValues.alphanumPrefix,
+  ]);
 
   return (
     <>
@@ -333,7 +374,7 @@ function LabNumberManagement() {
                       })}
                       value={labNumberValues.customAccessionRegex}
                       onChange={handleFieldChange}
-                      placeholder="^LAB-\d{4}-\d{2}-\d{6}$"
+                      placeholder="^LAB-\\d{4}-\\d{2}-\\d{6}$"
                       maxLength={200}
                     />
                   </Column>

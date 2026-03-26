@@ -8,6 +8,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.spring.util.SpringContext;
 
 public class CustomAccessionValidator implements IAccessionNumberValidator {
@@ -15,8 +16,6 @@ public class CustomAccessionValidator implements IAccessionNumberValidator {
     private static final int MAX_REGEX_LENGTH = 200;
     private static final int MAX_ACCESSSION_LENGTH = 50;
     private static final int MIN_ACCESSSION_LENGTH = 1;
-
-    private static final String DANGEROUS_REGEX_PATTERN = ".*(\\(\\?<?[=!]?|\\*|\\+|\\{[0-9]+,\\}|\\(\\?[midslspu]*\\)).*";
 
     private static Pattern cachedPattern = null;
     private static String cachedRegex = null;
@@ -30,6 +29,12 @@ public class CustomAccessionValidator implements IAccessionNumberValidator {
 
     @Override
     public ValidationResults validFormat(String accessionNumber, boolean checkDate) throws IllegalArgumentException {
+        if (!Boolean
+                .valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.ACCESSION_NUMBER_VALIDATE))) {
+            return AccessionNumberUtil.containsBlackListCharacters(accessionNumber) ? ValidationResults.FORMAT_FAIL
+                    : ValidationResults.SUCCESS;
+        }
+
         if (accessionNumber == null) {
             return ValidationResults.REQUIRED_FAIL;
         }
@@ -84,10 +89,6 @@ public class CustomAccessionValidator implements IAccessionNumberValidator {
         } catch (PatternSyntaxException e) {
             return false;
         }
-    }
-
-    public static boolean isComplexRegex(String regex) {
-        return regex != null && regex.matches(DANGEROUS_REGEX_PATTERN);
     }
 
     @Override

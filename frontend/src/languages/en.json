@@ -1956,7 +1956,7 @@
   "labNumber.type.custom": "Custom Regex/Template",
   "labNumber.customRegex": "Custom Validation Regex",
   "labNumber.customTemplate": "Custom Generation Template",
-  "labNumber.customRegex.helper": "Regex pattern for validation (e.g., ^LAB-\\\\d{4}-\\\\d{2}-\\\\d{6}$)",
+  "labNumber.customRegex.helper": "Regex pattern for validation (e.g., ^LAB-\\d{4}-\\d{2}-\\d{6}$)",
   "labNumber.customTemplate.helper": "Template for generation (e.g., LAB-{YYYY}-{MM}-{SEQ:6})",
   "labNumber.livePreview": "Live Generation Preview",
   "labNumber.testInput": "Validation Sandbox (Test a number)",

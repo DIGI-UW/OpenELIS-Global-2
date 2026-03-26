@@ -1,11 +1,14 @@
 package org.openelisglobal.admin.controller;
 
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.openelisglobal.admin.form.LabNumberManagementForm;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
+import org.openelisglobal.common.provider.validation.TemplateTokenEngine;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class LabNumberManagementController {
 
     private static final int MAX_TEMPLATE_LENGTH = 50;
-    private static final int MAX_REGEX_LENGTH = 100;
+    private static final int MAX_REGEX_LENGTH = 200;
     private static final Pattern SEQ_TOKEN_PATTERN = Pattern.compile(".*\\{SEQ:\\d+\\}.*");
     private static final Pattern ALPHANUMSEQ_TOKEN_PATTERN = Pattern.compile(".*\\{ALPHANUMSEQ:\\d+\\}.*");
 
@@ -70,6 +73,51 @@ public class LabNumberManagementController {
 
         ConfigurationProperties.loadDBValuesIntoConfiguration();
         return ResponseEntity.ok(form);
+    }
+
+    @PostMapping("/rest/labNumber/preview")
+    public ResponseEntity<List<String>> generatePreview(@RequestBody PreviewRequest request) {
+        List<String> previews = new ArrayList<>();
+        String template = request.getTemplate();
+        long seqStart = request.getSeqStart();
+        String prefix = request.getPrefix();
+
+        for (int i = 0; i < 3; i++) {
+            String generated = TemplateTokenEngine.processTokens(template, seqStart + i, prefix);
+            previews.add(generated);
+        }
+
+        return ResponseEntity.ok(previews);
+    }
+
+    public static class PreviewRequest {
+        private String template;
+        private long seqStart;
+        private String prefix;
+
+        public String getTemplate() {
+            return template;
+        }
+
+        public void setTemplate(String template) {
+            this.template = template;
+        }
+
+        public long getSeqStart() {
+            return seqStart;
+        }
+
+        public void setSeqStart(long seqStart) {
+            this.seqStart = seqStart;
+        }
+
+        public String getPrefix() {
+            return prefix;
+        }
+
+        public void setPrefix(String prefix) {
+            this.prefix = prefix;
+        }
     }
 
     private String validateCustomConfig(LabNumberManagementForm form) {
