@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
+    <system_user id="1" login_name="admin" last_name="Admin"
+        first_name="System" is_active="Y" is_employee="Y"
+        lastupdated="2025-03-20 12:00:00" />
+
     <localization id="1" description="Test Description 1" />
     <localization id="2" description="Test Description 2" />
     <localization id="3" description="Test Description 3" />
