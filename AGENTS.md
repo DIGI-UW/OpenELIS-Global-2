@@ -1,5 +1,17 @@
 # AGENTS.md - README for AI Coding Agents
 
+## FILE Ownership Model (014 Remediation)
+
+For FILE-based analyzer workflows in OpenELIS Global 2:
+
+- Bridge is the runtime owner of directory watching/polling and file transport.
+- OpenELIS owns configuration, direct ingestion endpoint, and result processing.
+- OpenELIS app-side polling (`FileImportWatchService`) is fallback-only and
+  disabled by default unless explicitly enabled.
+
+When guidance conflicts, this ownership model takes precedence for remediation
+work in feature 014.
+
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
 > everything an AI agent needs to know to work effectively on OpenELIS Global 2.
