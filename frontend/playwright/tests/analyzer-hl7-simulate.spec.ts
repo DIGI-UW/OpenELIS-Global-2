@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 const HL7_ANALYZER_NAME = "Mindray BC-5380";
 
@@ -35,7 +36,7 @@ test.describe("Analyzer HL7 Simulator", () => {
       new RegExp(`/analyzers/${analyzer!.id}/mappings`),
     );
     await page.locator('[data-testid="field-mapping-test-button"]').click({
-      timeout: 10_000,
+      timeout: UI_TIMEOUT,
     });
     await expect(
       page.locator('[data-testid="test-mapping-modal"]'),
@@ -53,9 +54,9 @@ test.describe("Analyzer HL7 Simulator", () => {
 
     await page.locator('[data-testid="test-mapping-preview-button"]').click();
     const results = page.locator('[data-testid="test-mapping-results"]');
-    await expect(results).toBeVisible({ timeout: 15_000 });
+    await expect(results).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(results.locator("tbody tr").first()).toBeVisible({
-      timeout: 10_000,
+      timeout: UI_TIMEOUT,
     });
   });
 });

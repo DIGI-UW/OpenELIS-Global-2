@@ -1,0 +1,70 @@
+{
+  "$schema": "https://openelis-global.org/schemas/analyzer-defaults/1.0",
+  "profileMeta": {
+    "id": "mindray-bs300",
+    "version": "1.0.0",
+    "displayName": "Mindray BS-300"
+  },
+  "analyzer_name": "Mindray BS-300",
+  "manufacturer": "Mindray",
+  "category": "CHEMISTRY",
+  "protocol": { "name": "HL7", "version": "2.3.1" },
+  "identifier_pattern": "MINDRAY.*BS.?300|BS300",
+  "transport": ["TCP/IP"],
+  "transport_config": {
+    "TCP/IP": { "default_port": 6001, "framing": "MLLP" }
+  },
+  "msh3_pattern": "MINDRAY",
+  "default_test_mappings": [
+    {
+      "obx_identifier": "GLU",
+      "test_name_hint": "Glucose",
+      "loinc": "2345-7",
+      "unit": "mg/dL"
+    },
+    {
+      "obx_identifier": "CREA",
+      "test_name_hint": "Creatinine",
+      "loinc": "2160-0",
+      "unit": "mg/dL"
+    },
+    {
+      "obx_identifier": "ALT",
+      "test_name_hint": "Alanine Aminotransferase",
+      "loinc": "1742-6",
+      "unit": "U/L"
+    },
+    {
+      "obx_identifier": "AST",
+      "test_name_hint": "Aspartate Aminotransferase",
+      "loinc": "1920-8",
+      "unit": "U/L"
+    },
+    {
+      "obx_identifier": "ALB",
+      "test_name_hint": "Albumin",
+      "loinc": "1751-7",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "TP",
+      "test_name_hint": "Total Protein",
+      "loinc": "2885-2",
+      "unit": "g/dL"
+    },
+    {
+      "obx_identifier": "TBIL",
+      "test_name_hint": "Total Bilirubin",
+      "loinc": "1975-2",
+      "unit": "mg/dL"
+    },
+    {
+      "obx_identifier": "UREA",
+      "test_name_hint": "Blood Urea Nitrogen",
+      "loinc": "3094-0",
+      "unit": "mg/dL"
+    }
+  ],
+  "configDefaults": {},
+  "notes": "Fully-automatic chemistry analyzer. Intended to use the same HL7 v2.3.1 interface as BS-200 and BS-360E. Requires MLLP framing. MSH-3 typically identifies the manufacturer (e.g. 'MINDRAY' per msh3_pattern); exact sender value must be confirmed per deployment. BS-300/BS-200 equivalence is assumed by this profile but still requires site-level validation."
+}
