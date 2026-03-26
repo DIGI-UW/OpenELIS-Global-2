@@ -14,11 +14,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerQueryServiceImpl;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.sourceofsample.service.SourceOfSampleService;
 import org.openelisglobal.sourceofsample.valueholder.SourceOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.openelisglobal.analyzer.service.AnalyzerQueryServiceImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
