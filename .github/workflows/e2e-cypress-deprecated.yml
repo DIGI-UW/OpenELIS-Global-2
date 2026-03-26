@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures Cypress uses PR's test files, not develop)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -84,6 +89,7 @@ jobs:
       - name: Checkout OpenELIS-Global2
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
           submodules: recursive
 

@@ -103,6 +103,26 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
 
+### Post-Compaction Context Recovery (MANDATORY)
+
+**After any context compaction or session resume**, run these commands FIRST —
+before reading files, editing code, or starting analysis:
+
+```bash
+# 1. Discover all active worktrees and their branches
+git worktree list
+
+# 2. Check status of each relevant worktree
+git status  # (in each worktree path)
+
+# 3. List open PRs and their branches
+gh pr list --author @me
+```
+
+**Why:** Compaction drops operational state (active worktrees, open PRs, CI
+status). These commands reconstruct the full dev context in seconds. Without
+this, work targets the wrong branch/directory.
+
 ### Cypress E2E — DEPRECATED
 
 > **Do not create new Cypress tests.** See [AGENTS.md](AGENTS.md) "E2E Tests

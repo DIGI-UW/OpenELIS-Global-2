@@ -1,9 +1,10 @@
 {
   "profileMeta": {
     "id": "tecan-f50",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "displayName": "Tecan Infinite F50",
-    "manufacturer": "Tecan"
+    "manufacturer": "Tecan",
+    "validation_status": "PENDING - awaiting real export files from site. Herbert reported no OE plugin available 2026-03-20. Profile based on standard Magellan export format; may need adjustment after real file validation."
   },
   "protocol": {
     "name": "FILE",
@@ -23,16 +24,23 @@
     "CorrectedOD": "correctedOD",
     "Interpretation": "interpretation"
   },
+  "locale_support": {
+    "description": "Madagascar site may use French locale with semicolons as delimiter and comma as decimal separator",
+    "french_csv": {
+      "delimiter": ";",
+      "decimal_separator": ","
+    }
+  },
   "layouts": {
     "plate_grid": {
-      "description": "8x12 plate grid after metadata header",
+      "description": "8x12 plate grid after metadata header (standard Magellan export)",
       "metadata_rows": ["Application", "Instrument", "Method", "Date", "Time", "Wavelength", "Plate"],
       "grid_rows": 8,
       "grid_cols": 12,
       "row_labels": ["A", "B", "C", "D", "E", "F", "G", "H"]
     },
     "well_per_row": {
-      "description": "One row per well with SampleID, OD values",
+      "description": "One row per well with SampleID, OD values (custom site template)",
       "columns": ["WellPosition", "SampleID", "OD_450", "OD_620", "CorrectedOD", "Interpretation"]
     }
   },

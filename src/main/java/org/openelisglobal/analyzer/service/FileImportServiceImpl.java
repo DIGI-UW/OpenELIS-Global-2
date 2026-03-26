@@ -158,8 +158,6 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             return new FileAnalyzerReader(configuration);
         case "EXCEL":
             return new ExcelAnalyzerReader(configuration);
-        case "XML":
-            return new org.openelisglobal.analyzerimport.analyzerreaders.XmlAnalyzerReader(configuration);
         default:
             LogEvent.logWarn(this.getClass().getSimpleName(), "getReaderForFormat",
                     "Unknown file format '" + fileFormat + "', defaulting to CSV reader");
@@ -645,6 +643,15 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         // Derive file pattern from supported_extensions or fileFormat
         String filePattern = deriveFilePattern(configData, fileFormat);
 
+        // Validate glob syntax before persisting — invalid patterns crash the bridge at
+        // runtime
+        try {
+            java.nio.file.FileSystems.getDefault().getPathMatcher("glob:" + filePattern);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid file pattern '" + filePattern + "' for analyzer " + analyzerId + ": " + e.getMessage());
+        }
+
         // Build default directory paths using sanitized analyzer name
         String safeName = analyzerName != null ? analyzerName.replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase()
                 : "analyzer-" + analyzerId;
@@ -669,7 +676,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
                 "Auto-created FileImportConfiguration for analyzer " + analyzerId + " (format=" + fileFormat
-                        + ", importDir=" + importDir + ")");
+                        + ", pattern=" + filePattern + ", importDir=" + importDir + ")");
     }
 
     @SuppressWarnings("unchecked")
@@ -680,8 +687,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             if (exts.size() == 1) {
                 return "*" + exts.get(0);
             }
-            // Multiple extensions: use first one as primary pattern
-            return "*" + exts.get(0);
+            // Multiple extensions: use brace glob to match any (e.g., *{.xls,.xlsx})
+            return "*{" + String.join(",", exts) + "}";
         }
         // Fall back based on format
         switch (fileFormat) {
@@ -689,8 +696,6 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             return "*.xls";
         case "TSV":
             return "*.tsv";
-        case "XML":
-            return "*.xml";
         default:
             return "*.csv";
         }
