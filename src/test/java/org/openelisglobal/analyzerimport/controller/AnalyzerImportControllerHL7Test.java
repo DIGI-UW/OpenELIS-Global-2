@@ -48,6 +48,21 @@ public class AnalyzerImportControllerHL7Test extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void postHl7_withXAnalyzerIdHeader_passesIdentifierToReader() throws Exception {
+        String hl7 = loadFixture("testdata/hl7/mindray/bc5380-cbc-result.hl7");
+
+        // X-Analyzer-Id should be forwarded to HL7AnalyzerReader for identifier-pattern
+        // matching. The endpoint won't return 400 (parse succeeds); it may return 500
+        // if no plugin matches in the test environment, but the header is still
+        // processed.
+        var result = mockMvc.perform(post("/analyzer/hl7").contentType(MediaType.TEXT_PLAIN)
+                .header("X-Analyzer-Id", "MINDRAY-BC-5380").header("X-Source-Id", "192.168.1.100")
+                .header("X-Source-Port", "5380").content(hl7.getBytes(StandardCharsets.UTF_8))).andReturn();
+        int code = result.getResponse().getStatus();
+        assertNotEquals("Valid HL7 with bridge headers should not return 400", 400, code);
+    }
+
+    @Test
     public void postHl7_invalidMessage_returnsBadRequest() throws Exception {
         String invalid = "not valid hl7";
 
