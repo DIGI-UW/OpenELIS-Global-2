@@ -59,23 +59,6 @@
             <column name="sample_id"/>
         </createIndex>
 
-        <!-- Indexes for unassigned_sample table -->
-        <createIndex indexName="idx_unassigned_sample_test_id" tableName="unassigned_sample">
-            <column name="referral_test_id"/>
-        </createIndex>
-
-        <createIndex indexName="idx_unassigned_sample_destination" tableName="unassigned_sample">
-            <column name="destination_facility_id"/>
-        </createIndex>
-
-        <createIndex indexName="idx_unassigned_sample_priority" tableName="unassigned_sample">
-            <column name="priority"/>
-        </createIndex>
-
-        <createIndex indexName="idx_unassigned_sample_created_date" tableName="unassigned_sample">
-            <column name="created_date"/>
-        </createIndex>
-
         <rollback>
             <dropIndex tableName="shipping_box" indexName="idx_shipping_box_state"/>
             <dropIndex tableName="shipping_box" indexName="idx_shipping_box_destination"/>
@@ -89,10 +72,6 @@
             <dropIndex tableName="box_sample" indexName="idx_box_sample_sample_id"/>
             <dropIndex tableName="box_sample" indexName="idx_box_sample_reception_status"/>
             <dropIndex tableName="box_sample" indexName="idx_box_sample_composite"/>
-            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_test_id"/>
-            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_destination"/>
-            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_priority"/>
-            <dropIndex tableName="unassigned_sample" indexName="idx_unassigned_sample_created_date"/>
         </rollback>
     </changeSet>
 
