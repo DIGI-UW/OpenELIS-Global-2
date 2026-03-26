@@ -491,7 +491,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         String result = aService.getMethodId(analysis);
         Assert.assertEquals("123", result);
     }
-
+    
     public Analysis createDemoAnalysis() {
         Analysis analysis1 = aService.getAnalysisById("2");
         aService.delete(analysis1);
