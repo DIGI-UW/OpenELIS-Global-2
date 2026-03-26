@@ -768,6 +768,40 @@ npm run cy:run -- --spec "cypress/e2e/{feature}.cy.js"  # Individual E2E test
 # Check .specify/memory/constitution.md for relevant principles
 ```
 
+### Automated Pre-Commit Hooks
+
+Formatting is enforced automatically via pre-commit hooks. Choose **one** setup
+method (not both):
+
+**Option A — lefthook (recommended):**
+
+```bash
+npm i -g @evilmartians/lefthook   # or your OS package manager
+lefthook install                   # run once per clone/worktree
+```
+
+Reads `lefthook.yml` from repo root, delegates to `.githooks/pre-commit`.
+
+**Option B — native git hooks:**
+
+```bash
+bash .githooks/setup.sh   # run once per clone/worktree
+```
+
+Sets `core.hooksPath` to `.githooks/`.
+
+**Both options** run the same `.githooks/pre-commit` script which formats staged
+files only (spotless + prettier + ruff) and re-stages them.
+
+**`setup-workspace.sh`** auto-selects: lefthook if available, native hooks
+otherwise.
+
+**Claude Code:** `.claude/settings.json` provides additional guardrails:
+
+- `PreToolUse` hook runs formatters before any `git commit` command
+- `SessionStart` hook runs `git worktree list` + `git status` for context
+  recovery
+
 **Before Creating PR:**
 
 - [ ] All tests pass

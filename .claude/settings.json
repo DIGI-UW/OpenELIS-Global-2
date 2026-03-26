@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit)",
+        "hooks": ["bash .githooks/pre-commit"]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          "git worktree list",
+          "git status --short"
+        ]
+      }
+    ]
+  }
+}
