@@ -5,18 +5,24 @@
 A pre-commit hook that formats and lints **staged files only** before commits to
 prevent CI failures (format + Catalyst Python lint).
 
-### Setup (One-Time)
+### Setup (Automatic)
 
-Run once per clone (or worktree) so commits use these hooks:
+Hooks are automatically installed when you run any Maven command:
+
+```bash
+mvn compile   # or any other mvn goal
+```
+
+The first Maven command sets `core.hooksPath` to `.githooks`. No manual setup
+required.
+
+If you need to set up manually (or in a worktree where Maven won't run):
 
 ```bash
 ./.githooks/setup.sh
 ```
 
 Or manually: `git config core.hooksPath .githooks`
-
-**Cursor IDE:** Worktrees created via Cursor automatically run this setup via
-`.cursor/worktrees.json`.
 
 ### What It Does
 
@@ -58,8 +64,9 @@ git commit --no-verify
 # Check hooks path
 git config core.hooksPath
 
-# Should show: .githooks
-# If not, run setup command above
+# Should show absolute path to .githooks
+# If not, run any Maven command to auto-install:
+mvn compile -q
 ```
 
 **Formatter not found?**
