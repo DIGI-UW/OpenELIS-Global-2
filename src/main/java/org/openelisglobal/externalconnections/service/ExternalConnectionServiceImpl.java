@@ -82,9 +82,10 @@ public class ExternalConnectionServiceImpl extends AuditableBaseObjectServiceImp
 
         existing.setSysUserId(sysUserId);
         existing.setActive(active != null ? active : existing.getActive());
-        existing.setProgrammedConnection(programmedConnection);
-        existing.setActiveAuthenticationType(authType);
-        existing.setUri(uri);
+        existing.setProgrammedConnection(
+                programmedConnection != null ? programmedConnection : existing.getProgrammedConnection());
+        existing.setActiveAuthenticationType(authType != null ? authType : existing.getActiveAuthenticationType());
+        existing.setUri(uri != null ? uri : existing.getUri());
 
         if (existing.getNameLocalization() != null && nameValue != null) {
             existing.getNameLocalization().setLocalizedValue(nameValue);

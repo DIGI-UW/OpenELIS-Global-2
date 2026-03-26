@@ -49,7 +49,8 @@ let breadcrumbs = [
 function ProviderMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { reloadConfiguration } = useContext(ConfigurationContext);
+  const { reloadConfiguration, configurationProperties } =
+    useContext(ConfigurationContext);
 
   const intl = useIntl();
 
@@ -79,6 +80,10 @@ function ProviderMenu() {
   const [fax, setFax] = useState("");
   const [email, setEmail] = useState("");
   const [isActive, setIsActive] = useState({ id: "yes", value: "Yes" });
+  const [phoneValidation, setPhoneValidation] = useState({
+    body: "",
+    status: true,
+  });
 
   const yesOrNo = [
     { id: "yes", value: "Yes" },
@@ -309,10 +314,18 @@ function ProviderMenu() {
   };
 
   const handleTelephoneChange = (event) => {
-    const value = event.target.value;
-    if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
-      setTelephone(value);
-    }
+    setTelephone(event.target.value);
+  };
+
+  const handlePhoneValidation = (e) => {
+    const value = e.target.value;
+    getFromOpenElisServer(
+      "/rest/PhoneNumberValidationProvider?fieldId=patientPhone&value=" +
+        encodeURIComponent(value),
+      (resp) => {
+        setPhoneValidation(resp);
+      },
+    );
   };
 
   const handleFaxChange = (event) => {
@@ -410,9 +423,26 @@ function ProviderMenu() {
           />
           <TextInput
             id="telephone"
-            labelText={intl.formatMessage({ id: "provider.telephone" })}
+            labelText={intl.formatMessage(
+              {
+                id: "patient.label.primaryphone",
+                defaultMessage: "Phone: {PHONE_FORMAT}",
+              },
+              {
+                PHONE_FORMAT: configurationProperties.PHONE_FORMAT,
+              },
+            )}
             value={telephone}
             onChange={(e) => handleTelephoneChange(e)}
+            onBlur={(e) => handlePhoneValidation(e)}
+            invalid={!phoneValidation.status}
+            invalidText={phoneValidation.status ? "" : phoneValidation.body}
+          />
+          <TextInput
+            id="email"
+            labelText={intl.formatMessage({ id: "provider.email" })}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <TextInput
             id="email"
@@ -463,9 +493,26 @@ function ProviderMenu() {
           />
           <TextInput
             id="telephone"
-            labelText={intl.formatMessage({ id: "provider.telephone" })}
+            labelText={intl.formatMessage(
+              {
+                id: "patient.label.primaryphone",
+                defaultMessage: "Phone: {PHONE_FORMAT}",
+              },
+              {
+                PHONE_FORMAT: configurationProperties.PHONE_FORMAT,
+              },
+            )}
             value={telephone}
             onChange={(e) => handleTelephoneChange(e)}
+            onBlur={(e) => handlePhoneValidation(e)}
+            invalid={!phoneValidation.status}
+            invalidText={phoneValidation.status ? "" : phoneValidation.body}
+          />
+          <TextInput
+            id="updateEmail"
+            labelText={intl.formatMessage({ id: "provider.email" })}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <TextInput
             id="updateEmail"
