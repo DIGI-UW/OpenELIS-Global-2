@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # seed-analyzers.sh — Create harness analyzers via OE REST API
 #
-# Creates 4 analyzers using profile-based defaultConfigId, which triggers:
+# Creates 7 analyzers using profile-based defaultConfigId, which triggers:
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
@@ -94,5 +94,44 @@ create_analyzer "FluoroCycler XT" '{
   "defaultConfigId": "file/fluorocycler-xt"
 }'
 
+# 5. Mindray BC-5380 (HL7/MLLP — hematology)
+create_analyzer "Mindray BC-5380" '{
+  "name": "Mindray BC-5380",
+  "analyzerType": "HEMATOLOGY",
+  "pluginTypeId": "generic-hl7",
+  "ipAddress": "172.21.1.1",
+  "port": 5380,
+  "protocolVersion": "HL7_V2_3_1",
+  "identifierPattern": "MINDRAY.*BC.?5380|BC.?5380",
+  "status": "ACTIVE",
+  "defaultConfigId": "hl7/mindray-bc5380"
+}'
+
+# 6. Mindray BS-200 (HL7/MLLP — chemistry)
+create_analyzer "Mindray BS-200" '{
+  "name": "Mindray BS-200",
+  "analyzerType": "CHEMISTRY",
+  "pluginTypeId": "generic-hl7",
+  "ipAddress": "172.21.1.1",
+  "port": 6001,
+  "protocolVersion": "HL7_V2_3_1",
+  "identifierPattern": "MINDRAY.*BS.?200|BS200",
+  "status": "ACTIVE",
+  "defaultConfigId": "hl7/mindray-bs200"
+}'
+
+# 7. Mindray BS-300 (HL7/MLLP — chemistry)
+create_analyzer "Mindray BS-300" '{
+  "name": "Mindray BS-300",
+  "analyzerType": "CHEMISTRY",
+  "pluginTypeId": "generic-hl7",
+  "ipAddress": "172.21.1.1",
+  "port": 6002,
+  "protocolVersion": "HL7_V2_3_1",
+  "identifierPattern": "MINDRAY.*BS.?300|BS300",
+  "status": "ACTIVE",
+  "defaultConfigId": "hl7/mindray-bs300"
+}'
+
 echo ""
-echo "Done. 4 analyzers seeded."
+echo "Done. 7 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP)."
