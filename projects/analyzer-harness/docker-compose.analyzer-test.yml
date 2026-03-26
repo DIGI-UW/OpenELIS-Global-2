@@ -18,6 +18,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock  # Dynamic analyzer network management
     ports:
       - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
       - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
@@ -27,6 +28,8 @@ services:
     environment:
       - ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}
       - RESPONSE_DELAY_MS=0
+      - BRIDGE_CONTAINER_NAME=analyzer-harness-openelis-analyzer-bridge-1
+      - MOCK_CONTAINER_NAME=analyzer-harness-astm-simulator-1
     command: >
       python -u server.py
       --port 9600
