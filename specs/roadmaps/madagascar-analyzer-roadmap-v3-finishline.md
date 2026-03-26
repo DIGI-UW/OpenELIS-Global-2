@@ -1,7 +1,11 @@
 # Madagascar Analyzer Roadmap V3 (Finish Line)
 
-**Status**: Proposed execution roadmap  
-**Date**: 2026-03-16  
+> **SUPERSEDED** by
+> [`madagascar-analyzer-roadmap-v4-results-first.md`](madagascar-analyzer-roadmap-v4-results-first.md)
+> as of 2026-03-25.
+
+**Status**: Superseded
+**Date**: 2026-03-16
 **Supersedes**:
 
 - `specs/roadmaps/madagascar-analyzer-roadmap-v2.md`
