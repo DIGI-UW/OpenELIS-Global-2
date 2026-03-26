@@ -190,7 +190,7 @@ plugins. Profiles live in `projects/analyzer-profiles/file/`.
 
 ### PROMPT.md for Lane B
 
-```markdown
+````markdown
 # Lane B: HL7 PR Fix and HJRA Preparation
 
 ## Goal
@@ -230,47 +230,53 @@ artifacts for context:
 - Lines 161-169: timeout 30s waiting for bridge to create incoming/ dirs
 - Fix: Pre-create dirs in "Create analyzer import bind mount directories" step
   (line 137-140) BEFORE the bridge starts:
-```
 
-mkdir -p
-projects/analyzer-harness/volume/analyzer-imports/quantstudio-5/incoming mkdir
--p projects/analyzer-harness/volume/analyzer-imports/quantstudio-7/incoming
-mkdir -p
-projects/analyzer-harness/volume/analyzer-imports/fluorocycler-xt/incoming
-
+```bash
+mkdir -p projects/analyzer-harness/volume/analyzer-imports/quantstudio-5/incoming
+mkdir -p projects/analyzer-harness/volume/analyzer-imports/quantstudio-7/incoming
+mkdir -p projects/analyzer-harness/volume/analyzer-imports/fluorocycler-xt/incoming
 ```
+````
+
 Keep existing timeout loop as safety net but increase to 120s.
 
 ### B2. Fix missing HL7 test catalog mappings
+
 - File: `projects/analyzer-harness/seed-analyzers.sh`
 - Error: PluginAnalyzerService.getIdForTestName: Unable to find test (~13x)
 - Fix: Extend seed-analyzers.sh to create HL7 analyzer instances with test
-mappings from their profiles:
+  mappings from their profiles:
 - `projects/analyzer-profiles/hl7/mindray-bc5380.json` (13 tests)
 - `projects/analyzer-profiles/hl7/mindray-bs200.json`
 - `projects/analyzer-profiles/hl7/mindray-bs300.json`
 
 ### B3. Resolve mock-server #18 dependency
+
 - `analyzer-mock-server#18` (strict 013 HL7 mock support) open since 3/10.
 - Check: Does #3035's mock-server submodule pointer already include needed
-changes, or must #18 merge first?
+  changes, or must #18 merge first?
 - If needed: merge #18, update submodule pointer.
 
 ### B4. Push fixes and verify CI green
+
 - Run: `mvn spotless:apply` before push
 - All 8 CI checks must pass, especially "03 Checkpoint - E2E"
 
 ### B5. Prepare HJRA deployment runbook
+
 Create `specs/013-hjra-hl7-stream-alignment/hjra-deployment-runbook.md`:
+
 - MLLP port assignments (BC-5380: 5380, BS-200/BS-300: per profile)
 - Bridge MLLP forwarding configuration
 - Mindray BS-series = **HL7 PUSH** (ORU^R01 to OE, ACK back)
 - Windows XP → Linux VPN gateway → bridge → OpenELIS path
 
 ### B6. Answer Romain's Mindray push/pull question on Slack
+
 BS-series = HL7 push (analyzer sends ORU^R01, OE sends ACK).
 
 ## Checkpoint (all must be true)
+
 - [ ] Bridge dir creation no longer causes timeout in CI
 - [ ] HL7 analyzers have test catalog mappings in seed script
 - [ ] Mock-server dependency resolved
@@ -279,12 +285,14 @@ BS-series = HL7 push (analyzer sends ORU^R01, OE sends ACK).
 - [ ] HJRA deployment runbook created
 
 ## Constraints
+
 - Do NOT modify code outside 013 scope
 - Do NOT touch profiles in astm/ or file/ directories
 - Do NOT touch 014 code (handled on another machine)
 - Branch is already rebased — do NOT rebase unless develop moves
 - Run formatting: `mvn spotless:apply` before every push
-```
+
+````
 
 ### Lane B Tasks
 
@@ -320,7 +328,7 @@ machine) AND PR #3035 merge (Lane B)
 # Only after both #3103 and #3035 are merged to develop:
 git fetch origin
 git worktree add ../wt-lane-c-astm origin/feat/012-ogc-337-generic-astm-plugin-profiles-m3-bidi-genexpert
-```
+````
 
 ### PROMPT.md for Lane C (created when worktree is set up)
 
