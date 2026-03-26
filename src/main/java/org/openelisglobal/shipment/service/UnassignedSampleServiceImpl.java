@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service layer for unassigned referral samples Uses the existing referral
- * table instead of a separate unassigned_sample table
  */
 @Service
 @Transactional
