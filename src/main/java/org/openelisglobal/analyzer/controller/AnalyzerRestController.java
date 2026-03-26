@@ -31,9 +31,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
-import org.openelisglobal.analyzer.valueholder.SerialPortConfiguration;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -1022,112 +1020,10 @@ public class AnalyzerRestController extends BaseRestController {
         }
     }
 
-    private Map<String, Object> testFileConfiguration(Analyzer analyzer) {
-        Map<String, Object> response = new LinkedHashMap<>();
-
-        try {
-            // Check if file import configuration exists
-            Optional<FileImportConfiguration> fileConfigOpt = fileImportService
-                    .getByAnalyzerId(Integer.valueOf(analyzer.getId()));
-
-            if (!fileConfigOpt.isPresent()) {
-                response.put("success", false);
-                response.put("message", "File import configuration not found for analyzer");
-                return response;
-            }
-
-            FileImportConfiguration fileConfig = fileConfigOpt.get();
-            String importDir = fileConfig.getImportDirectory();
-
-            if (importDir == null || importDir.trim().isEmpty()) {
-                response.put("success", false);
-                response.put("message", "Import directory not configured");
-                return response;
-            }
-
-            // Verify directory exists (using java.nio.file.Path API)
-            Path directory = Path.of(importDir);
-            if (Files.exists(directory) && Files.isDirectory(directory) && Files.isReadable(directory)) {
-                response.put("success", true);
-                response.put("message", "File import directory accessible: " + importDir);
-                response.put("importDirectory", importDir);
-                response.put("filePattern", fileConfig.getFilePattern());
-            } else {
-                response.put("success", false);
-                response.put("message", "Import directory not accessible: " + importDir);
-                response.put("importDirectory", importDir);
-            }
-
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Error checking file configuration: " + e.getMessage());
-            logger.error("Error testing file configuration for analyzer {}", analyzer.getId(), e);
-        }
-
-        return response;
-    }
-
-    /**
-     * Test serial analyzer configuration. Verifies that the serial port
-     * configuration exists and the device node is accessible.
-     *
-     * <p>
-     * <b>Platform note:</b> Serial port detection relies on *NIX device nodes (e.g.
-     * {@code /dev/ttyS0}, {@code /dev/ttyUSB0}). On Windows, detection would
-     * require javax.comm or jSerialComm; this method will always report the port as
-     * inaccessible on non-*NIX systems.
-     *
-     * @param analyzerId Analyzer ID
-     * @return Map with success status and message
-     */
-    private Map<String, Object> testSerialConfiguration(String analyzerId) {
-        Map<String, Object> response = new LinkedHashMap<>();
-
-        try {
-            Optional<SerialPortConfiguration> serialConfigOpt = serialPortService
-                    .getByAnalyzerId(Integer.valueOf(analyzerId));
-
-            if (!serialConfigOpt.isPresent()) {
-                response.put("success", false);
-                response.put("message", "Serial port configuration not found for analyzer");
-                return response;
-            }
-
-            SerialPortConfiguration serialConfig = serialConfigOpt.get();
-            String portName = serialConfig.getPortName();
-
-            if (portName == null || portName.trim().isEmpty()) {
-                response.put("success", false);
-                response.put("message", "Serial port name not configured");
-                return response;
-            }
-
-            // Check if port device node exists (*NIX only — see Javadoc)
-            boolean portExists = Files.exists(Path.of(portName));
-
-            if (portExists) {
-                response.put("success", true);
-                response.put("message", "Serial port accessible: " + portName);
-                response.put("portName", portName);
-                response.put("baudRate", serialConfig.getBaudRate());
-                response.put("dataBits", serialConfig.getDataBits());
-                response.put("parity", serialConfig.getParity());
-                response.put("stopBits", serialConfig.getStopBits());
-            } else {
-                response.put("success", false);
-                response.put("message", "Serial port not accessible: " + portName
-                        + " (check hardware connection or virtual serial setup)");
-                response.put("portName", portName);
-            }
-
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Error checking serial configuration: " + e.getMessage());
-            logger.error("Error testing serial configuration for analyzer {}", analyzerId, e);
-        }
-
-        return response;
-    }
+    // testFileConfiguration() and testSerialConfiguration() removed — replaced
+    // by testFileViaBridge() and testSerialViaBridge() which route through the
+    // bridge's /api/test-connectivity endpoint. OE never checks file/serial
+    // transports directly — the bridge owns those transports.
 
     /**
      * POST /rest/analyzer/analyzers/{id}/query Start an asynchronous query job for
