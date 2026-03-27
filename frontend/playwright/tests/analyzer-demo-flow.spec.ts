@@ -36,9 +36,17 @@ import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 import type { AnalyzerTestConfig } from "../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = "http://localhost:8085";
-const ASTM_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
-const MLLP_DESTINATION = "mllp://openelis-analyzer-bridge:2575";
 const RESULTS_TIMEOUT = 90_000;
+
+// Per-analyzer bridge IPs on stable mock networks (see analyzer_network_manager.py FIXED_SUBNETS).
+// The mock pushes FROM its per-analyzer IP so the bridge can identify the source.
+// Bridge gets .2 on each subnet; mock gets .10.
+const BRIDGE_IP = {
+  genexpert: "10.42.20.2",
+  bc5380: "10.42.21.2",
+  bs200: "10.42.22.2",
+  bs300: "10.42.23.2",
+};
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 const HOST_IMPORTS_BASE = path.join(
@@ -60,7 +68,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "ASTM",
       simulatorUrl: SIMULATOR_URL,
       template: "genexpert_astm",
-      destination: ASTM_DESTINATION,
+      destination: `tcp://${BRIDGE_IP.genexpert}:12001`,
     },
     expectedResults: [{ result: "NEGATIVE" }],
   },
@@ -75,7 +83,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "HL7",
       simulatorUrl: SIMULATOR_URL,
       template: "mindray_bc5380",
-      destination: MLLP_DESTINATION,
+      destination: `mllp://${BRIDGE_IP.bc5380}:2575`,
     },
     expectedResults: [
       { result: "7.5", testName: "WBC" },
@@ -95,7 +103,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "HL7",
       simulatorUrl: SIMULATOR_URL,
       template: "mindray_bs200",
-      destination: MLLP_DESTINATION,
+      destination: `mllp://${BRIDGE_IP.bs200}:2575`,
     },
     expectedResults: [
       { result: "1.1", testName: "CREA" },
@@ -115,7 +123,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "HL7",
       simulatorUrl: SIMULATOR_URL,
       template: "mindray_bs300",
-      destination: MLLP_DESTINATION,
+      destination: `mllp://${BRIDGE_IP.bs300}:2575`,
     },
     expectedResults: [
       { result: "0.8", testName: "CREA" },

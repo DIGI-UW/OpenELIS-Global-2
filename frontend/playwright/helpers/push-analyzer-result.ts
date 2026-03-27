@@ -76,8 +76,11 @@ export async function pushAnalyzerResult(
         `${push.filePrefix}${Date.now()}${ext}`,
       );
 
-      // Copy fixture verbatim — filename is already unique (timestamp prefix)
-      fs.copyFileSync(fixturePath, destFile);
+      // Copy fixture and append unique bytes so the bridge's content-hash
+      // deduplication doesn't skip it on re-runs. Excel/BIFF ignores trailing data.
+      const fixtureData = fs.readFileSync(fixturePath);
+      const uniqueSuffix = Buffer.from(`\n<!-- e2e-run-${Date.now()} -->`);
+      fs.writeFileSync(destFile, Buffer.concat([fixtureData, uniqueSuffix]));
 
       await presentation.pause(2_000); // Wait for file watcher to pick up
       return null; // FILE protocol doesn't return sample_id from mock

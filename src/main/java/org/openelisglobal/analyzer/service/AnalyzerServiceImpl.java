@@ -103,21 +103,20 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             update(analyzer);
         }
 
-        persistTestMappings(analyzer.getAnalyzerType() != null ? analyzer.getAnalyzerType().getId() : null,
-                testMappings, existingMappings);
+        persistTestMappings(analyzer.getId(), testMappings, existingMappings);
     }
 
     @Override
     @Transactional
-    public void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
+    public void persistTestMappings(String analyzerId, List<AnalyzerTestMapping> testMappings,
             List<AnalyzerTestMapping> existingMappings) {
-        if (analyzerTypeId == null) {
+        if (analyzerId == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
-                    "analyzerTypeId is null — skipping " + testMappings.size() + " mapping(s)");
+                    "analyzerId is null — skipping " + testMappings.size() + " mapping(s)");
             return;
         }
         for (AnalyzerTestMapping mapping : testMappings) {
-            mapping.setAnalyzerTypeId(analyzerTypeId);
+            mapping.setAnalyzerId(analyzerId);
             if (newMapping(mapping, existingMappings)) {
                 mapping.setSysUserId("1");
                 analyzerMappingService.insert(mapping);
@@ -132,7 +131,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     private boolean newMapping(AnalyzerTestMapping mapping, List<AnalyzerTestMapping> existingMappings) {
         for (AnalyzerTestMapping existingMap : existingMappings) {
-            if (Objects.equals(existingMap.getAnalyzerTypeId(), mapping.getAnalyzerTypeId())
+            if (Objects.equals(existingMap.getAnalyzerId(), mapping.getAnalyzerId())
                     && existingMap.getAnalyzerTestName().equals(mapping.getAnalyzerTestName())) {
                 return false;
             }
@@ -400,13 +399,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
             org.openelisglobal.test.valueholder.Test test = tests.get(0);
 
-            String typeId = (analyzer != null && analyzer.getAnalyzerType() != null)
-                    ? analyzer.getAnalyzerType().getId()
-                    : null;
-
             AnalyzerTestMapping atm = new AnalyzerTestMapping();
             atm.setAnalyzerId(analyzerId);
-            atm.setAnalyzerTypeId(typeId);
             atm.setAnalyzerTestName(analyzerCode);
             atm.setTestId(test.getId());
             atm.setSysUserId(sysUserId);
@@ -414,16 +408,15 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             try {
                 if (newMapping(atm, dbTestMappings)) {
                     analyzerMappingService.insert(atm);
-                    AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
-                            typeId);
+                    dbTestMappings.add(atm);
                     created++;
                 } else {
+                    // Update existing mapping if test_id changed (e.g., profile updated)
                     for (AnalyzerTestMapping existing : dbTestMappings) {
-                        if (Objects.equals(existing.getAnalyzerTypeId(), atm.getAnalyzerTypeId())
+                        if (Objects.equals(existing.getAnalyzerId(), atm.getAnalyzerId())
                                 && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
                                 && !Objects.equals(existing.getTestId(), atm.getTestId())) {
                             existing.setTestId(atm.getTestId());
-                            existing.setAnalyzerId(atm.getAnalyzerId());
                             existing.setSysUserId(sysUserId);
                             analyzerMappingService.update(existing);
                             created++;

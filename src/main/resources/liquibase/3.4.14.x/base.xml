@@ -13,4 +13,7 @@
 
   <!-- 013-hjra-hl7-stream-alignment: CommunicationMode for test-connection parity -->
   <include relativeToChangelogFile="true" file="005-analyzer-communication-mode.xml"/>
+
+  <!-- OGC-492: Per-analyzer test mappings (was per-type, broke generic plugins) -->
+  <include relativeToChangelogFile="true" file="006-per-analyzer-test-mappings.xml"/>
 </databaseChangeLog>

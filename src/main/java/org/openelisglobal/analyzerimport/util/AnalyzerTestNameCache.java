@@ -19,8 +19,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.analyzer.service.AnalyzerTypeService;
-import org.openelisglobal.analyzer.valueholder.AnalyzerType;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -31,7 +31,6 @@ import org.openelisglobal.test.valueholder.Test;
 
 public class AnalyzerTestNameCache {
 
-    protected AnalyzerTypeService analyzerTypeService = SpringContext.getBean(AnalyzerTypeService.class);
     protected AnalyzerTestMappingService analyzerTestMappingService = SpringContext
             .getBean(AnalyzerTestMappingService.class);
     protected TestService testService = SpringContext.getBean(TestService.class);
@@ -110,16 +109,11 @@ public class AnalyzerTestNameCache {
     }
 
     /**
-     * Register a plugin's analyzer type in the cache.
-     *
-     * @param analyzerName   The plugin/analyzer name
-     * @param analyzerTypeId The AnalyzerType ID (not a physical Analyzer ID)
+     * Register an analyzer name in the request-to-DB name map. Used by legacy
+     * plugins to register their name for URL-based lookups.
      */
-    public void registerPluginAnalyzer(String analyzerName, String analyzerTypeId) {
+    public void registerAnalyzerName(String analyzerName) {
         requestTODBName.put(analyzerName, analyzerName);
-        if (isMapped) {
-            analyzerNameToIdMap.put(analyzerName, analyzerTypeId);
-        }
     }
 
     private synchronized void insureMapsLoaded() {
@@ -139,50 +133,44 @@ public class AnalyzerTestNameCache {
     }
 
     /**
-     * Load test mappings into two indexes: 1. Legacy type-based index
-     * (analyzerNameToTestNameMap) keyed by AnalyzerType name 2. Per-analyzer index
-     * (analyzerIdToTestNameMap) keyed by Analyzer ID (OGC-492)
+     * Load test mappings keyed by analyzer. Two indexes: - analyzerIdToTestNameMap:
+     * analyzerId → testCode → MappedTestName (primary) - analyzerNameToTestNameMap:
+     * analyzerName → testCode → MappedTestName (for legacy readers that use name
+     * constants like SYSMEX_XT2000_NAME)
      */
     private void loadMaps() {
-        List<AnalyzerType> typeList = analyzerTypeService.getAll();
         analyzerNameToTestNameMap.clear();
         analyzerIdToTestNameMap.clear();
-
         analyzerNameToIdMap = new HashMap<>();
 
-        // Build type name → type ID map (legacy index)
-        Map<String, AnalyzerType> typeIdToType = new HashMap<>();
-        for (AnalyzerType type : typeList) {
-            analyzerNameToIdMap.put(type.getName(), type.getId());
-            analyzerNameToTestNameMap.put(type.getName(), new HashMap<String, MappedTestName>());
-            typeIdToType.put(type.getId(), type);
+        // Build analyzer ID → name map
+        AnalyzerService analyzerServiceLocal = SpringContext.getBean(AnalyzerService.class);
+        List<Analyzer> analyzerList = analyzerServiceLocal.getAll();
+        Map<String, String> idToName = new HashMap<>();
+        for (Analyzer analyzer : analyzerList) {
+            idToName.put(analyzer.getId(), analyzer.getName());
+            analyzerNameToIdMap.put(analyzer.getName(), analyzer.getId());
         }
 
-        // Load test mappings into both indexes
+        // Load all test mappings — PK is now (analyzer_id, analyzer_test_name)
         List<AnalyzerTestMapping> mappingList = analyzerTestMappingService.getAll();
 
         for (AnalyzerTestMapping mapping : mappingList) {
+            String analyzerId = mapping.getAnalyzerId();
+            if (analyzerId == null || analyzerId.isEmpty()) {
+                continue;
+            }
+
             MappedTestName mappedTestName = createMappedTestName(testService, mapping);
 
-            String typeId = mapping.getAnalyzerTypeId();
-            if (typeId == null) {
-                continue;
-            }
-            AnalyzerType type = typeIdToType.get(typeId);
-            if (type == null) {
-                continue;
-            }
+            // Primary index: by analyzer ID
+            analyzerIdToTestNameMap.computeIfAbsent(analyzerId, k -> new HashMap<>()).put(mapping.getAnalyzerTestName(),
+                    mappedTestName);
 
-            // Legacy type-based index
-            Map<String, MappedTestName> testMap = analyzerNameToTestNameMap.get(type.getName());
-            if (testMap != null) {
-                testMap.put(mapping.getAnalyzerTestName(), mappedTestName);
-            }
-
-            // Per-analyzer index (keyed by analyzer_id when available)
-            String analyzerId = mapping.getAnalyzerId();
-            if (analyzerId != null && !analyzerId.isEmpty()) {
-                analyzerIdToTestNameMap.computeIfAbsent(analyzerId, k -> new HashMap<>())
+            // Secondary index: by analyzer name (for legacy readers)
+            String analyzerName = idToName.get(analyzerId);
+            if (analyzerName != null) {
+                analyzerNameToTestNameMap.computeIfAbsent(analyzerName, k -> new HashMap<>())
                         .put(mapping.getAnalyzerTestName(), mappedTestName);
             }
         }
@@ -193,11 +181,7 @@ public class AnalyzerTestNameCache {
         MappedTestName mappedTest = new MappedTestName();
         mappedTest.setAnalyzerTestName(mapping.getAnalyzerTestName());
         mappedTest.setTestId(mapping.getTestId());
-        // Use actual analyzer_id when available, fall back to type_id for legacy
-        // (OGC-492)
-        mappedTest.setAnalyzerId(
-                mapping.getAnalyzerId() != null && !mapping.getAnalyzerId().isEmpty() ? mapping.getAnalyzerId()
-                        : mapping.getAnalyzerTypeId());
+        mappedTest.setAnalyzerId(mapping.getAnalyzerId());
         if (mapping.getTestId() != null) {
             Test test = new Test();
             test.setId(mapping.getTestId());

@@ -399,7 +399,7 @@ public class AnalyzerResultsController extends BaseController {
 
             String analyzerTestName = analyzerResult.getTestName();
             MappedTestName mappedTestName = AnalyzerTestNameCache.getInstance()
-                    .getMappedTest(getAnalyzerTypeNameFromRequest(), analyzerTestName);
+                    .getMappedTestByAnalyzerId(getAnalyzerIdFromRequest(), analyzerTestName);
             if (mappedTestName != null) {
                 analyzerResult.setTestName(mappedTestName.getOpenElisTestName());
                 analyzerResult.setTestId(mappedTestName.getTestId());
@@ -1037,8 +1037,10 @@ public class AnalyzerResultsController extends BaseController {
             sampleItem.setSysUserId(getSysUserId(request));
             sampleItem.setSortOrder(Integer.toString(maxSampleItemSortOrder + 1));
             sampleItem.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-            TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleIds.get(0));
-            sampleItem.setTypeOfSample(typeOfSample);
+            if (!typeOfSampleIds.isEmpty()) {
+                TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleIds.get(0));
+                sampleItem.setTypeOfSample(typeOfSample);
+            }
         }
         return sampleItem;
     }
@@ -1138,7 +1140,7 @@ public class AnalyzerResultsController extends BaseController {
                         analysis.setSampleItem(sampleItem);
                     }
                 }
-                if (sampleItem == null) {
+                if (sampleItem == null && !typeOfSamples.isEmpty()) {
                     sampleItem = new SampleItem();
                     sampleItem.setSysUserId(getSysUserId(request));
                     sampleItem.setSortOrder("1");
@@ -1258,8 +1260,9 @@ public class AnalyzerResultsController extends BaseController {
             }
         }
 
-        return typeOfSampleTestService.getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId()).get(0)
-                .getTypeOfSampleId();
+        List<TypeOfSampleTest> sampleTests = typeOfSampleTestService
+                .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
+        return sampleTests.isEmpty() ? null : sampleTests.get(0).getTypeOfSampleId();
     }
 
     private void createAndAddItems_Analysis_Results(List<AnalyzerResultItem> groupedAnalyzerResultItems,
