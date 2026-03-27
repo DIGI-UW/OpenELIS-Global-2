@@ -362,10 +362,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     @SuppressWarnings("unchecked")
     public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
+
         analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
 
         Object mappingsObj = config.get("default_test_mappings");
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                "default_test_mappings type: " + (mappingsObj != null ? mappingsObj.getClass().getSimpleName() : "null")
+                        + ", is List: " + (mappingsObj instanceof List));
         if (!(mappingsObj instanceof List)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                    "No default_test_mappings list found in config — skipping");
             return;
         }
 
