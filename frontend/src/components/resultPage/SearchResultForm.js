@@ -1,45 +1,69 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
+import { ArrowLeft, ArrowRight, Copy } from "@carbon/icons-react";
+import {
+    Button,
+    Checkbox,
+    Column,
+    Form,
+    Grid,
+    Link,
+    Loading,
+    Pagination,
+    Select,
+    SelectItem,
+    Stack,
+    TextArea,
+    TextInput
+} from "@carbon/react";
+import { Field, Formik } from "formik";
+import { useContext, useEffect, useRef, useState } from "react";
+import DataTable from "react-data-table-component";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import config from "../../config.json";
+import CascadingMultiSelect from "../common/cascadingMultiSelect";
+import CustomDatePicker from "../common/CustomDatePicker";
+import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import ResultMultiSelect from "../common/multiSelect";
+import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
+import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
+import SearchPatientForm from "../patient/SearchPatientForm";
+import StorageLocationSelector from "../storage/StorageLocationSelector";
 import "../Style.css";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-  convertAlphaNumLabNumForDisplay,
-  Roles,
+    convertAlphaNumLabNumForDisplay,
+    getFromOpenElisServer,
+    postToOpenElisServerJsonResponse,
+    Roles,
 } from "../utils/Utils";
-import {
-  Form,
-  TextInput,
-  TextArea,
-  Checkbox,
-  Button,
-  Grid,
-  Column,
-  Stack,
-  Pagination,
-  Select,
-  SelectItem,
-  Loading,
-  Link,
-  FileUploader,
-} from "@carbon/react";
-import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
-import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import DataTable from "react-data-table-component";
-import { Formik, Field } from "formik";
-import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { NotificationContext } from "../layout/Layout";
-import SearchPatientForm from "../patient/SearchPatientForm";
-import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
-import { ConfigurationContext } from "../layout/Layout";
-import config from "../../config.json";
-import CustomDatePicker from "../common/CustomDatePicker";
-import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
-import ResultMultiSelect from "../common/multiSelect";
-import CascadingMultiSelect from "../common/cascadingMultiSelect";
+import ReferredOutTests from "./resultsReferredOut/ReferredOutTests";
+  // --- Multiselect validation ---
+  const validateMultiSelectResults = (value, row) => {
+    // value is a JSON string: { 0: "id1,id2,..." }
+    let validation = { isInvalid: false, isBlank: false };
+    let parsed = {};
+    try {
+      parsed = JSON.parse(value || "{}")
+    } catch {
+      validation.isInvalid = true;
+      validation.isBlank = true;
+      return validation;
+    }
+    // Required: at least one selection if field is required
+    const required = row.required || row.isRequired;
+    const selected = Object.values(parsed).flatMap(v => v.split(",")).filter(Boolean);
+    if (required && selected.length === 0) {
+      validation.isInvalid = true;
+      validation.isBlank = true;
+    }
+    // Optionally: check if all selected values are in dictionaryResults
+    const validIds = (row.dictionaryResults || []).map(d => String(d.id));
+    if (selected.some(id => !validIds.includes(id))) {
+      validation.isInvalid = true;
+    }
+    return validation;
+  };
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -1169,27 +1193,81 @@ export function SearchResults(props) {
               </Select>
             );
 
-          case "M":
-            return (
-              <ResultMultiSelect
-                id={`multiResultValue${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
-            );
 
-          case "C":
+          case "M": {
+            // Multiselect result
+            const validation = validationState[row.id] || {};
             return (
-              <CascadingMultiSelect
-                id={`multiResult${row.id}`}
-                name={`testResult[${row.id}].multiSelectResultValues`}
-                dictionaryValues={row.dictionaryResults}
-                value={row.multiSelectResultValues}
-                onChange={(e) => handleChange(e, row.id)}
-              />
+              <div>
+                <ResultMultiSelect
+                  id={`multiResultValue${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => {
+                    // Validate and update state
+                    const validation = validateMultiSelectResults(e.target.value, row);
+                    setValidationState((prev) => ({ ...prev, [row.id]: validation }));
+                    handleChange(e, row.id);
+                    if (validation.isInvalid) {
+                      addNotification({
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message: validation.isBlank
+                          ? intl.formatMessage({ id: "result.required.msg", defaultMessage: "Selection required" })
+                          : intl.formatMessage({ id: "result.invalidSelection.msg", defaultMessage: "Invalid selection" }),
+                        kind: NotificationKinds.error,
+                      });
+                      setNotificationVisible(true);
+                    }
+                  }}
+                />
+                {validation.isInvalid && (
+                  <div style={{ color: "#da1e28", marginTop: 4 }}>
+                    {validation.isBlank
+                      ? intl.formatMessage({ id: "result.required.msg", defaultMessage: "Selection required" })
+                      : intl.formatMessage({ id: "result.invalidSelection.msg", defaultMessage: "Invalid selection" })}
+                  </div>
+                )}
+              </div>
             );
+          }
+
+          case "C": {
+            // Cascading multiselect result
+            const validation = validationState[row.id] || {};
+            return (
+              <div>
+                <CascadingMultiSelect
+                  id={`multiResult${row.id}`}
+                  name={`testResult[${row.id}].multiSelectResultValues`}
+                  dictionaryValues={row.dictionaryResults}
+                  value={row.multiSelectResultValues}
+                  onChange={(e) => {
+                    const validation = validateMultiSelectResults(e.target.value, row);
+                    setValidationState((prev) => ({ ...prev, [row.id]: validation }));
+                    handleChange(e, row.id);
+                    if (validation.isInvalid) {
+                      addNotification({
+                        title: intl.formatMessage({ id: "notification.title" }),
+                        message: validation.isBlank
+                          ? intl.formatMessage({ id: "result.required.msg", defaultMessage: "Selection required" })
+                          : intl.formatMessage({ id: "result.invalidSelection.msg", defaultMessage: "Invalid selection" }),
+                        kind: NotificationKinds.error,
+                      });
+                      setNotificationVisible(true);
+                    }
+                  }}
+                />
+                {validation.isInvalid && (
+                  <div style={{ color: "#da1e28", marginTop: 4 }}>
+                    {validation.isBlank
+                      ? intl.formatMessage({ id: "result.required.msg", defaultMessage: "Selection required" })
+                      : intl.formatMessage({ id: "result.invalidSelection.msg", defaultMessage: "Invalid selection" })}
+                  </div>
+                )}
+              </div>
+            );
+          }
 
           case "N":
             return (
