@@ -374,7 +374,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         Analyzer analyzer = get(analyzerId);
         List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
         for (Map<String, Object> mapping : mappings) {
-            String analyzerCode = (String) mapping.get("analyzer_code");
+            String analyzerCode = (String) mapping.get("test_code");
             String loinc = (String) mapping.get("loinc");
 
             if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
