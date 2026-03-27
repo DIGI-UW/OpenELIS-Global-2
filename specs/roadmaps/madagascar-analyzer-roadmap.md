@@ -68,6 +68,13 @@ GeneXpert HL7 (OGC-336).
 | ASTM | GeneXpert                        | Mock → ASTM TCP → Bridge → OE → Results page   | Ready    |
 | FILE | QuantStudio 5/7, FluoroCycler XT | File drop → Bridge watcher → OE → Results page | Ready    |
 
+All 7 analyzers covered in unified `analyzer-demo-flow.spec.ts` (FILE analyzers
+restored from commented-out state with correct fixture paths).
+
+**Architecture note**: FILE path currently has OE parsing xlsx directly via
+`ExcelAnalyzerReader`. Bridge detects and forwards the raw binary. Post-MVP
+unification will move parsing to bridge, delivering FHIR R4 Bundles to OE.
+
 ### Per-Analyzer Status
 
 | Analyzer             | Protocol     | Profile                | Status             | Notes                                  |
@@ -90,10 +97,13 @@ GeneXpert HL7 (OGC-336).
 
 ### Immediate (this week)
 
-- [ ] PR #3195 merged (HL7 test-connection + CommunicationMode)
+- [ ] PR #3195 merged (HL7 test-connection + CommunicationMode + Copilot review
+      fixes)
 - [ ] HJRA site networking configured (Mindray analyzers → bridge MLLP)
 - [ ] Tecan F50 / Multiskan FC profiles validated with Herbert's site samples
 - [ ] Wondfo Finecare assessment (ASTM capture needed)
+- [ ] Add `communication` blocks to remaining 7 ASTM/HL7 profiles (only 5 of 12
+      have them)
 
 ### Video Evidence
 
@@ -104,6 +114,10 @@ GeneXpert HL7 (OGC-336).
 
 ### Post-MVP
 
+- [ ] **Unified FHIR R4 bridge interface** — bridge parses all formats (ASTM,
+      HL7, xlsx, CSV), sends FHIR R4 transaction Bundles (DiagnosticReport +
+      Observation) to OE. OE becomes format-agnostic. See
+      `specs/roadmaps/pr-3195-remediation-plan.md` Phase 3B.
 - [ ] ASTM bidirectional (#3032, deferred) — query-initiated result requests
 - [ ] HL7 bidirectional — ORM^O01 worklist download (OGC-327), QRY^Q02 order
       download (OGC-326)
@@ -113,6 +127,9 @@ GeneXpert HL7 (OGC-336).
       analyzerCode)
 - [ ] Stago ST art (instrument down on-site)
 - [ ] DNA Technology DT-Prime XML parser
+- [ ] TLS consolidation — extract shared `BridgeSslUtil`, add
+      `analyzer.bridge.tls.verify` config
+- [ ] `@Scheduled` periodic bridge sync (currently only fires on OE startup)
 
 ---
 

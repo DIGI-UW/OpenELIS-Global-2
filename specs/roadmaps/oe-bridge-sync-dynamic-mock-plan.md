@@ -140,59 +140,34 @@ Analyzer entity as the runtime representation.
 - OE displays bridge-reported state in admin UI
 - No profile schema changes needed — just transport layer improvements
 
-## What Remains
+## Completion Status (updated 2026-03-27)
 
-### Step 1: OE↔Bridge State Sync (production reliability)
+### Step 1: OE↔Bridge State Sync — DONE ✅
 
-**Problem**: Bridge is stateless (in-memory `LinkedHashMap`). OE is the
-authority (PostgreSQL). No reconciliation mechanism. Bridge restart = lost
-registrations. OE restart re-registers once, but if bridge is down at that
-moment, registrations are silently lost.
+**Bridge side** (submodule, PR #25):
 
-**Pattern**:
-[Third-Party Registration](https://microservices.io/patterns/3rd-party-registration.html)
-with periodic reconciliation. OE pushes its complete analyzer state to the
-bridge on a schedule.
+- `PUT /api/analyzers/sync` — full-state idempotent registry replacement
+- `AnalyzerRegistryBootstrap` — pulls from OE on bridge startup
+- Thread-safe `syncAll()` with atomic reference swap
+- Accurate added/updated/removed counts via `.equals()` comparison
+- Stale FILE watcher cleanup on sync
 
-**Bridge side** (submodule):
+**OE side** (PR #3195):
 
-- New endpoint: `PUT /api/analyzers/sync` — accepts full list of analyzer
-  registrations, replaces in-memory registry entirely (idempotent full-state
-  push, not incremental register/unregister)
-- Response: `{"synced": N, "removed": M}` showing what changed
+- `BridgeRegistrationService.syncAll()` method
+- `AnalyzerBridgeStartupRegistrar` re-registers on OE startup
 
-**OE side**:
+**Still pending**: `@Scheduled` periodic re-sync (currently only fires on
+startup).
 
-- `AnalyzerBridgeStartupRegistrar` already exists and re-registers on OE startup
-  via `@EventListener(ContextRefreshedEvent)`. What's MISSING is periodic
-  re-sync for bridge restarts while OE is running.
-- Add `@Scheduled(fixedRateString = "${analyzer.bridge.sync.interval:60000}")`
-  method to `AnalyzerBridgeStartupRegistrar` that calls
-  `PUT /api/analyzers/sync` with full analyzer state from DB
-- Keep `registerWithBridgeAsync` for immediate registration on analyzer creation
-  (fast feedback), but periodic sync is the reliability layer
-- If bridge is down, next scheduled sync will catch up (no silent loss)
-- Log sync results: "Synced N analyzers with bridge (M added, K removed)"
+### Step 2: Direct Socket Code Migration — DONE ✅
 
-**Why periodic sync, not events:**
+`AnalyzerQueryServiceImpl.queryAnalyzerASTM()` has been **fully removed**.
+Replaced by `queryViaBridge()` which POSTs to bridge's `POST /api/query`. The
+bridge performs the ASTM ENQ/ACK/frame exchange — OE never opens direct sockets
+to analyzers.
 
-- Simple, stateless, idempotent
-- Handles bridge restarts automatically (next sync pushes full state)
-- Handles OE restarts automatically (startup = first sync)
-- No need for event bus, message queue, or webhook infrastructure
-- 60s is fast enough for lab operations (analyzer config changes are rare)
-
-### Step 2: Flag Direct Socket Code in AnalyzerQueryServiceImpl (DEFERRED)
-
-**Problem**: `AnalyzerQueryServiceImpl.queryAnalyzerASTM()` (lines 254-392)
-opens direct TCP to analyzers. Production violation of bridge-mandatory.
-
-**NOT in this PR** — this is the ASTM bidirectional query feature (PR #3032,
-deferred). Full migration requires a bridge `POST /api/query` endpoint.
-
-**This PR**: Add
-`// TODO(OGC-XXX): migrate to bridge — direct socket violates bridge-mandatory architecture`
-comment + create Jira ticket for tracking.
+Bridge endpoint: `AnalyzerQueryController.java` at `POST /api/query`.
 
 ### Step 3: Dynamic Docker Networks for Mock Analyzers
 
@@ -213,34 +188,31 @@ Validated on running harness:
 **Requires**: Docker socket mount, `docker` Python package, env vars for
 container names.
 
-### Step 4: Dead Code Removal
+### Step 4: Dead Code Removal — DONE ✅
 
-Remove methods that bypass bridge:
+Removed methods that bypass bridge:
 
-- `testFileConfiguration()` in AnalyzerRestController (replaced by
-  testFileViaBridge)
-- `testSerialConfiguration()` in AnalyzerRestController (replaced by
-  testSerialViaBridge)
-- Any remaining `if bridge not configured` fallback paths — bridge is mandatory,
-  fail hard if not configured
+- `testFileConfiguration()` removed (replaced by `testFileViaBridge()`)
+- `testSerialConfiguration()` removed (replaced by `testSerialViaBridge()`)
 
-### Step 5: Passing E2E Demo Tests + Shareable Video Report
+### Step 5: E2E Demo Tests — IN PROGRESS
 
-**End goal**: CI-green PR with Playwright demo videos for all supported
-Madagascar analyzers, packaged as a shareable HTML report.
+**Unified `analyzer-demo-flow.spec.ts` now covers 7 analyzers:**
 
-**Analyzers to cover** (unified `analyzer-demo-flow.spec.ts`):
+- Mindray BC-5380 (HL7/MLLP) — full flow with dynamic sample_id ✅
+- Mindray BS-200 (HL7/MLLP) — same ✅
+- Mindray BS-300 (HL7/MLLP) — same ✅
+- GeneXpert ASTM — same ✅
+- QuantStudio 7 (FILE/xlsx) — file drop with known fixture IDs ✅ (restored)
+- QuantStudio 5 (FILE/xls) — same ✅ (restored)
+- FluoroCycler XT (FILE/xlsx) — same ✅ (restored)
 
-- Mindray BC-5380 (HL7/MLLP) — full flow: find → test-connection → push → verify
-  → accept
-- Mindray BS-200 (HL7/MLLP) — same flow
-- Mindray BS-300 (HL7/MLLP) — same flow
-- GeneXpert ASTM — same flow
-- QuantStudio 7 (FILE) — find → file drop → verify → accept (no test-connection)
-- FluoroCycler XT (FILE) — same as QuantStudio
+FILE analyzers use xlsx fixtures from `frontend/playwright/fixtures/` copied to
+host-mounted import directories. Fixture sample IDs (HARN-\*) are known
+constants from the fixture files.
 
-FILE analyzers require bind-mount fixtures in the harness. If fixtures aren't
-ready, the FILE tests can be commented with a clear TODO.
+**Stale test removed**: `hl7-mindray-results.spec.ts` (hardcoded FILLER012,
+superseded by unified demo flow).
 
 **Report packaging**:
 

@@ -784,9 +784,16 @@ public class AnalyzerRestController extends BaseRestController {
      * @return Map with reachable (boolean) and message (String)
      */
     private Map<String, Object> testConnectivityViaBridge(String host, Integer port, String protocol) {
-        String json = String.format("{\"transport\":\"TCP\",\"host\":\"%s\",\"port\":%d,\"protocol\":\"%s\"}", host,
-                port, protocol != null ? protocol : "TCP");
-        return callBridgeTestConnectivity(json);
+        try {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("transport", "TCP");
+            payload.put("host", host);
+            payload.put("port", port);
+            payload.put("protocol", protocol != null ? protocol : "TCP");
+            return callBridgeTestConnectivity(objectMapper.writeValueAsString(payload));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            return Map.of("reachable", false, "message", "Failed to build request: " + e.getMessage());
+        }
     }
 
     /**
@@ -805,7 +812,7 @@ public class AnalyzerRestController extends BaseRestController {
                 javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
                 sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return null;
+                        return new java.security.cert.X509Certificate[0];
                     }
 
                     public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
@@ -872,8 +879,15 @@ public class AnalyzerRestController extends BaseRestController {
             return response;
         }
 
-        Map<String, Object> result = callBridgeTestConnectivity(
-                String.format("{\"transport\":\"FILE\",\"path\":\"%s\"}", escapeJson(importDirectory)));
+        Map<String, Object> result;
+        try {
+            result = callBridgeTestConnectivity(
+                    objectMapper.writeValueAsString(Map.of("transport", "FILE", "path", importDirectory)));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            response.put("success", false);
+            response.put("message", "Failed to build request: " + e.getMessage());
+            return response;
+        }
         response.put("success", Boolean.TRUE.equals(result.get("reachable")));
         response.put("message", result.getOrDefault("message", ""));
         response.put("connectionType", "FILE via bridge");
@@ -892,20 +906,19 @@ public class AnalyzerRestController extends BaseRestController {
             return response;
         }
 
-        Map<String, Object> result = callBridgeTestConnectivity(
-                String.format("{\"transport\":\"SERIAL\",\"path\":\"%s\"}", escapeJson(portName)));
+        Map<String, Object> result;
+        try {
+            result = callBridgeTestConnectivity(
+                    objectMapper.writeValueAsString(Map.of("transport", "SERIAL", "path", portName)));
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            response.put("success", false);
+            response.put("message", "Failed to build request: " + e.getMessage());
+            return response;
+        }
         response.put("success", Boolean.TRUE.equals(result.get("reachable")));
         response.put("message", result.getOrDefault("message", ""));
         response.put("connectionType", "Serial via bridge");
         return response;
-    }
-
-    /** Escape a string for safe JSON embedding. */
-    private static String escapeJson(String s) {
-        if (s == null) {
-            return "";
-        }
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /**
@@ -925,7 +938,7 @@ public class AnalyzerRestController extends BaseRestController {
                 javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
                 sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                        return null;
+                        return new java.security.cert.X509Certificate[0];
                     }
 
                     public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {

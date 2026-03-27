@@ -37,6 +37,8 @@ public class BridgeRegistrationService {
             } }, new java.security.SecureRandom());
             client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).sslContext(sslContext).build();
         } catch (Exception e) {
+            LogEvent.logWarn(CLASS_NAME, "BridgeRegistrationService",
+                    "SSL context init failed, using default client: " + e.getMessage());
             client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
         }
         this.httpClient = client;

@@ -258,7 +258,16 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
         }
 
         String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/query";
-        String json = String.format("{\"host\":\"%s\",\"port\":%d,\"timeoutMs\":%d}", ipAddress, port, timeoutMs);
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("host", ipAddress);
+        payload.put("port", port);
+        payload.put("timeoutMs", timeoutMs);
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(payload);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IOException("Failed to build query request JSON", e);
+        }
 
         addLog(status, "Sending query via bridge: " + endpoint);
         status.put("progress", 30);
