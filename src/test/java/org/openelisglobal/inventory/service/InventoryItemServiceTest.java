@@ -89,28 +89,26 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @org.junit.Ignore("Known DAO bug: getByItemType causes PostgreSQL type mismatch " +
-            "(character varying = bytea). Tracked for fix in InventoryItemDAOImpl.")
+    @org.junit.Ignore("Known DAO bug: getByItemType causes PostgreSQL type mismatch "
+            + "(character varying = bytea). Tracked for fix in InventoryItemDAOImpl.")
     public void getByItemType_shouldReturnOnlyReagentItems() {
         List<InventoryItem> reagents = inventoryItemService.getByItemType(ItemType.REAGENT);
         assertNotNull("Reagent list should not be null", reagents);
         assertFalse("Should have at least one reagent", reagents.isEmpty());
         for (InventoryItem item : reagents) {
-            assertEquals("All returned items should be REAGENT type",
-                    ItemType.REAGENT, item.getItemType());
+            assertEquals("All returned items should be REAGENT type", ItemType.REAGENT, item.getItemType());
         }
     }
 
     @Test
-    @org.junit.Ignore("Known DAO bug: getByItemType causes PostgreSQL type mismatch " +
-            "(character varying = bytea). Tracked for fix in InventoryItemDAOImpl.")
+    @org.junit.Ignore("Known DAO bug: getByItemType causes PostgreSQL type mismatch "
+            + "(character varying = bytea). Tracked for fix in InventoryItemDAOImpl.")
     public void getByItemType_shouldReturnOnlyRDTItems() {
         List<InventoryItem> rdtItems = inventoryItemService.getByItemType(ItemType.RDT);
         assertNotNull("RDT list should not be null", rdtItems);
         assertFalse("Should have at least one RDT item", rdtItems.isEmpty());
         for (InventoryItem item : rdtItems) {
-            assertEquals("All returned items should be RDT type",
-                    ItemType.RDT, item.getItemType());
+            assertEquals("All returned items should be RDT type", ItemType.RDT, item.getItemType());
         }
     }
 
@@ -182,7 +180,8 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Valid item should exist", item);
 
         // Verify deactivate works on valid item — non-existent ID test
-        // removed as get() throws for missing IDs (consistent with RegionService behaviour)
+        // removed as get() throws for missing IDs (consistent with RegionService
+        // behaviour)
         inventoryItemService.deactivateItem(1000L, "1");
         assertEquals("N", inventoryItemService.get(1000L).getIsActive());
     }
