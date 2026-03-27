@@ -491,7 +491,7 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals("Person", savedContactPerson.getLastName());
     }
 
-    private static @NotNull PatientManagementInfo getPatientManagementInfo() {
+    private static PatientManagementInfo getPatientManagementInfo() {
         PatientManagementInfo info = new PatientManagementInfo();
         info.setPatientUpdateStatus(PatientUpdateStatus.ADD);
         info.setFirstName("New");
