@@ -34,7 +34,7 @@ import {
 import "./BoxDetails.css";
 import SampleAssignmentModal from "./SampleAssignmentModal";
 import ShipmentNavigation from "./ShipmentNavigation";
-import { generateManifestPDF, generateLabelPDF } from "./utils/pdfGenerator";
+import { generateLabelPDF, generateManifestPDF } from "./utils/pdfGenerator";
 
 const BoxDetails = () => {
   const intl = useIntl();
@@ -634,7 +634,7 @@ const BoxDetails = () => {
             </div>
             <div className="info-item">
               <span className="info-label">
-                <FormattedMessage id="shipment.box.createdBy" />:
+                <FormattedMessage id="shipment.box.createdBy" />
               </span>
               <span className="info-value">{box.createdByName || "-"}</span>
             </div>

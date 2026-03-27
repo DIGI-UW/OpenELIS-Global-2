@@ -96,12 +96,24 @@ import {
   LanguageManagement,
   TranslationManagement,
 } from "./localizationManagement";
+import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning.js";
+import { TrashCan } from "@carbon/icons-react";
+import { getFromOpenElisServer } from "../utils/Utils.js";
 
 function Admin() {
   const intl = useIntl();
   const { path } = useRouteMatch();
   const history = useHistory();
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
+      if (response) {
+        setIsTrainingInstallation(response.trainingInstallation);
+      }
+    });
+  }, []);
 
   // Navigation handler to prevent page reload
   const handleNavigation = (targetPath) => (e) => {
@@ -376,6 +388,14 @@ function Admin() {
           >
             <FormattedMessage id="logging.management.label" />
           </SideNavLink>
+          {isTrainingInstallation && (
+            <SideNavLink
+              renderIcon={TrashCan}
+              onClick={handleNavigation(`${path}/DatabaseCleaning`)}
+            >
+              <FormattedMessage id="database.clean" />
+            </SideNavLink>
+          )}
           <SideNavMenu
             title={intl.formatMessage({
               id: "sidenav.label.admin.localization",
@@ -649,6 +669,10 @@ function Admin() {
         <Route
           path={`${path}/loggingManagement`}
           component={LoggingManagement}
+        />
+        <Route
+          path={`${path}/DatabaseCleaning`}
+          component={DatabaseCleaning}
         />
       </Switch>
     </>

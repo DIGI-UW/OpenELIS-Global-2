@@ -16,8 +16,8 @@ import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
-import ShipmentNavigation from "./ShipmentNavigation";
 import "./ShipmentDashboard.css";
+import ShipmentNavigation from "./ShipmentNavigation";
 
 const ShipmentSettings = () => {
   const intl = useIntl();
@@ -432,7 +432,7 @@ const ShipmentSettings = () => {
             </h4>
 
             <ClickableTile
-              href="/MasterListsPage#organizationManagement"
+              href="/MasterListsPage/organizationManagement"
               style={{ marginBottom: "0.5rem" }}
             >
               <div
@@ -461,7 +461,7 @@ const ShipmentSettings = () => {
             </ClickableTile>
 
             <ClickableTile
-              href="/MasterListsPage#userManagement"
+              href="/MasterListsPage/userManagement"
               style={{ marginBottom: "0.5rem" }}
             >
               <div
