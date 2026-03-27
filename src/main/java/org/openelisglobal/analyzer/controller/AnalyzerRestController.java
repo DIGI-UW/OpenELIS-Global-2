@@ -1032,7 +1032,7 @@ public class AnalyzerRestController extends BaseRestController {
             Integer analyzerIdInt = Integer.valueOf(id);
             fileImportService.getByAnalyzerId(analyzerIdInt).ifPresent(fileConfig -> {
                 bridgeRegistrationService.registerFile(id, name, fileConfig.getImportDirectory(),
-                        fileConfig.getFilePattern());
+                        fileConfig.getFilePattern(), fileConfig.getColumnMappings());
             });
         } catch (Exception e) {
             logger.warn("Bridge registration failed for analyzer {} — bridge may need manual config: {}",

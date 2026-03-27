@@ -62,8 +62,9 @@ public class AnalyzerBridgeStartupRegistrar {
                     Integer analyzerIdInt = Integer.valueOf(analyzerId);
                     Optional<FileImportConfiguration> fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
                     if (fileConfig.isPresent()) {
-                        if (bridgeRegistrationService.registerFile(analyzerId, analyzerName,
-                                fileConfig.get().getImportDirectory(), fileConfig.get().getFilePattern())) {
+                        FileImportConfiguration fc = fileConfig.get();
+                        if (bridgeRegistrationService.registerFile(analyzerId, analyzerName, fc.getImportDirectory(),
+                                fc.getFilePattern(), fc.getColumnMappings())) {
                             registered++;
                         }
                     }

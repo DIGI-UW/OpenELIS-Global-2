@@ -190,8 +190,24 @@ public class AnalyzerFhirImportController {
             return null;
         }
 
+        // QC/control flag from bridge tag
+        if (obs.hasMeta() && obs.getMeta().hasTag()) {
+            boolean isQc = obs.getMeta().getTag().stream().anyMatch(t -> "QC".equals(t.getCode()));
+            ar.setIsControl(isQc);
+        }
+
+        // Completion timestamp from effectiveDateTime
+        if (obs.hasEffectiveDateTimeType()) {
+            try {
+                ar.setCompleteDate(new Timestamp(obs.getEffectiveDateTimeType().getValue().getTime()));
+            } catch (Exception e) {
+                ar.setCompleteDate(new Timestamp(System.currentTimeMillis()));
+            }
+        } else {
+            ar.setCompleteDate(new Timestamp(System.currentTimeMillis()));
+        }
+
         ar.setTestId("-1"); // Resolved later during result review
-        ar.setCompleteDate(new Timestamp(System.currentTimeMillis()));
 
         return ar;
     }
