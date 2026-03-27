@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec/013-hjra-hl7-stream-alignment`  
 **Created**: 2026-03-10  
-**Status**: Draft  
+**Status**: In Progress  
 **Input**: User description: "Create the HL7 coordination artifacts needed
 before coding begins, establish stream boundaries and issue sequencing for
 `OGC-325`, `OGC-326`, `OGC-327`, optional `OGC-336`, preserve the recommended

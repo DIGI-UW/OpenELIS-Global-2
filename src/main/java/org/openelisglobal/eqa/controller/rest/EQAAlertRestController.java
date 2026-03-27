@@ -33,7 +33,7 @@ public class EQAAlertRestController {
             @RequestParam(required = false) String search, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int pageSize) {
 
-        List<Alert> allAlerts = alertService.getAlertsByEntity(null, null);
+        List<Alert> allAlerts = alertService.getAll();
         if (allAlerts == null) {
             allAlerts = List.of();
         }
@@ -62,7 +62,7 @@ public class EQAAlertRestController {
 
     @GetMapping(value = "/alerts/dashboard/summary", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getAlertsSummary() {
-        List<Alert> allAlerts = alertService.getAlertsByEntity(null, null);
+        List<Alert> allAlerts = alertService.getAll();
         if (allAlerts == null) {
             allAlerts = List.of();
         }
@@ -92,9 +92,12 @@ public class EQAAlertRestController {
     public ResponseEntity<?> acknowledgeAlert(@PathVariable Long id,
             @RequestBody(required = false) Map<String, String> body) {
 
-        List<Alert> alerts = alertService.getAlertsByEntity(null, null);
-        Alert target = alerts != null ? alerts.stream().filter(a -> a.getId().equals(id)).findFirst().orElse(null)
-                : null;
+        Alert target;
+        try {
+            target = alertService.get(id);
+        } catch (Exception e) {
+            target = null;
+        }
 
         if (target == null) {
             return ResponseEntity.notFound().build();
