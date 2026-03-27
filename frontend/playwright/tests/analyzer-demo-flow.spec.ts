@@ -25,6 +25,10 @@ import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
 } from "../helpers/analyzer-dashboard";
+import {
+  createAnalyzerFromProfile,
+  teardownAnalyzer,
+} from "../helpers/create-analyzer-from-profile";
 import { testAnalyzerConnection } from "../helpers/test-analyzer-connection";
 import { pushAnalyzerResult } from "../helpers/push-analyzer-result";
 import { acceptAndVerifyResults } from "../helpers/accept-results";
@@ -62,8 +66,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "GeneXpert ASTM",
     analyzerType: "MOLECULAR",
     pluginType: "Generic ASTM",
+    profileName: "Cepheid GeneXpert (ASTM Mode)",
     protocol: "ASTM",
-    preSeeded: true,
+    preSeeded: false,
+    mockAnalyzerName: "demo-genexpert",
+    port: 9600,
     push: {
       protocol: "ASTM",
       simulatorUrl: SIMULATOR_URL,
@@ -77,8 +84,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "Mindray BC-5380 (HL7 Hematology)",
     analyzerType: "HEMATOLOGY",
     pluginType: "Generic HL7",
+    profileName: "Mindray BC-5380",
     protocol: "HL7",
-    preSeeded: true,
+    preSeeded: false,
+    mockAnalyzerName: "demo-bc5380",
+    port: 5380,
     push: {
       protocol: "HL7",
       simulatorUrl: SIMULATOR_URL,
@@ -97,8 +107,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "Mindray BS-200 (HL7 Chemistry)",
     analyzerType: "CHEMISTRY",
     pluginType: "Generic HL7",
+    profileName: "Mindray BS-200",
     protocol: "HL7",
-    preSeeded: true,
+    preSeeded: false,
+    mockAnalyzerName: "demo-bs200",
+    port: 6001,
     push: {
       protocol: "HL7",
       simulatorUrl: SIMULATOR_URL,
@@ -117,8 +130,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "Mindray BS-300 (HL7 Chemistry)",
     analyzerType: "CHEMISTRY",
     pluginType: "Generic HL7",
+    profileName: "Mindray BS-300",
     protocol: "HL7",
-    preSeeded: true,
+    preSeeded: false,
+    mockAnalyzerName: "demo-bs300",
+    port: 6002,
     push: {
       protocol: "HL7",
       simulatorUrl: SIMULATOR_URL,
@@ -138,8 +154,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "QuantStudio 7 (FILE/Excel)",
     analyzerType: "MOLECULAR",
     pluginType: "Generic File",
+    profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    preSeeded: true,
+    preSeeded: false,
     fileSampleId: "HARN-QS7-2026-00001",
     push: {
       protocol: "FILE",
@@ -154,8 +171,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "QuantStudio 5 (FILE/Excel)",
     analyzerType: "MOLECULAR",
     pluginType: "Generic File",
+    profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    preSeeded: true,
+    preSeeded: false,
     fileSampleId: "HARN-QS5-2026-00001",
     push: {
       protocol: "FILE",
@@ -170,8 +188,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
     displayName: "FluoroCycler XT (FILE/Excel)",
     analyzerType: "MOLECULAR",
     pluginType: "Generic File",
+    profileName: "Bruker FluoroCycler XT",
     protocol: "FILE",
-    preSeeded: true,
+    preSeeded: false,
     fileSampleId: "HARN-FC-2026-00001",
     push: {
       protocol: "FILE",
@@ -241,10 +260,21 @@ test.describe("Madagascar analyzer demo flows", () => {
         `${config.protocol} → Bridge → OpenELIS → Review → Accept`,
       );
 
-      // Step 2: Find analyzer on dashboard
-      await presentation.step(1, `Find ${config.name} on the dashboard`);
-      await goToAnalyzerDashboard(page, testInfo);
-      const analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
+      // Step 2: Create or find analyzer on dashboard
+      let analyzerRow;
+      let dynamicIp: string | null = null;
+      if (config.preSeeded) {
+        await presentation.step(1, `Find ${config.name} on the dashboard`);
+        await goToAnalyzerDashboard(page, testInfo);
+        analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
+      } else {
+        await presentation.step(
+          1,
+          `Create ${config.name} from profile via dashboard`,
+        );
+        dynamicIp = await createAnalyzerFromProfile(page, config, presentation);
+        analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
+      }
 
       // Step 3: Test connection (skip for FILE — no TCP)
       if (config.protocol !== "FILE") {
@@ -256,16 +286,25 @@ test.describe("Madagascar analyzer demo flows", () => {
       const hasTestConnection = config.protocol !== "FILE";
       let step = hasTestConnection ? 3 : 2;
 
+      // For dynamically created TCP analyzers, override the push destination
+      // with the bridge's IP on the mock network (.2 suffix)
+      let pushConfig = config.push;
+      if (dynamicIp && config.protocol !== "FILE") {
+        const bridgeIp = dynamicIp.replace(/\.\d+$/, ".2");
+        const port = config.protocol === "ASTM" ? 12001 : 2575;
+        const scheme = config.protocol === "ASTM" ? "tcp" : "mllp";
+        pushConfig = {
+          ...pushConfig,
+          destination: `${scheme}://${bridgeIp}:${port}`,
+        } as typeof pushConfig;
+      }
+
       // Push result — mock generates unique sample_id per push
       await presentation.step(
         step,
         `Send ${config.protocol} result → Bridge → OpenELIS`,
       );
-      const sampleId = await pushAnalyzerResult(
-        page,
-        config.push,
-        presentation,
-      );
+      const sampleId = await pushAnalyzerResult(page, pushConfig, presentation);
 
       // ASTM/HL7 return dynamic sample_id; FILE fixtures use known IDs
       if (config.protocol !== "FILE") {
@@ -288,6 +327,11 @@ test.describe("Madagascar analyzer demo flows", () => {
         "Flow Complete",
         `${config.displayName}: ${config.expectedResults.length} results accepted.`,
       );
+
+      // Teardown: clean up created analyzer + mock network (self-contained test)
+      if (!config.preSeeded) {
+        await teardownAnalyzer(page, config);
+      }
     });
   }
 });

@@ -61,4 +61,10 @@ export interface AnalyzerTestConfig {
   fileSampleId?: string;
   /** If true, analyzer is pre-created by seed-analyzers.sh — skip create step. */
   preSeeded?: boolean;
+  /** IP address for TCP analyzers (filled in UI form when creating). */
+  ipAddress?: string;
+  /** Port for TCP analyzers (filled in UI form when creating). */
+  port?: number;
+  /** Mock analyzer name for dynamic network creation (if different from name). */
+  mockAnalyzerName?: string;
 }
