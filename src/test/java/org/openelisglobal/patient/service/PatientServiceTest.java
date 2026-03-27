@@ -28,6 +28,7 @@ import org.openelisglobal.patienttype.valueholder.PatientType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.openelisglobal.address.service.PersonAddressService;
 
 public class PatientServiceTest extends BaseWebContextSensitiveTest {
 
@@ -41,7 +42,7 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
     PersonService personService;
 
     @Autowired
-    org.openelisglobal.address.service.PersonAddressService personAddressService;
+    PersonAddressService personAddressService;
 
     @Before
     public void init() throws Exception {
