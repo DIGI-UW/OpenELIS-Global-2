@@ -610,6 +610,12 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 
+        // FILE transport fields (unified on analyzer table — same as TCP fields above)
+        map.put("importDirectory", analyzer.getImportDirectory());
+        map.put("filePattern", analyzer.getFilePattern());
+        map.put("columnMappings", analyzer.getColumnMappings());
+        map.put("fileFormat", analyzer.getFileFormat());
+
         // Derive plugin type info from analyzer_type FK
         boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();
         map.put("genericPlugin", isGeneric);

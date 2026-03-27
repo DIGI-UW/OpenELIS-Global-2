@@ -16,4 +16,7 @@
 
   <!-- OGC-492: Per-analyzer test mappings (was per-type, broke generic plugins) -->
   <include relativeToChangelogFile="true" file="006-per-analyzer-test-mappings.xml"/>
+
+  <!-- Unify FILE transport config onto analyzer table (was separate table) -->
+  <include relativeToChangelogFile="true" file="007-unify-analyzer-transport-config.xml"/>
 </databaseChangeLog>
