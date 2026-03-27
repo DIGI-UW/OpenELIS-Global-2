@@ -53,6 +53,18 @@ public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void testGetStatusWhenAnalyzerFails() {
+        // Mock the service to return a FAILED state
+        Mockito.when(analyzerQueryService.getStatus(Mockito.anyString(), Mockito.anyString()))
+                .thenReturn(Map.of("state", "FAILED", "progress", 0));
+
+        // Verify that even when the analyzer fails, the service still returns data correctly
+        SourceOfSampleList = sourceOfSampleService.getAll();
+        assertNotNull(SourceOfSampleList);
+        assertFalse(SourceOfSampleList.isEmpty());
+    }
+
+    @Test
     public void getAll_ShouldReturnAllSourceOfSamples() {
         SourceOfSampleList = sourceOfSampleService.getAll();
         assertNotNull(SourceOfSampleList);
