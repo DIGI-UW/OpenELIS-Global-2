@@ -454,9 +454,9 @@ public class AnalyzerRestController extends BaseRestController {
                 }
                 analyzer.setProtocolVersion(updatedPv);
             }
-            if (form.getCommunicationMode() != null) {
+            if (form.getCommunicationMode() != null && !form.getCommunicationMode().trim().isEmpty()) {
                 CommunicationMode cm = CommunicationMode.fromValue(form.getCommunicationMode());
-                if (cm == null && !form.getCommunicationMode().trim().isEmpty()) {
+                if (cm == null) {
                     String validValues = java.util.Arrays.stream(CommunicationMode.values())
                             .map(CommunicationMode::name).collect(Collectors.joining(", "));
                     Map<String, Object> error = new LinkedHashMap<>();
@@ -642,13 +642,20 @@ public class AnalyzerRestController extends BaseRestController {
      * attempts TCP to the analyzer. The communication mode determines how results
      * are interpreted:
      *
+     * <p>
+     * Success requires both bridge health AND TCP reachability when IP/port are
+     * configured, regardless of communication mode. If the user configured IP/port,
+     * a network failure should be surfaced. The communication mode determines the
+     * messaging context (push vs pull), not whether TCP matters.
+     * </p>
+     *
      * <ul>
-     * <li>{@code ANALYZER_INITIATED}: Bridge health is the primary success
-     * criterion. TCP to analyzer is informational (may fail for push-mode analyzers
-     * — they connect to the bridge, not the reverse).</li>
-     * <li>{@code LIS_INITIATED}: TCP to analyzer must succeed (OE needs to reach
-     * the analyzer for queries/orders).</li>
-     * <li>{@code BOTH}: Both bridge health and TCP to analyzer must succeed.</li>
+     * <li>{@code ANALYZER_INITIATED}: Analyzer pushes to bridge. TCP failure
+     * messaging notes that the analyzer may still reach the bridge even if OE
+     * cannot reach the analyzer directly.</li>
+     * <li>{@code LIS_INITIATED}: OE/bridge reaches the analyzer for queries/orders.
+     * TCP failure is critical.</li>
+     * <li>{@code BOTH}: Bidirectional — both paths must work.</li>
      * </ul>
      */
     private Map<String, Object> testTcpAnalyzerConnection(Analyzer analyzer) {

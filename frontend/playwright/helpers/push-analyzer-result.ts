@@ -17,8 +17,7 @@ import type { DemoPresentation } from "./demo-presentation";
 import type { PushConfig } from "./analyzer-test-config";
 
 const E2E_FIXTURES_DIR =
-  process.env.E2E_FIXTURES_DIR ||
-  path.resolve(__dirname, "../../projects/analyzer-harness/e2e-fixtures");
+  process.env.E2E_FIXTURES_DIR || path.resolve(__dirname, "../fixtures");
 
 /**
  * Push a result to the mock analyzer and return the generated sample_id.
@@ -77,10 +76,8 @@ export async function pushAnalyzerResult(
         `${push.filePrefix}${Date.now()}${ext}`,
       );
 
-      // Append unique suffix so the file watcher treats it as new
-      const original = fs.readFileSync(fixturePath);
-      const uniqueSuffix = Buffer.from(`\n<!-- e2e-${Date.now()} -->`);
-      fs.writeFileSync(destFile, Buffer.concat([original, uniqueSuffix]));
+      // Copy fixture verbatim — filename is already unique (timestamp prefix)
+      fs.copyFileSync(fixturePath, destFile);
 
       await presentation.pause(2_000); // Wait for file watcher to pick up
       return null; // FILE protocol doesn't return sample_id from mock

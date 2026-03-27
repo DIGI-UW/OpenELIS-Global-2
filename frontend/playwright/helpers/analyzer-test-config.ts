@@ -57,6 +57,8 @@ export interface AnalyzerTestConfig {
   push: PushConfig;
   /** Expected results to verify on the AnalyzerResults page. */
   expectedResults: ExpectedResult[];
+  /** For FILE protocol: known accession/sample ID from the fixture file. */
+  fileSampleId?: string;
   /** If true, analyzer is pre-created by seed-analyzers.sh — skip create step. */
   preSeeded?: boolean;
 }

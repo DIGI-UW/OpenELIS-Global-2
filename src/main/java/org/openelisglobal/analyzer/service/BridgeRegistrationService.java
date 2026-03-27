@@ -26,7 +26,7 @@ public class BridgeRegistrationService {
             javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
             sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
                 public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                    return null;
+                    return new java.security.cert.X509Certificate[0];
                 }
 
                 public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
