@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer Test Connection E2E
@@ -18,38 +23,11 @@ const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
-    // Find or create a GeneXpert analyzer for testing
-    const listResp = await page.request.get(
-      "/api/OpenELIS-Global/rest/analyzer/analyzers",
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
     );
-    const data = await listResp.json();
-    const existing = (data.analyzers ?? []).find(
-      (a: any) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
-    );
-
-    let GENEXPERT_ID: string;
-    if (existing) {
-      GENEXPERT_ID = String(existing.id);
-    } else {
-      const createResp = await page.request.post(
-        "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        {
-          data: {
-            name: "Cepheid GeneXpert (ASTM Mode)",
-            analyzerType: "MOLECULAR",
-            pluginTypeId: "generic-astm",
-            ipAddress: "172.21.1.100",
-            port: 9600,
-            protocolVersion: "ASTM_LIS2_A2",
-            identifierPattern: "GENEXPERT|CEPHEID",
-            status: "ACTIVE",
-            defaultConfigId: "astm/genexpert-astm",
-          },
-        },
-      );
-      const created = await createResp.json();
-      GENEXPERT_ID = String(created.id);
-    }
 
     const list = new AnalyzerListPage(page);
 
@@ -57,7 +35,7 @@ test.describe("Analyzer Test Connection", () => {
     await list.expectLoaded();
 
     const row = list.getRow(GENEXPERT_ID);
-    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
 
     await list.openOverflowMenu(GENEXPERT_ID);
     await list.clickAction(GENEXPERT_ID, "test-connection");
@@ -91,7 +69,7 @@ test.describe("Analyzer Test Connection", () => {
     for (let attempt = 1; attempt <= 3; attempt++) {
       await testButton.click();
       try {
-        await expect(successTag.first()).toBeVisible({ timeout: 20_000 });
+        await expect(successTag.first()).toBeVisible({ timeout: LONG_TIMEOUT });
         connected = true;
         break;
       } catch {
@@ -117,10 +95,12 @@ test.describe("Analyzer Test Connection", () => {
       // Wait for "Test Again" button before retrying
       if (attempt < 3) {
         try {
-          await expect(retryButton).toBeVisible({ timeout: 5_000 });
+          await expect(retryButton).toBeVisible({ timeout: SHORT_TIMEOUT });
           await retryButton.click();
         } catch {
-          await page.waitForTimeout(2_000);
+          await expect(successTag.or(errorTag)).toBeVisible({
+            timeout: SHORT_TIMEOUT,
+          });
         }
       }
     }
@@ -202,7 +182,7 @@ test.describe("Real GeneXpert Test Connection", () => {
     // Plugin Type loads async — wait for options before selecting
     await form.pluginTypeDropdown.click();
     const pluginOption = page.getByRole("option", { name: /Generic ASTM/ });
-    await expect(pluginOption.first()).toBeVisible({ timeout: 10_000 });
+    await expect(pluginOption.first()).toBeVisible({ timeout: UI_TIMEOUT });
     await pluginOption.first().click();
 
     await form.selectType("Molecular");
@@ -264,7 +244,7 @@ test.describe("Real GeneXpert Test Connection", () => {
 
     // Real GeneXpert + contention handling may take longer than mock
     const successTag = page.locator('[data-testid="test-connection-success"]');
-    await expect(successTag).toBeVisible({ timeout: 30_000 });
+    await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
 
     const errorTag = page.locator('[data-testid="test-connection-error"]');
     await expect(errorTag).not.toBeVisible();

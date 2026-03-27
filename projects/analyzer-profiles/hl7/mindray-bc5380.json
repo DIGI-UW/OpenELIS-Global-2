@@ -9,7 +9,7 @@
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
   "protocol": { "name": "HL7", "version": "2.3.1" },
-  "identifier_pattern": "MINDRAY.*BC.?5380",
+  "identifier_pattern": "MINDRAY.*BC.?5380|BC.?5380",
   "transport": ["TCP/IP"],
   "transport_config": {
     "TCP/IP": { "default_port": 5380, "framing": "MLLP" }
@@ -96,5 +96,5 @@
     }
   ],
   "configDefaults": {},
-  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). MSH-3 sending application = 'MINDRAY'. Complete CBC panel with 5-part differential."
+  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). Seed profile assumes sender identity is matched dynamically from MSH-3/MSH-4 candidates, not a hardcoded allowlist. Real HL7 captures are still pending."
 }

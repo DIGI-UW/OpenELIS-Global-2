@@ -5,6 +5,7 @@ perform an analyzer harness environment restart workflow with:
 
 - **Container restart** with force-recreate for harness services
 - **Optional database reset** (drop volumes with `--full-reset`)
+- **Plugin jar staging** into `volume/plugins` (same runtime prep as CI)
 - **Fixture loading** (`load-test-fixtures.sh --analyzers=full`) and **analyzer
   seeding** (`seed-analyzers.sh`)
 - **Analyzer infrastructure verification** (ASTM bridge, simulator, virtual
@@ -13,6 +14,21 @@ perform an analyzer harness environment restart workflow with:
 This command is for **analyzer manual testing and E2E validation**. It uses the
 harness stack (`projects/analyzer-harness/`) with full analyzer test
 infrastructure, NOT the root dev stack.
+
+### Local dev vs Let's Encrypt
+
+**Default (typical local machine):** Do **not** use Let's Encrypt. Use only:
+
+`docker-compose.dev.yml` + `docker-compose.analyzer-test.yml`
+
+The proxy serves **self-signed** HTTPS on `https://localhost/`. No cert scripts,
+no `docker-compose.letsencrypt.yml`, no `LETSENCRYPT_*` in `.env` required.
+
+**Optional public hostname:** Add `-f docker-compose.letsencrypt.yml` and run
+the cert script **only** when the user passes **`--letsencrypt`** (and both
+`LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` are in `.env`, unless
+`--skip-letsencrypt`). Do **not** enable LE from `.env` alone — keeps local dev
+simple.
 
 ## Credential Handling
 
@@ -42,8 +58,10 @@ Interpret arguments best-effort. Support these patterns:
 - `/restart-analyzer-harness --skip-fixtures` → Skip loading test fixtures
 - `/restart-analyzer-harness --build` → Build WAR before restarting (for code
   changes)
-- `/restart-analyzer-harness --skip-letsencrypt` → Do not run Let's Encrypt
-  setup even when LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL are set
+- `/restart-analyzer-harness --letsencrypt` → Add LE compose overlay; run cert
+  setup when `LETSENCRYPT_DOMAIN` + `LETSENCRYPT_EMAIL` are set in `.env`
+- `/restart-analyzer-harness --skip-letsencrypt` → Do not run Let's Encrypt cert
+  script even when LE env is set (still use LE compose if explicitly requested)
 - Combine flags as needed: `/restart-analyzer-harness --full-reset --build`
 
 ## Safety Rules (non-negotiable)
@@ -53,8 +71,10 @@ Interpret arguments best-effort. Support these patterns:
 - **Never** drop database volumes unless `--full-reset` is explicitly passed.
 - **Always** wait for webapp readiness before loading fixtures.
 - **Report** container status after restart (even if some containers fail).
-- If Let's Encrypt certs are missing, **warn but continue** (use self-signed
-  certs).
+- On local dev without `--letsencrypt` / without LE env, **never** require Let's
+  Encrypt; self-signed is expected.
+- If LE mode is on but certs are missing or script fails, **warn but continue**
+  (self-signed fallback).
 - **NEVER** modify, regenerate, or replace password hashes (SQL fixtures,
   `adminPassword.txt`, or anywhere else). They work as-is.
 
@@ -98,8 +118,13 @@ Then run these and summarize the results:
 
 Determine:
 
-- **DOMAIN**: From `LETSENCRYPT_DOMAIN` (from .env) or default
-  `madagascar.openelis-global.org`
+- **USE_LE_COMPOSE**: true **only** if `--letsencrypt` was passed. Otherwise
+  false → local self-signed stack only (ignore LE vars unless flag is used).
+- **COMPOSE_FILES**:
+  `-f docker-compose.dev.yml -f docker-compose.analyzer-test.yml` plus, if
+  `USE_LE_COMPOSE`, ` -f docker-compose.letsencrypt.yml`
+- **DOMAIN** (for summary): `localhost` when not using public LE; else
+  `LETSENCRYPT_DOMAIN` (e.g. `madagascar.openelis-global.org`)
 - **FULL_RESET**: true if `--full-reset` flag present
 - **SKIP_FIXTURES**: true if `--skip-fixtures` flag present
 - **DO_BUILD**: true if `--build` flag present
@@ -136,15 +161,18 @@ Choose command based on `--full-reset` flag:
 
   ```bash
   cd $REPO_ROOT/projects/analyzer-harness
-  docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml down -v
+  docker compose $COMPOSE_FILES down -v
   ```
+
+  (`$COMPOSE_FILES` = dev + analyzer-test; add letsencrypt file only when
+  `USE_LE_COMPOSE` — see preflight.)
 
   This removes database and other volumes (clean slate).
 
 - **Without `--full-reset`**:
   ```bash
   cd $REPO_ROOT/projects/analyzer-harness
-  docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml down
+  docker compose $COMPOSE_FILES down
   ```
   This preserves database and volumes.
 
@@ -169,9 +197,39 @@ mkdir -p $REPO_ROOT/volume/nginx/certbot
 
 ### 4) Start containers (checkpoint #4)
 
+### 3b) Stage plugin jars for runtime loading (checkpoint #3b)
+
+**This is required for local parity with CI.**
+
+CI restores prebuilt plugin jars into `volume/plugins` before starting the
+harness stack. Local restart must do the same, otherwise FILE analyzers can fail
+to load default configs and local harness behavior diverges from CI.
+
+Run from repo root:
+
+```bash
+cd $REPO_ROOT
+mkdir -p projects/analyzer-harness/volume/plugins
+
+if ! find plugins/analyzers -type f -path "*/target/*.jar" \
+    ! -name "*sources.jar" ! -name "*javadoc.jar" | grep -q .; then
+    mvn clean install -DskipTests -Dmaven.test.skip=true -f plugins/pom.xml
+fi
+
+rm -rf projects/analyzer-harness/volume/plugins/*
+find plugins/analyzers -type f -path "*/target/*.jar" \
+  ! -name "*sources.jar" ! -name "*javadoc.jar" \
+  -exec cp {} projects/analyzer-harness/volume/plugins/ \;
+ls -lah projects/analyzer-harness/volume/plugins
+```
+
+Report: "Staged plugin jars for runtime loading"
+
+### 4) Start containers (checkpoint #4)
+
 ```bash
 cd $REPO_ROOT/projects/analyzer-harness
-docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml up -d
+docker compose $COMPOSE_FILES up -d
 ```
 
 This starts:
@@ -180,7 +238,7 @@ This starts:
 - oe (OpenELIS webapp with mounted WAR)
 - fhir (HAPI FHIR server)
 - frontend (React dev server with hot reload)
-- proxy (nginx with Let's Encrypt support)
+- proxy (nginx; self-signed locally, or LE entrypoint when `USE_LE_COMPOSE`)
 - openelis-analyzer-bridge (ASTM→HTTP bridge on 12001)
 - astm-simulator (Mock analyzer on 5000)
 - virtual-serial (Virtual serial ports /dev/serial/ttyVUSB0-4)
@@ -228,10 +286,13 @@ $REPO_ROOT/projects/analyzer-harness/scripts/verify-login.sh
 
 If login fails, warn but continue (fixtures may not be loaded yet).
 
-### 5b) Let's Encrypt setup (checkpoint #5b) — when env is set
+### 5b) Let's Encrypt setup (checkpoint #5b) — optional public hostname
 
-**Run only if** `LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` are set (from .env)
-**and** `--skip-letsencrypt` was **not** passed.
+**Run only if** `--letsencrypt` was used (`USE_LE_COMPOSE`), both
+`LETSENCRYPT_DOMAIN` and `LETSENCRYPT_EMAIL` are set, and `--skip-letsencrypt`
+was **not** passed.
+
+**Skip entirely** without `--letsencrypt`: no LE compose, no cert script.
 
 This obtains or renews Let's Encrypt certificates for the subdomain (e.g.
 `madagascar.openelis-global.org`) so the proxy serves valid HTTPS. Certs are
@@ -247,14 +308,14 @@ written to repo root `volume/letsencrypt/` (proxy bind-mounts it).
 2. If the script exits 0, restart the proxy so nginx picks up the certs:
 
    ```bash
-   docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml restart proxy
+   docker compose $COMPOSE_FILES restart proxy
    ```
 
 3. If the script fails (e.g. DNS not pointing to host, port 80 not reachable),
    **warn** and continue; the proxy keeps using self-signed certs.
 
-Report: "Let's Encrypt: [cert obtained / renewed / skipped (env not set) /
-failed (warn)]"
+Report: "Let's Encrypt: [cert obtained / renewed / skipped (local dev or env not
+set) / failed (warn)]"
 
 ### 6) Load fixtures (checkpoint #6)
 
@@ -320,7 +381,7 @@ Print summary:
   Analyzer Harness Ready
 ======================================
 
-  Domain: https://[DOMAIN]/
+  URL: https://localhost/ (local) or https://[DOMAIN]/ (public LE host)
   Login: admin (credentials from .env)
 
   Database: localhost:15432
@@ -336,23 +397,26 @@ Print summary:
     [list all harness containers with status]
 
   Let's Encrypt: [CERT_STATUS]
-    [If using self-signed and domain is a subdomain:]
-    Set in .env: LETSENCRYPT_DOMAIN=[DOMAIN] LETSENCRYPT_EMAIL=your@email
-    Then re-run /restart-analyzer-harness to auto-setup, or run:
-    cd projects/analyzer-harness && ./scripts/generate-letsencrypt-certs.sh && docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml restart proxy
+    Local dev: not used (self-signed). For a public host: set LETSENCRYPT_*
+    in .env, use compose with letsencrypt.yml, run generate-letsencrypt-certs.sh,
+    then `docker compose $COMPOSE_FILES restart proxy`.
 ```
 
 Where:
 
-- `[DOMAIN]` is e.g. `madagascar.openelis-global.org` or value from .env
-- `[CERT_STATUS]` is "Valid cert for [DOMAIN]" or "Using self-signed (set
-  LETSENCRYPT_DOMAIN + LETSENCRYPT_EMAIL in .env to auto-setup)"
+- `[DOMAIN]` only when using LE; otherwise summarize as localhost
+- `[CERT_STATUS]` is "Not used (local dev)" or "Valid cert for [DOMAIN]" or
+  "Using self-signed"
 
 ## Important Notes
 
 - **Submodule initialization**: Before first run (or after fresh clone), run
   `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins`
   so harness can build and start. The bootstrap script does this automatically.
+- **Plugin parity with CI**: Local harness must stage plugin jars into
+  `projects/analyzer-harness/volume/plugins` before startup, matching the CI
+  workflow. An empty harness plugin directory causes local/CI drift for analyzer
+  runtime loading.
 - **Harness uses port 15432** (same as root dev; stop root first to avoid
   conflict).
 - **Frontend hot-reloads**: Changes to `frontend/src/` are picked up
@@ -360,8 +424,8 @@ Where:
 - **Backend requires rebuild**: Changes to Java code require `--build` flag.
 - **Root stack conflict**: If root dev stack is running on 80/443/15432, harness
   will fail. Stop root first.
-- **Let's Encrypt certs**: Shared with root stack via `volume/letsencrypt/`
-  (generate once, use everywhere).
+- **Let's Encrypt**: Optional. Local dev does not need it. When using a public
+  host, certs live under `volume/letsencrypt/` (can be shared with root stack).
 
 ## Example Executions
 
@@ -387,6 +451,8 @@ Where:
   `--analyzers=full`)
 - Analyzer seeding: `projects/analyzer-harness/seed-analyzers.sh` (4 analyzers
   via REST API)
+- Plugin runtime dir: `projects/analyzer-harness/volume/plugins/` (must be
+  populated from `plugins/analyzers/**/target/*.jar`)
 - Build script: `projects/analyzer-harness/build.sh` (WAR + harness images)
 - Reset script: `projects/analyzer-harness/reset-env.sh` (implements this
   workflow)
@@ -401,5 +467,6 @@ Where:
 | **Socat "exactly 2 addresses required"** | `virtual-serial` container keeps restarting                                                                 | Fixed in harness: `virtual-serial` uses `entrypoint: ["/bin/sh", "-c"]` so `command` is run by shell, not passed to socat. Ensure you have the updated `docker-compose.analyzer-test.yml`.                      |
 | **Uninitialized submodules**             | Docker build fails (e.g. analyzer-mock-server or openelis-analyzer-bridge context empty)                    | Run `git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge plugins` from repo root. Bootstrap script does this.                                                                 |
 | **Missing harness volume**               | Compose fails on missing files (e.g. `volume/database/database.env`, `volume/properties/common.properties`) | Run `projects/analyzer-harness/bootstrap.sh`; it copies/adapts from root `volume/` and creates placeholders. `reset-env.sh` calls it automatically.                                                             |
+| **Empty harness plugin dir**             | FILE analyzers seed but fail to load default config locally, causing local/CI drift                         | Stage plugin jars before startup: build `plugins/` if needed, then copy `plugins/analyzers/**/target/*.jar` into `projects/analyzer-harness/volume/plugins/` exactly as CI runtime expects.                     |
 | **Nginx hostname mismatch**              | Proxy starts but frontend/API routes fail (e.g. 502 or wrong host)                                          | Harness uses Docker service names `frontend` and `oe`. Bootstrap generates `volume/nginx/nginx.conf` from root with `frontend.openelis.org`→`frontend`, `oe.openelis.org`→`oe`. Re-run bootstrap to regenerate. |
 | **Login 401**                            | Playwright or curl login fails with 401                                                                     | Re-source `.env` (`set -a; . .env; set +a`) and run `projects/analyzer-harness/scripts/verify-login.sh`. If that fails: check fixtures loaded, account not locked.                                              |

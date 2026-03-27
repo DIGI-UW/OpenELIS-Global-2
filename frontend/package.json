@@ -28,9 +28,9 @@
     "formik-error-focus": "2.0.0",
     "geopattern": "1.2.3",
     "i18next": "^21.10.0",
-    "jsonpath": "^1.1.1",
+    "jsonpath": "^1.2.1",
     "lodash-es": "^4.17.23",
-    "qs": "6.14.1",
+    "qs": "6.14.2",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
     "react-confirm-alert": "^2.7.0",
@@ -69,11 +69,21 @@
     "cy:quick": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
     "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
     "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
+    "ci:deps": "node -e \"console.log('npm ci (~2–8 min): Cypress postinstall is large; use this script for progress + logs.\\n')\" && npm ci --progress=true --loglevel=info",
     "pw:install": "playwright install chromium",
     "pw:test": "playwright test",
+    "pw:guard": "npm run pw:guard:no-timeout && npm run pw:guard:demo-ui-only",
+    "pw:guard:no-timeout": "node scripts/pw-no-timeout-guard.mjs",
+    "pw:guard:demo-ui-only": "node scripts/pw-demo-ui-only-guard.mjs",
+    "pw:test:harness": "playwright test --project=harness-demo --workers=1",
+    "pw:test:core-demo": "playwright test --project=core-demo",
+    "pw:test:harness-demo": "playwright test --project=harness-demo --workers=1",
+    "pw:test:demo": "playwright test --project=harness-demo",
+    "pw:test:core-demo-video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=core-demo-video",
+    "pw:test:harness-demo-video": "PLAYWRIGHT_VIDEO=on PLAYWRIGHT_SLOWMO=500 playwright test --project=harness-demo-video --workers=1",
     "pw:test:ui": "playwright test --ui",
     "pw:test:headed": "playwright test --headed",
-    "pw:test:video": "playwright test --config=playwright.video.config.ts"
+    "pw:test:video": "npm run pw:test:harness-demo-video"
   },
   "jest": {
     "transformIgnorePatterns": [
@@ -135,7 +145,7 @@
     "@svgr/plugin-svgo": "8.1.0",
     "@svgr/webpack": "8.1.0",
     "body-parser": "1.20.4",
-    "qs": "6.14.1",
+    "qs": "6.14.2",
     "resolve-url-loader": "5.0.0"
   }
 }
