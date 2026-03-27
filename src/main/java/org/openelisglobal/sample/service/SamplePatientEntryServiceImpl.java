@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +27,11 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.EQAProgramService;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.EQAPriority;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -114,6 +120,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private ProgramSampleService programSampleService;
     @Autowired
+    private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQAProgramService eqaProgramService;
+    @Autowired
     private BarcodeInfoService barcodeInfoService;
 
     @Transactional
@@ -133,6 +143,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         persistProviderData(updateData);
         persistSampleData(updateData);
+        if (updateData.isEqaSample()) {
+            persistSampleEQAData(updateData);
+        }
         persistRequesterData(updateData);
         if (useInitialSampleCondition) {
             persistInitialSampleConditions(updateData);
@@ -313,6 +326,35 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (updateData.getElectronicOrder() != null) {
             electronicOrderService.update(updateData.getElectronicOrder());
         }
+    }
+
+    private void persistSampleEQAData(SamplePatientUpdateData updateData) {
+        SampleEQA sampleEQA = new SampleEQA();
+        sampleEQA.setSampleId(Long.parseLong(updateData.getSample().getId()));
+        sampleEQA.setIsEqaSample(true);
+        sampleEQA.setSysUserId(updateData.getCurrentUserId());
+
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaProgramId())) {
+            EQAProgram eqaProgram = eqaProgramService.get(Long.parseLong(updateData.getEqaProgramId()));
+            sampleEQA.setEqaProgram(eqaProgram);
+        }
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaProviderOrganizationId())) {
+            sampleEQA.setEqaProviderOrganizationId(Long.parseLong(updateData.getEqaProviderOrganizationId()));
+        }
+        sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
+        sampleEQA.setEqaParticipantId(updateData.getEqaParticipantId());
+
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
+            java.sql.Date deadlineDate = DateUtil.convertStringDateToSqlDate(updateData.getEqaDeadline());
+            if (deadlineDate != null) {
+                sampleEQA.setEqaDeadline(new Timestamp(deadlineDate.getTime()));
+            }
+        }
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaPriority())) {
+            sampleEQA.setEqaPriority(EQAPriority.valueOf(updateData.getEqaPriority()));
+        }
+
+        sampleEQAService.insert(sampleEQA);
     }
 
     void persistOrderSpecimenBarcodeCounts(org.openelisglobal.sample.valueholder.Sample sample, Integer numOrderLabels,

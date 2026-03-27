@@ -1,9 +1,10 @@
 {
   "profileMeta": {
     "id": "multiskan-fc",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "displayName": "Thermo Multiskan FC",
-    "manufacturer": "Thermo Fisher"
+    "manufacturer": "Thermo Fisher",
+    "validation_status": "PENDING - awaiting real export files from site. Herbert reported no OE plugin available 2026-03-20. Profile based on standard SkanIt export format; may need adjustment after real file validation."
   },
   "protocol": {
     "name": "FILE",
@@ -23,9 +24,16 @@
     "Content": "content",
     "Concentration": "concentration"
   },
+  "locale_support": {
+    "description": "Madagascar site uses French locale. CSV exports may use semicolons as delimiter and commas as decimal separator.",
+    "french_csv": {
+      "delimiter": ";",
+      "decimal_separator": ","
+    }
+  },
   "layouts": {
     "plate_grid": {
-      "description": "8x12 plate grid after metadata header",
+      "description": "8x12 plate grid after metadata header (standard SkanIt export)",
       "metadata_rows": ["Instrument", "Protocol", "Date", "Time", "Filter", "Plate Type"],
       "grid_rows": 8,
       "grid_cols": 12
@@ -37,7 +45,7 @@
   },
   "configDefaults": {
     "fileFormat": "CSV",
-    "delimiter": ",",
+    "delimiter": ";",
     "hasHeader": true
   }
 }

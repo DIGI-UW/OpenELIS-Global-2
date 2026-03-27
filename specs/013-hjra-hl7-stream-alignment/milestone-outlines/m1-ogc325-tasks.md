@@ -4,6 +4,9 @@
 **Reference**: [hl7-branch-contract.md](../contracts/hl7-branch-contract.md),
 [hl7-readiness-gates.md](../contracts/hl7-readiness-gates.md),
 [gate1-ogc325-evidence.md](../launch-checklists/gate1-ogc325-evidence.md)
+**Implementation tasks**:
+[m1-implementation-tasks.md](./m1-implementation-tasks.md) (actual M1 task
+tracking)
 
 ## Purpose
 
