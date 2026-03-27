@@ -429,14 +429,30 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void resultIsConclusion_shouldReturnBooleanValue() {
+    public void resultIsConclusion_shouldReturnTrueWhenResultIsConclusion() {
 
-        Analysis analysis = aService.get("1");
-        Result result = resultService.get("1");
+        Analysis analysis = createDemoAnalysis();
+        Result result = new Result();
+        result.setResultType("C"); // "C" typically marks a conclusion result
 
         boolean isConclusion = aService.resultIsConclusion(result, analysis);
 
         Assert.assertTrue(isConclusion);
+<<<<<<< HEAD
+=======
+    }
+
+    @Test
+    public void resultIsConclusion_shouldReturnFalseWhenResultIsNotConclusion() {
+
+        Analysis analysis = createDemoAnalysis();
+        Result result = new Result();
+        result.setResultType("N"); // Non-conclusion result type
+
+        boolean isConclusion = aService.resultIsConclusion(result, analysis);
+
+        Assert.assertFalse(isConclusion);
+>>>>>>> 4910c6a36 (fix: address review feedback)
     }
 
     @Test
@@ -455,7 +471,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getTestDisplayName_shouldReturnFormattedName() {
 
-        Analysis analysis = aService.get("1");
+        Analysis analysis = createDemoAnalysis();
 
         String displayName = aService.getTestDisplayName(analysis);
 
@@ -464,13 +480,29 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getQuantifiedResult_shouldReturnResultOrNull() {
+    public void getQuantifiedResult_shouldReturnNullWhenNoQuantifiedResult() {
 
-        Analysis analysis = aService.get("1");
+        Analysis analysis = createDemoAnalysis(); // fixture with no quantified result
 
         Result result = aService.getQuantifiedResult(analysis);
 
+<<<<<<< HEAD
         // result may be null depending on dataset
         Assert.assertTrue(result == null || result.getId() != null);
+=======
+        Assert.assertNull(result);
+>>>>>>> 4910c6a36 (fix: address review feedback)
+    }
+
+    @Test
+    public void getQuantifiedResult_shouldReturnResultWithIdWhenExists() {
+
+        Analysis analysis = aService.get("1"); // dataset record known to have a quantified result
+
+        Result result = aService.getQuantifiedResult(analysis);
+
+        if (result != null) {
+            Assert.assertNotNull(result.getId());
+        }
     }
 }
