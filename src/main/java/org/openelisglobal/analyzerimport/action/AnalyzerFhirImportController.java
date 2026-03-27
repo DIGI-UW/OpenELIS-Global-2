@@ -13,6 +13,8 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.Specimen;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
+import org.openelisglobal.analyzerimport.util.MappedTestName;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
@@ -179,12 +181,32 @@ public class AnalyzerFhirImportController {
             return null;
         }
 
-        // Test name from code
+        // Test code from Observation.code (raw analyzer code, e.g., "WBC")
+        String testCode = null;
         if (obs.hasCode() && obs.getCode().hasCoding()) {
             var coding = obs.getCode().getCodingFirstRep();
-            ar.setTestName(coding.getCode() != null ? coding.getCode() : coding.getDisplay());
+            testCode = coding.getCode() != null ? coding.getCode() : coding.getDisplay();
         } else if (obs.hasCode() && obs.getCode().hasText()) {
-            ar.setTestName(obs.getCode().getText());
+            testCode = obs.getCode().getText();
+        }
+
+        // Map raw test code → OE test ID via AnalyzerTestNameCache
+        // OE owns terminology; bridge sends raw codes, OE maps them
+        if (testCode != null && analyzer != null && analyzer.getAnalyzerType() != null) {
+            String analyzerTypeName = analyzer.getAnalyzerType().getName();
+            MappedTestName mapped = AnalyzerTestNameCache.getInstance().getMappedTest(analyzerTypeName, testCode);
+            if (mapped != null && mapped.getTestId() != null && !"-1".equals(mapped.getTestId())) {
+                ar.setTestId(mapped.getTestId());
+                ar.setTestName(mapped.getOpenElisTestName());
+                if (mapped.getAnalyzerId() != null && !mapped.getAnalyzerId().isEmpty()) {
+                    ar.setAnalyzerId(mapped.getAnalyzerId());
+                }
+            } else {
+                ar.setTestName(testCode);
+                ar.setReadOnly(true);
+            }
+        } else {
+            ar.setTestName(testCode);
         }
 
         // Result value
@@ -223,7 +245,11 @@ public class AnalyzerFhirImportController {
             ar.setCompleteDate(new Timestamp(System.currentTimeMillis()));
         }
 
-        ar.setTestId("-1"); // Resolved later during result review
+        // testId is set by the mapping lookup above; if unmapped, it stays null
+        // and readOnly=true so the result shows as "configuration needed"
+        if (ar.getTestId() == null) {
+            ar.setReadOnly(true);
+        }
 
         return ar;
     }
