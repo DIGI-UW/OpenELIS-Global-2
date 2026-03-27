@@ -33,7 +33,8 @@ public class ControllerUtills {
                     return String.valueOf(loginUser.getSystemUserId());
                 }
             } catch (Exception e) {
-                // Fall through
+                org.openelisglobal.common.log.LogEvent.logDebug(ControllerUtills.class.getSimpleName(), "getSysUserId",
+                        "SecurityContext fallback failed: " + e.getMessage());
             }
         }
 

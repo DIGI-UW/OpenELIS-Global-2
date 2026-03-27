@@ -304,6 +304,8 @@ public class Analyzer extends BaseObject<String> {
                     new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {
                     });
         } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logWarn("Analyzer", "getColumnMappings",
+                    "Failed to parse column mappings JSON: " + e.getMessage());
             return java.util.Collections.emptyMap();
         }
     }
@@ -320,6 +322,8 @@ public class Analyzer extends BaseObject<String> {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             this.columnMappingsJson = mapper.writeValueAsString(columnMappings);
         } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logWarn("Analyzer", "setColumnMappings",
+                    "Failed to serialize column mappings: " + e.getMessage());
             this.columnMappingsJson = null;
         }
     }
