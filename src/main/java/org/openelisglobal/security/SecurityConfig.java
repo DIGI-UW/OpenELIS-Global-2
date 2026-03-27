@@ -95,10 +95,13 @@ public class SecurityConfig {
 
     // TODO should we move these to the properties files?
     // pages that have special security constraints
+    // Bridge endpoints (/analyzer/fhir, /analyzer/astm, /analyzer/hl7,
+    // /rest/analyzer/analyzers)
+    // are NOT in OPEN_PAGES — the bridge sends Basic auth for all OE calls.
+    // With @Order(1) on httpBasicServletFilterChain, Basic auth is processed first.
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
-            "/rest/site-branding/**", "/analyzer/astm", "/analyzer/hl7", "/analyzer/fhir", "/rest/analyzer/analyzers",
-            "/analyzer/rest/analyzer/analyzers", "/rest/supportedlocales/active" };
+            "/rest/site-branding/**", "/rest/supportedlocales/active" };
     public static final String[] LOGIN_PAGES = { "/LoginPage", "/ValidateLogin", "/session" };
 
     public static final String[] AUTH_OPEN_PAGES = { "/Home", "/Dashboard", "/Logout", "/MasterListsPage",

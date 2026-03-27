@@ -50,7 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
  * </ul>
  */
 @RestController
-public class AnalyzerFhirImportController {
+public class AnalyzerFhirImportController extends org.openelisglobal.common.rest.BaseRestController {
 
     private static final String CLASS_NAME = "AnalyzerFhirImportController";
 
@@ -133,7 +133,12 @@ public class AnalyzerFhirImportController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            String userId = "1"; // System user for bridge imports
+            String userId = getSysUserId(request);
+            if (userId == null) {
+                LogEvent.logWarn(CLASS_NAME, "importFhirBundle",
+                        "Could not resolve sysUserId from request — using system default");
+                userId = "1";
+            }
             analyzerResultsService.insertAnalyzerResults(results, userId);
 
             response.put("success", true);
@@ -145,9 +150,10 @@ public class AnalyzerFhirImportController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            LogEvent.logError(CLASS_NAME, "importFhirBundle", "FHIR Bundle import failed: " + e.getMessage());
+            LogEvent.logError(CLASS_NAME, "importFhirBundle",
+                    "FHIR Bundle import failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             response.put("success", false);
-            response.put("error", "FHIR Bundle import failed: " + e.getMessage());
+            response.put("error", "FHIR Bundle import failed");
             return ResponseEntity.internalServerError().body(response);
         }
     }
