@@ -5,148 +5,29 @@ name: E2E / Playwright / Analyzer Harness (Reusable)
 
 on:
   workflow_call:
+    inputs:
+      build_run_id:
+        description: "Run ID of the build workflow (for cross-run artifact download). Empty = same run."
+        required: false
+        type: string
+        default: ""
+      is_fork:
+        description: "Whether this is a fork PR (artifacts in same run from fork-rebuild)"
+        required: false
+        type: string
+        default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures harness uses PR's compose/test files, not develop)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
   packages: read
+  actions: read
 
 jobs:
-  test-shards:
-    name: Shard ${{ matrix.shard_index }}/${{ matrix.shard_total }}
-    runs-on: ubuntu-latest
-    environment: e2e
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - shard_index: 1
-            shard_total: 2
-          - shard_index: 2
-            shard_total: 2
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-        working-directory: frontend
-
-      - name: Prepare .env
-        run: cp .env.example .env
-
-      - name: Download plugin jars artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-
-      - name: Download Docker image map artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map
-          path: /tmp/e2e-image-map
-
-      - name: Restore plugin jars for runtime loading
-        run: |
-          mkdir -p volume/plugins
-          rm -rf volume/plugins/*
-          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
-          ls -lah volume/plugins
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull and retag prebuilt compose images
-        run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
-            docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
-
-      - name: Create analyzer import bind mount directories
-        run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
-
-      - name: Start analyzer harness stack (no rebuild)
-        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
-
-      - name: Wait for OpenELIS, bridge, and simulator readiness
-        run: |
-          timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
-          timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
-          timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
-
-      - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
-        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
-
-      - name: Seed analyzers via REST API (profile-based test mappings + bridge registration)
-        run: bash projects/analyzer-harness/seed-analyzers.sh
-        env:
-          BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS }}
-
-      - name: Run analyzer Playwright harness shard
-        run: npm run pw:test -- --project=harness --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
-        working-directory: frontend
-        env:
-          CI: true
-          ANALYZER_HARNESS: "true"
-          BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS }}
-
-      - name: Upload blob report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: analyzer-blob-report-${{ matrix.shard_index }}
-          path: frontend/blob-report
-          if-no-files-found: ignore
-          retention-days: 1
-
-      - name: Upload failure screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: analyzer-playwright-screenshots-shard-${{ matrix.shard_index }}
-          path: frontend/test-results/**/test-failed-*.png
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload test traces
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: analyzer-playwright-traces-shard-${{ matrix.shard_index }}
-          path: frontend/test-results/**/trace.zip
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Dump docker logs on failure
-        if: failure()
-        uses: jwalton/gh-docker-logs@v2
-        with:
-          tail: "200"
-
   demo-shards:
     name: Demo ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     runs-on: ubuntu-latest
@@ -159,10 +40,12 @@ jobs:
             shard_total: 2
           - shard_index: 2
             shard_total: 2
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_sha || github.sha }}
           submodules: recursive
 
       - name: Set up Node.js
@@ -176,6 +59,19 @@ jobs:
         run: npm ci
         working-directory: frontend
 
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
+        working-directory: frontend
+
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
         working-directory: frontend
@@ -183,13 +79,33 @@ jobs:
       - name: Prepare .env
         run: cp .env.example .env
 
-      - name: Download plugin jars artifact
+      - name: Download plugin jars from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download plugin jars from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
         uses: actions/download-artifact@v4
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
 
-      - name: Download Docker image map artifact
+      - name: Download image map from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map
@@ -211,14 +127,21 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -r -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
 
       - name: Create analyzer import bind mount directories
-        run: mkdir -p projects/analyzer-harness/volume/analyzer-imports
+        run: |
+          mkdir -p projects/analyzer-harness/volume/analyzer-imports
+          # Pre-create incoming/ dirs so the bridge doesn't have to (avoids async timeout)
+          for slug in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+            mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
+          done
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
         run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
@@ -239,8 +162,34 @@ jobs:
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
 
-      - name: Run analyzer Playwright demo workflow
-        run: npm run pw:test -- --project=demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+      - name: Fix analyzer-imports permissions (bridge creates dirs as root)
+        run: |
+          # Bridge creates incoming/ dirs asynchronously after seed registration.
+          # Wait for all expected directories to appear, then fix permissions.
+          for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+            timeout 120 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
+            echo "Found: $dir/incoming"
+          done
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+
+      - name: Verify analyzer test mappings exist (prevent unmapped-result race)
+        run: |
+          for analyzer in "Cepheid GeneXpert (ASTM Mode)" "QuantStudio 5" "QuantStudio 7" "FluoroCycler XT" "Mindray BC-5380" "Mindray BS-200" "Mindray BS-300"; do
+            MAPPINGS=$(curl -sk -u "$TEST_USER:$TEST_PASS" \
+              "$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers" | \
+              python3 -c "import json,sys; data=json.load(sys.stdin); a=[x for x in data if x.get('name')=='$analyzer']; print(len(a[0].get('testMappings',[])) if a else 0)" 2>/dev/null || echo "0")
+            echo "$analyzer: $MAPPINGS test mappings"
+            if [ "$MAPPINGS" = "0" ]; then
+              echo "::warning::Analyzer '$analyzer' has no test mappings — results will be unmapped"
+            fi
+          done
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ secrets.TEST_PASS }}
+
+      - name: Run analyzer Playwright harness-demo shard
+        run: npm run pw:test -- --project=harness-demo --workers=1 --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
         working-directory: frontend
         env:
           CI: true
@@ -248,6 +197,9 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
+          # Must match bridge.file.pollIntervalMs (bridge default: 5000ms)
+          FILE_IMPORT_POLL_MS: "5000"
+          FILE_IMPORT_DROP_BUFFER_MS: "45000"
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -276,16 +228,29 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Extract application and Tomcat logs from container
+        if: failure()
+        run: |
+          mkdir -p /tmp/oe-logs /tmp/tomcat-logs
+          docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. /tmp/oe-logs/ 2>/dev/null || true
+          docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== Extracted files ==="
+          ls -la /tmp/oe-logs/ /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Errors ==="
+          find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== Tomcat Errors ==="
+          find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+
       - name: Dump docker logs on failure
         if: failure()
         uses: jwalton/gh-docker-logs@v2
         with:
-          tail: "200"
+          tail: "2000"
 
   merge-reports:
     name: Report Merge
     if: ${{ always() && !cancelled() }}
-    needs: [test-shards, demo-shards]
+    needs: [demo-shards]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -295,12 +260,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
 
       - name: Download blob reports from shard jobs
         continue-on-error: true
@@ -310,10 +269,18 @@ jobs:
           pattern: analyzer-blob-report-*
           merge-multiple: true
 
+      - name: Resolve Playwright version for report merge
+        id: playwright-version
+        working-directory: frontend
+        run: |
+          VERSION=$(node -e "const lock=require('./package-lock.json'); const pkg=require('./package.json'); const clean=(s)=>s?String(s).replace(/^[~^]/,''):''; const v=(lock.packages?.['node_modules/playwright']?.version)||(lock.packages?.['node_modules/@playwright/test']?.version)||clean(pkg.devDependencies?.['@playwright/test'])||clean(pkg.dependencies?.playwright); if(!v){console.error('Unable to resolve Playwright version for report merge'); process.exit(1);} process.stdout.write(v);")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using Playwright version: $VERSION"
+
       - name: Merge blob reports into HTML report when artifacts exist
         run: |
           if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
-            npx playwright merge-reports --reporter html ./all-blob-reports
+            npx --yes playwright@${{ steps.playwright-version.outputs.version }} merge-reports --reporter html ./all-blob-reports
           else
             echo "No blob reports available; skipping merge."
           fi
@@ -329,19 +296,15 @@ jobs:
           retention-days: 14
 
   analyzer-e2e-gate:
-    name: Required
+    name: Checkpoint
     if: always()
-    needs: [test-shards, demo-shards, merge-reports]
+    needs: [demo-shards, merge-reports]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce shard, demo, and merge success
         run: |
-          if [[ "${{ needs.test-shards.result }}" != "success" ]]; then
-            echo "Analyzer shard jobs failed: ${{ needs.test-shards.result }}"
-            exit 1
-          fi
           if [[ "${{ needs.demo-shards.result }}" != "success" ]]; then
-            echo "Analyzer demo shard jobs failed: ${{ needs.demo-shards.result }}"
+            echo "Harness demo shard jobs failed: ${{ needs.demo-shards.result }}"
             exit 1
           fi
           if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then

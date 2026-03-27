@@ -6,10 +6,27 @@ name: E2E / Cypress (Deprecated)
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      build_run_id:
+        description: "Run ID of the build workflow (for cross-run artifact download). Empty = same run."
+        required: false
+        type: string
+        default: ""
+      is_fork:
+        description: "Whether this is a fork PR (artifacts in same run from fork-rebuild)"
+        required: false
+        type: string
+        default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures Cypress uses PR's test files, not develop)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
   packages: read
+  actions: read
 
 jobs:
   e2e-cypress:
@@ -72,6 +89,7 @@ jobs:
       - name: Checkout OpenELIS-Global2
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
           submodules: recursive
 
@@ -94,10 +112,20 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download Docker image map artifact
+      - name: Download image map from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
         uses: actions/download-artifact@v4
         with:
-          name: e2e-image-map
+          name: e2e-image-map-base
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map-base
           path: /tmp/e2e-image-map
 
       - name: Login to GHCR
@@ -109,11 +137,12 @@ jobs:
 
       - name: Pull and retag prebuilt compose images
         run: |
-          while IFS='|' read -r source_image ghcr_image; do
-            [ -z "$source_image" ] && continue
-            docker pull "$ghcr_image"
+          xargs -r -I{} -P4 bash -lc '
+            IFS="|" read -r source_image ghcr_image <<< "$1"
+            [ -z "$source_image" ] && exit 0
+            docker pull "$ghcr_image" >/dev/null
             docker tag "$ghcr_image" "$source_image"
-          done < /tmp/e2e-image-map/e2e-image-map.txt
+          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
 
       - name: Start containers
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600

@@ -201,12 +201,15 @@ public class AnalyzerImportController implements IActionConstants {
      * </p>
      */
     private void setBridgeHeaders(AnalyzerReader reader, HttpServletRequest request) {
-        // X-Analyzer-Id: deterministic routing from bridge registration.
-        // When present, this provides a direct DB lookup — no pattern matching needed.
+        // X-Analyzer-Id: analyzer identifier from bridge (e.g., MSH-3+MSH-4 for HL7).
+        // ASTM: used as direct DB ID lookup. HL7: resolved via identifier-pattern
+        // match.
         String analyzerId = request.getHeader("X-Analyzer-Id");
         if (analyzerId != null && !analyzerId.trim().isEmpty()) {
             if (reader instanceof ASTMAnalyzerReader astmReader) {
                 astmReader.setRegisteredAnalyzerId(analyzerId.trim());
+            } else if (reader instanceof HL7AnalyzerReader hl7Reader) {
+                hl7Reader.setRegisteredAnalyzerId(analyzerId.trim());
             }
         }
 
