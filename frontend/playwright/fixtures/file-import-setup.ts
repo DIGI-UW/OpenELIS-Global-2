@@ -36,7 +36,18 @@ export function loadFileImportFixtures(): void {
   const sql = fs.readFileSync(SQL_FILE);
   execFileSync(
     "docker",
-    ["exec", "-i", DB_CONTAINER, "psql", "-U", "clinlims", "-d", "clinlims"],
+    [
+      "exec",
+      "-i",
+      DB_CONTAINER,
+      "psql",
+      "-U",
+      "clinlims",
+      "-d",
+      "clinlims",
+      "-v",
+      "ON_ERROR_STOP=1",
+    ],
     { stdio: ["pipe", "inherit", "inherit"], input: sql },
   );
 }

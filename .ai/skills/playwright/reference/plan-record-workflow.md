@@ -32,11 +32,11 @@ Keep flows granular. Prefer one behavior per test.
 ## 3) Project Selection Rules
 
 - `core-app`: core UI behavior without analyzer harness dependencies
+- `core-demo` / `core-demo-video`: workflow demos on the build stack only
 - `harness`: analyzer infrastructure behavior requiring bridge/simulator/plugins
-- `demo`: workflow demos intended for CI validation
-- `demo-video`: local recording mode only
+- `harness-demo` / `harness-demo-video`: analyzer story demos (CI + local video)
 
-Recordings should run in `demo-video`; routine assertions should still pass in
+Recordings should run in `*-demo-video`; routine assertions should still pass in
 non-video projects.
 
 ## 4) Author + Register
@@ -45,7 +45,7 @@ For each planned flow:
 
 1. Author with `/write-playwright-test`.
 2. Register the spec in `frontend/playwright.config.ts` (`testMatch` or
-   `DEMO_TESTS`).
+   `CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`).
 3. Validate with:
    `python3 .ai/skills/playwright/scripts/validate-playwright-project.py <spec>`
 
@@ -57,9 +57,9 @@ For each planned flow:
 
 ## 6) Recording Safety Rules
 
-- Use `videoPause(page, ms, testInfo)` for pacing; no-op outside `demo-video`.
+- Use `videoPause(page, ms, testInfo)` for pacing; no-op outside `*-demo-video`.
 - Use `showTitleCard/showStepCard` overlays only through helper APIs so they
-  no-op outside `demo-video`.
+  no-op outside `*-demo-video`.
 - Do not gate assertions on video-only behavior.
 
 ## 7) Artifact Verification

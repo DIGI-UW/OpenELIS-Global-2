@@ -71,10 +71,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
 
     private NotificationPayloadTemplate createSystemDefaultNotificationPayloadTemplate(NotificationPayloadType type) {
         NotificationPayloadTemplate template = new NotificationPayloadTemplate();
-        template.setMessageTemplate(
-                "[testName] testing results have been finalized. If you are not awaiting test results"
-                        + " please call XXXXXXXXXXX and delete this notice.\n\n"
-                        + "[patientFirstName] [patientLastNameInitial]: [testResult]");
+        template.setMessageTemplate("[testName] testing results have been finalized for Patient : "
+                + "[patientFirstName] [patientLastNameInitial].\n\n" + "Result : [testResult]");
         template.setSubjectTemplate("[testName] Testing Results");
         template.setSysUserId("1");
         template.setType(type);
@@ -184,10 +182,12 @@ public class TestNotificationServiceImpl implements TestNotificationService {
             NotificationConfigOption option, String resultForDisplay, ClientResultsViewBean resultsViewInfo) {
         try {
             SMSNotification smsNotification = new SMSNotification();
+            String rawPhone = !GenericValidator.isBlankOrNull(receiverPerson.getPrimaryPhone())
+                    ? receiverPerson.getPrimaryPhone()
+                    : receiverPerson.getWorkPhone();
             String phoneNumber = "";
-            for (char ch : receiverPerson.getPrimaryPhone().toCharArray()) {
-                // 5
-                if (Character.isDigit(ch)) {
+            for (char ch : rawPhone.toCharArray()) {
+                if (Character.isDigit(ch) || ch == '+') {
                     phoneNumber = phoneNumber + ch;
                 }
             }
@@ -282,7 +282,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     }
 
     private boolean canSendSMS(Person person) {
-        boolean canSend = person != null && !GenericValidator.isBlankOrNull(person.getPrimaryPhone());
+        boolean canSend = person != null && (!GenericValidator.isBlankOrNull(person.getPrimaryPhone())
+                || !GenericValidator.isBlankOrNull(person.getWorkPhone()));
         if (!canSend) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "canSendSMS",
                     "can't send SMS to person as they have no phone on file");
