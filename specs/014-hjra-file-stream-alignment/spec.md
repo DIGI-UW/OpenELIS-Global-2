@@ -402,7 +402,9 @@ incomplete.
 - **GenericFile plugin** (`plugins/analyzers/GenericFile/`): Plugin JAR that
   implements `AnalyzerImporterPlugin`. Owns analyzer-specific file
   interpretation via profile-driven column mapping. Peer to GenericASTM and
-  GenericHL7. Registers with `PluginAnalyzerService` at startup.
+  GenericHL7. Registers with `PluginAnalyzerService` at startup. **Note**:
+  GenericFile plugin does NOT yet exist in the plugins submodule. This is M3
+  scope.
 - **Analyzer Profile** (`projects/analyzer-profiles/file/`): Per-instrument JSON
   file (e.g. `quantstudio.json`, `wondfo-csv.json`). Declares `file_format`,
   `supported_extensions`, `column_mapping`, `default_test_mappings`,
@@ -424,7 +426,8 @@ incomplete.
   null/unused.
 - **FileFormat** (new config field on `FileImportConfiguration`): Declares the
   expected file format (CSV, TSV, EXCEL). Drives app-side reader selection. Only
-  present for file-import analyzers.
+  present for file-import analyzers. **Note**: `fileFormat` schema field not yet
+  added to `FileImportConfiguration`. This is an M1A blocker.
 
 ---
 
@@ -455,6 +458,14 @@ structured records and a loaded profile/config:
 
 This is exactly how GenericASTM and GenericHL7 work: the app-side reader handles
 protocol/format parsing, the plugin handles analyzer-specific semantic mapping.
+
+### Current State (as of 2026-03-27)
+
+Bridge detects files via FileWatcher polling, then POSTs raw binary as multipart
+to OE POST `/rest/analyzers/{id}/import`. OE parses xlsx/csv via
+`ExcelAnalyzerReader`/`CSVAnalyzerReader`. OE still owns format-specific
+parsing. Post-MVP direction: bridge parses all formats and sends FHIR R4
+transaction Bundles (DiagnosticReport + Observation) to a unified OE endpoint.
 
 ### Boundary Constraint
 

@@ -192,6 +192,10 @@ names the remaining evidence gaps and does not convert them into settled facts.
 - **FR-016**: The specification MUST exclude implementation on the coordination
   branch, profile library or sharing features, and any invented umbrella Jira
   that does not exist in the validated source material.
+  - **Exception**: PR #3195 (`fix/013-hl7-test-connection`) is a cross-cutting
+    fix branch that includes implementation for CommunicationMode enum,
+    test-connectivity, and Liquibase migration. This was intentional — these are
+    prerequisites shared across M1/M2/M3 milestones.
 - **FR-017**: The HL7 stream MUST ensure test-connection parity between ASTM and
   HL7 analyzers. HL7 analyzers with IP/port configured MUST receive genuine TCP
   connectivity testing rather than hardcoded success. The test-connection
