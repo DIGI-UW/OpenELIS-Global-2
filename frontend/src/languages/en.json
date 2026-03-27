@@ -670,6 +670,7 @@
   "banner.menu.resultvalidation.virology": "Virology",
   "banner.menu.sample": "Order",
   "banner.menu.sample.shipment": "Sample Shipment",
+  "training.installation.message": "Training Installation Detected",
   "banner.menu.sampleAdd": "Add Order",
   "banner.menu.sampleBatchEntry": "Batch Order Entry",
   "banner.menu.sampleConsult": "View",

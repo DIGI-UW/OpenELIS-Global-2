@@ -147,6 +147,8 @@ const ShipmentDashboard = () => {
     if (componentMounted.current) {
       fetchFacilities();
       fetchStatistics();
+      // Load unassigned count for badge regardless of active tab (silent = no loading spinner)
+      fetchUnassignedSamples(true);
     }
     return () => {
       componentMounted.current = false;
@@ -212,8 +214,8 @@ const ShipmentDashboard = () => {
     });
   };
 
-  const fetchUnassignedSamples = () => {
-    setLoading(true);
+  const fetchUnassignedSamples = (silent = false) => {
+    if (!silent) setLoading(true);
     // Use new SampleItem-based endpoint
     let url = "/rest/unassigned-sample/items";
     if (filterFacility) {
@@ -225,7 +227,7 @@ const ShipmentDashboard = () => {
         if (response) {
           setUnassignedSamples(response);
         }
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     });
   };

@@ -662,6 +662,7 @@
   "banner.menu.resultvalidation.virology": "Virologie",
   "banner.menu.sample": "Ordonnance",
   "banner.menu.sample.shipment": "Expédition d'échantillons",
+  "training.installation.message": "Installation de formation détectée",
   "banner.menu.sampleAdd": "Ajouter une ordonnance",
   "banner.menu.sampleBatchEntry": "Saisie d'ordonnances en Lot",
   "banner.menu.sampleConsult": "Consulter",
