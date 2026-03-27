@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzerimport.action;
 
 import ca.uhn.fhir.context.FhirContext;
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -16,9 +17,9 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -60,13 +61,16 @@ public class AnalyzerFhirImportController {
     @Autowired
     private FhirContext fhirContext;
 
-    @PostMapping(value = "/analyzer/fhir", consumes = "application/fhir+json")
-    public ResponseEntity<Map<String, Object>> importFhirBundle(@RequestBody String bundleJson,
+    @PostMapping(value = "/analyzer/fhir", consumes = { "application/fhir+json", MediaType.APPLICATION_JSON_VALUE,
+            MediaType.ALL_VALUE })
+    public ResponseEntity<Map<String, Object>> importFhirBundle(HttpServletRequest request,
             @RequestHeader(value = "X-Analyzer-Id", required = false) String analyzerId) {
 
         Map<String, Object> response = new LinkedHashMap<>();
 
         try {
+            String bundleJson = new String(request.getInputStream().readAllBytes(),
+                    java.nio.charset.StandardCharsets.UTF_8);
             Bundle bundle = fhirContext.newJsonParser().parseResource(Bundle.class, bundleJson);
 
             if (bundle.getType() != Bundle.BundleType.TRANSACTION && bundle.getType() != Bundle.BundleType.BATCH) {
@@ -75,10 +79,22 @@ public class AnalyzerFhirImportController {
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Resolve analyzer
+            // Resolve analyzer from bridge identifier (composite like "MINDRAY-BC-5380")
             Analyzer analyzer = null;
             if (analyzerId != null && !analyzerId.isBlank()) {
-                analyzer = analyzerService.get(analyzerId);
+                // Try numeric ID first (direct DB lookup)
+                try {
+                    analyzer = analyzerService.get(analyzerId);
+                } catch (Exception e) {
+                    // Not a numeric ID — try identifier pattern match
+                }
+                if (analyzer == null) {
+                    analyzer = analyzerService.findByIdentifierPatternMatch(analyzerId).orElse(null);
+                }
+                if (analyzer == null) {
+                    // Try by name
+                    analyzer = analyzerService.getByName(analyzerId).orElse(null);
+                }
             }
 
             // Collect Specimen identifiers for accession number lookup
