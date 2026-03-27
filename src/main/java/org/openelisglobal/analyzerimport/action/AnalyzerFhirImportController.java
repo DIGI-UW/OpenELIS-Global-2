@@ -191,16 +191,14 @@ public class AnalyzerFhirImportController {
         }
 
         // Map raw test code → OE test ID via AnalyzerTestNameCache
-        // OE owns terminology; bridge sends raw codes, OE maps them
-        if (testCode != null && analyzer != null && analyzer.getAnalyzerType() != null) {
-            String analyzerTypeName = analyzer.getAnalyzerType().getName();
-            MappedTestName mapped = AnalyzerTestNameCache.getInstance().getMappedTest(analyzerTypeName, testCode);
+        // Uses per-analyzer lookup (not per-type) for correct isolation (OGC-492)
+        if (testCode != null && analyzer != null) {
+            MappedTestName mapped = AnalyzerTestNameCache.getInstance().getMappedTestByAnalyzerId(analyzer.getId(),
+                    testCode);
             if (mapped != null && mapped.getTestId() != null && !"-1".equals(mapped.getTestId())) {
                 ar.setTestId(mapped.getTestId());
                 ar.setTestName(mapped.getOpenElisTestName());
-                if (mapped.getAnalyzerId() != null && !mapped.getAnalyzerId().isEmpty()) {
-                    ar.setAnalyzerId(mapped.getAnalyzerId());
-                }
+                // Don't override analyzerId — already set from header resolution (line 162)
             } else {
                 ar.setTestName(testCode);
                 ar.setReadOnly(true);

@@ -134,28 +134,6 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
-        CharacterEncodingFilter filter = new CharacterEncodingFilter();
-        filter.setEncoding("UTF-8");
-        filter.setForceEncoding(true);
-        http.addFilterBefore(filter, CsrfFilter.class);
-        MultipartFilter multipartFilter = new MultipartFilter();
-        multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
-        http.addFilterBefore(multipartFilter, CsrfFilter.class);
-
-        // for all requests going to open pages, use this security configuration
-        http.securityMatcher(OPEN_PAGES)
-                .authorizeHttpRequests(auth -> auth
-                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
-                        .permitAll().anyRequest().permitAll())
-                // disable csrf as it is not needed for open pages
-                .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
-        return http.build();
-    }
-
-    @Bean
-    @Order(2)
     @ConditionalOnProperty(property = "org.itech.login.basic", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain httpBasicServletFilterChain(HttpSecurity http) throws Exception {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
@@ -178,6 +156,28 @@ public class SecurityConfig {
 
                 .addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
                 // add security headers
+                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
+        CharacterEncodingFilter filter = new CharacterEncodingFilter();
+        filter.setEncoding("UTF-8");
+        filter.setForceEncoding(true);
+        http.addFilterBefore(filter, CsrfFilter.class);
+        MultipartFilter multipartFilter = new MultipartFilter();
+        multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
+        http.addFilterBefore(multipartFilter, CsrfFilter.class);
+
+        // for all requests going to open pages, use this security configuration
+        http.securityMatcher(OPEN_PAGES)
+                .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
+                        .permitAll().anyRequest().permitAll())
+                // disable csrf as it is not needed for open pages
+                .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
     }

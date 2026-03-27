@@ -53,7 +53,16 @@ create_analyzer() {
 
 MOCK_URL="${MOCK_URL:-http://localhost:8085}"
 
-# Create dynamic Docker network per TCP analyzer — each gets a unique IP
+# Stable IP assignments per analyzer (must match FIXED_SUBNETS in analyzer_network_manager.py).
+# Format: 10.42.{subnet_id}.10 — each analyzer always gets the same IP.
+declare -A STABLE_IPS=(
+  [genexpert]="10.42.20.10"
+  [bc5380]="10.42.21.10"
+  [bs200]="10.42.22.10"
+  [bs300]="10.42.23.10"
+)
+
+# Create dynamic Docker network per TCP analyzer — each gets a unique, stable IP
 # so the bridge can identify them individually.
 create_mock_network() {
   local name="$1"
@@ -68,12 +77,17 @@ create_mock_network() {
   local ip
   ip=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ip',''))" 2>/dev/null)
 
-  if [ -z "$ip" ]; then
-    echo "  WARN: Failed to create mock network for ${name} — using fallback 172.21.1.100" >&2
-    echo "172.21.1.100"
-  else
+  local expected_ip="${STABLE_IPS[$name]:-}"
+
+  if [ -n "$ip" ]; then
     echo "  Mock network: ${name} → ${ip}" >&2
     echo "$ip"
+  elif [ -n "$expected_ip" ]; then
+    echo "  WARN: Mock API failed for ${name} — using stable IP ${expected_ip}" >&2
+    echo "$expected_ip"
+  else
+    echo "  WARN: Failed to create mock network for ${name} — using fallback 172.21.1.100" >&2
+    echo "172.21.1.100"
   fi
 }
 
