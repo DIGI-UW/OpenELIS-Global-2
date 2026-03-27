@@ -309,20 +309,20 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   const averageTimeTileList: Array<Tile> = [
     {
-      title: "Reception To Validation Average Time",
-      subTitle: "Reception To Validation Average Time",
+      title: intl.formatMessage({ id: "dashboard.averageTime.receptionToValidation" }),
+      subTitle: intl.formatMessage({ id: "dashboard.averageTime.receptionToValidation" }),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToValidation,
     },
     {
-      title: "Reception To Result Average Time",
-      subTitle: "Reception To Result Average Time",
+      title: intl.formatMessage({ id: "dashboard.averageTime.receptionToResult" }),
+      subTitle: intl.formatMessage({ id: "dashboard.averageTime.receptionToResult" }),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToResult,
     },
     {
-      title: "Result To Validation Average Time",
-      subTitle: "Result To Validation Average Time",
+      title: intl.formatMessage({ id: "dashboard.averageTime.resultToValidation" }),
+      subTitle: intl.formatMessage({ id: "dashboard.averageTime.resultToValidation" }),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.resultToValidation,
     },
@@ -484,21 +484,21 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const userHeaders = [
     {
       key: "userFirstName",
-      header: "First Name",
+      header: intl.formatMessage({ id: "dashboard.user.firstName" }),
     },
     {
       key: "userLastName",
-      header: "Last Name",
+      header: intl.formatMessage({ id: "dashboard.user.lastName" }),
     },
     {
       key: "countOfOrdersEntered",
-      header: "Orders Entered",
+      header: intl.formatMessage({ id: "dashboard.user.ordersEntered" }),
     },
   ];
 
   return (
     <>
-      {loading && <Loading description="Loading Dasboard..." />}
+      {loading && <Loading description={intl.formatMessage({ id: "dashboard.loading" })} />}
       {notificationVisible === true ? <AlertDialog /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
