@@ -7,17 +7,23 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.dbunit.DatabaseUnitException;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.patienttype.valueholder.PatientType;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
@@ -33,6 +39,9 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     PersonService personService;
+
+    @Autowired
+    org.openelisglobal.address.service.PersonAddressService personAddressService;
 
     @Before
     public void init() throws Exception {
@@ -425,6 +434,69 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void getPatientIdentityBySampleStatusIdAndProject_shouldReturnIdentities() {
+        List<Integer> statusIds = Collections.singletonList(1);
+        List<String> patients = patientService.getPatientIdentityBySampleStatusIdAndProject(statusIds, "Project A");
+        Assert.assertNotNull(patients);
+    }
+
+    @Test
+    public void persistPatientData_shouldCreateNewPatientAndContact() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient", "patient_contact", "patient_identity" });
+
+        PatientManagementInfo info = getPatientManagementInfo();
+
+        Patient patient = new Patient();
+        Person person = new Person();
+        person.setFirstName("New");
+        person.setLastName("Patient");
+        patient.setPerson(person);
+        patient.setGender("F");
+
+        patientService.persistPatientData(info, patient, "1");
+
+        Assert.assertNotNull(patient.getId());
+        Patient savedPatient = patientService.get(patient.getId());
+        Assert.assertEquals("New", savedPatient.getPerson().getFirstName());
+    }
+
+    private static @NotNull PatientManagementInfo getPatientManagementInfo() {
+        PatientManagementInfo info = new PatientManagementInfo();
+        info.setPatientUpdateStatus(PatientUpdateStatus.ADD);
+        info.setFirstName("New");
+        info.setLastName("Patient");
+        info.setGender("F");
+        info.setBirthDateForDisplay("01/01/2000");
+
+        PatientContact contact = new PatientContact();
+        Person contactPerson = new Person();
+        contactPerson.setFirstName("Contact");
+        contactPerson.setLastName("Person");
+        contact.setPerson(contactPerson);
+        info.setPatientContact(contact);
+        return info;
+    }
+
+    @Test
+    public void insertNewPatientAddressInfo_shouldInsertAddressInfo() throws Exception {
+        executeDataSetWithStateManagement("testdata/address-part.xml");
+        Patient patient = patientService.get("1");
+
+        // "6" is Street in address-part.xml
+        patientService.insertNewPatientAddressInfo("6", "Main Street", "T", patient, "1");
+
+        List<PersonAddress> addresses = personAddressService.getAddressPartsByPersonId(patient.getPerson().getId());
+        boolean foundStreet = false;
+        for (PersonAddress addr : addresses) {
+            if ("6".equals(addr.getAddressPartId()) && "Main Street".equals(addr.getValue())) {
+                foundStreet = true;
+                break;
+            }
+        }
+        Assert.assertTrue("Should have found the inserted street address info", foundStreet);
+    }
+
+    @Test
     public void getPatientByExternalId_shouldReturnCorrectPatient() {
         Patient fetchedPatient = patientService.getPatientByExternalId("EX123");
 
@@ -552,6 +624,25 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
             Assert.assertTrue(patientsPage.stream().anyMatch(p -> p.getPerson().getFirstName().equals(firstName1)));
             Assert.assertTrue(patientsPage.stream().anyMatch(p -> p.getPerson().getFirstName().equals(firstName2)));
         }
+    }
+
+    @Test
+    public void insert_shouldGenerateFhirUuidIfNull() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "person", "patient" });
+        Person person = new Person();
+        person.setFirstName("Test");
+        person.setLastName("User");
+        personService.save(person);
+
+        Patient patient = new Patient();
+        patient.setPerson(person);
+        patient.setFhirUuid(null);
+
+        String id = patientService.insert(patient);
+
+        Patient saved = patientService.get(id);
+
+        Assert.assertNotNull(saved.getFhirUuid());
     }
 
 }
