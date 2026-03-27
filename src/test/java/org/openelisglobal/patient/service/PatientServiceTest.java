@@ -42,6 +42,9 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     PersonAddressService personAddressService;
+    
+    @Autowired
+    PatientContactService patientContactService;
 
     @Before
     public void init() throws Exception {
@@ -434,10 +437,25 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getPatientIdentityBySampleStatusIdAndProject_shouldReturnIdentities() {
-        List<Integer> statusIds = Collections.singletonList(1);
+    public void getPatientIdentityBySampleStatusIdAndProject_shouldReturnIdentities() throws Exception {
+        executeDataSetWithStateManagement("testdata/patient-identity-query.xml");
+
+        List<Integer> statusIds = Collections.singletonList(901);
         List<String> patients = patientService.getPatientIdentityBySampleStatusIdAndProject(statusIds, "Project A");
-        Assert.assertNotNull(patients);
+
+        Assert.assertNotNull("Result list should not be null", patients);
+        Assert.assertFalse("Result list should contain patient identities", patients.isEmpty());
+        Assert.assertTrue("Result list should contain expected patient identity (national/external id)",
+                patients.contains("1234"));
+    }
+
+    @Test
+    public void getPatientIdentityBySampleStatusIdAndProject_shouldReturnEmptyListWhenNoMatchingData() {
+        List<Integer> statusIds = Collections.singletonList(999);
+        List<String> patients = patientService.getPatientIdentityBySampleStatusIdAndProject(statusIds, "Non-existent Project");
+        
+        Assert.assertNotNull("Result list should not be null even with no matches", patients);
+        Assert.assertTrue("Result list should be empty when no matching data exists", patients.isEmpty());
     }
 
     @Test
@@ -458,6 +476,19 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertNotNull(patient.getId());
         Patient savedPatient = patientService.get(patient.getId());
         Assert.assertEquals("New", savedPatient.getPerson().getFirstName());
+        Assert.assertEquals(patient.getId(), info.getPatientPK());
+        Assert.assertEquals("F", savedPatient.getGender());
+
+        List<PatientContact> contacts = patientContactService.getForPatient(patient.getId());
+        Assert.assertNotNull(contacts);
+        Assert.assertEquals(1, contacts.size());
+
+        PatientContact savedContact = contacts.getFirst();
+        Assert.assertEquals(patient.getId(), savedContact.getPatientId());
+
+        Person savedContactPerson = personService.get(savedContact.getPerson().getId());
+        Assert.assertEquals("Contact", savedContactPerson.getFirstName());
+        Assert.assertEquals("Person", savedContactPerson.getLastName());
     }
 
     private static @NotNull PatientManagementInfo getPatientManagementInfo() {
