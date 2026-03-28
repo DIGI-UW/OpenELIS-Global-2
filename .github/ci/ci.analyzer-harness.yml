@@ -69,9 +69,6 @@ services:
       - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
       - analyzer-net
-    depends_on:
-      certs:
-        condition: service_completed_successfully
     restart: unless-stopped
 
   oe.openelis.org:
