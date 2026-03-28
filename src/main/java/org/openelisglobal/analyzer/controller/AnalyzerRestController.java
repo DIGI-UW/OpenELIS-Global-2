@@ -236,7 +236,7 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
-            pluginService.registerAnalyzerMenuAndPermission(analyzer.getName());
+            pluginService.registerAnalyzerMenuAndPermission(analyzer.getName(), analyzerId);
 
             // Auto-create test mappings and file import config from default profile if
             // provided

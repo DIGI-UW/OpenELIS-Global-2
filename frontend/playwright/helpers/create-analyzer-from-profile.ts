@@ -14,6 +14,7 @@
 import { Page, expect } from "@playwright/test";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import { cleanupAnalyzerByName } from "./cleanup-analyzer";
 import type { DemoPresentation } from "./demo-presentation";
 import type { AnalyzerTestConfig } from "./analyzer-test-config";
 import { LONG_TIMEOUT } from "./timeouts";
@@ -76,9 +77,14 @@ export async function createAnalyzerFromProfile(
   const list = new AnalyzerListPage(page);
   const form = new AnalyzerFormPage(page);
 
-  // For TCP analyzers: create mock network to get a unique IP
+  // Clean up any leftover from a previous failed run
+  await cleanupAnalyzerByName(page, config.name);
+
+  // For TCP analyzers: create mock network to get a unique IP.
+  // Delete any leftover network first (from a previous failed run).
   let assignedIp: string | null = null;
   if (config.protocol !== "FILE" && config.mockAnalyzerName) {
+    await removeMockNetwork(page, config.mockAnalyzerName);
     const template =
       config.push.protocol === "ASTM" || config.push.protocol === "HL7"
         ? (config.push as { template: string }).template
@@ -146,7 +152,6 @@ export async function deleteAnalyzerFromDashboard(
   page: Page,
   analyzerName: string,
 ): Promise<void> {
-  const { cleanupAnalyzerByName } = await import("./cleanup-analyzer");
   await cleanupAnalyzerByName(page, analyzerName);
 }
 

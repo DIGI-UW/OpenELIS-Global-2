@@ -90,7 +90,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Override
     @Transactional(readOnly = true)
     public Analyzer getAnalyzerByName(String name) {
-        return getMatch("name", name).orElse(null);
+        // Return the most recent active analyzer with this name.
+        // Multiple analyzers can share a name (e.g., two instruments of the same
+        // model).
+        // Prefer ACTIVE over other statuses; within same status, prefer highest ID
+        // (newest).
+        List<Analyzer> matches = getAllMatching("name", name);
+        if (matches == null || matches.isEmpty()) {
+            return null;
+        }
+        return matches.stream().filter(a -> a.getStatus() != Analyzer.AnalyzerStatus.DELETED)
+                .max(java.util.Comparator.comparing(a -> Integer.parseInt(a.getId())))
+                .orElse(matches.get(matches.size() - 1));
     }
 
     @Override

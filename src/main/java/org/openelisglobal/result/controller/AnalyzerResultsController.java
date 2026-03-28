@@ -701,11 +701,17 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     protected String getAnalyzerIdFromRequest() {
-        String analyzerId = null;
+        // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
+        String idParam = request.getParameter("id");
+        if (idParam != null && !idParam.isBlank()) {
+            return idParam;
+        }
         String requestType = request.getParameter("type");
-        Analyzer analyzer = analyzerService.getAnalyzerByName(requestType);
-        analyzerId = analyzer != null ? analyzer.getId() : null;
-        return analyzerId;
+        if (requestType != null) {
+            Analyzer analyzer = analyzerService.getAnalyzerByName(requestType);
+            return analyzer != null ? analyzer.getId() : null;
+        }
+        return null;
     }
 
     private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
@@ -825,7 +831,10 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     private String redirectInsertSuccess() {
-        String successUrl = "redirect:/AnalyzerResults?type=" + Encode.forUriComponent(request.getParameter("type"));
+        // Preserve whichever lookup param was used (id or type)
+        String idParam = request.getParameter("id");
+        String successUrl = idParam != null ? "redirect:/AnalyzerResults?id=" + Encode.forUriComponent(idParam)
+                : "redirect:/AnalyzerResults?type=" + Encode.forUriComponent(request.getParameter("type"));
         if (request.getParameter("page") != null) {
             successUrl += "&page=" + Encode.forUriComponent(request.getParameter("page"));
         }
