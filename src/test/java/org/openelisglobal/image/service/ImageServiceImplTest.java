@@ -2,7 +2,6 @@ package org.openelisglobal.image.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -10,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.ServletContext;
+import java.io.File;
 import java.util.Optional;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,7 +43,8 @@ public class ImageServiceImplTest {
 
         imageService.init();
 
-        assertEquals("/opt/openelis/static/images/", imageService.getFullPreviewPath());
+        String expectedPath = "/opt/openelis" + File.separator + "static" + File.separator + "images" + File.separator;
+        assertEquals(expectedPath, imageService.getFullPreviewPath());
     }
 
     @Test
@@ -114,7 +115,6 @@ public class ImageServiceImplTest {
 
         Optional<Image> result = serviceSpy.getImageBySiteInfoName("invalidRef");
 
-        assertNotNull(result);
         assertFalse(result.isPresent());
     }
 }
