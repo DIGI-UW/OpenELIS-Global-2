@@ -197,15 +197,9 @@ public class AnalyzerRestController extends BaseRestController {
                 error.put("validationErrors", validationErrors);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
-            List<Analyzer> existingAnalyzers = analyzerService.getAll();
-            for (Analyzer existing : existingAnalyzers) {
-                if (existing.getName().equalsIgnoreCase(form.getName())) {
-                    return ResponseEntity.status(HttpStatus.CONFLICT).body(AnalyzerControllerHelper
-                            .wrapError("Analyzer with name '" + form.getName() + "' already exists"));
-                }
-            }
-
-            // Create Analyzer entity (2-table model: config fields on Analyzer directly)
+            // Create Analyzer entity — names are display labels, not unique constraints.
+            // Multiple analyzers can share a name (e.g., two instruments of the same
+            // model).
             Analyzer analyzer = new Analyzer();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
@@ -534,29 +528,18 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Check for recent results (within 90-day window)
-            boolean hasRecentResults = analyzerService.hasRecentResults(id);
+            // Always soft-delete: the analyzer row is historical context for accepted
+            // results. Hard-deleting it orphans the sample→analysis→result chain and
+            // causes rendering crashes on AccessionResults pages.
+            analyzer.setStatus(AnalyzerStatus.DELETED);
+            analyzer.setActive(false);
+            analyzerService.update(analyzer);
 
-            if (hasRecentResults) {
-                // Soft delete: set status to DELETED (90-day window)
-                analyzer.setStatus(AnalyzerStatus.DELETED);
-                analyzer.setActive(false);
-                analyzerService.update(analyzer);
-
-                unregisterFromBridgeAsync(id, analyzer.getName());
+            unregisterFromBridgeAsync(id, analyzer.getName());
+            {
                 Map<String, Object> response = new LinkedHashMap<>();
-                response.put("message", "Analyzer soft-deleted (has recent results within 90-day window)");
-                response.put("deleted", false); // Soft delete, not hard delete
-                return ResponseEntity.ok(response);
-            } else {
-                // Hard delete: remove dependent records first to avoid FK violations,
-                // then delete the analyzer itself.
-                analyzerService.deleteWithDependents(analyzer);
-                unregisterFromBridgeAsync(id, analyzer.getName());
-
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("message", "Analyzer permanently deleted");
-                response.put("deleted", true); // Hard delete
+                response.put("message", "Analyzer deleted");
+                response.put("deleted", true);
                 return ResponseEntity.ok(response);
             }
         } catch (org.hibernate.ObjectNotFoundException e) {
