@@ -3,11 +3,13 @@ package org.openelisglobal.analyzer.service;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
@@ -167,21 +169,32 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Override
     @Transactional(readOnly = true)
     public Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier) {
-        if (analyzerIdentifier == null || analyzerIdentifier.trim().isEmpty()) {
+        return findByIdentifierPatternMatch(analyzerIdentifier == null ? List.of() : List.of(analyzerIdentifier));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIdentifierPatternMatch(List<String> analyzerIdentifiers) {
+        List<String> normalizedIdentifiers = normalizeAnalyzerIdentifiers(analyzerIdentifiers);
+        if (normalizedIdentifiers.isEmpty()) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                    "Empty analyzer identifier");
+                    "Empty analyzer identifiers");
             return Optional.empty();
         }
 
         List<Analyzer> candidates = baseObjectDAO.findGenericAnalyzersWithPatterns();
         LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                "Looking for match: identifier='" + analyzerIdentifier + "', candidates="
+                "Looking for match: identifiers=" + normalizedIdentifiers + ", candidates="
                         + (candidates != null ? candidates.size() : 0));
         if (candidates == null || candidates.isEmpty()) {
             return Optional.empty();
         }
 
-        String identifier = analyzerIdentifier.trim();
+        Analyzer bestAnalyzer = null;
+        String bestIdentifier = null;
+        String bestPattern = null;
+        int bestScore = -1;
+
         for (Analyzer analyzer : candidates) {
             if (analyzer.getIdentifierPattern() == null || analyzer.getIdentifierPattern().trim().isEmpty()) {
                 continue;
@@ -189,10 +202,17 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             try {
                 String pattern = analyzer.getIdentifierPattern();
                 Pattern p = Pattern.compile(pattern);
-                if (p.matcher(identifier).find()) {
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "findByIdentifierPatternMatch", "MATCHED: '"
-                            + identifier + "' matched pattern '" + pattern + "' for analyzer " + analyzer.getName());
-                    return Optional.of(analyzer);
+                for (String identifier : normalizedIdentifiers) {
+                    Matcher m = p.matcher(identifier);
+                    if (m.find()) {
+                        int score = m.group().length();
+                        if (score > bestScore) {
+                            bestAnalyzer = analyzer;
+                            bestIdentifier = identifier;
+                            bestPattern = pattern;
+                            bestScore = score;
+                        }
+                    }
                 }
             } catch (PatternSyntaxException e) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
@@ -200,9 +220,44 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             }
         }
 
+        if (bestAnalyzer != null) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                    "MATCHED: '" + bestIdentifier + "' matched pattern '" + bestPattern + "' for analyzer "
+                            + bestAnalyzer.getName());
+            return Optional.of(bestAnalyzer);
+        }
+
         LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                "No match found for identifier '" + identifier + "' among " + candidates.size() + " candidates");
+                "No match found for identifiers " + normalizedIdentifiers + " among " + candidates.size()
+                        + " candidates");
         return Optional.empty();
+    }
+
+    private List<String> normalizeAnalyzerIdentifiers(List<String> analyzerIdentifiers) {
+        if (analyzerIdentifiers == null || analyzerIdentifiers.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String identifier : analyzerIdentifiers) {
+            if (identifier == null) {
+                continue;
+            }
+
+            String trimmed = identifier.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+
+            normalized.add(trimmed);
+
+            String upperCased = trimmed.toUpperCase();
+            if (!upperCased.equals(trimmed)) {
+                normalized.add(upperCased);
+            }
+        }
+
+        return List.copyOf(normalized);
     }
 
     @Override

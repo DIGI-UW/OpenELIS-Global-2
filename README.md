@@ -33,7 +33,7 @@ You can find more information on how to set up OpenELIS at our
 
 [![04 - Cypress Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-cypress-deprecated.yml)
 
-[![Publish OpenELIS WebApp Docker Image Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-and-test.yml)
+[![Publish OpenELIS WebApp Docker Image Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml)
 
 [![Installer Packaging Status](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml/badge.svg)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/build-installer.yml)
 
