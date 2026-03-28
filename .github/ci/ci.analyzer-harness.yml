@@ -45,6 +45,7 @@ services:
       - "12000:12001"
       - "2575:2575"    # MLLP HL7 listener (OGC-325)
     volumes:
+      - key_trust-store-volume:/etc/openelis-global
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
@@ -68,6 +69,9 @@ services:
       - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
       - analyzer-net
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   oe.openelis.org:
