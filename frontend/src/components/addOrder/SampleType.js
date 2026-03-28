@@ -149,9 +149,11 @@ const SampleType = (props) => {
   }
 
   function handleQuantity(value) {
+    const val = value.target.value;
+    if (val !== "" && Number(val) < 0) return;
     setSampleXml({
       ...sampleXml,
-      quantity: value.target.value,
+      quantity: val,
     });
   }
 
