@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState, createRef } from "react";
 import config from "../config.json";
 import "./Style.css";
 import qs from "qs";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, injectIntl, IntlShape } from "react-intl";
 import { HardwareSecurityModule } from "@carbon/icons-react";
 import {
   Form,
@@ -22,19 +22,23 @@ import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { getBranding } from "./utils/BrandingUtils";
 
-function Login(props) {
+interface LoginProps {
+  intl: IntlShape;
+}
+
+const Login: React.FC<LoginProps> = (props) => {
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
-  const [submitting, setSubmitting] = useState(false);
-  const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
-  const [loginLogoUrl, setLoginLogoUrl] = useState(null);
-  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
-  const firstInput = createRef();
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [samlRedirectInitiated, setSamlRedirectInitiated] =
+    useState<boolean>(false);
+  const [loginLogoUrl, setLoginLogoUrl] = useState<string | null>(null);
+  const [logoVersion, setLogoVersion] = useState<number>(0);
+  const firstInput = createRef<HTMLInputElement>();
 
-  // Auto-redirect to SAML if configured to bypass login page
   useEffect(() => {
     if (
       configurationProperties?.useSaml === "true" &&
@@ -42,11 +46,7 @@ function Login(props) {
       !samlRedirectInitiated &&
       !userSessionDetails.authenticated
     ) {
-      // Mark as initiated to prevent multiple redirects
       setSamlRedirectInitiated(true);
-
-      // Use full-page redirect instead of popup to avoid popup blockers
-      // Add 'redirect=true' parameter to tell backend to redirect to dashboard after auth
       window.location.href =
         config.serverBaseUrl + "/LoginPage?useSAML=true&redirect=true";
     }
@@ -63,15 +63,12 @@ function Login(props) {
       checkLogin();
     }, 1000 * 3);
 
-    return () => clearInterval(interval); // clear your interval to prevent memory leaks.
+    return () => clearInterval(interval);
   }, []);
 
-  // Load branding configuration for login logo
-  // Colors are handled by App.js
   useEffect(() => {
-    getBranding((response) => {
+    getBranding((response: any) => {
       if (response) {
-        // Check useHeaderLogoForLogin flag
         if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
           setLoginLogoUrl(response.headerLogoUrl);
           setLogoVersion((prev) => prev + 1);
@@ -94,7 +91,6 @@ function Login(props) {
   };
 
   const loginMessage = () => {
-    // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = loginLogoUrl
       ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
       : `images/openelis_logo_full.png`;
@@ -110,8 +106,7 @@ function Login(props) {
               width="300"
               height="56"
               style={{ objectFit: "contain" }}
-              onError={(e) => {
-                // Fallback to default logo if custom logo fails to load
+              onError={(e: any) => {
                 e.target.src = `images/openelis_logo_full.png`;
               }}
             />
@@ -127,10 +122,9 @@ function Login(props) {
     );
   };
 
-  const doLogin = (data) => {
+  const doLogin = (data: any) => {
     setSubmitting(true);
     fetch(config.serverBaseUrl + "/ValidateLogin?apiCall=true", {
-      //includes the browser sessionId in the Header for Authentication on the backend server
       credentials: "include",
       method: "POST",
       headers: {
@@ -140,7 +134,6 @@ function Login(props) {
     })
       .then(async (response) => {
         setSubmitting(false);
-        // get json response here
         let data = await response.json();
         if (response.status === 200) {
           window.location.href = "/";
@@ -189,11 +182,11 @@ function Login(props) {
   const renderOauthButtons = () => {
     return (
       <span id="oauth-buttons">
-        {configurationProperties?.oauthUrls?.map((url) => (
+        {configurationProperties?.oauthUrls?.map((url: any) => (
           <Button
             key={url.key}
             type="button"
-            renderIcon={HardwareSecurityModule}
+            renderIcon={HardwareSecurityModule as any}
             onClick={() => {
               window.location.href = config.serverBaseUrl + "/" + url.value;
             }}
@@ -250,7 +243,6 @@ function Login(props) {
                     onSubmit={(values) => {
                       doLogin(values);
                       fetch(config.serverBaseUrl + "/LoginPage", {
-                        //includes the browser sessionId in the Header for Authentication on the backend server
                         credentials: "include",
                         method: "GET",
                       })
@@ -331,9 +323,8 @@ function Login(props) {
                               "false" && (
                               <Button
                                 type="button"
-                                renderIcon={HardwareSecurityModule}
+                                renderIcon={HardwareSecurityModule as any}
                                 onClick={() => {
-                                  // Use full-page redirect instead of popup to avoid popup blockers
                                   window.location.href =
                                     config.serverBaseUrl +
                                     "/LoginPage?useSAML=true&redirect=true";
@@ -360,6 +351,6 @@ function Login(props) {
       </div>
     </>
   );
-}
+};
 
-export default injectIntl(Login);
+export default injectIntl(Login as React.ComponentType<any>);

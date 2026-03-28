@@ -3,7 +3,7 @@ import { FormattedMessage } from "react-intl";
 import { Column, Grid, Heading, Section } from "@carbon/react";
 import ExistingOrder from "./ExistingOrder";
 import PrePrint from "./PrePrint";
-import PageBreadCrumb from "../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../common/PageBreadCrumb";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 const PrintBarcode = () => {

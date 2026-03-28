@@ -2,7 +2,16 @@ import { Breadcrumb, BreadcrumbItem, Column, Grid } from "@carbon/react";
 import React from "react";
 import { useIntl } from "react-intl";
 
-const PageBreadCrumb = ({ breadcrumbs }) => {
+interface BreadcrumbItemType {
+  label: string;
+  link: string;
+}
+
+interface PageBreadCrumbProps {
+  breadcrumbs: BreadcrumbItemType[];
+}
+
+const PageBreadCrumb: React.FC<PageBreadCrumbProps> = ({ breadcrumbs }) => {
   const intl = useIntl();
 
   return (

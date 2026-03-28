@@ -30,7 +30,7 @@ import {
 } from "../../../common/CustomNotification.js";
 import config from "../../../../config.json";
 import { FormattedMessage, useIntl } from "react-intl";
-import PageBreadCrumb from "../../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import GenericConfigEdit from "../../generalConfig/common/GenericConfigEdit.js";
 
 function ConfigMenuDisplay(props) {
