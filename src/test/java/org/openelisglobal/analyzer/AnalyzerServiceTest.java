@@ -139,8 +139,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();
         mapping.setAnalyzerTestName("Glucose Test");
         mapping.setTestId("101");
-        mapping.setAnalyzerId(
-                existingAnalyzer.getAnalyzerType() != null ? existingAnalyzer.getAnalyzerType().getId() : null);
+        mapping.setAnalyzerId(existingAnalyzer.getId());
         newMappings.add(mapping);
 
         List<AnalyzerTestMapping> existingMappings = new ArrayList<>();
