@@ -11,8 +11,8 @@ For FILE transport, ownership is now explicit:
   delivery.
 - OpenELIS owns analyzer/file configuration and ingestion/processing domain
   logic.
-- No OpenELIS app-side FILE poller is implemented on this branch. If a
-  fallback poller is added later, it must remain disabled by default.
+- No OpenELIS app-side FILE poller is implemented on this branch. If a fallback
+  poller is added later, it must remain disabled by default.
 
 If older sections mention OpenELIS as the active watcher owner, treat this
 section as the authoritative override during remediation.
@@ -484,11 +484,10 @@ already using the current interface must not break.
 
 ## Branch Recommendations
 
-The current remediation state is consolidated on
-`fix/013-hl7-test-connection`. The branch names below remain useful issue-level
-delivery slices, but on this branch they should be read as logical scope
-boundaries rather than a claim that each slice still maps 1:1 to a separate
-live PR.
+The current remediation state is consolidated on `fix/013-hl7-test-connection`.
+The branch names below remain useful issue-level delivery slices, but on this
+branch they should be read as logical scope boundaries rather than a claim that
+each slice still maps 1:1 to a separate live PR.
 
 | Branch                                    | Issue   | Base                       | Target  |
 | ----------------------------------------- | ------- | -------------------------- | ------- |

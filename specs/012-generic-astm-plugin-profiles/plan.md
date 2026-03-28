@@ -2,8 +2,8 @@
 
 **Branch (historical M1 reference)**:
 `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  
-**Current implementation state on this branch**:
-`fix/013-hl7-test-connection` (consolidated analyzer workflow alignment)  
+**Current implementation state on this branch**: `fix/013-hl7-test-connection`
+(consolidated analyzer workflow alignment)  
 **Date**: 2026-02-27  
 **Spec**: [spec.md](./spec.md)  
 **Jira**: OGC-337
