@@ -3,7 +3,7 @@
     "PreToolUse": [
       {
         "matcher": "Bash(git commit)",
-        "hooks": ["bash .githooks/pre-commit"]
+        "hooks": ["bash \"$(git rev-parse --show-toplevel)/.githooks/pre-commit\""]
       }
     ],
     "SessionStart": [
