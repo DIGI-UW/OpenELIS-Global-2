@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelis" id="1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'useNewAddressHierarchy'</sqlCheck>
+        </preConditions>
+        <comment>Add configuration option for new configurable address hierarchy system</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="useNewAddressHierarchy" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Use new configurable address hierarchy instead of legacy Health Region/District" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'patientEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.address.hierarchy.new" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.useNewAddressHierarchy" />
+        </insert>
+    </changeSet>
+</databaseChangeLog>

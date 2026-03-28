@@ -40,6 +40,7 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.hibernateConverter.StringListConverter;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "analyzer")
@@ -56,7 +57,7 @@ public class Analyzer extends BaseObject<String> {
     private String id;
 
     @Column(name = "scrip_id", precision = 10, scale = 0)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String script_id;
 
     @Column(name = "name", length = 100)
@@ -80,7 +81,7 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "has_setup_page", length = 1)
     private boolean hasSetupPage;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 

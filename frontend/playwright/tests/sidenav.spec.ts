@@ -38,8 +38,8 @@ test.describe("Sidenav", () => {
     await sidenav.toggle();
     await sidenav.expectCollapsed();
 
-    // Refresh the page
-    await page.reload();
+    // Re-navigate instead of reload to avoid Playwright "response not bound" bug
+    await page.goto("/Storage/samples");
 
     // Should still be collapsed (preference persisted)
     await sidenav.expectCollapsed();
@@ -134,7 +134,8 @@ test.describe("Sidenav", () => {
     await page.evaluate(() => {
       localStorage.setItem("mainSideNavMode", "lock");
     });
-    await page.reload();
+    // Use goto instead of reload to avoid Playwright "response not bound" bug
+    await page.goto("/Dashboard");
 
     const sidenav = new Sidenav(page);
     await sidenav.expectExpanded();
