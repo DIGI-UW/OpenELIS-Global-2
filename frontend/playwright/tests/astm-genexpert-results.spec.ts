@@ -9,6 +9,7 @@ import {
 import { cleanupAnalyzersMatching } from "../helpers/cleanup-analyzer";
 import {
   accessionTextRegExp,
+  expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../helpers/results-ui";
 import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
@@ -18,11 +19,7 @@ const BRIDGE_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
 const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const RESULTS_TIMEOUT = 90_000;
 
-/** Matches ASTM O-segment specimen id seeded in tools/analyzer-mock-server/templates/genexpert_astm.json */
-/** Harness ASTM template (e2e-fixtures/genexpert_astm.json) emits COVID-only for DB parity. */
-const EXPECTED_RESULTS = [
-  { sampleId: "HARN-GX-2026-00001", result: "NEGATIVE" },
-];
+const EXPECTED_RESULT = "NEGATIVE";
 
 async function testConnection(
   page: Page,
@@ -60,51 +57,39 @@ async function testConnection(
   await expect(connectionModal).toBeHidden({ timeout: UI_TIMEOUT });
 }
 
-async function pushAstmMessage(page: Page, presentation: DemoPresentation) {
-  await page.request.post(`${SIMULATOR_URL}/simulate/astm/genexpert_astm`, {
-    data: { destination: BRIDGE_DESTINATION, count: 1 },
-  });
+async function pushAstmMessage(
+  page: Page,
+  presentation: DemoPresentation,
+): Promise<string> {
+  const response = await page.request.post(
+    `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
+    { data: { destination: BRIDGE_DESTINATION, count: 1 } },
+  );
+  const body = await response.json();
+  const sampleId = body?.results?.[0]?.sample_id;
+  if (!sampleId) throw new Error("Push returned no sample_id");
   await presentation.pause(1_000);
+  return sampleId;
 }
 
 async function verifyResults(
   page: Page,
   analyzerName: string,
+  sampleId: string,
   presentation: DemoPresentation,
 ) {
-  await openAnalyzerResultsAndWaitForText(
-    page,
-    analyzerName,
-    EXPECTED_RESULTS[0].sampleId,
-    { timeoutMs: RESULTS_TIMEOUT, perAttemptTimeoutMs: LONG_TIMEOUT },
-  );
+  await openAnalyzerResultsAndWaitForText(page, analyzerName, sampleId, {
+    timeoutMs: RESULTS_TIMEOUT,
+    perAttemptTimeoutMs: LONG_TIMEOUT,
+  });
 
   const resultsRegion = page.locator(".orderLegendBody, table").first();
   await expect(resultsRegion).toBeVisible({ timeout: UI_TIMEOUT });
 
-  for (const expected of EXPECTED_RESULTS) {
-    await expect(
-      resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
-
-    const inputResult = resultsRegion
-      .locator(`input[value*="${expected.result}"]`)
-      .first();
-    let inputVisible = false;
-    try {
-      await expect(inputResult).toBeVisible({ timeout: SHORT_TIMEOUT });
-      inputVisible = true;
-    } catch {
-      // Input field not found — try text match instead
-    }
-    if (inputVisible) {
-      // Already verified visible above
-    } else {
-      await expect(
-        resultsRegion.getByText(expected.result, { exact: false }).first(),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
-    }
-  }
+  await expect(
+    resultsRegion.getByText(accessionTextRegExp(sampleId)).first(),
+  ).toBeVisible({ timeout: UI_TIMEOUT });
+  await expectResultVisible(resultsRegion, EXPECTED_RESULT);
 
   await presentation.pause(2_000);
 }
@@ -134,17 +119,12 @@ test.describe("GeneXpert ASTM demo story", () => {
     await testConnection(page, analyzerRow, presentation);
 
     await presentation.step(3, "Send a GeneXpert ASTM message");
-    await pushAstmMessage(page, presentation);
+    const sampleId = await pushAstmMessage(page, presentation);
 
     await presentation.step(4, "Review the staged results");
-    await verifyResults(page, PRELOADED_NAME, presentation);
+    await verifyResults(page, PRELOADED_NAME, sampleId, presentation);
 
-    await acceptAndVerifyResults(
-      page,
-      presentation,
-      4,
-      EXPECTED_RESULTS[0].sampleId,
-    );
+    await acceptAndVerifyResults(page, presentation, 4, sampleId);
 
     await presentation.title(
       "Story Complete",

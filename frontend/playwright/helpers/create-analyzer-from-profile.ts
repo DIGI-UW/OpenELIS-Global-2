@@ -11,6 +11,7 @@
  * Returns the IP assigned to the analyzer (for TCP push destinations).
  */
 
+import { execFileSync } from "child_process";
 import { Page, expect } from "@playwright/test";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
@@ -156,17 +157,47 @@ export async function deleteAnalyzerFromDashboard(
 }
 
 /**
- * Full cleanup: delete analyzer from UI + remove mock network.
+ * Full cleanup: soft-delete via UI (tests production flow) → SQL cleanup
+ * (test isolation) → remove mock network.
  */
 export async function teardownAnalyzer(
   page: Page,
   config: AnalyzerTestConfig,
 ): Promise<void> {
-  // Delete from OE via UI
+  // Step 1: Soft-delete via UI (tests the production user flow)
   await deleteAnalyzerFromDashboard(page, config.name);
 
-  // Remove mock network
+  // Step 2: SQL cleanup of the soft-deleted row (test isolation)
+  hardDeleteAnalyzerFromDb(config.name);
+
+  // Step 3: Remove mock network
   if (config.mockAnalyzerName) {
     await removeMockNetwork(page, config.mockAnalyzerName);
+  }
+}
+
+/**
+ * Remove a soft-deleted analyzer from the DB so tests leave zero trace.
+ * Follows the execFileSync + docker psql pattern from file-import-setup.ts.
+ * CASCADE FK on analyzer_test_map handles test mapping cleanup automatically.
+ */
+function hardDeleteAnalyzerFromDb(analyzerName: string): void {
+  const container = process.env.DATABASE_CONTAINER || "analyzer-harness-db-1";
+  const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = '${analyzerName}'); DELETE FROM clinlims.analyzer WHERE name = '${analyzerName}';`;
+  try {
+    execFileSync("docker", [
+      "exec",
+      "-i",
+      container,
+      "psql",
+      "-U",
+      "clinlims",
+      "-d",
+      "clinlims",
+      "-c",
+      sql,
+    ]);
+  } catch (e) {
+    console.warn(`DB cleanup failed for "${analyzerName}": ${e}`);
   }
 }

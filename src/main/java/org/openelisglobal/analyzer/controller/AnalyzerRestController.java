@@ -33,7 +33,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -82,9 +81,6 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
-
-    @Autowired
-    private org.openelisglobal.analyzerresults.service.AnalyzerResultsService analyzerResultsService;
 
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("bridgeRegistrationExecutor")
@@ -533,16 +529,9 @@ public class AnalyzerRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Clear any remaining staging rows so RESTRICT tier doesn't block
-            List<AnalyzerResults> stagingRows = analyzerResultsService.getResultsbyAnalyzer(id);
-            if (!stagingRows.isEmpty()) {
-                analyzerResultsService.deleteAll(stagingRows);
-            }
-
-            // Hard-delete: removes analyzer + cascades config tables (test_map,
-            // field, plugin_config, etc.). Accepted results reference
-            // tests/analyses, not analyzers — no orphaning risk.
-            analyzerService.deleteWithDependents(analyzer);
+            analyzer.setStatus(AnalyzerStatus.DELETED);
+            analyzer.setActive(false);
+            analyzerService.update(analyzer);
 
             unregisterFromBridgeAsync(id, analyzer.getName());
             AnalyzerTestNameCache.getInstance().reloadCache();

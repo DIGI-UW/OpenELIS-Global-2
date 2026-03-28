@@ -10,6 +10,7 @@ import {
 } from "../helpers/analyzer-dashboard";
 import {
   accessionTextRegExp,
+  expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../helpers/results-ui";
 import { UI_TIMEOUT } from "../helpers/timeouts";
@@ -175,9 +176,7 @@ async function verifyImportedResults(
     await expect(
       resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
     ).toBeVisible({ timeout: UI_TIMEOUT });
-    await expect(
-      resultsRegion.getByText(expected.result, { exact: false }).first(),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
+    await expectResultVisible(resultsRegion, expected.result);
   }
 
   await presentation.pause(2_000);

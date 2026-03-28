@@ -29,9 +29,10 @@ import { pushAnalyzerResult } from "../helpers/push-analyzer-result";
 import { acceptAndVerifyResults } from "../helpers/accept-results";
 import {
   accessionTextRegExp,
+  expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../helpers/results-ui";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 import type { AnalyzerTestConfig } from "../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = "http://localhost:8085";
@@ -206,21 +207,7 @@ async function verifyResults(
 
   // Verify each expected result value
   for (const expected of config.expectedResults) {
-    const inputResult = resultsRegion
-      .locator(`input[value*="${expected.result}"]`)
-      .first();
-    let inputVisible = false;
-    try {
-      await expect(inputResult).toBeVisible({ timeout: SHORT_TIMEOUT });
-      inputVisible = true;
-    } catch {
-      // Input not found — try text match
-    }
-    if (!inputVisible) {
-      await expect(
-        resultsRegion.getByText(expected.result, { exact: false }).first(),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
-    }
+    await expectResultVisible(resultsRegion, expected.result);
   }
 
   await presentation.pause(2_000);

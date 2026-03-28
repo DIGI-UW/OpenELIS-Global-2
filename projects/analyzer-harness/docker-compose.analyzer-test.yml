@@ -133,6 +133,9 @@ services:
       default:
       analyzer-net:
 
+  # Seed service — creates mock networks + analyzer records on startup.
+  # Runs once after OE and mock-server are healthy. Idempotent.
+  # Default: cleans stale data before seeding (--no-clean to skip).
 networks:
   analyzer-net:
     driver: bridge

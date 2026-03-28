@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
 # seed-analyzers.sh — Create harness analyzers via OE REST API
 #
+# Default (clean mode): wipes stale analyzer data, then creates 7 seed analyzers
+# with mock networks. Ensures a clean baseline on every startup.
+#
+# --no-clean: skips cleanup, runs idempotently (for manual testing).
+#
 # Creates 7 analyzers using profile-based defaultConfigId, which triggers:
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
 #
 # Usage:
-#   ./seed-analyzers.sh                          # defaults: https://localhost, admin/adminADMIN!
+#   ./seed-analyzers.sh                          # clean + seed (default)
+#   ./seed-analyzers.sh --no-clean               # seed only (idempotent)
 #   BASE_URL=https://myhost TEST_USER=u TEST_PASS=p ./seed-analyzers.sh
-#
-# Idempotency: API returns 409 if analyzer name already exists (skipped gracefully).
 
 set -euo pipefail
+
+CLEAN=true
+if [[ "${1:-}" == "--no-clean" ]]; then
+  CLEAN=false
+fi
 
 BASE_URL="${BASE_URL:-https://localhost}"
 TEST_USER="${TEST_USER:-admin}"
@@ -93,6 +102,24 @@ create_mock_network() {
 
 echo "Seeding analyzers via REST API at ${API}"
 echo ""
+
+# Clean stale data (default). Ensures clean baseline on every startup.
+DB_CONTAINER="${DB_CONTAINER:-analyzer-harness-db-1}"
+
+if [ "$CLEAN" = true ]; then
+  echo "Cleaning stale analyzer data..."
+  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c \
+    "DELETE FROM clinlims.analyzer_results; DELETE FROM clinlims.analyzer;" \
+    2>&1 | sed 's/^/  /'
+  echo "  DB cleanup done"
+
+  # Remove mock networks (per-analyzer endpoint)
+  for name in genexpert bc5380 bs200 bs300; do
+    curl -sk -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
+  done
+  echo "  Mock network cleanup done"
+  echo ""
+fi
 
 # Create dynamic networks for TCP analyzers
 echo "Creating dynamic mock networks..."
