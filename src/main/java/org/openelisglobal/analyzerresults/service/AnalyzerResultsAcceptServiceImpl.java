@@ -120,6 +120,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<SampleGrouping> sampleGroupList = new ArrayList<>();
         buildSampleGroupings(actionableResults, sampleGroupList, sysUserId);
 
+        LogEvent.logInfo(this.getClass().getSimpleName(), "acceptAndPersist",
+                "Accept: " + actionableResults.size() + " actionable, " + sampleGroupList.size() + " sample groupings, "
+                        + deletableAnalyzerResults.size() + " to delete from staging");
+
+        if (sampleGroupList.isEmpty() && !actionableResults.isEmpty()) {
+            LogEvent.logError(this.getClass().getSimpleName(), "acceptAndPersist",
+                    "BUG: actionable results exist but no sample groupings were built — staging will be deleted without creating accepted records!");
+        }
+
         analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
     }
 
