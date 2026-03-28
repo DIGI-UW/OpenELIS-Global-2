@@ -1,52 +1,59 @@
 package org.openelisglobal.image.controller;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.Base64;
 import java.util.Optional;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.common.util.IdValuePair;
+import org.mockito.Mockito;
+import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.image.valueholder.Image;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
 
-@RunWith(MockitoJUnitRunner.class)
-public class DBImageControllerTest {
+public class DBImageControllerTest extends BaseWebContextSensitiveTest {
 
-    @Mock
-    private ImageService imageService;
+    @Autowired
+    private DBImageController dbImageController;
 
-    @InjectMocks
-    private DBImageController controller;
+    private ImageService imageServiceMock;
 
-    @Test
-    public void getImage_shouldReturnEmptyValueWhenImageIsMissing() {
-        when(imageService.getImageBySiteInfoName("missingLogo")).thenReturn(Optional.empty());
-
-        IdValuePair response = controller.getImage("missingLogo");
-
-        assertEquals("missingLogo", response.getId());
-        assertEquals("", response.getValue());
+    @Override
+    @Before
+    public void setUp() throws Exception {
+        super.setUp();
+        imageServiceMock = Mockito.mock(ImageService.class);
+        ReflectionTestUtils.setField(dbImageController, "imageService", imageServiceMock);
     }
 
     @Test
-    public void getImage_shouldReturnDataUriWhenImageExists() {
+    public void getImage_shouldReturnEmptyValueWhenImageIsMissing() throws Exception {
+        when(imageServiceMock.getImageBySiteInfoName("missingLogo")).thenReturn(Optional.empty());
+
+        this.mockMvc.perform(get("/dbImage/siteInformation/missingLogo")).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value("missingLogo")).andExpect(jsonPath("$.value").value(""));
+    }
+
+    @Test
+    public void getImage_shouldReturnDataUriWhenImageExists() throws Exception {
         byte[] imageBytes = new byte[] { 1, 2, 3, 4 };
         Image image = new Image();
         image.setImage(imageBytes);
+        when(imageServiceMock.getImageBySiteInfoName("headerLeftImage")).thenReturn(Optional.of(image));
 
-        when(imageService.getImageBySiteInfoName("headerLeftImage")).thenReturn(Optional.of(image));
+        String expectedImageValue = "data:image/jpg;base64," + Base64.getEncoder().encodeToString(imageBytes);
 
-        IdValuePair response = controller.getImage("headerLeftImage");
-        String expectedPrefix = "data:image/jpg;base64,";
-
-        assertEquals("headerLeftImage", response.getId());
-        assertTrue(response.getValue().startsWith(expectedPrefix));
-        assertEquals(expectedPrefix + Base64.getEncoder().encodeToString(imageBytes), response.getValue());
+        this.mockMvc.perform(get("/dbImage/siteInformation/headerLeftImage")).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value("headerLeftImage"))
+                .andExpect(jsonPath("$.value").value(expectedImageValue));
     }
 }
