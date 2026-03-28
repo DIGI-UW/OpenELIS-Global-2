@@ -269,11 +269,12 @@ public class AnalyzerRestController extends BaseRestController {
                 throw new LIMSRuntimeException("Failed to retrieve created analyzer");
             }
 
-            // Register analyzer with bridge for transport-level identification.
-            // Fire-and-forget to avoid slowing down analyzer creation requests.
-            registerWithBridgeAsync(createdAnalyzer);
+            // Register with bridge synchronously — analyzer is not fully operational
+            // until the bridge confirms it can route results for it.
+            boolean bridgeRegistered = registerWithBridge(createdAnalyzer);
 
             Map<String, Object> response = analyzerToMap(createdAnalyzer, getLoadedPluginClassNames());
+            response.put("bridgeRegistered", bridgeRegistered);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error creating analyzer: {}", e.getMessage(), e);
@@ -490,10 +491,11 @@ public class AnalyzerRestController extends BaseRestController {
             analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
-            // Retrieve updated analyzer and re-register transport mapping with bridge.
+            // Re-register transport mapping with bridge synchronously.
             Analyzer updatedAnalyzer = analyzerService.get(id);
-            registerWithBridgeAsync(updatedAnalyzer);
+            boolean bridgeRegistered = registerWithBridge(updatedAnalyzer);
             Map<String, Object> response = analyzerToMap(updatedAnalyzer, getLoadedPluginClassNames());
+            response.put("bridgeRegistered", bridgeRegistered);
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating analyzer: {}", e.getMessage(), e);
@@ -1002,12 +1004,54 @@ public class AnalyzerRestController extends BaseRestController {
      * Register analyzer with the bridge for transport-level identification. Runs in
      * background — failures are logged but don't prevent analyzer creation.
      */
-    private void registerWithBridgeAsync(Analyzer createdAnalyzer) {
-        CompletableFuture.runAsync(() -> registerWithBridge(createdAnalyzer), bridgeRegistrationExecutor)
-                .exceptionally(e -> {
-                    logger.warn("Async bridge registration failed for analyzer {}", createdAnalyzer.getName(), e);
-                    return null;
-                });
+    /**
+     * Register analyzer with the bridge synchronously. Returns true if the bridge
+     * confirmed registration, false if the bridge was unreachable or rejected.
+     *
+     * <p>
+     * Called during create/update — the analyzer is not fully operational until the
+     * bridge confirms it can route results for it.
+     */
+    private boolean registerWithBridge(Analyzer analyzer) {
+        try {
+            String id = analyzer.getId();
+            String name = analyzer.getName();
+            boolean registered = false;
+
+            // TCP/ASTM/HL7 analyzers: register by IP
+            if (analyzer.getIpAddress() != null && !analyzer.getIpAddress().isBlank()) {
+                String protocol = analyzer.getProtocolVersion() != null && analyzer.getProtocolVersion().isHl7() ? "HL7"
+                        : "ASTM";
+                registered = bridgeRegistrationService.registerTcp(id, name, analyzer.getIpAddress(),
+                        analyzer.getPort(), protocol);
+            }
+
+            // FILE analyzers: register by watch directory (use unified fields on Analyzer)
+            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                registered = bridgeRegistrationService.registerFile(id, name, analyzer.getImportDirectory(),
+                        analyzer.getFilePattern(), analyzer.getColumnMappings());
+            } else {
+                // Fallback: check legacy FileImportConfiguration table
+                try {
+                    Integer analyzerIdInt = Integer.valueOf(id);
+                    var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
+                    if (fileConfig.isPresent()) {
+                        var fc = fileConfig.get();
+                        registered = bridgeRegistrationService.registerFile(id, name, fc.getImportDirectory(),
+                                fc.getFilePattern(), fc.getColumnMappings());
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            if (registered) {
+                logger.info("Bridge registration confirmed for analyzer '{}' (id={})", name, id);
+            }
+            return registered;
+        } catch (Exception e) {
+            logger.warn("Bridge registration failed for analyzer '{}': {}", analyzer.getName(), e.getMessage());
+            return false;
+        }
     }
 
     private void unregisterFromBridgeAsync(String analyzerId, String analyzerName) {
@@ -1016,34 +1060,6 @@ public class AnalyzerRestController extends BaseRestController {
                     logger.warn("Async bridge unregister failed for analyzer {} ({})", analyzerName, analyzerId, e);
                     return null;
                 });
-    }
-
-    /**
-     * Performs the bridge registration call.
-     */
-    private void registerWithBridge(Analyzer createdAnalyzer) {
-        try {
-            String id = createdAnalyzer.getId();
-            String name = createdAnalyzer.getName();
-
-            // TCP/ASTM/HL7 analyzers: register by IP
-            if (createdAnalyzer.getIpAddress() != null && !createdAnalyzer.getIpAddress().isBlank()) {
-                String protocol = createdAnalyzer.getProtocolVersion() != null
-                        && createdAnalyzer.getProtocolVersion().isHl7() ? "HL7" : "ASTM";
-                bridgeRegistrationService.registerTcp(id, name, createdAnalyzer.getIpAddress(),
-                        createdAnalyzer.getPort(), protocol);
-            }
-
-            // FILE analyzers: register by watch directory
-            Integer analyzerIdInt = Integer.valueOf(id);
-            fileImportService.getByAnalyzerId(analyzerIdInt).ifPresent(fileConfig -> {
-                bridgeRegistrationService.registerFile(id, name, fileConfig.getImportDirectory(),
-                        fileConfig.getFilePattern(), fileConfig.getColumnMappings());
-            });
-        } catch (Exception e) {
-            logger.warn("Bridge registration failed for analyzer {} — bridge may need manual config: {}",
-                    createdAnalyzer.getName(), e.getMessage());
-        }
     }
 
     // testFileConfiguration() and testSerialConfiguration() removed — replaced

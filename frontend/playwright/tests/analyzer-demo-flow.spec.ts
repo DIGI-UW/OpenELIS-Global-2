@@ -286,8 +286,9 @@ test.describe("Madagascar analyzer demo flows", () => {
       const hasTestConnection = config.protocol !== "FILE";
       let step = hasTestConnection ? 3 : 2;
 
-      // For dynamically created TCP analyzers, override the push destination
-      // with the bridge's IP on the mock network (.2 suffix)
+      // For dynamically created TCP analyzers, push via the per-analyzer network.
+      // Each analyzer gets a unique IP — the bridge identifies source by IP,
+      // simulating production where each physical instrument has its own address.
       let pushConfig = config.push;
       if (dynamicIp && config.protocol !== "FILE") {
         const bridgeIp = dynamicIp.replace(/\.\d+$/, ".2");
