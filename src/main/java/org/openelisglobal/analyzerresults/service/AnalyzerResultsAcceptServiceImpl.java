@@ -464,14 +464,23 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 Test test = testService.get(resultItem.getTestId());
                 analysis.setTest(test);
                 List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
+                if (typeOfSamples == null) {
+                    typeOfSamples = new ArrayList<>();
+                }
                 List<SampleItem> sampleItemsForSample = sampleItemService.getSampleItemsBySampleId(sample.getId());
+                List<String> allowedTypeIds = typeOfSamples.stream().map(TypeOfSample::getId)
+                        .collect(Collectors.toList());
 
                 for (SampleItem item : sampleItemsForSample) {
-                    if (typeOfSamples.stream().map(e -> e.getId()).collect(Collectors.toList())
-                            .contains(item.getTypeOfSample().getId())) {
+                    if (!allowedTypeIds.isEmpty() && item.getTypeOfSample() != null
+                            && allowedTypeIds.contains(item.getTypeOfSample().getId())) {
                         sampleItem = item;
                         analysis.setSampleItem(sampleItem);
                     }
+                }
+                if (sampleItem == null && allowedTypeIds.isEmpty() && !sampleItemsForSample.isEmpty()) {
+                    sampleItem = sampleItemsForSample.get(0);
+                    analysis.setSampleItem(sampleItem);
                 }
                 if (sampleItem == null) {
                     sampleItem = new SampleItem();
@@ -479,7 +488,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     sampleItem.setSortOrder("1");
                     sampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
                     sampleItem.setCollectionDate(DateUtil.getNowAsTimestamp());
-                    sampleItem.setTypeOfSample(typeOfSamples.get(0));
+                    if (!typeOfSamples.isEmpty()) {
+                        sampleItem.setTypeOfSample(typeOfSamples.get(0));
+                    }
                     analysis.setSampleItem(sampleItem);
                 }
             } else {
