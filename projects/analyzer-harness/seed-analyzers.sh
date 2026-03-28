@@ -104,7 +104,31 @@ echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
 # Clean stale data (default). Ensures clean baseline on every startup.
-DB_CONTAINER="${DB_CONTAINER:-analyzer-harness-db-1}"
+resolve_db_container() {
+  if [ -n "${DB_CONTAINER:-}" ]; then
+    echo "$DB_CONTAINER"
+    return 0
+  fi
+
+  for candidate in analyzer-harness-db-1 openelisglobal-database; do
+    if docker ps -a --format '{{.Names}}' | rg -x "$candidate" >/dev/null; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  local detected
+  detected=$(docker ps -a --format '{{.Names}}' | rg 'db' | head -n 1 || true)
+  if [ -n "$detected" ]; then
+    echo "$detected"
+    return 0
+  fi
+
+  echo "ERROR: Could not determine database container for analyzer cleanup." >&2
+  return 1
+}
+
+DB_CONTAINER="$(resolve_db_container)"
 
 if [ "$CLEAN" = true ]; then
   echo "Cleaning stale analyzer data..."
