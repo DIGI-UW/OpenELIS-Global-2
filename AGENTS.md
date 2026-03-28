@@ -790,8 +790,10 @@ bash .githooks/setup.sh   # run once per clone/worktree
 
 Sets `core.hooksPath` to `.githooks/`.
 
-**Both options** run the same `.githooks/pre-commit` script which formats staged
-files only (spotless + prettier + ruff) and re-stages them.
+**Both options** run the same `.githooks/pre-commit` script which invokes
+spotless + prettier + ruff for the configured scope (typically the entire
+repo), may reformat unstaged files in the working tree, and then re-stages
+any affected files that are part of the commit.
 
 **`setup-workspace.sh`** auto-selects: lefthook if available, native hooks
 otherwise.
