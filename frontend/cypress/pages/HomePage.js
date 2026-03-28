@@ -77,8 +77,12 @@ class HomePage {
 
   openNavigationMenu() {
     cy.get("body").then(($body) => {
-      const reportsVisible = $body.find(this.selectors.reportsMenu).is(":visible");
-      const sampleVisible = $body.find(this.selectors.sampleMenu).is(":visible");
+      const reportsVisible = $body
+        .find(this.selectors.reportsMenu)
+        .is(":visible");
+      const sampleVisible = $body
+        .find(this.selectors.sampleMenu)
+        .is(":visible");
 
       if (!reportsVisible && !sampleVisible) {
         cy.get(this.selectors.menuButton).click({ force: true });
