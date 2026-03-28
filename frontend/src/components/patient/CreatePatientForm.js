@@ -849,16 +849,10 @@ function CreatePatientForm(props) {
                           </>
                         }
                         id={field.name}
-                        invalid={
-                          props.error
-                            ? props.error("patientProperties.nationalId")
-                              ? true
-                              : false
-                            : false
-                        }
+                        invalid={errors.nationalId && touched.nationalId}
                         invalidText={
-                          props.error
-                            ? props.error("patientProperties.nationalId")
+                          errors.nationalId && touched.nationalId
+                            ? errors.nationalId
                             : ""
                         }
                         onMouseOut={() => {
@@ -873,151 +867,8 @@ function CreatePatientForm(props) {
                           id: "patient.information.nationalid",
                         })}
                       />
-
-                    </>
-                  )}
-                </Field>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Field name="nationalId">
-                  {({ field }) => (
-                    <TextInput
-                      value={values.nationalId || ""}
-                      name={field.name}
-                      labelText={
-                        <>
-                          {intl.formatMessage({
-                            id: "patient.natioanalid",
-                          })}
-                          <span className="requiredlabel">*</span>
-                        </>
-                      }
-                      id={field.name}
-                      invalid={errors.nationalId && touched.nationalId}
-                      invalidText={
-                        errors.nationalId && touched.nationalId
-                          ? errors.nationalId
-                          : ""
-                      }
-                      onMouseOut={() => {
-                        handleSubjectNoValidation(
-                          "nationalId",
-                          "nationalID",
-                          values.nationalId,
-                        );
-                      }}
-                      onChange={handleNationalIdChange}
-                      placeholder={intl.formatMessage({
-                        id: "patient.information.nationalid",
-                      })}
-                    />
-                  )}
-                </Field>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                {" "}
-                <br></br>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Field name="lastName">
-                  {({ field }) => (
-                    <TextInput
-                      value={values.lastName || ""}
-                      name={field.name}
-                      labelText={intl.formatMessage({
-                        id: "patient.last.name",
-                      })}
-                      id={field.name}
-                      invalid={errors.lastName && touched.lastName}
-                      invalidText={errors.lastName}
-                      placeholder={intl.formatMessage({
-                        id: "patient.information.lastname",
-                      })}
-                      onChange={(e) => handleLastNameChange(e)}
-                    />
-                  )}
-                </Field>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Field name="firstName">
-                  {({ field }) => (
-                    <TextInput
-                      value={values.firstName || ""}
-                      name={field.name}
-                      labelText={intl.formatMessage({
-                        id: "patient.first.name",
-                      })}
-                      id={field.name}
-                      invalid={errors.firstName && touched.firstName}
-                      invalidText={errors.firstName}
-                      placeholder={intl.formatMessage({
-                        id: "patient.information.firstname",
-                      })}
-                      onChange={(e) => handleFirstNameChange(e)}
-                    />
-                  )}
-                </Field>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                {" "}
-                <br></br>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Field name="primaryPhone">
-                  {({ field }) => (
-                    <TextInput
-                      value={values.primaryPhone || ""}
-                      name={field.name}
-                      onBlur={(e) => {
-                        handlePhoneValidation(e);
-                      }}
-                      id="primaryPhone"
-                      labelText={intl.formatMessage(
-                        {
-                          id: "patient.label.primaryphone",
-                          defaultMessage: "Phone: {PHONE_FORMAT}",
-                        },
-                        { PHONE_FORMAT: configurationProperties.PHONE_FORMAT },
-                      )}
-                      invalid={!phoneValidation.primaryPhone.status}
-                      invalidText={
-                        phoneValidation.primaryPhone.status
-                          ? ""
-                          : phoneValidation.primaryPhone.body
-                      }
-                      placeholder={intl.formatMessage({
-                        id: "patient.information.primaryphone",
-                      })}
-                    />
-                  )}
-                </Field>
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <Field name="gender">
-                  {({ field }) => (
-                    <RadioButtonGroup
-                      valueSelected={values.gender}
-                      legendText={
-                        <>
-                          {intl.formatMessage({ id: "patient.gender" })}{" "}
-                          <span className="requiredlabel">*</span>
-                        </>
-                      }
-                      name={field.name}
-                      invalid={errors.gender && touched.gender}
-                      invalidText={errors.gender}
-                      id="create_patient_gender"
-                    >
-                      <RadioButton
-                        id="radio-1"
-                        labelText={intl.formatMessage({ id: "patient.male" })}
-                        value="M"
-
                     )}
                   </Field>
-                  <div className="error">
-                    <ErrorMessage name="nationalId"></ErrorMessage>
-                  </div>
                 </Column>
                 <Column lg={16} md={8} sm={4}>
                   {" "}
@@ -1059,7 +910,6 @@ function CreatePatientForm(props) {
                           id: "patient.information.firstname",
                         })}
                         onChange={(e) => handleFirstNameChange(e)}
-
                       />
                     )}
                   </Field>
