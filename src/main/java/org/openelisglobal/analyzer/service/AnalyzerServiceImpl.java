@@ -443,7 +443,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                         "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
             }
         }
-        AnalyzerTestNameCache.getInstance().reloadCache();
+        // Invalidate cache AFTER the transaction commits — not during.
+        // If reloadCache() runs during the transaction, a concurrent thread may
+        // reload stale data before the mappings are committed to the DB.
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        LogEvent.logInfo("AnalyzerServiceImpl", "afterCommit",
+                                "Transaction committed — reloading AnalyzerTestNameCache");
+                        AnalyzerTestNameCache.getInstance().reloadCache();
+                    }
+                });
 
         if (created > 0) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",

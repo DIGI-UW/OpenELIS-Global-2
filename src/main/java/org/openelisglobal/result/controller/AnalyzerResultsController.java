@@ -17,7 +17,6 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.BidirectionalAnalyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerimport.util.MappedTestName;
 import org.openelisglobal.analyzerresults.action.AnalyzerResultsPaging;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
@@ -272,7 +271,6 @@ public class AnalyzerResultsController extends BaseController {
          * another group it will be boosted to the first group
          */
         boolean missingTest = false;
-        resolveMissingTests(analyzerResultsList);
         List<AnalyzerResultItem> analyzerResultItemList = new ArrayList<>();
         List<List<AnalyzerResultItem>> accessionGroupedResultsList = groupAnalyzerResults(analyzerResultsList);
 
@@ -366,36 +364,10 @@ public class AnalyzerResultsController extends BaseController {
         return accessionGroupedResultsList;
     }
 
-    private void resolveMissingTests(List<AnalyzerResults> analyzerResultsList) {
-        boolean reloadCache = true;
-        List<AnalyzerResults> resolvedResults = new ArrayList<>();
-
-        for (AnalyzerResults analyzerResult : analyzerResultsList) {
-            if (GenericValidator.isBlankOrNull(analyzerResult.getTestId())) {
-                if (reloadCache) {
-                    AnalyzerTestNameCache.getInstance().reloadCache();
-                    reloadCache = false;
-                }
-            }
-
-            String analyzerTestName = analyzerResult.getTestName();
-            MappedTestName mappedTestName = AnalyzerTestNameCache.getInstance()
-                    .getMappedTestByAnalyzerId(getAnalyzerIdFromRequest(), analyzerTestName);
-            if (mappedTestName != null) {
-                analyzerResult.setTestName(mappedTestName.getOpenElisTestName());
-                analyzerResult.setTestId(mappedTestName.getTestId());
-                resolvedResults.add(analyzerResult);
-            }
-        }
-
-        if (resolvedResults.size() > 0) {
-            for (AnalyzerResults analyzerResult : resolvedResults) {
-                analyzerResult.setSysUserId(getSysUserId(request));
-            }
-
-            analyzerResultsService.updateAll(resolvedResults);
-        }
-    }
+    // resolveMissingTests was removed: it mutated the DB on GET requests,
+    // used testName (display name) as a cache lookup key, and didn't update
+    // readOnly — causing the accept flow to skip mapped results.
+    // Test resolution now happens once at FHIR import time.
 
     private List<AnalyzerResults> getAnalyzerResults() {
         return analyzerResultsService.getResultsbyAnalyzer(getAnalyzerIdFromRequest());
@@ -757,6 +729,14 @@ public class AnalyzerResultsController extends BaseController {
             paging.updatePagedResults(request, form);
             List<AnalyzerResultItem> resultItemList = paging.getResults(request);
 
+            for (AnalyzerResultItem item : resultItemList) {
+                if (item.getIsAccepted() || item.getIsRejected() || item.getIsDeleted()) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "showRestAnalyzerResultsSave",
+                            "POST item: accession=" + item.getAccessionNumber() + ", test=" + item.getTestName()
+                                    + ", testId=" + item.getTestId() + ", readOnly=" + item.isReadOnly() + ", accepted="
+                                    + item.getIsAccepted());
+                }
+            }
             acceptService.acceptAndPersist(resultItemList, getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {

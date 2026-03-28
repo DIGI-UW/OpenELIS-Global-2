@@ -32,6 +32,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -80,6 +82,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    private org.openelisglobal.analyzerresults.service.AnalyzerResultsService analyzerResultsService;
 
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("bridgeRegistrationExecutor")
@@ -521,27 +526,31 @@ public class AnalyzerRestController extends BaseRestController {
      * @return 200 on success with deletion details, 404 if analyzer not found
      */
     @PostMapping("/analyzers/{id}/delete")
-    public ResponseEntity<Map<String, Object>> deleteAnalyzerLegacy(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id) {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
-            // Always soft-delete: the analyzer row is historical context for accepted
-            // results. Hard-deleting it orphans the sample→analysis→result chain and
-            // causes rendering crashes on AccessionResults pages.
-            analyzer.setStatus(AnalyzerStatus.DELETED);
-            analyzer.setActive(false);
-            analyzerService.update(analyzer);
+            // Clear any remaining staging rows so RESTRICT tier doesn't block
+            List<AnalyzerResults> stagingRows = analyzerResultsService.getResultsbyAnalyzer(id);
+            if (!stagingRows.isEmpty()) {
+                analyzerResultsService.deleteAll(stagingRows);
+            }
+
+            // Hard-delete: removes analyzer + cascades config tables (test_map,
+            // field, plugin_config, etc.). Accepted results reference
+            // tests/analyses, not analyzers — no orphaning risk.
+            analyzerService.deleteWithDependents(analyzer);
 
             unregisterFromBridgeAsync(id, analyzer.getName());
-            {
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("message", "Analyzer deleted");
-                response.put("deleted", true);
-                return ResponseEntity.ok(response);
-            }
+            AnalyzerTestNameCache.getInstance().reloadCache();
+
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("message", "Analyzer deleted");
+            response.put("deleted", true);
+            return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {

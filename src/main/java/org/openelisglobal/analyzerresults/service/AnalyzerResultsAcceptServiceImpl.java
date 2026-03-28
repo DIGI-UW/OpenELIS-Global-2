@@ -229,6 +229,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
         for (AnalyzerResultItem analyzerResultItem : actionableResults) {
             if (analyzerResultItem.getIsDeleted()) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "buildSampleGroupings",
+                        "Skipping deleted item: " + analyzerResultItem.getAccessionNumber());
                 continue;
             }
 
@@ -247,6 +249,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
             if (!analyzerResultItem.isReadOnly()) {
                 groupedResultList.add(analyzerResultItem);
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "buildSampleGroupings",
+                        "Skipping read-only item: accession=" + analyzerResultItem.getAccessionNumber() + ", test="
+                                + analyzerResultItem.getTestName() + ", testId=" + analyzerResultItem.getTestId());
             }
         }
 
@@ -265,17 +271,31 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             String accessionNumber = groupedAnalyzerResultItems.get(0).getAccessionNumber();
             StatusSet statusSet = statusService.getStatusSetForAccessionNumber(accessionNumber);
 
+            LogEvent.logInfo(this.getClass().getSimpleName(), "createRecordsForNewResult",
+                    "Accession: " + accessionNumber + ", sampleStatus="
+                            + (statusSet != null ? statusSet.getSampleRecordStatus() : "null") + ", patientStatus="
+                            + (statusSet != null ? statusSet.getPatientRecordStatus() : "null") + ", noEntryDone="
+                            + noEntryDone(statusSet, accessionNumber));
+
             if (noEntryDone(statusSet, accessionNumber)) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createRecordsForNewResult",
+                        "Path: createGroupForNoSampleEntryDone for " + accessionNumber);
                 return createGroupForNoSampleEntryDone(groupedAnalyzerResultItems, statusSet, sysUserId);
             } else if (statusSet
                     .getSampleRecordStatus() == org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered
                     && statusSet
                             .getPatientRecordStatus() == org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createRecordsForNewResult",
+                        "Path: createGroupForPreviousAnalyzerDone for " + accessionNumber);
                 return createGroupForPreviousAnalyzerDone(groupedAnalyzerResultItems, statusSet, sysUserId);
             } else if (statusSet
                     .getSampleRecordStatus() == org.openelisglobal.common.services.StatusService.RecordStatus.NotRegistered) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createRecordsForNewResult",
+                        "Path: createGroupForDemographicsEntered for " + accessionNumber);
                 return createGroupForDemographicsEntered(groupedAnalyzerResultItems, statusSet, sysUserId);
             } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "createRecordsForNewResult",
+                        "Path: createGroupForSampleAndDemographicsEntered for " + accessionNumber);
                 return createGroupForSampleAndDemographicsEntered(groupedAnalyzerResultItems, statusSet, sysUserId);
             }
         }

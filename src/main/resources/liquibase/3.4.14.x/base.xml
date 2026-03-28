@@ -19,4 +19,7 @@
 
   <!-- Unify FILE transport config onto analyzer table (was separate table) -->
   <include relativeToChangelogFile="true" file="007-unify-analyzer-transport-config.xml"/>
+
+  <!-- Fix analyzer_test_map FK to CASCADE on delete (was NO ACTION) -->
+  <include relativeToChangelogFile="true" file="008-analyzer-test-map-cascade-delete.xml"/>
 </databaseChangeLog>

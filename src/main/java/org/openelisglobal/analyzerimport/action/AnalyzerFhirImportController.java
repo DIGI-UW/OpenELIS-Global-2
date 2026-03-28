@@ -196,15 +196,24 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             testCode = obs.getCode().getText();
         }
 
-        // Map raw test code → OE test ID via AnalyzerTestNameCache
-        // Uses per-analyzer lookup (not per-type) for correct isolation (OGC-492)
+        LogEvent.logInfo(CLASS_NAME, "mapObservationToAnalyzerResult", "accession=" + ar.getAccessionNumber()
+                + " testCode=" + testCode + " analyzerId=" + (analyzer != null ? analyzer.getId() : "null"));
+
+        // Map raw test code → OE test ID via the cache (uses per-analyzer ID index).
+        // On cache miss, force a reload and retry — the afterCommit cache refresh
+        // may have run in a stale transaction context and missed newly-committed data.
         if (testCode != null && analyzer != null) {
             MappedTestName mapped = AnalyzerTestNameCache.getInstance().getMappedTestByAnalyzerId(analyzer.getId(),
                     testCode);
+            if (mapped == null) {
+                LogEvent.logInfo(CLASS_NAME, "mapObservationToAnalyzerResult", "Cache miss for analyzer "
+                        + analyzer.getId() + " testCode=" + testCode + " — forcing reload and retry");
+                AnalyzerTestNameCache.getInstance().reloadCache();
+                mapped = AnalyzerTestNameCache.getInstance().getMappedTestByAnalyzerId(analyzer.getId(), testCode);
+            }
             if (mapped != null && mapped.getTestId() != null && !"-1".equals(mapped.getTestId())) {
                 ar.setTestId(mapped.getTestId());
                 ar.setTestName(mapped.getOpenElisTestName());
-                // Don't override analyzerId — already set from header resolution (line 162)
             } else {
                 ar.setTestName(testCode);
                 ar.setReadOnly(true);

@@ -117,6 +117,15 @@ const AnalyserResults = (props) => {
     if (isSubmitting) {
       return;
     }
+    // Debug: log readOnly state before save
+    const rl = props.results?.resultList || [];
+    rl.forEach((r) => {
+      if (r.isAccepted || r.isRejected) {
+        console.log(
+          `[SAVE] accession=${r.accessionNumber}, readOnly=${r.readOnly}, testId=${r.testId}, accepted=${r.isAccepted}`,
+        );
+      }
+    });
     setIsSubmitting(true);
     postToOpenElisServerFullResponse(
       "/rest/AnalyzerResults",
