@@ -3,7 +3,26 @@ import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 
-const PatientHeader = (props) => {
+export interface PatientHeaderProps {
+  id?: string | number | null;
+  lastName?: string | null;
+  firstName?: string | null;
+  gender?: string | null;
+  dob?: string | null;
+  age?: string | number | null;
+  patientName?: string | null;
+  subjectNumber?: string | null;
+  nationalId?: string | null;
+  accesionNumber?: string | null;
+  orderDate?: string | null;
+  referringFacility?: string | null;
+  department?: string | null;
+  requester?: string | null;
+  isOrderPage?: boolean;
+  className?: string;
+}
+
+const PatientHeader: React.FC<PatientHeaderProps> = React.memo((props) => {
   const {
     id,
     lastName,
@@ -150,6 +169,6 @@ const PatientHeader = (props) => {
       </Column>
     </Grid>
   );
-};
+});
 
 export default PatientHeader;
