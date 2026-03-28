@@ -113,7 +113,8 @@ HL7 message to the correct GenericHL7 handler instance.
 
 ## 5. Pre-Deployment Checklist
 
-- [ ] PR #3035 merged to develop (HL7 listener + BC-5380 + BS-series code)
+- [ ] Current consolidation branch or `develop` contains the required HL7
+      listener + analyzer-path implementation before deployment
 - [ ] OpenELIS deployed with GenericHL7 plugin enabled
 - [ ] Bridge container configured with MLLP port mappings (5380, 6001, 6002)
 - [ ] VPN tunnel established between site and OpenELIS server

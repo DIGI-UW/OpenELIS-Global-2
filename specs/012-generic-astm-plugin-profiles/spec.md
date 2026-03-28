@@ -30,6 +30,11 @@ The unified v1.2 MVP scope includes:
 - **Bidirectional GeneXpert ASTM (FR-026)**: all 4 pathways validated via mock +
   real device.
 
+Shared repository note: `projects/analyzer-profiles/` remains the common
+catalog path for ASTM, HL7, and FILE templates, but FILE-specific profile
+ownership and runtime behavior are tracked in
+`specs/014-hjra-file-stream-alignment/`.
+
 The following are explicitly deferred: DB-backed profile library/import-export
 sharing and lab-unit assignment model.
 

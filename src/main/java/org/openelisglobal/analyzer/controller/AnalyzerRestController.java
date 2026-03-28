@@ -444,8 +444,9 @@ public class AnalyzerRestController extends BaseRestController {
                     String validValues = java.util.Arrays.stream(ProtocolVersion.values()).map(ProtocolVersion::name)
                             .collect(Collectors.joining(", "));
                     Map<String, Object> error = new LinkedHashMap<>();
-                    error.put("error", "Invalid protocol version: " + form.getProtocolVersion() + ". Valid values: "
-                            + validValues);
+                    error.put("error", "analyzer.form.error.invalidProtocolVersion");
+                    error.put("errorKey", "analyzer.form.error.invalidProtocolVersion");
+                    error.put("errorArgs", Map.of("value", form.getProtocolVersion(), "validValues", validValues));
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
                 }
                 analyzer.setProtocolVersion(updatedPv);
@@ -456,8 +457,9 @@ public class AnalyzerRestController extends BaseRestController {
                     String validValues = java.util.Arrays.stream(CommunicationMode.values())
                             .map(CommunicationMode::name).collect(Collectors.joining(", "));
                     Map<String, Object> error = new LinkedHashMap<>();
-                    error.put("error", "Invalid communication mode: " + form.getCommunicationMode() + ". Valid values: "
-                            + validValues);
+                    error.put("error", "analyzer.form.error.invalidCommunicationMode");
+                    error.put("errorKey", "analyzer.form.error.invalidCommunicationMode");
+                    error.put("errorArgs", Map.of("value", form.getCommunicationMode(), "validValues", validValues));
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
                 }
                 analyzer.setCommunicationMode(cm);
@@ -537,7 +539,8 @@ public class AnalyzerRestController extends BaseRestController {
             AnalyzerTestNameCache.getInstance().reloadCache();
 
             Map<String, Object> response = new LinkedHashMap<>();
-            response.put("message", "Analyzer deleted");
+            response.put("message", "analyzer.delete.success");
+            response.put("messageKey", "analyzer.delete.success");
             response.put("deleted", true);
             return ResponseEntity.ok(response);
         } catch (org.hibernate.ObjectNotFoundException e) {
@@ -684,7 +687,8 @@ public class AnalyzerRestController extends BaseRestController {
             response.put("tcpMessage", tcpMessage);
         } else if (ip != null && port != null) {
             response.put("tcpReachable", false);
-            response.put("tcpMessage", "Bridge not configured — cannot test analyzer reachability");
+            response.put("tcpMessage", "analyzer.testConnection.tcp.bridgeNotConfigured");
+            response.put("tcpMessageKey", "analyzer.testConnection.tcp.bridgeNotConfigured");
         }
 
         // Step 3: Interpret results based on communication mode
@@ -696,7 +700,6 @@ public class AnalyzerRestController extends BaseRestController {
         boolean tcpConfigured = ip != null && port != null;
         success = bridgeHealthy && (!tcpConfigured || tcpReachable);
 
-        // Build contextual message based on mode
         switch (mode) {
         case ANALYZER_INITIATED:
             response.put("connectionType", "Analyzer-initiated via bridge");
@@ -781,7 +784,9 @@ public class AnalyzerRestController extends BaseRestController {
             payload.put("protocol", protocol != null ? protocol : "TCP");
             return callBridgeTestConnectivity(objectMapper.writeValueAsString(payload));
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            return Map.of("reachable", false, "message", "Failed to build request: " + e.getMessage());
+            return Map.of("reachable", false, "message", "analyzer.testConnection.requestBuildFailed", "messageKey",
+                    "analyzer.testConnection.requestBuildFailed", "messageArgs",
+                    Map.of("detail", String.valueOf(e.getMessage())));
         }
     }
 
@@ -839,17 +844,22 @@ public class AnalyzerRestController extends BaseRestController {
                     result.putAll(bridgeResponse);
                 } catch (Exception parseEx) {
                     result.put("reachable", false);
-                    result.put("message", "Bridge returned unparseable response");
+                    result.put("message", "analyzer.testConnection.bridge.unparseableResponse");
+                    result.put("messageKey", "analyzer.testConnection.bridge.unparseableResponse");
                 }
             } else {
                 result.put("reachable", false);
-                result.put("message", "Bridge returned HTTP " + status);
+                result.put("message", "analyzer.testConnection.bridge.httpStatus");
+                result.put("messageKey", "analyzer.testConnection.bridge.httpStatus");
+                result.put("messageArgs", Map.of("status", status));
             }
 
             logger.info("Bridge test-connectivity: reachable={}", result.get("reachable"));
         } catch (Exception e) {
             result.put("reachable", false);
-            result.put("message", "Cannot reach bridge: " + e.getMessage());
+            result.put("message", "analyzer.testConnection.bridge.unreachable");
+            result.put("messageKey", "analyzer.testConnection.bridge.unreachable");
+            result.put("messageArgs", Map.of("detail", String.valueOf(e.getMessage())));
             logger.error("Bridge test-connectivity failed", e);
         }
 
@@ -864,7 +874,8 @@ public class AnalyzerRestController extends BaseRestController {
         Map<String, Object> response = new LinkedHashMap<>();
         if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
             response.put("success", false);
-            response.put("message", "Bridge not configured");
+            response.put("message", "analyzer.testConnection.bridge.notConfigured");
+            response.put("messageKey", "analyzer.testConnection.bridge.notConfigured");
             return response;
         }
 
@@ -874,7 +885,9 @@ public class AnalyzerRestController extends BaseRestController {
                     objectMapper.writeValueAsString(Map.of("transport", "FILE", "path", importDirectory)));
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             response.put("success", false);
-            response.put("message", "Failed to build request: " + e.getMessage());
+            response.put("message", "analyzer.testConnection.requestBuildFailed");
+            response.put("messageKey", "analyzer.testConnection.requestBuildFailed");
+            response.put("messageArgs", Map.of("detail", String.valueOf(e.getMessage())));
             return response;
         }
         response.put("success", Boolean.TRUE.equals(result.get("reachable")));
@@ -891,7 +904,8 @@ public class AnalyzerRestController extends BaseRestController {
         Map<String, Object> response = new LinkedHashMap<>();
         if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
             response.put("success", false);
-            response.put("message", "Bridge not configured");
+            response.put("message", "analyzer.testConnection.bridge.notConfigured");
+            response.put("messageKey", "analyzer.testConnection.bridge.notConfigured");
             return response;
         }
 
@@ -901,7 +915,9 @@ public class AnalyzerRestController extends BaseRestController {
                     objectMapper.writeValueAsString(Map.of("transport", "SERIAL", "path", portName)));
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             response.put("success", false);
-            response.put("message", "Failed to build request: " + e.getMessage());
+            response.put("message", "analyzer.testConnection.requestBuildFailed");
+            response.put("messageKey", "analyzer.testConnection.requestBuildFailed");
+            response.put("messageArgs", Map.of("detail", String.valueOf(e.getMessage())));
             return response;
         }
         response.put("success", Boolean.TRUE.equals(result.get("reachable")));
@@ -970,7 +986,9 @@ public class AnalyzerRestController extends BaseRestController {
             logger.info("Bridge health check: {} (HTTP {})", healthy ? "UP" : "NOT UP", status);
         } catch (Exception e) {
             result.put("healthy", false);
-            result.put("message", "Cannot reach bridge at " + healthUrl + ": " + e.getMessage());
+            result.put("message", "analyzer.testConnection.bridge.healthCheckFailed");
+            result.put("messageKey", "analyzer.testConnection.bridge.healthCheckFailed");
+            result.put("messageArgs", Map.of("url", healthUrl, "detail", String.valueOf(e.getMessage())));
             logger.error("Bridge health check failed: {}", healthUrl, e);
         }
 
@@ -1021,7 +1039,9 @@ public class AnalyzerRestController extends BaseRestController {
                         registered = bridgeRegistrationService.registerFile(id, name, fc.getImportDirectory(),
                                 fc.getFilePattern(), fc.getColumnMappings());
                     }
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException e) {
+                    logger.debug("Analyzer id '{}' is not numeric; skipping legacy FileImportConfiguration fallback",
+                            id);
                 }
             }
 

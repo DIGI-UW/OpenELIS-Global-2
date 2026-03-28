@@ -81,12 +81,6 @@ const Index = () => {
 
   const handleResults = (data) => {
     if (data) {
-      // Debug: log readOnly state from API
-      (data.resultList || []).forEach((r) => {
-        console.log(
-          `[GET] accession=${r.accessionNumber}, readOnly=${r.readOnly}, testId=${r.testId}`,
-        );
-      });
       setResults(data);
       setIsLoading(false);
       if (data.paging) {

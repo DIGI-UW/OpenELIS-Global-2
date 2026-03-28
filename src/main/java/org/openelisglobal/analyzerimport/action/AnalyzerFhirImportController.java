@@ -77,7 +77,9 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
 
             if (bundle.getType() != Bundle.BundleType.TRANSACTION && bundle.getType() != Bundle.BundleType.BATCH) {
                 response.put("success", false);
-                response.put("error", "Bundle type must be 'transaction' or 'batch', got: " + bundle.getType());
+                response.put("error", "analyzer.fhirImport.error.invalidBundleType");
+                response.put("errorKey", "analyzer.fhirImport.error.invalidBundleType");
+                response.put("errorArgs", Map.of("bundleType", String.valueOf(bundle.getType())));
                 return ResponseEntity.badRequest().body(response);
             }
 
@@ -85,10 +87,8 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             Analyzer analyzer = null;
             if (analyzerId != null && !analyzerId.isBlank()) {
                 // Try numeric ID first (direct DB lookup)
-                try {
+                if (isNumericId(analyzerId)) {
                     analyzer = analyzerService.get(analyzerId);
-                } catch (Exception e) {
-                    // Not a numeric ID — try identifier pattern match
                 }
                 if (analyzer == null) {
                     analyzer = analyzerService.findByIdentifierPatternMatch(analyzerId).orElse(null);
@@ -129,7 +129,8 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
 
             if (results.isEmpty()) {
                 response.put("success", false);
-                response.put("error", "Bundle contains no Observation resources with results");
+                response.put("error", "analyzer.fhirImport.error.noObservations");
+                response.put("errorKey", "analyzer.fhirImport.error.noObservations");
                 return ResponseEntity.badRequest().body(response);
             }
 
@@ -153,9 +154,19 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             LogEvent.logError(CLASS_NAME, "importFhirBundle",
                     "FHIR Bundle import failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             response.put("success", false);
-            response.put("error", "FHIR Bundle import failed");
+            response.put("error", "analyzer.fhirImport.error.importFailed");
+            response.put("errorKey", "analyzer.fhirImport.error.importFailed");
             return ResponseEntity.internalServerError().body(response);
         }
+    }
+
+    private boolean isNumericId(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            if (!Character.isDigit(value.charAt(i))) {
+                return false;
+            }
+        }
+        return !value.isEmpty();
     }
 
     private AnalyzerResults mapObservationToAnalyzerResult(Observation obs, Map<String, String> specimenAccessions,

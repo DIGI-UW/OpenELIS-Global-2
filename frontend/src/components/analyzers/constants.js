@@ -42,3 +42,34 @@ export const COMMUNICATION_MODES = [
 
 /** Default communication mode for new analyzers. */
 export const DEFAULT_COMMUNICATION_MODE = "ANALYZER_INITIATED";
+
+/**
+ * Resolve analyzer API message payloads to localized UI text.
+ * Backend may return message/error directly or messageKey/errorKey + args.
+ */
+export const resolveAnalyzerApiMessage = (
+  intl,
+  payload,
+  fallbackId,
+  fallbackValues = {},
+) => {
+  const key = payload?.messageKey || payload?.errorKey;
+  const keyArgs = payload?.messageArgs || payload?.errorArgs || {};
+  if (key) {
+    return intl.formatMessage({ id: key }, keyArgs);
+  }
+
+  const keyedMessage =
+    payload?.message && typeof payload.message === "string"
+      ? payload.message
+      : payload?.error && typeof payload.error === "string"
+        ? payload.error
+        : null;
+  if (keyedMessage && keyedMessage.startsWith("analyzer.")) {
+    return intl.formatMessage({ id: keyedMessage }, keyArgs);
+  }
+  if (keyedMessage) {
+    return keyedMessage;
+  }
+  return intl.formatMessage({ id: fallbackId }, fallbackValues);
+};

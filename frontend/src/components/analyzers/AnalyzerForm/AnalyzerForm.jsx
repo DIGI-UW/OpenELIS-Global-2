@@ -26,6 +26,7 @@ import {
   DEFAULT_PROTOCOL_VERSION,
   COMMUNICATION_MODES,
   DEFAULT_COMMUNICATION_MODE,
+  resolveAnalyzerApiMessage,
 } from "../constants";
 import "./AnalyzerForm.css";
 
@@ -355,10 +356,11 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         setNotification({
           kind: "error",
           title: intl.formatMessage({ id: "analyzer.form.error.save" }),
-          subtitle:
-            response.error ||
-            response.message ||
-            intl.formatMessage({ id: "analyzer.form.error.unknown" }),
+          subtitle: resolveAnalyzerApiMessage(
+            intl,
+            response,
+            "analyzer.form.error.unknown",
+          ),
         });
       } else {
         setNotification({

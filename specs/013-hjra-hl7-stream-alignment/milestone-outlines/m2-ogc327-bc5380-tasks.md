@@ -37,7 +37,8 @@ analyzer validation target after M1 listener foundation.
 - Reviewers agree BC-5380 is first proving slice before BS-series expansion
 - No unresolved protocol-lane ambiguity from stale repo references
 - Test-connection for BC-5380 returns genuine TCP result (verifying
-  fix/013-hl7-test-connection is active on develop).
+  fix/013-hl7-test-connection behavior is present on the current consolidation
+  branch or on `develop`).
 
 ### PR
 

@@ -26,7 +26,7 @@ handling already present in main-repo HL7 codepaths, analyzer profile JSONs
 under `projects/analyzer-profiles/hl7`  
 **Storage**: PostgreSQL 14+ / Liquibase (inherited; no new schema changes in
 this branch)  
-**Testing**: JUnit 4/5 + Mockito, `BaseWebContextSensitiveTest`, bridge
+**Testing**: JUnit 4 + Mockito, `BaseWebContextSensitiveTest`, bridge
 integration testing, harness-based end-to-end evidence, Cypress or Playwright
 only if downstream UI changes are introduced later  
 **Target Platform**: Linux-based OpenELIS deployment plus bridge-managed
@@ -97,12 +97,13 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 | M2  | `feat/013-ogc-327-bc5380-hl7`              | First analyzer validation target using BC-5380 profile seed and the proven listener path                                                            | US2, US3     | BC-5380 validation proof accepted on the post-`OGC-325` path                                                          | M1         |
 | M3  | `feat/013-ogc-326-bs-series-hl7`           | Combined BS-series delivery branch committed to BS-200 and BS-300, with early BS-300 evidence validation inside the branch                          | US2, US3     | BS-200 target validated and BS-300 early-equivalence check explicitly passed or rejected with documented scope impact | M2         |
 
-**Cross-Cutting Fix**: `fix/013-hl7-test-connection` (PR #3195) — **DONE**. All
-items committed and merged. Adds CommunicationMode enum (ANALYZER_INITIATED,
-LIS_INITIATED, BOTH) to the data model, removes direct OE→analyzer socket code
-(queryAnalyzerASTM() fully replaced by queryViaBridge() which uses bridge POST
-/api/query endpoint), adds unified bridge-routed test-connection with TCP-only
-probe, and includes Liquibase migration.
+**Cross-Cutting Fix**: `fix/013-hl7-test-connection` (PR #3195 / current
+consolidation branch). This branch carries the shared implementation for
+CommunicationMode (ANALYZER_INITIATED, LIS_INITIATED, BOTH), unified
+bridge-routed test-connection with TCP-only probe, Liquibase changes, and the
+removal of direct OE→analyzer socket query code. Treat it as current branch
+state for downstream planning; update the wording again when it is merged to
+`develop`.
 
 **Note on branch naming**: These branches intentionally omit the `-mN-`
 milestone numbering from the constitution's
