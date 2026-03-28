@@ -28,7 +28,6 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.openelisglobal.analysis.service.AnalysisServiceImpl;
 
 public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
@@ -467,4 +466,3 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertNotNull(triggeredReflex);
     }
 }
-
