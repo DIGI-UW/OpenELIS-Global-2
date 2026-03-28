@@ -50,6 +50,7 @@ services:
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - SERVER_SSL_ENABLED=false
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - BRIDGE_FILE_ENABLED=true
       - BRIDGE_OPENELIS_URL=https://oe.openelis.org:8443/OpenELIS-Global
