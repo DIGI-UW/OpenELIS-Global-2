@@ -141,4 +141,126 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(20, menuWrapper.getMenu().getPresentationOrder());
     }
 
+    @Test
+    public void getMenuTree_shouldReturn200WithJsonContentType() throws Exception {
+        MvcResult urlResult = super.mockMvc.perform(get("/rest/menu")
+                .accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+
+        assertEquals("Should return HTTP 200",
+                200, urlResult.getResponse().getStatus());
+
+        String contentType = urlResult.getResponse().getContentType();
+        assertNotNull("Content-Type header should not be null", contentType);
+        assertTrue("Content-Type should be application/json",
+                contentType.contains("application/json"));
+    }
+
+    @Test
+    public void postMenuTree_withEmptyList_shouldReturnEmptyList() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String requestBody = objectMapper.writeValueAsString(new ArrayList<>());
+
+        MvcResult postUrl = super.mockMvc.perform(post("/rest/menu").content(requestBody)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+
+        String result = postUrl.getResponse().getContentAsString();
+        List<MenuItem> responseItems = objectMapper.readValue(result, new TypeReference<List<MenuItem>>() {
+        });
+
+        assertNotNull("Response should not be null for empty list POST", responseItems);
+        assertTrue("Response should be an empty list", responseItems.isEmpty());
+    }
+
+    @Test
+    public void postMenuTree_withInactiveMenu_shouldPersistInactiveStatus() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        Menu inactiveMenu = new Menu();
+        inactiveMenu.setElementId("elementTestInactive30");
+        inactiveMenu.setIsActive(false);
+        inactiveMenu.setPresentationOrder(30);
+
+        MenuItem inactiveItem = new MenuItem();
+        inactiveItem.setMenu(inactiveMenu);
+
+        List<MenuItem> menuItems = new ArrayList<>();
+        menuItems.add(inactiveItem);
+
+        String requestBody = objectMapper.writeValueAsString(menuItems);
+
+        MvcResult postUrl = super.mockMvc.perform(post("/rest/menu").content(requestBody)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+
+        String result = postUrl.getResponse().getContentAsString();
+        List<MenuItem> responseItems = objectMapper.readValue(result, new TypeReference<List<MenuItem>>() {
+        });
+
+        assertNotNull("Response should not be null", responseItems);
+        assertEquals("Expected exactly one item in response", 1, responseItems.size());
+        assertFalse("Inactive status must be persisted — isActive should be false",
+                responseItems.get(0).getMenu().getIsActive());
+        assertEquals("elementTestInactive30", responseItems.get(0).getMenu().getElementId());
+    }
+
+    @Test
+    public void postMenuTree_shouldReturnItemsInSameOrderAsSubmitted() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        Menu menuA = new Menu();
+        menuA.setElementId("elementOrder40");
+        menuA.setIsActive(true);
+        menuA.setPresentationOrder(40);
+
+        Menu menuB = new Menu();
+        menuB.setElementId("elementOrder41");
+        menuB.setIsActive(true);
+        menuB.setPresentationOrder(41);
+
+        Menu menuC = new Menu();
+        menuC.setElementId("elementOrder42");
+        menuC.setIsActive(true);
+        menuC.setPresentationOrder(42);
+
+        MenuItem itemA = new MenuItem();
+        itemA.setMenu(menuA);
+        MenuItem itemB = new MenuItem();
+        itemB.setMenu(menuB);
+        MenuItem itemC = new MenuItem();
+        itemC.setMenu(menuC);
+
+        List<MenuItem> menuItems = new ArrayList<>();
+        menuItems.add(itemA);
+        menuItems.add(itemB);
+        menuItems.add(itemC);
+
+        String requestBody = objectMapper.writeValueAsString(menuItems);
+
+        MvcResult postUrl = super.mockMvc.perform(post("/rest/menu").content(requestBody)
+                .accept(MediaType.APPLICATION_JSON_VALUE)
+                .contentType(MediaType.APPLICATION_JSON_VALUE)).andReturn();
+
+        String result = postUrl.getResponse().getContentAsString();
+        List<MenuItem> responseItems = objectMapper.readValue(result, new TypeReference<List<MenuItem>>() {
+        });
+
+        assertNotNull("Response should not be null", responseItems);
+        assertEquals("Should return all 3 items", 3, responseItems.size());
+
+        assertEquals("First item elementId should match", "elementOrder40",
+                responseItems.get(0).getMenu().getElementId());
+        assertEquals("Second item elementId should match", "elementOrder41",
+                responseItems.get(1).getMenu().getElementId());
+        assertEquals("Third item elementId should match", "elementOrder42",
+                responseItems.get(2).getMenu().getElementId());
+
+        assertEquals("First item order should be 40", 40,
+                responseItems.get(0).getMenu().getPresentationOrder());
+        assertEquals("Second item order should be 41", 41,
+                responseItems.get(1).getMenu().getPresentationOrder());
+        assertEquals("Third item order should be 42", 42,
+                responseItems.get(2).getMenu().getPresentationOrder());
+    }
 }
