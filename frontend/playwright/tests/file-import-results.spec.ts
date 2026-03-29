@@ -13,7 +13,7 @@ import {
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../helpers/results-ui";
-import { UI_TIMEOUT } from "../helpers/timeouts";
+import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer harness: FILE drop → staged results → accept (one story per FILE
