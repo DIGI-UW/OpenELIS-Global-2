@@ -1,7 +1,9 @@
 package org.openelisglobal.gender.service;
 
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.gender.dao.GenderDAO;
 import org.openelisglobal.gender.valueholder.Gender;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,7 @@ public class GenderServiceImpl extends AuditableBaseObjectServiceImpl<Gender, In
 
     @Override
     public Integer insert(Gender gender) {
+        validateGenderType(gender);
         if (getBaseObjectDAO().duplicateGenderExists(gender)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + gender.getGenderType());
         }
@@ -32,6 +35,7 @@ public class GenderServiceImpl extends AuditableBaseObjectServiceImpl<Gender, In
 
     @Override
     public Gender save(Gender gender) {
+        validateGenderType(gender);
         if (getBaseObjectDAO().duplicateGenderExists(gender)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + gender.getGenderType());
         }
@@ -40,6 +44,7 @@ public class GenderServiceImpl extends AuditableBaseObjectServiceImpl<Gender, In
 
     @Override
     public Gender update(Gender gender) {
+        validateGenderType(gender);
         if (getBaseObjectDAO().duplicateGenderExists(gender)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + gender.getGenderType());
         }
@@ -50,5 +55,18 @@ public class GenderServiceImpl extends AuditableBaseObjectServiceImpl<Gender, In
     @Transactional(readOnly = true)
     public Gender getGenderByType(String type) {
         return getMatch("genderType", type).orElse(null);
+    }
+
+    /**
+     * Validates that the gender object and its genderType field are not null or
+     * empty.
+     * 
+     * @param gender the Gender object to validate
+     * @throws LIMSRuntimeException if validation fails
+     */
+    private void validateGenderType(Gender gender) {
+        if (gender == null || StringUtil.isNullorNill(gender.getGenderType())) {
+            throw new LIMSRuntimeException("Gender type is required and cannot be null or empty");
+        }
     }
 }

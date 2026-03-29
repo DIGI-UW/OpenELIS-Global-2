@@ -12,6 +12,18 @@ specify a target.
   run the shim with **current branch** and **failed-only** (so the downloader is
   invoked with `--branch <current-branch>` and `--failed`).
 
+**Before downloading logs, ALWAYS run a holistic status check first:**
+
+```bash
+# Show ALL workflows at a glance (same view as GitHub PR UI)
+gh pr checks $(gh pr view --json number -q '.number') 2>/dev/null || \
+  gh run list --branch "$(git branch --show-current)" --limit 10
+```
+
+This ensures you identify ALL failing workflows (Backend, Frontend, E2E, etc.)
+before downloading logs for just one. A formatting failure in `01 - Backend` is
+just as blocking as an E2E failure in `03 - E2E`.
+
 ## Invocation
 
 The agent should parse user arguments and construct a safe command call. Only
@@ -39,15 +51,15 @@ call `scripts/download-ci-logs.sh` with the appropriate options.
 
 ## Options (pass-through)
 
-| Option              | Description                                  |
-| ------------------- | -------------------------------------------- |
-| `--pr <number>`     | PR number to get logs for                    |
-| `--branch <name>`   | Branch name to get logs for                  |
-| `--run-id <id>`     | Download a specific run by ID                |
-| `--workflow <name>` | Filter to specific workflow (e.g., `ci.yml`) |
-| `--failed`          | Only download failed runs                    |
-| `--list`            | List available runs without downloading      |
-| `--limit <n>`       | Max runs to check (default: 10)              |
+| Option              | Description                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------- |
+| `--pr <number>`     | PR number to get logs for                                                               |
+| `--branch <name>`   | Branch name to get logs for                                                             |
+| `--run-id <id>`     | Download a specific run by ID                                                           |
+| `--workflow <name>` | Filter to specific workflow (e.g., `backend.yml`, `frontend.yml`, `e2e-playwright.yml`) |
+| `--failed`          | Only download failed runs                                                               |
+| `--list`            | List available runs without downloading                                                 |
+| `--limit <n>`       | Max runs to check (default: 10)                                                         |
 
 ## Output
 

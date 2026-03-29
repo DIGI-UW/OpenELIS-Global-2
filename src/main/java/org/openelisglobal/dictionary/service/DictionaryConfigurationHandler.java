@@ -5,36 +5,58 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationValueService;
+import org.openelisglobal.localization.service.SupportedLocaleService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Handler for loading dictionary configuration files. Supports CSV format with
  * dictionary entries and their categories.
  *
  * Expected CSV format:
- * category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode Sample
- * Types,Blood,BLD,Y,1,26881-3 Sample Types,Serum,SER,Y,2,26882-1
+ * category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr
+ * Sample Types,Blood,BLD,Y,1,26881-3,Blood,Sang Sample
+ * Types,Serum,SER,Y,2,26882-1,Serum,Sérum
  *
  * Notes: - First line is the header (required) - category and dictEntry are
  * required fields - localAbbreviation, isActive, sortOrder, loincCode are
- * optional - isActive defaults to "Y" if not specified
+ * optional - isActive defaults to "Y" if not specified - localization:xx
+ * columns (where xx is a locale code like en, fr, es) provide translations - If
+ * no localization columns are provided, dictEntry is used as the default value
+ * for the fallback locale
  */
 @Component
 public class DictionaryConfigurationHandler implements DomainConfigurationHandler {
+
+    private static final String LOCALIZATION_COLUMN_PREFIX = "localization:";
 
     @Autowired
     private DictionaryService dictionaryService;
 
     @Autowired
     private DictionaryCategoryService dictionaryCategoryService;
+
+    @Autowired
+    private LocalizationService localizationService;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
+
+    @Autowired
+    private SupportedLocaleService supportedLocaleService;
 
     @Override
     public String getDomainName() {
@@ -52,10 +74,10 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     @Override
+    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
-        // Read and validate header
         String headerLine = reader.readLine();
         if (headerLine == null) {
             throw new IllegalArgumentException("Dictionary configuration file " + fileName + " is empty");
@@ -64,13 +86,15 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         String[] headers = parseCsvLine(headerLine);
         validateHeaders(headers, fileName);
 
-        // Get column indices
         int categoryIndex = findColumnIndex(headers, "category");
         int dictEntryIndex = findColumnIndex(headers, "dictEntry");
         int localAbbreviationIndex = findColumnIndex(headers, "localAbbreviation");
         int isActiveIndex = findColumnIndex(headers, "isActive");
         int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int loincCodeIndex = findColumnIndex(headers, "loincCode");
+
+        // Detect localization columns (localization:en, localization:fr, etc.)
+        Map<String, Integer> localizationColumns = detectLocalizationColumns(headers);
 
         List<Dictionary> processedDictionaries = new ArrayList<>();
         String line;
@@ -86,7 +110,7 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             try {
                 String[] values = parseCsvLine(line);
                 Dictionary dictionary = processCsvLine(values, categoryIndex, dictEntryIndex, localAbbreviationIndex,
-                        isActiveIndex, sortOrderIndex, loincCodeIndex);
+                        isActiveIndex, sortOrderIndex, loincCodeIndex, localizationColumns);
                 if (dictionary != null) {
                     processedDictionaries.add(dictionary);
                 }
@@ -96,10 +120,35 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             }
         }
 
-        DisplayListService.getInstance().refreshLists();
+        // Refresh display lists if service is available (may be null in unit tests)
+        DisplayListService displayListService = DisplayListService.getInstance();
+        if (displayListService != null) {
+            displayListService.refreshLists();
+        }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "Successfully loaded " + processedDictionaries.size() + " dictionaries from " + fileName);
+    }
+
+    /**
+     * Detects localization columns from headers. Columns must be in the format
+     * "localization:xx" where xx is a locale code (e.g., en, fr, es).
+     *
+     * @param headers the CSV header row
+     * @return map of locale code to column index
+     */
+    private Map<String, Integer> detectLocalizationColumns(String[] headers) {
+        Map<String, Integer> localizationColumns = new HashMap<>();
+        for (int i = 0; i < headers.length; i++) {
+            String header = headers[i].trim().toLowerCase();
+            if (header.startsWith(LOCALIZATION_COLUMN_PREFIX)) {
+                String locale = header.substring(LOCALIZATION_COLUMN_PREFIX.length());
+                if (!locale.isEmpty()) {
+                    localizationColumns.put(locale, i);
+                }
+            }
+        }
+        return localizationColumns;
     }
 
     private String[] parseCsvLine(String line) {
@@ -158,9 +207,9 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private Dictionary processCsvLine(String[] values, int categoryIndex, int dictEntryIndex,
-            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex) {
+            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex,
+            Map<String, Integer> localizationColumns) {
 
-        // Get required fields
         String categoryName = getValueOrEmpty(values, categoryIndex);
         String dictEntry = getValueOrEmpty(values, dictEntryIndex);
 
@@ -174,25 +223,21 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             return null;
         }
 
-        // Get or create category
         DictionaryCategory category = getOrCreateCategory(categoryName);
 
-        // Check if dictionary already exists in this specific category
-        // Note: The same entry name CAN exist in different categories
+        // The same entry name CAN exist in different categories
         Dictionary existingDict = dictionaryService.getDictionaryEntrysByNameAndCategoryDescription(dictEntry,
                 categoryName);
         if (existingDict != null) {
-            // Update existing dictionary in this category
             updateDictionaryFromCsv(existingDict, values, category, localAbbreviationIndex, isActiveIndex,
-                    sortOrderIndex, loincCodeIndex);
+                    sortOrderIndex, loincCodeIndex, dictEntry, localizationColumns);
             dictionaryService.update(existingDict);
             return existingDict;
         } else {
-            // Create new dictionary entry in this category
             Dictionary newDict = new Dictionary();
             newDict.setDictEntry(dictEntry);
             updateDictionaryFromCsv(newDict, values, category, localAbbreviationIndex, isActiveIndex, sortOrderIndex,
-                    loincCodeIndex);
+                    loincCodeIndex, dictEntry, localizationColumns);
             String dictId = dictionaryService.insert(newDict);
             newDict.setId(dictId);
             return newDict;
@@ -208,11 +253,9 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private DictionaryCategory getOrCreateCategory(String categoryName) {
-        // Try to find existing category by name
         DictionaryCategory category = dictionaryCategoryService.getDictionaryCategoryByName(categoryName);
 
         if (category == null) {
-            // Generate unique abbreviation and try to create category
             category = tryCreateCategoryWithUniqueAbbreviation(categoryName);
         }
 
@@ -220,7 +263,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private DictionaryCategory tryCreateCategoryWithUniqueAbbreviation(String categoryName) {
-        // Generate base abbreviation from category name (first 3-5 chars, uppercase)
         String baseAbbreviation = categoryName.replaceAll("\\s+", "").toUpperCase();
         if (baseAbbreviation.length() > 5) {
             baseAbbreviation = baseAbbreviation.substring(0, 5);
@@ -229,8 +271,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         String abbreviation = baseAbbreviation;
         int suffix = 1;
 
-        // Keep trying to create the category with different abbreviations until
-        // successful
         while (suffix <= 99) {
             try {
                 DictionaryCategory category = new DictionaryCategory();
@@ -250,7 +290,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
                 LogEvent.logDebug(this.getClass().getSimpleName(), "tryCreateCategoryWithUniqueAbbreviation",
                         "Abbreviation " + abbreviation + " already exists, trying with suffix " + suffix);
 
-                // Truncate base to make room for suffix
                 int maxBaseLength = 5 - String.valueOf(suffix).length();
                 if (maxBaseLength < 1) {
                     maxBaseLength = 1;
@@ -269,11 +308,11 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
     }
 
     private void updateDictionaryFromCsv(Dictionary dictionary, String[] values, DictionaryCategory category,
-            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex) {
+            int localAbbreviationIndex, int isActiveIndex, int sortOrderIndex, int loincCodeIndex, String dictEntry,
+            Map<String, Integer> localizationColumns) {
 
         dictionary.setDictionaryCategory(category);
 
-        // Set optional fields
         String localAbbreviation = getValueOrEmpty(values, localAbbreviationIndex);
         if (!localAbbreviation.isEmpty()) {
             dictionary.setLocalAbbreviation(localAbbreviation);
@@ -303,5 +342,84 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
         // Set system user ID for audit
         dictionary.setSysUserId("1"); // System user for configuration loading
+
+        // Handle localization
+        processLocalization(dictionary, values, dictEntry, localizationColumns);
+    }
+
+    /**
+     * Processes localization columns and sets up translations for the dictionary
+     * entry. If no localization columns are provided, uses dictEntry as the default
+     * value for the fallback locale (en).
+     *
+     * @param dictionary          the Dictionary entity to update
+     * @param values              the CSV row values
+     * @param dictEntry           the dictionary entry name (used as default if no
+     *                            translations)
+     * @param localizationColumns map of locale code to column index
+     */
+    private void processLocalization(Dictionary dictionary, String[] values, String dictEntry,
+            Map<String, Integer> localizationColumns) {
+
+        // Get or create localization for this dictionary
+        Localization localization = dictionary.getLocalizedDictionaryName();
+        boolean isNewLocalization = false;
+
+        if (localization == null) {
+            localization = new Localization();
+            localization.setDescription("dictionary entry: " + dictEntry);
+            localization.setSysUserId("1");
+            isNewLocalization = true;
+        }
+
+        // Determine what translations to set
+        Map<String, String> translations = new HashMap<>();
+
+        if (localizationColumns.isEmpty()) {
+            // No localization columns provided - use dictEntry as the fallback (en) value
+            translations.put("en", dictEntry);
+        } else {
+            // Process each localization column
+            for (Map.Entry<String, Integer> entry : localizationColumns.entrySet()) {
+                String locale = entry.getKey();
+                String translationValue = getValueOrEmpty(values, entry.getValue());
+                if (!translationValue.isEmpty()) {
+                    translations.put(locale, translationValue);
+                }
+            }
+
+            // If no valid translations found, use dictEntry as fallback
+            if (translations.isEmpty()) {
+                translations.put("en", dictEntry);
+            }
+        }
+
+        if (isNewLocalization) {
+            // For new localization, set initial values using the deprecated setters
+            // which handle both legacy and new systems
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                if ("en".equals(entry.getKey())) {
+                    localization.setEnglish(entry.getValue());
+                } else if ("fr".equals(entry.getKey())) {
+                    localization.setFrench(entry.getValue());
+                }
+            }
+
+            // Insert the localization to get an ID
+            String localizationId = localizationService.insert(localization);
+            localization.setId(localizationId);
+            dictionary.setLocalizedDictionaryName(localization);
+
+            // Now set all translations using the service (including any beyond en/fr)
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
+            }
+        } else {
+            // Update existing localization translations
+            String localizationId = localization.getId();
+            for (Map.Entry<String, String> entry : translations.entrySet()) {
+                localizationValueService.setTranslation(localizationId, entry.getKey(), entry.getValue(), "1");
+            }
+        }
     }
 }

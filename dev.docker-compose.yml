@@ -59,7 +59,7 @@ services:
             - TZ=Africa/Nairobi
             - SPRING_LIQUIBASE_CONTEXTS=test
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+            - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/lucene:/var/lib/lucene_index
@@ -69,12 +69,17 @@ services:
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
-            - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+            - ./volume/properties:/var/lib/openelis-global/properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/configuration:/var/lib/openelis-global/configuration
             - ./volume/branding:/var/lib/openelis-global/branding
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
+            - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
+        # devices:
+            # Serial port device mapping example for RS232 analyzer integration
+            # Uncomment and adjust device path as needed for your system
+            # - /dev/ttyUSB0:/dev/ttyUSB0
         secrets:
             - source: datasource.password
             - source: common.properties
