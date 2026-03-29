@@ -161,6 +161,7 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
+          DB_CONTAINER: openelisglobal-database
 
       - name: Fix analyzer-imports permissions (bridge creates dirs as root)
         run: |
