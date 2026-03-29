@@ -59,8 +59,9 @@ Required architecture statement everywhere:
 
 - Bridge owns FILE polling/transport lifecycle.
 - OE owns configuration + ingest/processing/domain persistence.
-- OE app poller is disabled by default and only optional for standalone
-  fallback.
+- OE app poller is optional future fallback only. It is not implemented on the
+  current consolidation branch and must remain disabled by default if added
+  later.
 
 ## Phase 2: Bridge Control Plane + Delivery Path
 
@@ -86,9 +87,10 @@ Implement on parent repo branch in the new worktree.
   human upload path):
   - `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerUploadRestController.java`
     (or dedicated controller)
-- Disable app poller by default:
-  - `src/main/java/org/openelisglobal/analyzer/service/FileImportWatchService.java`
+- Keep OE-side polling out of the active runtime path on this branch:
   - `src/main/resources/application.properties`
+  - if `FileImportWatchService.java` is introduced later, it must be disabled by
+    default and documented as fallback-only
 - Full bridge lifecycle sync for analyzer CRUD + startup recovery:
   - `src/main/java/org/openelisglobal/analyzer/controller/AnalyzerRestController.java`
   - `src/main/java/org/openelisglobal/analyzer/service/BridgeRegistrationService.java`

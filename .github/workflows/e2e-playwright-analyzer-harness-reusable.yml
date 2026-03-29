@@ -137,14 +137,26 @@ jobs:
       - name: Create analyzer import bind mount directories
         run: |
           mkdir -p projects/analyzer-harness/volume/analyzer-imports
-          # Pre-create incoming/ dirs so the bridge doesn't have to (avoids async timeout)
-          for slug in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+          # Pre-create shared and demo-specific incoming/ dirs so the bridge
+          # doesn't create bind-mounted folders as root during CI runs.
+          for slug in \
+            quantstudio-5 \
+            quantstudio-7 \
+            fluorocycler-xt \
+            demo--quantstudio-5 \
+            demo--quantstudio-7 \
+            demo--fluorocycler-xt; do
             mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
           done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
-        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
+        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build
+
+      - name: Validate cert material in shared volume mounts
+        run: |
+          docker exec openelisglobal-webapp sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+          docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
 
       - name: Wait for OpenELIS, bridge, and simulator readiness
         run: |
@@ -161,12 +173,19 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ secrets.TEST_PASS }}
+          DB_CONTAINER: openelisglobal-database
 
       - name: Fix analyzer-imports permissions (bridge creates dirs as root)
         run: |
           # Bridge creates incoming/ dirs asynchronously after seed registration.
           # Wait for all expected directories to appear, then fix permissions.
-          for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+          for dir in \
+            quantstudio-5 \
+            quantstudio-7 \
+            fluorocycler-xt \
+            demo--quantstudio-5 \
+            demo--quantstudio-7 \
+            demo--fluorocycler-xt; do
             timeout 120 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
             echo "Found: $dir/incoming"
           done

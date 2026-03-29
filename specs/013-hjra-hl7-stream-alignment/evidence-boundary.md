@@ -171,6 +171,42 @@ The `msh3_pattern` ambiguity only manifests in non-bridge or fallback scenarios.
 - Risk: BS-300 equivalence to BS-200 remains a validation question outside
   synthetic harness evidence until real captures are available
 
+## Test-Connection Boundary
+
+### Confirmed
+
+- HL7 test-connection was a hardcoded stub returning `success: true` — fixed by
+  `fix/013-hl7-test-connection` (PR #3195).
+- All TCP analyzers now receive genuine connectivity testing: bridge health via
+  `/actuator/health` + TCP connect to analyzer IP:port.
+- CommunicationMode (ANALYZER_INITIATED, LIS_INITIATED, BOTH) contextualizes the
+  test-connection response. TCP failure for ANALYZER_INITIATED is reported but
+  bridge health is the primary success criterion.
+- Bridge is mandatory architecture — OE never connects directly to analyzers.
+- Mock server now listens on HL7 analyzer ports (5380, 6001, 6002) with proper
+  MLLP framing and responds with HL7 ACK — matching real analyzer behavior.
+  Previously the mock only pushed MLLP outbound; inbound listening was missing
+  (spec gap: the readiness gates required "mock a specific analyzer type" but
+  didn't explicitly require inbound MLLP listening).
+
+### Design Decision
+
+- Test-connection verifies TCP reachability (SYN/ACK) and bridge health. It does
+  NOT send protocol messages — the TCP connect to the analyzer port proves the
+  mock is listening, which is sufficient for the test-connection use case.
+- MVP = ANALYZER_INITIATED (one-way result transport). This is a deliberate
+  phased approach, not a permanent limitation.
+- LIS_INITIATED and BOTH are documented future capabilities per vendor specs
+  (OGC-327 ORM^O01, OGC-326 QRY^Q02, OGC-336 QBP).
+- Direct OE→analyzer socket code has been removed. The bridge is the single
+  point of contact for all analyzer communication.
+
+### Not Yet Proven
+
+- Bridge `/actuator/health` with `show-details: never` may aggregate MLLP status
+  with other indicators. MLLP-specific health status in production deployments
+  needs validation.
+
 ## Required Remediation Before Continuing Profile Expansion
 
 1. Define the canonical sender identity contract for GenericHL7.

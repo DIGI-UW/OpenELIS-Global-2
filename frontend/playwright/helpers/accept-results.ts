@@ -54,21 +54,45 @@ export async function acceptAndVerifyResults(
   // ── Accept All ──────────────────────────────────────────────────
   await presentation.step(stepOffset + 1, "Accept All Results", 2000);
 
-  const acceptAllCheckbox = page.locator("#saveallresults");
-  await expect(acceptAllCheckbox).toBeAttached({ timeout: SHORT_TIMEOUT });
-  // Carbon checkbox: click the visible label instead of forcing the hidden input
-  await page.locator('label[for="saveallresults"]').click();
+  const stagedRows = () =>
+    page
+      .getByRole("row")
+      .filter({ hasText: accessionTextRegExp(stagedAccession.trim()) });
+
+  let stagedCountBeforeSave = await stagedRows().count();
+  if (stagedCountBeforeSave === 0) {
+    const labNumberInput = page.getByRole("textbox", {
+      name: /enter lab number/i,
+    });
+    await expect(labNumberInput).toBeVisible({ timeout: SHORT_TIMEOUT });
+    await labNumberInput.fill(stagedAccession);
+    await page.getByRole("button", { name: /search/i }).click();
+    await expect(stagedRows().first()).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    stagedCountBeforeSave = await stagedRows().count();
+  }
+
+  for (let i = 0; i < stagedCountBeforeSave; i++) {
+    const acceptInput = stagedRows()
+      .nth(i)
+      .locator('input[id$=".isAccepted"]')
+      .first();
+    await expect(acceptInput).toBeAttached({ timeout: SHORT_TIMEOUT });
+    if (!(await acceptInput.isChecked())) {
+      const checkboxId = await acceptInput.getAttribute("id");
+      if (!checkboxId) {
+        throw new Error("Could not determine row acceptance checkbox id.");
+      }
+      await page.locator(`label[for="${checkboxId}"]`).click();
+    }
+  }
   await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
   await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
-  // Scope to this accession: other lanes/QC rows can share the AnalyzerResults page.
-  const stagedRows = page
-    .locator('[data-testid="LabNo"]')
-    .filter({ hasText: accessionTextRegExp(stagedAccession.trim()) });
-  const stagedCountBeforeSave = await stagedRows.count();
   await expect(saveButton).toBeVisible({ timeout: SHORT_TIMEOUT });
   await expect(saveButton).toBeEnabled({ timeout: SHORT_TIMEOUT });
 
@@ -89,7 +113,7 @@ export async function acceptAndVerifyResults(
 
   if (stagedCountBeforeSave > 0) {
     await expect
-      .poll(async () => stagedRows.count(), {
+      .poll(async () => stagedRows().count(), {
         timeout: LONG_TIMEOUT,
       })
       .toBe(0);
