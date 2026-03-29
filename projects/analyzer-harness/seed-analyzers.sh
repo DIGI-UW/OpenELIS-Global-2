@@ -250,8 +250,10 @@ print(Path(sys.argv[1]).read_text(encoding="utf-8"))
 PY
   )"
 
-  local ip
-  ip=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ip',''))" 2>/dev/null)
+  local ip=""
+  ip="$(
+    printf '%s' "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ip',''))" 2>/dev/null || true
+  )"
 
   if [ -n "$ip" ]; then
     rm -f "$response_file" "$error_file"
