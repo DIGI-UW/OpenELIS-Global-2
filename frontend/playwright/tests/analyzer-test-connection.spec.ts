@@ -11,7 +11,7 @@ import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
  * Analyzer Test Connection E2E
  *
  * Two test scenarios:
- * 1. Mock: fixture-loaded GeneXpert at 172.20.1.100:9600 (ASTM mock in Docker)
+ * 1. Mock: fixture-loaded GeneXpert at 10.42.20.10:9600 (dedicated ASTM mock subnet)
  * 2. Real: dynamically-created analyzer pointing to a real device.
  *    Requires GENEXPERT_HOST and GENEXPERT_PORT env vars to be set.
  *    Skipped automatically when not configured or in CI.

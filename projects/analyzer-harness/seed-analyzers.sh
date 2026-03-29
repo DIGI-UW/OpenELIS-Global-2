@@ -178,7 +178,6 @@ create_analyzer() {
 }
 
 MOCK_URL="${MOCK_URL:-http://localhost:8085}"
-ASTM_SIMULATOR_SOURCE_IP="${ASTM_SIMULATOR_SOURCE_IP:-172.21.1.100}"
 
 # Create dynamic Docker network per TCP analyzer — each gets a unique, stable IP
 # so the bridge can identify them individually.
@@ -268,15 +267,14 @@ BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
 BS300_IP=$(create_mock_network "bs300" "mindray_bs300" 6002)
 echo ""
 
-# 1. GeneXpert (ASTM) — dynamic IP from mock network
-# NOTE: ASTM result messages pushed via /simulate/astm originate from the
-# astm-simulator container on analyzer-net (172.21.1.100), so source-binding
-# registration must use that source IP for deterministic routing in harness.
+# 1. GeneXpert (ASTM) — fixed mock IP from dedicated analyzer network.
+# Source-binding is authoritative, so the seeded registration must match the
+# actual mock-network source identity used by ASTM pushes in the harness.
 create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"name\": \"Cepheid GeneXpert (ASTM Mode)\",
   \"analyzerType\": \"MOLECULAR\",
   \"pluginTypeId\": \"generic-astm\",
-  \"ipAddress\": \"${ASTM_SIMULATOR_SOURCE_IP}\",
+  \"ipAddress\": \"${GX_IP}\",
   \"port\": 9600,
   \"protocolVersion\": \"ASTM_LIS2_A2\",
   \"communicationMode\": \"ANALYZER_INITIATED\",

@@ -15,7 +15,9 @@ import {
 import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 const SIMULATOR_URL = "http://localhost:8085";
-const BRIDGE_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
+// Use the bridge IP on the dedicated GeneXpert mock subnet so the simulator
+// source IP is the registered GeneXpert mock IP (10.42.20.10).
+const BRIDGE_DESTINATION = "tcp://10.42.20.2:12001";
 const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
 const FIXTURE_SAMPLE_ID = "HARN-GX-2026-00001";
 const RESULTS_TIMEOUT = 90_000;
