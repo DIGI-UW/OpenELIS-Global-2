@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- T116: Add audit trail columns for duplicate result overwrite tracking -->
+    <changeSet id="eqa-006-add-result-audit-columns" author="eqa-module-feature">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="eqa_result"/>
+            <not>
+                <columnExists tableName="eqa_result" columnName="previous_result_value"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="eqa_result">
+            <column name="previous_result_value" type="DECIMAL(15,5)"/>
+            <column name="previous_submission_date" type="TIMESTAMP"/>
+            <column name="previous_submission_method" type="VARCHAR(20)"/>
+            <column name="modified_by_user_id" type="numeric(10,0)">
+                <constraints
+                    foreignKeyName="fk_eqa_result_modified_by"
+                    references="system_user(id)"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="eqa_result" columnName="previous_result_value"/>
+            <dropColumn tableName="eqa_result" columnName="previous_submission_date"/>
+            <dropColumn tableName="eqa_result" columnName="previous_submission_method"/>
+            <dropColumn tableName="eqa_result" columnName="modified_by_user_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

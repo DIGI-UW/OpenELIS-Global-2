@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * AnalyzerForm Page Object
@@ -19,6 +20,8 @@ export class AnalyzerFormPage {
   readonly ipAddressInput: Locator;
   readonly portInput: Locator;
   readonly statusDropdown: Locator;
+  readonly connectionFields: Locator;
+  readonly fileProtocolInfo: Locator;
   readonly saveButton: Locator;
   readonly cancelButton: Locator;
   readonly notification: Locator;
@@ -50,6 +53,12 @@ export class AnalyzerFormPage {
     this.statusDropdown = page.locator(
       '[data-testid="analyzer-form-status-dropdown"]',
     );
+    this.connectionFields = page.locator(
+      '[data-testid="analyzer-form-connection-fields"]',
+    );
+    this.fileProtocolInfo = page.locator(
+      '[data-testid="analyzer-form-file-protocol-info"]',
+    );
     this.saveButton = page.locator('[data-testid="analyzer-form-save-button"]');
     this.cancelButton = page.locator(
       '[data-testid="analyzer-form-cancel-button"]',
@@ -72,7 +81,13 @@ export class AnalyzerFormPage {
 
   /** Select an item from a Carbon Dropdown by visible text */
   private async selectDropdownItem(dropdown: Locator, text: string) {
-    await dropdown.click();
+    // Carbon places data-testid on the wrapper div, not the trigger button.
+    // Click the inner trigger button to reliably open the listbox.
+    const trigger = dropdown.locator(
+      'button[role="combobox"], .cds--list-box__field',
+    );
+    await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
+    await trigger.click();
     const item = this.page.getByRole("option", { name: text });
     await item.first().click();
   }
@@ -109,13 +124,18 @@ export class AnalyzerFormPage {
 
   /** Assert a success notification appeared */
   async expectSuccessNotification() {
-    await expect(this.notification).toBeVisible({ timeout: 10000 });
+    await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
+    const cls = await this.notification.getAttribute("class");
+    if (cls && /error/i.test(cls)) {
+      const text = await this.notification.textContent();
+      throw new Error(`Expected success notification but got error: ${text}`);
+    }
     await expect(this.notification).toHaveAttribute("class", /success|info/i);
   }
 
   /** Assert a notification of any kind appeared */
   async expectNotification() {
-    await expect(this.notification).toBeVisible({ timeout: 10000 });
+    await expect(this.notification).toBeVisible({ timeout: UI_TIMEOUT });
   }
 
   /** Get the current value of the identifier pattern input */

@@ -1,4 +1,4 @@
-name: i18n Quality Check
+name: Validation / i18n
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
 
 jobs:
   check-duplicate-keys:
+    name: Run
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

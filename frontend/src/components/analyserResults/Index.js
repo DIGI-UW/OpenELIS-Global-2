@@ -38,23 +38,23 @@ const Index = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    let analyserType = new URLSearchParams(window.location.search).get("type");
-    setType(analyserType);
-  }, []);
-
-  useEffect(() => {
-    if (type) {
-      setUrl("/rest/AnalyzerResults?type=" + type);
+    const params = new URLSearchParams(window.location.search);
+    // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
+    const analyzerId = params.get("id");
+    const analyserType = params.get("type");
+    if (analyzerId) {
+      setType(analyzerId);
+      setUrl("/rest/AnalyzerResults?id=" + analyzerId);
+    } else if (analyserType) {
+      setType(analyserType);
+      setUrl("/rest/AnalyzerResults?type=" + analyserType);
     }
-  }, [type]);
+  }, []);
 
   useEffect(() => {
     if (url) {
       setIsLoading(true);
-      getFromOpenElisServer(
-        "/rest/AnalyzerResults?type=" + type,
-        handleResults,
-      );
+      getFromOpenElisServer(url, handleResults);
     }
   }, [url]);
 
