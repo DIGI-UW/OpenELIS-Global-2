@@ -316,15 +316,12 @@ public class OdooSyncQueueServiceTest {
         OdooSyncQueue winner = buildPendingItem();
         ConstraintViolationException cve = new ConstraintViolationException(
                 "duplicate key value violates unique constraint \"idx_osq_unique_active_accession\"",
-                new SQLException("unique constraint violation"),
-                "idx_osq_unique_active_accession"
-        );
-        LIMSRuntimeException wrappedCve = new LIMSRuntimeException(
-                "Error in OdooSyncQueueDAOImpl insert", cve
-        );
+                new SQLException("unique constraint violation"), "idx_osq_unique_active_accession");
+        LIMSRuntimeException wrappedCve = new LIMSRuntimeException("Error in OdooSyncQueueDAOImpl insert", cve);
 
-        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER))
-                .thenReturn(null)    // first call: pre-insert check sees nothing
+        when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null) // first call:
+                                                                                                 // pre-insert check
+                                                                                                 // sees nothing
                 .thenReturn(winner); // second call: post-collision re-fetch finds winner
         doThrow(wrappedCve).when(odooSyncQueueDAO).insert(any(OdooSyncQueue.class));
 
@@ -342,12 +339,8 @@ public class OdooSyncQueueServiceTest {
         // The service must not swallow the exception in this case.
         ConstraintViolationException cve = new ConstraintViolationException(
                 "duplicate key value violates unique constraint \"idx_osq_unique_active_accession\"",
-                new SQLException("unique constraint violation"),
-                "idx_osq_unique_active_accession"
-        );
-        LIMSRuntimeException wrappedCve = new LIMSRuntimeException(
-                "Error in OdooSyncQueueDAOImpl insert", cve
-        );
+                new SQLException("unique constraint violation"), "idx_osq_unique_active_accession");
+        LIMSRuntimeException wrappedCve = new LIMSRuntimeException("Error in OdooSyncQueueDAOImpl insert", cve);
 
         when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null);
         doThrow(wrappedCve).when(odooSyncQueueDAO).insert(any(OdooSyncQueue.class));
@@ -364,10 +357,8 @@ public class OdooSyncQueueServiceTest {
     public void enqueue_whenNonConstraintLIMSExceptionThrown_rethrowsUnmodified() {
         // A genuine insert failure (e.g. connectivity, mapping error) must not be
         // silently swallowed by the constraint-violation recovery path.
-        LIMSRuntimeException otherError = new LIMSRuntimeException(
-                "Error in OdooSyncQueueDAOImpl insert",
-                new RuntimeException("disk full")
-        );
+        LIMSRuntimeException otherError = new LIMSRuntimeException("Error in OdooSyncQueueDAOImpl insert",
+                new RuntimeException("disk full"));
 
         when(odooSyncQueueDAO.getActiveItemByAccessionNumber(ACCESSION_NUMBER)).thenReturn(null);
         doThrow(otherError).when(odooSyncQueueDAO).insert(any(OdooSyncQueue.class));
