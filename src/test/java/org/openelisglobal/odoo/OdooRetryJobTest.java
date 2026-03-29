@@ -80,7 +80,7 @@ public class OdooRetryJobTest {
 
         odooRetryJob.processRetryQueue();
 
-        verifyNoInteractions(odooIntegrationService);
+        verifyZeroInteractions(odooIntegrationService);
     }
 
     // ─── processRetryQueue — sample not found ─────────────────────────────────
@@ -95,7 +95,7 @@ public class OdooRetryJobTest {
 
         verify(odooSyncQueueService, times(1)).markInProgress(item);
         verify(odooSyncQueueService, times(1)).markFailed(eq(item), contains(ACCESSION_NUMBER));
-        verifyNoInteractions(odooIntegrationService);
+        verifyZeroInteractions(odooIntegrationService);
     }
 
     // ─── processRetryQueue — successful retry ─────────────────────────────────
