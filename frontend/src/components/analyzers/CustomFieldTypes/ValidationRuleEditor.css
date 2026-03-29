@@ -1,0 +1,45 @@
+.validation-rule-editor {
+  padding: 1rem;
+}
+
+.validation-rule-editor .enum-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.validation-rule-editor .enum-input-group .cds--text-input__field-wrapper {
+  flex: 1;
+}
+
+.validation-rule-editor .enum-values-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.validation-rule-editor .test-validation-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.validation-rule-editor .test-validation-group .cds--text-input__field-wrapper {
+  flex: 1;
+}
+
+.validation-rule-editor .validation-error {
+  color: var(--cds-support-error);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.validation-rule-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle);
+}

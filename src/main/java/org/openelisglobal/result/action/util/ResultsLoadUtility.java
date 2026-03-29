@@ -47,6 +47,8 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -153,6 +155,8 @@ public class ResultsLoadUtility {
     private SampleQaEventService sampleQaEventService;
     @Autowired
     private TestResultService testResultService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
 
     private final StatusRules statusRules = new StatusRules();
 
@@ -783,6 +787,16 @@ public class ResultsLoadUtility {
                         .matches(analysisService.getStatusId(analysis), AnalysisStatus.TechnicalRejected));
         if (FormFields.getInstance().useField(Field.QaEventsBySection)) {
             testItem.setNonconforming(testItem.isNonconforming() || getQaEventByTestSection(analysis));
+        }
+
+        // EQA indicator: look up the SampleEQA record for this sample
+        Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
+        SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
+        if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+            testItem.setEqaSample(true);
+            if (sampleEQA.getEqaPriority() != null) {
+                testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+            }
         }
 
         Result quantifiedResult = analysisService.getQuantifiedResult(analysis);
