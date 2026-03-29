@@ -438,8 +438,6 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         boolean isConclusion = aService.resultIsConclusion(result, analysis);
 
         Assert.assertTrue(isConclusion);
-<<<<<<< HEAD
-=======
     }
 
     @Test
@@ -452,7 +450,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         boolean isConclusion = aService.resultIsConclusion(result, analysis);
 
         Assert.assertFalse(isConclusion);
->>>>>>> 4910c6a36 (fix: address review feedback)
+
     }
 
     @Test
@@ -482,27 +480,21 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getQuantifiedResult_shouldReturnNullWhenNoQuantifiedResult() {
 
-        Analysis analysis = createDemoAnalysis(); // fixture with no quantified result
+        Analysis analysis = createDemoAnalysis();
 
         Result result = aService.getQuantifiedResult(analysis);
 
-<<<<<<< HEAD
-        // result may be null depending on dataset
-        Assert.assertTrue(result == null || result.getId() != null);
-=======
         Assert.assertNull(result);
->>>>>>> 4910c6a36 (fix: address review feedback)
     }
 
     @Test
     public void getQuantifiedResult_shouldReturnResultWithIdWhenExists() {
 
-        Analysis analysis = aService.get("1"); // dataset record known to have a quantified result
+        Analysis analysis = aService.get("1");
 
         Result result = aService.getQuantifiedResult(analysis);
 
-        if (result != null) {
-            Assert.assertNotNull(result.getId());
-        }
+        Assert.assertNotNull(result);
+        Assert.assertNotNull(result.getId());
     }
 }
