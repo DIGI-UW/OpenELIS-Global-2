@@ -6,7 +6,7 @@ import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 
 /**
  * Service interface for SiteBranding entity
- * 
+ *
  * Task Reference: T014
  */
 public interface SiteBrandingService extends BaseObjectService<SiteBranding, Integer> {
@@ -14,14 +14,14 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
     /**
      * Get the current branding configuration Creates a default record if none
      * exists
-     * 
+     *
      * @return SiteBranding entity with current or default values
      */
     SiteBranding getBranding();
 
     /**
      * Save branding configuration (insert or update)
-     * 
+     *
      * @param branding SiteBranding entity to save
      * @return Saved SiteBranding entity
      */
@@ -38,11 +38,12 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @deprecated Validation is now permissive; this method returns true for any
      *             non-empty string
      */
+    @Deprecated
     boolean validateColor(String color);
 
     /**
      * Validate logo file format and size
-     * 
+     *
      * @param file MultipartFile to validate
      * @return true if valid, false otherwise
      */
@@ -50,7 +51,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
 
     /**
      * Upload logo file and update branding configuration
-     * 
+     *
      * @param file MultipartFile to upload
      * @param type LogoType (HEADER, LOGIN, or FAVICON)
      * @return Full filesystem path to uploaded file
@@ -60,7 +61,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
 
     /**
      * Get logo URL for serving
-     * 
+     *
      * @param type LogoType
      * @return URL path to logo or null if default should be used
      */
@@ -68,7 +69,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
 
     /**
      * Remove logo file and update branding configuration
-     * 
+     *
      * @param type LogoType (HEADER, LOGIN, or FAVICON)
      * @throws IOException if file cannot be deleted
      */
@@ -77,7 +78,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
     /**
      * Reset all branding to default values Deletes all logo files and resets colors
      * to defaults
-     * 
+     *
      * @throws IOException if files cannot be deleted
      */
     void resetToDefaults() throws IOException;
