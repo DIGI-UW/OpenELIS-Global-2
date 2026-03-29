@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="1" login_name="alice" first_name="Alice"
+        last_name="Tester" is_active="Y" is_employee="Y" />
+
+    <report_definition id="RPT-001" name="Lab Summary Report"
+        description="Summary of lab results" category="LAB"
+        definition_json="{}" created_by="alice"
+        created_date="2025-01-01 00:00:00" is_active="true" />
+
+    <report_definition id="RPT-002" name="Archived Report"
+        description="Old report" category="FINANCE"
+        definition_json="{}" created_by="alice"
+        created_date="2025-01-02 00:00:00" is_active="false" />
+
+    <report_definition id="RPT-003" name="Lab Detail Report"
+        description="Detailed lab results" category="LAB"
+        definition_json="{}" created_by="alice"
+        created_date="2025-01-03 00:00:00" is_active="true" />
+</dataset>
