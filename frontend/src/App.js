@@ -1,105 +1,93 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import { IntlProvider } from "react-intl";
 import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
 import "./App.css";
-import RedirectOldUI from "./RedirectOldUI";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
-import { Admin } from "./components";
-import ChangePassword from "./components/ChangePassword.js";
-import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
-import StorageDashboard from "./components/storage/StorageDashboard";
-import AlertsDashboard from "./components/alerts/AlertsDashboard";
-import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
-import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
-import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
-import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
-import MyProgramsPage from "./components/eqa/MyProgramsPage";
-import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
-import EQAResultsPage from "./components/eqa/EQAResultsPage";
-import InventoryManagement from "./components/inventory/InventoryManagement";
-import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
-import BoxCreation from "./components/shipment/BoxCreation";
-import BoxDetails from "./components/shipment/BoxDetails";
-import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
-import Login from "./components/Login";
-import LandingPage from "./components/home/LandingPage";
-const AnalyzersPage = React.lazy(() => import("./pages/AnalyzersPage"));
-const FieldMapping = React.lazy(
-  () => import("./components/analyzers/FieldMapping/FieldMapping"),
-);
-const ErrorDashboardPage = React.lazy(
-  () => import("./pages/ErrorDashboardPage"),
-);
-const CustomFieldTypeManagementPage = React.lazy(
-  () => import("./pages/CustomFieldTypeManagementPage"),
-);
-const AnalyzerTypesPage = React.lazy(() => import("./pages/AnalyzerTypesPage"));
-const QCDashboardPlaceholder = React.lazy(
-  () => import("./pages/analyzers/QCDashboardPlaceholder"),
-);
-const QCAlertsPlaceholder = React.lazy(
-  () => import("./pages/analyzers/QCAlertsPlaceholder"),
-);
-const CorrectiveActionsPlaceholder = React.lazy(
-  () => import("./pages/analyzers/CorrectiveActionsPlaceholder"),
-);
-import ResultSearch from "./components/resultPage/ResultSearch";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
-import PatientManagement from "./components/patient/PatientManagement";
-import PatientHistory from "./components/patient/PatientHistory";
-import PatientMerge from "./components/patient/PatientMerge";
-import Aliquot from "./components/sample/Aliquot";
-import Workplan from "./components/workplan/Workplan";
-import AddOrder from "./components/addOrder/Index";
-import FindOrder from "./components/modifyOrder/Index";
-import ModifyOrder from "./components/modifyOrder/ModifyOrder";
-import RoutineReports from "./components/reports/Routine";
-import StudyReports from "./components/reports/Study";
-import StudyValidation from "./components/validation/Index";
-const AnalyserResultIndex = React.lazy(
-  () => import("./components/analyserResults/Index"),
-);
-import PathologyDashboard from "./components/pathology/PathologyDashboard";
-import CytologyDashboard from "./components/cytology/CytologyDashBoard";
-import NoteBookDashBoard from "./components/notebook/NoteBookDashBoard";
-import NoteBookEntryForm from "./components/notebook/NoteBookEntryForm";
-import CytologyCaseView from "./components/cytology/CytologyCaseView";
-import PathologyCaseView from "./components/pathology/PathologyCaseView";
-import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
-import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
-const RoutedResultsViewer = React.lazy(
-  () => import("./components/patient/resultsViewer/results-viewer.tsx"),
-);
-import EOrderPage from "./components/eOrder/Index";
-import RoutineIndex from "./components/reports/routine/Index.js";
-import StudyIndex from "./components/reports/study/index.js";
-import ReportIndex from "./components/reports/Index.js";
-import PrintBarcode from "./components/printBarcode/Index";
-import NonConformIndex from "./components/nonconform/index";
-import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
-import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
-import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
 import { Roles } from "./components/utils/Utils";
-import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
-import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
-const FreezerMonitoringDashboard = React.lazy(
-  () => import("./components/coldStorage/FreezerMonitoringDashboard"),
-);
-import ProgramDashboard from "./components/program/programDashboard.jsx";
-import ProgramCaseView from "./components/program/programCaseView.jsx";
-import SampleManagement from "./components/sampleManagement/SampleManagement";
-const ShipmentReport = React.lazy(
-  () => import("./components/shipment/ShipmentReport"),
-);
-import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import lazyWithRetry from "./utils/lazyWithRetry";
+import PageLoading from "./components/common/PageLoading";
+
+// --- Lazy-loaded route components ---
+const RedirectOldUI = lazyWithRetry(() => import("./RedirectOldUI"));
+const Admin = lazyWithRetry(() => import("./components/admin/Admin"));
+const ChangePassword = lazyWithRetry(() => import("./components/ChangePassword"));
+const Home = lazyWithRetry(() => import("./components/Home"));
+const StorageDashboard = lazyWithRetry(() => import("./components/storage/StorageDashboard"));
+const AlertsDashboard = lazyWithRetry(() => import("./components/alerts/AlertsDashboard"));
+const EQAManagementDashboard = lazyWithRetry(() => import("./components/eqa/EQAManagementDashboard"));
+const EQADistributionDashboard = lazyWithRetry(() => import("./components/eqa/EQADistributionDashboard"));
+const CreateDistribution = lazyWithRetry(() => import("./components/eqa/EQADistribution/CreateDistribution"));
+const EQAOrdersPage = lazyWithRetry(() => import("./components/eqa/EQAOrdersPage"));
+const MyProgramsPage = lazyWithRetry(() => import("./components/eqa/MyProgramsPage"));
+const EQAParticipantsPage = lazyWithRetry(() => import("./components/eqa/EQAParticipantsPage"));
+const EQAResultsPage = lazyWithRetry(() => import("./components/eqa/EQAResultsPage"));
+const InventoryManagement = lazyWithRetry(() => import("./components/inventory/InventoryManagement"));
+const ShipmentDashboard = lazyWithRetry(() => import("./components/shipment/ShipmentDashboard"));
+const BoxCreation = lazyWithRetry(() => import("./components/shipment/BoxCreation"));
+const BoxDetails = lazyWithRetry(() => import("./components/shipment/BoxDetails"));
+const ReceptionWorkflow = lazyWithRetry(() => import("./components/shipment/ReceptionWorkflow"));
+const Login = lazyWithRetry(() => import("./components/Login"));
+const LandingPage = lazyWithRetry(() => import("./components/home/LandingPage"));
+const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
+const FieldMapping = lazyWithRetry(() => import("./components/analyzers/FieldMapping/FieldMapping"));
+const ErrorDashboardPage = lazyWithRetry(() => import("./pages/ErrorDashboardPage"));
+const CustomFieldTypeManagementPage = lazyWithRetry(() => import("./pages/CustomFieldTypeManagementPage"));
+const AnalyzerTypesPage = lazyWithRetry(() => import("./pages/AnalyzerTypesPage"));
+const QCDashboardPlaceholder = lazyWithRetry(() => import("./pages/analyzers/QCDashboardPlaceholder"));
+const QCAlertsPlaceholder = lazyWithRetry(() => import("./pages/analyzers/QCAlertsPlaceholder"));
+const CorrectiveActionsPlaceholder = lazyWithRetry(() => import("./pages/analyzers/CorrectiveActionsPlaceholder"));
+const ResultSearch = lazyWithRetry(() => import("./components/resultPage/ResultSearch"));
+const PatientManagement = lazyWithRetry(() => import("./components/patient/PatientManagement"));
+const PatientHistory = lazyWithRetry(() => import("./components/patient/PatientHistory"));
+const PatientMerge = lazyWithRetry(() => import("./components/patient/PatientMerge"));
+const Aliquot = lazyWithRetry(() => import("./components/sample/Aliquot"));
+const Workplan = lazyWithRetry(() => import("./components/workplan/Workplan"));
+const AddOrder = lazyWithRetry(() => import("./components/addOrder/Index"));
+const FindOrder = lazyWithRetry(() => import("./components/modifyOrder/Index"));
+const ModifyOrder = lazyWithRetry(() => import("./components/modifyOrder/ModifyOrder"));
+const RoutineReports = lazyWithRetry(() => import("./components/reports/Routine"));
+const StudyReports = lazyWithRetry(() => import("./components/reports/Study"));
+const StudyValidation = lazyWithRetry(() => import("./components/validation/Index"));
+const AnalyserResultIndex = lazyWithRetry(() => import("./components/analyserResults/Index"));
+const PathologyDashboard = lazyWithRetry(() => import("./components/pathology/PathologyDashboard"));
+const CytologyDashboard = lazyWithRetry(() => import("./components/cytology/CytologyDashBoard"));
+const NoteBookDashBoard = lazyWithRetry(() => import("./components/notebook/NoteBookDashBoard"));
+const NoteBookEntryForm = lazyWithRetry(() => import("./components/notebook/NoteBookEntryForm"));
+const CytologyCaseView = lazyWithRetry(() => import("./components/cytology/CytologyCaseView"));
+const PathologyCaseView = lazyWithRetry(() => import("./components/pathology/PathologyCaseView"));
+const ImmunohistochemistryDashboard = lazyWithRetry(() => import("./components/immunohistochemistry/ImmunohistochemistryDashboard"));
+const ImmunohistochemistryCaseView = lazyWithRetry(() => import("./components/immunohistochemistry/ImmunohistochemistryCaseView"));
+const RoutedResultsViewer = lazyWithRetry(() => import("./components/patient/resultsViewer/results-viewer"));
+const EOrderPage = lazyWithRetry(() => import("./components/eOrder/Index"));
+const RoutineIndex = lazyWithRetry(() => import("./components/reports/routine/Index"));
+const StudyIndex = lazyWithRetry(() => import("./components/reports/study/index"));
+const ReportIndex = lazyWithRetry(() => import("./components/reports/Index"));
+const PrintBarcode = lazyWithRetry(() => import("./components/printBarcode/Index"));
+const NonConformIndex = lazyWithRetry(() => import("./components/nonconform/index"));
+const SampleBatchEntrySetup = lazyWithRetry(() => import("./components/batchOrderEntry/SampleBatchEntrySetup"));
+const AuditTrailReportIndex = lazyWithRetry(() => import("./components/reports/auditTrailReport/Index"));
+const ReferredOutTests = lazyWithRetry(() => import("./components/resultPage/resultsReferredOut/ReferredOutTests"));
+const NoteBookInstanceEntryForm = lazyWithRetry(() => import("./components/notebook/NoteBookInstanceEntryForm"));
+const NotebookSampleOrder = lazyWithRetry(() => import("./components/notebook/NotebookSampleOrder"));
+const FreezerMonitoringDashboard = lazyWithRetry(() => import("./components/coldStorage/FreezerMonitoringDashboard"));
+const ProgramDashboard = lazyWithRetry(() => import("./components/program/programDashboard"));
+const ProgramCaseView = lazyWithRetry(() => import("./components/program/programCaseView"));
+const SampleManagement = lazyWithRetry(() => import("./components/sampleManagement/SampleManagement"));
+const ShipmentReport = lazyWithRetry(() => import("./components/shipment/ShipmentReport"));
+const ShipmentSettings = lazyWithRetry(() => import("./components/shipment/ShipmentSettings"));
+const GenericSampleOrder = lazyWithRetry(() => import("./components/genericSample/GenericSampleOrder"));
+const GenericSampleOrderEdit = lazyWithRetry(() => import("./components/genericSample/GenericSampleOrderEdit"));
+const GenericSampleOrderImport = lazyWithRetry(() => import("./components/genericSample/GenericSampleOrderImport"));
+const GenericSampleResults = lazyWithRetry(() => import("./components/genericSample/GenericSampleResults"));
 
 export default function App() {
   const defaultLocale =
@@ -336,6 +324,7 @@ export default function App() {
         <>
           <Router>
             <Layout onChangeLanguage={onChangeLanguage}>
+              <Suspense fallback={<PageLoading />}>
               <Switch>
                 <Route path="/login" exact component={() => <Login />} />
                 <Route
@@ -469,41 +458,25 @@ export default function App() {
                 <SecureRoute
                   path="/GenericSample/Order"
                   exact
-                  component={() => {
-                    const GenericSampleOrder =
-                      require("./components/genericSample/GenericSampleOrder").default;
-                    return <GenericSampleOrder />;
-                  }}
+                  component={() => <GenericSampleOrder />}
                   role=""
                 />
                 <SecureRoute
                   path="/GenericSample/Edit"
                   exact
-                  component={() => {
-                    const GenericSampleOrderEdit =
-                      require("./components/genericSample/GenericSampleOrderEdit").default;
-                    return <GenericSampleOrderEdit />;
-                  }}
+                  component={() => <GenericSampleOrderEdit />}
                   role=""
                 />
                 <SecureRoute
                   path="/GenericSample/Import"
                   exact
-                  component={() => {
-                    const GenericSampleOrderImport =
-                      require("./components/genericSample/GenericSampleOrderImport").default;
-                    return <GenericSampleOrderImport />;
-                  }}
+                  component={() => <GenericSampleOrderImport />}
                   role=""
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
                   exact
-                  component={() => (
-                    <Suspense fallback={null}>
-                      <FreezerMonitoringDashboard />
-                    </Suspense>
-                  )}
+                  component={() => <FreezerMonitoringDashboard />}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
@@ -679,11 +652,7 @@ export default function App() {
                 <SecureRoute
                   path="/SampleShipment/reports"
                   exact
-                  component={() => (
-                    <Suspense fallback={null}>
-                      <ShipmentReport />
-                    </Suspense>
-                  )}
+                  component={() => <ShipmentReport />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
@@ -708,9 +677,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzersPage />
-                      </Suspense>
+                      <AnalyzersPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.GLOBAL_ADMIN}
@@ -720,9 +687,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <FieldMapping />
-                      </Suspense>
+                      <FieldMapping />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.GLOBAL_ADMIN}
@@ -732,9 +697,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <ErrorDashboardPage />
-                      </Suspense>
+                      <ErrorDashboardPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.LAB_SUPERVISOR}
@@ -744,9 +707,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <CustomFieldTypeManagementPage />
-                      </Suspense>
+                      <CustomFieldTypeManagementPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.GLOBAL_ADMIN}
@@ -756,9 +717,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <AnalyzerTypesPage />
-                      </Suspense>
+                      <AnalyzerTypesPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.GLOBAL_ADMIN}
@@ -768,9 +727,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QCDashboardPlaceholder />
-                      </Suspense>
+                      <QCDashboardPlaceholder />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.LAB_SUPERVISOR}
@@ -780,9 +737,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QCAlertsPlaceholder />
-                      </Suspense>
+                      <QCAlertsPlaceholder />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.LAB_SUPERVISOR}
@@ -792,9 +747,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <CorrectiveActionsPlaceholder />
-                      </Suspense>
+                      <CorrectiveActionsPlaceholder />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.LAB_SUPERVISOR}
@@ -814,11 +767,7 @@ export default function App() {
                 <SecureRoute
                   path="/GenericSample/Results"
                   exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
+                  component={() => <GenericSampleResults />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
@@ -833,9 +782,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorPatientResultsViewer}>
-                      <Suspense fallback={null}>
-                        <RoutedResultsViewer />
-                      </Suspense>
+                      <RoutedResultsViewer />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RECEPTION}
@@ -1002,15 +949,14 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorAnalyzerResults}>
-                      <Suspense fallback={null}>
-                        <AnalyserResultIndex />
-                      </Suspense>
+                      <AnalyserResultIndex />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.ANALYSER_IMPORT}
                 />
                 <Route path="*" component={() => <RedirectOldUI />} />
               </Switch>
+              </Suspense>
             </Layout>
           </Router>
         </>
