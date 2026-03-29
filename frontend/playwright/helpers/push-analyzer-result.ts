@@ -32,7 +32,13 @@ export async function pushAnalyzerResult(
     case "ASTM": {
       const response = await page.request.post(
         `${push.simulatorUrl}/simulate/astm/${push.template}`,
-        { data: { destination: push.destination, count: 1 } },
+        {
+          data: {
+            destination: push.destination,
+            count: 1,
+            ...(push.sampleId ? { sample_id: push.sampleId } : {}),
+          },
+        },
       );
       expect(response.ok()).toBeTruthy();
       await presentation.pause(1_000);
@@ -48,7 +54,13 @@ export async function pushAnalyzerResult(
     case "HL7": {
       const response = await page.request.post(
         `${push.simulatorUrl}/simulate/hl7/${push.template}`,
-        { data: { destination: push.destination, count: 1 } },
+        {
+          data: {
+            destination: push.destination,
+            count: 1,
+            ...(push.sampleId ? { sample_id: push.sampleId } : {}),
+          },
+        },
       );
       expect(response.ok()).toBeTruthy();
       await presentation.pause(1_000);

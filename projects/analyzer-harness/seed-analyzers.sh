@@ -18,6 +18,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 CLEAN=true
 if [[ "${1:-}" == "--no-clean" ]]; then
   CLEAN=false
@@ -30,8 +33,6 @@ API="${BASE_URL}/api/OpenELIS-Global/rest/analyzer/analyzers"
 
 if [ -z "$TEST_PASS" ]; then
   # Try sourcing .env from repo root
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
   if [ -f "$REPO_ROOT/.env" ]; then
     set -a && . "$REPO_ROOT/.env" && set +a
     TEST_PASS="${TEST_PASS:-}"
@@ -41,6 +42,122 @@ if [ -z "$TEST_PASS" ]; then
     exit 1
   fi
 fi
+
+sql_escape() {
+  printf '%s' "${1//\'/\'\'}"
+}
+
+psql_query() {
+  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -t -A -F $'\t' -c "$1"
+}
+
+profile_path_for_default_config() {
+  local default_config_id="$1"
+  local profile_type="${default_config_id%%/*}"
+  local profile_name="${default_config_id#*/}"
+  echo "$REPO_ROOT/projects/analyzer-profiles/${profile_type}/${profile_name}.json"
+}
+
+profile_mappings() {
+  local default_config_id="$1"
+  local profile_path
+  profile_path="$(profile_path_for_default_config "$default_config_id")"
+
+  if [ ! -f "$profile_path" ]; then
+    echo "ERROR: Profile file not found for ${default_config_id}: ${profile_path}" >&2
+    return 1
+  fi
+
+  python3 - "$profile_path" <<'PY'
+import json
+import sys
+
+profile_path = sys.argv[1]
+with open(profile_path, encoding="utf-8") as handle:
+    data = json.load(handle)
+
+for mapping in data.get("default_test_mappings", []):
+    code = mapping.get("test_code") or mapping.get("analyzer_code") or ""
+    loinc = mapping.get("loinc") or ""
+    if code and loinc:
+        print(f"{code}\t{loinc}")
+PY
+}
+
+verify_profile_catalog_ready() {
+  local analyzer_name="$1"
+  local default_config_id="$2"
+  local missing=()
+
+  while IFS=$'\t' read -r test_code loinc; do
+    [ -z "$test_code" ] && continue
+
+    local active_test_id
+    active_test_id="$(psql_query "SELECT id FROM clinlims.test WHERE loinc = '$(sql_escape "$loinc")' AND is_active = 'Y' ORDER BY id LIMIT 1;")"
+
+    if [ -z "$active_test_id" ]; then
+      missing+=("${test_code} (LOINC ${loinc})")
+    fi
+  done < <(profile_mappings "$default_config_id")
+
+  if [ "${#missing[@]}" -gt 0 ]; then
+    echo "ERROR: Harness catalog cannot realize required profile mappings for ${analyzer_name} (${default_config_id})." >&2
+    echo "       Missing active OE tests for: ${missing[*]}" >&2
+    echo "       Fix the authoritative harness startup catalog under projects/analyzer-harness/config-templates/ first." >&2
+    return 1
+  fi
+}
+
+verify_realized_analyzer_mappings() {
+  local analyzer_name="$1"
+  local default_config_id="$2"
+  local analyzer_id
+  local missing=()
+
+  analyzer_id="$(psql_query "SELECT id FROM clinlims.analyzer WHERE name = '$(sql_escape "$analyzer_name")' ORDER BY id DESC LIMIT 1;")"
+  if [ -z "$analyzer_id" ]; then
+    echo "ERROR: Could not resolve analyzer id for '${analyzer_name}' during mapping verification." >&2
+    return 1
+  fi
+
+  while IFS=$'\t' read -r test_code loinc; do
+    [ -z "$test_code" ] && continue
+
+    local mapped_test_id
+    mapped_test_id="$(psql_query "SELECT test_id FROM clinlims.analyzer_test_map WHERE analyzer_id = ${analyzer_id} AND analyzer_test_name = '$(sql_escape "$test_code")' LIMIT 1;")"
+
+    if [ -z "$mapped_test_id" ]; then
+      missing+=("${test_code} (LOINC ${loinc})")
+    fi
+  done < <(profile_mappings "$default_config_id")
+
+  if [ "${#missing[@]}" -gt 0 ]; then
+    echo "ERROR: Analyzer '${analyzer_name}' was created, but required profile mappings were not realized." >&2
+    echo "       Missing analyzer_test_map rows for: ${missing[*]}" >&2
+    echo "       Harness boot must stop here because Playwright assertions would be invalid." >&2
+    return 1
+  fi
+}
+
+verify_seed_contract() {
+  echo "Verifying harness profile prerequisites and realized mappings..."
+  verify_profile_catalog_ready "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
+  verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
+  verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
+  verify_profile_catalog_ready "FluoroCycler XT" "file/fluorocycler-xt"
+  verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
+  verify_profile_catalog_ready "Mindray BS-300" "hl7/mindray-bs300"
+
+  verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
+  verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
+  verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
+  verify_realized_analyzer_mappings "FluoroCycler XT" "file/fluorocycler-xt"
+  verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
+  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
+  verify_realized_analyzer_mappings "Mindray BS-300" "hl7/mindray-bs300"
+  echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
+}
 
 create_analyzer() {
   local name="$1"
@@ -61,15 +178,7 @@ create_analyzer() {
 }
 
 MOCK_URL="${MOCK_URL:-http://localhost:8085}"
-
-# Stable IP assignments per analyzer (must match FIXED_SUBNETS in analyzer_network_manager.py).
-# Format: 10.42.{subnet_id}.10 — each analyzer always gets the same IP.
-declare -A STABLE_IPS=(
-  [genexpert]="10.42.20.10"
-  [bc5380]="10.42.21.10"
-  [bs200]="10.42.22.10"
-  [bs300]="10.42.23.10"
-)
+ASTM_SIMULATOR_SOURCE_IP="${ASTM_SIMULATOR_SOURCE_IP:-172.21.1.100}"
 
 # Create dynamic Docker network per TCP analyzer — each gets a unique, stable IP
 # so the bridge can identify them individually.
@@ -79,24 +188,20 @@ create_mock_network() {
   local port="${3:-0}"
 
   local resp
-  resp=$(curl -sk -X POST "${MOCK_URL}/analyzers" \
+  resp=$(curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
     -H "Content-Type: application/json" \
     -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" 2>/dev/null)
 
   local ip
   ip=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ip',''))" 2>/dev/null)
 
-  local expected_ip="${STABLE_IPS[$name]:-}"
-
   if [ -n "$ip" ]; then
     echo "  Mock network: ${name} → ${ip}" >&2
     echo "$ip"
-  elif [ -n "$expected_ip" ]; then
-    echo "  WARN: Mock API failed for ${name} — using stable IP ${expected_ip}" >&2
-    echo "$expected_ip"
   else
-    echo "  WARN: Failed to create mock network for ${name} — using fallback 172.21.1.100" >&2
-    echo "172.21.1.100"
+    echo "ERROR: Failed to create mock network for ${name}; mock API did not return an IP." >&2
+    echo "       This is a hard failure because analyzer registration must match actual transport source." >&2
+    return 1
   fi
 }
 
@@ -149,7 +254,7 @@ if [ "$CLEAN" = true ]; then
 
   # Remove mock networks (per-analyzer endpoint)
   for name in genexpert bc5380 bs200 bs300; do
-    curl -sk -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
+    curl -sk --connect-timeout 3 --max-time 10 -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
   done
   echo "  Mock network cleanup done"
   echo ""
@@ -164,11 +269,14 @@ BS300_IP=$(create_mock_network "bs300" "mindray_bs300" 6002)
 echo ""
 
 # 1. GeneXpert (ASTM) — dynamic IP from mock network
+# NOTE: ASTM result messages pushed via /simulate/astm originate from the
+# astm-simulator container on analyzer-net (172.21.1.100), so source-binding
+# registration must use that source IP for deterministic routing in harness.
 create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"name\": \"Cepheid GeneXpert (ASTM Mode)\",
   \"analyzerType\": \"MOLECULAR\",
   \"pluginTypeId\": \"generic-astm\",
-  \"ipAddress\": \"${GX_IP}\",
+  \"ipAddress\": \"${ASTM_SIMULATOR_SOURCE_IP}\",
   \"port\": 9600,
   \"protocolVersion\": \"ASTM_LIS2_A2\",
   \"communicationMode\": \"ANALYZER_INITIATED\",
@@ -246,5 +354,7 @@ create_analyzer "Mindray BS-300" "{
   \"defaultConfigId\": \"hl7/mindray-bs300\"
 }"
 
+echo ""
+verify_seed_contract
 echo ""
 echo "Done. 7 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP)."

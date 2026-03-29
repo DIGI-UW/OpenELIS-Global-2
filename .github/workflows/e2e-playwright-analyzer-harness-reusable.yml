@@ -144,12 +144,17 @@ jobs:
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
-        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
+        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build
+
+      - name: Validate cert material in shared volume mounts
+        run: |
+          docker exec openelisglobal-webapp sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+          docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
 
       - name: Wait for OpenELIS, bridge, and simulator readiness
         run: |
           timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
-          timeout 120 bash -c 'until curl -k -s -f https://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
+          timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
           timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"

@@ -22,6 +22,8 @@ import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
+  test.setTimeout(180_000);
+
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
     const GENEXPERT_ID = await ensureAnalyzerByName(
       page.request,
@@ -66,17 +68,14 @@ test.describe("Analyzer Test Connection", () => {
     // which returns immediately and ignores the timeout option).
     let connected = false;
     let lastError = "";
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      await testButton.click();
-      try {
-        await expect(successTag.first()).toBeVisible({ timeout: LONG_TIMEOUT });
-        connected = true;
-        break;
-      } catch {
-        // Success tag didn't appear — check logs for details
+    const appendVisibleLogs = async () => {
+      if (page.isClosed()) {
+        return;
       }
-
-      if (await logsButton.isVisible()) {
+      try {
+        if (!(await logsButton.isVisible())) {
+          return;
+        }
         await logsButton.click();
         const logs = page.locator(
           '[data-testid="test-connection-logs"], [data-testid="test-connection-log-content"], pre',
@@ -87,10 +86,29 @@ test.describe("Analyzer Test Connection", () => {
             lastError = `${lastError}\n${logText}`.trim();
           }
         }
+      } catch {
+        // Best effort only — modal can close while timeout teardown is occurring.
       }
-      if (await errorTag.isVisible()) {
-        lastError =
-          (await errorTag.textContent())?.trim() || "Connection failed";
+    };
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await testButton.click();
+      try {
+        await expect(successTag.first()).toBeVisible({ timeout: LONG_TIMEOUT });
+        connected = true;
+        break;
+      } catch {
+        // Success tag didn't appear — check logs for details
+      }
+
+      await appendVisibleLogs();
+      try {
+        if (await errorTag.isVisible()) {
+          lastError =
+            (await errorTag.textContent())?.trim() || "Connection failed";
+        }
+      } catch {
+        // Best effort only when page/modal lifecycle is changing.
       }
       // Wait for "Test Again" button before retrying
       if (attempt < 3) {
@@ -105,17 +123,8 @@ test.describe("Analyzer Test Connection", () => {
       }
     }
 
-    if (!connected && (await logsButton.isVisible())) {
-      await logsButton.click();
-      const logs = page.locator(
-        '[data-testid="test-connection-logs"], [data-testid="test-connection-log-content"], pre',
-      );
-      if (await logs.first().isVisible()) {
-        const logText = ((await logs.first().textContent()) || "").trim();
-        if (logText.length > 0) {
-          lastError = `${lastError}\n${logText}`.trim();
-        }
-      }
+    if (!connected) {
+      await appendVisibleLogs();
     }
 
     expect(

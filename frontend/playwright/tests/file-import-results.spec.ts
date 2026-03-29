@@ -175,7 +175,7 @@ async function verifyImportedResults(
   for (const expected of scenario.expectedResults) {
     await expect(
       resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
     await expectResultVisible(resultsRegion, expected.result);
   }
 

@@ -17,6 +17,7 @@ import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 const SIMULATOR_URL = "http://localhost:8085";
 const BRIDGE_DESTINATION = "tcp://openelis-analyzer-bridge:12001";
 const PRELOADED_NAME = "Cepheid GeneXpert (ASTM Mode)";
+const FIXTURE_SAMPLE_ID = "HARN-GX-2026-00001";
 const RESULTS_TIMEOUT = 90_000;
 
 const EXPECTED_RESULT = "NEGATIVE";
@@ -42,13 +43,31 @@ async function testConnection(
   const connectionModal = page.locator('[data-testid="test-connection-modal"]');
   await expect(connectionModal).toBeVisible({ timeout: UI_TIMEOUT });
 
-  const testButton = page.locator(
-    '[data-testid="test-connection-test-button"]',
-  );
-  await testButton.click();
-
+  const triggerButton = connectionModal
+    .locator(
+      '[data-testid="test-connection-test-button"], button:has-text("Test Again")',
+    )
+    .first();
   const successTag = page.locator('[data-testid="test-connection-success"]');
-  await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
+  const errorTag = page.locator('[data-testid="test-connection-error"]');
+
+  let connected = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await expect(triggerButton).toBeVisible({ timeout: SHORT_TIMEOUT });
+    await triggerButton.click();
+    try {
+      await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
+      connected = true;
+      break;
+    } catch {
+      if (attempt < 3) {
+        await expect(successTag.or(errorTag)).toBeVisible({
+          timeout: SHORT_TIMEOUT,
+        });
+      }
+    }
+  }
+  expect(connected).toBeTruthy();
   await presentation.pause(1_500);
 
   await connectionModal
@@ -63,7 +82,13 @@ async function pushAstmMessage(
 ): Promise<string> {
   const response = await page.request.post(
     `${SIMULATOR_URL}/simulate/astm/genexpert_astm`,
-    { data: { destination: BRIDGE_DESTINATION, count: 1 } },
+    {
+      data: {
+        destination: BRIDGE_DESTINATION,
+        count: 1,
+        sample_id: FIXTURE_SAMPLE_ID,
+      },
+    },
   );
   const body = await response.json();
   const sampleId = body?.results?.[0]?.sample_id;

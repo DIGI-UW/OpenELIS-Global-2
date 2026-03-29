@@ -334,10 +334,10 @@ CSV config files by OE's `ConfigurationInitializationService` at startup. Do NOT
 run SQL fixture scripts that insert test data — they will overwrite the
 CSV-loaded tests and destroy LOINC codes needed for `autoCreateTestMappings`.**
 
-The CSV config files live in
-`projects/analyzer-harness/configs/configuration/backend/` and are copied to
-`volume/configuration/backend/` by `bootstrap.sh`. OE reads them on startup.
-This is the same pattern used by the Madagascar distro.
+The authoritative harness CSV config files live in
+`projects/analyzer-harness/config-templates/`. CI mounts that directory directly
+into OE, and local `bootstrap.sh` copies that same directory into the harness
+volume before startup. OE reads those CSVs on startup.
 
 Load ONLY non-test fixtures (foundational patient/sample data, storage):
 

@@ -118,8 +118,9 @@ mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# --- Copy configuration templates (test catalog CSVs) into volume ---
-# These are loaded by ConfigurationInitializationService on OE startup.
+# --- Copy authoritative harness startup catalog into volume ---
+# These CSVs are loaded by ConfigurationInitializationService on OE startup.
+# Do not introduce a second source tree for harness test metadata.
 CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
 if [ -d "$CONFIG_TEMPLATES" ]; then
   cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true

@@ -15,6 +15,7 @@ export interface AstmPush {
   simulatorUrl: string;
   template: string;
   destination: string; // e.g., "tcp://openelis-analyzer-bridge:12001"
+  sampleId?: string;
 }
 
 export interface Hl7Push {
@@ -22,6 +23,7 @@ export interface Hl7Push {
   simulatorUrl: string;
   template: string;
   destination: string; // e.g., "mllp://openelis-analyzer-bridge:2575"
+  sampleId?: string;
 }
 
 export interface FilePush {
