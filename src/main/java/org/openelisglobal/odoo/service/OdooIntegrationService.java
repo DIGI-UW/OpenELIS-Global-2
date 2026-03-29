@@ -76,7 +76,7 @@ public class OdooIntegrationService {
         if (updateData.getAccessionNumber() == null) {
             throw new IllegalArgumentException("Accession number is required for Odoo invoice creation");
         }
-        
+
         try {
             Map<String, Object> invoiceData = createInvoiceData(updateData);
             Integer invoiceId = odooConnection.create("account.move", List.of(invoiceData));
