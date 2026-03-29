@@ -300,7 +300,13 @@ fi
 } | tee "$RUN_LOG"
 
 mkdir -p "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports"
-for slug in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+for slug in \
+  quantstudio-5 \
+  quantstudio-7 \
+  fluorocycler-xt \
+  demo--quantstudio-5 \
+  demo--quantstudio-7 \
+  demo--fluorocycler-xt; do
   mkdir -p "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
@@ -342,7 +348,13 @@ if [[ "$SEED_ONLY" == true ]]; then
   exit 0
 fi
 
-for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do
+for dir in \
+  quantstudio-5 \
+  quantstudio-7 \
+  fluorocycler-xt \
+  demo--quantstudio-5 \
+  demo--quantstudio-7 \
+  demo--fluorocycler-xt; do
   with_timeout_wait 120 "incoming dir $dir" "[ -d \"$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports/$dir/incoming\" ]" 2>&1 | tee -a "$RUN_LOG"
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
