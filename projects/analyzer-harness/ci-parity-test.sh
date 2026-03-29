@@ -12,6 +12,7 @@
 # Usage:
 #   projects/analyzer-harness/ci-parity-test.sh
 #   projects/analyzer-harness/ci-parity-test.sh --preflight-only
+#   projects/analyzer-harness/ci-parity-test.sh --seed-only
 #   projects/analyzer-harness/ci-parity-test.sh --shard 2/2
 #   projects/analyzer-harness/ci-parity-test.sh --artifact-dir /tmp/oe-ci-parity
 
@@ -27,6 +28,7 @@ SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
 REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-analyzer-harness-reusable.yml"
 
 PRECHECK_ONLY=false
+SEED_ONLY=false
 SHARD=""
 ARTIFACT_DIR=""
 TEST_USER_INPUT="${TEST_USER:-}"
@@ -36,6 +38,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --preflight-only)
       PRECHECK_ONLY=true
+      shift
+      ;;
+    --seed-only)
+      SEED_ONLY=true
       shift
       ;;
     --shard)
@@ -265,13 +271,15 @@ else
   fail "no plugin jars found in volume/plugins (stage plugin jars before parity run)"
 fi
 
-if [[ -d "$FRONTEND_DIR/node_modules" ]] && [[ -x "$FRONTEND_DIR/node_modules/.bin/playwright" ]]; then
-  pass "frontend dependencies installed (node_modules/.bin/playwright present)"
-else
-  fail "frontend dependencies missing (run: cd frontend && npm ci)"
-fi
+if [[ "$SEED_ONLY" == false ]]; then
+  if [[ -d "$FRONTEND_DIR/node_modules" ]] && [[ -x "$FRONTEND_DIR/node_modules/.bin/playwright" ]]; then
+    pass "frontend dependencies installed (node_modules/.bin/playwright present)"
+  else
+    fail "frontend dependencies missing (run: cd frontend && npm ci)"
+  fi
 
-check_playwright_chromium_installed
+  check_playwright_chromium_installed
+fi
 require_images_for_compose
 
 if [[ "$PRECHECK_FAILED" == true ]]; then
@@ -327,6 +335,11 @@ if rg -n "WARN: Mock API failed|fallback|using stable IP|using fallback" "$RUN_L
   echo "ERROR: seed step emitted fallback warnings; refusing to proceed." | tee -a "$RUN_LOG"
   collect_failure_artifacts
   exit 3
+fi
+
+if [[ "$SEED_ONLY" == true ]]; then
+  echo "CI parity seed-only run succeeded. Artifacts: $ARTIFACT_DIR" | tee -a "$RUN_LOG"
+  exit 0
 fi
 
 for dir in quantstudio-5 quantstudio-7 fluorocycler-xt; do

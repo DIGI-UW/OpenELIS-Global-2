@@ -181,27 +181,112 @@ MOCK_URL="${MOCK_URL:-http://localhost:8085}"
 
 # Create dynamic Docker network per TCP analyzer — each gets a unique, stable IP
 # so the bridge can identify them individually.
+lookup_mock_network_ip() {
+  local name="$1"
+  local response_file
+  local error_file
+  response_file="$(mktemp)"
+  error_file="$(mktemp)"
+
+  local curl_exit
+  set +e
+  curl -sk --connect-timeout 3 --max-time 15 "${MOCK_URL}/analyzers" \
+    >"$response_file" 2>"$error_file"
+  curl_exit=$?
+  set -e
+
+  local ip=""
+  ip="$(
+    python3 - "$name" "$response_file" <<'PY' 2>/dev/null || true
+import json
+import sys
+
+name = sys.argv[1]
+path = sys.argv[2]
+
+with open(path, "r", encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+for analyzer in payload.get("analyzers", []):
+    if analyzer.get("name") == name:
+        print(analyzer.get("ip", ""))
+        break
+PY
+  )"
+
+  if [ -z "$ip" ] && { [ "$curl_exit" -ne 0 ] || [ -s "$error_file" ]; }; then
+    echo "WARN: mock analyzer lookup for ${name} failed (curl exit ${curl_exit})" >&2
+    sed 's/^/  /' "$error_file" >&2 || true
+  fi
+
+  rm -f "$response_file" "$error_file"
+  echo "$ip"
+}
+
 create_mock_network() {
   local name="$1"
   local template="$2"
   local port="${3:-0}"
+  local response_file
+  local error_file
+  response_file="$(mktemp)"
+  error_file="$(mktemp)"
+
+  local curl_exit
+  set +e
+  curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" \
+    >"$response_file" 2>"$error_file"
+  curl_exit=$?
+  set -e
 
   local resp
-  resp=$(curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" 2>/dev/null)
+  resp="$(python3 - "$response_file" <<'PY' 2>/dev/null || true
+from pathlib import Path
+import sys
+
+print(Path(sys.argv[1]).read_text(encoding="utf-8"))
+PY
+  )"
 
   local ip
   ip=$(echo "$resp" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ip',''))" 2>/dev/null)
 
   if [ -n "$ip" ]; then
+    rm -f "$response_file" "$error_file"
     echo "  Mock network: ${name} → ${ip}" >&2
     echo "$ip"
-  else
-    echo "ERROR: Failed to create mock network for ${name}; mock API did not return an IP." >&2
-    echo "       This is a hard failure because analyzer registration must match actual transport source." >&2
-    return 1
+    return 0
   fi
+
+  echo "WARN: mock API create response for ${name} did not return an IP (curl exit ${curl_exit})" >&2
+  if [ -s "$error_file" ]; then
+    echo "  curl stderr:" >&2
+    sed 's/^/    /' "$error_file" >&2
+  fi
+  if [ -n "$resp" ]; then
+    echo "  response body:" >&2
+    printf '%s\n' "$resp" | sed 's/^/    /' >&2
+  fi
+
+  local recovered_ip=""
+  local attempt
+  for attempt in 1 2 3; do
+    sleep 1
+    recovered_ip="$(lookup_mock_network_ip "$name")"
+    if [ -n "$recovered_ip" ]; then
+      rm -f "$response_file" "$error_file"
+      echo "WARN: recovered mock network for ${name} via GET verification fallback on attempt ${attempt}: ${recovered_ip}" >&2
+      echo "$recovered_ip"
+      return 0
+    fi
+  done
+
+  rm -f "$response_file" "$error_file"
+  echo "ERROR: Failed to create mock network for ${name}; mock API did not return an IP." >&2
+  echo "       This is a hard failure because analyzer registration must match actual transport source." >&2
+  return 1
 }
 
 echo "Seeding analyzers via REST API at ${API}"
