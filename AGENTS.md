@@ -2277,3 +2277,90 @@ sdk env        # SDKMAN auto-switch
 **Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync
+
+---
+
+## Cursor Cloud specific instructions
+
+### Environment overview
+
+The Cloud VM has Java 21, Maven 3.8, Node.js 20 (via nvm), Docker CE 28,
+PostgreSQL client 16, and Playwright Chromium pre-installed. The Docker daemon
+runs with `fuse-overlayfs` storage driver and `iptables-legacy` (required for
+nested containers inside the Firecracker VM).
+
+### Analyzer harness (primary dev target)
+
+The analyzer harness is the scoped development environment. It runs via Docker
+Compose from `projects/analyzer-harness/` with 8 containers: PostgreSQL, OE
+backend (WAR-mounted), HAPI FHIR, React frontend, nginx proxy, ASTM simulator,
+analyzer bridge, and virtual serial ports.
+
+**Full restart workflow** follows
+`.specify/oe/commands/restart-analyzer-harness.md`. Quick summary:
+
+```bash
+cd $(git rev-parse --show-toplevel)
+set -a && . ./.env && set +a
+
+# 1. Build WAR (only if Java code changed)
+mvn clean install -DskipTests -Dspotless.check.skip=true
+
+# 2. Bootstrap harness volume (idempotent)
+bash projects/analyzer-harness/bootstrap.sh
+
+# 3. Stage generic plugin JARs (only GenericASTM, GenericHL7, GenericFile)
+mkdir -p projects/analyzer-harness/volume/plugins
+rm -f projects/analyzer-harness/volume/plugins/*.jar
+for p in GenericASTM GenericHL7 GenericFile; do
+  cp plugins/analyzers/$p/target/${p}*.jar projects/analyzer-harness/volume/plugins/
+done
+
+# 4. Ensure bind-mount directories exist
+mkdir -p volume/letsencrypt volume/nginx/certbot
+mkdir -p projects/analyzer-harness/volume/analyzer-imports
+
+# 5. Start stack (no Let's Encrypt for local dev)
+cd projects/analyzer-harness
+docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml up -d
+
+# 6. Wait for webapp
+timeout 120 bash -c 'until curl -sk https://localhost/ | grep -q "OpenELIS\|Login"; do sleep 5; done'
+
+# 7. Load fixtures + seed analyzers
+cd $(git rev-parse --show-toplevel)
+PGPASSWORD=clinlims DB_PORT=15432 DB_HOST=localhost \
+  ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+```
+
+**Access:** `https://localhost/` — login: `admin` / `adminADMIN!`
+
+### Gotchas
+
+- **Docker socket permissions:** The ubuntu user may not have Docker socket
+  access after daemon start. Run `sudo chmod 666 /var/run/docker.sock` if
+  `docker ps` returns permission denied.
+- **Plugin build requires test-jar:** Plugins depend on
+  `openelisglobal:jar:tests`. Build the main project with
+  `mvn clean install -DskipTests -Dspotless.check.skip=true` (NOT with
+  `-Dmaven.test.skip=true`) so the test-jar artifact is produced before building
+  plugins.
+- **Only generic plugins needed:** For the analyzer harness, stage only
+  GenericASTM, GenericHL7, and GenericFile — legacy plugins are not used.
+- **Node.js 20 via nvm:** Always activate with
+  `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 20` before
+  running frontend commands.
+- **psql client needed for fixtures:** The fixture loader script
+  (`load-test-fixtures.sh`) uses either Docker exec or direct `psql`. Install
+  `postgresql-client` and set `PGPASSWORD=clinlims` for direct connection.
+
+### Lint and test commands
+
+| Check | Command | Working dir |
+|-------|---------|-------------|
+| Backend format | `mvn spotless:check` | repo root |
+| Backend build | `mvn clean install -DskipTests -Dmaven.test.skip=true` | repo root |
+| Frontend format | `npx prettier ./ --check` | `frontend/` |
+| Frontend tests | `CI=true npm test -- --watchAll=false --coverage=false` | `frontend/` |
+| Playwright E2E | `TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo` | `frontend/` |
