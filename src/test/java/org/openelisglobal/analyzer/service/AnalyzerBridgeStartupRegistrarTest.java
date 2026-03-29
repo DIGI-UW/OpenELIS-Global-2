@@ -94,7 +94,6 @@ public class AnalyzerBridgeStartupRegistrarTest {
     @Test
     public void shouldSkipDeletedAnalyzerOnStartup() {
         analyzer.setStatus(Analyzer.AnalyzerStatus.DELETED);
-        when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
 
         registrar.onStartup(rootContextRefreshedEvent());
 
