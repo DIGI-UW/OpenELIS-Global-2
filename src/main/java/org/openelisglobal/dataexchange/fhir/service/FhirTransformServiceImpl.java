@@ -1542,6 +1542,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToDiagnosticReport(analysisService.get(analysisId));
     }
 
+    @Override
+    public DiagnosticReport transformAnalysisToDiagnosticReport(Analysis analysis) {
+        return transformResultToDiagnosticReport(analysis);
+    }
+
     private DiagnosticReport transformResultToDiagnosticReport(Analysis analysis) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToDiagnosticReport",
                 "transformResultToDiagnosticReport called");
