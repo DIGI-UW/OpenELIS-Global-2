@@ -59,8 +59,8 @@
     "Interpretation": "interpretation"
   },
   "default_test_mappings": [
-    { "analyzer_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
-    { "analyzer_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+    { "test_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "test_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
   ],
   "configDefaults": {
     "fileFormat": "EXCEL",

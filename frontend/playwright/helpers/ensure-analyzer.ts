@@ -16,7 +16,7 @@ export const GENEXPERT_DEFAULT_ANALYZER: AnalyzerPayload = {
   name: "Cepheid GeneXpert (ASTM Mode)",
   analyzerType: "MOLECULAR",
   pluginTypeId: "generic-astm",
-  ipAddress: "172.21.1.100",
+  ipAddress: "10.42.20.10",
   port: 9600,
   protocolVersion: "ASTM_LIS2_A2",
   identifierPattern: "GENEXPERT|CEPHEID",
