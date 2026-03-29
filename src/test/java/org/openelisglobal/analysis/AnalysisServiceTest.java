@@ -433,7 +433,7 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         Analysis analysis = createDemoAnalysis();
         Result result = new Result();
-        result.setResultType("C"); // "C" typically marks a conclusion result
+        result.setResultType("C");
 
         boolean isConclusion = aService.resultIsConclusion(result, analysis);
 
@@ -445,12 +445,11 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         Analysis analysis = createDemoAnalysis();
         Result result = new Result();
-        result.setResultType("N"); // Non-conclusion result type
+        result.setResultType("N");
 
         boolean isConclusion = aService.resultIsConclusion(result, analysis);
 
         Assert.assertFalse(isConclusion);
-
     }
 
     @Test
