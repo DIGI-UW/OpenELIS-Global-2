@@ -10,6 +10,7 @@
  * The test uses this to verify results on AnalyzerResults/AccessionResults.
  */
 
+import { execFileSync } from "child_process";
 import { expect, Page } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
@@ -18,6 +19,44 @@ import type { PushConfig } from "./analyzer-test-config";
 
 const E2E_FIXTURES_DIR =
   process.env.E2E_FIXTURES_DIR || path.resolve(__dirname, "../fixtures");
+const HOST_IMPORTS_SEGMENT =
+  path.normalize("projects/analyzer-harness/volume/analyzer-imports") +
+  path.sep;
+const CONTAINER_IMPORTS_BASE = "/data/analyzer-imports";
+const BRIDGE_CONTAINER =
+  process.env.ANALYZER_BRIDGE_CONTAINER || "openelis-analyzer-bridge";
+
+function ensureFileImportDirWritable(importDir: string): void {
+  fs.mkdirSync(importDir, { recursive: true });
+  try {
+    fs.accessSync(importDir, fs.constants.W_OK);
+    return;
+  } catch {
+    // The bridge may have created the bind-mounted directory as root on CI.
+    // Fix it through the container mount, then re-check host writability.
+  }
+
+  const normalizedImportDir = path.normalize(importDir);
+  const markerIndex = normalizedImportDir.lastIndexOf(HOST_IMPORTS_SEGMENT);
+  if (markerIndex !== -1) {
+    const relativeImportDir = normalizedImportDir.slice(
+      markerIndex + HOST_IMPORTS_SEGMENT.length,
+    );
+    const containerImportDir = path.posix.join(
+      CONTAINER_IMPORTS_BASE,
+      relativeImportDir.split(path.sep).join("/"),
+    );
+    execFileSync("docker", [
+      "exec",
+      BRIDGE_CONTAINER,
+      "sh",
+      "-lc",
+      `mkdir -p '${containerImportDir}' && chmod -R a+rwX '${containerImportDir}'`,
+    ]);
+  }
+
+  fs.accessSync(importDir, fs.constants.W_OK);
+}
 
 /**
  * Push a result to the mock analyzer and return the generated sample_id.
@@ -81,7 +120,7 @@ export async function pushAnalyzerResult(
         );
       }
 
-      fs.mkdirSync(push.importDir, { recursive: true });
+      ensureFileImportDirWritable(push.importDir);
       const ext = path.extname(push.fixtureFile);
       const destFile = path.join(
         push.importDir,
