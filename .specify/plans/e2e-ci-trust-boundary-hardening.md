@@ -18,7 +18,8 @@ todos:
       Inventory every current privilege boundary in 03 - E2E and E2E / Tests and
       Publish, including reusable/manual wrapper entrypoints, packages write,
       statuses write, actions read, inherited secrets, GHCR image transfer, and
-      PR-code checkout points.
+      PR-code checkout points. Output a privilege matrix in
+      .specify/plans/e2e-ci-privilege-matrix.md.
     status: pending
   - id: classify-required-vs-accidental-privilege
     content:
@@ -30,25 +31,37 @@ todos:
     content:
       Redesign the GHCR usage model as an explicit transient e2e-cache lane with
       distinct write and read permission scopes, separate from any future real
-      image publication concerns.
+      image publication concerns. Implement a scheduled cleanup workflow with
+      7-day retention for e2e-cache images.
+    status: pending
+  - id: extract-lane-d-publication
+    content:
+      Extract publish-images into a separate publish-images.yml workflow
+      triggered by workflow_run on 03 - E2E filtered to push/release events.
+      Create a publish environment with deployment branch restriction on develop
+      for DockerHub credentials.
     status: pending
   - id: remove-nonessential-secret-dependence
     content:
-      Define one explicit deterministic CI auth contract, then replace TEST_PASS
-      and any broad secret inheritance in PR validation paths with that contract
-      or other non-sensitive inputs.
+      Replace secrets.TEST_PASS with vars.TEST_PASS defaulting to adminADMIN!
+      across all workflows. Replace secrets inherit with named inputs/secrets on
+      all reusable workflow calls including Cypress and analyzer harness. Remove
+      environment e2e from all jobs; move TEST_USER and TEST_PASS to repo-level
+      variables.
     status: pending
   - id: shrink-job-permissions
     content:
       Move from workflow-wide permissions to job-scoped least privilege so cache
       publishers, test executors, and the 03 Checkpoint reporter each get only
-      the minimum permissions they require.
+      the minimum permissions they require. Set persist-credentials false on all
+      checkout steps. Verify e2e-gate treats all-skipped as failure.
     status: pending
   - id: resolve-fork-pr-trust-model
     content:
-      Decide and document whether privileged fork rebuilds remain a short-term
-      exception or must be eliminated by moving fork execution fully into the
-      unprivileged pull_request lane.
+      Fork-rebuild stays as a short-term accepted exception (State A). Scope
+      fork-rebuild job to packages write only — no statuses write, no broad
+      secrets. Status reporting remains in Lane C reporter which already covers
+      fork PRs. Document as explicit exception with migration path.
     status: pending
   - id: verify-develop-merge-behavior
     content:
@@ -58,9 +71,9 @@ todos:
     status: pending
   - id: document-operator-model
     content:
-      Write clear repo guidance describing which workflow changes require
-      default branch merge, which code/config changes are picked up pre-merge,
-      and how to reason about the split safely.
+      Write clear repo guidance in .github/ describing which workflow changes
+      require default branch merge, which code/config changes are picked up
+      pre-merge, and how to reason about the split safely.
     status: pending
 isProject: false
 ---
@@ -143,18 +156,28 @@ Current pain points:
 The target setup must follow these principles:
 
 - PR CI validates only.
-- Real publication happens only on `push`/`release` after merge.
+- Real publication happens only on `push`/`release` after merge, in a separate
+  extracted workflow with a branch-restricted `publish` environment.
 - `GHCR` cache writes for PRs are treated as transient E2E transport, not as
-  product publishing.
+  product publishing. A scheduled cleanup workflow enforces 7-day retention.
 - Cache publication and cache consumption are separate permission classes.
-- CI auth uses one documented deterministic contract rather than ad hoc
-  `TEST_PASS` consumption across reusable workflows.
+- CI auth uses one documented deterministic contract: `vars.TEST_PASS`
+  (repo-level variable, default `'adminADMIN!'`) replaces `secrets.TEST_PASS`.
+  No secrets are needed for PR test execution.
 - The final `03 Checkpoint - E2E` reporter is a tiny trusted lane.
 - Secrets are removed from PR validation unless they are genuinely necessary.
 - Workflow privilege is scoped per job, not granted broadly at the workflow
-  level.
+  level. All checkouts set `persist-credentials: false`.
+- The `e2e` environment is removed; test jobs use repo-level variables. A
+  `publish` environment with deployment branch restriction on `develop` gates
+  DockerHub credentials.
+- Fork PR E2E is a first-class requirement. The fork-rebuild job is a
+  documented short-term exception scoped to `packages: write` only, with
+  status reporting handled by Lane C.
 - Any remaining privileged execution of PR-controlled code is documented as an
   explicit exception with a migration path away from it.
+- Cypress E2E remains in the PR gate (migration is a separate long-term
+  effort); it is hardened like all other test executors.
 
 ## Recommended Target Architecture
 
@@ -167,13 +190,13 @@ still provides practical benefits:
 
 However, the trust model is tightened into four distinct lanes:
 
-Implementation choice for this hardening effort:
+Implementation decision (confirmed via QA):
 
-- Lane D should be extracted out of `e2e-tests.yml` into a separate post-merge
-  workflow triggered only on `push`/`release`.
-- If extraction proves too disruptive for the first pass, then keeping Lane D in
-  the same file is an explicitly temporary state that must still satisfy strict
-  job isolation and must not be treated as the target architecture.
+- Lane D will be extracted out of `e2e-tests.yml` into a separate
+  `publish-images.yml` workflow triggered by `workflow_run` on `03 - E2E`
+  filtered to `push`/`release` events.
+- The extracted workflow uses `environment: publish` with a deployment branch
+  restriction on `develop` to gate DockerHub credentials.
 
 ### Lane A: Shared Build / Cache Publisher
 
@@ -193,16 +216,21 @@ Rules:
 
 Purpose:
 
-- Run Playwright core, analyzer harness, and any remaining PR validation tests.
+- Run Playwright core, analyzer harness, Cypress (deprecated but still active),
+  and any remaining PR validation tests.
 
 Rules:
 
 - These jobs should have only `packages: read`, `contents: read`, and whatever
   minimal artifact-read capability is required.
 - These jobs should not have `statuses: write`.
-- These jobs should not inherit broad secrets.
-- These jobs should run with deterministic CI credentials that are not treated
-  as protected repository secrets.
+- These jobs should not inherit broad secrets. All reusable workflow calls
+  (including Cypress and analyzer harness) use named inputs/secrets, not
+  `secrets: inherit`.
+- These jobs should run with deterministic CI credentials via `vars.TEST_PASS`
+  (repo-level variable, default `'adminADMIN!'`) and `vars.TEST_USER` (default
+  `'admin'`). No environment is needed.
+- All checkouts set `persist-credentials: false`.
 
 ### Lane C: 03 Checkpoint Reporter
 
@@ -218,7 +246,7 @@ Rules:
 - It may read workflow conclusions or artifacts, but should remain tiny and
   trusted.
 
-### Lane D: Post-Merge Publication
+### Lane D: Post-Merge Publication (Extracted Workflow)
 
 Purpose:
 
@@ -226,7 +254,11 @@ Purpose:
 
 Rules:
 
-- Runs on `push` to `develop` and/or `release`.
+- Lives in a separate `publish-images.yml` workflow, triggered by
+  `workflow_run` on `03 - E2E` filtered to `push`/`release` events.
+- Uses `environment: publish` with deployment branch restriction on `develop`.
+- DockerHub credentials (`DOCKERHUB_TOKEN`) are scoped to the `publish`
+  environment.
 - Consumes tested outputs only after the E2E gate is green.
 - Remains isolated from PR validation concerns entirely.
 
@@ -257,8 +289,8 @@ Tasks:
 
 Deliverable:
 
-- A one-page privilege matrix covering every job, token scope, secret input, and
-  PR-code execution point.
+- A privilege matrix in `.specify/plans/e2e-ci-privilege-matrix.md` covering
+  every job, token scope, secret input, and PR-code execution point.
 
 Checkpoint:
 
@@ -275,15 +307,14 @@ Questions to answer explicitly:
 
 1. Is `packages: write` required for correctness, or only for the transient
    `GHCR` cache handoff?
-2. Is `TEST_PASS` a true secret, or can it be replaced with deterministic test
-   credentials?
+2. ~~Is `TEST_PASS` a true secret?~~ **Resolved:** No. Replace with
+   `vars.TEST_PASS` defaulting to `'adminADMIN!'`.
 3. Is the custom `03 Checkpoint - E2E` status required, or could branch
    protection rely directly on gate jobs?
 4. Which parts of the current downstream workflow exist only because fork PRs
    cannot push cache images from the `pull_request` lane?
-5. Does Lane D remain a job-isolated post-merge section temporarily, or is it
-   extracted immediately into its own post-merge workflow? The recommended
-   target is extraction.
+5. ~~Lane D extraction timing?~~ **Resolved:** Extract now into
+   `publish-images.yml`.
 
 Deliverable:
 
@@ -306,17 +337,19 @@ Tasks:
 
 1. Formalize the `ghcr.io/<owner>/openelis-global-2/e2e-cache/...` namespace as
    transient CI cache only.
-2. Ensure only the cache-publisher lane can write to that namespace.
+2. Ensure only the cache-publisher lane (and fork-rebuild) can write to that
+   namespace.
 3. Ensure test lanes are read-only consumers of cache artifacts.
 4. Verify no other workflow path reuses this namespace for release publication.
-5. Add cleanup and retention guidance so the cache lane stays operationally
-   isolated from long-lived artifacts.
+5. Implement a scheduled cleanup workflow (e.g., weekly cron) that deletes
+   e2e-cache package versions older than 7 days using the GitHub API. This can
+   be delivered as a follow-up PR but is scoped into this effort.
 
 Checkpoint:
 
 - The pipeline has exactly two package permission classes:
-  - `packages: write` for cache publishing
-  - `packages: read` for cache consumption
+  - `packages: write` for cache publishing (shared-build + fork-rebuild)
+  - `packages: read` for cache consumption (all test executors)
 
 ## Phase 4: Remove Nonessential Secret Dependence
 
@@ -324,26 +357,38 @@ Goal:
 
 - Make PR validation independent of protected secrets wherever possible.
 
+Decisions (confirmed via QA):
+
+- `TEST_PASS` is not a real secret — the value `'adminADMIN!'` is already
+  hardcoded as a fallback in the Cypress workflow.
+- CI auth contract: `vars.TEST_PASS` (repo-level variable, default
+  `'adminADMIN!'`) and `vars.TEST_USER` (repo-level variable, default
+  `'admin'`). No secret is needed for E2E login.
+- The `e2e` environment is removed. `TEST_USER` and `TEST_PASS` move to
+  repo-level variables. A `publish` environment (branch-restricted to
+  `develop`) is created for DockerHub credentials only.
+
 Tasks:
 
-1. Replace `TEST_PASS` with deterministic CI fixture credentials or other
-   non-sensitive values that can safely exist in unprivileged lanes.
-2. Write down the exact CI auth contract before implementation:
-   - where the credential comes from
-   - which jobs consume it
-   - whether it is a repo variable, checked-in fixture value, or another
-     deterministic non-secret input
-   - how manual and reusable workflows receive it without `secrets: inherit`
-3. Remove `secrets: inherit` from any called workflow that does not require a
-   specific explicit secret.
-4. Pass only named inputs or named secrets where a true secret remains
-   necessary.
-5. Verify that analyzer harness seeding, application login, and Playwright setup
+1. Replace all `secrets.TEST_PASS` with `vars.TEST_PASS || 'adminADMIN!'`
+   across `e2e-tests.yml`, `e2e-playwright-analyzer-harness-reusable.yml`, and
+   `e2e-cypress-deprecated.yml`.
+2. Replace `secrets: inherit` on the analyzer-harness and Cypress reusable
+   workflow calls with named inputs for `TEST_PASS` and `TEST_USER`.
+3. Remove `environment: e2e` from all jobs (shared-build, fork-rebuild,
+   playwright-core, demo-shards).
+4. Create `publish` environment with deployment branch restriction on `develop`;
+   move `DOCKERHUB_TOKEN` into it.
+5. Pass only named inputs or named secrets where a true secret remains
+   necessary (e.g., `DOCKERHUB_TOKEN` in the extracted publish workflow).
+6. Verify that analyzer harness seeding, application login, and Playwright setup
    still work in both same-repo and fork PR contexts.
 
 Checkpoint:
 
 - PR validation no longer depends on broad inherited secrets.
+- No job references `environment: e2e`.
+- The only environment in use is `publish` on the extracted Lane D workflow.
 
 ## Phase 5: Move To Job-Scoped Least Privilege
 
@@ -351,60 +396,61 @@ Goal:
 
 - Shrink permissions to the minimum needed for each lane.
 
+Decisions (confirmed via QA):
+
+- No private submodules exist — `persist-credentials: false` is a clean sweep
+  across all checkouts with no complications.
+- The `e2e-gate` job must be verified to treat "all test jobs skipped" as
+  failure, not success. Fix if needed (one-line check).
+
 Tasks:
 
 1. Remove broad workflow-level permissions from `e2e-tests.yml` where possible.
 2. Assign job-scoped permissions:
-   - cache publisher: `packages: write`
-   - test executors: `packages: read`
-   - reporter: `statuses: write`
-3. Set `persist-credentials: false` on checkouts that run PR-controlled code and
-   do not need git writes.
+   - cache publisher (shared-build, fork-rebuild): `packages: write`
+   - test executors (playwright-core, analyzer-harness, cypress): `packages: read`
+   - reporter (set-pending-status, report-status): `statuses: write`
+   - fork-rebuild: `packages: write` only — no `statuses: write`
+3. Set `persist-credentials: false` on ALL checkout steps across all workflows.
 4. Confirm that reporter jobs do not check out PR code at all.
 5. Replace wrapper-level `secrets: inherit` with named inputs/secrets, including
    the manual analyzer-harness entrypoint.
+6. Verify `e2e-gate` treats "all test jobs skipped" as failure; add explicit
+   check if needed.
 
 Checkpoint:
 
 - No job has both broader write privilege and a larger-than-necessary execution
   surface.
+- Every checkout sets `persist-credentials: false`.
 
 ## Phase 6: Resolve The Fork PR Trust Exception
 
-Goal:
+Decision (confirmed via QA): **State A — Short-term accepted exception**
 
-- Decide deliberately whether the privileged fork rebuild remains acceptable.
+Rationale:
 
-This is the one design area where the conversation leaves a real trade-off:
+- Fork PR E2E support is a firm requirement for the project.
+- Eliminating fork rebuild would require artifact-based image transfer or
+  local-only Docker builds — a larger architectural change out of scope here.
+- The risk is mitigated by scoping fork-rebuild to the minimum:
 
-- Keeping fork rebuild in the downstream lane preserves current parity and keeps
-  `GHCR` as the simplest cache handoff.
-- Removing it yields a stricter security model, but likely requires either:
-  - a pull-request-only validation path
-  - slower rebuilds
-  - different branch protection mechanics
-  - or a less uniform fork/non-fork experience
+Mitigations:
 
-Required output:
-
-- A written decision with one of two states:
-
-State A: **Short-term accepted exception**
-
-- Fork rebuild remains, but it is documented as the only privileged execution of
+- Fork-rebuild job gets `packages: write` only — no `statuses: write`, no
+  broad secrets, no other write permissions.
+- `persist-credentials: false` on the checkout.
+- Status reporting for fork PRs is handled by Lane C (the reporter), which
+  already works for both fork and non-fork paths.
+- Fork-rebuild is documented as the sole remaining privileged execution of
   PR-controlled code.
-- Its permissions and secret surface are minimized aggressively.
-- It gets a follow-up migration plan.
-
-State B: **Strict no-privileged-fork-execution**
-
-- Fork PR validation moves fully into the unprivileged `pull_request` lane.
-- `workflow_run` becomes reporter-only or is removed from PR validation
-  altogether.
+- Migration path: move to artifact-based image transfer so fork execution
+  can move fully into the unprivileged `pull_request` lane.
 
 Checkpoint:
 
-- This decision is made explicitly before implementation is considered complete.
+- Fork-rebuild is the only job that both checks out PR-controlled code and has
+  write permissions, and this is explicitly documented.
 
 ## Phase 7: Validate Merge-to-Develop Behavior
 
@@ -441,6 +487,8 @@ Goal:
 - Stop future confusion about what GitHub picks up from PR code versus default-
   branch workflows.
 
+Location: `.github/` (near the workflows, as a living document).
+
 Required documentation:
 
 1. Which changes are picked up pre-merge because they live in checked-out repo
@@ -458,6 +506,8 @@ Required documentation:
    - artifact plumbing
 3. How local reusable workflow references resolve.
 4. How to reason about fork versus non-fork PR behavior safely.
+5. The CI auth contract: where test credentials come from, how they flow.
+6. The `publish` environment and its branch restriction.
 
 Checkpoint:
 
@@ -473,14 +523,17 @@ This plan is complete only when all of the following are true:
 - `GHCR` is isolated as a transient `e2e-cache` lane, not treated as general
   publishing.
 - Test execution jobs are read-only consumers, not broad privileged workflows.
-- The deterministic CI auth contract is documented and replaces ad hoc
-  `TEST_PASS` reliance in routine PR validation.
-- The only clearly privileged PR-facing action left is the `03 Checkpoint - E2E`
-  reporter, unless the team deliberately accepts a documented fork exception.
-- `TEST_PASS` and broad secret inheritance are removed from routine PR
+- The deterministic CI auth contract (`vars.TEST_PASS` / `vars.TEST_USER` with
+  hardcoded defaults) is documented and replaces `secrets.TEST_PASS`.
+- The only privileged PR-facing actions are the `03 Checkpoint - E2E` reporter
+  (Lane C) and the fork-rebuild job (documented exception, `packages: write`
+  only).
+- `secrets.TEST_PASS` and broad `secrets: inherit` are removed from PR
   validation.
-- Lane D publication is either extracted into its own post-merge workflow or is
-  explicitly documented as a temporary exception with strict job isolation.
+- Lane D publication is extracted into `publish-images.yml` with
+  `environment: publish` (branch-restricted to `develop`).
+- The `e2e` environment is removed; all test jobs use repo-level variables.
+- A scheduled e2e-cache cleanup workflow enforces 7-day retention.
 - Merge to `develop` remains green and does not regress the fork/non-fork model.
 - The repo has documentation explaining the GitHub Actions trust boundary and
   default-branch-versus-checked-out-payload behavior clearly.
