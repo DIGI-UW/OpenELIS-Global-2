@@ -1,0 +1,335 @@
+# Deploy the analyzer harness stack to an EC2 instance.
+#
+# Stage 1: PR-level validation only.
+#   - Triggered by `deploy-test` label on a PR or manual workflow_dispatch.
+#   - SSH into a pre-configured EC2 target, rsync compose files + config,
+#     run deploy-ec2.sh to pull images and start the stack.
+#   - Posts a PR comment with the deploy URL and health status.
+#
+# Stage 2 (future): Add push-to-develop trigger for auto-deploy to stable target.
+
+name: Deploy / Analyzer Harness
+
+on:
+  pull_request:
+    types: [labeled]
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target GitHub environment"
+        default: "analyzer-harness-ec2"
+        type: string
+      full_reset:
+        description: "Wipe DB volumes (clean slate)"
+        type: boolean
+        default: false
+      image_tag:
+        description: "Image tag override (e.g. sha-abc123, develop). Empty = auto-detect."
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: write
+
+concurrency:
+  group: deploy-harness-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    if: >
+      (github.event_name == 'pull_request' &&
+       github.event.label.name == 'deploy-test') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'analyzer-harness-ec2' }}
+    env:
+      DEPLOY_DIR: /opt/analyzer-harness
+      GHCR_PREFIX: ghcr.io/${{ github.repository_owner }}/openelis-global-2/e2e-cache
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      # ── Determine image tags ──────────────────────────────────
+      - name: Resolve image tags
+        id: images
+        run: |
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            TAG="${{ inputs.image_tag }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            TAG="sha-${{ github.event.pull_request.head.sha }}"
+          else
+            TAG="sha-${{ github.sha }}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "owner_lower=$OWNER_LOWER" >> "$GITHUB_OUTPUT"
+
+          # GHCR image names follow the E2E build pattern:
+          #   ghcr.io/{owner}/openelis-global-2/e2e-cache/{normalized-local-name}:sha-{SHA}
+          # Local compose image names are normalized: lowercase, non-alnum replaced with -
+          echo "OE_IMAGE=ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/openelisglobal-webapp.build:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "DB_IMAGE=ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/openelisglobal-databse.build:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "FHIR_IMAGE=ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/external-fhir-api.build:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "FRONTEND_IMAGE=ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/frontend:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "PROXY_IMAGE=ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/openelisglobal-proxy.build:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "CERTS_IMAGE=ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/certgen:${TAG}" >> "$GITHUB_OUTPUT"
+
+          # Bridge and simulator: use DockerHub (not built per-PR)
+          echo "BRIDGE_IMAGE=itechuw/openelis-analyzer-bridge:develop" >> "$GITHUB_OUTPUT"
+          echo "SIMULATOR_IMAGE=itechuw/astm-mock-server:main" >> "$GITHUB_OUTPUT"
+
+      # ── Wait for GHCR images ──────────────────────────────────
+      - name: Wait for E2E build images on GHCR
+        run: |
+          echo "Waiting for GHCR images tagged ${{ steps.images.outputs.tag }}..."
+          OE_IMAGE="${{ steps.images.outputs.OE_IMAGE }}"
+          MAX_WAIT=600
+          ELAPSED=0
+          INTERVAL=30
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            if docker manifest inspect "$OE_IMAGE" > /dev/null 2>&1; then
+              echo "✓ GHCR images available (waited ${ELAPSED}s)"
+              break
+            fi
+            echo "  Not yet... (${ELAPSED}s)"
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "::error::GHCR image not found after ${MAX_WAIT}s: $OE_IMAGE"
+            echo "The E2E build workflow (03 - E2E) must complete first."
+            exit 1
+          fi
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
+
+      # ── Build plugin JARs ─────────────────────────────────────
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build Generic plugin JARs
+        run: |
+          for plugin in GenericASTM GenericFile GenericHL7; do
+            if [ -f "plugins/analyzers/${plugin}/pom.xml" ]; then
+              echo "Building ${plugin}..."
+              mvn -f "plugins/analyzers/${plugin}/pom.xml" package -DskipTests -Dmaven.test.skip=true -q
+            fi
+          done
+
+          # Stage built JARs into harness volume
+          mkdir -p projects/analyzer-harness/volume/plugins
+          find plugins/analyzers -type f -path "*/target/*.jar" \
+            ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            -exec cp {} projects/analyzer-harness/volume/plugins/ \;
+
+          echo "Plugin JARs staged:"
+          ls -la projects/analyzer-harness/volume/plugins/
+
+      # ── Generate .env ─────────────────────────────────────────
+      - name: Generate deploy .env
+        run: |
+          cat > /tmp/deploy.env << 'ENVEOF'
+          OE_IMAGE=${{ steps.images.outputs.OE_IMAGE }}
+          DB_IMAGE=${{ steps.images.outputs.DB_IMAGE }}
+          FHIR_IMAGE=${{ steps.images.outputs.FHIR_IMAGE }}
+          FRONTEND_IMAGE=${{ steps.images.outputs.FRONTEND_IMAGE }}
+          PROXY_IMAGE=${{ steps.images.outputs.PROXY_IMAGE }}
+          CERTS_IMAGE=${{ steps.images.outputs.CERTS_IMAGE }}
+          BRIDGE_IMAGE=${{ steps.images.outputs.BRIDGE_IMAGE }}
+          SIMULATOR_IMAGE=${{ steps.images.outputs.SIMULATOR_IMAGE }}
+          TEST_USER=admin
+          TEST_PASS=adminADMIN!
+          ENVEOF
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' /tmp/deploy.env
+
+      # ── SSH setup ─────────────────────────────────────────────
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+
+      - name: Add EC2 host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      # ── Rsync deploy bundle ───────────────────────────────────
+      - name: Rsync deploy bundle to EC2
+        run: |
+          EC2_USER="${{ secrets.EC2_USER }}"
+          EC2_HOST="${{ secrets.EC2_HOST }}"
+          REMOTE="${EC2_USER}@${EC2_HOST}:${DEPLOY_DIR}/"
+
+          # Ensure remote deploy dir exists
+          ssh "${EC2_USER}@${EC2_HOST}" "mkdir -p ${DEPLOY_DIR}"
+
+          # Rsync compose files
+          rsync -az --delete \
+            projects/analyzer-harness/docker-compose.dev.yml \
+            projects/analyzer-harness/docker-compose.analyzer-test.yml \
+            projects/analyzer-harness/docker-compose.deploy.yml \
+            projects/analyzer-harness/docker-compose.letsencrypt.yml \
+            projects/analyzer-harness/deploy-ec2.sh \
+            projects/analyzer-harness/seed-analyzers.sh \
+            "${REMOTE}"
+
+          # Rsync .env
+          rsync -az /tmp/deploy.env "${REMOTE}.env"
+
+          # Rsync volume directory (config, properties, plugins, etc.)
+          rsync -az --delete \
+            projects/analyzer-harness/volume/ \
+            "${REMOTE}volume/"
+
+          # Rsync supporting directories
+          rsync -az --delete \
+            projects/analyzer-profiles/ \
+            "${REMOTE}projects/analyzer-profiles/"
+
+          rsync -az --delete \
+            projects/analyzer-harness/e2e-fixtures/ \
+            "${REMOTE}e2e-fixtures/"
+
+          rsync -az --delete \
+            volume/openelis-analyzer-bridge/ \
+            "${REMOTE}bridge-config/"
+
+          # Rsync nginx proxy entrypoint
+          rsync -az \
+            nginx-proxy/docker-entrypoint.sh \
+            "${REMOTE}nginx-proxy/docker-entrypoint.sh"
+
+          # Rsync certbot/letsencrypt dirs (create if missing)
+          ssh "${EC2_USER}@${EC2_HOST}" "mkdir -p ${DEPLOY_DIR}/certbot ${DEPLOY_DIR}/letsencrypt"
+          rsync -az volume/nginx/certbot/ "${REMOTE}certbot/" 2>/dev/null || true
+          rsync -az volume/letsencrypt/ "${REMOTE}letsencrypt/" 2>/dev/null || true
+
+          # Rsync test fixtures (load script + SQL files)
+          rsync -az --delete \
+            src/test/resources/ \
+            "${REMOTE}test-fixtures/"
+
+          echo "✓ Deploy bundle synced to ${EC2_HOST}:${DEPLOY_DIR}"
+
+      # ── Deploy ────────────────────────────────────────────────
+      - name: Run deploy on EC2
+        id: deploy
+        run: |
+          EC2_USER="${{ secrets.EC2_USER }}"
+          EC2_HOST="${{ secrets.EC2_HOST }}"
+          DEPLOY_FLAGS=""
+          if [ "${{ inputs.full_reset }}" = "true" ]; then
+            DEPLOY_FLAGS="--full-reset"
+          fi
+
+          # Login to GHCR on EC2 so it can pull PR images
+          ssh "${EC2_USER}@${EC2_HOST}" \
+            "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+          # Run deploy
+          ssh "${EC2_USER}@${EC2_HOST}" \
+            "cd ${DEPLOY_DIR} && bash deploy-ec2.sh ${DEPLOY_FLAGS}"
+
+      # ── Health check ──────────────────────────────────────────
+      - name: Verify deployment health
+        id: health
+        run: |
+          EC2_HOST="${{ secrets.EC2_HOST }}"
+          echo "Checking health endpoints on ${EC2_HOST}..."
+
+          OE_OK=false
+          SIM_OK=false
+          BRIDGE_OK=false
+
+          if curl -sk "https://${EC2_HOST}/" 2>/dev/null | grep -q "OpenELIS\|Login"; then
+            OE_OK=true
+          fi
+          if curl -s "http://${EC2_HOST}:8085/health" 2>/dev/null | grep -q "ok\|healthy"; then
+            SIM_OK=true
+          fi
+          if curl -sk "https://${EC2_HOST}:8442/actuator/health" 2>/dev/null | grep -q "UP"; then
+            BRIDGE_OK=true
+          fi
+
+          echo "oe_ok=$OE_OK" >> "$GITHUB_OUTPUT"
+          echo "sim_ok=$SIM_OK" >> "$GITHUB_OUTPUT"
+          echo "bridge_ok=$BRIDGE_OK" >> "$GITHUB_OUTPUT"
+          echo "host=$EC2_HOST" >> "$GITHUB_OUTPUT"
+
+          echo "Health: OE=$OE_OK SIM=$SIM_OK BRIDGE=$BRIDGE_OK"
+          if [ "$OE_OK" = "false" ]; then
+            echo "::warning::OE webapp health check failed"
+          fi
+
+      # ── PR comment ────────────────────────────────────────────
+      - name: Post deploy status to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const host = '${{ steps.health.outputs.host }}';
+            const oe = '${{ steps.health.outputs.oe_ok }}' === 'true' ? ':white_check_mark:' : ':x:';
+            const sim = '${{ steps.health.outputs.sim_ok }}' === 'true' ? ':white_check_mark:' : ':x:';
+            const bridge = '${{ steps.health.outputs.bridge_ok }}' === 'true' ? ':white_check_mark:' : ':x:';
+            const sha = '${{ github.event.pull_request.head.sha }}'.substring(0, 7);
+
+            const body = [
+              '## Analyzer Harness Deployed',
+              '',
+              `| Service | Status | URL |`,
+              `|---------|--------|-----|`,
+              `| OpenELIS | ${oe} | https://${host}/ |`,
+              `| Simulator | ${sim} | http://${host}:8085/health |`,
+              `| Bridge | ${bridge} | https://${host}:8442/actuator/health |`,
+              '',
+              `**SHA:** \`${sha}\``,
+              `**Environment:** \`${{ inputs.environment || 'analyzer-harness-ec2' }}\``,
+              `**Login:** admin / adminADMIN!`,
+              '',
+              '_Triggered by `deploy-test` label_',
+            ].join('\n');
+
+            // Update existing comment or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('Analyzer Harness Deployed')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
