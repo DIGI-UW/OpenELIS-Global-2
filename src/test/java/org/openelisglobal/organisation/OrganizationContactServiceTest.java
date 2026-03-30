@@ -1,6 +1,6 @@
 package org.openelisglobal.organisation;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.util.List;
 import org.junit.Before;
@@ -34,6 +34,20 @@ public class OrganizationContactServiceTest extends BaseWebContextSensitiveTest 
         assertEquals("Manager", organizationContacts.get(0).getPosition());
         assertEquals("Coordinator", organizationContacts.get(1).getPosition());
 
+    }
+
+    @Test
+    public void getAll_shouldReturnAllPreloadedContacts() {
+        List<OrganizationContact> allContacts = organizationContactService.getAll();
+        assertNotNull("getAll() must not return null", allContacts);
+        assertTrue("Should return preloaded contacts from fixture", allContacts.size() > 0);
+    }
+
+    @Test
+    public void getListForOrganizationId_withUnknownOrgId_shouldReturnEmptyList() {
+        List<OrganizationContact> result = organizationContactService.getListForOrganizationId("99999");
+        assertNotNull("Result must not be null for unknown org ID", result);
+        assertTrue("Should return empty list for an org with no contacts", result.isEmpty());
     }
 
 }

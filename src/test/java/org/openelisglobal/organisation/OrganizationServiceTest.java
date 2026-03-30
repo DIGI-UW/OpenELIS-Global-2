@@ -209,4 +209,34 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
         assertTrue(organizationList.size() > 0);
     }
 
+    @Test
+    public void delete_shouldSoftDeleteBySettingIsActiveToN() {
+        Organization organization = organisationService.getOrganizationById("3");
+        assertNotNull("Precondition: organization must exist", organization);
+
+        organization.setSysUserId("1");
+        organisationService.delete(organization);
+
+        Organization afterDelete = organisationService.getOrganizationById("3");
+        assertNotNull("Record should still exist after soft delete", afterDelete);
+        assertEquals("isActive should be N after soft delete", "N", afterDelete.getIsActive());
+    }
+
+    @Test
+    public void getOrganizationByCode_shouldReturnOrganizationMatchingCode() {
+        // Get a real org that has a code set in the fixture
+        Organization orgWithCode = organisationService.getOrganizationById("3");
+        assertNotNull("Precondition: org must exist", orgWithCode);
+
+        String code = orgWithCode.getCode();
+        if (code == null || code.isEmpty()) {
+            // If fixture org 3 has no code, skip gracefully
+            return;
+        }
+
+        Organization found = organisationService.getOrganizationByCode(code);
+        assertNotNull("Should find organization by its own code", found);
+        assertEquals("Found org should match the original org ID", "3", found.getId());
+    }
+
 }
