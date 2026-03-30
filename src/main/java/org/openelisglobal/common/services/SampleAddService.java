@@ -156,8 +156,6 @@ public class SampleAddService {
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");
-                LogEvent.logInfo("SampleAddService", "createSampleTestCollection", "Sample " + sampleItemIdIndex
-                        + ": receivedDateStr=" + receivedDateStr + ", receivedTimeStr=" + receivedTimeStr);
                 if (!GenericValidator.isBlankOrNull(receivedDateStr)) {
                     String receivedDateTime = receivedDateStr;
                     if (!GenericValidator.isBlankOrNull(receivedTimeStr)) {
@@ -167,8 +165,6 @@ public class SampleAddService {
                     }
                     try {
                         Timestamp ts = DateUtil.convertStringDateToTimestamp(receivedDateTime);
-                        LogEvent.logInfo("SampleAddService", "createSampleTestCollection", "Sample " + sampleItemIdIndex
-                                + ": parsed receivedDateTime=" + receivedDateTime + " -> Timestamp=" + ts);
                         item.setReceivedDate(ts);
                     } catch (Exception e) {
                         LogEvent.logError("SampleAddService", "createSampleTestCollection",

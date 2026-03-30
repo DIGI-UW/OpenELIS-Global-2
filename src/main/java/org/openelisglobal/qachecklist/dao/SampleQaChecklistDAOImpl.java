@@ -1,8 +1,7 @@
 package org.openelisglobal.qachecklist.dao;
 
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.qachecklist.valueholder.SampleQaChecklist;
@@ -28,13 +27,12 @@ public class SampleQaChecklistDAOImpl extends BaseDAOImpl<SampleQaChecklist, Int
         }
 
         try {
-            String hql = "FROM SampleQaChecklist sqc WHERE sqc.sampleId = :sampleId";
-            Query<SampleQaChecklist> query = entityManager.unwrap(Session.class).createQuery(hql,
-                    SampleQaChecklist.class);
+            String jpql = "FROM SampleQaChecklist sqc WHERE sqc.sampleId = :sampleId";
+            TypedQuery<SampleQaChecklist> query = entityManager.createQuery(jpql, SampleQaChecklist.class);
             query.setParameter("sampleId", sampleId);
             query.setMaxResults(1);
 
-            List<SampleQaChecklist> results = query.list();
+            List<SampleQaChecklist> results = query.getResultList();
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             logger.error("Error finding SampleQaChecklist by sample ID: {}", sampleId, e);

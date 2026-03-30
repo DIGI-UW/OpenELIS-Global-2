@@ -8,7 +8,7 @@
     <property name="now" value="now()" dbms="postgresql"/>
 
     <!-- QA Checklist Dictionary Category -->
-    <changeSet id="create-qa-checklist-dictionary-category" author="order-workflow-feature">
+    <changeSet id="create-qa-checklist-dictionary-category" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(*) FROM clinlims.dictionary_category WHERE name = 'QAChecklistItem'</sqlCheck>
         </preConditions>
@@ -25,7 +25,7 @@
     </changeSet>
 
     <!-- Sample QA Checklist Table - Tracks QA verification status for orders -->
-    <changeSet id="create-sample-qa-checklist-table" author="order-workflow-feature">
+    <changeSet id="create-sample-qa-checklist-table" author="reagan-meant">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="sample_qa_checklist"/>

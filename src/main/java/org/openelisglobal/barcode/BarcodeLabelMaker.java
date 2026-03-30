@@ -273,9 +273,8 @@ public class BarcodeLabelMaker {
             }
 
             // 1 specimen label per sampleitem
-            Set<Integer> enteredStatusList = getEnteredStatusSampleList();
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    enteredStatusList);
+                    getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
