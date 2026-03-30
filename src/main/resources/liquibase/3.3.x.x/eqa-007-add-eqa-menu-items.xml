@@ -108,18 +108,46 @@
         SELECT COUNT(*) FROM clinlims.localization WHERE description = 'banner.menu.eqa'
       </sqlCheck>
     </preConditions>
-    <comment>Add localization entries for EQA menu items</comment>
-    <sql>
-      INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
-      VALUES
-      (nextval('localization_seq'), 'banner.menu.eqa', 'EQA', 'EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.tooltip', 'External Quality Assurance', 'Assurance qualité externe', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.alerts', 'Alerts', 'Alertes', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.alerts.tooltip', 'Alerts and quality assurance dashboard', 'Tableau de bord des alertes et assurance qualité', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.management', 'EQA Programs', 'Programmes EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.management.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.distribution', 'EQA Distributions', 'Distributions EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.distribution.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE', CURRENT_TIMESTAMP);
+    <comment>Add localization entries for EQA menu items (supports both legacy and generic localization schemas)</comment>
+    <sql splitStatements="false">
+      DO $$
+      DECLARE
+        has_legacy BOOLEAN;
+        loc_id NUMERIC;
+        rec RECORD;
+      BEGIN
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'clinlims' AND table_name = 'localization' AND column_name = 'english'
+        ) INTO has_legacy;
+
+        FOR rec IN
+          SELECT * FROM (VALUES
+            ('banner.menu.eqa', 'EQA', 'EQE'),
+            ('banner.menu.eqa.tooltip', 'External Quality Assurance', 'Assurance qualité externe'),
+            ('banner.menu.alerts', 'Alerts', 'Alertes'),
+            ('banner.menu.alerts.tooltip', 'Alerts and quality assurance dashboard', 'Tableau de bord des alertes et assurance qualité'),
+            ('banner.menu.eqa.management', 'EQA Programs', 'Programmes EQE'),
+            ('banner.menu.eqa.management.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE'),
+            ('banner.menu.eqa.distribution', 'EQA Distributions', 'Distributions EQE'),
+            ('banner.menu.eqa.distribution.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE')
+          ) AS t(description, en_value, fr_value)
+        LOOP
+          SELECT nextval('localization_seq') INTO loc_id;
+
+          IF has_legacy THEN
+            EXECUTE 'INSERT INTO clinlims.localization (id, description, english, french, lastupdated) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)'
+              USING loc_id, rec.description, rec.en_value, rec.fr_value;
+          ELSE
+            INSERT INTO clinlims.localization (id, description, lastupdated)
+              VALUES (loc_id, rec.description, CURRENT_TIMESTAMP);
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+              VALUES (nextval('localization_value_seq'), loc_id, 'en', rec.en_value, CURRENT_TIMESTAMP);
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+              VALUES (nextval('localization_value_seq'), loc_id, 'fr', rec.fr_value, CURRENT_TIMESTAMP);
+          END IF;
+        END LOOP;
+      END $$;
     </sql>
   </changeSet>
 

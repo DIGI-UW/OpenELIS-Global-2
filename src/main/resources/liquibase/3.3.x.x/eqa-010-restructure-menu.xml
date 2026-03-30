@@ -287,26 +287,54 @@
         SELECT COUNT(*) FROM clinlims.localization WHERE description = 'banner.menu.eqa.tests'
       </sqlCheck>
     </preConditions>
-    <comment>Add localization entries for restructured EQA menu items</comment>
-    <sql>
-      INSERT INTO clinlims.localization (id, description, english, french, lastupdated)
-      VALUES
-      (nextval('localization_seq'), 'banner.menu.eqa.tests', 'EQA Tests', 'Tests EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.tests.tooltip', 'EQA test orders and program enrollment', 'Commandes de tests EQE et inscription aux programmes', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.tests.orders', 'Orders', 'Commandes', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.tests.orders.tooltip', 'View and manage EQA test orders', 'Voir et gérer les commandes de tests EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.tests.myPrograms', 'My Programs', 'Mes programmes', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.tests.myPrograms.tooltip', 'Manage self-enrollment in external EQA programs', 'Gérer l''inscription aux programmes EQE externes', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt', 'EQA Management', 'Gestion EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.tooltip', 'Manage EQA programs, participants, and distributions', 'Gérer les programmes EQE, participants et distributions', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.programs', 'Programs', 'Programmes', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.programs.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.participants', 'Participants', 'Participants', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.participants.tooltip', 'Manage organization enrollment in EQA programs', 'Gérer l''inscription des organisations aux programmes EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.distributions', 'Distributions', 'Distributions', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.distributions.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.results', 'Results &amp; Analysis', 'Résultats et analyse', CURRENT_TIMESTAMP),
-      (nextval('localization_seq'), 'banner.menu.eqa.mgmt.results.tooltip', 'EQA results collection and statistical analysis', 'Collecte de résultats et analyse statistique EQE', CURRENT_TIMESTAMP);
+    <comment>Add localization entries for restructured EQA menu items (supports both legacy and generic localization schemas)</comment>
+    <sql splitStatements="false">
+      DO $$
+      DECLARE
+        has_legacy BOOLEAN;
+        loc_id NUMERIC;
+        rec RECORD;
+      BEGIN
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'clinlims' AND table_name = 'localization' AND column_name = 'english'
+        ) INTO has_legacy;
+
+        FOR rec IN
+          SELECT * FROM (VALUES
+            ('banner.menu.eqa.tests', 'EQA Tests', 'Tests EQE'),
+            ('banner.menu.eqa.tests.tooltip', 'EQA test orders and program enrollment', 'Commandes de tests EQE et inscription aux programmes'),
+            ('banner.menu.eqa.tests.orders', 'Orders', 'Commandes'),
+            ('banner.menu.eqa.tests.orders.tooltip', 'View and manage EQA test orders', 'Voir et gérer les commandes de tests EQE'),
+            ('banner.menu.eqa.tests.myPrograms', 'My Programs', 'Mes programmes'),
+            ('banner.menu.eqa.tests.myPrograms.tooltip', 'Manage self-enrollment in external EQA programs', 'Gérer l''inscription aux programmes EQE externes'),
+            ('banner.menu.eqa.mgmt', 'EQA Management', 'Gestion EQE'),
+            ('banner.menu.eqa.mgmt.tooltip', 'Manage EQA programs, participants, and distributions', 'Gérer les programmes EQE, participants et distributions'),
+            ('banner.menu.eqa.mgmt.programs', 'Programs', 'Programmes'),
+            ('banner.menu.eqa.mgmt.programs.tooltip', 'Create and manage EQA programs', 'Créer et gérer les programmes EQE'),
+            ('banner.menu.eqa.mgmt.participants', 'Participants', 'Participants'),
+            ('banner.menu.eqa.mgmt.participants.tooltip', 'Manage organization enrollment in EQA programs', 'Gérer l''inscription des organisations aux programmes EQE'),
+            ('banner.menu.eqa.mgmt.distributions', 'Distributions', 'Distributions'),
+            ('banner.menu.eqa.mgmt.distributions.tooltip', 'Create and manage EQA distributions', 'Créer et gérer les distributions EQE'),
+            ('banner.menu.eqa.mgmt.results', 'Results &amp; Analysis', 'Résultats et analyse'),
+            ('banner.menu.eqa.mgmt.results.tooltip', 'EQA results collection and statistical analysis', 'Collecte de résultats et analyse statistique EQE')
+          ) AS t(description, en_value, fr_value)
+        LOOP
+          SELECT nextval('localization_seq') INTO loc_id;
+
+          IF has_legacy THEN
+            EXECUTE 'INSERT INTO clinlims.localization (id, description, english, french, lastupdated) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)'
+              USING loc_id, rec.description, rec.en_value, rec.fr_value;
+          ELSE
+            INSERT INTO clinlims.localization (id, description, lastupdated)
+              VALUES (loc_id, rec.description, CURRENT_TIMESTAMP);
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+              VALUES (nextval('localization_value_seq'), loc_id, 'en', rec.en_value, CURRENT_TIMESTAMP);
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+              VALUES (nextval('localization_value_seq'), loc_id, 'fr', rec.fr_value, CURRENT_TIMESTAMP);
+          END IF;
+        END LOOP;
+      END $$;
     </sql>
   </changeSet>
 
