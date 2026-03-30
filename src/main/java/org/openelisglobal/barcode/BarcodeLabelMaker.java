@@ -273,8 +273,9 @@ public class BarcodeLabelMaker {
             }
 
             // 1 specimen label per sampleitem
+            Set<Integer> enteredStatusList = getEnteredStatusSampleList();
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
-                    getEnteredStatusSampleList());
+                    enteredStatusList);
             for (SampleItem sampleItem : sampleItemList) {
                 SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                         labNo);
@@ -526,7 +527,14 @@ public class BarcodeLabelMaker {
                         label.incrementNumPrinted();
                     }
                 }
-                getBarcodeLabelService().save(label.getLabelInfo());
+                try {
+                    getBarcodeLabelService().save(label.getLabelInfo());
+                } catch (Exception e) {
+                    // Handle optimistic lock exceptions from concurrent print requests
+                    // Log but don't fail - the PDF was already generated
+                    LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
+                            "Failed to save label print count (possible concurrent request): " + e.getMessage());
+                }
             }
             document.close();
             writer.close();

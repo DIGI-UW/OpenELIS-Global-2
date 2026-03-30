@@ -16,6 +16,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -352,6 +353,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     // Use DAO directly to bypass the service layer's audit trail evict/merge
                     // which can cause state loss when the same entity instance is fetched twice
                     savedItem = sampleItemDAO.update(savedItem);
+                } else {
+                    LogEvent.logWarn(this.getClass().getName(), "persistSampleData",
+                            "Could not find existing sample item with ID: "
+                                    + sampleTestCollection.existingSampleItemId);
                 }
             }
 

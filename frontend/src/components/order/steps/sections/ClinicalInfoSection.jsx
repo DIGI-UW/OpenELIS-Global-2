@@ -29,14 +29,11 @@ const ClinicalInfoSection = ({ orderData, setOrderData, isReadOnly }) => {
   useEffect(() => {
     componentMounted.current = true;
 
-    getFromOpenElisServer(
-      "/rest/displayList/patientPaymentsOptions",
-      (response) => {
-        if (componentMounted.current && Array.isArray(response)) {
-          setPaymentOptions(response);
-        }
-      },
-    );
+    getFromOpenElisServer("/rest/patientPaymentsOptions", (response) => {
+      if (componentMounted.current && Array.isArray(response)) {
+        setPaymentOptions(response);
+      }
+    });
 
     return () => {
       componentMounted.current = false;

@@ -15,7 +15,6 @@ import {
   TableToolbarSearch,
   Button,
   Tag,
-  Checkbox,
   Dropdown,
   DatePicker,
   DatePickerInput,
@@ -24,7 +23,7 @@ import {
   Stack,
   InlineNotification,
 } from "@carbon/react";
-import { Add, Scan, Renew } from "@carbon/icons-react";
+import { Add, Scan } from "@carbon/icons-react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -57,12 +56,13 @@ const STATUS_OPTIONS = [
   { id: "in_progress", label: "In Progress" },
   { id: "pending_qa", label: "Pending QA" },
   { id: "completed", label: "Completed" },
-  { id: "rejected", label: "Rejected" },
 ];
 
 const PRIORITY_OPTIONS = [
   { id: "all", label: "All Priorities" },
   { id: "stat", label: "STAT" },
+  { id: "asap", label: "ASAP" },
+  { id: "timed", label: "Timed" },
   { id: "routine", label: "Routine" },
 ];
 
@@ -79,8 +79,6 @@ const OrderDashboardContent = () => {
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [includeExternal, setIncludeExternal] = useState(false);
-  const [externalCount, setExternalCount] = useState(0);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [dateRange, setDateRange] = useState({ start: null, end: null });
@@ -100,32 +98,29 @@ const OrderDashboardContent = () => {
     const params = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
-      includeExternal: includeExternal.toString(),
     });
 
     if (searchQuery) params.append("search", searchQuery);
     if (statusFilter !== "all") params.append("status", statusFilter);
     if (priorityFilter !== "all") params.append("priority", priorityFilter);
-    if (dateRange.start) params.append("startDate", dateRange.start);
-    if (dateRange.end) params.append("endDate", dateRange.end);
+    // Format dates as YYYY-MM-DD for backend
+    if (dateRange.start) {
+      const d = new Date(dateRange.start);
+      params.append("startDate", d.toISOString().split("T")[0]);
+    }
+    if (dateRange.end) {
+      const d = new Date(dateRange.end);
+      params.append("endDate", d.toISOString().split("T")[0]);
+    }
 
     getFromOpenElisServer(`/rest/order/dashboard?${params}`, (response) => {
       setIsLoading(false);
       if (response) {
         setOrders(response.orders || []);
         setTotalItems(response.totalCount || 0);
-        setExternalCount(response.externalCount || 0);
       }
     });
-  }, [
-    page,
-    pageSize,
-    searchQuery,
-    statusFilter,
-    priorityFilter,
-    dateRange,
-    includeExternal,
-  ]);
+  }, [page, pageSize, searchQuery, statusFilter, priorityFilter, dateRange]);
 
   useEffect(() => {
     fetchOrders();
@@ -283,16 +278,34 @@ const OrderDashboardContent = () => {
     ),
     patient: order.patientName || order.subjectName || "---",
     facility: order.facilityName || "---",
-    priority:
-      order.priority === "stat" ? (
-        <Tag type="red" size="sm">
-          STAT
-        </Tag>
-      ) : (
-        <Tag type="gray" size="sm">
-          Routine
-        </Tag>
-      ),
+    priority: (() => {
+      const p = order.priority?.toLowerCase();
+      if (p === "stat") {
+        return (
+          <Tag type="red" size="sm">
+            STAT
+          </Tag>
+        );
+      } else if (p === "asap") {
+        return (
+          <Tag type="orange" size="sm">
+            ASAP
+          </Tag>
+        );
+      } else if (p === "timed") {
+        return (
+          <Tag type="blue" size="sm">
+            Timed
+          </Tag>
+        );
+      } else {
+        return (
+          <Tag type="gray" size="sm">
+            Routine
+          </Tag>
+        );
+      }
+    })(),
     progress: (
       <div className="order-progress">
         <ProgressBar
@@ -430,36 +443,6 @@ const OrderDashboardContent = () => {
                 size="md"
               />
             </DatePicker>
-            <Checkbox
-              id="include-external"
-              labelText={
-                externalCount > 0
-                  ? intl.formatMessage(
-                      {
-                        id: "order.includeExternal.count",
-                        defaultMessage: "Include external sources ({count})",
-                      },
-                      { count: externalCount },
-                    )
-                  : intl.formatMessage({
-                      id: "order.includeExternal",
-                      defaultMessage: "Include external sources",
-                    })
-              }
-              checked={includeExternal}
-              onChange={(_, { checked }) => setIncludeExternal(checked)}
-            />
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Renew}
-              onClick={fetchOrders}
-              hasIconOnly
-              iconDescription={intl.formatMessage({
-                id: "button.refresh",
-                defaultMessage: "Refresh",
-              })}
-            />
           </div>
 
           {/* Orders Table */}

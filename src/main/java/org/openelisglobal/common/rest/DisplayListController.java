@@ -324,7 +324,7 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "patientPaymentsOptions", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getSamplePatientPaymentOptions() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
+        return DisplayListService.getInstance().getFreshList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
     }
 
     @GetMapping(value = "testLocationCodes", produces = MediaType.APPLICATION_JSON_VALUE)

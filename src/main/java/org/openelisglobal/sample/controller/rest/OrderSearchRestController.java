@@ -56,11 +56,15 @@ import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
+import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -134,6 +138,15 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private FhirUtil fhirUtil;
 
+    @Autowired
+    private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
+
+    @Autowired
+    private SampleQaChecklistService sampleQaChecklistService;
+
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
@@ -160,9 +173,6 @@ public class OrderSearchRestController extends BaseRestController {
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate) {
 
         try {
-            LogEvent.logInfo(this.getClass().getName(), "getDashboard",
-                    "Fetching order dashboard, page: " + page + ", pageSize: " + pageSize);
-
             Map<String, Object> response = new HashMap<>();
             List<Map<String, Object>> ordersList = new ArrayList<>();
 
@@ -170,20 +180,113 @@ public class OrderSearchRestController extends BaseRestController {
             int startingRecNo = ((page - 1) * pageSize) + 1;
             List<Sample> samples = sampleService.getPageOfSamples(startingRecNo);
 
+            // Apply filters
             for (Sample sample : samples) {
+                // Filter by search query (lab number or patient name)
+                if (search != null && !search.isEmpty()) {
+                    String searchLower = search.toLowerCase();
+                    boolean matchesLabNumber = sample.getAccessionNumber() != null
+                            && sample.getAccessionNumber().toLowerCase().contains(searchLower);
+                    Patient patient = sampleHumanService.getPatientForSample(sample);
+                    boolean matchesPatient = false;
+                    if (patient != null) {
+                        String patientName = (patientService.getFirstName(patient) + " "
+                                + patientService.getLastName(patient)).toLowerCase();
+                        matchesPatient = patientName.contains(searchLower);
+                    }
+                    if (!matchesLabNumber && !matchesPatient) {
+                        continue; // Skip this sample
+                    }
+                }
+
+                // Filter by priority
+                String samplePriority = sample.getPriority() != null ? sample.getPriority().name().toLowerCase()
+                        : "routine";
+                if (priority != null && !priority.isEmpty() && !"all".equals(priority)) {
+                    if (!samplePriority.equals(priority.toLowerCase())) {
+                        continue; // Skip this sample
+                    }
+                }
+
+                // Filter by date range (using entered date)
+                java.sql.Date sampleDate = sample.getEnteredDate();
+                if (startDate != null && !startDate.isEmpty()) {
+                    try {
+                        java.sql.Date filterStartDate = java.sql.Date.valueOf(startDate);
+                        if (sampleDate == null || sampleDate.before(filterStartDate)) {
+                            continue; // Skip this sample
+                        }
+                    } catch (IllegalArgumentException e) {
+                        // Invalid date format, skip filter
+                    }
+                }
+                if (endDate != null && !endDate.isEmpty()) {
+                    try {
+                        java.sql.Date filterEndDate = java.sql.Date.valueOf(endDate);
+                        if (sampleDate == null || sampleDate.after(filterEndDate)) {
+                            continue; // Skip this sample
+                        }
+                    } catch (IllegalArgumentException e) {
+                        // Invalid date format, skip filter
+                    }
+                }
+
+                // Calculate step progress for status filtering
+                List<SampleItem> sampleItemsForProgress = sampleItemService.getSampleItemsBySampleId(sample.getId());
+
+                // Collect is complete if all sample items with tests have collection dates
+                boolean collectComplete = false;
+                if (!sampleItemsForProgress.isEmpty()) {
+                    List<SampleItem> itemsWithTests = sampleItemsForProgress.stream()
+                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
+                            .collect(java.util.stream.Collectors.toList());
+                    if (!itemsWithTests.isEmpty()) {
+                        collectComplete = itemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
+                    }
+                }
+
+                // Label is complete if all sample items have storage assignments
+                boolean labelComplete = false;
+                if (!sampleItemsForProgress.isEmpty()) {
+                    labelComplete = sampleItemsForProgress.stream().allMatch(si -> {
+                        SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
+                        return assignment != null && assignment.getLocationId() != null;
+                    });
+                }
+
+                // QA is complete if all checklist items are verified
+                boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+
+                // Determine order status
+                String orderStatus;
+                if (qaComplete) {
+                    orderStatus = "completed";
+                } else if (labelComplete) {
+                    orderStatus = "pending_qa";
+                } else {
+                    orderStatus = "in_progress";
+                }
+
+                // Filter by status
+                if (status != null && !status.isEmpty() && !"all".equals(status)) {
+                    if (!orderStatus.equals(status)) {
+                        continue; // Skip this sample
+                    }
+                }
+
                 Map<String, Object> orderData = new HashMap<>();
                 orderData.put("id", sample.getId());
                 orderData.put("labNumber", sample.getAccessionNumber());
                 orderData.put("lastUpdated", sample.getLastupdated() != null ? sample.getLastupdated().toString() : "");
-                orderData.put("priority", "routine"); // Default, can be enhanced
+                orderData.put("priority", samplePriority);
                 orderData.put("isExternal", false);
                 orderData.put("returnedFromQA", false);
 
-                // Get patient name
-                Patient patient = sampleHumanService.getPatientForSample(sample);
-                if (patient != null) {
-                    String patientName = (patientService.getFirstName(patient) + " "
-                            + patientService.getLastName(patient)).trim();
+                // Get patient name (reuse patient if already fetched for search filter)
+                Patient orderPatient = sampleHumanService.getPatientForSample(sample);
+                if (orderPatient != null) {
+                    String patientName = (patientService.getFirstName(orderPatient) + " "
+                            + patientService.getLastName(orderPatient)).trim();
                     orderData.put("patientName", patientName);
                 } else {
                     orderData.put("patientName", "---");
@@ -192,27 +295,14 @@ public class OrderSearchRestController extends BaseRestController {
                 // Facility (simplified - could get from organization)
                 orderData.put("facilityName", "---");
 
-                // Step progress - determine based on actual data
+                // Step progress - reuse values calculated for status filtering
                 Map<String, Boolean> stepProgress = new HashMap<>();
                 stepProgress.put("enter", true); // If sample exists, enter is complete
-
-                // Collect is complete if all sample items with tests have collection dates
-                List<SampleItem> sampleItemsForProgress = sampleItemService.getSampleItemsBySampleId(sample.getId());
-                boolean collectComplete = false;
-                if (!sampleItemsForProgress.isEmpty()) {
-                    List<SampleItem> itemsWithTests = sampleItemsForProgress.stream()
-                            .filter(si -> !analysisService.getAnalysesBySampleItem(si).isEmpty())
-                            .collect(java.util.stream.Collectors.toList());
-
-                    if (!itemsWithTests.isEmpty()) {
-                        collectComplete = itemsWithTests.stream().allMatch(si -> si.getCollectionDate() != null);
-                    }
-                }
                 stepProgress.put("collect", collectComplete);
-
-                stepProgress.put("label", false);
-                stepProgress.put("qa", false);
+                stepProgress.put("label", labelComplete);
+                stepProgress.put("qa", qaComplete);
                 orderData.put("stepProgress", stepProgress);
+                orderData.put("status", orderStatus);
 
                 ordersList.add(orderData);
             }
@@ -247,25 +337,15 @@ public class OrderSearchRestController extends BaseRestController {
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber) {
 
-        LogEvent.logInfo(this.getClass().getName(), "searchOrder",
-                "searchOrder called with labNumber param: '" + labNumber + "'");
-
         if (labNumber == null || labNumber.trim().isEmpty()) {
-            LogEvent.logWarn(this.getClass().getName(), "searchOrder",
-                    "Rejecting request - labNumber is null or empty");
             return ResponseEntity.badRequest().build();
         }
 
         try {
-            LogEvent.logInfo(this.getClass().getName(), "searchOrder",
-                    "Searching for order with lab number: " + labNumber);
-
             // Find the sample by accession number
             Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
 
             if (sample == null) {
-                LogEvent.logInfo(this.getClass().getName(), "searchOrder",
-                        "No order found for lab number: " + labNumber);
                 return ResponseEntity.notFound().build();
             }
 
@@ -380,6 +460,22 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("panels", panelsData);
                 sampleItemData.put("index", sampleItem.getSortOrder());
 
+                // Get storage assignment for this sample item
+                SampleStorageAssignment storageAssignment = sampleStorageAssignmentDAO
+                        .findBySampleItemId(sampleItem.getId());
+                if (storageAssignment != null && storageAssignment.getLocationId() != null) {
+                    sampleItemData.put("storageLocationId", storageAssignment.getLocationId());
+                    sampleItemData.put("storageLocationType", storageAssignment.getLocationType());
+                    sampleItemData.put("storagePositionCoordinate", storageAssignment.getPositionCoordinate());
+                    sampleItemData.put("storageNotes", storageAssignment.getNotes());
+
+                    // Get hierarchical path via the service
+                    Map<String, Object> locationInfo = sampleStorageService.getSampleItemLocation(sampleItem.getId());
+                    if (locationInfo != null && locationInfo.get("hierarchicalPath") != null) {
+                        sampleItemData.put("storageHierarchicalPath", locationInfo.get("hierarchicalPath"));
+                    }
+                }
+
                 samplesData.add(sampleItemData);
             }
             response.put("samples", samplesData);
@@ -409,9 +505,19 @@ public class OrderSearchRestController extends BaseRestController {
             }
             stepProgress.put("collect", collectComplete);
 
-            // TODO: Label and QA progress tracking
-            stepProgress.put("label", false);
-            stepProgress.put("qa", false);
+            // Label is complete if all sample items have storage assignments
+            boolean labelComplete = false;
+            if (!sampleItems.isEmpty()) {
+                labelComplete = sampleItems.stream().allMatch(si -> {
+                    SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
+                    return assignment != null && assignment.getLocationId() != null;
+                });
+            }
+            stepProgress.put("label", labelComplete);
+
+            // QA is complete if all checklist items are verified
+            boolean qaComplete = sampleQaChecklistService.areAllItemsVerified(Integer.parseInt(sample.getId()));
+            stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 
             return ResponseEntity.ok(response);

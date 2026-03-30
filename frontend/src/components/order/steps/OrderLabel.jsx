@@ -13,15 +13,12 @@ import {
   Button,
   Tag,
   NumberInput,
-  TextInput,
-  TextArea,
   Select,
   SelectItem,
-  Grid,
-  Column,
-  Search,
+  TextArea,
+  InlineNotification,
 } from "@carbon/react";
-import { Printer, Checkmark, Location } from "@carbon/icons-react";
+import { Printer, Checkmark } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
@@ -29,7 +26,11 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import StorageLocationSelector from "../../storage/StorageLocationSelector/StorageLocationSelector";
+import {
+  postToOpenElisServerJsonResponse,
+  patchToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
 
 /**
  * OrderLabel - Step 3: Label & Store
@@ -52,13 +53,17 @@ const OrderLabel = () => {
     setSamples,
     saveOrder,
     setCurrentStep,
-    labNumber,
+    labNumber: contextLabNumber,
     stepProgress,
-    setStepProgress,
+    markStepComplete,
     orderId,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+
+  // Get labNumber from context or orderData
+  const labNumber =
+    contextLabNumber || orderData?.sampleOrderItems?.labNo || null;
 
   // Redirect to enter step if no order is loaded
   useEffect(() => {
@@ -90,26 +95,35 @@ const OrderLabel = () => {
 
   // Storage assignment state
   const [selectedSampleIndex, setSelectedSampleIndex] = useState(0);
-  const [storageLocations, setStorageLocations] = useState([]);
-  const [selectedLocationId, setSelectedLocationId] = useState("");
-  const [positionCoordinate, setPositionCoordinate] = useState("");
-  const [conditionNotes, setConditionNotes] = useState("");
-  const [barcodeInput, setBarcodeInput] = useState("");
   const [assignedStorage, setAssignedStorage] = useState({});
+  // Per-sample condition notes
+  const [conditionNotes, setConditionNotes] = useState({});
 
-  // Load storage locations on mount
+  // Initialize assignedStorage and conditionNotes from loaded samples (when navigating back or reloading)
   useEffect(() => {
-    loadStorageLocations();
-  }, []);
-
-  const loadStorageLocations = () => {
-    // Load available storage locations (devices, shelves, racks)
-    getFromOpenElisServer("/rest/storage/locations/search", (response) => {
-      if (response && Array.isArray(response)) {
-        setStorageLocations(response);
+    const initialStorage = {};
+    const initialNotes = {};
+    samples.forEach((sample, index) => {
+      if (sample.storageLocationId) {
+        initialStorage[index] = {
+          locationId: sample.storageLocationId,
+          locationType: sample.storageLocationType || "device",
+          hierarchicalPath: sample.storageHierarchicalPath || "",
+          position: sample.storagePositionCoordinate || "",
+          pending: false, // Already saved
+        };
+      }
+      // Always set notes from sample data (even if empty string)
+      if (sample.storageNotes !== undefined && sample.storageNotes !== null) {
+        initialNotes[index] = sample.storageNotes;
       }
     });
-  };
+    if (Object.keys(initialStorage).length > 0) {
+      setAssignedStorage(initialStorage);
+    }
+    // Always update notes to reflect loaded data
+    setConditionNotes((prev) => ({ ...prev, ...initialNotes }));
+  }, [samples]);
 
   // Get current sample being configured
   const currentSample = samples[selectedSampleIndex] || {};
@@ -153,8 +167,30 @@ const OrderLabel = () => {
     const quantity = labelQuantities[labelType];
     if (quantity <= 0) return;
 
-    // TODO: Integrate with actual label printing service
-    // POST /rest/labels/print with { type, labNumber, quantity }
+    let url;
+
+    if (labelType === "order") {
+      // Print order label only
+      url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=order&quantity=${quantity}`;
+    } else if (labelType.startsWith("sample-")) {
+      // Print specimen label for specific sample
+      // Extract sample index from labelType (e.g., "sample-0" -> 0)
+      const sampleIndex = parseInt(labelType.replace("sample-", ""), 10);
+      const sample = samples[sampleIndex];
+
+      // For specimen labels, we need labNo.sortOrder format (e.g., DEV01260000000000001.1)
+      // sortOrder is 1-based in backend
+      const sortOrder = sample?.sortOrder || sampleIndex + 1;
+      const specimenLabNo = `${labNumber}.${sortOrder}`;
+
+      url = `/LabelMakerServlet?labNo=${encodeURIComponent(specimenLabNo)}&type=specimen&quantity=${quantity}`;
+    } else {
+      // Fallback to default (prints both order and all specimen labels)
+      url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${quantity}`;
+    }
+
+    // Open label PDF in new window
+    window.open(url, "_blank");
 
     setPrintedLabels((prev) => new Set([...prev, labelType]));
 
@@ -164,7 +200,7 @@ const OrderLabel = () => {
       message: intl.formatMessage(
         {
           id: "label.print.success.count",
-          defaultMessage: "{count} label(s) printed successfully",
+          defaultMessage: "{count} label(s) sent to print",
         },
         { count: quantity },
       ),
@@ -173,104 +209,189 @@ const OrderLabel = () => {
   };
 
   const handlePrintAllLabels = () => {
-    // Print all labels with quantity > 0
-    Object.entries(labelQuantities).forEach(([type, quantity]) => {
-      if (quantity > 0) {
-        handlePrintLabel(type);
-      }
+    // Use 'default' type which prints both order label and all specimen labels in one PDF
+    // Add override=true to bypass max print checks
+    const totalQuantity = Math.max(labelQuantities.order || 1, 1);
+    const url = `/LabelMakerServlet?labNo=${encodeURIComponent(labNumber)}&type=default&quantity=${totalQuantity}&override=true`;
+    window.open(url, "_blank");
+
+    // Mark all as printed
+    const allPrinted = new Set(["order"]);
+    samples.forEach((_, index) => {
+      allPrinted.add(`sample-${index}`);
     });
+    setPrintedLabels(allPrinted);
+
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "label.printAll.success",
+        defaultMessage: "All labels sent to print",
+      }),
+    });
+    setNotificationVisible(true);
   };
 
-  const handleBarcodeSubmit = (e) => {
-    if (e.key === "Enter" && barcodeInput.trim()) {
-      // Quick assign via barcode
-      handleAssignStorage(barcodeInput.trim());
-      setBarcodeInput("");
+  /**
+   * Handle location change from StorageLocationSelector
+   * Stores selection locally - actual API call happens on Save
+   */
+  const handleLocationChange = (location) => {
+    if (location) {
+      const locationId = String(location.id || location.locationId || "");
+      const locationType = location.type || location.locationType || "device";
+      const hierarchicalPath = location.hierarchicalPath || location.path || "";
+
+      // Update local state to track pending storage assignment
+      setAssignedStorage((prev) => ({
+        ...prev,
+        [selectedSampleIndex]: {
+          locationId: locationId,
+          locationType: locationType,
+          hierarchicalPath: hierarchicalPath,
+          position: location.positionCoordinate || "",
+          pending: true, // Mark as pending save
+        },
+      }));
     }
   };
 
-  const handleAssignStorage = (locationIdOrBarcode) => {
-    const sampleItemId = currentSample.sampleItemId;
-    if (!sampleItemId) {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "storage.assign.error.noSample",
-          defaultMessage: "No sample selected for storage assignment",
-        }),
-      });
-      setNotificationVisible(true);
-      return;
-    }
-
-    const assignmentData = {
-      sampleItemId: sampleItemId,
-      locationId: locationIdOrBarcode || selectedLocationId,
-      locationType: "device", // Default, could be determined by barcode prefix
-      positionCoordinate: positionCoordinate,
-      notes: conditionNotes,
-    };
-
-    postToOpenElisServer(
-      "/rest/storage/sample-items/assign",
-      JSON.stringify(assignmentData),
-      (response) => {
-        if (response && !response.error) {
-          // Update local state
-          setAssignedStorage((prev) => ({
-            ...prev,
-            [selectedSampleIndex]: {
-              locationId: assignmentData.locationId,
-              position: positionCoordinate,
-              notes: conditionNotes,
-            },
-          }));
-
-          // Update sample with storage info
-          const updatedSamples = [...samples];
-          updatedSamples[selectedSampleIndex] = {
-            ...updatedSamples[selectedSampleIndex],
-            storageLocationId: assignmentData.locationId,
-            storagePositionCoordinate: positionCoordinate,
-          };
-          setSamples(updatedSamples);
-
-          addNotification({
-            kind: NotificationKinds.success,
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({
-              id: "storage.assign.success",
-              defaultMessage: "Storage location assigned successfully",
-            }),
-          });
-          setNotificationVisible(true);
-
-          // Clear form
-          setPositionCoordinate("");
-          setConditionNotes("");
-        } else {
-          addNotification({
-            kind: NotificationKinds.error,
-            title: intl.formatMessage({ id: "notification.title" }),
-            message:
-              response?.message ||
-              intl.formatMessage({
-                id: "storage.assign.error",
-                defaultMessage: "Failed to assign storage location",
-              }),
-          });
-          setNotificationVisible(true);
-        }
-      },
+  /**
+   * Save pending storage assignments via API
+   * Uses /assign for new assignments, /move for reassignments
+   */
+  const savePendingStorageAssignments = async () => {
+    const pendingAssignments = Object.entries(assignedStorage).filter(
+      ([, storage]) => storage.pending,
     );
+
+    for (const [sampleIndexStr, storage] of pendingAssignments) {
+      const sampleIndex = parseInt(sampleIndexStr, 10);
+      const currentSampleItem = samples[sampleIndex];
+      const sampleItemId =
+        currentSampleItem?.sampleItemId || currentSampleItem?.id;
+
+      if (!sampleItemId) {
+        console.warn(
+          `Skipping storage assignment for sample ${sampleIndex} - no sampleItemId`,
+        );
+        continue;
+      }
+
+      // Check if sample already has a storage assignment (use move instead of assign)
+      const hasExistingAssignment = currentSampleItem.storageLocationId;
+
+      const requestData = {
+        sampleItemId: String(sampleItemId),
+        locationId: storage.locationId,
+        locationType: storage.locationType,
+        positionCoordinate: storage.position || "",
+        notes: conditionNotes[sampleIndex] || "",
+      };
+
+      // Add reason field for move endpoint
+      if (hasExistingAssignment) {
+        requestData.reason = "Reassignment from order workflow";
+      }
+
+      const endpoint = hasExistingAssignment
+        ? "/rest/storage/sample-items/move"
+        : "/rest/storage/sample-items/assign";
+
+      await new Promise((resolve, reject) => {
+        postToOpenElisServerJsonResponse(
+          endpoint,
+          JSON.stringify(requestData),
+          (response) => {
+            if (response && !response.error && !response.message) {
+              // Mark as no longer pending
+              setAssignedStorage((prev) => ({
+                ...prev,
+                [sampleIndex]: {
+                  ...prev[sampleIndex],
+                  pending: false,
+                  hierarchicalPath:
+                    response.hierarchicalPath || storage.hierarchicalPath,
+                },
+              }));
+              resolve(response);
+            } else {
+              reject(
+                new Error(
+                  response?.message ||
+                    response?.error ||
+                    "Failed to assign storage",
+                ),
+              );
+            }
+          },
+        );
+      });
+    }
+  };
+
+  /**
+   * Update notes for samples that already have storage assignments (no location change)
+   */
+  const updateStorageNotes = async () => {
+    for (let sampleIndex = 0; sampleIndex < samples.length; sampleIndex++) {
+      const sample = samples[sampleIndex];
+      const sampleItemId = sample?.sampleItemId || sample?.id;
+      const storage = assignedStorage[sampleIndex];
+
+      // Skip if no storage assignment or if pending (will be handled by savePendingStorageAssignments)
+      if (!sampleItemId || !sample.storageLocationId || storage?.pending) {
+        continue;
+      }
+
+      const currentNotes = conditionNotes[sampleIndex] || "";
+      const savedNotes = sample.storageNotes || "";
+
+      // Only update if notes changed
+      if (currentNotes !== savedNotes) {
+        await new Promise((resolve, reject) => {
+          patchToOpenElisServerJsonResponse(
+            `/rest/storage/sample-items/${sampleItemId}`,
+            JSON.stringify({ notes: currentNotes }),
+            (response) => {
+              if (response && !response.error && !response.message) {
+                // Update the sample's storageNotes via setSamples for proper React state update
+                setSamples((prevSamples) =>
+                  prevSamples.map((s, idx) =>
+                    idx === sampleIndex
+                      ? { ...s, storageNotes: currentNotes }
+                      : s,
+                  ),
+                );
+                resolve(response);
+              } else {
+                reject(
+                  new Error(
+                    response?.message ||
+                      response?.error ||
+                      "Failed to update notes",
+                  ),
+                );
+              }
+            },
+          );
+        });
+      }
+    }
   };
 
   const handleSave = async () => {
     try {
+      // First save any pending storage assignments
+      await savePendingStorageAssignments();
+
+      // Update notes for existing assignments (if notes changed)
+      await updateStorageNotes();
+
       await saveOrder();
       // Update step progress
-      setStepProgress((prev) => ({ ...prev, label: true }));
+      markStepComplete("label");
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -281,7 +402,8 @@ const OrderLabel = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message:
+          error.message || intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
     }
@@ -289,15 +411,22 @@ const OrderLabel = () => {
 
   const handleSaveAndNext = async () => {
     try {
+      // First save any pending storage assignments
+      await savePendingStorageAssignments();
+
+      // Update notes for existing assignments (if notes changed)
+      await updateStorageNotes();
+
       await saveOrder();
-      setStepProgress((prev) => ({ ...prev, label: true }));
+      markStepComplete("label");
       setCurrentStep(3);
       history.push("/order/qa");
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message:
+          error.message || intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
     }
@@ -475,6 +604,87 @@ const OrderLabel = () => {
           />
         </h4>
 
+        {/* Storage Assignment Summary */}
+        {samples.length > 0 &&
+          (() => {
+            const assignedCount = samples.filter(
+              (s, idx) => s.storageLocationId || assignedStorage[idx],
+            ).length;
+            const unassignedCount = samples.length - assignedCount;
+            const unassignedNames = samples
+              .map((sample, idx) => {
+                const isAssigned =
+                  sample.storageLocationId || assignedStorage[idx];
+                if (!isAssigned) {
+                  return sample.sampleTypeName || `Sample ${idx + 1}`;
+                }
+                return null;
+              })
+              .filter(Boolean)
+              .join(", ");
+
+            if (unassignedCount > 0) {
+              return (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage(
+                    {
+                      id: "storage.unassigned.title",
+                      defaultMessage:
+                        "{count} sample(s) need storage assignment",
+                    },
+                    { count: unassignedCount },
+                  )}
+                  subtitle={unassignedNames}
+                  style={{ marginBottom: "1rem" }}
+                />
+              );
+            }
+            return (
+              <InlineNotification
+                kind="success"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage(
+                  {
+                    id: "storage.allAssigned.title",
+                    defaultMessage:
+                      "All {count} sample(s) have storage assigned",
+                  },
+                  { count: assignedCount },
+                )}
+                style={{ marginBottom: "1rem" }}
+              />
+            );
+          })()}
+
+        {/* Sample Selector for multi-sample orders */}
+        {samples.length > 1 && (
+          <div className="sample-selector">
+            <Select
+              id="sample-selector"
+              labelText={intl.formatMessage({
+                id: "storage.selectSample",
+                defaultMessage: "Select Sample",
+              })}
+              value={selectedSampleIndex}
+              onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
+            >
+              {samples.map((sample, index) => (
+                <SelectItem
+                  key={index}
+                  value={index}
+                  text={`${sample.sampleTypeName || "Sample"} ${index + 1}${
+                    assignedStorage[index] ? " (Assigned)" : ""
+                  }`}
+                />
+              ))}
+            </Select>
+          </div>
+        )}
+
         {/* Sample Info */}
         {samples.length > 0 && (
           <div className="sample-info-bar">
@@ -496,7 +706,7 @@ const OrderLabel = () => {
                 />
                 :
               </strong>{" "}
-              {currentSample.sampleTypeName || "Serum"}
+              {currentSample.sampleTypeName || "---"}
             </span>
             <span>
               <strong>
@@ -519,103 +729,28 @@ const OrderLabel = () => {
                 )}
               </Tag>
             </span>
+            {assignedStorage[selectedSampleIndex]?.hierarchicalPath && (
+              <span>
+                <strong>
+                  <FormattedMessage
+                    id="storage.currentLocation"
+                    defaultMessage="Location"
+                  />
+                  :
+                </strong>{" "}
+                {assignedStorage[selectedSampleIndex].hierarchicalPath}
+              </span>
+            )}
           </div>
         )}
 
-        {/* Quick Assign via Barcode */}
-        <div className="quick-assign-section">
-          <h6>
-            <FormattedMessage
-              id="storage.quickAssign.title"
-              defaultMessage="Quick Assign (Barcode)"
-            />
-          </h6>
-          <p className="helper-text">
-            <FormattedMessage
-              id="storage.quickAssign.description"
-              defaultMessage="Scan Barcode"
-            />
-          </p>
-          <TextInput
-            id="barcode-input"
-            placeholder={intl.formatMessage({
-              id: "storage.quickAssign.placeholder",
-              defaultMessage: "Enter barcode...",
-            })}
-            value={barcodeInput}
-            onChange={(e) => setBarcodeInput(e.target.value)}
-            onKeyDown={handleBarcodeSubmit}
-          />
-        </div>
-
-        <Grid>
-          <Column lg={8} md={4} sm={4}>
-            {/* Select Location */}
-            <div className="form-field">
-              <label className="required-label">
-                <FormattedMessage
-                  id="storage.selectLocation"
-                  defaultMessage="Select Location"
-                />
-                *
-              </label>
-              <Search
-                id="location-search"
-                placeholder={intl.formatMessage({
-                  id: "storage.searchLocation.placeholder",
-                  defaultMessage: "Search for location...",
-                })}
-                labelText=""
-                size="md"
-              />
-              <Select
-                id="location-select"
-                labelText=""
-                value={selectedLocationId}
-                onChange={(e) => setSelectedLocationId(e.target.value)}
-              >
-                <SelectItem value="" text="" />
-                {storageLocations.map((loc) => (
-                  <SelectItem
-                    key={loc.id}
-                    value={loc.id}
-                    text={loc.hierarchicalPath || loc.name}
-                  />
-                ))}
-              </Select>
-            </div>
-          </Column>
-
-          <Column lg={4} md={2} sm={2}>
-            {/* Position */}
-            <TextInput
-              id="position-input"
-              labelText={intl.formatMessage({
-                id: "storage.position",
-                defaultMessage: "Position (optional)",
-              })}
-              placeholder="e.g. A6, 1-1, R65-12"
-              value={positionCoordinate}
-              onChange={(e) => setPositionCoordinate(e.target.value)}
-            />
-          </Column>
-
-          <Column lg={4} md={2} sm={2}>
-            {/* Location Button */}
-            <Button
-              kind="primary"
-              renderIcon={Location}
-              onClick={() => handleAssignStorage()}
-              disabled={!selectedLocationId}
-              className="location-button"
-            >
-              <FormattedMessage
-                id="storage.location"
-                defaultMessage="Location"
-              />
-            </Button>
-          </Column>
-        </Grid>
+        {/* Storage Location Selector - inline mode (dropdown/autocomplete) */}
+        <StorageLocationSelector
+          mode="autocomplete"
+          onLocationChange={handleLocationChange}
+          enableInlineCreation={false}
+          optional={true}
+        />
 
         {/* Condition Notes */}
         <div className="condition-notes-section">
@@ -629,18 +764,16 @@ const OrderLabel = () => {
               id: "storage.conditionNotes.placeholder",
               defaultMessage: "Enter any condition notes...",
             })}
-            value={conditionNotes}
-            onChange={(e) => setConditionNotes(e.target.value)}
+            value={conditionNotes[selectedSampleIndex] || ""}
+            onChange={(e) =>
+              setConditionNotes((prev) => ({
+                ...prev,
+                [selectedSampleIndex]: e.target.value,
+              }))
+            }
             rows={3}
           />
         </div>
-
-        <p className="storage-info-text">
-          <FormattedMessage
-            id="storage.info.text"
-            defaultMessage="Storage locations are assigned when you click Save or Save & Next below. For complete Assign Archive function review."
-          />
-        </p>
       </Tile>
     </OrderWorkflowLayout>
   );

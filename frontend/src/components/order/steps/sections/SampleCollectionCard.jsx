@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -43,6 +43,32 @@ const SampleCollectionCard = ({
   canRemove,
 }) => {
   const intl = useIntl();
+
+  // Auto-populate receivedDate/receivedTime for new samples that don't have values yet
+  // This ensures the displayed fallback value is actually saved to the sample
+  useEffect(() => {
+    if (!sample.sampleItemId && !isReadOnly) {
+      const updates = {};
+      if (!sample.receivedDate && serverReceivedDate) {
+        updates.receivedDate = serverReceivedDate;
+      }
+      if (!sample.receivedTime && serverReceivedTime) {
+        updates.receivedTime = serverReceivedTime;
+      }
+      if (Object.keys(updates).length > 0) {
+        onUpdate(sampleIndex, updates);
+      }
+    }
+  }, [
+    sample.sampleItemId,
+    sample.receivedDate,
+    sample.receivedTime,
+    serverReceivedDate,
+    serverReceivedTime,
+    sampleIndex,
+    onUpdate,
+    isReadOnly,
+  ]);
 
   const sampleTypeName =
     sample.sampleTypeName ||

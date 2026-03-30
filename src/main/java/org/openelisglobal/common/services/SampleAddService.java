@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.common.services;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -155,6 +156,8 @@ public class SampleAddService {
 
                 String receivedDateStr = sampleItem.attributeValue("receivedDate");
                 String receivedTimeStr = sampleItem.attributeValue("receivedTime");
+                LogEvent.logInfo("SampleAddService", "createSampleTestCollection", "Sample " + sampleItemIdIndex
+                        + ": receivedDateStr=" + receivedDateStr + ", receivedTimeStr=" + receivedTimeStr);
                 if (!GenericValidator.isBlankOrNull(receivedDateStr)) {
                     String receivedDateTime = receivedDateStr;
                     if (!GenericValidator.isBlankOrNull(receivedTimeStr)) {
@@ -162,7 +165,15 @@ public class SampleAddService {
                     } else {
                         receivedDateTime += " 00:00";
                     }
-                    item.setReceivedDate(DateUtil.convertStringDateToTimestamp(receivedDateTime));
+                    try {
+                        Timestamp ts = DateUtil.convertStringDateToTimestamp(receivedDateTime);
+                        LogEvent.logInfo("SampleAddService", "createSampleTestCollection", "Sample " + sampleItemIdIndex
+                                + ": parsed receivedDateTime=" + receivedDateTime + " -> Timestamp=" + ts);
+                        item.setReceivedDate(ts);
+                    } catch (Exception e) {
+                        LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                                "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
+                    }
                 }
 
                 String quantityStr = sampleItem.attributeValue("quantity");

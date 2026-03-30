@@ -334,12 +334,17 @@ export const OrderProvider = ({ children }) => {
         const receivedTime =
           sampleItem.receivedTime || sampleXMLData.receivedTime || "";
 
-        // Storage location data
+        // Storage location data - check both top-level sample properties (from OrderLabel)
+        // and nested sampleXML.storageLocation (legacy format)
         const storageLocation = sampleXMLData.storageLocation || {};
-        const storageLocationId = storageLocation.id || "";
-        const storageLocationType = storageLocation.type || "";
+        const storageLocationId =
+          sampleItem.storageLocationId || storageLocation.id || "";
+        const storageLocationType =
+          sampleItem.storageLocationType || storageLocation.type || "";
         const storagePositionCoordinate =
-          storageLocation.positionCoordinate || "";
+          sampleItem.storagePositionCoordinate ||
+          storageLocation.positionCoordinate ||
+          "";
 
         // GPS data
         const gpsLatitude = sampleXMLData.gpsLatitude || "";
