@@ -465,11 +465,10 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
     // ==================== Error Handling Tests ====================
 
     @Test
-    public void testGetById_WithInvalidIdFormat_ShouldReturnInternalServerError()
-            throws Exception {
+    public void testGetById_WithInvalidIdFormat_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(get("/rest/inventory/lots/invalid-id")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
