@@ -51,6 +51,7 @@ export const TestStepForm = ({
   const [uomList, setUomList] = useState([]);
   const [selectedUomList, setSelectedUomList] = useState({});
   const [resultTypeList, setResultTypeList] = useState([]);
+  const [resultTypeCodes, setResultTypeCodes] = useState([]);
   const [codedResultList, setCodedResultList] = useState([]);
   const [freeResultList, setFreeResultList] = useState([]);
   const [numericResultId, setNumericResultId] = useState("");
@@ -80,30 +81,23 @@ export const TestStepForm = ({
   const [ageRanges, setAgeRanges] = useState([{ raw: "Infinity", unit: "Y" }]);
 
   useEffect(() => {
-    if (resultTypeList.length > 0) {
-      const codedList = resultTypeList
-        .filter(
-          (item) =>
-            item.value === "Multiselect" ||
-            item.value === "Cascading multiselect" ||
-            item.value === "Select List",
-        )
+    if (resultTypeCodes.length > 0) {
+      const codedList = resultTypeCodes
+        .filter((item) => ["D", "M", "C"].includes(item.value))
         .map((item) => item.id);
       setCodedResultList(codedList);
 
-      const freeTextList = resultTypeList
-        .filter(
-          (item) => item.value === "Free text" || item.value === "Alphanumeric",
-        )
+      const freeTextList = resultTypeCodes
+        .filter((item) => ["R", "A"].includes(item.value))
         .map((item) => item.id);
       setFreeResultList(freeTextList);
 
-      const numericId = resultTypeList.find(
-        (item) => item.value === "Numeric",
-      ).id;
-      setNumericResultId(numericId);
+      const numericEntry = resultTypeCodes.find((item) => item.value === "N");
+      if (numericEntry) {
+        setNumericResultId(numericEntry.id);
+      }
     }
-  }, [resultTypeList]);
+  }, [resultTypeCodes]);
 
   const handleNextStep = (newData, final = false) => {
     setFormData((prev) => ({ ...prev, ...newData }));
@@ -181,6 +175,9 @@ export const TestStepForm = ({
       setDictionaryList(res.dictionaryList || []);
       setAgeRangeList(res.ageRangeList || []);
       setIsLoading(false);
+    });
+    getFromOpenElisServer(`/rest/displayList/RESULT_TYPE_CODES`, (res) => {
+      setResultTypeCodes(res || []);
     });
     return () => {
       componentMounted.current = false;
@@ -301,19 +298,18 @@ export const TestStepForm = ({
         setSelectedUomList(selectedUom);
       }
 
+      const codeById = Object.fromEntries(
+        resultTypeCodes.map((item) => [item.id, item.value]),
+      );
       const mappedResultType = resultTypeList.find(
-        (type) =>
-          (initialData.resultType === "R" && type.value === "Free text") ||
-          (initialData.resultType === "D" && type.value === "Select List") ||
-          (initialData.resultType === "N" && type.value === "Numeric") ||
-          (initialData.resultType === "A" && type.value === "Alphanumeric") ||
-          (initialData.resultType === "M" && type.value === "Multiselect") ||
-          (initialData.resultType === "C" &&
-            type.value === "Cascading multiselect"),
+        (type) => codeById[type.id] === initialData.resultType,
       );
 
       if (mappedResultType) {
-        setSelectedResultTypeList(mappedResultType);
+        setSelectedResultTypeList({
+          ...mappedResultType,
+          code: codeById[mappedResultType.id],
+        });
       }
 
       if (initialData.dictionary && Array.isArray(initialData.dictionary)) {
@@ -408,6 +404,7 @@ export const TestStepForm = ({
     uomList,
     sampleTypeList,
     resultTypeList,
+    resultTypeCodes,
     dictionaryList,
   ]);
 
@@ -568,6 +565,7 @@ export const TestStepForm = ({
       handleNextStep={handleNextStep}
       handlePreviousStep={handlePreviousStep}
       resultTypeList={resultTypeList}
+      resultTypeCodes={resultTypeCodes}
       setSelectedResultTypeList={setSelectedResultTypeList}
     />,
     <StepFourSelectSampleTypeAndTestDisplayOrder
@@ -1161,6 +1159,7 @@ export const StepThreeTestResultTypeAndLoinc = ({
   handleNextStep,
   handlePreviousStep,
   resultTypeList,
+  resultTypeCodes,
   setSelectedResultTypeList,
 }) => {
   const handleSubmit = (values) => {
@@ -1212,14 +1211,21 @@ export const StepThreeTestResultTypeAndLoinc = ({
           setFieldValue,
         }) => {
           const handelResultType = (e) => {
+            const selectedId = e.target.value;
+            const idToCode = Object.fromEntries(
+              resultTypeCodes.map((item) => [item.id, item.value]),
+            );
             const selectedResultTypeObject = resultTypeList.find(
-              (item) => item.id == e.target.value,
+              (item) => item.id == selectedId,
             );
 
-            setFieldValue("resultType", e.target.value);
+            setFieldValue("resultType", selectedId);
 
             if (selectedResultTypeObject) {
-              setSelectedResultTypeList(selectedResultTypeObject);
+              setSelectedResultTypeList({
+                ...selectedResultTypeObject,
+                code: idToCode[selectedId],
+              });
             }
           };
 
@@ -1653,7 +1659,7 @@ export const StepFiveSelectListOptionsAndResultOrder = ({
   return (
     <>
       {currentStep === 4 &&
-      ["2", "6", "7"].includes(selectedResultTypeList?.id) ? (
+      ["D", "M", "C"].includes(selectedResultTypeList?.code) ? (
         <>
           <Formik
             initialValues={formData}
@@ -2227,7 +2233,7 @@ export const StepSixSelectRangeAgeRangeAndSignificantDigits = ({
 
   return (
     <>
-      {currentStep === 5 && selectedResultTypeList?.id === "4" ? (
+      {currentStep === 5 && selectedResultTypeList?.code === "N" ? (
         <>
           <Formik
             initialValues={formData}

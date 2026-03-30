@@ -16,6 +16,9 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <class>org.openelisglobal.localization.valueholder.Localization</class>
+        <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
+        <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>
         <class>org.openelisglobal.login.valueholder.LoginUser</class>
         <class>org.openelisglobal.gender.valueholder.Gender</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
@@ -69,6 +72,17 @@
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
+        <!-- External Quality Assurance entities (005-eqa-module) -->
+        <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
+        <class>org.openelisglobal.eqa.valueholder.EQADistribution</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+        <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
+
+        <!-- Quality Control / Internal Control entities (005-eqa-module QC/IC) -->
+        <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCSignature</class>
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
@@ -77,6 +91,8 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerError</class>
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>

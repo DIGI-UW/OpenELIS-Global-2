@@ -17,6 +17,8 @@
         <property name="hibernate.format_sql">true</property>
         <property name="hibernate.jdbc.batch_size">50</property>
         <property name="hibernate.jdbc.batch_versioned_data">true</property>
+        <property name="hibernate.order_inserts">true</property>
+        <property name="hibernate.order_updates">true</property>
         <!-- <property name="transaction.factory_class">org.hibernate.transaction.JDBCTransactionFactory</property>
             <property name="current_session_context_class">thread</property> -->
         <property name="hibernate.query.factory_class">org.hibernate.hql.internal.classic.ClassicQueryTranslatorFactory</property>
@@ -134,7 +136,6 @@
         <mapping resource="hibernate/hbm/QaObservation.hbm.xml" />
         <mapping resource="hibernate/hbm/ElectronicOrder.hbm.xml" />
         <mapping resource="hibernate/hbm/TestDictionary.hbm.xml" />
-        <mapping resource="hibernate/hbm/Localization.hbm.xml" />
         <mapping resource="hibernate/hbm/Image.hbm.xml" />
         <mapping resource="hibernate/hbm/ReferringTestResult.hbm.xml" />
         <mapping resource="hibernate/hbm/BarcodeLabelInfo.hbm.xml" />
