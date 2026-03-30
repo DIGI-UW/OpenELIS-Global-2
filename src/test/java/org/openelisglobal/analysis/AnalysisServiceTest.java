@@ -29,6 +29,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 
+
 public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     private static final byte[] fileContent = Base64.getDecoder()
@@ -491,6 +492,40 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         String result = aService.getMethodId(analysis);
         Assert.assertEquals("123", result);
     }
+
+
+    @Test
+    public void hasBeenCorrectedSinceLastPatientReport_shouldReturnFalse_whenAnalysisIsNull() {
+        boolean result = aService.hasBeenCorrectedSinceLastPatientReport(null);
+        Assert.assertFalse(result);
+    }
+
+    @Test
+    public void hasBeenCorrectedSinceLastPatientReport_shouldReturnTrue_whenCorrected() {
+        Analysis analysis = new Analysis();
+        analysis.setCorrectedSincePatientReport(true);
+
+        boolean result = aService.hasBeenCorrectedSinceLastPatientReport(analysis);
+        Assert.assertTrue(result);
+    }
+
+    @Test
+    public void getTest_shouldReturnNull_whenAnalysisIsNull() {
+        org.openelisglobal.test.valueholder.Test result = aService.getTest(null);
+        Assert.assertNull(result);
+    }
+
+    @Test
+    public void getTest_shouldReturnTest_whenExists() {
+        Analysis analysis = new Analysis();
+        org.openelisglobal.test.valueholder.Test test = tService.get("1");
+        analysis.setTest(test);
+
+        org.openelisglobal.test.valueholder.Test result = aService.getTest(analysis);
+        Assert.assertNotNull(result);
+    }
+
+
 
     public Analysis createDemoAnalysis() {
         Analysis analysis1 = aService.getAnalysisById("2");
