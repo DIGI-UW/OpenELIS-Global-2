@@ -1,6 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
+import {
+  QUICK_TIMEOUT,
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../helpers/timeouts";
 
 test.describe("Analyzer Plugin Config", () => {
   test("profile selection prefills implemented analyzer fields", async ({
@@ -21,13 +31,18 @@ test.describe("Analyzer Plugin Config", () => {
       await form.expectOpen();
 
       try {
-        await expect(form.pluginTypeDropdown).toBeVisible({ timeout: 5_000 });
+        await expect(form.pluginTypeDropdown).toBeVisible({
+          timeout: SHORT_TIMEOUT,
+        });
       } catch {
         // Modal may have closed — retry
-        if (await form.modal.isVisible()) {
-          await form.cancelButton.click().catch(() => {});
+        if (
+          (await form.modal.isVisible()) &&
+          (await form.cancelButton.isVisible())
+        ) {
+          await form.cancelButton.click();
         }
-        await page.waitForTimeout(1_000);
+        await expect(form.modal).not.toBeVisible({ timeout: QUICK_TIMEOUT });
         continue;
       }
 
@@ -40,22 +55,32 @@ test.describe("Analyzer Plugin Config", () => {
         const genericAstmOption = page
           .getByRole("option", { name: /Generic ASTM/i })
           .first();
-        if (await genericAstmOption.isVisible().catch(() => false)) {
+        let optionVisible = false;
+        try {
+          await expect(genericAstmOption).toBeVisible({
+            timeout: QUICK_TIMEOUT,
+          });
+          optionVisible = true;
+        } catch {
+          // Option not rendered in this attempt — retry
+        }
+        if (optionVisible) {
           await genericAstmOption.click();
           selectedPlugin = true;
           break;
         }
         await page.keyboard.press("Escape");
-        await page.waitForTimeout(1_000);
+        await expect(genericAstmOption).not.toBeVisible({
+          timeout: QUICK_TIMEOUT,
+        });
       }
       if (selectedPlugin) break;
 
       // Close form and retry
       if (await form.modal.isVisible()) {
-        await form.cancelButton.click().catch(() => {});
-        await expect(form.modal)
-          .not.toBeVisible({ timeout: 2_000 })
-          .catch(() => {});
+        if (await form.cancelButton.isVisible())
+          await form.cancelButton.click();
+        await expect(form.modal).not.toBeVisible({ timeout: QUICK_TIMEOUT });
       }
     }
     expect(
@@ -72,7 +97,7 @@ test.describe("Analyzer Plugin Config", () => {
     const geneXpertProfile = page
       .getByRole("option", { name: /GeneXpert.*ASTM/i })
       .first();
-    await expect(geneXpertProfile).toBeVisible({ timeout: 10_000 });
+    await expect(geneXpertProfile).toBeVisible({ timeout: UI_TIMEOUT });
     await geneXpertProfile.click();
 
     // Selecting the profile should prefill key analyzer fields.
@@ -85,38 +110,11 @@ test.describe("Analyzer Plugin Config", () => {
   test("mappings page shows plugin-config snapshot and pending-codes panel", async ({
     page,
   }) => {
-    // Find or create a GeneXpert analyzer for testing
-    const listResp = await page.request.get(
-      "/api/OpenELIS-Global/rest/analyzer/analyzers",
+    const analyzerId = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
     );
-    const data = await listResp.json();
-    const existing = (data.analyzers ?? []).find(
-      (a: any) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
-    );
-
-    let analyzerId: string;
-    if (existing) {
-      analyzerId = String(existing.id);
-    } else {
-      const createResp = await page.request.post(
-        "/api/OpenELIS-Global/rest/analyzer/analyzers",
-        {
-          data: {
-            name: "Cepheid GeneXpert (ASTM Mode)",
-            analyzerType: "MOLECULAR",
-            pluginTypeId: "generic-astm",
-            ipAddress: "172.21.1.100",
-            port: 9600,
-            protocolVersion: "ASTM_LIS2_A2",
-            identifierPattern: "GENEXPERT|CEPHEID",
-            status: "ACTIVE",
-            defaultConfigId: "astm/genexpert-astm",
-          },
-        },
-      );
-      const created = await createResp.json();
-      analyzerId = String(created.id);
-    }
 
     const list = new AnalyzerListPage(page);
 
@@ -130,7 +128,7 @@ test.describe("Analyzer Plugin Config", () => {
     );
 
     const snapshotTile = page.locator('[data-testid="plugin-config-snapshot"]');
-    await expect(snapshotTile).toBeVisible({ timeout: 15_000 });
+    await expect(snapshotTile).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(snapshotTile).toContainText("{");
 
     await expect(

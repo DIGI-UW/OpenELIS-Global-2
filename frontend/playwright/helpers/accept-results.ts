@@ -1,6 +1,16 @@
-import { Page, TestInfo, expect } from "@playwright/test";
-import { showStepCard } from "./title-card";
-import { isVideoProject, videoPause } from "./video-pause";
+import { Page, expect } from "@playwright/test";
+import type { DemoPresentation } from "./demo-presentation";
+import {
+  accessionTextRegExp,
+  locatorForAccessionNumber,
+  openAccessionResultsAndWaitForText,
+} from "./results-ui";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+  NAV_TIMEOUT,
+} from "./timeouts";
 
 /**
  * Accept all analyzer results on the staging page, verify they were saved,
@@ -9,121 +19,122 @@ import { isVideoProject, videoPause } from "./video-pause";
  * Call this AFTER verifying results are visible on the AnalyzerResults page.
  *
  * Flow:
- *   1. Click "Save All Results" label (Carbon Checkbox — hidden input + visible label)
+ *   1. Check "Save All Results" via stable checkbox id
  *   2. Click Save button (data-testid="Save-btn")
- *   3. Wait for POST /rest/AnalyzerResults → page reloads
- *   4. Verify staging page is now empty (results promoted to official result table)
- *   5. (Optional) Navigate to AccessionResults to verify accepted results appear
+ *   3. Navigate to AccessionResults for the staged accession
+ *   4. Verify the accepted results appear in the OE results view
  *
  * DOM references (from AnalyserResults.js):
- *   - Accept All checkbox label: text "Save All Results" (line 385)
+ *   - Accept All checkbox input: id="saveallresults"
  *   - Save button: data-testid="Save-btn" (line 505)
+ *   - Staged accession number: data-testid="LabNo"
  *   - POST to /rest/AnalyzerResults, reloads same page on success (line 134)
- *   - Empty state: resultList is empty → no table rows rendered (line 365)
  *
  * Note: OE auto-creates Sample/SampleItem/Analysis/Result records on accept,
  * even when no pre-existing order exists. So AccessionResults will show results
  * for any accession number — pre-existing orders are NOT required.
  *
- * @param accessionNumber If provided, navigates to AccessionResults after
- *   acceptance to verify the results appear with proper test names.
+ * @param accessionNumber Optional explicit accession. If omitted, the helper
+ *   captures the first staged accession from the current page before saving.
  */
 export async function acceptAndVerifyResults(
   page: Page,
-  testInfo: TestInfo,
+  presentation: DemoPresentation,
   stepOffset: number,
   accessionNumber?: string,
 ) {
-  // ── Accept All ──────────────────────────────────────────────────
-  await showStepCard(
-    page,
-    stepOffset + 1,
-    "Accept All Results",
-    2000,
-    testInfo,
-  );
+  const stagedAccession =
+    accessionNumber ??
+    (await page.locator('[data-testid="LabNo"]').first().textContent())?.trim();
 
-  // Carbon Checkbox renders a hidden <input> + visible <label>.
-  // Click the label text, not the hidden input.
-  const acceptAllLabel = page.getByText("Save All Results");
-  await expect(acceptAllLabel).toBeVisible({ timeout: 5_000 });
-  await acceptAllLabel.click();
-  await videoPause(page, 1_500, testInfo);
+  if (!stagedAccession) {
+    throw new Error("Could not determine staged accession number before save.");
+  }
+
+  // ── Accept All ──────────────────────────────────────────────────
+  await presentation.step(stepOffset + 1, "Accept All Results", 2000);
+
+  const stagedRows = () =>
+    page
+      .getByRole("row")
+      .filter({ hasText: accessionTextRegExp(stagedAccession.trim()) });
+
+  let stagedCountBeforeSave = await stagedRows().count();
+  if (stagedCountBeforeSave === 0) {
+    const labNumberInput = page.getByRole("textbox", {
+      name: /enter lab number/i,
+    });
+    await expect(labNumberInput).toBeVisible({ timeout: SHORT_TIMEOUT });
+    await labNumberInput.fill(stagedAccession);
+    await page.getByRole("button", { name: /search/i }).click();
+    await expect(stagedRows().first()).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
+    stagedCountBeforeSave = await stagedRows().count();
+  }
+
+  for (let i = 0; i < stagedCountBeforeSave; i++) {
+    const acceptInput = stagedRows()
+      .nth(i)
+      .locator('input[id$=".isAccepted"]')
+      .first();
+    await expect(acceptInput).toBeAttached({ timeout: SHORT_TIMEOUT });
+    if (!(await acceptInput.isChecked())) {
+      const checkboxId = await acceptInput.getAttribute("id");
+      if (!checkboxId) {
+        throw new Error("Could not determine row acceptance checkbox id.");
+      }
+      await page.locator(`label[for="${checkboxId}"]`).click();
+    }
+  }
+  await presentation.pause(1_500);
 
   // ── Save ────────────────────────────────────────────────────────
-  await showStepCard(
-    page,
-    stepOffset + 2,
-    "Save Accepted Results",
-    2000,
-    testInfo,
-  );
+  await presentation.step(stepOffset + 2, "Save Accepted Results", 2000);
 
   const saveButton = page.locator('[data-testid="Save-btn"]');
-  await expect(saveButton).toBeVisible({ timeout: 5_000 });
+  await expect(saveButton).toBeVisible({ timeout: SHORT_TIMEOUT });
+  await expect(saveButton).toBeEnabled({ timeout: SHORT_TIMEOUT });
 
-  // Save POSTs to /rest/AnalyzerResults, then reloads the page (line 134).
-  // Wait for the POST response (not URL change, since we're already on AnalyzerResults).
-  const saveResponsePromise = page.waitForResponse(
-    (resp) =>
-      resp.url().includes("/rest/AnalyzerResults") &&
-      resp.request().method() === "POST",
-    { timeout: 30_000 },
-  );
   await saveButton.click();
-  await saveResponsePromise;
-  // Wait for page reload after POST
-  await page.waitForLoadState("domcontentloaded");
-  await videoPause(page, 2_000, testInfo);
 
-  // ── Verify staging page is empty ────────────────────────────────
-  // After save, the page reloads and should show no results
-  // (all were accepted → promoted to result table)
-  const noResults = page.getByText("There are no records to display");
-  await noResults.isVisible({ timeout: 5_000 }).catch(() => false);
+  const saveInProgress = page.locator(
+    '[data-testid="analyzer-results-save-in-progress"]',
+  );
+  await Promise.any([
+    expect(saveButton).toBeDisabled({ timeout: SHORT_TIMEOUT }),
+    saveInProgress.waitFor({ state: "attached", timeout: SHORT_TIMEOUT }),
+  ]).catch(() => {
+    // Some runs complete quickly and can skip observable transition states.
+  });
 
-  if (isVideoProject(testInfo)) {
-    await page.screenshot({
-      path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-after-accept.png`,
-      fullPage: true,
-    });
+  // Success path issues full page reload (AnalyserResults.js).
+  await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: NAV_TIMEOUT });
+
+  if (stagedCountBeforeSave > 0) {
+    await expect
+      .poll(async () => stagedRows().count(), {
+        timeout: LONG_TIMEOUT,
+      })
+      .toBe(0);
   }
-  await videoPause(page, 2_000, testInfo);
 
-  // ── Navigate to AccessionResults (if accession number provided) ──
-  if (accessionNumber) {
-    await showStepCard(
-      page,
-      stepOffset + 3,
-      "View Accepted Results",
-      2000,
-      testInfo,
-    );
+  await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
+  await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
 
-    // AccessionResults auto-searches when accessionNumber is in the URL
-    const logbookPromise = page.waitForResponse(
-      (resp) => resp.url().includes("/rest/LogbookResults"),
-      { timeout: 30_000 },
-    );
-    await page.goto(`AccessionResults?accessionNumber=${accessionNumber}`, {
-      waitUntil: "domcontentloaded",
-    });
-    await logbookPromise;
-
-    // Verify the accession number appears in the results table.
-    // Auto-created samples may not appear immediately — check but don't block.
-    await page
-      .getByText(accessionNumber)
-      .first()
-      .isVisible({ timeout: 10_000 })
-      .catch(() => false);
-    if (isVideoProject(testInfo)) {
-      await page.screenshot({
-        path: `test-results/${testInfo.title.replace(/[^a-zA-Z0-9]/g, "-").substring(0, 40)}-accession-results.png`,
-        fullPage: true,
-      });
-    }
-
-    await videoPause(page, 3_000, testInfo);
-  }
+  // ── Verify in OE results view, not on the staging page ───────────
+  await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
+  await openAccessionResultsAndWaitForText(
+    page,
+    stagedAccession,
+    stagedAccession,
+    {
+      timeoutMs: NAV_TIMEOUT,
+      perAttemptTimeoutMs: UI_TIMEOUT,
+    },
+  );
+  await expect(locatorForAccessionNumber(page, stagedAccession)).toBeVisible({
+    timeout: UI_TIMEOUT,
+  });
+  await presentation.pause(3_000);
 }

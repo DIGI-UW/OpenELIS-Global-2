@@ -1,14 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
+import * as path from "path";
+
+// Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
+// No manual `set -a && . .env` needed.
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 /**
  * OpenELIS Global Playwright Configuration
  *
  * Projects are organized by environment requirement:
  *
- *   core-app      — CI build stack (no plugins, bridge, or import dirs)
- *   harness       — Analyzer harness infra tests (bridge, simulator, plugins)
- *   demo          — End-to-end workflow demos (run on harness, normal speed)
- *   demo-video    — Same demo tests with slowMo + video (local recording only)
+ *   core-app            — CI build stack (no plugins, bridge, or import dirs)
+ *   core-demo           — UI workflow demos provable on build stack + fixtures
+ *   core-demo-video     — core-demo with slowMo + video (local recording)
+ *   harness-demo        — Analyzer-stack UI tests requiring full harness
+ *   harness-demo-video  — harness-demo with slowMo + video (local recording)
  *
  * New test files must be explicitly added to a project's testMatch.
  * Unmatched files won't run — this is intentional (allowlist, not blocklist).
@@ -16,13 +22,19 @@ import { defineConfig, devices } from "@playwright/test";
  * @see https://playwright.dev/docs/test-configuration
  */
 
-// Demo workflow tests — shared between demo and demo-video projects
-const DEMO_TESTS = [
+// Demos that must run on the minimal build stack only (see e2e-playwright.yml)
+const CORE_DEMO_TESTS = ["**/ogc-284-barcode-workflow.spec.ts"];
+
+// Analyzer-stack UI tests that require harness overlay + seeded analyzers
+const HARNESS_DEMO_TESTS = [
+  "**/analyzer-test-connection.spec.ts",
+  "**/analyzer-plugin-config.spec.ts",
+  "**/analyzer-simulator.spec.ts",
   "**/demo-quantstudio*.spec.ts",
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
   "**/astm-genexpert-results.spec.ts",
-  "**/ogc-284-demo-video.spec.ts",
+  "**/analyzer-demo-flow.spec.ts",
 ];
 
 export default defineConfig({
@@ -30,7 +42,8 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 2 : undefined,
+  // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
@@ -49,7 +62,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
 
     // Evidence collection
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
   },
@@ -79,15 +92,10 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Harness — infrastructure tests needing bridge, simulator, plugins
+    // Core demo — build-stack UI-only demos validated in CI
     {
-      name: "harness",
-      testMatch: [
-        "**/analyzer-test-connection.spec.ts",
-        "**/analyzer-plugin-config.spec.ts",
-        "**/analyzer-simulator.spec.ts",
-        "**/file-import.spec.ts",
-      ],
+      name: "core-demo",
+      testMatch: CORE_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -95,21 +103,34 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Demo — workflow tests at normal speed (CI validation on harness)
+    // Core demo video — same core demos with slowMo and video (local only)
     {
-      name: "demo",
-      testMatch: DEMO_TESTS,
+      name: "core-demo-video",
+      testMatch: CORE_DEMO_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        video: "on",
+        launchOptions: {
+          slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
+        },
+      },
+      dependencies: ["setup"],
+    },
+
+    // Analyzer-stack UI tests (CI: reusable harness workflow only)
+    {
+      name: "harness-demo",
+      testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },
-
-    // Demo video — same tests with slowMo for watchable recordings (local only)
     {
-      name: "demo-video",
-      testMatch: DEMO_TESTS,
+      name: "harness-demo-video",
+      testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
