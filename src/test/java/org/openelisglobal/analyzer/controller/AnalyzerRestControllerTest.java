@@ -486,4 +486,107 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
                 .content(updateBody)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(analyzerId));
     }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{id}/test-connection with HL7 protocol
+     * returns real connectivity result (not hardcoded success)
+     */
+    @Test
+    public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
+        String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"192.168.1.100\","
+                + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
+                + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andReturn();
+        assertEquals("HL7 analyzer creation should succeed", 201, createResult.getResponse().getStatus());
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Test connection: should return real result (not hardcoded success)
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
+                .andExpect(jsonPath("$.ipAddress").value("192.168.1.100")).andExpect(jsonPath("$.port").value(5380))
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.protocol").value("HL7_V2_3_1"))
+                // Must have TCP reachability info (not just hardcoded success)
+                .andExpect(jsonPath("$.tcpReachable").exists()).andExpect(jsonPath("$.message").exists());
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{id}/test-connection with HL7 protocol
+     * and no IP/port returns proper error
+     */
+    @Test
+    public void testTestConnection_WithHl7Protocol_NoIpPort_ReturnsConfigError() throws Exception {
+        String uniqueName = "TEST-HL7-NoIP-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"HEMATOLOGY\",\"protocolVersion\":\"HL7_V2_3_1\",\"testUnitIds\":[]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andReturn();
+        assertEquals(201, createResult.getResponse().getStatus());
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Test connection without IP/port should fail with config error
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.message").exists());
+    }
+
+    /**
+     * Test: CommunicationMode is persisted and returned in analyzer response
+     */
+    @Test
+    public void testCreateAnalyzer_WithCommunicationMode_PersistsMode() throws Exception {
+        String uniqueName = "TEST-CommMode-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"CHEMISTRY\",\"ipAddress\":\"192.168.1.50\","
+                + "\"port\":6001,\"protocolVersion\":\"HL7_V2_3_1\","
+                + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Verify GET returns communicationMode
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
+    }
+
+    /**
+     * Test: Null communicationMode defaults to ANALYZER_INITIATED in effective mode
+     */
+    @Test
+    public void testCreateAnalyzer_WithNullCommunicationMode_DefaultsToAnalyzerInitiated() throws Exception {
+        String uniqueName = "TEST-NullCommMode-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\",\"testUnitIds\":[]}";
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // communicationMode should be null (not set), but effective should default
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
+    }
 }
