@@ -31,6 +31,8 @@ before(() => {
   loginPage = new LoginPage();
   loginPage.visit();
   homePage = loginPage.goToHomePage();
+  // Seed ARV/EID organizations required by center/site dropdowns
+  cy.setupStudyEntryOrganizations();
   // Disable fail-fast for this spec so all tests run independently
   Cypress.env("FAIL_FAST_ENABLED", false);
 });
