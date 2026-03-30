@@ -69,6 +69,11 @@ public class DiagnosticReportProvider implements IResourceProvider {
                 throw new ResourceNotFoundException("DiagnosticReport not found: " + uuid);
             }
 
+            if (matches.size() > 1) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), method, "Data integrity issue: " + matches.size()
+                        + " Analysis records share fhirUuid " + uuid + "; using first match");
+            }
+
             return fhirTransformService.transformAnalysisToDiagnosticReport(matches.get(0));
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
