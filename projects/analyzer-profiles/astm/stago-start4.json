@@ -16,31 +16,31 @@
   },
   "default_test_mappings": [
     {
-      "analyzer_code": "PT",
+      "test_code": "PT",
       "test_name_hint": "Prothrombin Time",
       "loinc": "5902-2",
       "unit": "s"
     },
     {
-      "analyzer_code": "INR",
+      "test_code": "INR",
       "test_name_hint": "INR",
       "loinc": "6301-6",
       "unit": ""
     },
     {
-      "analyzer_code": "APTT",
+      "test_code": "APTT",
       "test_name_hint": "Activated Partial Thromboplastin Time",
       "loinc": "3173-2",
       "unit": "s"
     },
     {
-      "analyzer_code": "FIB",
+      "test_code": "FIB",
       "test_name_hint": "Fibrinogen",
       "loinc": "3255-7",
       "unit": "mg/dL"
     },
     {
-      "analyzer_code": "DDIMER",
+      "test_code": "DDIMER",
       "test_name_hint": "D-Dimer",
       "loinc": "48065-7",
       "unit": "mg/L FEU"

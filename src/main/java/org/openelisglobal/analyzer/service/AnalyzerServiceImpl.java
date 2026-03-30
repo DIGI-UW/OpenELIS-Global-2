@@ -90,7 +90,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Override
     @Transactional(readOnly = true)
     public Analyzer getAnalyzerByName(String name) {
-        return getMatch("name", name).orElse(null);
+        // Return the most recent active analyzer with this name.
+        // Multiple analyzers can share a name (e.g., two instruments of the same
+        // model).
+        // Prefer ACTIVE over other statuses; within same status, prefer highest ID
+        // (newest).
+        List<Analyzer> matches = getAllMatching("name", name);
+        if (matches == null || matches.isEmpty()) {
+            return null;
+        }
+        return matches.stream().filter(a -> a.getStatus() != Analyzer.AnalyzerStatus.DELETED)
+                .max(java.util.Comparator.comparing(a -> Integer.parseInt(a.getId())))
+                .orElse(matches.get(matches.size() - 1));
     }
 
     @Override
@@ -103,21 +114,20 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             update(analyzer);
         }
 
-        persistTestMappings(analyzer.getAnalyzerType() != null ? analyzer.getAnalyzerType().getId() : null,
-                testMappings, existingMappings);
+        persistTestMappings(analyzer.getId(), testMappings, existingMappings);
     }
 
     @Override
     @Transactional
-    public void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
+    public void persistTestMappings(String analyzerId, List<AnalyzerTestMapping> testMappings,
             List<AnalyzerTestMapping> existingMappings) {
-        if (analyzerTypeId == null) {
+        if (analyzerId == null) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
-                    "analyzerTypeId is null — skipping " + testMappings.size() + " mapping(s)");
+                    "analyzerId is null — skipping " + testMappings.size() + " mapping(s)");
             return;
         }
         for (AnalyzerTestMapping mapping : testMappings) {
-            mapping.setAnalyzerTypeId(analyzerTypeId);
+            mapping.setAnalyzerId(analyzerId);
             if (newMapping(mapping, existingMappings)) {
                 mapping.setSysUserId("1");
                 analyzerMappingService.insert(mapping);
@@ -132,7 +142,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     private boolean newMapping(AnalyzerTestMapping mapping, List<AnalyzerTestMapping> existingMappings) {
         for (AnalyzerTestMapping existingMap : existingMappings) {
-            if (Objects.equals(existingMap.getAnalyzerTypeId(), mapping.getAnalyzerTypeId())
+            if (Objects.equals(existingMap.getAnalyzerId(), mapping.getAnalyzerId())
                     && existingMap.getAnalyzerTestName().equals(mapping.getAnalyzerTestName())) {
                 return false;
             }
@@ -362,10 +372,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     @SuppressWarnings("unchecked")
     public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
+
         analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
 
         Object mappingsObj = config.get("default_test_mappings");
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                "default_test_mappings type: " + (mappingsObj != null ? mappingsObj.getClass().getSimpleName() : "null")
+                        + ", is List: " + (mappingsObj instanceof List));
         if (!(mappingsObj instanceof List)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                    "No default_test_mappings list found in config — skipping");
             return;
         }
 
@@ -374,7 +392,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         Analyzer analyzer = get(analyzerId);
         List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
         for (Map<String, Object> mapping : mappings) {
-            String analyzerCode = (String) mapping.get("analyzer_code");
+            String analyzerCode = (String) mapping.get("test_code");
             String loinc = (String) mapping.get("loinc");
 
             if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
@@ -392,13 +410,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
             org.openelisglobal.test.valueholder.Test test = tests.get(0);
 
-            String typeId = (analyzer != null && analyzer.getAnalyzerType() != null)
-                    ? analyzer.getAnalyzerType().getId()
-                    : null;
-
             AnalyzerTestMapping atm = new AnalyzerTestMapping();
             atm.setAnalyzerId(analyzerId);
-            atm.setAnalyzerTypeId(typeId);
             atm.setAnalyzerTestName(analyzerCode);
             atm.setTestId(test.getId());
             atm.setSysUserId(sysUserId);
@@ -406,16 +419,15 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             try {
                 if (newMapping(atm, dbTestMappings)) {
                     analyzerMappingService.insert(atm);
-                    AnalyzerTestNameCache.getInstance().registerPluginAnalyzer(analyzer.getAnalyzerType().getName(),
-                            typeId);
+                    dbTestMappings.add(atm);
                     created++;
                 } else {
+                    // Update existing mapping if test_id changed (e.g., profile updated)
                     for (AnalyzerTestMapping existing : dbTestMappings) {
-                        if (Objects.equals(existing.getAnalyzerTypeId(), atm.getAnalyzerTypeId())
+                        if (Objects.equals(existing.getAnalyzerId(), atm.getAnalyzerId())
                                 && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
                                 && !Objects.equals(existing.getTestId(), atm.getTestId())) {
                             existing.setTestId(atm.getTestId());
-                            existing.setAnalyzerId(atm.getAnalyzerId());
                             existing.setSysUserId(sysUserId);
                             analyzerMappingService.update(existing);
                             created++;
@@ -431,7 +443,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                         "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
             }
         }
-        AnalyzerTestNameCache.getInstance().reloadCache();
+        // Invalidate cache AFTER the transaction commits — not during.
+        // If reloadCache() runs during the transaction, a concurrent thread may
+        // reload stale data before the mappings are committed to the DB.
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        LogEvent.logInfo("AnalyzerServiceImpl", "afterCommit",
+                                "Transaction committed — reloading AnalyzerTestNameCache");
+                        AnalyzerTestNameCache.getInstance().reloadCache();
+                    }
+                });
 
         if (created > 0) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
