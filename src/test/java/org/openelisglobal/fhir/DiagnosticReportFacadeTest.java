@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 
 import ca.uhn.fhir.context.FhirContext;
@@ -8,6 +9,7 @@ import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -59,8 +61,10 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void readDiagnosticReport_finalizedAnalysis_shouldReturnFinalStatus() throws Exception {
-        Analysis analysis = analysisService
-                .getAllMatching("fhirUuid", java.util.UUID.fromString(FINALIZED_ANALYSIS_FHIR_UUID)).get(0);
+        List<Analysis> matches = analysisService.getAllMatching("fhirUuid",
+                java.util.UUID.fromString(FINALIZED_ANALYSIS_FHIR_UUID));
+        assertFalse("Analysis not found in test data", matches.isEmpty());
+        Analysis analysis = matches.get(0);
         assertNotNull("Analysis not found in test data", analysis);
 
         MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/" + FINALIZED_ANALYSIS_FHIR_UUID);

@@ -69,19 +69,14 @@ public class DiagnosticReportProvider implements IResourceProvider {
                 throw new ResourceNotFoundException("DiagnosticReport not found: " + uuid);
             }
 
-            DiagnosticReport report = fhirTransformService.transformAnalysisToDiagnosticReport(matches.get(0));
-            if (report == null) {
-                throw new ResourceNotFoundException("Failed to transform Analysis to DiagnosticReport: " + uuid);
-            }
-
-            return report;
+            return fhirTransformService.transformAnalysisToDiagnosticReport(matches.get(0));
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error reading DiagnosticReport: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error retrieving DiagnosticReport");
+            throw new InternalErrorException("Unexpected server error retrieving DiagnosticReport", e);
         }
     }
 }
