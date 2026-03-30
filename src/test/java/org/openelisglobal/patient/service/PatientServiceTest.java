@@ -554,4 +554,16 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    @Test
+    public void externalIDExists_withNonExistentId_shouldReturnFalse() {
+        Assert.assertFalse("Should return false for a non-existent external ID",
+                patientService.externalIDExists("NONEXISTENT_ID_999"));
+    }
+
+    @Test
+    public void getPatientByNationalId_withUnknownId_shouldReturnNull() {
+        Patient result = patientService.getPatientByNationalId("UNKNOWN_ID_999");
+        Assert.assertNull("Should return null for an unknown national ID", result);
+    }
+
 }

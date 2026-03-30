@@ -129,4 +129,37 @@ public class PatientTypeServiceTest extends BaseWebContextSensitiveTest {
 
         Assert.assertEquals("D", savedPatientType.getType());
     }
+
+    @Test
+    public void getPatientTypes_withNonMatchingFilter_shouldReturnEmptyList() throws Exception {
+        List<PatientType> result = typeService.getPatientTypes("NonExistentType999");
+
+        Assert.assertNotNull("Result must not be null for non-matching filter", result);
+        Assert.assertTrue("Should return empty list when no types match filter", result.isEmpty());
+    }
+
+    @Test
+    public void update_shouldPersistUpdatedType() throws Exception {
+        PatientType existing = typeService.get("6");
+        Assert.assertNotNull("Precondition: type must exist", existing);
+
+        existing.setType("UPDATED_D");
+        typeService.update(existing);
+
+        PatientType reloaded = typeService.get("6");
+        Assert.assertEquals("Updated type value should be persisted", "UPDATED_D", reloaded.getType());
+    }
+
+    @Test
+    public void getTotalPatientTypeCount_shouldMatchGetAllSize() throws Exception {
+        PatientType newType = new PatientType();
+        newType.setDescription("Outpatient Type");
+        newType.setType("OP");
+        typeService.insert(newType);
+
+        int totalCount = typeService.getTotalPatientTypeCount();
+        int allCount = typeService.getAllPatientTypes().size();
+
+        Assert.assertEquals("getTotalPatientTypeCount must match getAllPatientTypes size", allCount, totalCount);
+    }
 }
