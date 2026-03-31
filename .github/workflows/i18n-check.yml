@@ -51,7 +51,7 @@ jobs:
           changed = [f for f in result.stdout.strip().split('\n') if f.strip()]
 
           non_english = [f for f in changed
-                         if not f.endswith('/en.json')]
+                         if f.endswith('.json') and not f.endswith('/en.json')]
 
           if non_english:
               print('::error::Non-English translation files were modified in this PR.')
