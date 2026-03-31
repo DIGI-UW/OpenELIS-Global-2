@@ -82,5 +82,6 @@ public class RoleServiceTest extends BaseWebContextSensitiveTest {
         role.setId("1");
         List<Role> referencingRoles = roleService.getReferencingRoles(role);
         Assert.assertNotNull(referencingRoles);
+        Assert.assertTrue(referencingRoles.isEmpty());
     }
 }
