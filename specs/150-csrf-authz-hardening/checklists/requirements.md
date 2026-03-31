@@ -5,9 +5,11 @@ to planning **Created**: 2026-02-09 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [ ] No implementation details (languages, frameworks, APIs) — spec references
+      Spring Security, React, filter chains
 - [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
+- [ ] Written for non-technical stakeholders — includes framework-specific
+      content
 - [x] All mandatory sections completed
 
 ## Requirement Completeness
@@ -15,7 +17,8 @@ to planning **Created**: 2026-02-09 **Feature**: [spec.md](../spec.md)
 - [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
-- [x] Success criteria are technology-agnostic (no implementation details)
+- [ ] Success criteria are technology-agnostic (no implementation details) —
+      references framework-specific mechanisms
 - [x] All acceptance scenarios are defined
 - [x] Edge cases are identified
 - [x] Scope is clearly bounded
@@ -26,7 +29,8 @@ to planning **Created**: 2026-02-09 **Feature**: [spec.md](../spec.md)
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
+- [ ] No implementation details leak into specification — spec includes
+      implementation-level detail by design (security audit)
 
 ## Notes
 

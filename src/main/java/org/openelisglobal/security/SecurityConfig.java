@@ -439,8 +439,10 @@ public class SecurityConfig {
                         response.setStatus(403);
                         response.setContentType("application/json");
                         response.setCharacterEncoding("UTF-8");
-                        response.getWriter()
-                                .write("{ \"status\": 403, \"message\": \"CSRF token missing or invalid\" }");
+                        String message = (accessDeniedException instanceof org.springframework.security.web.csrf.CsrfException)
+                                ? "CSRF token missing or invalid"
+                                : "Access denied";
+                        response.getWriter().write("{ \"status\": 403, \"message\": \"" + message + "\" }");
                     } else {
                         response.sendRedirect(request.getContextPath() + "/Home?access=denied");
                     }
