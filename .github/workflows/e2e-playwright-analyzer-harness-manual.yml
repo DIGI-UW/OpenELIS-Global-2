@@ -8,4 +8,6 @@ on:
 jobs:
   run:
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
-    secrets: inherit
+    with:
+      test_user: ${{ vars.TEST_USER || 'admin' }}
+      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}

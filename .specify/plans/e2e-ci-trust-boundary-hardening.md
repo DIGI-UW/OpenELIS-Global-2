@@ -20,27 +20,27 @@ todos:
       statuses write, actions read, inherited secrets, GHCR image transfer, and
       PR-code checkout points. Output a privilege matrix in
       .specify/plans/e2e-ci-privilege-matrix.md.
-    status: pending
+    status: completed
   - id: classify-required-vs-accidental-privilege
     content:
       Separate truly required capabilities from convenience-driven ones so the
       workflow design reflects the rule that PR CI validates only and merged
       branches alone publish reusable outputs.
-    status: pending
+    status: completed
   - id: isolate-ghcr-e2e-cache-lane
     content:
       Redesign the GHCR usage model as an explicit transient e2e-cache lane with
       distinct write and read permission scopes, separate from any future real
       image publication concerns. Implement a scheduled cleanup workflow with
       7-day retention for e2e-cache images.
-    status: pending
+    status: completed
   - id: extract-lane-d-publication
     content:
       Extract publish-images into a separate publish-images.yml workflow
       triggered by workflow_run on 03 - E2E filtered to push/release events.
       Create a publish environment with deployment branch restriction on develop
       for DockerHub credentials.
-    status: pending
+    status: completed
   - id: remove-nonessential-secret-dependence
     content:
       Replace secrets.TEST_PASS with vars.TEST_PASS defaulting to adminADMIN!
@@ -48,21 +48,21 @@ todos:
       all reusable workflow calls including Cypress and analyzer harness. Remove
       environment e2e from all jobs; move TEST_USER and TEST_PASS to repo-level
       variables.
-    status: pending
+    status: completed
   - id: shrink-job-permissions
     content:
       Move from workflow-wide permissions to job-scoped least privilege so cache
       publishers, test executors, and the 03 Checkpoint reporter each get only
       the minimum permissions they require. Set persist-credentials false on all
       checkout steps. Verify e2e-gate treats all-skipped as failure.
-    status: pending
+    status: completed
   - id: resolve-fork-pr-trust-model
     content:
       Fork-rebuild stays as a short-term accepted exception (State A). Scope
       fork-rebuild job to packages write only — no statuses write, no broad
       secrets. Status reporting remains in Lane C reporter which already covers
       fork PRs. Document as explicit exception with migration path.
-    status: pending
+    status: completed
   - id: verify-develop-merge-behavior
     content:
       Prove that the resulting design remains green after merge to develop and
@@ -74,7 +74,7 @@ todos:
       Write clear repo guidance in .github/ describing which workflow changes
       require default branch merge, which code/config changes are picked up
       pre-merge, and how to reason about the split safely.
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -168,6 +168,9 @@ The target setup must follow these principles:
 - Secrets are removed from PR validation unless they are genuinely necessary.
 - Workflow privilege is scoped per job, not granted broadly at the workflow
   level. All checkouts set `persist-credentials: false`.
+- CI auth fallback is explicit and uniform everywhere in E2E test execution:
+  - `TEST_USER: ${{ vars.TEST_USER || 'admin' }}`
+  - `TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}`
 - The `e2e` environment is removed; test jobs use repo-level variables. A
   `publish` environment with deployment branch restriction on `develop` gates
   DockerHub credentials.
@@ -178,6 +181,24 @@ The target setup must follow these principles:
   explicit exception with a migration path away from it.
 - Cypress E2E remains in the PR gate (migration is a separate long-term
   effort); it is hardened like all other test executors.
+
+## Delivery Strategy And Constraints
+
+Primary delivery mode:
+
+- Implement in one PR on the hardening branch when possible.
+
+Allowed split condition:
+
+- If GitHub Actions workflow update constraints materially block safe rollout
+  validation in one PR (especially around `workflow_run` default-branch
+  orchestration behavior), split into the minimum number of PRs required to
+  preserve correctness and reviewer clarity.
+
+Execution preference:
+
+- Keep one PR unless a split is technically necessary; document the exact
+  reason and boundary if split is required.
 
 ## Recommended Target Architecture
 
@@ -264,6 +285,25 @@ Rules:
 
 ## Workplan
 
+## Cross-Phase Drift Guardrails
+
+To prevent drift during implementation, enforce these checkpoints after each
+phase:
+
+1. Re-run privilege inventory snippets against edited workflow files and compare
+   with the expected lane model.
+2. Confirm no reintroduction of:
+   - workflow-level broad write permissions
+   - `secrets: inherit` in reusable workflow calls
+   - `environment: e2e`
+   - missing `persist-credentials: false` on checkout steps
+3. Confirm the CI auth contract remains uniform:
+   - `TEST_USER: ${{ vars.TEST_USER || 'admin' }}`
+   - `TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}`
+4. Validate that reporter jobs remain tiny and trusted (no checkout/build/test).
+5. Record any divergence from plan intent immediately in this document before
+   proceeding.
+
 ## Phase 1: Inventory The Real Trust Boundaries
 
 Goal:
@@ -343,7 +383,7 @@ Tasks:
 4. Verify no other workflow path reuses this namespace for release publication.
 5. Implement a scheduled cleanup workflow (e.g., weekly cron) that deletes
    e2e-cache package versions older than 7 days using the GitHub API. This can
-   be delivered as a follow-up PR but is scoped into this effort.
+   be delivered in this PR and is required for this effort.
 
 Checkpoint:
 
@@ -361,9 +401,15 @@ Decisions (confirmed via QA):
 
 - `TEST_PASS` is not a real secret — the value `'adminADMIN!'` is already
   hardcoded as a fallback in the Cypress workflow.
+- Risk posture is explicit: these CI credentials are intentionally non-secret
+  defaults already broadly exposed in existing OpenELIS CI/dev usage; removing
+  secret plumbing does not create a new trust boundary regression.
 - CI auth contract: `vars.TEST_PASS` (repo-level variable, default
   `'adminADMIN!'`) and `vars.TEST_USER` (repo-level variable, default
   `'admin'`). No secret is needed for E2E login.
+- Strict fallback expressions are required in all relevant workflow jobs:
+  - `TEST_USER: ${{ vars.TEST_USER || 'admin' }}`
+  - `TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}`
 - The `e2e` environment is removed. `TEST_USER` and `TEST_PASS` move to
   repo-level variables. A `publish` environment (branch-restricted to
   `develop`) is created for DockerHub credentials only.
@@ -480,6 +526,13 @@ Checkpoint:
   - merged develop
   - post-merge publish flows
 
+Operational note:
+
+- Pre-merge workflow behavior and post-merge behavior can differ for
+  `workflow_run` orchestration. If a discrepancy appears, stop and record
+  whether it is due to default-branch workflow pickup rules versus checked-out
+  payload behavior.
+
 ## Phase 8: Document The Operator Model
 
 Goal:
@@ -513,6 +566,37 @@ Checkpoint:
 
 - The repo has a concise operator note that future contributors can follow
   without rediscovering these boundaries by trial and error.
+
+## GitHub Configuration Execution Model
+
+Goal:
+
+- Minimize manual operator work by automating repository configuration via `gh`
+  where possible, and provide deterministic manual steps only where API/CLI
+  controls are insufficient.
+
+Automation-first:
+
+- Use `gh`/GitHub API to:
+  - create or update the `publish` environment
+  - set deployment branch policy restriction to `develop`
+  - configure required environment secrets/variables where API permissions
+    allow (for example `DOCKERHUB_TOKEN`, `DOCKERHUB_USERNAME`)
+  - set/update repository-level variables:
+    - `TEST_USER` (default: `admin`)
+    - `TEST_PASS` (default: `adminADMIN!`)
+
+Manual fallback:
+
+- If any repo setting is not fully manageable via `gh` due to permission model,
+  provide exact click-path and values in a checklist with no ambiguity.
+
+Required output:
+
+- Add an operator runbook under `.github/` with:
+  - exact `gh` commands used
+  - exact manual fallback steps for any unsupported setting
+  - verification commands/checks to confirm effective configuration
 
 ## Success Criteria
 
