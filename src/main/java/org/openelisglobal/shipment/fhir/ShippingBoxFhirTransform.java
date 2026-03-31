@@ -30,7 +30,6 @@ import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -291,11 +290,10 @@ public class ShippingBoxFhirTransform {
     }
 
     /**
-     * Async method to transform and persist ShippingBox to FHIR server. Called from
-     * service layer on state changes. Loads box sample items within its own
-     * transaction to resolve lazy associations.
+     * Transform and persist ShippingBox to FHIR server. Called from service layer
+     * on state changes. Runs within a read-only transaction to resolve lazy
+     * associations for the database read portion.
      */
-    @Async
     @Transactional(readOnly = true)
     public void syncToFhir(ShippingBox box, boolean isCreate) {
         try {

@@ -2,6 +2,7 @@ package org.openelisglobal.shipment.form;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.form.BaseForm;
@@ -14,28 +15,34 @@ public class ShippingBoxForm extends BaseForm {
     private Integer id;
 
     @NotBlank(message = "Box ID is required")
+    @Size(max = 255)
     private String boxId;
 
     @NotNull(message = "Destination facility is required")
     private Integer destinationFacilityId;
 
+    @Size(max = 255)
     private String destinationFacilityName;
 
     @NotBlank(message = "Box state is required")
+    @Size(max = 255)
     private String state;
 
+    @Size(max = 255)
     private String temperatureRequirement;
 
     private Integer capacity;
 
     private Integer actualSampleCount;
 
+    @Size(max = 2000)
     private String notes;
 
     private Timestamp createdDate;
 
     private Integer createdBy;
 
+    @Size(max = 255)
     private String createdByName;
 
     private Timestamp sentDate;
@@ -50,6 +57,7 @@ public class ShippingBoxForm extends BaseForm {
 
     private Integer sampleCount;
 
+    @Size(max = 2000)
     private String contents;
 
     private List<BoxSampleInfo> samples;
@@ -58,8 +66,11 @@ public class ShippingBoxForm extends BaseForm {
     public static class BoxSampleInfo {
         private Integer id;
         private Integer sampleId;
+        @Size(max = 255)
         private String accessionNumber;
+        @Size(max = 255)
         private String receptionStatus;
+        @Size(max = 2000)
         private String receptionNotes;
         private Timestamp addedDate;
 

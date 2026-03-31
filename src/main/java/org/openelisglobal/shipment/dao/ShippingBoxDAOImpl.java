@@ -12,10 +12,8 @@ import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Transactional
 public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implements ShippingBoxDAO {
 
     private static final Logger logger = LoggerFactory.getLogger(ShippingBoxDAOImpl.class);
@@ -25,7 +23,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<ShippingBox> getAll() {
         try {
             String hql = "FROM ShippingBox b ORDER BY b.createdDate DESC";
@@ -38,7 +35,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ShippingBox findByBoxId(String boxId) {
         try {
             String hql = "FROM ShippingBox b WHERE b.boxId = :boxId";
@@ -54,7 +50,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public ShippingBox findByFhirUuid(UUID fhirUuid) {
         try {
             String hql = "FROM ShippingBox b WHERE b.fhirUuid = :fhirUuid";
@@ -70,7 +65,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<ShippingBox> findByState(BoxState state) {
         try {
             String hql = "FROM ShippingBox b WHERE b.state = :state ORDER BY b.createdDate DESC";
@@ -84,7 +78,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<ShippingBox> findByDestinationFacilityId(Integer facilityId) {
         try {
             String hql = "FROM ShippingBox b WHERE b.destinationFacility.id = :facilityId ORDER BY b.createdDate DESC";
@@ -98,7 +91,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<ShippingBox> findByCreatedDateRange(Timestamp startDate, Timestamp endDate) {
         try {
             String hql = "FROM ShippingBox b WHERE b.createdDate BETWEEN :startDate AND :endDate ORDER BY b.createdDate DESC";
@@ -113,7 +105,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<ShippingBox> findAllActive() {
         try {
             String hql = "FROM ShippingBox b WHERE b.archived = false ORDER BY b.createdDate DESC";
@@ -126,7 +117,6 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
-    @Transactional(readOnly = true)
     public int countByState(BoxState state) {
         try {
             String hql = "SELECT COUNT(*) FROM ShippingBox b WHERE b.state = :state";

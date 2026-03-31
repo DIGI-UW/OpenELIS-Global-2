@@ -10,10 +10,8 @@ import org.openelisglobal.shipment.valueholder.ShipmentStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Transactional
 public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements ShipmentDAO {
 
     private static final Logger logger = LoggerFactory.getLogger(ShipmentDAOImpl.class);
@@ -23,7 +21,6 @@ public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements S
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Shipment findByShippingBoxId(Integer shippingBoxId) {
         try {
             String hql = "FROM Shipment s WHERE s.shippingBox.id = :shippingBoxId";
@@ -39,7 +36,6 @@ public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements S
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Shipment findByTrackingNumber(String trackingNumber) {
         try {
             String hql = "FROM Shipment s WHERE s.trackingNumber = :trackingNumber";
@@ -55,7 +51,6 @@ public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements S
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<Shipment> findByStatus(ShipmentStatus status) {
         try {
             String hql = "FROM Shipment s WHERE s.status = :status";
@@ -69,7 +64,6 @@ public class ShipmentDAOImpl extends BaseDAOImpl<Shipment, Integer> implements S
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<Shipment> findByCourier(String courier) {
         try {
             String hql = "FROM Shipment s WHERE s.courier = :courier";

@@ -1,6 +1,7 @@
 package org.openelisglobal.shipment.form;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import org.openelisglobal.common.form.BaseForm;
 
@@ -14,17 +15,21 @@ public class UnassignedSampleForm extends BaseForm {
     @NotNull(message = "Sample ID is required")
     private Integer sampleId;
 
+    @Size(max = 255)
     private String accessionNumber;
 
     @NotNull(message = "Referral test ID is required")
     private Integer referralTestId;
 
+    @Size(max = 255)
     private String referralTestName;
 
     private Integer destinationFacilityId;
 
+    @Size(max = 255)
     private String destinationFacilityName;
 
+    @Size(max = 255)
     private String priority;
 
     private Timestamp createdDate;

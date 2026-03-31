@@ -1,6 +1,7 @@
 package org.openelisglobal.shipment.form;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import org.openelisglobal.common.form.BaseForm;
 
@@ -16,16 +17,21 @@ public class BoxSampleItemForm extends BaseForm {
     private Integer shippingBoxId;
 
     @NotNull(message = "Sample item ID is required")
+    @Size(max = 255)
     private String sampleItemId;
 
+    @Size(max = 255)
     private String accessionNumber;
 
+    @Size(max = 255)
     private String typeOfSample;
 
     private Integer positionInBox;
 
+    @Size(max = 255)
     private String receptionStatus;
 
+    @Size(max = 2000)
     private String receptionNotes;
 
     private Timestamp addedDate;

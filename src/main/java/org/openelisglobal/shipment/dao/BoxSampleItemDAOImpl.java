@@ -10,10 +10,8 @@ import org.openelisglobal.shipment.valueholder.ReceptionStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Transactional
 public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> implements BoxSampleItemDAO {
 
     private static final Logger logger = LoggerFactory.getLogger(BoxSampleItemDAOImpl.class);
@@ -23,7 +21,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<BoxSampleItem> findByShippingBoxId(Integer shippingBoxId) {
         try {
             String hql = "FROM BoxSampleItem bsi WHERE bsi.shippingBox.id = :shippingBoxId ORDER BY bsi.positionInBox";
@@ -37,7 +34,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public BoxSampleItem findBySampleItemId(String sampleItemId) {
         try {
             String hql = "FROM BoxSampleItem bsi WHERE bsi.sampleItem.id = :sampleItemId";
@@ -54,7 +50,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public BoxSampleItem findByShippingBoxIdAndSampleItemId(Integer shippingBoxId, String sampleItemId) {
         try {
             String hql = "FROM BoxSampleItem bsi WHERE bsi.shippingBox.id = :shippingBoxId AND bsi.sampleItem.id = :sampleItemId";
@@ -72,7 +67,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<BoxSampleItem> findByShippingBoxIdAndReceptionStatus(Integer shippingBoxId,
             ReceptionStatus receptionStatus) {
         try {
@@ -88,7 +82,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public int countByShippingBoxId(Integer shippingBoxId) {
         try {
             String hql = "SELECT COUNT(*) FROM BoxSampleItem bsi WHERE bsi.shippingBox.id = :shippingBoxId";
@@ -103,7 +96,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public boolean existsBySampleItemId(String sampleItemId) {
         try {
             String hql = "SELECT COUNT(*) FROM BoxSampleItem bsi WHERE bsi.sampleItem.id = :sampleItemId";
@@ -119,7 +111,6 @@ public class BoxSampleItemDAOImpl extends BaseDAOImpl<BoxSampleItem, Integer> im
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<String> getAllAssignedSampleItemIds() {
         try {
             String hql = "SELECT DISTINCT bsi.sampleItem.id FROM BoxSampleItem bsi";

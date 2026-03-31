@@ -22,6 +22,8 @@ import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -58,16 +60,17 @@ public class ShipmentFhirImportService {
     @Autowired
     private SiteInformationService siteInformationService;
 
+    @Autowired
+    private SystemUserService systemUserService;
+
     /**
      * Poll all configured remote FHIR servers for SupplyDelivery resources with
      * status in-progress (SENT/IN_TRANSIT boxes). Import them as local ShippingBox
-     * with state IN_TRANSIT for reception.
-     *
-     * @return number of new boxes imported
+     * with state IN_TRANSIT for reception. Runs asynchronously.
      */
     @Async
     @Transactional
-    public int pollAndImportShipments() {
+    public void pollAndImportShipments() {
         int totalImported = 0;
         for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
             if (remoteStorePath == null || remoteStorePath.isBlank()) {
@@ -80,7 +83,10 @@ public class ShipmentFhirImportService {
                         "Error importing shipments from: " + remoteStorePath + " - " + e.getMessage());
             }
         }
-        return totalImported;
+        if (totalImported > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "pollAndImportShipments",
+                    "Total shipments imported: " + totalImported);
+        }
     }
 
     /**
@@ -168,7 +174,7 @@ public class ShipmentFhirImportService {
             }
             box.setState(BoxState.IN_TRANSIT);
             box.setCreatedDate(new Timestamp(System.currentTimeMillis()));
-            box.setSystemUserId(1); // System user for automated import
+            box.setSystemUserId(getAutomatedImportUserId());
 
             // Temperature
             String temperature = extractExtensionString(delivery, EXT_TEMPERATURE);
@@ -326,6 +332,24 @@ public class ShipmentFhirImportService {
                     "Error searching organization by UUID: " + e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * Resolve the system user ID for automated FHIR import operations. Looks up the
+     * "admin" login user via SystemUserService. Falls back to user ID 1 if lookup
+     * fails (consistent with other automated services in the codebase).
+     */
+    private Integer getAutomatedImportUserId() {
+        try {
+            SystemUser systemUser = systemUserService.getDataForLoginUser("admin");
+            if (systemUser != null && systemUser.getId() != null) {
+                return Integer.parseInt(systemUser.getId());
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getAutomatedImportUserId",
+                    "Could not resolve system user for automated import, falling back to ID 1: " + e.getMessage());
+        }
+        return 1;
     }
 
     /**
