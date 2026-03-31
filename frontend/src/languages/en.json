@@ -690,7 +690,7 @@
   "barcode.labels.order.row": "Order Row",
   "barcode.labels.running.total": "Running Total",
   "barcode.labels.sample.row": "Sample Row",
-  "barcode.labels.section.title": "Labels",
+  "barcode.labels.section.title": "Label quantities",
   "barcode.locationNotFound": "Location not found",
   "barcode.notification.save": "BarCode Configurations has been saved.",
   "barcode.partialMatch": "Partial match - some components valid",
