@@ -8,6 +8,7 @@ import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { Admin } from "./components";
 import ChangePassword from "./components/ChangePassword.js";
 import Home from "./components/Home";
+import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
