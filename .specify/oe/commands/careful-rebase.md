@@ -253,8 +253,10 @@ For localization files (for example `frontend/src/languages/en.json` and
   ```bash
   ./scripts/i18n-no-loss-audit \
     --allow-missing-key frontend/src/languages/en.json:my.removed.key
-This prevents silent regressions where a rebase "looks clean" but large key
-groups disappear from translations.
+  ```
+
+  This prevents silent regressions where a rebase "looks clean" but large key
+  groups disappear from translations.
 
 ### 6) Optional squash-before-rebase (checkpoint #3)
 
