@@ -15,27 +15,32 @@
     "RS-232": { "default_baud_rate": 9600 },
     "TCP/IP": {}
   },
+  "communication": {
+    "mode": "ANALYZER_INITIATED",
+    "supports_lis_initiated": false,
+    "notes": "ASTM E1394: analyzer connects to bridge TCP server and sends R-segments (results) or Q-segments (queries). OE responds in-session via AnalyzerResponder. All communication is analyzer-initiated."
+  },
   "default_test_mappings": [
     {
-      "analyzer_code": "MTB-RIF",
+      "test_code": "MTB-RIF",
       "test_name_hint": "Mycobacterium tuberculosis DNA",
       "loinc": "23826-1",
       "unit": ""
     },
     {
-      "analyzer_code": "RIF",
+      "test_code": "RIF",
       "test_name_hint": "Rifampin Resistance",
       "loinc": "46244-0",
       "unit": ""
     },
     {
-      "analyzer_code": "COVID19",
+      "test_code": "COVID19",
       "test_name_hint": "SARS-CoV-2 RNA",
       "loinc": "94500-6",
       "unit": ""
     },
     {
-      "analyzer_code": "HIV-VL",
+      "test_code": "HIV-VL",
       "test_name_hint": "HIV-1 RNA",
       "loinc": "20447-9",
       "unit": "copies/mL"
