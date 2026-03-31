@@ -1,5 +1,14 @@
 # Playwright CI Stabilization and Acceleration
 
+## 014 FILE Ownership Note
+
+Analyzer harness FILE E2E expectations during remediation:
+
+- Shared `analyzer-imports` volume must be available to the bridge container.
+- Bridge watcher is expected to detect and forward FILE artifacts.
+- OpenELIS should validate ingestion/processing outcomes, not be the default
+  directory poller.
+
 ## Why this exists
 
 This document defines the Playwright CI execution contract for OpenELIS so CI
