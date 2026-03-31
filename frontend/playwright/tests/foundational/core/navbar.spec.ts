@@ -28,10 +28,14 @@ test.describe("Navbar (Header) actions", () => {
 
     await page.locator("#notification-Icon").click();
     // Wait for slide-over panel to open and show the title
-    // Using .slide-over-title to avoid matching the aria-label on the icon
-    await expect(page.locator(".slide-over-title")).toContainText(
+    // Use nth(1) to get the notifications panel (second one opened)
+    await expect(page.locator(".slide-over-title").nth(1)).toContainText(
       "Notifications",
     );
+
+    // Close panel to avoid affecting subsequent tests
+    await page.locator(".close-button").nth(1).click();
+    await expect(page.locator(".slide-over-root.show")).not.toBeVisible();
   });
 
   test("user icon opens user panel (logout + language selector visible)", async ({
@@ -42,9 +46,30 @@ test.describe("Navbar (Header) actions", () => {
 
     await page.locator("#user-Icon").click();
 
+    // Verify slide-over panel structure matches notifications
+    await expect(page.locator(".slide-over-root.show")).toBeVisible();
+    await expect(page.locator(".slide-over-backdrop").first()).toBeVisible();
+
+    // Verify title is "User" (consistent with "Notifications" pattern)
+    await expect(page.locator(".slide-over-title").first()).toHaveText("User");
+
+    // Verify close button with arrow icon exists
+    await expect(page.locator(".close-button").first()).toBeVisible();
+
     // Basic smoke: panel contents present
     await expect(page.getByText(/logout/i)).toBeVisible();
     await expect(page.locator("#selector")).toBeVisible();
+
+    // Verify text labels are visible (not white text on white background)
+    await expect(page.getByText(/select locale/i)).toBeVisible();
+    // Use context of user panel to avoid matching other "version" elements
+    await expect(
+      page.locator(".slide-over-root.show").getByText(/version::/i),
+    ).toBeVisible();
+
+    // Close panel using the close button
+    await page.locator(".close-button").first().click();
+    await expect(page.locator(".slide-over-root.show")).not.toBeVisible();
   });
 
   test("help icon toggles help panel", async ({ page }) => {
