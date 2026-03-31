@@ -271,4 +271,52 @@ public class PatientMergeRestControllerTest extends BaseWebContextSensitiveTest 
         String responseBody = result.getResponse().getContentAsString();
         assertTrue("Should indicate already merged", responseBody.contains("already merged"));
     }
+
+    @Test
+    public void getMergeDetails_WithoutSession_Returns403() throws Exception {
+        mockMvc.perform(get("/rest/patient/merge/details/" + patient1.getId()).accept(MediaType.APPLICATION_JSON))
+                // No session attached — hasGlobalAdminRole() returns false
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void validateMerge_WithoutSession_Returns403() throws Exception {
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        request.setPatient1Id(patient1.getId());
+        request.setPatient2Id(patient2.getId());
+        request.setPrimaryPatientId(patient1.getId());
+        request.setReason("Unauthenticated validate attempt");
+        request.setConfirmed(false);
+
+        mockMvc.perform(post("/rest/patient/merge/validate").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                // No session — hasGlobalAdminRole() returns false → 403
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void executeMerge_WithoutSession_Returns403() throws Exception {
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        request.setPatient1Id(patient1.getId());
+        request.setPatient2Id(patient2.getId());
+        request.setPrimaryPatientId(patient1.getId());
+        request.setReason("Unauthenticated execute attempt");
+        request.setConfirmed(true);
+
+        mockMvc.perform(post("/rest/patient/merge/execute").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                // No session — hasGlobalAdminRole() returns false → 403
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void executeMerge_MissingRequiredFields_Returns400() throws Exception {
+        PatientMergeRequestDTO request = new PatientMergeRequestDTO();
+        // All IDs are null — no patient1Id, patient2Id or primaryPatientId set
+        request.setReason("Missing fields test");
+        request.setConfirmed(true);
+
+        mockMvc.perform(post("/rest/patient/merge/execute").session(mockSession).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))).andExpect(status().isBadRequest());
+    }
 }
