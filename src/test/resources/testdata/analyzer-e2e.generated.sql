@@ -14,10 +14,10 @@ INSERT INTO analyzer (id, name, analyzer_type, DESCRIPTION, identifier_pattern, 
 INSERT INTO analyzer (id, name, analyzer_type, DESCRIPTION, identifier_pattern, is_active, ip_address, port, protocol_version, status, last_updated) VALUES (2114, 'Abbott Architect', 'IMMUNOLOGY', 'HL7 v2.5.1 over TCP/IP (MLLP)', 'ARCHITECT.*', FALSE, '172.20.1.111', 5000, 'HL7_V2_5', 'ACTIVE', '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
 INSERT INTO analyzer (id, name, analyzer_type, DESCRIPTION, identifier_pattern, is_active, ip_address, port, protocol_version, status, last_updated) VALUES (2115, 'Cepheid GeneXpert (HL7 Mode)', 'MOLECULAR', 'HL7 v2.5 over TCP/IP', 'GENEXPERT.*|CEPHEID.*', FALSE, '172.20.1.112', 5002, 'HL7_V2_5', 'ACTIVE', '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
 INSERT INTO analyzer_type (id, name, plugin_class_name, is_generic_plugin) VALUES (2901, 'Generic ASTM', 'org.openelisglobal.plugins.analyzer.genericastm.GenericASTMAnalyzer', TRUE) ON CONFLICT DO NOTHING;
-INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2901, 2013, 'MTB-RIF', 3, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
-INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2901, 2013, 'RIF', 5, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
-INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2901, 2013, 'HIV-VL', 192, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
-INSERT INTO analyzer_test_map (analyzer_type_id, analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2901, 2013, 'COVID19', 3, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
+INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2013, 'MTB-RIF', 3, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
+INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2013, 'RIF', 5, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
+INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2013, 'HIV-VL', 192, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
+INSERT INTO analyzer_test_map (analyzer_id, analyzer_test_name, test_id, last_updated) VALUES (2013, 'COVID19', 3, '2026-02-02 00:00:00') ON CONFLICT DO NOTHING;
 
 -- Update sequences to avoid ID conflicts after fixture data
 SELECT setval('analyzer_seq', 2115, true);

@@ -6,13 +6,14 @@
 **Tests**: MANDATORY per Constitution Principle V. Tests appear before
 implementation in each milestone and MUST fail before implementation begins.
 
-**Organization**: Tasks grouped by **Milestone** per Constitution Principle IX.
-Each milestone = 1 PR.
+**Organization**: Tasks grouped by **Milestone/Slice** for traceability. On the
+current consolidation branch, these labels describe validation slices and
+remaining-work buckets rather than a strict one-PR-per-slice history.
 
-**Implementation note**: PR #3036 combines M1A+M1B+M3 on branch
-`feat/014-ogc-329-file-config-backend-mvp`. T021, T021a, T021c, T048, T067
-remain unchecked as a single combined PR was used instead of separate
-per-milestone PRs.
+**Implementation note**: The current branch consolidates M1A + M1B + M3 work and
+parts of M2. Branch/PR-specific tasks such as T021, T021a, T021c, T048, and T067
+remain unchecked because this artifact now tracks current branch state instead
+of reconstructing a separate milestone-PR history.
 
 ## Format: `[ID] [P?] [Mx] Description`
 
@@ -26,9 +27,9 @@ per-milestone PRs.
 
 **Branch**: `feat/014-ogc-329-file-config-backend-mvp` **Goal**: Add
 backend/runtime `fileFormat` contract to `FileImportConfiguration`, service
-dispatch, watcher filtering, and REST persistence behavior. No UI changes in
-this milestone. **Verification**: ORM validation + service unit tests + watcher
-unit tests + config CRUD integration test.
+dispatch, bridge runtime registration metadata, and REST persistence behavior.
+No UI changes in this milestone. **Verification**: ORM validation + service unit
+tests + config CRUD integration test.
 
 ### Branch Setup
 
@@ -50,9 +51,11 @@ unit tests + config CRUD integration test.
 - [x] T004 [P] [M1A] Unit test: `FileImportService.getReaderForFormat()`
       dispatches CSV→FileAnalyzerReader, EXCEL→ExcelAnalyzerReader in
       `src/test/java/org/openelisglobal/analyzer/service/FileImportServiceTest.java`
-- [x] T005 [P] [M1A] Unit test: `FileImportWatchService` skips files that don't
-      match configured `fileFormat` extension in
-      `src/test/java/org/openelisglobal/analyzer/service/FileImportWatchServiceTest.java`
+- [x] T005 [P] [M1A] Validate the branch-owned FILE runtime contract for
+      `fileFormat`: OpenELIS persists format metadata for bridge registration,
+      and app-side service dispatch selects the correct reader for direct import
+      flows. _(The pre-remediation OE `FileImportWatchService` test path is not
+      present on this branch.)_
 - [x] T006 [P] [M1A] Integration test: config CRUD via REST — create, read,
       update config with `fileFormat` in
       `src/test/java/org/openelisglobal/analyzer/controller/FileImportRestControllerTest.java`
@@ -65,9 +68,9 @@ unit tests + config CRUD integration test.
 - [x] T010 [M1A] Update `FileImportService` / `FileImportServiceImpl` for
       format-dispatching reader selection in
       `src/main/java/org/openelisglobal/analyzer/service/FileImportServiceImpl.java`
-- [x] T011 [M1A] Update `FileImportWatchService` to respect `fileFormat` when
-      filtering files in
-      `src/main/java/org/openelisglobal/analyzer/service/FileImportWatchService.java`
+- [x] T011 [M1A] Carry `fileFormat` through the current branch's runtime path:
+      persist it in `FileImportConfiguration`, expose it through config APIs,
+      and use it for app-side reader dispatch / bridge registration inputs.
 - [x] T011a [M1A] Verify existing archive/error file-move logic in
       `FileImportServiceImpl.archiveFile()` / `moveToErrorDirectory()` works
       with the new `fileFormat` field (FR-009). Add unit test assertion if not
@@ -82,8 +85,8 @@ unit tests + config CRUD integration test.
 - [ ] T021 [M1A] Create PR `feat/014-ogc-329-file-config-backend-mvp` →
       `develop`
 
-**Checkpoint**: `fileFormat` persists in backend, service/watcher respect
-format, REST config CRUD carries format. All backend tests green.
+**Checkpoint**: `fileFormat` persists in backend, service/bridge runtime inputs
+respect format, REST config CRUD carries format. All backend tests green.
 
 ---
 
@@ -126,9 +129,9 @@ frontend formatting.
 
 ### E2E Fixtures & Test
 
-- [x] T016 [M1B] Create fixture SQL
-      `frontend/playwright/fixtures/file-import-setup.sql` that sets up a
-      complete GenericFile-backed analyzer profile:
+- [x] T016 [M1B] Create and wire fixture seeding for FILE analyzer demos via
+      `frontend/playwright/fixtures/file-import-setup.ts` and
+      `src/test/resources/fixtures/file-import-e2e.sql`:
   1. Cleanup DELETEs first (idempotent, keyed by name pattern `'E2E-FILE-%'`) —
      delete `file_import_configuration`, `analyzer_plugin_config`, `analyzer`,
      `analyzer_type` rows in FK order
@@ -160,14 +163,12 @@ frontend formatting.
       `frontend/playwright/fixtures/FileImport.json` — test data constants
       (analyzer name `'E2E-FILE-CSV-Analyzer'`, expected directory paths, format
       values) referenced by E2E tests
-- [x] T019a [M1B] Playwright E2E in
-      `frontend/playwright/tests/fileImportConfig.spec.ts`:
-  1. `beforeAll`: call `loadFileImportFixtures()` to ensure analyzer profile
-     exists
-  2. Navigate to admin analyzer config page, find the `E2E-FILE-CSV-Analyzer`
-  3. Verify `fileFormat` dropdown shows CSV selected
-  4. Change `fileFormat` to TSV, save, reload, verify persisted
-  5. Verify delimiter/hasHeader fields hidden when EXCEL selected
+- [x] T019a [M1B] Playwright coverage exists for current branch FILE config
+      flows in `frontend/playwright/tests/file-import-ui.spec.ts` and
+      `frontend/playwright/tests/demo-quantstudio-file-config.spec.ts`:
+  1. Create/configure a FILE analyzer and verify visible file-import settings
+  2. Verify QuantStudio profile defaults are visible in the file-import form
+  3. Verify FILE-specific UI behavior and connection workflow on current branch
 
 ### Formatting & PR
 
@@ -273,15 +274,15 @@ upload-preview-submit flow.
       `frontend/playwright/fixtures/test-upload.csv` (3-5 rows with header:
       `SampleID,TestCode,Result,Unit`; use realistic accession numbers that will
       exist in the test DB or handle ACCESSION_NOT_FOUND in the test)
-- [ ] T044 [M2] Update fixture SQL
-      `frontend/playwright/fixtures/file-import-setup.sql` — extend with an
-      upload-specific profile. Reuse the existing E2E-FILE-CSV-Analyzer profile
-      if the upload flow works with its config; otherwise add a separate upload
-      profile (e.g. E2E-FILE-Upload-CSV). If a new profile is needed, add
+- [ ] T044 [M2] Extend the current FILE fixture/seeding path
+      (`src/test/resources/fixtures/file-import-e2e.sql` and/or harness seeding)
+      with an upload-specific profile. Reuse the existing E2E-FILE-CSV-Analyzer
+      profile if the upload flow works with its config; otherwise add a separate
+      upload profile (e.g. E2E-FILE-Upload-CSV). If a new profile is needed, add
       `AnalyzerType` `name='E2E-FILE-Upload-CSV'`, `Analyzer`,
       `FileImportConfiguration` with `file_format='CSV'`
 - [ ] T045 [M2] Playwright E2E in
-      `frontend/playwright/tests/fileImportUpload.spec.ts`:
+      `frontend/playwright/tests/file-import-upload.spec.ts`:
   1. `beforeAll`: call `loadFileImportFixtures()` to ensure the upload analyzer
      profile exists
   2. Navigate to the upload page (app route for Results → Upload Analyzer File)
@@ -317,8 +318,9 @@ fixtures, E2E upload with QuantStudio-profiled GenericFile analyzer.
 
 ### Branch Setup
 
-- [ ] T048 [M3] Create branch `feat/014-ogc-348-quantstudio-import` from
-      `develop` (after M1A merged)
+- [ ] T048 [M3] Historical dedicated branch
+      `feat/014-ogc-348-quantstudio-import` is not represented separately on the
+      current consolidation branch
 
 ### Pre-Work: Plugins Submodule
 
@@ -408,10 +410,9 @@ fixtures, E2E upload with QuantStudio-profiled GenericFile analyzer.
 
 ### E2E Fixtures & Test
 
-- [x] T063 [M3] Update fixture SQL
-      `frontend/playwright/fixtures/file-import-setup.sql` to add a
-      QuantStudio-specific analyzer — reusing the GenericFile `AnalyzerType`
-      inserted in M1B, add:
+- [x] T063 [M3] Extend the current FILE fixture/seeding path for a
+      QuantStudio-specific analyzer, reusing the GenericFile `AnalyzerType`
+      inserted in M1B:
   1. A new `Analyzer` row: `name='E2E-FILE-QuantStudio-Analyzer'`,
      `status='ACTIVE'`, `is_active='Y'`, linked to the `E2E-FILE-GenericFile`
      `AnalyzerType`
@@ -420,18 +421,15 @@ fixtures, E2E upload with QuantStudio-profiled GenericFile analyzer.
      `import_directory='/data/analyzer-imports/e2e-qs/incoming'`
   3. `AnalyzerPluginConfig` for it: JSONB config loaded from QuantStudio profile
      defaults
-- [ ] T064 [M3] Copy a real (or sanitized) QS7 .xls fixture to
-      `frontend/playwright/fixtures/quantstudio-qs7.xls` for E2E upload
-      (Deferred: fixture needed when M2 upload UI exists; T065 upload test is
-      skipped until then.)
-- [x] T065 [M3] Playwright E2E in
-      `frontend/playwright/tests/fileImportQuantStudio.spec.ts`:
-  1. `beforeAll`: `loadFileImportFixtures()` to ensure
-     E2E-FILE-QuantStudio-Analyzer exists
-  2. Navigate to upload page, select `E2E-FILE-QuantStudio-Analyzer`
-  3. Upload `frontend/playwright/fixtures/quantstudio-qs7.xls`
-  4. Verify preview table shows parsed rows with Sample Name, CT, VL columns
-  5. Submit and verify results queued
+- [ ] T064 [M3] Add a dedicated UI-upload QuantStudio fixture under
+      `frontend/playwright/fixtures/` if and when M2's upload UI gets its own
+      Playwright spec. Current branch harness validation does not rely on a
+      `quantstudio-qs7.xls` upload fixture.
+- [x] T065 [M3] Playwright harness validation exists in
+      `frontend/playwright/tests/file-import-results.spec.ts`:
+  1. Uses watched-folder FILE import rather than the still-open M2 upload UI
+  2. Covers QuantStudio 5 and QuantStudio 7 result import on current branch
+  3. Verifies visible Analyzer Results evidence after bridge-owned delivery
 
 ### Formatting & PR
 
@@ -480,10 +478,11 @@ Validate watcher-triggered import end-to-end with real `history.csv`.
 
 **Watcher integration test:**
 
-- [ ] T073 [M4] Integration test: place `history.csv` in watcher incoming
-      directory → `FileImportWatchService` detects, routes to GenericFile plugin
-      via `FileImportConfiguration`, archives file in
-      `src/test/java/org/openelisglobal/analyzer/service/FileImportWatchServiceIntegrationTest.java`
+- [ ] T073 [M4] Bridge-owned watcher integration proof: place `history.csv` in a
+      watched incoming directory → bridge detects it, routes to OE
+      direct-import, GenericFile processes it, and the file is
+      archived/error-routed as expected. Current branch does not contain an OE
+      `FileImportWatchServiceIntegrationTest.java`.
 
 ### Wondfo CSV Profile
 
@@ -521,7 +520,7 @@ Validate watcher-triggered import end-to-end with real `history.csv`.
 - [ ] T077 [M4] Copy the Wondfo validation CSV (4 records) to
       `frontend/playwright/fixtures/wondfo-history.csv` for E2E upload
 - [ ] T078 [M4] Playwright E2E in
-      `frontend/playwright/tests/fileImportWondfo.spec.ts`:
+      `frontend/playwright/tests/file-import-wondfo.spec.ts`:
   1. `beforeAll`: `loadFileImportFixtures()` to ensure E2E-FILE-Wondfo-Analyzer
      exists
   2. Navigate to upload page, select `E2E-FILE-Wondfo-Analyzer`

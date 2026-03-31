@@ -16,31 +16,31 @@
   },
   "default_test_mappings": [
     {
-      "analyzer_code": "GLU",
+      "test_code": "GLU",
       "test_name_hint": "Glucose",
       "loinc": "2345-7",
       "unit": "mg/dL"
     },
     {
-      "analyzer_code": "CREA",
+      "test_code": "CREA",
       "test_name_hint": "Creatinine",
       "loinc": "2160-0",
       "unit": "mg/dL"
     },
     {
-      "analyzer_code": "ALT",
+      "test_code": "ALT",
       "test_name_hint": "Alanine Aminotransferase",
       "loinc": "1742-6",
       "unit": "U/L"
     },
     {
-      "analyzer_code": "AST",
+      "test_code": "AST",
       "test_name_hint": "Aspartate Aminotransferase",
       "loinc": "1920-8",
       "unit": "U/L"
     },
     {
-      "analyzer_code": "ALB",
+      "test_code": "ALB",
       "test_name_hint": "Albumin",
       "loinc": "1751-7",
       "unit": "g/dL"
