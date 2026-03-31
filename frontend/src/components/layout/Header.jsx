@@ -26,6 +26,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
+import UserSlidePanel from "./UserSlidePanel";
 import { languages as defaultLanguages } from "../../languages";
 
 import {
@@ -34,7 +35,6 @@ import {
   HeaderGlobalBar,
   HeaderMenuButton,
   HeaderName,
-  HeaderPanel,
   SideNav,
   SideNavItems,
   SideNavMenu,
@@ -737,13 +737,12 @@ function OEHeader({
                 handlePanelToggle={handlePanelToggle}
               />
             </HeaderGlobalBar>
-            <HeaderPanel
-              aria-label="Header Panel"
-              expanded={!switchCollapsed}
-              className="headerPanel"
-              ref={headerPanelRef}
+            <UserSlidePanel
+              open={!switchCollapsed}
+              onClose={() => handlePanelToggle("")}
+              title="User"
             >
-              <ul>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {userSessionDetails.authenticated && (
                   <>
                     <li className="userDetails">
@@ -803,7 +802,7 @@ function OEHeader({
                   </label>
                 </li>
               </ul>
-            </HeaderPanel>
+            </UserSlidePanel>
             {userSessionDetails.authenticated && (
               <>
                 <SideNav
