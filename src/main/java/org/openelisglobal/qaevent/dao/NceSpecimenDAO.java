@@ -10,4 +10,6 @@ public interface NceSpecimenDAO extends BaseDAO<NceSpecimen, String> {
     List<NceSpecimen> getSpecimenByNceId(String nceId) throws LIMSRuntimeException;
 
     List<NceSpecimen> getSpecimenBySampleId(String sampleId);
+
+    boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId);
 }

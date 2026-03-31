@@ -2,6 +2,7 @@ package org.openelisglobal.qaevent.daoimpl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -40,6 +41,23 @@ public class NCEventDAOImpl extends BaseDAOImpl<NcEvent, String> implements NCEv
     @Override
     @Transactional
     public NcEvent getNCEvent(String id) throws LIMSRuntimeException {
-        return null;
+        return get(id).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<NcEvent> get(String id) {
+        try {
+            // Convert String id to Integer for JPA lookup
+            Integer intId = id != null ? Integer.valueOf(id) : null;
+            NcEvent object = entityManager.find(NcEvent.class, intId);
+            return Optional.ofNullable(object);
+        } catch (NumberFormatException e) {
+            LogEvent.logError(e);
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NCEventDAOImpl get", e);
+        }
     }
 }

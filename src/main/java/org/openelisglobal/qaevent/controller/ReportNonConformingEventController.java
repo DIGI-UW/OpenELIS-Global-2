@@ -14,10 +14,14 @@ import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.worker.NonConformingEventWorker;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -51,6 +55,10 @@ public class ReportNonConformingEventController extends BaseController {
     private SystemUserService systemUserService;
     @Autowired
     private RequesterService requesterService;
+    @Autowired
+    private DictionaryService dictionaryService;
+    @Autowired
+    private DictionaryCategoryService dictionaryCategoryService;
     @Autowired
     private NceCategoryService nceCategoryService;
     @Autowired
@@ -132,7 +140,7 @@ public class ReportNonConformingEventController extends BaseController {
         form.setSite(requesterService.getReferringSiteName());
         form.setPrescriberName(requesterService.getRequesterLastFirstName());
 
-        form.setNceCategories(nceCategoryService.getAllNceCategories());
+        form.setNceCategories(getNceCategoriesAsIdValuePairs());
 
         Date today = Calendar.getInstance().getTime();
         form.setReportDate(DateUtil.formatDateAsText(today));
@@ -140,6 +148,21 @@ public class ReportNonConformingEventController extends BaseController {
 
     private Sample getSampleForLabNumber(String labNumber) throws LIMSInvalidConfigurationException {
         return sampleService.getSampleByAccessionNumber(labNumber);
+    }
+
+    /**
+     * Get NCE categories from nce_category table.
+     */
+    private List<IdValuePair> getNceCategoriesAsIdValuePairs() {
+        List<IdValuePair> result = new ArrayList<>();
+        List<NceCategory> categories = nceCategoryService.getAllNceCategories();
+        for (NceCategory cat : categories) {
+            Boolean active = cat.getActive();
+            if (active == null || Boolean.TRUE.equals(active)) {
+                result.add(new IdValuePair(cat.getId() != null ? cat.getId() : "", cat.getName()));
+            }
+        }
+        return result;
     }
 
     @Override

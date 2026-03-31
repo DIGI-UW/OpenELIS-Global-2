@@ -8,4 +8,6 @@ import org.openelisglobal.qaevent.valueholder.NceType;
 public interface NceTypeDAO extends BaseDAO<NceType, String> {
 
     List<NceType> getAllNceType() throws LIMSRuntimeException;
+
+    List<NceType> getNceTypesByCategoryId(String categoryId) throws LIMSRuntimeException;
 }

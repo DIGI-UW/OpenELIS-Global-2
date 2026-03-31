@@ -1,6 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
 import java.util.List;
+import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -43,5 +44,37 @@ public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, String> impleme
         list = query.list();
 
         return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<NceSpecimen> get(String id) {
+        try {
+            Integer intId = id != null ? Integer.valueOf(id) : null;
+            NceSpecimen object = entityManager.find(NceSpecimen.class, intId);
+            return Optional.ofNullable(object);
+        } catch (NumberFormatException e) {
+            LogEvent.logError(e);
+            return Optional.empty();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NceSpecimenDAOImpl get", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId) {
+        try {
+            String sql = "SELECT COUNT(*) FROM NceSpecimen ns WHERE ns.nceId = :nceId AND ns.sampleItemId = :sampleItemId";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("nceId", nceId);
+            query.setParameter("sampleItemId", sampleItemId);
+            Long count = query.uniqueResult();
+            return count != null && count > 0;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NceSpecimenDAOImpl existsByNceIdAndSampleItemId", e);
+        }
     }
 }

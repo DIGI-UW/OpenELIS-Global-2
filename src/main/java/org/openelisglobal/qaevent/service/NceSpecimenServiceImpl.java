@@ -35,4 +35,10 @@ public class NceSpecimenServiceImpl extends AuditableBaseObjectServiceImpl<NceSp
     public List<NceSpecimen> getSpecimenBySampleItemId(String sampleId) {
         return baseObjectDAO.getSpecimenBySampleId(sampleId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId) {
+        return baseObjectDAO.existsByNceIdAndSampleItemId(nceId, sampleItemId);
+    }
 }

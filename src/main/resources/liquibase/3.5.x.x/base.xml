@@ -10,5 +10,7 @@
   <!-- EQA Enabled configuration for Order Entry -->
   <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
 
+  <!-- NCE Enhancement - Phase 1: Foundation -->
+  <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
 
 </databaseChangeLog>

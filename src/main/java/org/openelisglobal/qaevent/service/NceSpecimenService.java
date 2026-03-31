@@ -9,4 +9,6 @@ public interface NceSpecimenService extends BaseObjectService<NceSpecimen, Strin
     List<NceSpecimen> getSpecimenByNceId(String nceId);
 
     List<NceSpecimen> getSpecimenBySampleItemId(String sampleId);
+
+    boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId);
 }

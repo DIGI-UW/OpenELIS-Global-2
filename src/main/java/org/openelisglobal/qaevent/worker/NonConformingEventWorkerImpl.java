@@ -13,12 +13,15 @@ import org.dom4j.Element;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceActionLogService;
-import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
-import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceActionLog;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
@@ -41,11 +44,13 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     @Autowired
     private SampleItemService sampleItemService;
     @Autowired
-    private NceCategoryService nceCategoryService;
+    private DictionaryService dictionaryService;
     @Autowired
-    private NceTypeService nceTypeService;
+    private DictionaryCategoryService dictionaryCategoryService;
     @Autowired
     private NceActionLogService nceActionLogService;
+
+    private static final String NCE_CATEGORY_PREFIX = "nce_";
 
     @Override
     public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber) {
@@ -53,13 +58,20 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         event.setSysUserId(sysUserId);
         event.setNceNumber(nceNumber);
         event.setLabOrderNumber(labOrderId);
+        event.setReportDate(new java.sql.Date(System.currentTimeMillis()));
         event = ncEventService.save(event);
         for (String specimenId : specimens) {
-            NceSpecimen specimen = new NceSpecimen();
-            specimen.setNceId(Integer.parseInt(event.getId()));
-            specimen.setSampleItemId(Integer.parseInt(specimenId));
-            specimen.setSysUserId(sysUserId);
-            nceSpecimenService.save(specimen);
+            Integer nceId = Integer.parseInt(event.getId());
+            Integer sampleItemId = Integer.parseInt(specimenId);
+
+            // Check if this specimen is already linked to this NCE
+            if (!nceSpecimenService.existsByNceIdAndSampleItemId(nceId, sampleItemId)) {
+                NceSpecimen specimen = new NceSpecimen();
+                specimen.setNceId(nceId);
+                specimen.setSampleItemId(sampleItemId);
+                specimen.setSysUserId(sysUserId);
+                nceSpecimenService.save(specimen);
+            }
         }
         return event;
     }
@@ -69,9 +81,9 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         NcEvent ncEvent = ncEventService.get(form.getId());
         if (ncEvent != null) {
             ncEvent.setSysUserId(form.getCurrentUserId());
-            // date from input field come in this pattern
-            Date dateOfEvent = getDate(form.getDateOfEvent(), "dd/MM/yyyy");
-            Date reportDate = getDate(form.getReportDate(), "dd/MM/yyyy");
+            // date from input field - try multiple formats
+            Date dateOfEvent = parseDate(form.getDateOfEvent());
+            Date reportDate = parseDate(form.getReportDate());
 
             ncEvent.setStatus("Pending");
             ncEvent.setReportDate(reportDate);
@@ -80,10 +92,23 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setNameOfReporter(form.getReporterName());
             ncEvent.setPrescriberName(form.getPrescriberName());
             ncEvent.setSite(form.getSite());
+            ncEvent.setTitle(form.getTitle());
             ncEvent.setDescription(form.getDescription());
+            ncEvent.setImmediateAction(form.getImmediateAction());
             ncEvent.setSuspectedCauses(form.getSuspectedCauses());
             ncEvent.setProposedAction(form.getProposedAction());
             ncEvent.setReportingUnitId(form.getReportingUnit());
+
+            // Save NCE enhancement fields
+            if (form.getSeverity() != null && !form.getSeverity().isEmpty()) {
+                ncEvent.setSeverity(form.getSeverity());
+            }
+            if (form.getNceCategoryId() != null && !form.getNceCategoryId().isEmpty()) {
+                ncEvent.setNceCategoryId(Integer.valueOf(form.getNceCategoryId()));
+            }
+            if (form.getNceTypeId() != null && !form.getNceTypeId().isEmpty()) {
+                ncEvent.setNceTypeId(Integer.valueOf(form.getNceTypeId()));
+            }
 
             if (ncEvent.getNameOfReporter() == null || "".equalsIgnoreCase(ncEvent.getNameOfReporter())) {
                 ncEvent.setNameOfReporter(form.getName());
@@ -135,11 +160,32 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         return null;
     }
 
+    /**
+     * Parse date string trying multiple formats (MM/dd/yyyy and dd/MM/yyyy).
+     */
+    private Date parseDate(String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        // Try US format first (MM/dd/yyyy) - used by frontend
+        Date result = getDate(value, "MM/dd/yyyy");
+        if (result != null) {
+            return result;
+        }
+        // Try European format (dd/MM/yyyy)
+        result = getDate(value, "dd/MM/yyyy");
+        if (result != null) {
+            return result;
+        }
+        // Try ISO format (yyyy-MM-dd)
+        return getDate(value, "yyyy-MM-dd");
+    }
+
     @Override
     public void initFormForFollowUp(String nceNumber, NonConformingEventForm form)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        form.setNceCategories(nceCategoryService.getAllNceCategories());
-        form.setNceTypes(nceTypeService.getAllNceTypes());
+        form.setNceCategories(getNceCategoriesAsIdValuePairs());
+        form.setNceTypes(getNceTypesAsIdValuePairs());
         form.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         form.setSeverityConsequencesList(
@@ -160,7 +206,9 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             form.setReporterName(event.getNameOfReporter());
             form.setPrescriberName(event.getPrescriberName());
             form.setSite(event.getSite());
+            form.setTitle(event.getTitle());
             form.setDescription(event.getDescription());
+            form.setImmediateAction(event.getImmediateAction());
             form.setSuspectedCauses(event.getSuspectedCauses());
             form.setProposedAction(event.getProposedAction());
             form.setNceNumber(event.getNceNumber());
@@ -300,5 +348,40 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Get NCE categories from dictionary_category table. Categories are
+     * dictionary_category rows with local_abbrev starting with "nce_".
+     */
+    private List<IdValuePair> getNceCategoriesAsIdValuePairs() {
+        List<IdValuePair> result = new ArrayList<>();
+        List<DictionaryCategory> allCategories = dictionaryCategoryService.getAll();
+        for (DictionaryCategory cat : allCategories) {
+            if (cat.getLocalAbbreviation() != null && cat.getLocalAbbreviation().startsWith(NCE_CATEGORY_PREFIX)) {
+                result.add(new IdValuePair(cat.getId(), cat.getCategoryName()));
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Get NCE types from dictionary table for all NCE categories. Types are
+     * dictionary entries belonging to nce_* dictionary categories.
+     */
+    private List<IdValuePair> getNceTypesAsIdValuePairs() {
+        List<IdValuePair> result = new ArrayList<>();
+        List<DictionaryCategory> allCategories = dictionaryCategoryService.getAll();
+        for (DictionaryCategory cat : allCategories) {
+            if (cat.getLocalAbbreviation() != null && cat.getLocalAbbreviation().startsWith(NCE_CATEGORY_PREFIX)) {
+                List<Dictionary> types = dictionaryService.getDictionaryEntriesByCategoryId(cat.getId());
+                for (Dictionary dict : types) {
+                    if ("Y".equals(dict.getIsActive())) {
+                        result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+                    }
+                }
+            }
+        }
+        return result;
     }
 }

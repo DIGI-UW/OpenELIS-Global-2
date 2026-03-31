@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ================================================================== -->
+    <!-- NCE Enhancement - Core functionality for Report NCE feature        -->
+    <!-- ================================================================== -->
+
+    <!-- ================================================================== -->
+    <!-- ENHANCE: nc_event table - Add severity and title columns           -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-001-enhance-nc-event">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nc_event" columnName="title"/>
+            </not>
+        </preConditions>
+        <comment>Add title, immediate_action, and severity columns to nc_event</comment>
+
+        <addColumn schemaName="clinlims" tableName="nc_event">
+            <column name="title" type="VARCHAR(200)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="immediate_action" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="nce-002-nc-event-indexes">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_nc_event_status"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for nc_event columns</comment>
+
+        <createIndex schemaName="clinlims" tableName="nc_event" indexName="idx_nc_event_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="nc_event" indexName="idx_nc_event_severity">
+            <column name="severity"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- ENHANCE: nce_action_log table - Add effectiveness review columns   -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-003-enhance-nce-action-log">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_action_log"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_action_log" columnName="effective"/>
+            </not>
+        </preConditions>
+        <comment>Add effectiveness review columns to nce_action_log</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_action_log">
+            <column name="effective" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="review_comments" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="reviewed_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="review_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- CREATE: nce_attachment table - File attachments for NCEs           -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-004-create-nce-attachment">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="nce_attachment"/>
+            </not>
+        </preConditions>
+        <comment>Create nce_attachment table for file attachments</comment>
+
+        <createTable schemaName="clinlims" tableName="nce_attachment">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="nce_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_path" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_type" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_size" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="uploaded_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="uploaded_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="nce_attachment"
+            baseColumnNames="nce_id"
+            constraintName="fk_nce_attachment_nce"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="nc_event"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex schemaName="clinlims" tableName="nce_attachment" indexName="idx_nce_attachment_nce_id">
+            <column name="nce_id"/>
+        </createIndex>
+
+        <createSequence schemaName="clinlims" sequenceName="nce_attachment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- NCE seed data is managed via CSV configuration - these are no-ops  -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-005-seed-nce-category">
+        <comment>SKIP - NCE categories are seeded via CSV configuration</comment>
+        <empty/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="nce-006-seed-nce-type-preanalytical">
+        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
+        <empty/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="nce-007-seed-nce-type-analytical">
+        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
+        <empty/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="nce-008-seed-nce-type-postanalytical">
+        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
+        <empty/>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="nce-009-seed-nce-type-administrative">
+        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
+        <empty/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add reference table entries for new tables                         -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-010-reference-tables">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NCE_ATTACHMENT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add reference table entries for NCE tables</comment>
+
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded)
+            SELECT COALESCE(MAX(id), 0) + 1, 'NCE_ATTACHMENT', 'Y', 'N'
+            FROM clinlims.reference_tables;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add last_updated column to nce_specimen table                      -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-011-add-nce-specimen-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_specimen"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_specimen" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column to nce_specimen table</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_specimen">
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add NCE Dashboard menu item under Non-Conformity menu              -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-012-add-dashboard-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_nce_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add NCE Dashboard menu item under Non-Conformity</comment>
+
+        <sql>
+            INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+            SELECT
+                COALESCE(MAX(id), 0) + 1,
+                (SELECT id FROM clinlims.menu WHERE element_id = 'menu_nonconformity'),
+                0,
+                'menu_nce_dashboard',
+                '/NceDashboard',
+                'banner.menu.nonconformity.dashboard',
+                true
+            FROM clinlims.menu;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

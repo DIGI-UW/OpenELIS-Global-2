@@ -2,7 +2,6 @@ package org.openelisglobal.qaevent.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.qaevent.dao.NceCategoryDAO;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,11 +22,7 @@ public class NceCategoryServiceImpl extends AuditableBaseObjectServiceImpl<NceCa
     @Override
     @Transactional(readOnly = true)
     public List<NceCategory> getAllNceCategories() {
-        List<NceCategory> nceCategoryList = baseObjectDAO.getAllNceCategory();
-        for (NceCategory category : nceCategoryList) {
-            category.setName(MessageUtil.getMessage(category.getDisplayKey()));
-        }
-        return nceCategoryList;
+        return baseObjectDAO.getAllNceCategory();
     }
 
     @Override

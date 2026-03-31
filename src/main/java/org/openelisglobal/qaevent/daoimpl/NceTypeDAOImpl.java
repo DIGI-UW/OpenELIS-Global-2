@@ -33,4 +33,20 @@ public class NceTypeDAOImpl extends BaseDAOImpl<NceType, String> implements NceT
         }
         return list;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<NceType> getNceTypesByCategoryId(String categoryId) throws LIMSRuntimeException {
+        List<NceType> list;
+        try {
+            String sql = "from NceType nt where nt.categoryId = :categoryId order by nt.id";
+            Query<NceType> query = entityManager.unwrap(Session.class).createQuery(sql, NceType.class);
+            query.setParameter("categoryId", Integer.valueOf(categoryId));
+            list = query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NceType getNceTypesByCategoryId()", e);
+        }
+        return list;
+    }
 }

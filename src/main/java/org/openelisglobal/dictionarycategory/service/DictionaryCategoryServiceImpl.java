@@ -55,4 +55,10 @@ public class DictionaryCategoryServiceImpl extends AuditableBaseObjectServiceImp
     public DictionaryCategory getDictionaryCategoryByName(String name) {
         return getBaseObjectDAO().getDictionaryCategoryByName(name);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DictionaryCategory getDictionaryCategoryByLocalAbbrev(String localAbbrev) {
+        return getBaseObjectDAO().getDictionaryCategoryByLocalAbbrev(localAbbrev);
+    }
 }
