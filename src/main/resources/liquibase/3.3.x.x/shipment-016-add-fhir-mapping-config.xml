@@ -20,6 +20,11 @@
       <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
       <column name="lastupdated" valueDate="now()" />
     </insert>
+    <rollback>
+        <delete schemaName="clinlims" tableName="site_information">
+            <where>name = 'fhirContainerTypeCode'</where>
+        </delete>
+    </rollback>
   </changeSet>
 
   <changeSet author="oe" id="shipment-016-2">
@@ -37,6 +42,11 @@
       <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
       <column name="lastupdated" valueDate="now()" />
     </insert>
+    <rollback>
+        <delete schemaName="clinlims" tableName="site_information">
+            <where>name = 'fhirContainerTypeDisplay'</where>
+        </delete>
+    </rollback>
   </changeSet>
 
   <!-- FHIR mapping: non-conformity SNOMED CT codes (JSON) -->
@@ -55,6 +65,11 @@
       <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
       <column name="lastupdated" valueDate="now()" />
     </insert>
+    <rollback>
+        <delete schemaName="clinlims" tableName="site_information">
+            <where>name = 'fhirNonConformityCodes'</where>
+        </delete>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>

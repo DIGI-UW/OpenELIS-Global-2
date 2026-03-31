@@ -6,6 +6,22 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <changeSet id="shipment-005-create-indexes" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <not><indexExists indexName="idx_shipping_box_state" tableName="shipping_box"/></not>
+                <not><indexExists indexName="idx_shipping_box_destination" tableName="shipping_box"/></not>
+                <not><indexExists indexName="idx_shipping_box_created_date" tableName="shipping_box"/></not>
+                <not><indexExists indexName="idx_shipping_box_fhir_uuid" tableName="shipping_box"/></not>
+                <not><indexExists indexName="idx_shipping_box_archived" tableName="shipping_box"/></not>
+                <not><indexExists indexName="idx_shipment_box_id" tableName="shipment"/></not>
+                <not><indexExists indexName="idx_shipment_status" tableName="shipment"/></not>
+                <not><indexExists indexName="idx_shipment_tracking" tableName="shipment"/></not>
+                <not><indexExists indexName="idx_box_sample_box_id" tableName="box_sample"/></not>
+                <not><indexExists indexName="idx_box_sample_sample_id" tableName="box_sample"/></not>
+                <not><indexExists indexName="idx_box_sample_reception_status" tableName="box_sample"/></not>
+                <not><indexExists indexName="idx_box_sample_composite" tableName="box_sample"/></not>
+            </and>
+        </preConditions>
         <!-- Indexes for shipping_box table -->
         <createIndex indexName="idx_shipping_box_state" tableName="shipping_box">
             <column name="state"/>

@@ -6,6 +6,9 @@
       http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
   <changeSet id="1-add-sample-shipment-referral-type" author="pkomena">
+    <preConditions onFail="MARK_RAN">
+        <sqlCheck expectedResult="0">SELECT COUNT(*) FROM referral_type WHERE name = 'Sample Shipment'</sqlCheck>
+    </preConditions>
     <comment>Add 'Sample Shipment' referral type for shipment module</comment>
 
     <!-- Insert the new referral type -->
@@ -25,6 +28,14 @@
       <column name="lastupdated" valueDate="now()"/>
     </insert>
 
+    <rollback>
+        <delete tableName="localization">
+            <where>description = 'referral type - sample shipment'</where>
+        </delete>
+        <delete tableName="referral_type">
+            <where>name = 'Sample Shipment'</where>
+        </delete>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>

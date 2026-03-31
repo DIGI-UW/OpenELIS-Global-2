@@ -12,6 +12,9 @@
         <constraints nullable="true"/>
       </column>
     </addColumn>
+    <rollback>
+        <dropColumn tableName="shipping_box" columnName="actual_sample_count"/>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>

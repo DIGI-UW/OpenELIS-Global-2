@@ -23,6 +23,11 @@
             <column name="new_window" value="false"/>
             <column name="is_active" value="true"/>
         </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id = 'menu_sample_shipment'</where>
+            </delete>
+        </rollback>
     </changeSet>
 
     <!-- Add Sample Shipment system module -->
@@ -41,6 +46,11 @@
             <column name="has_update_flag" value="Y"/>
             <column name="has_delete_flag" value="Y"/>
         </insert>
+        <rollback>
+            <delete tableName="system_module" schemaName="clinlims">
+                <where>name = 'SampleShipmentManagement'</where>
+            </delete>
+        </rollback>
     </changeSet>
 
     <!-- Add system module URL mapping -->
@@ -57,6 +67,11 @@
             <column name="url_path" value="/SampleShipment"/>
             <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement')"/>
         </insert>
+        <rollback>
+            <delete tableName="system_module_url" schemaName="clinlims">
+                <where>url_path = '/SampleShipment'</where>
+            </delete>
+        </rollback>
     </changeSet>
 
     <!-- Assign module to Reception role (users who handle sample receipt/shipping) -->
@@ -80,6 +95,13 @@
             <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"/>
             <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement')"/>
         </insert>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Reception')
+                  AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement');
+            </sql>
+        </rollback>
     </changeSet>
 
     <!-- Assign module to Results role (users who may need to view shipment status) -->
@@ -103,6 +125,13 @@
             <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
             <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement')"/>
         </insert>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_module
+                WHERE system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+                  AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'SampleShipmentManagement');
+            </sql>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

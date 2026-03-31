@@ -10,7 +10,7 @@
 
         <!-- Box assignment for shipment -->
         <addColumn tableName="referral">
-            <column name="assigned_to_box_id" type="BIGINT">
+            <column name="assigned_to_box_id" type="INTEGER">
                 <constraints nullable="true"
                     foreignKeyName="fk_referral_assigned_box"
                     referencedTableName="shipping_box" referencedColumnNames="id" />
@@ -57,6 +57,15 @@
                 <constraints nullable="true" />
             </column>
         </addColumn>
+        <rollback>
+            <dropColumn tableName="referral" columnName="assigned_to_box_id"/>
+            <dropColumn tableName="referral" columnName="lost_status"/>
+            <dropColumn tableName="referral" columnName="lost_date"/>
+            <dropColumn tableName="referral" columnName="lost_reason"/>
+            <dropColumn tableName="referral" columnName="priority"/>
+            <dropColumn tableName="referral" columnName="cancel_date"/>
+            <dropColumn tableName="referral" columnName="cancel_reason"/>
+        </rollback>
     </changeSet>
 
     <changeSet id="2" author="pkomena">
@@ -86,6 +95,12 @@
             <column name="status" />
             <column name="referral_request_date" />
         </createIndex>
+        <rollback>
+            <dropIndex tableName="referral" indexName="idx_referral_assigned_box"/>
+            <dropIndex tableName="referral" indexName="idx_referral_lost_status"/>
+            <dropIndex tableName="referral" indexName="idx_referral_priority"/>
+            <dropIndex tableName="referral" indexName="idx_referral_unassigned"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

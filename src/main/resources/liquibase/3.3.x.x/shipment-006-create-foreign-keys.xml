@@ -6,6 +6,15 @@
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
     <changeSet id="shipment-006-create-foreign-keys" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <not><foreignKeyConstraintExists foreignKeyName="fk_shipping_box_destination"/></not>
+                <not><foreignKeyConstraintExists foreignKeyName="fk_shipping_box_created_by"/></not>
+                <not><foreignKeyConstraintExists foreignKeyName="fk_shipment_box"/></not>
+                <not><foreignKeyConstraintExists foreignKeyName="fk_box_sample_box"/></not>
+                <not><foreignKeyConstraintExists foreignKeyName="fk_box_sample_sample"/></not>
+            </and>
+        </preConditions>
         <!-- Foreign keys for shipping_box table -->
         <addForeignKeyConstraint
             constraintName="fk_shipping_box_destination"

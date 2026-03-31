@@ -23,6 +23,11 @@
       <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
       <column name="lastupdated" valueDate="now()" />
     </insert>
+    <rollback>
+        <delete schemaName="clinlims" tableName="site_information">
+            <where>name = 'siteOrganizationFhirUuid'</where>
+        </delete>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>
