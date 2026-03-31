@@ -95,7 +95,6 @@ function OEHeader({
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -144,14 +143,6 @@ function OEHeader({
       window.removeEventListener("branding-updated", handleBrandingUpdate);
     };
   }, [userSessionDetails.authenticated]);
-
-  useEffect(() => {
-    getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
-      if (response) {
-        setIsTrainingInstallation(response.trainingInstallation);
-      }
-    });
-  }, []);
 
   const panelSwitchLabel = () => {
     return userSessionDetails.authenticated ? "User" : "Lang";
@@ -651,21 +642,6 @@ function OEHeader({
                 <p>
                   <FormattedMessage id="header.label.version" /> &nbsp;{" "}
                   {configurationProperties?.releaseNumber}
-                  {isTrainingInstallation && (
-                    <span
-                      style={{
-                        backgroundColor: "#ff8800",
-                        color: "white",
-                        padding: "2px 6px",
-                        marginLeft: "8px",
-                        borderRadius: "3px",
-                        fontWeight: "bold",
-                        fontSize: "0.85em",
-                      }}
-                    >
-                      <FormattedMessage id="training.installation.message" />
-                    </span>
-                  )}
                 </p>
               </div>
             </HeaderName>
