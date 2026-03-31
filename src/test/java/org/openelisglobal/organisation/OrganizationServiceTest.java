@@ -229,14 +229,17 @@ public class OrganizationServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull("Precondition: org must exist", orgWithCode);
 
         String code = orgWithCode.getCode();
-        if (code == null || code.isEmpty()) {
-            // If fixture org 3 has no code, skip gracefully
-            return;
-        }
 
+        // Fail loudly if fixture org 3 has no code — silent pass is worse than a
+        // clear failure that tells the next developer to fix the fixture
+        assertNotNull("Precondition: org ID 3 must have a non-null code in the fixture — "
+                + "update testdata/organization.xml to add a code value", code);
+        assertFalse("Precondition: org ID 3 must have a non-empty code in the fixture — "
+                + "update testdata/organization.xml to add a code value", code.isEmpty());
+
+        // Now actually validate the lookup
         Organization found = organisationService.getOrganizationByCode(code);
         assertNotNull("Should find organization by its own code", found);
         assertEquals("Found org should match the original org ID", "3", found.getId());
     }
-
 }
