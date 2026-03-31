@@ -22,6 +22,7 @@ jobs:
     outputs:
       event_name: ${{ steps.context.outputs.event_name }}
       head_sha: ${{ steps.context.outputs.head_sha }}
+      head_branch: ${{ steps.context.outputs.head_branch }}
       image_transfer: ${{ steps.context.outputs.image_transfer }}
       build_run_id: ${{ github.event.workflow_run.id }}
     steps:
@@ -56,10 +57,13 @@ jobs:
             HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
           fi
 
+          HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+
           echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
           echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-          echo "Publish context: event=$EVENT_NAME image_transfer=$IMAGE_TRANSFER head_sha=$HEAD_SHA"
+          echo "head_branch=$HEAD_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "Publish context: event=$EVENT_NAME image_transfer=$IMAGE_TRANSFER head_sha=$HEAD_SHA head_branch=$HEAD_BRANCH"
 
   wait-for-e2e-checkpoint:
     name: Wait For 03 Checkpoint - E2E
@@ -167,7 +171,36 @@ jobs:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Compute Docker tags from original event context
+        id: tags
+        run: |
+          IMAGE="${{ vars.DOCKERHUB_USERNAME }}/openelis-global-2${{ matrix.dockerhub_suffix != 'backend' && format('-{0}', matrix.dockerhub_suffix) || '' }}"
+          HEAD_BRANCH="${{ needs.setup.outputs.head_branch }}"
+          EVENT_NAME="${{ needs.setup.outputs.event_name }}"
+          TAGS=""
+
+          if [ "$EVENT_NAME" = "release" ]; then
+            # Strip leading 'v' for semver tags
+            VERSION="${HEAD_BRANCH#v}"
+            MAJOR="$(echo "$VERSION" | cut -d. -f1)"
+            MINOR="$(echo "$VERSION" | cut -d. -f1-2)"
+            printf -v TAGS "%s\n%s\n%s" "${IMAGE}:${VERSION}" "${IMAGE}:${MAJOR}.${MINOR}" "${IMAGE}:latest"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            # Branch push (merge) — use branch name as tag
+            SAFE_BRANCH="$(echo "$HEAD_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g')"
+            TAGS="${IMAGE}:${SAFE_BRANCH}"
+          fi
+
+          # Use delimiter for multiline output
+          {
+            echo "tags<<TAGS_EOF"
+            echo "$TAGS"
+            echo "TAGS_EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "Computed tags:"
+          echo "$TAGS"
+
+      - name: Extract metadata (labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -183,4 +216,4 @@ jobs:
             echo "Publishing $target_tag from ${{ steps.source.outputs.ghcr_source }}"
             docker tag "${{ steps.source.outputs.ghcr_source }}" "$target_tag"
             docker push "$target_tag"
-          done <<< "${{ steps.meta.outputs.tags }}"
+          done <<< "${{ steps.tags.outputs.tags }}"
