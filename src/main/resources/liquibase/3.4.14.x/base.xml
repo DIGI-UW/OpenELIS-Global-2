@@ -10,4 +10,16 @@
   <include relativeToChangelogFile="true" file="002-create-analyzer-file-upload.xml"/>
   <include relativeToChangelogFile="true" file="003-create-analyzer-run.xml"/>
   <include relativeToChangelogFile="true" file="004-fix-analyzer-fk-types-and-cascade.xml"/>
+
+  <!-- 013-hjra-hl7-stream-alignment: CommunicationMode for test-connection parity -->
+  <include relativeToChangelogFile="true" file="005-analyzer-communication-mode.xml"/>
+
+  <!-- OGC-492: Per-analyzer test mappings (was per-type, broke generic plugins) -->
+  <include relativeToChangelogFile="true" file="006-per-analyzer-test-mappings.xml"/>
+
+  <!-- Unify FILE transport config onto analyzer table (was separate table) -->
+  <include relativeToChangelogFile="true" file="007-unify-analyzer-transport-config.xml"/>
+
+  <!-- Fix analyzer_test_map FK to CASCADE on delete (was NO ACTION) -->
+  <include relativeToChangelogFile="true" file="008-analyzer-test-map-cascade-delete.xml"/>
 </databaseChangeLog>

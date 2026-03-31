@@ -134,9 +134,17 @@ check_dependencies() {
     local DB_HOST=$4
     local DB_PORT=$5
 
-    local MAX_RETRIES=10
+    local MAX_RETRIES=20
     local RETRY_DELAY=3
     local RETRY_COUNT=0
+
+    local TYPE_COUNT
+    local STATUS_COUNT
+    local ROOM_COUNT
+    local STORAGE_ROOM_TABLE_EXISTS
+    local PROVIDER_FHIR_UUID_EXISTS
+    local PROVIDER_ACTIVE_EXISTS
+    local ORGANIZATION_FHIR_UUID_EXISTS
 
     echo "Checking dependencies..."
 
@@ -146,23 +154,32 @@ check_dependencies() {
             # Minimum required status for fixtures is 'Entered' (used by samples/sample_items).
             # Some environments may not seed analysis statuses ('Not Tested', 'Finalized') consistently.
             STATUS_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check storage hierarchy exists (from DBUnit fixtures)
+            STORAGE_ROOM_TABLE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT to_regclass('clinlims.storage_room') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
+            PROVIDER_FHIR_UUID_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            PROVIDER_ACTIVE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'active';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            ORGANIZATION_FHIR_UUID_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check storage hierarchy exists (from DBUnit fixtures) after the table itself is present.
             ROOM_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         else
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
-            # Check storage hierarchy exists (from DBUnit fixtures)
+            STORAGE_ROOM_TABLE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT to_regclass('clinlims.storage_room') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
+            PROVIDER_FHIR_UUID_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            PROVIDER_ACTIVE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'active';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            ORGANIZATION_FHIR_UUID_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
+            # Check storage hierarchy exists (from DBUnit fixtures) after the table itself is present.
             ROOM_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');" 2>/dev/null | tr -d '[:space:]' || echo "0")
         fi
 
-        # Check if all dependencies are met
-        # Note: ROOM_COUNT check is optional (will be loaded by DBUnit loader if missing)
-        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 1 ]; then
-            if [ "$ROOM_COUNT" -ge 3 ]; then
-                echo "Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, storage hierarchy: $ROOM_COUNT rooms)"
-            else
-                echo "Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present)"
-                echo "   Note: Storage hierarchy will be loaded by DBUnit loader"
+        # Foundational fixtures require current-schema columns and storage tables.
+        if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 1 ] \
+            && [ "$STORAGE_ROOM_TABLE_EXISTS" = "t" ] \
+            && [ "$PROVIDER_FHIR_UUID_EXISTS" -ge 1 ] \
+            && [ "$PROVIDER_ACTIVE_EXISTS" -ge 1 ] \
+            && [ "$ORGANIZATION_FHIR_UUID_EXISTS" -ge 1 ]; then
+            echo "Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, provider/organization FHIR columns present, storage_room table present)"
+            if [ "$ROOM_COUNT" -lt 3 ]; then
+                echo "   Note: storage_room table is ready; DBUnit loader will populate fixture rows"
             fi
             echo ""
             return 0
@@ -174,7 +191,11 @@ check_dependencies() {
             echo "WARNING: Dependencies not ready (attempt $RETRY_COUNT/$MAX_RETRIES):"
             echo "   type_of_sample: $TYPE_COUNT rows (need 3+)"
             echo "   status_of_sample: $STATUS_COUNT 'Entered' rows (need 1+)"
-            echo "   storage hierarchy: $ROOM_COUNT rooms (need 3+)"
+            echo "   provider.fhir_uuid column present: $PROVIDER_FHIR_UUID_EXISTS"
+            echo "   provider.active column present: $PROVIDER_ACTIVE_EXISTS"
+            echo "   organization.fhir_uuid column present: $ORGANIZATION_FHIR_UUID_EXISTS"
+            echo "   storage_room table present: $STORAGE_ROOM_TABLE_EXISTS"
+            echo "   storage hierarchy rows: $ROOM_COUNT"
             echo "   Waiting ${RETRY_DELAY}s for Liquibase to complete..."
             sleep $RETRY_DELAY
         fi
@@ -190,6 +211,27 @@ check_dependencies() {
     if [ "$STATUS_COUNT" -lt 1 ]; then
         echo "ERROR: status_of_sample table missing required status 'Entered'. Found $STATUS_COUNT rows."
         echo "Please ensure database is properly initialized with status values."
+        exit 1
+    fi
+
+    if [ "$PROVIDER_FHIR_UUID_EXISTS" -lt 1 ] || [ "$PROVIDER_ACTIVE_EXISTS" -lt 1 ]; then
+        echo "ERROR: provider schema is not ready for foundational fixtures."
+        echo "Required columns missing: fhir_uuid count=$PROVIDER_FHIR_UUID_EXISTS, active count=$PROVIDER_ACTIVE_EXISTS."
+        echo "Please ensure Liquibase has finished before loading fixtures."
+        exit 1
+    fi
+
+    if [ "$ORGANIZATION_FHIR_UUID_EXISTS" -lt 1 ]; then
+        echo "ERROR: organization schema is not ready for foundational fixtures."
+        echo "Required column missing: fhir_uuid count=$ORGANIZATION_FHIR_UUID_EXISTS."
+        echo "Please ensure Liquibase has finished before loading fixtures."
+        exit 1
+    fi
+
+    if [ "$STORAGE_ROOM_TABLE_EXISTS" != "t" ]; then
+        echo "ERROR: storage schema is not ready for DBUnit fixtures."
+        echo "Required table missing: storage_room."
+        echo "Please ensure Liquibase has finished before loading fixtures."
         exit 1
     fi
 }
