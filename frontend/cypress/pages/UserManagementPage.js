@@ -33,17 +33,19 @@ class UserManagementPage {
       menuButton: "[data-cy='menuButton']",
       enterLoginName: "#loginName",
       enterPassword: "#password",
-      allPermissions: "#all-permissions-AllLabUnits",
-      allBioPermissions: "#all-permissions-56",
-      allHemaPermissions: "#all-permissions-36",
-      allSeroPermissions: "#all-permissions-117",
-      allImmunoPermissions: "#all-permissions-59",
-      allMolecularPermissions: "#all-permissions-136",
-      allCytoPermissions: "#all-permissions-165",
-      allSerologyPermissions: "#all-permissions-97",
-      allViroPermissions: "#all-permissions-76",
-      allPathoPermissions: "#all-permissions-163",
-      allImmunoHistoPermissions: "#all-permissions-164",
+      allPermissions: "[data-testid='all-permissions-All-Lab-Units']",
+      allBioPermissions: "[data-testid='all-permissions-Biochemistry']",
+      allHemaPermissions: "[data-testid='all-permissions-Hematology']",
+      allSeroPermissions: "[data-testid='all-permissions-Serology-Immunology']",
+      allImmunoPermissions: "[data-testid='all-permissions-Immunology']",
+      allMolecularPermissions:
+        "[data-testid='all-permissions-Molecular-Biology']",
+      allCytoPermissions: "[data-testid='all-permissions-Cytology']",
+      allSerologyPermissions: "[data-testid='all-permissions-Serology']",
+      allViroPermissions: "[data-testid='all-permissions-Virology']",
+      allPathoPermissions: "[data-testid='all-permissions-Pathology']",
+      allImmunoHistoPermissions:
+        "[data-testid='all-permissions-Immunohistochemistry']",
       loginButton: "[data-cy='loginButton']",
       uncheckActiveUser: "#only-active",
       uncheckAdminUser: "#only-administrator",
@@ -158,6 +160,10 @@ class UserManagementPage {
   //All Lab Units
   addNewPermission() {
     cy.get(this.selectors.addNewPermission).click();
+  }
+
+  selectTestSection(sectionName) {
+    cy.get('select[id^="select-"]').last().select(sectionName);
   }
 
   allPermissions() {
