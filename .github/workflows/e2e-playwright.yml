@@ -12,10 +12,6 @@ on:
     types: [published]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -28,7 +24,9 @@ jobs:
   shared-build:
     name: Shared Build
     runs-on: ubuntu-latest
-    environment: e2e
+    permissions:
+      contents: read
+      packages: write
     outputs:
       image_transfer: ${{ steps.push-images.outputs.mode }}
     steps:
@@ -36,6 +34,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          persist-credentials: false
 
       - name: Set up Java 21
         uses: actions/setup-java@v4
