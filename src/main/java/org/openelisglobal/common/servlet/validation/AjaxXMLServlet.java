@@ -25,6 +25,7 @@ import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.owasp.encoder.Encode;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 
@@ -36,9 +37,10 @@ public class AjaxXMLServlet extends AjaxServlet {
     public void sendData(String field, String message, HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         if (!StringUtil.isNullorNill(field)) {
-            StringBuilder sb = new StringBuilder().append("<fieldmessage>").append("<formfield>").append(field)
-                    .append("</formfield>").append("<message>").append(message).append("</message>")
-                    .append("</fieldmessage>");
+            StringBuilder sb = new StringBuilder().append("<fieldmessage>").append("<formfield>")
+                .append(Encode.forXmlContent(String.valueOf(field))).append("</formfield>")
+                .append("<message>").append(Encode.forXmlContent(String.valueOf(message)))
+                .append("</message>").append("</fieldmessage>");
             if ("true".equals(request.getParameter("asJSON"))) {
                 response.setContentType("application/json");
                 response.setHeader("Cache-Control", "no-cache");
