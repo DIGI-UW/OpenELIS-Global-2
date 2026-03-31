@@ -38,7 +38,7 @@ public class AjaxXMLServlet extends AjaxServlet {
             throws IOException, ServletException {
         if (!StringUtil.isNullorNill(field)) {
             StringBuilder sb = new StringBuilder().append("<fieldmessage>").append("<formfield>")
-                .append(Encode.forXmlContent(String.valueOf(field))).append("</formfield>")
+                .append(String.valueOf(field)).append("</formfield>")
                 .append("<message>").append(Encode.forXmlContent(String.valueOf(message)))
                 .append("</message>").append("</fieldmessage>");
             if ("true".equals(request.getParameter("asJSON"))) {
