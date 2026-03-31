@@ -25,13 +25,14 @@ import {
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import config from "../../config.json";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServer,
+  getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
+  putToOpenElisServer,
 } from "../utils/Utils";
 import "./BoxCreation.css";
 import ShipmentNavigation from "./ShipmentNavigation";
@@ -201,36 +202,11 @@ const BoxCreation = () => {
 
     try {
       // Search for sample items by accession number using new SampleItem-based API
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/unassigned-sample/items/search?accessionNumber=${encodeURIComponent(sampleSearchTerm)}`,
-        {
-          credentials: "include",
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+      const data = await getFromOpenElisServerV2(
+        `/rest/unassigned-sample/items/search?accessionNumber=${encodeURIComponent(sampleSearchTerm)}`,
       );
 
       setSearching(false);
-
-      // Handle errors
-      if (!response.ok) {
-        if (response.status === 404) {
-          const message = intl.formatMessage({
-            id: "shipment.error.sampleNotFound",
-          });
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "notification.error" }),
-            message: `${message}: ${sampleSearchTerm}`,
-          });
-          return;
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
 
       // Backend returns SampleItemDTO array
       if (!data || !Array.isArray(data) || data.length === 0) {
@@ -393,32 +369,28 @@ const BoxCreation = () => {
         }
 
         if (response && response.id) {
-          // Add samples sequentially
+          // Add samples sequentially using Promise wrappers
           const addSamplesAndNavigate = async () => {
             let errors = 0;
             for (const sample of addedSamples) {
-              try {
-                const res = await fetch(
-                  `${config.serverBaseUrl}/rest/box-sample/items`,
-                  {
-                    method: "POST",
-                    credentials: "include",
-                    headers: {
-                      "Content-Type": "application/json",
-                      "X-CSRF-Token": localStorage.getItem("CSRF"),
-                    },
-                    body: JSON.stringify({
-                      shippingBoxId: response.id,
-                      sampleItemId: sample.sampleItemId || sample.id,
-                    }),
+              const result = await new Promise((resolve) => {
+                postToOpenElisServerJsonResponse(
+                  "/rest/box-sample/items",
+                  JSON.stringify({
+                    shippingBoxId: response.id,
+                    sampleItemId: sample.sampleItemId || sample.id,
+                  }),
+                  (res) => {
+                    if (res.error || res.status >= 400) {
+                      console.error("Error adding sample to box:", res);
+                      resolve(false);
+                    } else {
+                      resolve(true);
+                    }
                   },
                 );
-                if (!res.ok) {
-                  console.error("Error adding sample to box:", res.status);
-                  errors++;
-                }
-              } catch (err) {
-                console.error("Error adding sample to box:", err);
+              });
+              if (!result) {
                 errors++;
               }
             }
@@ -475,53 +447,47 @@ const BoxCreation = () => {
         }
 
         if (response && response.id) {
-          let samplesProcessed = 0;
-          const totalSamples = addedSamples.length;
+          const addSamplesAndMarkReady = async () => {
+            // Add all samples in parallel using Promise.all
+            if (addedSamples.length > 0) {
+              await Promise.all(
+                addedSamples.map(
+                  (sample) =>
+                    new Promise((resolve) => {
+                      postToOpenElisServerJsonResponse(
+                        "/rest/box-sample/items",
+                        JSON.stringify({
+                          shippingBoxId: response.id,
+                          sampleItemId: sample.sampleItemId || sample.id,
+                        }),
+                        () => {
+                          resolve();
+                        },
+                      );
+                    }),
+                ),
+              );
+            }
 
-          const markReady = () => {
-            fetch(
-              `${config.serverBaseUrl}/rest/shipping-box/${response.id}/state?newState=READY_TO_SEND`,
-              {
-                credentials: "include",
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                  "X-CSRF-Token": localStorage.getItem("CSRF"),
-                },
-              },
-            ).then(() => {
-              addNotification({
-                kind: "success",
-                title: intl.formatMessage({ id: "notification.success" }),
-                message: intl.formatMessage({
-                  id: "shipment.notification.boxReadyToSend",
-                }),
-              });
-              setLoading(false);
-              history.push(`/SampleShipment/box/${response.id}`);
-            });
-          };
-
-          if (totalSamples === 0) {
-            markReady();
-            return;
-          }
-
-          addedSamples.forEach((sample) => {
-            postToOpenElisServerJsonResponse(
-              "/rest/box-sample/items",
-              JSON.stringify({
-                shippingBoxId: response.id,
-                sampleItemId: sample.sampleItemId || sample.id,
-              }),
+            // Mark as ready after all samples added
+            putToOpenElisServer(
+              `/rest/shipping-box/${response.id}/state?newState=READY_TO_SEND`,
+              null,
               () => {
-                samplesProcessed++;
-                if (samplesProcessed === totalSamples) {
-                  markReady();
-                }
+                addNotification({
+                  kind: "success",
+                  title: intl.formatMessage({ id: "notification.success" }),
+                  message: intl.formatMessage({
+                    id: "shipment.notification.boxReadyToSend",
+                  }),
+                });
+                setLoading(false);
+                history.push(`/SampleShipment/box/${response.id}`);
               },
             );
-          });
+          };
+
+          addSamplesAndMarkReady();
         } else {
           setLoading(false);
         }
@@ -775,7 +741,7 @@ const BoxCreation = () => {
                 })}
                 value={sampleSearchTerm}
                 onChange={(e) => setSampleSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleSearchSample()}
+                onKeyDown={(e) => e.key === "Enter" && handleSearchSample()}
                 disabled={searching || addedSamples.length >= capacity}
               />
               <Button

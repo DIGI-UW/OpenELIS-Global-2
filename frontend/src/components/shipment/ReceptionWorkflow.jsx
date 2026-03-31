@@ -22,12 +22,15 @@ import {
 } from "@carbon/react";
 import { Scan, Checkmark, Close, CloudDownload } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServerV2 } from "../utils/Utils";
+import {
+  getFromOpenElisServerV2,
+  postToOpenElisServerFullResponse,
+  putToOpenElisServer,
+} from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import ShipmentNavigation from "./ShipmentNavigation";
-import config from "../../config.json";
 import "./ReceptionWorkflow.css";
 
 const ReceptionWorkflow = () => {
@@ -46,45 +49,47 @@ const ReceptionWorkflow = () => {
   const [sampleScanInput, setSampleScanInput] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
 
-  const handleImportFromFhir = async () => {
+  const handleImportFromFhir = () => {
     setImporting(true);
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/import-from-fhir`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-        },
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        const count = result.imported || 0;
-        addNotification({
-          kind: count > 0 ? "success" : "info",
-          title: intl.formatMessage({ id: "notification.success" }),
-          message: intl.formatMessage(
-            { id: "shipment.reception.importResult" },
-            { count },
-          ),
-        });
-      } else {
-        throw new Error("Import failed");
-      }
-    } catch (error) {
-      console.error("Error importing from FHIR:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "shipment.reception.importError" }),
-      });
-    } finally {
-      setImporting(false);
-    }
+    postToOpenElisServerFullResponse(
+      "/rest/shipping-box/import-from-fhir",
+      JSON.stringify({}),
+      async (response) => {
+        try {
+          if (response.ok) {
+            const result = await response.json();
+            const count = result.imported || 0;
+            addNotification({
+              kind: count > 0 ? "success" : "info",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage(
+                { id: "shipment.reception.importResult" },
+                { count },
+              ),
+            });
+          } else {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({
+                id: "shipment.reception.importError",
+              }),
+            });
+          }
+        } catch (error) {
+          console.error("Error importing from FHIR:", error);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({
+              id: "shipment.reception.importError",
+            }),
+          });
+        } finally {
+          setImporting(false);
+        }
+      },
+    );
   };
 
   const handleScanBox = async () => {
@@ -257,31 +262,27 @@ const ReceptionWorkflow = () => {
           continue;
         }
 
-        let receptionUrl =
-          config.serverBaseUrl +
+        let receptionEndpoint =
           "/rest/box-sample/items/" +
           sampleKey +
           "/reception-status?status=" +
           statusData.status;
         if (statusData.notes) {
-          receptionUrl += "&notes=" + encodeURIComponent(statusData.notes);
+          receptionEndpoint += "&notes=" + encodeURIComponent(statusData.notes);
         }
 
-        const response = await fetch(receptionUrl, {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
+        const status = await new Promise((resolve) => {
+          putToOpenElisServer(receptionEndpoint, null, (status) => {
+            resolve(status);
+          });
         });
 
-        if (!response.ok) {
+        if (status < 200 || status >= 300) {
           console.error(
             "Failed to update reception status for",
             sampleKey,
             "status:",
-            response.status,
+            status,
           );
           allUpdatesSucceeded = false;
         }
@@ -303,20 +304,18 @@ const ReceptionWorkflow = () => {
         box.state !== "RECONCILED" &&
         box.state !== "PARTIALLY_RECEIVED"
       ) {
-        const stateResponse = await fetch(
-          `${config.serverBaseUrl}/rest/shipping-box/${box.id}/state?newState=RECEIVED`,
-          {
-            method: "PUT",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRF-Token": localStorage.getItem("CSRF"),
+        const stateStatus = await new Promise((resolve) => {
+          putToOpenElisServer(
+            `/rest/shipping-box/${box.id}/state?newState=RECEIVED`,
+            null,
+            (status) => {
+              resolve(status);
             },
-          },
-        );
+          );
+        });
 
-        if (!stateResponse.ok) {
-          console.error("Failed to update box state:", stateResponse.status);
+        if (stateStatus < 200 || stateStatus >= 300) {
+          console.error("Failed to update box state:", stateStatus);
         }
       }
 
@@ -553,7 +552,7 @@ const ReceptionWorkflow = () => {
             })}
             value={boxId}
             onChange={(e) => setBoxId(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleScanBox()}
+            onKeyDown={(e) => e.key === "Enter" && handleScanBox()}
             disabled={loading || box !== null}
           />
         </Column>
@@ -699,7 +698,7 @@ const ReceptionWorkflow = () => {
                 })}
                 value={sampleScanInput}
                 onChange={(e) => setSampleScanInput(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && handleScanSample()}
+                onKeyDown={(e) => e.key === "Enter" && handleScanSample()}
               />
               <Button
                 size="sm"

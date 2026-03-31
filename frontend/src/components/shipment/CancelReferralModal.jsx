@@ -2,7 +2,7 @@ import { useState, useContext } from "react";
 import { Modal, TextArea, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
-import config from "../../config.json";
+import { putToOpenElisServerFullResponse } from "../utils/Utils";
 
 const CancelReferralModal = ({ open, onClose, sample, onSuccess }) => {
   const intl = useIntl();
@@ -12,7 +12,7 @@ const CancelReferralModal = ({ open, onClose, sample, onSuccess }) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!reason.trim()) {
       setError(intl.formatMessage({ id: "shipment.error.reasonRequired" }));
       return;
@@ -20,62 +20,58 @@ const CancelReferralModal = ({ open, onClose, sample, onSuccess }) => {
 
     const referralId = sample?.referralTests?.[0]?.referralId;
     if (!referralId) {
-      setError("No referral ID available for this sample");
+      setError(intl.formatMessage({ id: "shipment.error.noReferralId" }));
       return;
     }
 
     setSubmitting(true);
     setError(null);
 
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/unassigned-sample/${referralId}/cancel`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: JSON.stringify({ reason: reason.trim() }),
-        },
-      );
+    putToOpenElisServerFullResponse(
+      `/rest/unassigned-sample/${referralId}/cancel`,
+      JSON.stringify({ reason: reason.trim() }),
+      async (response) => {
+        try {
+          if (response.ok) {
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage({
+                id: "shipment.notification.referralCancelled",
+              }),
+            });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          errorText ||
-            intl.formatMessage({ id: "shipment.error.cancelReferral" }),
-        );
-      }
-
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.referralCancelled",
-        }),
-      });
-
-      if (onSuccess) {
-        onSuccess();
-      }
-      onClose();
-    } catch (error) {
-      setError(
-        error.message ||
-          intl.formatMessage({ id: "shipment.error.cancelReferral" }),
-      );
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message:
-          error.message ||
-          intl.formatMessage({ id: "shipment.error.cancelReferral" }),
-      });
-    } finally {
-      setSubmitting(false);
-    }
+            if (onSuccess) {
+              onSuccess();
+            }
+            onClose();
+          } else {
+            const errorText = await response.text();
+            const errorMessage =
+              errorText ||
+              intl.formatMessage({ id: "shipment.error.cancelReferral" });
+            setError(errorMessage);
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: errorMessage,
+            });
+          }
+        } catch (error) {
+          const errorMessage = intl.formatMessage({
+            id: "shipment.error.cancelReferral",
+          });
+          setError(errorMessage);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: errorMessage,
+          });
+        } finally {
+          setSubmitting(false);
+        }
+      },
+    );
   };
 
   return (

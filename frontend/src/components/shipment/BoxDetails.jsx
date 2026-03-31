@@ -24,12 +24,12 @@ import {
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
-import config from "../../config.json";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
+  putToOpenElisServer,
 } from "../utils/Utils";
 import "./BoxDetails.css";
 import SampleAssignmentModal from "./SampleAssignmentModal";
@@ -162,92 +162,71 @@ const BoxDetails = () => {
     );
   };
 
-  const handleMarkReadyToSend = async () => {
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/${boxId}/state?newState=READY_TO_SEND`,
-        {
-          credentials: "include",
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(intl.formatMessage({ id: "shipment.error.markReady" }));
-      }
-
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.boxReadyToSend",
-        }),
-      });
-
-      fetchBoxDetails();
-      setShowReadyModal(false);
-    } catch (error) {
-      console.error("Error marking box as ready:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "shipment.error.markReady" }),
-      });
-    }
+  const handleMarkReadyToSend = () => {
+    putToOpenElisServer(
+      `/rest/shipping-box/${boxId}/state?newState=READY_TO_SEND`,
+      null,
+      (status) => {
+        if (status >= 200 && status < 300) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({
+              id: "shipment.notification.boxReadyToSend",
+            }),
+          });
+          fetchBoxDetails();
+          setShowReadyModal(false);
+        } else {
+          console.error("Error marking box as ready:", status);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.markReady" }),
+          });
+        }
+      },
+    );
   };
 
-  const handleSendBox = async () => {
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/${boxId}/state?newState=SENT`,
-        {
-          credentials: "include",
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-        },
-      );
+  const handleSendBox = () => {
+    putToOpenElisServer(
+      `/rest/shipping-box/${boxId}/state?newState=SENT`,
+      null,
+      async (status) => {
+        if (status >= 200 && status < 300) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({
+              id: "shipment.notification.boxSent",
+            }),
+          });
 
-      if (!response.ok) {
-        throw new Error(intl.formatMessage({ id: "shipment.error.sendBox" }));
-      }
+          // Auto-generate packing list on send (spec User Story 4)
+          try {
+            const manifestResponse = await getFromOpenElisServerV2(
+              `/rest/shipping-box/${boxId}/manifest-data`,
+            );
+            if (manifestResponse) {
+              await generateManifestPDF(manifestResponse, intl.formatMessage);
+            }
+          } catch {
+            // Non-blocking — manifest can be regenerated later
+          }
 
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.boxSent",
-        }),
-      });
-
-      // Auto-generate packing list on send (spec User Story 4)
-      try {
-        const manifestResponse = await getFromOpenElisServerV2(
-          `/rest/shipping-box/${boxId}/manifest-data`,
-        );
-        if (manifestResponse) {
-          await generateManifestPDF(manifestResponse, intl.formatMessage);
+          fetchBoxDetails();
+          setShowSendModal(false);
+        } else {
+          console.error("Error sending box:", status);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.sendBox" }),
+          });
         }
-      } catch {
-        // Non-blocking — manifest can be regenerated later
-      }
-
-      fetchBoxDetails();
-      setShowSendModal(false);
-    } catch (error) {
-      console.error("Error sending box:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "shipment.error.sendBox" }),
-      });
-    }
+      },
+    );
   };
 
   const handleDownloadLabel = async () => {
@@ -370,40 +349,30 @@ const BoxDetails = () => {
     return <Tag type={c.type}>{intl.formatMessage({ id: c.id })}</Tag>;
   };
 
-  const handleReconcile = async () => {
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/${boxId}/state?newState=RECONCILED`,
-        {
-          credentials: "include",
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to reconcile");
-      }
-
-      addNotification({
-        kind: "success",
-        title: intl.formatMessage({ id: "notification.success" }),
-        message: intl.formatMessage({
-          id: "shipment.notification.boxReconciled",
-        }),
-      });
-      fetchBoxDetails();
-    } catch (error) {
-      console.error("Error reconciling box:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({ id: "shipment.error.reconcile" }),
-      });
-    }
+  const handleReconcile = () => {
+    putToOpenElisServer(
+      `/rest/shipping-box/${boxId}/state?newState=RECONCILED`,
+      null,
+      (status) => {
+        if (status >= 200 && status < 300) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({
+              id: "shipment.notification.boxReconciled",
+            }),
+          });
+          fetchBoxDetails();
+        } else {
+          console.error("Error reconciling box:", status);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.reconcile" }),
+          });
+        }
+      },
+    );
   };
 
   const sampleHeaders = [

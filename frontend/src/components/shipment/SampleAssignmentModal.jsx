@@ -13,7 +13,7 @@ import {
   TableSelectRow,
   Tag,
 } from "@carbon/react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServerV2 } from "../utils/Utils";
@@ -32,6 +32,21 @@ const SampleAssignmentModal = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [unassignedSamples, setUnassignedSamples] = useState([]);
   const [selectedSamples, setSelectedSamples] = useState([]);
+  const pendingSelectionRef = useRef(null);
+
+  // Sync selection state from DataTable render callback via ref to avoid
+  // setState-in-render. The render callback writes to the ref, and this
+  // effect picks it up on the next tick.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingSelectionRef.current !== null) {
+        const pending = pendingSelectionRef.current;
+        pendingSelectionRef.current = null;
+        setSelectedSamples(pending);
+      }
+    }, 50);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -202,7 +217,8 @@ const SampleAssignmentModal = ({
                   getTableProps,
                   selectedRows,
                 }) => {
-                  // Update selected samples when selection changes (safe pattern for render function)
+                  // Sync selection from DataTable render callback via ref
+                  // (avoids setState during render)
                   if (selectedRows.length > 0) {
                     const currentSelectedIds = selectedRows.map(
                       (row) => row.id,
@@ -211,13 +227,10 @@ const SampleAssignmentModal = ({
                       JSON.stringify(currentSelectedIds) !==
                       JSON.stringify(selectedSamples)
                     ) {
-                      setTimeout(
-                        () => setSelectedSamples(currentSelectedIds),
-                        0,
-                      );
+                      pendingSelectionRef.current = currentSelectedIds;
                     }
                   } else if (selectedSamples.length > 0) {
-                    setTimeout(() => setSelectedSamples([]), 0);
+                    pendingSelectionRef.current = [];
                   }
 
                   return (

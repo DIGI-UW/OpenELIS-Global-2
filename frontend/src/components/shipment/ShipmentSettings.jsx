@@ -11,11 +11,13 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import config from "../../config.json";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  putToOpenElisServerFullResponse,
+} from "../utils/Utils";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
 
@@ -91,56 +93,55 @@ const ShipmentSettings = () => {
     );
   };
 
-  const handleSaveSiteOrgUuid = async () => {
+  const handleSaveSiteOrgUuid = () => {
     setSavingSiteOrg(true);
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/site-organization-uuid`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: JSON.stringify(siteOrgId),
-        },
-      );
-
-      if (response.ok) {
-        const result = await response.json();
-        setSiteOrgId(result.orgId || "");
-        setOriginalSiteOrgId(result.orgId || "");
-        setSiteOrgFhirUuid(result.fhirUuid || "");
-        addNotification({
-          kind: "success",
-          title: intl.formatMessage({ id: "notification.success" }),
-          message: intl.formatMessage(
-            { id: "shipment.settings.siteOrgSaved" },
-            { uuid: result.fhirUuid || "" },
-          ),
-        });
-      } else {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
-    } catch (error) {
-      console.error("Error saving site org UUID:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message:
-          error.message ||
-          intl.formatMessage({
-            id: "shipment.settings.siteOrgSaveError",
-          }),
-      });
-    } finally {
-      setSavingSiteOrg(false);
-    }
+    putToOpenElisServerFullResponse(
+      "/rest/shipping-box/site-organization-uuid",
+      JSON.stringify(siteOrgId),
+      async (response) => {
+        try {
+          if (response.ok) {
+            const result = await response.json();
+            setSiteOrgId(result.orgId || "");
+            setOriginalSiteOrgId(result.orgId || "");
+            setSiteOrgFhirUuid(result.fhirUuid || "");
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage(
+                { id: "shipment.settings.siteOrgSaved" },
+                { uuid: result.fhirUuid || "" },
+              ),
+            });
+          } else {
+            const errorText = await response.text();
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message:
+                errorText ||
+                intl.formatMessage({
+                  id: "shipment.settings.siteOrgSaveError",
+                }),
+            });
+          }
+        } catch (error) {
+          console.error("Error saving site org UUID:", error);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({
+              id: "shipment.settings.siteOrgSaveError",
+            }),
+          });
+        } finally {
+          setSavingSiteOrg(false);
+        }
+      },
+    );
   };
 
-  const handleSavePrefix = async () => {
+  const handleSavePrefix = () => {
     const trimmed = boxLabelPrefix.trim().toUpperCase();
     if (!trimmed) {
       addNotification({
@@ -154,46 +155,45 @@ const ShipmentSettings = () => {
     }
 
     setSaving(true);
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/box-label-prefix`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "text/plain",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: trimmed,
-        },
-      );
-
-      if (response.ok) {
-        const savedPrefix = await response.text();
-        setBoxLabelPrefix(savedPrefix);
-        setOriginalPrefix(savedPrefix);
-        addNotification({
-          kind: "success",
-          title: intl.formatMessage({ id: "notification.success" }),
-          message: intl.formatMessage({
-            id: "shipment.settings.prefixSaved",
-          }),
-        });
-      } else {
-        throw new Error("Failed to save prefix");
-      }
-    } catch (error) {
-      console.error("Error saving prefix:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({
-          id: "shipment.settings.prefixSaveError",
-        }),
-      });
-    } finally {
-      setSaving(false);
-    }
+    putToOpenElisServerFullResponse(
+      "/rest/shipping-box/box-label-prefix",
+      JSON.stringify(trimmed),
+      async (response) => {
+        try {
+          if (response.ok) {
+            const savedPrefix = await response.text();
+            setBoxLabelPrefix(savedPrefix);
+            setOriginalPrefix(savedPrefix);
+            addNotification({
+              kind: "success",
+              title: intl.formatMessage({ id: "notification.success" }),
+              message: intl.formatMessage({
+                id: "shipment.settings.prefixSaved",
+              }),
+            });
+          } else {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: intl.formatMessage({
+                id: "shipment.settings.prefixSaveError",
+              }),
+            });
+          }
+        } catch (error) {
+          console.error("Error saving prefix:", error);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({
+              id: "shipment.settings.prefixSaveError",
+            }),
+          });
+        } finally {
+          setSaving(false);
+        }
+      },
+    );
   };
 
   const fetchFhirConfig = () => {
@@ -228,50 +228,38 @@ const ShipmentSettings = () => {
     );
   };
 
-  const handleSaveFhirConfig = async () => {
+  const handleSaveFhirConfig = () => {
     setSavingFhir(true);
-    try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/shipping-box/fhir-mapping-config`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: JSON.stringify({
-            containerTypeCode: fhirConfig.containerTypeCode,
-            containerTypeDisplay: fhirConfig.containerTypeDisplay,
-            nonConformityCodes: JSON.stringify(fhirConfig.nonConformityCodes),
-          }),
-        },
-      );
-
-      if (response.ok) {
-        setOriginalFhirConfig(JSON.stringify(fhirConfig));
-        addNotification({
-          kind: "success",
-          title: intl.formatMessage({ id: "notification.success" }),
-          message: intl.formatMessage({
-            id: "shipment.settings.fhirConfigSaved",
-          }),
-        });
-      } else {
-        throw new Error("Failed to save");
-      }
-    } catch (error) {
-      console.error("Error saving FHIR config:", error);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: intl.formatMessage({
-          id: "shipment.settings.fhirConfigSaveError",
-        }),
-      });
-    } finally {
-      setSavingFhir(false);
-    }
+    putToOpenElisServerFullResponse(
+      "/rest/shipping-box/fhir-mapping-config",
+      JSON.stringify({
+        containerTypeCode: fhirConfig.containerTypeCode,
+        containerTypeDisplay: fhirConfig.containerTypeDisplay,
+        nonConformityCodes: JSON.stringify(fhirConfig.nonConformityCodes),
+      }),
+      (response) => {
+        if (response.ok) {
+          setOriginalFhirConfig(JSON.stringify(fhirConfig));
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({ id: "notification.success" }),
+            message: intl.formatMessage({
+              id: "shipment.settings.fhirConfigSaved",
+            }),
+          });
+        } else {
+          console.error("Error saving FHIR config:", response.status);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({
+              id: "shipment.settings.fhirConfigSaveError",
+            }),
+          });
+        }
+        setSavingFhir(false);
+      },
+    );
   };
 
   const fhirConfigChanged =

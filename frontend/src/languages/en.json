@@ -4077,5 +4077,7 @@
   "shipment.label.shippingLabel": "SHIPPING LABEL",
   "shipment.error.noDestinationFacility": "No destination facility specified for this sample",
   "shipment.error.fetchBoxes": "Failed to fetch available boxes",
-  "shipment.error.selectBox": "Please select a box"
+  "shipment.error.selectBox": "Please select a box",
+  "shipment.error.noReferralId": "No referral ID available for this sample",
+  "shipment.error.saveFailed": "Failed to save"
 }

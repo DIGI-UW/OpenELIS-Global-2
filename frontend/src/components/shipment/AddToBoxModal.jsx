@@ -9,9 +9,11 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import config from "../../config.json";
 import { NotificationContext } from "../layout/Layout";
-import { getFromOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+} from "../utils/Utils";
 
 const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
   const intl = useIntl();
@@ -64,7 +66,7 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
     );
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (mode === "existing" && !selectedBoxId) {
       setError(intl.formatMessage({ id: "shipment.error.selectBox" }));
       return;
@@ -73,73 +75,71 @@ const AddToBoxModal = ({ open, onClose, sample, onSuccess }) => {
     setSubmitting(true);
     setError(null);
 
-    try {
-      if (mode === "existing") {
-        // Assign sample item to existing box using new SampleItem-based API
-        const response = await fetch(
-          `${config.serverBaseUrl}/rest/box-sample/items`,
-          {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-              "X-CSRF-Token": localStorage.getItem("CSRF"),
-            },
-            body: JSON.stringify({
-              shippingBoxId: Number.parseInt(selectedBoxId),
-              sampleItemId: sample.sampleItemId || sample.id,
-            }),
-          },
-        );
+    if (mode === "existing") {
+      // Assign sample item to existing box using new SampleItem-based API
+      postToOpenElisServerFullResponse(
+        "/rest/box-sample/items",
+        JSON.stringify({
+          shippingBoxId: Number.parseInt(selectedBoxId),
+          sampleItemId: sample.sampleItemId || sample.id,
+        }),
+        async (response) => {
+          try {
+            if (response.ok) {
+              addNotification({
+                kind: "success",
+                title: intl.formatMessage({ id: "notification.success" }),
+                message: intl.formatMessage({
+                  id: "shipment.notification.sampleAssignedToBox",
+                }),
+              });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            errorText ||
-              intl.formatMessage({ id: "shipment.error.assignToBox" }),
-          );
-        }
+              if (onSuccess) {
+                onSuccess();
+              }
+              onClose();
+            } else {
+              const errorText = await response.text();
+              let errorMessage;
+              if (errorText && errorText.includes("already assigned")) {
+                errorMessage = intl.formatMessage({
+                  id: "shipment.error.sampleAlreadyAssigned",
+                });
+              } else {
+                errorMessage =
+                  errorText ||
+                  intl.formatMessage({ id: "shipment.error.assignToBox" });
+              }
 
-        addNotification({
-          kind: "success",
-          title: intl.formatMessage({ id: "notification.success" }),
-          message: intl.formatMessage({
-            id: "shipment.notification.sampleAssignedToBox",
-          }),
-        });
-
-        if (onSuccess) {
-          onSuccess();
-        }
-        onClose();
-      } else {
-        // Create new box - redirect to box creation page with sample item info
-        const facilityParam = sample.destinationFacilityId
-          ? `facilityId=${sample.destinationFacilityId}&`
-          : "";
-        const sampleParam = sample.sampleItemId || sample.id || "";
-        window.location.href = `/SampleShipment/create-box?${facilityParam}sampleItemId=${sampleParam}`;
-      }
-    } catch (error) {
-      // Check if the error is about sample already assigned
-      let errorMessage;
-      if (error.message && error.message.includes("already assigned")) {
-        errorMessage = intl.formatMessage({
-          id: "shipment.error.sampleAlreadyAssigned",
-        });
-      } else {
-        errorMessage =
-          error.message ||
-          intl.formatMessage({ id: "shipment.error.assignToBox" });
-      }
-
-      setError(errorMessage);
-      addNotification({
-        kind: "error",
-        title: intl.formatMessage({ id: "notification.error" }),
-        message: errorMessage,
-      });
-    } finally {
+              setError(errorMessage);
+              addNotification({
+                kind: "error",
+                title: intl.formatMessage({ id: "notification.error" }),
+                message: errorMessage,
+              });
+            }
+          } catch (error) {
+            const errorMessage = intl.formatMessage({
+              id: "shipment.error.assignToBox",
+            });
+            setError(errorMessage);
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({ id: "notification.error" }),
+              message: errorMessage,
+            });
+          } finally {
+            setSubmitting(false);
+          }
+        },
+      );
+    } else {
+      // Create new box - redirect to box creation page with sample item info
+      const facilityParam = sample.destinationFacilityId
+        ? `facilityId=${sample.destinationFacilityId}&`
+        : "";
+      const sampleParam = sample.sampleItemId || sample.id || "";
+      window.location.href = `/SampleShipment/create-box?${facilityParam}sampleItemId=${sampleParam}`;
       setSubmitting(false);
     }
   };
