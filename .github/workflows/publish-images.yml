@@ -180,11 +180,8 @@ jobs:
           TAGS=""
 
           if [ "$EVENT_NAME" = "release" ]; then
-            # Strip leading 'v' for semver tags
-            VERSION="${HEAD_BRANCH#v}"
-            MAJOR="$(echo "$VERSION" | cut -d. -f1)"
-            MINOR="$(echo "$VERSION" | cut -d. -f1-2)"
-            printf -v TAGS "%s\n%s\n%s" "${IMAGE}:${VERSION}" "${IMAGE}:${MAJOR}.${MINOR}" "${IMAGE}:latest"
+            # Use the release tag exactly as-is
+            TAGS="${IMAGE}:${HEAD_BRANCH}"
           elif [ "$EVENT_NAME" = "push" ]; then
             # Branch push (merge) — use branch name as tag
             SAFE_BRANCH="$(echo "$HEAD_BRANCH" | sed 's/[^a-zA-Z0-9._-]/-/g')"
