@@ -174,13 +174,13 @@ The target setup must follow these principles:
 - The `e2e` environment is removed; test jobs use repo-level variables. A
   `publish` environment with deployment branch restriction on `develop` gates
   DockerHub credentials.
-- Fork PR E2E is a first-class requirement. The fork-rebuild job is a
-  documented short-term exception scoped to `packages: write` only, with
-  status reporting handled by Lane C.
+- Fork PR E2E is a first-class requirement. The fork-rebuild job is a documented
+  short-term exception scoped to `packages: write` only, with status reporting
+  handled by Lane C.
 - Any remaining privileged execution of PR-controlled code is documented as an
   explicit exception with a migration path away from it.
-- Cypress E2E remains in the PR gate (migration is a separate long-term
-  effort); it is hardened like all other test executors.
+- Cypress E2E remains in the PR gate (migration is a separate long-term effort);
+  it is hardened like all other test executors.
 
 ## Delivery Strategy And Constraints
 
@@ -197,8 +197,8 @@ Allowed split condition:
 
 Execution preference:
 
-- Keep one PR unless a split is technically necessary; document the exact
-  reason and boundary if split is required.
+- Keep one PR unless a split is technically necessary; document the exact reason
+  and boundary if split is required.
 
 ## Recommended Target Architecture
 
@@ -275,8 +275,8 @@ Purpose:
 
 Rules:
 
-- Lives in a separate `publish-images.yml` workflow, triggered by
-  `workflow_run` on `03 - E2E` filtered to `push`/`release` events.
+- Lives in a separate `publish-images.yml` workflow, triggered by `workflow_run`
+  on `03 - E2E` filtered to `push`/`release` events.
 - Uses `environment: publish` with deployment branch restriction on `develop`.
 - DockerHub credentials (`DOCKERHUB_TOKEN`) are scoped to the `publish`
   environment.
@@ -411,13 +411,13 @@ Decisions (confirmed via QA):
   - `TEST_USER: ${{ vars.TEST_USER || 'admin' }}`
   - `TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}`
 - The `e2e` environment is removed. `TEST_USER` and `TEST_PASS` move to
-  repo-level variables. A `publish` environment (branch-restricted to
-  `develop`) is created for DockerHub credentials only.
+  repo-level variables. A `publish` environment (branch-restricted to `develop`)
+  is created for DockerHub credentials only.
 
 Tasks:
 
-1. Replace all `secrets.TEST_PASS` with `vars.TEST_PASS || 'adminADMIN!'`
-   across `e2e-tests.yml`, `e2e-playwright-analyzer-harness-reusable.yml`, and
+1. Replace all `secrets.TEST_PASS` with `vars.TEST_PASS || 'adminADMIN!'` across
+   `e2e-tests.yml`, `e2e-playwright-analyzer-harness-reusable.yml`, and
    `e2e-cypress-deprecated.yml`.
 2. Replace `secrets: inherit` on the analyzer-harness and Cypress reusable
    workflow calls with named inputs for `TEST_PASS` and `TEST_USER`.
@@ -425,8 +425,8 @@ Tasks:
    playwright-core, demo-shards).
 4. Create `publish` environment with deployment branch restriction on `develop`;
    move `DOCKERHUB_TOKEN` into it.
-5. Pass only named inputs or named secrets where a true secret remains
-   necessary (e.g., `DOCKERHUB_TOKEN` in the extracted publish workflow).
+5. Pass only named inputs or named secrets where a true secret remains necessary
+   (e.g., `DOCKERHUB_TOKEN` in the extracted publish workflow).
 6. Verify that analyzer harness seeding, application login, and Playwright setup
    still work in both same-repo and fork PR contexts.
 
@@ -454,7 +454,8 @@ Tasks:
 1. Remove broad workflow-level permissions from `e2e-tests.yml` where possible.
 2. Assign job-scoped permissions:
    - cache publisher (shared-build, fork-rebuild): `packages: write`
-   - test executors (playwright-core, analyzer-harness, cypress): `packages: read`
+   - test executors (playwright-core, analyzer-harness, cypress):
+     `packages: read`
    - reporter (set-pending-status, report-status): `statuses: write`
    - fork-rebuild: `packages: write` only — no `statuses: write`
 3. Set `persist-credentials: false` on ALL checkout steps across all workflows.
@@ -483,15 +484,15 @@ Rationale:
 
 Mitigations:
 
-- Fork-rebuild job gets `packages: write` only — no `statuses: write`, no
-  broad secrets, no other write permissions.
+- Fork-rebuild job gets `packages: write` only — no `statuses: write`, no broad
+  secrets, no other write permissions.
 - `persist-credentials: false` on the checkout.
 - Status reporting for fork PRs is handled by Lane C (the reporter), which
   already works for both fork and non-fork paths.
 - Fork-rebuild is documented as the sole remaining privileged execution of
   PR-controlled code.
-- Migration path: move to artifact-based image transfer so fork execution
-  can move fully into the unprivileged `pull_request` lane.
+- Migration path: move to artifact-based image transfer so fork execution can
+  move fully into the unprivileged `pull_request` lane.
 
 Checkpoint:
 
@@ -580,8 +581,8 @@ Automation-first:
 - Use `gh`/GitHub API to:
   - create or update the `publish` environment
   - set deployment branch policy restriction to `develop`
-  - configure required environment secrets/variables where API permissions
-    allow (for example `DOCKERHUB_TOKEN`, `DOCKERHUB_USERNAME`)
+  - configure required environment secrets/variables where API permissions allow
+    (for example `DOCKERHUB_TOKEN`, `DOCKERHUB_USERNAME`)
   - set/update repository-level variables:
     - `TEST_USER` (default: `admin`)
     - `TEST_PASS` (default: `adminADMIN!`)

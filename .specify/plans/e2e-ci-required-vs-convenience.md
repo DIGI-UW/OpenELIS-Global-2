@@ -7,27 +7,27 @@ This note classifies current E2E pipeline capabilities into:
 
 ## Required For Validation
 
-| Capability | Why required |
-| --- | --- |
-| Build once and share image outputs across E2E lanes | Avoids inconsistent test surfaces between Playwright/Cypress/analyzer harness. |
-| Fork + non-fork PR E2E support | Project requirement for trustworthy contribution gate coverage. |
-| Final PR-facing `03 Checkpoint - E2E` status | Required for branch-protection-friendly, single checkpoint UX. |
-| Read-only package consumption in test executors | Needed to pull prebuilt GHCR cache images. |
-| Cross-run artifact reads (`actions: read`) in downstream workflow | Required for image maps/plugin jars from triggering run. |
-| Deterministic CI login contract (`TEST_USER` / `TEST_PASS` fallback) | Required for noninteractive E2E auth in all test lanes. |
-| E2E gate aggregation job | Required to fail PR when any required test lane fails. |
+| Capability                                                           | Why required                                                                   |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Build once and share image outputs across E2E lanes                  | Avoids inconsistent test surfaces between Playwright/Cypress/analyzer harness. |
+| Fork + non-fork PR E2E support                                       | Project requirement for trustworthy contribution gate coverage.                |
+| Final PR-facing `03 Checkpoint - E2E` status                         | Required for branch-protection-friendly, single checkpoint UX.                 |
+| Read-only package consumption in test executors                      | Needed to pull prebuilt GHCR cache images.                                     |
+| Cross-run artifact reads (`actions: read`) in downstream workflow    | Required for image maps/plugin jars from triggering run.                       |
+| Deterministic CI login contract (`TEST_USER` / `TEST_PASS` fallback) | Required for noninteractive E2E auth in all test lanes.                        |
+| E2E gate aggregation job                                             | Required to fail PR when any required test lane fails.                         |
 
 ## Optimization / Convenience / Mixed Concern
 
-| Capability | Classification | Why not fundamentally required in current location |
-| --- | --- | --- |
-| Workflow-wide `packages: write` in `e2e-tests.yml` | Over-scoped convenience | Only cache-publishing lanes need write; tests should be read-only. |
-| Workflow-wide `statuses: write` in `e2e-tests.yml` | Over-scoped convenience | Only status reporter jobs need it. |
-| `secrets: inherit` on reusable calls | Convenience anti-pattern | Named inputs/secrets are sufficient and safer. |
-| `secrets.TEST_PASS` usage in PR test execution | Legacy convenience | CI defaults are intentionally non-secret; vars fallback is adequate. |
-| `environment: e2e` on test/build jobs | Legacy coupling | Not required for E2E validation; introduces unnecessary secret surface. |
-| Publish-to-DockerHub logic inside `e2e-tests.yml` | Mixed concern | Publication is post-merge concern, should live in separate workflow lane. |
-| Fork rebuild running in privileged `workflow_run` | Temporary exception | Needed today for parity/performance, but architectural migration target remains artifact-based transfer. |
+| Capability                                         | Classification           | Why not fundamentally required in current location                                                       |
+| -------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Workflow-wide `packages: write` in `e2e-tests.yml` | Over-scoped convenience  | Only cache-publishing lanes need write; tests should be read-only.                                       |
+| Workflow-wide `statuses: write` in `e2e-tests.yml` | Over-scoped convenience  | Only status reporter jobs need it.                                                                       |
+| `secrets: inherit` on reusable calls               | Convenience anti-pattern | Named inputs/secrets are sufficient and safer.                                                           |
+| `secrets.TEST_PASS` usage in PR test execution     | Legacy convenience       | CI defaults are intentionally non-secret; vars fallback is adequate.                                     |
+| `environment: e2e` on test/build jobs              | Legacy coupling          | Not required for E2E validation; introduces unnecessary secret surface.                                  |
+| Publish-to-DockerHub logic inside `e2e-tests.yml`  | Mixed concern            | Publication is post-merge concern, should live in separate workflow lane.                                |
+| Fork rebuild running in privileged `workflow_run`  | Temporary exception      | Needed today for parity/performance, but architectural migration target remains artifact-based transfer. |
 
 ## Explicit Policy Decisions For Implementation
 

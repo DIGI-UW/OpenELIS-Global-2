@@ -38,8 +38,8 @@ Requires default-branch merge (controls `workflow_run` orchestration):
 - Non-fork PRs: shared build publishes GHCR cache directly.
 - Fork PRs: downstream `fork-rebuild` is the explicit short-term exception that
   rebuilds from PR merge ref and writes only `packages: write`.
-- Status reporting remains isolated in tiny reporter jobs with
-  `statuses: write` only.
+- Status reporting remains isolated in tiny reporter jobs with `statuses: write`
+  only.
 
 ## CI Auth Contract
 
