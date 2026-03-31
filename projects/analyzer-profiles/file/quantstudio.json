@@ -1,7 +1,7 @@
 {
   "profileMeta": {
     "id": "quantstudio",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "displayName": "QuantStudio QS5/QS7",
     "manufacturer": "Thermo Fisher"
   },
@@ -58,13 +58,20 @@
       "CQCONF",
       "Amp Score",
       "Y-Intercept",
-      "R²",
+      "R\u00b2",
       "Slope",
       "Efficiency"
     ],
     "metadata_block": true,
     "header_marker": "Well",
     "sheet_name": "Results"
+  },
+  "sheet_detection": {
+    "strategy": "header_scan",
+    "description": "QS7 has results on sheet 'Results' (often index 0). QS5 has results on 3rd sheet (index 2). Both use the same column layout confirmed by Loris on 2026-03-25. The parser should scan sheets for the header_marker row rather than relying on a fixed sheet index.",
+    "preferred_sheet_names": ["Results"],
+    "header_marker": "Well",
+    "max_sheets_to_scan": 5
   },
   "line_field_order": [
     "sampleId",
@@ -75,12 +82,12 @@
     "quantityRaw"
   ],
   "default_test_mappings": [
-    { "analyzer_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
-    { "analyzer_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
+    { "test_code": "VIH-1", "test_name_hint": "HIV-1 Viral Load", "loinc": "20447-9", "unit": "copies/mL" },
+    { "test_code": "IC", "test_name_hint": "Internal Control DNA", "loinc": "89578-3", "unit": "" }
   ],
   "configDefaults": {
     "fileFormat": "EXCEL",
     "hasHeader": true,
-    "sheetIndex": 0
+    "sheetIndex": null
   }
 }
