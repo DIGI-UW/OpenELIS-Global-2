@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import org.json.XML;
+import org.owasp.encoder.Encode;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.provider.query.BaseQueryProvider;
 import org.openelisglobal.common.provider.query.QueryProviderFactory;
@@ -29,7 +30,7 @@ public class AjaxQueryXMLServlet extends AjaxServlet {
 
         if (!StringUtil.isNullorNill(field)) {
             StringBuilder sb = new StringBuilder().append("<fieldmessage>").append("<formfield>").append(field)
-                    .append("</formfield>").append("<message>").append(message).append("</message>")
+                    .append("</formfield>").append("<message>").append(Encode.forXmlContent(String.valueOf(message))).append("</message>")
                     .append("</fieldmessage>");
             if ("true".equals(request.getParameter("asJSON"))) {
                 response.setContentType("application/json");
