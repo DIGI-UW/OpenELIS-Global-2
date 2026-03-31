@@ -30,7 +30,11 @@ DEFAULT_I18N_FILES = [
 
 
 def run_git(args: List[str]) -> str:
-    return subprocess.check_output(["git", *args], text=True).strip()
+    try:
+        return subprocess.check_output(["git", *args], text=True, stderr=subprocess.PIPE).strip()
+    except subprocess.CalledProcessError as exc:
+        print(f"ERROR: git {' '.join(args)} failed (exit {exc.returncode}): {exc.stderr.strip()}", file=sys.stderr)
+        sys.exit(1)
 
 
 def delta_files(base_ref: str, ref: str) -> Set[str]:
@@ -238,12 +242,14 @@ def main() -> int:
         print("")
         print(f"Wrote JSON report: {output_path}")
 
-    blocked = bool(blocked_dropped_files or blocked_missing_keys)
+    i18n_errors = [e for e in i18n_report if e["before_error"] or e["after_error"]]
+    blocked = bool(blocked_dropped_files or blocked_missing_keys or i18n_errors)
     if blocked:
         print("")
         print("AUDIT RESULT: POTENTIAL LOSS DETECTED")
         print(f"  Unapproved dropped files: {len(blocked_dropped_files)}")
         print(f"  Unapproved missing i18n keys: {len(blocked_missing_keys)}")
+        print(f"  i18n files with errors: {len(i18n_errors)}")
         if args.fail_on_loss:
             return 2
     else:

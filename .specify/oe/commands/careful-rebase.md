@@ -311,7 +311,7 @@ pre-rebase backup branch, both relative to the same base ref:
 
 ```bash
 python3 .specify/scripts/python/rebase-no-loss-audit.py \
-  --base <base> \
+  --base "$BASE_SHA" \
   --before <backup-branch> \
   --after HEAD \
   --i18n-file frontend/src/languages/en.json \
