@@ -80,7 +80,7 @@ for i in $(seq 1 30); do
   result=$(gh run list --branch $BRANCH --limit 5 --repo $REPO 2>&1)
   echo "=== Poll $i ($(date -u +%H:%M:%S)) ==="
   echo "$result"
-  if ! echo "$result" | grep -q "in_progress"; then
+  if ! echo "$result" | grep -Eq "in_progress|queued"; then
     echo "All runs completed."
     break
   fi
@@ -157,9 +157,9 @@ a recommended action (`Rec`).
 | #  | Category   | V/V/F               | Rec    | Author  | File:Line  | Preview             |
 |----|------------|---------------------|--------|---------|------------|---------------------|
 | 1  | blocking   | ✅ High In-scope    | Fix    | ibacher | ...java:42 | "Missing auth..."   |
-| 2  | suggestion | ✅ Med In-scope     | Fix    | ibacher | ...jsx:79  | "Consider using..." |
+| 2  | suggestion | ✅ Medium In-scope  | Fix    | ibacher | ...jsx:79  | "Consider using..." |
 | 3  | nitpick    | ⚠️ Low In-scope    | Reply  | copilot | ...jsx:156 | "Unused import"     |
-| 4  | suggestion | ❌ Med Needs-rfctr  | Reply  | copilot | ...java:88 | "Refactor to..."    |
+| 4  | suggestion | ❌ Medium Needs-refactor | Reply  | copilot | ...java:88 | "Refactor to..."    |
 ```
 
 ### Specific edits to `.specify/oe/commands/address-pr-comments.md`
@@ -227,4 +227,5 @@ need exists. The current flat format works fine for these commands.
    locally via the install script)
 7. Push and open PR targeting `develop`
 
-**Pre-commit hook** will run spotless/prettier on all `.md` files automatically.
+If you have run `.githooks/setup.sh` to enable the repo pre-commit hooks, the
+pre-commit hook will run spotless/prettier on staged `.md` files when you commit.
