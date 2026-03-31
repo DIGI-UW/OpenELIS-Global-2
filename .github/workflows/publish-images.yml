@@ -39,6 +39,10 @@ jobs:
         id: context
         run: |
           if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+              echo "::error::Expected build context artifact from successful 03 - E2E run, but it was not available."
+              exit 1
+            fi
             echo "event_name=unknown" >> "$GITHUB_OUTPUT"
             echo "image_transfer=none" >> "$GITHUB_OUTPUT"
             echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
@@ -64,6 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      statuses: read
     steps:
       - name: Wait for E2E checkpoint success
         uses: actions/github-script@v7

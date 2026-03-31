@@ -26,12 +26,12 @@ on:
         description: "CI login user for Cypress execution"
         required: false
         type: string
-        default: "admin"
+        default: ""
       test_pass:
         description: "CI login password for Cypress execution"
         required: false
         type: string
-        default: "adminADMIN!"
+        default: ""
 
 permissions:
   contents: read

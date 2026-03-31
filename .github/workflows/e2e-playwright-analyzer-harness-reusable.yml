@@ -25,12 +25,12 @@ on:
         description: "CI login user for E2E harness execution"
         required: false
         type: string
-        default: "admin"
+        default: ""
       test_pass:
         description: "CI login password for E2E harness execution"
         required: false
         type: string
-        default: "adminADMIN!"
+        default: ""
 
 permissions:
   contents: read
