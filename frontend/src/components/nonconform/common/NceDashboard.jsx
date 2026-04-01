@@ -49,8 +49,16 @@ const SEVERITY_CONFIG = {
 
 const STATUS_CONFIG = {
   Pending: { type: "green", icon: InProgress, label: "Open" },
-  "Under Investigation": { type: "blue", icon: InProgress, label: "Under Investigation" },
-  "Corrective Action": { type: "purple", icon: CheckmarkFilled, label: "Corrective Action" },
+  "Under Investigation": {
+    type: "blue",
+    icon: InProgress,
+    label: "Under Investigation",
+  },
+  "Corrective Action": {
+    type: "purple",
+    icon: CheckmarkFilled,
+    label: "Corrective Action",
+  },
   Closed: { type: "gray", icon: CheckmarkFilled, label: "Closed" },
 };
 
@@ -129,7 +137,8 @@ export const NceDashboard = () => {
     list.forEach((nce) => {
       if (nce.severity === "CRITICAL") counts.critical++;
       else if (nce.severity === "MAJOR") counts.major++;
-      else if (nce.severity === "MINOR" || nce.severity === "LOW") counts.minor++;
+      else if (nce.severity === "MINOR" || nce.severity === "LOW")
+        counts.minor++;
 
       // Check if overdue (more than 7 days old and not closed)
       if (nce.status !== "Closed" && nce.dateOfEvent) {
@@ -153,7 +162,7 @@ export const NceDashboard = () => {
           nce.nceNumber?.toLowerCase().includes(term) ||
           nce.title?.toLowerCase().includes(term) ||
           nce.description?.toLowerCase().includes(term) ||
-          nce.labOrderNumber?.toLowerCase().includes(term)
+          nce.labOrderNumber?.toLowerCase().includes(term),
       );
     }
 
@@ -162,7 +171,9 @@ export const NceDashboard = () => {
     }
 
     if (categoryFilter) {
-      filtered = filtered.filter((nce) => nce.nceCategoryId === parseInt(categoryFilter));
+      filtered = filtered.filter(
+        (nce) => nce.nceCategoryId === parseInt(categoryFilter),
+      );
     }
 
     if (severityFilter) {
@@ -283,7 +294,10 @@ export const NceDashboard = () => {
           <span className="nce-breadcrumb">NCE &gt; All NCEs</span>
           <h1>
             <Warning size={24} />
-            <FormattedMessage id="nce.dashboard.title" defaultMessage="All NCEs" />
+            <FormattedMessage
+              id="nce.dashboard.title"
+              defaultMessage="All NCEs"
+            />
           </h1>
           <p className="nce-dashboard-subtitle">
             <FormattedMessage
@@ -293,7 +307,10 @@ export const NceDashboard = () => {
           </p>
         </div>
         <Button renderIcon={Add} onClick={handleReportNce}>
-          <FormattedMessage id="nce.button.reportNce" defaultMessage="Report NCE" />
+          <FormattedMessage
+            id="nce.button.reportNce"
+            defaultMessage="Report NCE"
+          />
         </Button>
       </div>
 
@@ -316,7 +333,13 @@ export const NceDashboard = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="nce-filter-select"
         >
-          <SelectItem value="" text={intl.formatMessage({ id: "nce.filter.allStatus", defaultMessage: "All Status" })} />
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "nce.filter.allStatus",
+              defaultMessage: "All Status",
+            })}
+          />
           <SelectItem value="Pending" text="Open" />
           <SelectItem value="Under Investigation" text="Under Investigation" />
           <SelectItem value="Corrective Action" text="Corrective Action" />
@@ -329,7 +352,13 @@ export const NceDashboard = () => {
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="nce-filter-select"
         >
-          <SelectItem value="" text={intl.formatMessage({ id: "nce.filter.allCategories", defaultMessage: "All Categories" })} />
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "nce.filter.allCategories",
+              defaultMessage: "All Categories",
+            })}
+          />
           {categories.map((cat) => (
             <SelectItem key={cat.id} value={cat.id} text={cat.name} />
           ))}
@@ -341,14 +370,23 @@ export const NceDashboard = () => {
           onChange={(e) => setSeverityFilter(e.target.value)}
           className="nce-filter-select"
         >
-          <SelectItem value="" text={intl.formatMessage({ id: "nce.filter.allSeverities", defaultMessage: "All Severities" })} />
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "nce.filter.allSeverities",
+              defaultMessage: "All Severities",
+            })}
+          />
           <SelectItem value="CRITICAL" text="Critical" />
           <SelectItem value="MAJOR" text="Major" />
           <SelectItem value="MINOR" text="Minor" />
           <SelectItem value="LOW" text="Low" />
         </Select>
         <Button kind="ghost" onClick={clearFilters}>
-          <FormattedMessage id="nce.filter.clearAll" defaultMessage="Clear All" />
+          <FormattedMessage
+            id="nce.filter.clearAll"
+            defaultMessage="Clear All"
+          />
         </Button>
       </div>
 
@@ -359,7 +397,10 @@ export const NceDashboard = () => {
             <Warning size={20} />
           </span>
           <span className="nce-summary-label">
-            <FormattedMessage id="nce.summary.critical" defaultMessage="Critical" />
+            <FormattedMessage
+              id="nce.summary.critical"
+              defaultMessage="Critical"
+            />
           </span>
           <span className="nce-summary-count">{summaryCounts.critical}</span>
         </Tile>
@@ -386,7 +427,10 @@ export const NceDashboard = () => {
             <Time size={20} />
           </span>
           <span className="nce-summary-label">
-            <FormattedMessage id="nce.summary.overdue" defaultMessage="Overdue" />
+            <FormattedMessage
+              id="nce.summary.overdue"
+              defaultMessage="Overdue"
+            />
           </span>
           <span className="nce-summary-count">{summaryCounts.overdue}</span>
         </Tile>
@@ -429,17 +473,24 @@ export const NceDashboard = () => {
                     </Tag>
                     {isOverdue(nce) && (
                       <Tag type="red" size="sm">
-                        <FormattedMessage id="nce.tag.overdue" defaultMessage="Overdue" />
+                        <FormattedMessage
+                          id="nce.tag.overdue"
+                          defaultMessage="Overdue"
+                        />
                       </Tag>
                     )}
                   </div>
-                  <div className="nce-item-title">{nce.title || nce.description}</div>
+                  <div className="nce-item-title">
+                    {nce.title || nce.description}
+                  </div>
                   <div className="nce-item-meta">
                     <span>{getCategoryName(nce.nceCategoryId)}</span>
                     {nce.nceTypeId && (
                       <>
                         <span> - </span>
-                        <span>{getTypeName(nce.nceCategoryId, nce.nceTypeId)}</span>
+                        <span>
+                          {getTypeName(nce.nceCategoryId, nce.nceTypeId)}
+                        </span>
                       </>
                     )}
                     {nce.assignedTo && (
@@ -465,16 +516,29 @@ export const NceDashboard = () => {
                 <Tabs>
                   <TabList aria-label="NCE details tabs">
                     <Tab>
-                      <FormattedMessage id="nce.tab.eventDetails" defaultMessage="Event Details" />
+                      <FormattedMessage
+                        id="nce.tab.eventDetails"
+                        defaultMessage="Event Details"
+                      />
                     </Tab>
                     <Tab>
-                      <FormattedMessage id="nce.tab.investigation" defaultMessage="Investigation" />
+                      <FormattedMessage
+                        id="nce.tab.investigation"
+                        defaultMessage="Investigation"
+                      />
                     </Tab>
                     <Tab>
-                      <FormattedMessage id="nce.tab.capa" defaultMessage="CAPA" /> ({nce.capaCount || 0})
+                      <FormattedMessage
+                        id="nce.tab.capa"
+                        defaultMessage="CAPA"
+                      />{" "}
+                      ({nce.capaCount || 0})
                     </Tab>
                     <Tab>
-                      <FormattedMessage id="nce.tab.history" defaultMessage="History" />
+                      <FormattedMessage
+                        id="nce.tab.history"
+                        defaultMessage="History"
+                      />
                     </Tab>
                   </TabList>
                   <TabPanels>
@@ -482,20 +546,29 @@ export const NceDashboard = () => {
                     <TabPanel>
                       <div className="nce-detail-section">
                         <h4>
-                          <FormattedMessage id="nce.field.description" defaultMessage="Description" />
+                          <FormattedMessage
+                            id="nce.field.description"
+                            defaultMessage="Description"
+                          />
                         </h4>
                         <p>{nce.description || "-"}</p>
                       </div>
                       <div className="nce-detail-section">
                         <h4>
-                          <FormattedMessage id="nce.field.immediateAction" defaultMessage="Immediate Action" />
+                          <FormattedMessage
+                            id="nce.field.immediateAction"
+                            defaultMessage="Immediate Action"
+                          />
                         </h4>
                         <p>{nce.immediateAction || "-"}</p>
                       </div>
                       {nce.triggerSourceType && (
                         <div className="nce-detail-section">
                           <h4>
-                            <FormattedMessage id="nce.field.trigger" defaultMessage="Trigger" />
+                            <FormattedMessage
+                              id="nce.field.trigger"
+                              defaultMessage="Trigger"
+                            />
                           </h4>
                           <p>{nce.triggerSourceType}</p>
                         </div>
@@ -503,7 +576,10 @@ export const NceDashboard = () => {
                       {nce.linkedSamples && nce.linkedSamples.length > 0 && (
                         <div className="nce-detail-section">
                           <h4>
-                            <FormattedMessage id="nce.field.linkedItems" defaultMessage="Linked Items" />
+                            <FormattedMessage
+                              id="nce.field.linkedItems"
+                              defaultMessage="Linked Items"
+                            />
                           </h4>
                           <div className="nce-linked-items">
                             {nce.linkedSamples.map((sample, idx) => (
@@ -512,12 +588,13 @@ export const NceDashboard = () => {
                                 <span>Sample: {sample.labOrderNumber}</span>
                               </div>
                             ))}
-                            {nce.linkedResults && nce.linkedResults.map((result, idx) => (
-                              <div key={idx} className="nce-linked-item">
-                                <Chemistry size={16} />
-                                <span>Result: {result.testName}</span>
-                              </div>
-                            ))}
+                            {nce.linkedResults &&
+                              nce.linkedResults.map((result, idx) => (
+                                <div key={idx} className="nce-linked-item">
+                                  <Chemistry size={16} />
+                                  <span>Result: {result.testName}</span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       )}
@@ -531,13 +608,19 @@ export const NceDashboard = () => {
                     <TabPanel>
                       <div className="nce-detail-section">
                         <h4>
-                          <FormattedMessage id="nce.field.suspectedCauses" defaultMessage="Suspected Causes" />
+                          <FormattedMessage
+                            id="nce.field.suspectedCauses"
+                            defaultMessage="Suspected Causes"
+                          />
                         </h4>
                         <p>{nce.suspectedCauses || "-"}</p>
                       </div>
                       <div className="nce-detail-section">
                         <h4>
-                          <FormattedMessage id="nce.field.proposedAction" defaultMessage="Proposed Action" />
+                          <FormattedMessage
+                            id="nce.field.proposedAction"
+                            defaultMessage="Proposed Action"
+                          />
                         </h4>
                         <p>{nce.proposedAction || "-"}</p>
                       </div>
@@ -567,8 +650,15 @@ export const NceDashboard = () => {
 
                 {/* Action buttons */}
                 <div className="nce-detail-actions">
-                  <Button kind="primary" size="sm" onClick={() => handleAcknowledge(nce)}>
-                    <FormattedMessage id="nce.action.acknowledge" defaultMessage="Acknowledge" />
+                  <Button
+                    kind="primary"
+                    size="sm"
+                    onClick={() => handleAcknowledge(nce)}
+                  >
+                    <FormattedMessage
+                      id="nce.action.acknowledge"
+                      defaultMessage="Acknowledge"
+                    />
                   </Button>
                   <Button
                     kind="tertiary"
@@ -576,7 +666,10 @@ export const NceDashboard = () => {
                     renderIcon={UserFollow}
                     onClick={() => handleAssign(nce)}
                   >
-                    <FormattedMessage id="nce.action.assignTo" defaultMessage="Assign To" />
+                    <FormattedMessage
+                      id="nce.action.assignTo"
+                      defaultMessage="Assign To"
+                    />
                   </Button>
                   <Button
                     kind="ghost"
@@ -584,7 +677,10 @@ export const NceDashboard = () => {
                     renderIcon={DocumentAdd}
                     onClick={() => handleAddNote(nce)}
                   >
-                    <FormattedMessage id="nce.action.addNote" defaultMessage="Add Note" />
+                    <FormattedMessage
+                      id="nce.action.addNote"
+                      defaultMessage="Add Note"
+                    />
                   </Button>
                 </div>
               </div>
@@ -595,7 +691,10 @@ export const NceDashboard = () => {
         {filteredList.length === 0 && (
           <div className="nce-empty-state">
             <p>
-              <FormattedMessage id="nce.list.empty" defaultMessage="No NCEs found matching your criteria." />
+              <FormattedMessage
+                id="nce.list.empty"
+                defaultMessage="No NCEs found matching your criteria."
+              />
             </p>
           </div>
         )}
@@ -617,9 +716,18 @@ export const NceDashboard = () => {
       <Modal
         open={noteModalOpen}
         onRequestClose={() => setNoteModalOpen(false)}
-        modalHeading={intl.formatMessage({ id: "nce.modal.addNote", defaultMessage: "Add Note" })}
-        primaryButtonText={intl.formatMessage({ id: "label.button.save", defaultMessage: "Save" })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel", defaultMessage: "Cancel" })}
+        modalHeading={intl.formatMessage({
+          id: "nce.modal.addNote",
+          defaultMessage: "Add Note",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.button.save",
+          defaultMessage: "Save",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "label.button.cancel",
+          defaultMessage: "Cancel",
+        })}
         onRequestSubmit={submitNote}
       >
         <p>

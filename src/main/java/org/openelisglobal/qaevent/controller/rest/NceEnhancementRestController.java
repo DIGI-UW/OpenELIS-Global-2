@@ -27,7 +27,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * REST controller for NCE core features: categories, types, and NCE number generation.
+ * REST controller for NCE core features: categories, types, and NCE number
+ * generation.
  */
 @RestController
 @RequestMapping("/rest/nce")
@@ -96,7 +97,8 @@ public class NceEnhancementRestController extends BaseRestController {
                 SampleItem sampleItem = sampleItemService.get(String.valueOf(specimen.getSampleItemId()));
                 if (sampleItem != null) {
                     linkedSpec.sampleType = sampleItem.getTypeOfSample() != null
-                        ? sampleItem.getTypeOfSample().getDescription() : null;
+                            ? sampleItem.getTypeOfSample().getDescription()
+                            : null;
 
                     // Get sample/order details
                     Sample sample = sampleItem.getSample();
@@ -120,8 +122,7 @@ public class NceEnhancementRestController extends BaseRestController {
         List<NceCategory> categories = nceCategoryService.getAllNceCategories();
 
         List<NceCategoryDTO> result = categories.stream()
-                .filter(cat -> cat.getActive() == null || Boolean.TRUE.equals(cat.getActive()))
-                .map(cat -> {
+                .filter(cat -> cat.getActive() == null || Boolean.TRUE.equals(cat.getActive())).map(cat -> {
                     NceCategoryDTO dto = new NceCategoryDTO();
                     dto.id = cat.getId();
                     dto.name = cat.getLocalizedName();
