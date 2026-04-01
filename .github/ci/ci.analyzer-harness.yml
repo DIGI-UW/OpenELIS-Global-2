@@ -1,5 +1,3 @@
-version: "3.3"
-
 services:
   astm-simulator:
     build:
@@ -11,13 +9,18 @@ services:
     # analyzer-mock-server submodule revision for Playwright expectations.
     volumes:
       - ./projects/analyzer-harness/e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5000:9600"
       - "8085:8080"
+      - "5380:5380"
+      - "6001:6001"
+      - "6002:6002"
     environment:
-      - ASTM_PORT=9600
-      - ASTM_TEMPLATE=genexpert_astm
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
       - RESPONSE_DELAY_MS=0
+      - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
+      - MOCK_CONTAINER_NAME=openelis-astm-simulator
     command: >
       python -u server.py
       --port 9600
@@ -43,20 +46,33 @@ services:
     ports:
       - "8442:8443"
       - "12000:12001"
+      - "2575:2575"    # MLLP HL7 listener (OGC-325)
     volumes:
+      - key_trust-store-volume:/etc/openelis-global
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - SERVER_SSL_ENABLED=false
       - LOGGING_LEVEL_ORG_ITECH=INFO
+      - BRIDGE_FILE_ENABLED=true
+      # Fast polling for CI — files are written atomically by Playwright tests.
+      # Production keeps FileConfig.java defaults (5000ms poll, 3000ms stability).
+      - BRIDGE_FILE_POLL_INTERVAL_MS=1000
+      - BRIDGE_FILE_FILE_STABILITY_TIMEOUT_MS=500
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
       # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=admin
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=adminADMIN!
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
       # TEST-ONLY: disables hostname verification for self-signed harness certs
       - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
+      - ORG_ITECH_AHB_MLLP_ENABLED=true
+      - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
       - analyzer-net
     restart: unless-stopped
@@ -65,9 +81,8 @@ services:
     environment:
       - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
-      # file.import.poll.interval: harness-only fast poll; production default remains in application.properties.
-      # MUST stay aligned with FILE_IMPORT_POLL_MS in e2e-playwright-analyzer-harness-reusable.yml.
-      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass} -Dfile.import.poll.interval=5000
+      # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
+      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
       - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro

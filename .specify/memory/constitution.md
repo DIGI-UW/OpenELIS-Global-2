@@ -1022,12 +1022,31 @@ hardcoded English text in components.
 - Use `intl.formatMessage({ id: 'storage.location.label' })` for all text
 - Supported locales: en (English), fr (French), ar (Arabic), es (Spanish), hi
   (Hindi), pt (Portuguese), sw (Swahili)
-- New features MUST provide translations for at least en + fr
+- New features MUST add keys to `en.json` ONLY (see Translation Workflow below)
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
+**Translation Workflow (Transifex)**:
+
+Transifex is the **source of truth** for all non-English translations. The
+project lives under the OpenMRS organization: `o:openmrs:p:openelis-1:r:enjson`.
+
+- **Developers**: Add new i18n keys to `frontend/src/languages/en.json` ONLY. Do
+  NOT edit `fr.json`, `es.json`, or any other locale file. A CI check
+  ("Translation source-of-truth check") will block PRs that modify non-English
+  locale files.
+- **Source push** (`tx-push.yml`): On every push to `develop`, `en.json` is
+  automatically uploaded to Transifex.
+- **Translators**: Add translations on the
+  [Transifex project](https://explore.transifex.com/openmrs/openelis-1/).
+- **Translation pull** (`tx-pull.yml`): Daily at 20:30 UTC, translations are
+  pulled from Transifex and auto-merged to `develop` via the
+  `chore/update-transifex` branch.
+
 **Rationale**: OpenELIS operates in multilingual countries (e.g., Rwanda: en/fr,
 Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
+Transifex provides a single source of truth for translations, enabling community
+translators to contribute without touching code.
 
 **Example**:
 
@@ -1039,7 +1058,7 @@ Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
 <Button>{intl.formatMessage({ id: 'button.save.location' })}</Button>
 ```
 
-**Translation Files** (`en.json`):
+**Translation Files** — developers edit `en.json` only:
 
 ```json
 {
