@@ -7,14 +7,6 @@ import {
   LONG_TIMEOUT,
 } from "../../../helpers/timeouts";
 
-/** Today's date as DD/MM/YYYY for form inputs (avoids stale hardcoded dates). */
-function todayDDMMYYYY(): string {
-  const d = new Date();
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}/${d.getFullYear()}`;
-}
-
 /**
  * OGC-284 — Barcode label quantity workflow (user stories)
  *
@@ -231,7 +223,7 @@ async function fillSampleStep(page: Page) {
 
   const collectionDate = page.locator("input#collectionDate_0");
   if (await collectionDate.isVisible()) {
-    await collectionDate.fill(todayDDMMYYYY());
+    await collectionDate.fill("13/03/2026");
     await collectionDate.press("Tab");
   }
 
@@ -274,15 +266,15 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
 
   const requestDate = page.locator("input#order_requestDate");
   if (await requestDate.isVisible()) {
-    await requestDate.fill(todayDDMMYYYY());
+    await requestDate.fill("13/03/2026");
     await page.keyboard.press("Tab");
-    await expect(requestDate).toHaveValue(todayDDMMYYYY());
+    await expect(requestDate).toHaveValue("13/03/2026");
   }
   const receivedDate = page.locator("input#order_receivedDate");
   if (await receivedDate.isVisible()) {
-    await receivedDate.fill(todayDDMMYYYY());
+    await receivedDate.fill("13/03/2026");
     await page.keyboard.press("Tab");
-    await expect(receivedDate).toHaveValue(todayDDMMYYYY());
+    await expect(receivedDate).toHaveValue("13/03/2026");
   }
 
   const siteInput = page.locator("input#siteName");
