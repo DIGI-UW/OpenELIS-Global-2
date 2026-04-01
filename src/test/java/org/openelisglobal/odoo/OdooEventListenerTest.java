@@ -140,9 +140,9 @@ public class OdooEventListenerTest {
 
         SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, null, null, null);
 
-        // Should not throw; listener guards null updateData and returns early without enqueueing
+        // Should not throw; listener guards null updateData and returns early without
+        // enqueueing
         listener.handleSamplePatientUpdateDataCreatedEvent(event);
-
 
         verify(odooIntegrationService, never()).createInvoice(any());
         verify(odooSyncQueueService, never()).enqueue(anyString());

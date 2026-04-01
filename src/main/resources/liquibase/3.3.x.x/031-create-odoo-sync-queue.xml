@@ -34,6 +34,7 @@
             <column name="last_error" type="TEXT">
                 <constraints nullable="true"/>
             </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
             <column name="completed_at" type="TIMESTAMP">
