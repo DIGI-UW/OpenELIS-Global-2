@@ -28,9 +28,9 @@
     "formik-error-focus": "2.0.0",
     "geopattern": "1.2.3",
     "i18next": "^21.10.0",
-    "jsonpath": "^1.1.1",
+    "jsonpath": "^1.2.1",
     "lodash-es": "^4.17.23",
-    "qs": "6.14.1",
+    "qs": "6.14.2",
     "react": "^17.0.2",
     "react-avatar": "5.0.3",
     "react-confirm-alert": "^2.7.0",
@@ -145,7 +145,7 @@
     "@svgr/plugin-svgo": "8.1.0",
     "@svgr/webpack": "8.1.0",
     "body-parser": "1.20.4",
-    "qs": "6.14.1",
+    "qs": "6.14.2",
     "resolve-url-loader": "5.0.0"
   }
 }
