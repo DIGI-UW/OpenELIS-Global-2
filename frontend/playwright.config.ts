@@ -1,4 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import * as path from "path";
+
+// Load .env from repo root — provides TEST_USER, TEST_PASS, BASE_URL, etc.
+// No manual `set -a && . .env` needed.
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 /**
  * OpenELIS Global Playwright Configuration
@@ -29,6 +34,7 @@ const HARNESS_DEMO_TESTS = [
   "**/file-import-ui.spec.ts",
   "**/file-import-results.spec.ts",
   "**/astm-genexpert-results.spec.ts",
+  "**/analyzer-demo-flow.spec.ts",
 ];
 
 export default defineConfig({

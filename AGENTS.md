@@ -5,9 +5,11 @@
 For FILE-based analyzer workflows in OpenELIS Global 2:
 
 - Bridge is the runtime owner of directory watching/polling and file transport.
-- OpenELIS owns configuration, direct ingestion endpoint, and result processing.
-- OpenELIS app-side polling (`FileImportWatchService`) is fallback-only and
-  disabled by default unless explicitly enabled.
+- OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
+  and result processing.
+- No OpenELIS app-side FILE poller is implemented in this branch. If a fallback
+  poller is added later, it must remain disabled by default unless explicitly
+  enabled.
 
 When guidance conflicts, this ownership model takes precedence for remediation
 work in feature 014.

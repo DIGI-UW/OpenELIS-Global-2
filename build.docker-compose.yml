@@ -1,4 +1,3 @@
-version: '3.3'
 services:
   certs:
     container_name: oe-certs
