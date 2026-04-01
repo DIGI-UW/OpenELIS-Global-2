@@ -154,6 +154,8 @@ public class ReportDefinitionRestController extends BaseRestController {
         form.setCreatedDate(definition.getCreatedDate());
         form.setLastupdated(definition.getLastupdated());
         form.setIsActive(definition.getIsActive());
+        form.setReportType(definition.getReportType());
+        form.setIsPublic(definition.getIsPublic());
         return form;
     }
 }
