@@ -149,11 +149,10 @@ public class SiteInformationMenuRestController extends BaseMenuController<SiteIn
             request.setAttribute(TITLE_KEY, "validationConfig.browse.title");
         }
 
-        int startingRecNo = Integer.parseInt((String) request.getAttribute("startingRecNo"));
-
         request.setAttribute("menuDefinition", "SiteInformationMenuDefinition");
 
-        configurationList = siteInformationService.getPageOfSiteInformationByDomainName(startingRecNo, dbDomainName);
+        // Use full list — frontend handles client-side pagination
+        configurationList = siteInformationService.getSiteInformationByDomainName(dbDomainName);
         for (SiteInformation siteInformation : configurationList) {
             if ("localization".equals(siteInformation.getTag())) {
                 siteInformation.setLocalization(localizationService.get(siteInformation.getValue()));
@@ -162,8 +161,9 @@ public class SiteInformationMenuRestController extends BaseMenuController<SiteIn
 
         hideEncryptedFields(configurationList);
 
+        int startingRecNo = 1;
         setDisplayPageBounds(request, configurationList == null ? 0 : configurationList.size(), startingRecNo,
-                siteInformationService.getCountForDomainName(dbDomainName));
+                configurationList == null ? 0 : configurationList.size());
 
         return configurationList;
     }
@@ -174,6 +174,16 @@ public class SiteInformationMenuRestController extends BaseMenuController<SiteIn
                 siteInformation.setValue(siteInformation.getValue().replaceAll(".", "*"));
             }
         }
+    }
+
+    @Override
+    protected List<SiteInformation> doNone(AdminOptionMenuForm<SiteInformation> form, HttpServletRequest request) {
+        // Return the full list — client-side pagination handles display
+        request.setAttribute("startingRecNo", "1");
+        List<SiteInformation> fullList = createMenuList(form, request);
+        request.setAttribute(NEXT_DISABLED, "true");
+        request.setAttribute(PREVIOUS_DISABLED, "true");
+        return fullList;
     }
 
     @Override
