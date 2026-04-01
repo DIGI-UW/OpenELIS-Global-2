@@ -34,10 +34,16 @@ async function gotoCreateBox(page: Page) {
   await page.goto("/SampleShipment/create-box", {
     waitUntil: "domcontentloaded",
   });
-  // Wait for the create box form to load — look for destination dropdown or form title
+  // Wait for the create box form to load — use heading role to avoid matching sidebar nav text
   await expect(
     page
-      .getByText(/create.*box|new.*box/i)
+      .getByRole("heading", { name: /create.*box|new.*box/i })
+      .or(
+        page
+          .locator("main")
+          .getByText(/create.*box|new.*box/i)
+          .first(),
+      )
       .or(page.locator('[role="combobox"]').first())
       .first(),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
@@ -47,7 +53,18 @@ async function gotoReceiveBox(page: Page) {
   await page.goto("/SampleShipment/receive", {
     waitUntil: "domcontentloaded",
   });
-  await expect(page.getByText(/receive|reception/i).first()).toBeVisible({
+  // Use heading role or main content scope to avoid matching sidebar nav text
+  await expect(
+    page
+      .getByRole("heading", { name: /receive|reception/i })
+      .or(
+        page
+          .locator("main")
+          .getByText(/receive|reception/i)
+          .first(),
+      )
+      .first(),
+  ).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
 }
@@ -117,7 +134,8 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
   const emptyState = page.getByText(/no.*box|no.*shipment|no data/i).first();
 
   // Either a table with boxes or an empty state message should be visible
-  await expect(boxesTable.or(emptyState)).toBeVisible({
+  // Use .first() after .or() to avoid strict mode when both match
+  await expect(boxesTable.or(emptyState).first()).toBeVisible({
     timeout: UI_TIMEOUT,
   });
   await pause(1500);
@@ -138,7 +156,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
     const unassignedEmpty = page
       .getByText(/no.*unassigned|no.*referral|no data/i)
       .first();
-    await expect(unassignedTable.or(unassignedEmpty)).toBeVisible({
+    await expect(unassignedTable.or(unassignedEmpty).first()).toBeVisible({
       timeout: UI_TIMEOUT,
     });
     await pause(1500);
@@ -201,9 +219,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
       // Carbon Dropdown — click to open, then select first item
       await facilityDropdown.click();
       const firstItem = page.locator('[role="option"]').first();
-      if (
-        await firstItem.isVisible({ timeout: SHORT_TIMEOUT }).catch(() => false)
-      ) {
+      if (await firstItem.isVisible()) {
         await firstItem.click();
       }
     }
@@ -217,7 +233,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .locator('[role="combobox"]')
     .or(page.locator("select"))
     .nth(1);
-  if (await tempDropdown.isVisible().catch(() => false)) {
+  if (await tempDropdown.isVisible()) {
     await scrollToAndPause(page, tempDropdown, pause, 800);
     const isSelect =
       (await tempDropdown.evaluate((el) => el.tagName)) === "SELECT";
@@ -229,9 +245,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     } else {
       await tempDropdown.click();
       const firstItem = page.locator('[role="option"]').first();
-      if (
-        await firstItem.isVisible({ timeout: SHORT_TIMEOUT }).catch(() => false)
-      ) {
+      if (await firstItem.isVisible()) {
         await firstItem.click();
       }
     }
@@ -245,7 +259,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .locator("textarea")
     .or(page.getByPlaceholder(/note/i))
     .first();
-  if (await notesInput.isVisible().catch(() => false)) {
+  if (await notesInput.isVisible()) {
     await scrollToAndPause(page, notesInput, pause, 800);
     await notesInput.fill("E2E test shipment box — OGC-62 demo");
     await pause(600);
@@ -322,7 +336,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .getByRole("searchbox")
     .or(page.getByPlaceholder(/search/i))
     .first();
-  if (await searchInput.isVisible().catch(() => false)) {
+  if (await searchInput.isVisible()) {
     await scrollToAndPause(page, searchInput, pause, 1200);
   }
 
@@ -331,7 +345,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .getByText(/filter.*state/i)
     .or(page.locator('[role="combobox"]').first())
     .first();
-  if (await stateFilter.isVisible().catch(() => false)) {
+  if (await stateFilter.isVisible()) {
     await scrollToAndPause(page, stateFilter, pause, 1200);
   }
 
@@ -339,12 +353,12 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
   await showSceneLabel(page, "US3 · Shipment Boxes Table", testInfo);
 
   const table = page.locator("table").first();
-  if (await table.isVisible().catch(() => false)) {
+  if (await table.isVisible()) {
     await scrollToAndPause(page, table, pause, 2000);
 
     // If there are rows, try clicking the first one to view details
     const firstRow = table.locator("tbody tr").first();
-    if (await firstRow.isVisible().catch(() => false)) {
+    if (await firstRow.isVisible()) {
       await showSceneLabel(page, "US3 · Click Box for Details", testInfo);
       await firstRow.click();
       await pause(2000);
@@ -353,9 +367,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
       const boxDetails = page
         .getByText(/box.*detail|sample.*count|manifest/i)
         .first();
-      if (
-        await boxDetails.isVisible({ timeout: UI_TIMEOUT }).catch(() => false)
-      ) {
+      if (await boxDetails.isVisible()) {
         await scrollToAndPause(page, boxDetails, pause, 2000);
       }
     }
@@ -379,7 +391,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .getByPlaceholder(/scan|box.*id|enter/i)
     .or(page.getByRole("searchbox"))
     .first();
-  if (await receiveInput.isVisible().catch(() => false)) {
+  if (await receiveInput.isVisible()) {
     await scrollToAndPause(page, receiveInput, pause, 1500);
   }
 
