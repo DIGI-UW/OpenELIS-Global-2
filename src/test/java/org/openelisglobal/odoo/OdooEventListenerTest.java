@@ -137,15 +137,15 @@ public class OdooEventListenerTest {
 
     @Test
     public void handleEvent_whenUpdateDataIsNull_handlesGracefully() {
-        doThrow(new OdooUnavailableException("Odoo down")).when(odooIntegrationService).createInvoice(null);
 
         SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, null, null, null);
 
-        // Should not throw; accession number falls back to "unknown"
+        // Should not throw; listener guards null updateData and returns early without enqueueing
         listener.handleSamplePatientUpdateDataCreatedEvent(event);
 
-        // updateData is null so accessionNumber resolves to "unknown"
-        verify(odooSyncQueueService, times(1)).enqueue("unknown");
+
+        verify(odooIntegrationService, never()).createInvoice(any());
+        verify(odooSyncQueueService, never()).enqueue(anyString());
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
