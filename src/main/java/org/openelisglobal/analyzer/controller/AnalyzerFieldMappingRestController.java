@@ -120,46 +120,7 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> updateMapping(@PathVariable String analyzerId,
             @PathVariable String mappingId, @Valid @RequestBody AnalyzerFieldMappingForm form) {
         try {
-            if (!analyzerFieldMappingService.verifyMappingBelongsToAnalyzer(mappingId, analyzerId)) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Mapping does not belong to analyzer: " + analyzerId);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-            }
-
-            AnalyzerFieldMapping mapping;
-            try {
-                mapping = analyzerFieldMappingService.get(mappingId);
-            } catch (org.hibernate.ObjectNotFoundException e) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Mapping not found: " + mappingId);
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
-            }
-
-            if (form.getOpenelisFieldId() != null) {
-                mapping.setOpenelisFieldId(form.getOpenelisFieldId());
-            }
-            if (form.getOpenelisFieldType() != null) {
-                mapping.setOpenelisFieldType(form.getOpenelisFieldType());
-            }
-            if (form.getMappingType() != null) {
-                mapping.setMappingType(form.getMappingType());
-            }
-            if (form.getIsRequired() != null) {
-                mapping.setIsRequired(form.getIsRequired());
-            }
-            if (form.getIsActive() != null) {
-                mapping.setIsActive(form.getIsActive());
-            }
-            if (form.getSpecimenTypeConstraint() != null) {
-                mapping.setSpecimenTypeConstraint(form.getSpecimenTypeConstraint());
-            }
-            if (form.getPanelConstraint() != null) {
-                mapping.setPanelConstraint(form.getPanelConstraint());
-            }
-
-            analyzerFieldMappingService.update(mapping);
-
-            Map<String, Object> response = analyzerFieldMappingService.getMappingWithCompleteData(mappingId);
+            Map<String, Object> response = analyzerFieldMappingService.updatePartial(analyzerId, mappingId, form);
             return ResponseEntity.ok(response);
         } catch (LIMSRuntimeException e) {
             logger.error("Error updating mapping: {}", e.getMessage(), e);
