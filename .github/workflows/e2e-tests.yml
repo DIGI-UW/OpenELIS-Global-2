@@ -1,5 +1,5 @@
-# Native fork E2E executor. This workflow runs the real privileged suite only
-# for fork PRs after maintainer approval via pull_request_target.
+# Native fork E2E executor. This workflow is the privileged fork path under
+# pull_request_target; repository approval settings remain the trust boundary.
 name: E2E (Fork PR)
 
 on:
@@ -370,7 +370,7 @@ jobs:
       pull-requests: write
     with:
       build_run_id: ""
-      is_fork: "true"
+      is_fork: ${{ 'true' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -557,7 +557,7 @@ jobs:
       pull-requests: write
     with:
       build_run_id: ""
-      is_fork: "true"
+      is_fork: ${{ 'true' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -576,7 +576,7 @@ jobs:
       actions: read
     with:
       build_run_id: ""
-      is_fork: "true"
+      is_fork: ${{ 'true' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -603,6 +603,12 @@ jobs:
           if [[ "${{ needs.setup.outputs.is_fork }}" != "true" ]]; then
             echo "Non-fork PR detected; fork-native workflow is not authoritative for this run."
             echo "Not applicable."
+            {
+              echo "## E2E (Fork PR)"
+              echo ""
+              echo "Status: \`not_applicable\`"
+              echo "Reason: non-fork PRs are handled by \`03 Checkpoint - E2E\`."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           if [[ "${{ needs.fork-rebuild.result }}" != "success" ]]; then

@@ -394,7 +394,7 @@ jobs:
       pull-requests: write
     with:
       build_run_id: ""
-      is_fork: "false"
+      is_fork: ${{ 'false' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -579,7 +579,7 @@ jobs:
       pull-requests: write
     with:
       build_run_id: ""
-      is_fork: "false"
+      is_fork: ${{ 'false' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -597,7 +597,7 @@ jobs:
       actions: read
     with:
       build_run_id: ""
-      is_fork: "false"
+      is_fork: ${{ 'false' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -624,6 +624,12 @@ jobs:
           if [[ "${{ needs.setup.outputs.is_fork }}" == "true" ]]; then
             echo "Fork PR detected; non-fork E2E workflow is not authoritative for this run."
             echo "Delegated to native fork executor."
+            {
+              echo "## 03 Checkpoint - E2E"
+              echo ""
+              echo "Status: \`not_applicable\`"
+              echo "Reason: fork PRs are delegated to \`E2E (Fork PR)\`."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           if [[ "${{ needs.shared-build.result }}" != "success" || "${{ needs.shared-build.outputs.image_transfer }}" != "ghcr" ]]; then
