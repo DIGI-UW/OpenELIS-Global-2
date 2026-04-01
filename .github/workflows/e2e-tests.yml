@@ -1,87 +1,41 @@
-# Runs ALL E2E tests after the build workflow completes.
-# Handles both fork and non-fork PRs identically:
-# - Non-fork: images already on GHCR from build workflow, pull and test
-# - Fork: rebuild from GHA cache (fast), push to GHCR, then pull and test
-# Result: identical CI checks for all PR types.
-name: E2E / Tests
+# Native fork E2E executor. This workflow runs the real privileged suite only
+# for fork PRs after maintainer approval via pull_request_target.
+name: E2E (Fork PR)
 
 on:
-  workflow_run:
-    workflows: ["03 - E2E"]
-    types: [completed]
+  pull_request_target:
+    branches: [develop]
 
 concurrency:
-  group: e2e-tests-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  group: e2e-fork-pr-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  # ─── Setup ──────────────────────────────────────────────────────────────────
-  # Download build context from the triggering workflow run.
-  # Determines: is this a fork PR? What SHA/PR# are we working with?
   setup:
     name: Setup
-    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
       pull-requests: read
     outputs:
       is_fork: ${{ steps.context.outputs.is_fork }}
       pr_number: ${{ steps.context.outputs.pr_number }}
-      pr_sha: ${{ steps.context.outputs.pr_sha }}
       head_sha: ${{ steps.context.outputs.head_sha }}
-      event_name: ${{ steps.context.outputs.event_name }}
-      image_transfer: ${{ steps.context.outputs.image_transfer }}
       core_demo_changed: ${{ steps.demo-diff.outputs.core_demo_changed }}
       harness_demo_changed: ${{ steps.demo-diff.outputs.harness_demo_changed }}
-      build_run_id: ${{ github.event.workflow_run.id }}
     steps:
-      - name: Download build context artifact
-        id: download
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-build-context
-          path: /tmp/e2e-build-context
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Parse build context
+      - name: Capture pull request context
         id: context
         run: |
-          if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
-            echo "No build context artifact — build likely failed."
-            echo "is_fork=false" >> "$GITHUB_OUTPUT"
-            echo "image_transfer=none" >> "$GITHUB_OUTPUT"
-            echo "event_name=unknown" >> "$GITHUB_OUTPUT"
-            echo "pr_number=" >> "$GITHUB_OUTPUT"
-            echo "pr_sha=" >> "$GITHUB_OUTPUT"
-            echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Read build context files
-          IS_FORK="$(cat /tmp/e2e-build-context/is_fork 2>/dev/null || echo 'false')"
-          IMAGE_TRANSFER="$(cat /tmp/e2e-build-context/image_transfer 2>/dev/null || echo 'none')"
-          EVENT_NAME="$(cat /tmp/e2e-build-context/event_name 2>/dev/null || echo 'unknown')"
-          PR_NUMBER="$(cat /tmp/e2e-build-context/pr_number 2>/dev/null || echo '')"
-          PR_SHA="$(cat /tmp/e2e-build-context/pr_sha 2>/dev/null || echo '')"
-          HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
-
-          # For push/release events, head_sha is empty — fall back to the workflow_run SHA
-          if [ -z "$HEAD_SHA" ]; then
-            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
-          fi
+          IS_FORK="${{ github.event.pull_request.head.repo.fork && 'true' || 'false' }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          HEAD_SHA="refs/pull/${PR_NUMBER}/merge"
 
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
-          echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
-          echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "pr_sha=$PR_SHA" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
-          echo "Build context: is_fork=$IS_FORK image_transfer=$IMAGE_TRANSFER event=$EVENT_NAME pr=#$PR_NUMBER head_sha=$HEAD_SHA"
+          echo "Context: fork=$IS_FORK pr=#$PR_NUMBER checkout_ref=$HEAD_SHA"
 
       - name: Detect demo-spec diff buckets for PR
         id: demo-diff
@@ -91,11 +45,6 @@ jobs:
         run: |
           echo "core_demo_changed=false" >> "$GITHUB_OUTPUT"
           echo "harness_demo_changed=false" >> "$GITHUB_OUTPUT"
-
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No PR number in workflow_run context; demo-video auto-trigger disabled."
-            exit 0
-          fi
 
           gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' > /tmp/pr-files.txt
           echo "Changed files from PR #$PR_NUMBER:"
@@ -109,65 +58,9 @@ jobs:
             echo "harness_demo_changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "core_demo_changed=$(grep -q '^frontend/playwright/tests/demo/core/.*\\.spec\\.ts$' /tmp/pr-files.txt && echo true || echo false)"
-          echo "harness_demo_changed=$(grep -q '^frontend/playwright/tests/demo/harness/.*\\.spec\\.ts$' /tmp/pr-files.txt && echo true || echo false)"
-
-  # ─── Set pending check run on PR ────────────────────────────────────────────
-  set-pending-status:
-    name: Set Pending Status
-    needs: setup
-    if: needs.setup.outputs.image_transfer != 'none' && needs.setup.outputs.head_sha != ''
-    runs-on: ubuntu-latest
-    permissions:
-      checks: write
-    steps:
-      - name: Create or update check run to in_progress
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const sha = '${{ needs.setup.outputs.head_sha }}';
-            const name = '03 Checkpoint - E2E';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            // Find existing check run (created by e2e-pending-status.yml)
-            const { data: { check_runs } } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: sha,
-              check_name: name,
-              filter: 'latest'
-            });
-
-            if (check_runs.length > 0) {
-              await github.rest.checks.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                check_run_id: check_runs[0].id,
-                status: 'in_progress',
-                details_url: runUrl,
-                output: {
-                  title: 'E2E tests running',
-                  summary: 'Playwright, Cypress, and Analyzer Harness tests are in progress...'
-                }
-              });
-            } else {
-              await github.rest.checks.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                head_sha: sha,
-                name,
-                status: 'in_progress',
-                details_url: runUrl,
-                output: {
-                  title: 'E2E tests running',
-                  summary: 'Playwright, Cypress, and Analyzer Harness tests are in progress...'
-                }
-              });
-            }
-
   # ─── Fork Rebuild ───────────────────────────────────────────────────────────
-  # Only runs for fork PRs. Rebuilds from GHA cache (fast) and pushes to GHCR
-  # using the elevated workflow_run permissions.
+  # Runs only for fork PRs after maintainer approval. Rebuilds from GHA cache
+  # and publishes same-run artifacts for the fork-native test jobs.
   fork-rebuild:
     name: Shared Build (Fork Rebuild)
     needs: setup
@@ -251,7 +144,7 @@ jobs:
 
       - name: Tag and push compose images to GHCR
         run: |
-          TAG="sha-${{ needs.setup.outputs.pr_sha }}"
+          TAG="sha-${{ github.event.pull_request.head.sha }}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           export TAG OWNER_LOWER
           docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
@@ -313,11 +206,10 @@ jobs:
           retention-days: 1
 
   # ─── Playwright Core (sharded) ──────────────────────────────────────────────
-  # Identical for fork and non-fork. Only difference: where artifacts come from.
   playwright-core:
     name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     needs: [setup, fork-rebuild]
-    if: always() && needs.setup.outputs.image_transfer != 'none' && (needs.fork-rebuild.result == 'success' || needs.fork-rebuild.result == 'skipped')
+    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -335,7 +227,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.setup.outputs.is_fork == 'true' && format('refs/pull/{0}/merge', needs.setup.outputs.pr_number) || github.event.workflow_run.head_sha }}
+          ref: ${{ needs.setup.outputs.head_sha }}
           submodules: recursive
           persist-credentials: false
 
@@ -369,17 +261,7 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download image map from build workflow (non-fork)
-        if: needs.setup.outputs.is_fork != 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map-base
-          path: /tmp/e2e-image-map
-          run-id: ${{ needs.setup.outputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download image map from fork-rebuild (fork)
-        if: needs.setup.outputs.is_fork == 'true'
+      - name: Download image map from fork rebuild
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map-base
@@ -478,12 +360,7 @@ jobs:
   analyzer-harness:
     name: Analyzer Harness
     needs: [setup, fork-rebuild]
-    if: >-
-      ${{
-        always() &&
-        needs.setup.outputs.image_transfer != 'none' &&
-        (needs.fork-rebuild.result == 'success' || needs.fork-rebuild.result == 'skipped')
-      }}
+    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
     permissions:
       contents: read
@@ -492,8 +369,8 @@ jobs:
       issues: write
       pull-requests: write
     with:
-      build_run_id: ${{ needs.setup.outputs.build_run_id }}
-      is_fork: ${{ needs.setup.outputs.is_fork }}
+      build_run_id: ""
+      is_fork: "true"
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -503,14 +380,7 @@ jobs:
   core-demo-video-evidence:
     name: Core Demo Video Evidence
     needs: [setup, fork-rebuild]
-    if: >-
-      ${{
-        always() &&
-        needs.setup.outputs.image_transfer != 'none' &&
-        needs.setup.outputs.pr_number != '' &&
-        needs.setup.outputs.core_demo_changed == 'true' &&
-        (needs.fork-rebuild.result == 'success' || needs.fork-rebuild.result == 'skipped')
-      }}
+    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.core_demo_changed == 'true' && needs.fork-rebuild.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -520,7 +390,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.setup.outputs.is_fork == 'true' && format('refs/pull/{0}/merge', needs.setup.outputs.pr_number) || github.event.workflow_run.head_sha }}
+          ref: ${{ needs.setup.outputs.head_sha }}
           submodules: recursive
           persist-credentials: false
 
@@ -554,17 +424,7 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download image map from build workflow (non-fork)
-        if: needs.setup.outputs.is_fork != 'true'
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map-base
-          path: /tmp/e2e-image-map
-          run-id: ${{ needs.setup.outputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download image map from fork-rebuild (fork)
-        if: needs.setup.outputs.is_fork == 'true'
+      - name: Download image map from fork rebuild
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map-base
@@ -687,14 +547,7 @@ jobs:
   analyzer-harness-video-evidence:
     name: Analyzer Harness Demo Video Evidence
     needs: [setup, fork-rebuild]
-    if: >-
-      ${{
-        always() &&
-        needs.setup.outputs.image_transfer != 'none' &&
-        needs.setup.outputs.pr_number != '' &&
-        needs.setup.outputs.harness_demo_changed == 'true' &&
-        (needs.fork-rebuild.result == 'success' || needs.fork-rebuild.result == 'skipped')
-      }}
+    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.harness_demo_changed == 'true' && needs.fork-rebuild.result == 'success'
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
     permissions:
       contents: read
@@ -703,8 +556,8 @@ jobs:
       issues: write
       pull-requests: write
     with:
-      build_run_id: ${{ needs.setup.outputs.build_run_id }}
-      is_fork: ${{ needs.setup.outputs.is_fork }}
+      build_run_id: ""
+      is_fork: "true"
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -715,41 +568,45 @@ jobs:
   cypress:
     name: Cypress
     needs: [setup, fork-rebuild]
-    if: >-
-      ${{
-        always() &&
-        needs.setup.outputs.image_transfer != 'none' &&
-        (needs.fork-rebuild.result == 'success' || needs.fork-rebuild.result == 'skipped')
-      }}
+    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
     uses: ./.github/workflows/e2e-cypress-deprecated.yml
     permissions:
       contents: read
       packages: read
       actions: read
     with:
-      build_run_id: ${{ needs.setup.outputs.build_run_id }}
-      is_fork: ${{ needs.setup.outputs.is_fork }}
+      build_run_id: ""
+      is_fork: "true"
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
 
-  # ─── Gate ───────────────────────────────────────────────────────────────────
   e2e-gate:
-    name: E2E Gate
+    name: E2E (Fork PR)
     if: always()
-    needs: [setup, playwright-core, analyzer-harness, core-demo-video-evidence, analyzer-harness-video-evidence, cypress]
+    needs:
+      [
+        setup,
+        fork-rebuild,
+        playwright-core,
+        analyzer-harness,
+        core-demo-video-evidence,
+        analyzer-harness-video-evidence,
+        cypress,
+      ]
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Enforce all E2E results
+      - name: Enforce fork E2E results or report non-fork no-op
         run: |
-          if [[ "${{ needs.setup.outputs.image_transfer }}" == "none" ]]; then
-            echo "No image transfer mode available (build failure propagated)."
-            exit 1
+          if [[ "${{ needs.setup.outputs.is_fork }}" != "true" ]]; then
+            echo "Non-fork PR detected; fork-native workflow is not authoritative for this run."
+            echo "Not applicable."
+            exit 0
           fi
-          if [[ "${{ needs.playwright-core.result }}" == "skipped" && "${{ needs.analyzer-harness.result }}" == "skipped" && "${{ needs.cypress.result }}" == "skipped" ]]; then
-            echo "All E2E executors were skipped; failing gate."
+          if [[ "${{ needs.fork-rebuild.result }}" != "success" ]]; then
+            echo "Fork rebuild failed: ${{ needs.fork-rebuild.result }}"
             exit 1
           fi
           if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
@@ -772,72 +629,4 @@ jobs:
             echo "Cypress failed: ${{ needs.cypress.result }}"
             exit 1
           fi
-          echo "E2E gate passed."
-
-  # ─── Report Status ──────────────────────────────────────────────────────────
-  # Updates the check run on the PR with final E2E results.
-  # workflow_run checks don't automatically appear on PRs, so we manage our own.
-  report-status:
-    name: Report Status
-    if: always() && needs.setup.outputs.head_sha != ''
-    needs: [setup, e2e-gate]
-    runs-on: ubuntu-latest
-    permissions:
-      checks: write
-    steps:
-      - name: Update check run with results
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const sha = '${{ needs.setup.outputs.head_sha }}';
-            const name = '03 Checkpoint - E2E';
-            const gateResult = '${{ needs.e2e-gate.result }}';
-            const imageTransfer = '${{ needs.setup.outputs.image_transfer }}';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            let conclusion, title, summary;
-            if (imageTransfer === 'none') {
-              conclusion = 'failure';
-              title = 'E2E build failed';
-              summary = 'No Docker images were produced — E2E tests could not run.';
-            } else if (gateResult === 'success') {
-              conclusion = 'success';
-              title = 'E2E tests passed';
-              summary = 'All Playwright, Cypress, and Analyzer Harness tests passed.';
-            } else {
-              conclusion = 'failure';
-              title = 'E2E tests failed';
-              summary = 'One or more E2E test suites failed. Click **Details** to view the full run.';
-            }
-
-            // Find existing check run (created by e2e-pending-status.yml or set-pending-status job)
-            const { data: { check_runs } } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: sha,
-              check_name: name,
-              filter: 'latest'
-            });
-
-            if (check_runs.length > 0) {
-              await github.rest.checks.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                check_run_id: check_runs[0].id,
-                status: 'completed',
-                conclusion,
-                details_url: runUrl,
-                output: { title, summary }
-              });
-            } else {
-              await github.rest.checks.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                head_sha: sha,
-                name,
-                status: 'completed',
-                conclusion,
-                details_url: runUrl,
-                output: { title, summary }
-              });
-            }
+          echo "E2E (Fork PR) passed."
