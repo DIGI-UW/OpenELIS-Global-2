@@ -6,8 +6,19 @@ run_with_timeout_wait() {
   local cmd="$3"
 
   if command -v timeout >/dev/null 2>&1; then
-    timeout "$seconds" bash -c "$cmd"
-    return $?
+    WAIT_CMD="$cmd" timeout "$seconds" bash -c '
+      while true; do
+        if bash -c "$WAIT_CMD"; then
+          exit 0
+        fi
+        sleep 2
+      done
+    '
+    local status=$?
+    if [ "$status" -eq 124 ]; then
+      echo "Timed out waiting for: $description" >&2
+    fi
+    return "$status"
   fi
 
   local start now
