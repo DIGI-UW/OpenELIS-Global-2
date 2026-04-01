@@ -24,9 +24,13 @@ public interface AnalyzerDAO extends BaseDAO<Analyzer, String> {
 
     Optional<Analyzer> findByName(String name);
 
+    Optional<Analyzer> findActiveByPort(Integer port);
+
     List<Analyzer> findGenericAnalyzersWithPatterns();
 
     List<Analyzer> findAllWithTypes();
 
     Optional<Analyzer> findByIdWithType(String id);
+
+    Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port);
 }

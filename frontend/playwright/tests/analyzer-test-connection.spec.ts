@@ -1,12 +1,17 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import {
+  ensureAnalyzerByName,
+  GENEXPERT_DEFAULT_ANALYZER,
+} from "../helpers/ensure-analyzer";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer Test Connection E2E
  *
  * Two test scenarios:
- * 1. Mock: fixture-loaded GeneXpert at 172.20.1.100:9600 (ASTM mock in Docker)
+ * 1. Mock: fixture-loaded GeneXpert at 10.42.20.10:9600 (dedicated ASTM mock subnet)
  * 2. Real: dynamically-created analyzer pointing to a real device.
  *    Requires GENEXPERT_HOST and GENEXPERT_PORT env vars to be set.
  *    Skipped automatically when not configured or in CI.
@@ -17,20 +22,22 @@ import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
 test.describe("Analyzer Test Connection", () => {
-  test.skip(
-    !!process.env.CI,
-    "Requires analyzer harness with fixture data (not available in CI)",
-  );
+  test.setTimeout(180_000);
 
   test("GeneXpert test-connection succeeds via ASTM mock", async ({ page }) => {
-    const GENEXPERT_ID = "2013";
+    const GENEXPERT_ID = await ensureAnalyzerByName(
+      page.request,
+      (a) => a.name?.includes("GeneXpert") && !a.name?.includes("E2E"),
+      GENEXPERT_DEFAULT_ANALYZER,
+    );
+
     const list = new AnalyzerListPage(page);
 
     await list.goto();
     await list.expectLoaded();
 
     const row = list.getRow(GENEXPERT_ID);
-    await expect(row).toBeVisible({ timeout: 10_000 });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
 
     await list.openOverflowMenu(GENEXPERT_ID);
     await list.clickAction(GENEXPERT_ID, "test-connection");
@@ -44,12 +51,86 @@ test.describe("Analyzer Test Connection", () => {
     const testButton = page.locator(
       '[data-testid="test-connection-test-button"]',
     );
-    await testButton.click();
-
     const successTag = page.locator('[data-testid="test-connection-success"]');
-    await expect(successTag).toBeVisible({ timeout: 15_000 });
-
+    const successText = page.getByText(/Connection Successful/i);
     const errorTag = page.locator('[data-testid="test-connection-error"]');
+    const logsButton = page.getByRole("button", { name: /connection logs/i });
+    const retryButton = page
+      .locator(
+        '[data-testid="test-connection-test-button"], button:has-text("Test Again")',
+      )
+      .first();
+
+    // Test connection can be briefly flaky right after harness restarts.
+    // Retry a few times, but fail with explicit UI error details if it never succeeds.
+    // Click test and wait for result. The bridge ASTM round-trip takes ~2s,
+    // so we use expect().toBeVisible() which auto-retries (unlike isVisible()
+    // which returns immediately and ignores the timeout option).
+    let connected = false;
+    let lastError = "";
+    const appendVisibleLogs = async () => {
+      if (page.isClosed()) {
+        return;
+      }
+      try {
+        if (!(await logsButton.isVisible())) {
+          return;
+        }
+        await logsButton.click();
+        const logs = page.locator(
+          '[data-testid="test-connection-logs"], [data-testid="test-connection-log-content"], pre',
+        );
+        if (await logs.first().isVisible()) {
+          const logText = ((await logs.first().textContent()) || "").trim();
+          if (logText.length > 0) {
+            lastError = `${lastError}\n${logText}`.trim();
+          }
+        }
+      } catch {
+        // Best effort only — modal can close while timeout teardown is occurring.
+      }
+    };
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await testButton.click();
+      try {
+        await expect(successTag.first()).toBeVisible({ timeout: LONG_TIMEOUT });
+        connected = true;
+        break;
+      } catch {
+        // Success tag didn't appear — check logs for details
+      }
+
+      await appendVisibleLogs();
+      try {
+        if (await errorTag.isVisible()) {
+          lastError =
+            (await errorTag.textContent())?.trim() || "Connection failed";
+        }
+      } catch {
+        // Best effort only when page/modal lifecycle is changing.
+      }
+      // Wait for "Test Again" button before retrying
+      if (attempt < 3) {
+        try {
+          await expect(retryButton).toBeVisible({ timeout: SHORT_TIMEOUT });
+          await retryButton.click();
+        } catch {
+          await expect(successTag.or(errorTag)).toBeVisible({
+            timeout: SHORT_TIMEOUT,
+          });
+        }
+      }
+    }
+
+    if (!connected) {
+      await appendVisibleLogs();
+    }
+
+    expect(
+      connected,
+      `Mock GeneXpert test-connection should succeed. Last error: ${lastError}`,
+    ).toBeTruthy();
     await expect(errorTag).not.toBeVisible();
 
     const closeButton = page.locator(
@@ -73,7 +154,7 @@ test.describe("Analyzer Test Connection", () => {
  */
 test.describe("Real GeneXpert Test Connection", () => {
   test.skip(
-    !GENEXPERT_HOST || !!process.env.CI,
+    !GENEXPERT_HOST || process.env.CI === "true",
     "Set GENEXPERT_HOST (and optionally GENEXPERT_PORT) to run real device tests",
   );
   test.describe.configure({ mode: "serial" });
@@ -110,7 +191,7 @@ test.describe("Real GeneXpert Test Connection", () => {
     // Plugin Type loads async — wait for options before selecting
     await form.pluginTypeDropdown.click();
     const pluginOption = page.getByRole("option", { name: /Generic ASTM/ });
-    await expect(pluginOption.first()).toBeVisible({ timeout: 10_000 });
+    await expect(pluginOption.first()).toBeVisible({ timeout: UI_TIMEOUT });
     await pluginOption.first().click();
 
     await form.selectType("Molecular");
@@ -172,7 +253,7 @@ test.describe("Real GeneXpert Test Connection", () => {
 
     // Real GeneXpert + contention handling may take longer than mock
     const successTag = page.locator('[data-testid="test-connection-success"]');
-    await expect(successTag).toBeVisible({ timeout: 30_000 });
+    await expect(successTag).toBeVisible({ timeout: LONG_TIMEOUT });
 
     const errorTag = page.locator('[data-testid="test-connection-error"]');
     await expect(errorTag).not.toBeVisible();

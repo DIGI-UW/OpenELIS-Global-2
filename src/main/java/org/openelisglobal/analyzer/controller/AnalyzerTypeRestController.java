@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.hibernate.Hibernate;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -76,6 +77,11 @@ public class AnalyzerTypeRestController extends BaseRestController {
             // LazyInitializationException in analyzerTypeToMap() (which calls
             // getInstances().size())
             types = analyzerTypeService.getAllWithInitializedInstances();
+            if (active != null) {
+                final boolean activeFilter = active;
+                types = types.stream().filter(t -> t.isActive() == activeFilter)
+                        .collect(java.util.stream.Collectors.toList());
+            }
             if (Boolean.TRUE.equals(genericOnly)) {
                 types = types.stream().filter(AnalyzerType::isGenericPlugin)
                         .collect(java.util.stream.Collectors.toList());
@@ -340,6 +346,7 @@ public class AnalyzerTypeRestController extends BaseRestController {
         map.put("isGenericPlugin", type.isGenericPlugin());
         map.put("isActive", type.isActive());
         map.put("pluginLoaded", type.getPluginClassName() != null && loadedPlugins.contains(type.getPluginClassName()));
+        Hibernate.initialize(type.getInstances());
         map.put("instanceCount", type.getInstances().size());
 
         if (includeInstances) {
