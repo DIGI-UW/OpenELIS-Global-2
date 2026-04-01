@@ -80,10 +80,14 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
     @Override
     @Transactional(readOnly = true)
     public String getObservationTypeIdForType(ObservationType type) {
-        if (observationTypeToIdMap.isEmpty()) {
+        String id = observationTypeToIdMap.get(type);
+
+        if (id == null) {
             initialize();
+            id = observationTypeToIdMap.get(type);
         }
-        return observationTypeToIdMap.get(type);
+
+        return id;
     }
 
     @Override

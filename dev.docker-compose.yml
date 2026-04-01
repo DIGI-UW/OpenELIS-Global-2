@@ -69,7 +69,7 @@ services:
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
-            - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+            - ./volume/properties:/var/lib/openelis-global/properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/configuration:/var/lib/openelis-global/configuration

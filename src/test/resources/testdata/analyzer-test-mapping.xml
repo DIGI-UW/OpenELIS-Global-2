@@ -37,15 +37,15 @@
         location="Emergency Department - Station 3" is_active="true"
         has_setup_page="false" last_updated="2023-01-01 12:30:00" />
 
-    <!-- Analyzer Test Map data -->
-    <analyzer_test_map analyzer_type_id="902"
-        analyzer_id="2" analyzer_test_name="Glucose Test" test_id="101"
+    <!-- Analyzer Test Map data (PK is analyzer_id + analyzer_test_name) -->
+    <analyzer_test_map analyzer_id="2"
+        analyzer_test_name="Glucose Test" test_id="101"
         last_updated="2023-01-01 13:00:00" />
-    <analyzer_test_map analyzer_type_id="901"
-        analyzer_id="1" analyzer_test_name="Hemoglobin Test" test_id="102"
+    <analyzer_test_map analyzer_id="1"
+        analyzer_test_name="Hemoglobin Test" test_id="102"
         last_updated="2023-01-01 12:30:00" />
-    <analyzer_test_map analyzer_type_id="902"
-        analyzer_id="2" analyzer_test_name="Potassium Test" test_id="102"
+    <analyzer_test_map analyzer_id="2"
+        analyzer_test_name="Potassium Test" test_id="102"
         last_updated="2023-01-01 13:00:00" />
 
 </dataset>

@@ -1,5 +1,6 @@
 package org.openelisglobal.alert.dao;
 
+import java.util.Collections;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -26,6 +27,9 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Alert> getAlertsByEntity(String entityType, Long entityId) {
+        if (entityType == null) {
+            return Collections.emptyList();
+        }
         try {
             String hql;
             if (entityId != null) {
@@ -77,6 +81,9 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
     @Override
     @Transactional(readOnly = true)
     public Long countActiveAlertsForEntity(String entityType, Long entityId) {
+        if (entityType == null) {
+            return 0L;
+        }
         try {
             String sql;
             if (entityId != null) {

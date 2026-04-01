@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { UI_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * AnalyzersList Page Object
@@ -37,9 +38,9 @@ export class AnalyzerListPage {
   /** Assert the page has loaded (root + header + stats visible) */
   async expectLoaded() {
     // Wait for analyzers API to complete (stats grid populated)
-    await expect(this.root).toBeVisible({ timeout: 45_000 });
-    await expect(this.header).toBeVisible({ timeout: 10_000 });
-    await expect(this.statsGrid).toBeVisible({ timeout: 15_000 });
+    await expect(this.root).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect(this.header).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(this.statsGrid).toBeVisible({ timeout: LONG_TIMEOUT });
   }
 
   /** Get a stat tile value by testid suffix (total, active, inactive) */
