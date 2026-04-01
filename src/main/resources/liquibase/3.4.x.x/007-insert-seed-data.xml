@@ -5,9 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Seed data: menu items and system configuration entries -->
-
-    <!-- Menu items for analyzer navigation -->
     <changeSet author="madagascar-analyzer-integration" id="011-007-01-add-menu-items-parent">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
@@ -85,7 +82,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="madagascar-analyzer-integration" id="011-007-05-add-menu-items-types">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-04-add-menu-items-types">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_types'
@@ -111,8 +108,7 @@
         </rollback>
     </changeSet>
 
-    <!-- System configuration entries for analyzer query functionality -->
-    <changeSet author="madagascar-analyzer-integration" id="011-007-04-add-query-timeout-config">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-05-add-query-timeout-config">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_configuration" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -134,7 +130,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="madagascar-analyzer-integration" id="011-007-05-add-query-rate-limit-config">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-06-add-query-rate-limit-config">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_configuration" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">
@@ -156,7 +152,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="madagascar-analyzer-integration" id="011-007-06-add-max-fields-config">
+    <changeSet author="madagascar-analyzer-integration" id="011-007-07-add-max-fields-config">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="system_configuration" schemaName="clinlims"/>
             <sqlCheck expectedResult="0">

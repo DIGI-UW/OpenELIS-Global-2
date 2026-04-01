@@ -5,7 +5,6 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- Hierarchy Traversal Indexes -->
     <changeSet id="storage-008-create-hierarchy-indexes" author="sample-storage-feature">
         <validCheckSum>8:ea888ef36d9a15e0aa6e39ee84c6cf88</validCheckSum>
         <validCheckSum>8:a9b1fd3e988cbc45a0c4b76378cb6b7c</validCheckSum>
@@ -34,7 +33,6 @@
         </rollback>
     </changeSet>
 
-    <!-- FHIR UUID Lookup Indexes -->
     <changeSet id="storage-009-create-fhir-uuid-indexes" author="sample-storage-feature">
         <validCheckSum>8:ac10ea20503b1b7a56cfe384da4f303e</validCheckSum>
         <validCheckSum>8:0330bdff2ea541cf8ea541b7849c3451</validCheckSum>
@@ -67,7 +65,6 @@
         </rollback>
     </changeSet>
 
-    <!-- Active Status Filter Indexes -->
     <changeSet id="storage-010-create-active-status-indexes" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
@@ -94,7 +91,6 @@
         </rollback>
     </changeSet>
 
-    <!-- Sample Assignment Lookup Indexes -->
     <changeSet id="storage-011-create-assignment-indexes" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
@@ -114,7 +110,6 @@
         </rollback>
     </changeSet>
 
-    <!-- Movement Audit Query Indexes -->
     <changeSet id="storage-012-create-movement-indexes" author="sample-storage-feature">
         <preConditions onFail="MARK_RAN">
             <not>
@@ -133,8 +128,4 @@
         </rollback>
     </changeSet>
 
-    <!-- Position Occupancy Query Index - REMOVED -->
-    <!-- Occupancy is now calculated dynamically from SampleStorageAssignment records -->
-    <!-- Index removed in changeset storage-014-remove-occupied-column -->
-
-</databaseChangeLog>
+    </databaseChangeLog>

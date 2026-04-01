@@ -1,0 +1,15 @@
+Hi everyone,
+
+I’ve been investigating the issue regarding the limitation of associating a panel with only one sample type. After reviewing the codebase, specifically the TypeOfSamplePanel value holder and the PanelDAOImpl, I’ve confirmed that the backend structure already supports this mapping via the TypeOfSamplePanel entity.
+
+The current limitation seems to be in the configuration workflow and the Service Layer logic, which only allows a single association during creation.
+
+My proposed plan for GSoC would be to:
+
+1-Refactor the Panel creation UI to support multi-selection for Sample Types.
+
+2-Update the Service Layer to handle a collection of typeOfSampleIds and persist them as multiple entries in the type_of_sample_panel table.
+
+3-Ensure that the test assignment flows correctly filter and fetch panels based on these new many-to-many associations.
+
+I’d love to hear the mentors' thoughts on this approach.

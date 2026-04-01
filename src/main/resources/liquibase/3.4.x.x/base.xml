@@ -4,8 +4,6 @@
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- Analyzer integration (011-madagascar-analyzer-integration). 2-table model. -->
-
   <include relativeToChangelogFile="true" file="001-create-standalone-tables.xml"/>
   <include relativeToChangelogFile="true" file="002-modify-analyzer-table.xml"/>
   <include relativeToChangelogFile="true" file="003-create-field-tables.xml"/>
@@ -18,5 +16,5 @@
   <include relativeToChangelogFile="true" file="010-create-analyzer-plugin-config.xml"/>
   <include relativeToChangelogFile="true" file="011-create-analyzer-pending-code.xml"/>
   <include relativeToChangelogFile="true" file="012-add-organization-type-hierarchy-level.xml"/>
-  <!-- 013 moved to 3.4.14.x for 014-hjra-file-stream-alignment isolation -->
-</databaseChangeLog>
+
+  </databaseChangeLog>

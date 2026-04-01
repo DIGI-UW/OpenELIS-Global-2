@@ -562,7 +562,7 @@
         <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
-            <version>1.8.10</version>
+            <version>1.9.7</version>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.barbecue</groupId>
@@ -657,7 +657,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
-            <scope>scope</scope>
         </dependency>
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
@@ -792,12 +791,15 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <!-- move to release when we compile in java versions >= 9 -->
                     <release>${maven.java.release}</release>
                     <parameters>true</parameters>
-                    <!-- legacy for java versions < 9 -->
-                    <!-- <source>${maven.compiler.source}</source> -->
-                    <!-- <target>${maven.compiler.target}</target> -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.36</version>
+                        </path>
+                    </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
