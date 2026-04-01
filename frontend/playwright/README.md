@@ -163,34 +163,28 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 When remediating `harness-demo` failures, do not use CI as the
 first repro. Follow this local loop after every substantive spec/helper change:
 
-1. Restart the analyzer harness from the repo root:
+1. Run the authoritative local CI parity path from the repo root:
 
 ```bash
-/restart-analyzer-harness --full-restart
+./projects/analyzer-harness/ci-parity-test.sh --preflight-only
+./projects/analyzer-harness/ci-parity-test.sh
 ```
 
-2. Wait for harness readiness, then run the frontend guardrails:
-
-```bash
-cd frontend
-npm run pw:guard
-```
-
-3. If you are fixing a specific failing spec, run that file first:
+2. If you are fixing a specific failing spec, run that file first:
 
 ```bash
 cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo playwright/tests/<failing-spec>.spec.ts
 ```
 
-4. Run full analyzer parity locally before pushing:
+3. Run full analyzer parity locally before pushing:
 
 ```bash
 cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 ```
 
-5. During remediation, keep local validation running before or alongside every
+4. During remediation, keep local validation running before or alongside every
    push so CI confirms parity instead of discovering failures first. Push only
    after the targeted local run and at least one full local `harness-demo` pass
    completes.

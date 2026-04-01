@@ -118,19 +118,21 @@ mkdir -p "$HARNESS_VOLUME/programs"
 mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# --- Copy configuration templates (test catalog CSVs) into volume ---
-# These are loaded by ConfigurationInitializationService on OE startup.
+# --- Copy authoritative harness startup catalog into volume ---
+# These CSVs are loaded by ConfigurationInitializationService on OE startup.
+# Do not introduce a second source tree for harness test metadata.
 CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
 if [ -d "$CONFIG_TEMPLATES" ]; then
   cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true
   echo -e "  ${GREEN}✓ Configuration templates copied to volume${NC}"
 fi
 
-# Clear stale configuration checksums so CSVs are reloaded on next OE startup
-if [ "$FORCE_RELOAD_CONFIG" = "true" ]; then
-  rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
-  echo -e "  ${GREEN}✓ Cleared configuration checksums (will reload on restart)${NC}"
-fi
+# Clear configuration checksums so CSVs are reloaded on next OE startup.
+# Always clear when DB was reset (checksums are on filesystem but data is in DB —
+# when DB is dropped, checksums become stale and OE skips loading CSVs).
+# Also clear when FORCE_RELOAD_CONFIG is set explicitly.
+rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
+echo -e "  ${GREEN}✓ Cleared configuration checksums (CSVs will reload on next startup)${NC}"
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---
 copy_if_missing() {
@@ -151,6 +153,13 @@ copy_if_missing "$ROOT_VOLUME/properties/SystemConfiguration.properties" "$HARNE
 if [ -f "$ROOT_VOLUME/properties/common.properties" ] && [ ! -f "$HARNESS_VOLUME/properties/common.properties" ]; then
   sed 's/fhir\.openelis\.org/fhir/g' "$ROOT_VOLUME/properties/common.properties" > "$HARNESS_VOLUME/properties/common.properties"
   echo "  copied+adapted common.properties"
+fi
+# Ensure bridge URL is set for analyzer registration
+if [ -f "$HARNESS_VOLUME/properties/common.properties" ] && ! grep -q "analyzer.bridge.url" "$HARNESS_VOLUME/properties/common.properties"; then
+  echo "" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "# Analyzer bridge URL for registration sync" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "analyzer.bridge.url=https://openelis-analyzer-bridge:8443" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "  added analyzer.bridge.url to common.properties"
 fi
 
 # hapi_application.yaml: adapt db.openelis.org -> db, fhir.openelis.org -> fhir
