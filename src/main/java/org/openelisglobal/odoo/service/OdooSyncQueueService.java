@@ -78,20 +78,21 @@ public class OdooSyncQueueService {
         return false;
     }
 
-    public void markInProgress(OdooSyncQueue item) {
+    public OdooSyncQueue markInProgress(OdooSyncQueue item) {
         item.setStatus(SyncStatus.IN_PROGRESS);
-        odooSyncQueueDAO.update(item);
+        return odooSyncQueueDAO.update(item);
     }
 
-    public void markCompleted(OdooSyncQueue item) {
+    public OdooSyncQueue markCompleted(OdooSyncQueue item) {
         item.setStatus(SyncStatus.COMPLETED);
         item.setCompletedAt(Timestamp.from(Instant.now()));
         item.setLastError(null);
-        odooSyncQueueDAO.update(item);
-        log.info("Odoo sync completed for accession: {}", item.getAccessionNumber());
+        OdooSyncQueue merged = odooSyncQueueDAO.update(item);
+        log.info("Odoo sync completed for accession: {}", merged.getAccessionNumber());
+        return merged;
     }
 
-    public void markFailed(OdooSyncQueue item, String errorMessage) {
+    public OdooSyncQueue markFailed(OdooSyncQueue item, String errorMessage) {
         int newRetryCount = item.getRetryCount() + 1;
         item.setRetryCount(newRetryCount);
         item.setLastError(errorMessage);
@@ -108,7 +109,7 @@ public class OdooSyncQueueService {
             log.warn("Odoo sync failed for accession: {}. Retry {} of {} scheduled in {} minutes.",
                     item.getAccessionNumber(), newRetryCount, item.getMaxRetries(), delayMinutes);
         }
-        odooSyncQueueDAO.update(item);
+        return odooSyncQueueDAO.update(item);
     }
 
     @Transactional(readOnly = true)

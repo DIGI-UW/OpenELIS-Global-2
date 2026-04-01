@@ -58,7 +58,7 @@ public class OdooRetryJob {
     }
 
     private void processItem(OdooSyncQueue item) {
-        odooSyncQueueService.markInProgress(item);
+        item = odooSyncQueueService.markInProgress(item);
         try {
             Sample sample = sampleService.getSampleByAccessionNumber(item.getAccessionNumber());
             if (sample == null) {
