@@ -46,10 +46,6 @@ public class OdooSyncQueue extends BaseObject<Long> {
 
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
-
-    @Column(name = "payload", columnDefinition = "TEXT")
-    private String payload;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     private Timestamp createdAt;
 
@@ -112,14 +108,6 @@ public class OdooSyncQueue extends BaseObject<Long> {
 
     public void setLastError(String lastError) {
         this.lastError = lastError;
-    }
-
-    public String getPayload() {
-        return payload;
-    }
-
-    public void setPayload(String payload) {
-        this.payload = payload;
     }
 
     public Timestamp getCreatedAt() {
