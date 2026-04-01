@@ -52,14 +52,23 @@ volume/odoo/*
 volume/branding/*
 volume/lucene/*
 
-# AI Agent command directories (populated by scripts/install-speckit-commands.py)
-# These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked
+# AI agent directories -- generated content (rebuilt by installer scripts)
+# These are compiled from legacy .specify sources and packaged skills, and should not be tracked
 .cursor/commands/
+.cursor/skills/
 .claude/commands/
+.claude/skills/
+.claude/logs.txt
 
-# Ignore .cursor/ except for worktrees.json (Cursor worktree setup config)
+# AI agent directories -- tracked config (persists across branches/worktrees)
+# .cursor/rules/           -> tracked (Cursor rules for agent guardrails)
+# .cursor/worktrees.json   -> tracked (Cursor worktree setup config)
+
+# Ignore everything else in .cursor/ and .claude/
 .cursor/*
+!.cursor/rules/
 !.cursor/worktrees.json
+.claude/*
 **/*checksum*.properties
 **/*checksums*.properties
 
@@ -101,3 +110,6 @@ docs/analyzers/012/
 specs/012-generic-astm-plugin-profiles/docs/
 
 # Miscellaneous dev artifacts
+volume/properties/TotalSystemConfiguration.properties
+volume/properties/SystemConfiguration.properties
+volume/properties/ChangedSystemConfiguration.properties

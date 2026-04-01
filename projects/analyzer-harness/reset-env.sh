@@ -26,6 +26,7 @@ NC='\033[0m'
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
+HARNESS_PLUGIN_DIR="$HARNESS_DIR/volume/plugins"
 COMPOSE_DEV="$HARNESS_DIR/docker-compose.dev.yml"
 COMPOSE_ANALYZER="$HARNESS_DIR/docker-compose.analyzer-test.yml"
 COMPOSE_LETSENCRYPT="$HARNESS_DIR/docker-compose.letsencrypt.yml"
@@ -103,13 +104,32 @@ echo -e "  ${GREEN}✓ Stack stopped${NC}"
 # Ensure repo volume dirs exist so proxy bind mounts work (and so valid certs in volume/letsencrypt are used)
 mkdir -p "$REPO_ROOT/volume/letsencrypt" "$REPO_ROOT/volume/nginx/certbot"
 
-# Step 2: Start stack (with LetsEncrypt override so proxy uses same env/domain as main)
-echo -e "${YELLOW}[2/4] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
+# Step 2: Stage plugin jars for runtime loading (parity with CI)
+echo -e "${YELLOW}[2/5] Staging analyzer plugin jars for runtime loading...${NC}"
+cd "$REPO_ROOT"
+mkdir -p "$HARNESS_PLUGIN_DIR"
+
+if ! find "$REPO_ROOT/plugins/analyzers" -type f -path "*/target/*.jar" \
+    ! -name "*sources.jar" ! -name "*javadoc.jar" | grep -q .; then
+    echo -e "  ${YELLOW}→ No built plugin jars found; building plugins first${NC}"
+    mvn clean install -DskipTests -Dmaven.test.skip=true -f "$REPO_ROOT/plugins/pom.xml"
+fi
+
+rm -rf "$HARNESS_PLUGIN_DIR"/*
+find "$REPO_ROOT/plugins/analyzers" -type f -path "*/target/*.jar" \
+    ! -name "*sources.jar" ! -name "*javadoc.jar" \
+    -exec cp {} "$HARNESS_PLUGIN_DIR/" \;
+PLUGIN_COUNT=$(find "$HARNESS_PLUGIN_DIR" -maxdepth 1 -type f -name "*.jar" | wc -l | tr -d ' ')
+echo -e "  ${GREEN}✓ Staged ${PLUGIN_COUNT} plugin jars${NC}"
+
+# Step 3: Start stack (with LetsEncrypt override so proxy uses same env/domain as main)
+echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
+cd "$HARNESS_DIR"
 docker compose ${ENV_FILE:+--env-file "$ENV_FILE"} -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" -f "$COMPOSE_LETSENCRYPT" up -d
 echo -e "  ${GREEN}✓ Stack started${NC}"
 
-# Step 3: Wait for webapp
-echo -e "${YELLOW}[3/4] Waiting for webapp...${NC}"
+# Step 4: Wait for webapp
+echo -e "${YELLOW}[4/5] Waiting for webapp...${NC}"
 MAX_WAIT=120
 WAIT_INTERVAL=5
 ELAPSED=0
@@ -129,7 +149,7 @@ if [ $ELAPSED -ge $MAX_WAIT ]; then
     exit 1
 fi
 
-# Step 3b: Let's Encrypt setup when LETSENCRYPT_DOMAIN + LETSENCRYPT_EMAIL are set
+# Step 4b: Let's Encrypt setup when LETSENCRYPT_DOMAIN + LETSENCRYPT_EMAIL are set
 if [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
     echo -e "${YELLOW}[3b] Setting up Let's Encrypt for ${LETSENCRYPT_DOMAIN}...${NC}"
     if "$HARNESS_DIR/scripts/generate-letsencrypt-certs.sh"; then
@@ -146,22 +166,29 @@ else
     fi
 fi
 
-# Step 4: Load fixtures (from repo root, direct psql to harness DB on 15432)
+# Step 5: Load fixtures (from repo root, direct psql to harness DB on 15432)
 if [ "$SKIP_FIXTURES" = true ]; then
-    echo -e "${YELLOW}[4/4] Skipping fixtures (--skip-fixtures)${NC}"
+    echo -e "${YELLOW}[5/5] Skipping fixtures (--skip-fixtures)${NC}"
 else
-    echo -e "${YELLOW}[4/4] Loading fixtures (DB_PORT=15432)...${NC}"
+    echo -e "${YELLOW}[5/5] Loading fixtures (DB_PORT=15432)...${NC}"
     cd "$REPO_ROOT"
     export DB_PORT=15432
     export DB_HOST="${DB_HOST:-localhost}"
 
     if [ "$FULL_RESET" = true ]; then
-        ./src/test/resources/load-test-fixtures.sh --no-verify
+        ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
     else
-        ./src/test/resources/load-test-fixtures.sh --reset --no-verify
+        ./src/test/resources/load-test-fixtures.sh --analyzers=full --reset --no-verify
     fi
-    # 011 dataset is loaded by load-test-fixtures.sh (once); no separate call to avoid duplicate INSERT.
 
+    # Seed 4 harness analyzers via REST API (parity with CI and /restart-analyzer-harness)
+    set -a && [ -f .env ] && . ./.env && set +a
+    if [ -n "${TEST_PASS:-}" ]; then
+        BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+        echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
+    else
+        echo -e "  ${YELLOW}⚠ TEST_PASS not set; run seed-analyzers.sh manually after adding to .env${NC}"
+    fi
     echo -e "  ${GREEN}✓ Fixtures loaded${NC}"
 fi
 

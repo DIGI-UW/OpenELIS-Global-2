@@ -57,4 +57,27 @@ public class FileImportConfigurationDAOImpl extends BaseDAOImpl<FileImportConfig
             throw new LIMSRuntimeException("Error finding active FileImportConfiguration", e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileImportConfiguration> findActiveByImportDirectoryAndFileFormat(String importDirectory,
+            String fileFormat, Integer excludeAnalyzerId) {
+        try {
+            String hql = "FROM FileImportConfiguration fic WHERE fic.active = true"
+                    + " AND fic.importDirectory = :importDirectory" + " AND UPPER(fic.fileFormat) = UPPER(:fileFormat)"
+                    + (excludeAnalyzerId != null ? " AND fic.analyzerId != :excludeAnalyzerId" : "");
+            Query<FileImportConfiguration> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    FileImportConfiguration.class);
+            query.setParameter("importDirectory", importDirectory);
+            query.setParameter("fileFormat", fileFormat);
+            if (excludeAnalyzerId != null) {
+                query.setParameter("excludeAnalyzerId", excludeAnalyzerId);
+            }
+            return query.getResultList();
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "findActiveByImportDirectoryAndFileFormat",
+                    "Error checking for overlapping configs: " + e.getMessage());
+            throw new LIMSRuntimeException("Error checking for overlapping file import configs", e);
+        }
+    }
 }
