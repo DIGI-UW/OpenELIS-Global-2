@@ -38,8 +38,8 @@ test.describe("Sidenav", () => {
     await sidenav.toggle();
     await sidenav.expectCollapsed();
 
-    // Re-navigate instead of reload to avoid Playwright "response not bound" bug
-    await page.goto("/Storage/samples");
+    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
+    await expect(sidenav.menuButton).toBeVisible();
 
     // Should still be collapsed (preference persisted)
     await sidenav.expectCollapsed();
