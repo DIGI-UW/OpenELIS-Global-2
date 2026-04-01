@@ -27,9 +27,8 @@ NC='\033[0m'
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
 HARNESS_PLUGIN_DIR="$HARNESS_DIR/volume/plugins"
-COMPOSE_DEV="$HARNESS_DIR/docker-compose.dev.yml"
-COMPOSE_ANALYZER="$HARNESS_DIR/docker-compose.analyzer-test.yml"
-COMPOSE_LETSENCRYPT="$HARNESS_DIR/docker-compose.letsencrypt.yml"
+source "$HARNESS_DIR/compose-stack.sh"
+LOCAL_COMPOSE_FILES=($(compose_args_local true))
 if [ -f "$HARNESS_DIR/.env" ]; then
   ENV_FILE="$HARNESS_DIR/.env"
 elif [ -f "$REPO_ROOT/.env" ]; then
@@ -39,6 +38,11 @@ else
 fi
 # Source .env so LETSENCRYPT_DOMAIN/LETSENCRYPT_EMAIL are available for optional cert setup
 [ -n "$ENV_FILE" ] && set -a && . "$ENV_FILE" && set +a
+
+ENV_ARGS=()
+if [ -n "$ENV_FILE" ]; then
+  ENV_ARGS=(--env-file "$ENV_FILE")
+fi
 
 FULL_RESET=false
 SKIP_FIXTURES=false
@@ -92,9 +96,9 @@ echo -e "${YELLOW}[1/4] Stopping harness stack...${NC}"
 cd "$HARNESS_DIR"
 if [ "$FULL_RESET" = true ]; then
     echo -e "  ${YELLOW}→ Full reset: removing volumes${NC}"
-    docker compose ${ENV_FILE:+--env-file "$ENV_FILE"} -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" -f "$COMPOSE_LETSENCRYPT" down -v 2>/dev/null || true
+    docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" down --remove-orphans -v 2>/dev/null || true
 else
-    docker compose ${ENV_FILE:+--env-file "$ENV_FILE"} -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" -f "$COMPOSE_LETSENCRYPT" down 2>/dev/null || true
+    docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" down --remove-orphans 2>/dev/null || true
 fi
 echo -e "  ${GREEN}✓ Stack stopped${NC}"
 
@@ -125,7 +129,7 @@ echo -e "  ${GREEN}✓ Staged ${PLUGIN_COUNT} plugin jars${NC}"
 # Step 3: Start stack (with LetsEncrypt override so proxy uses same env/domain as main)
 echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
 cd "$HARNESS_DIR"
-docker compose ${ENV_FILE:+--env-file "$ENV_FILE"} -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" -f "$COMPOSE_LETSENCRYPT" up -d
+docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" up -d --remove-orphans
 echo -e "  ${GREEN}✓ Stack started${NC}"
 
 # Step 4: Wait for webapp
@@ -153,7 +157,7 @@ fi
 if [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
     echo -e "${YELLOW}[3b] Setting up Let's Encrypt for ${LETSENCRYPT_DOMAIN}...${NC}"
     if "$HARNESS_DIR/scripts/generate-letsencrypt-certs.sh"; then
-        docker compose ${ENV_FILE:+--env-file "$ENV_FILE"} -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" -f "$COMPOSE_LETSENCRYPT" restart proxy
+        docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" restart proxy
         echo -e "  ${GREEN}✓ Let's Encrypt cert obtained/renewed; proxy restarted${NC}"
     else
         echo -e "  ${YELLOW}⚠ Let's Encrypt setup failed (e.g. DNS/port 80); proxy keeps self-signed${NC}"

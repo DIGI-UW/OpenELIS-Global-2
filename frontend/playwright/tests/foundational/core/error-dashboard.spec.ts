@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { ErrorDashboardPage } from "../fixtures/error-dashboard";
+import { ErrorDashboardPage } from "../../../fixtures/error-dashboard";
 
 test.describe("Error Dashboard Page", () => {
   test("loads with header, stats, and table", async ({ page }) => {

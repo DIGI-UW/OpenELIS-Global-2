@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { UI_TIMEOUT } from "../helpers/timeouts";
+import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
 test.describe("OGC-284 labels UI", () => {
   test("Add Order shows shared labels section", async ({ page }) => {

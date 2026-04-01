@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 
 test.describe("Analyzer List Page", () => {
   test("loads with header, stats, and table", async ({ page }) => {

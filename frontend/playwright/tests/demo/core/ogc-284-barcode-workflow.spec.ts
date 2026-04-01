@@ -1,7 +1,11 @@
 import { expect, test, Page, Locator, TestInfo } from "@playwright/test";
-import { showSceneLabel, showTitleCard } from "../helpers/title-card";
-import { videoPause } from "../helpers/video-pause";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
+import { videoPause } from "../../../helpers/video-pause";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 /**
  * OGC-284 — Barcode label quantity workflow (user stories)
@@ -270,10 +274,25 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
 
   const siteInput = page.locator("input#siteName");
   if (await siteInput.isVisible()) {
-    await siteInput.clear();
-    await siteInput.fill("CAMES MAN");
-    await pause(1200);
-    await pickFirstAutosuggestOptional(page, pause);
+    const siteQueries = ["CAMES MAN", "CAMES", "C"];
+    for (const query of siteQueries) {
+      await siteInput.clear();
+      await siteInput.fill(query);
+      await pause(900);
+      await pickFirstAutosuggestOptional(page, pause);
+      if ((await siteInput.inputValue()).trim()) {
+        break;
+      }
+    }
+    await expect(siteInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
+  }
+
+  const requesterDepartment = page.locator("select#requesterDepartmentId");
+  if (await requesterDepartment.isVisible()) {
+    const optionCount = await requesterDepartment.locator("option").count();
+    if (optionCount > 1 && !(await requesterDepartment.inputValue()).trim()) {
+      await requesterDepartment.selectOption({ index: 1 });
+    }
   }
 
   const requesterLookup = page.locator("input#requesterId");
@@ -567,6 +586,16 @@ test("US2 — Capture label quantities during sample creation", async ({
   await scrollToAndPause(page, submitBtn, pause, 1000);
   await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
   await submitBtn.click();
+  const saveErrorNotice = page
+    .locator('[role="alert"], .bx--inline-notification')
+    .filter({ hasText: /error|failed/i })
+    .first();
+
+  if (await saveErrorNotice.isVisible()) {
+    throw new Error(
+      `Order save failed with visible UI error: ${(await saveErrorNotice.innerText()).trim()}`,
+    );
+  }
   await expectOrderEntrySaveSuccess(page);
 
   // ── Success: confirm quantities saved ───────────────────────────

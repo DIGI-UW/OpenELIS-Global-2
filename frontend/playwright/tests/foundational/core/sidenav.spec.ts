@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { Sidenav } from "../fixtures/sidenav";
+import { Sidenav } from "../../../fixtures/sidenav";
 
 test.describe("Sidenav", () => {
   test("home page has collapsed nav", async ({ page }) => {

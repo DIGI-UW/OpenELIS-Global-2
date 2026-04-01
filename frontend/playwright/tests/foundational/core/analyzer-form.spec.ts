@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 
 /**
  * Analyzer Form E2E Tests
