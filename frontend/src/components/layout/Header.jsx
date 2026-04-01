@@ -742,7 +742,7 @@ function OEHeader({
               onClose={() => handlePanelToggle("")}
               title="User"
             >
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="list-reset">
                 {userSessionDetails.authenticated && (
                   <>
                     <li className="userDetails">

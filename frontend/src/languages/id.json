@@ -1991,6 +1991,7 @@
   "header.label.study.ciexport": "Ekspor file CSV berdasarkan Tanggal",
   "header.label.study.vlloadtrends": "Laporan Ekspor Data Viral Load",
   "header.label.version": "Versi:",
+  "header.label.user.slide.title": "Pengguna",
   "header.reject": "Tolak",
   "header.rejection.reason": "Alasan penolakan",
   "header.results.recorded": "Hasil terekam",

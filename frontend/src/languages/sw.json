@@ -562,6 +562,7 @@
   "header.label.study.ciexport": "Export a CSV File by Date",
   "header.label.study.vlloadtrends": "Viral Load Data Export Report",
   "header.label.version": "Version:",
+  "header.label.user.slide.title": "User",
   "header.reject": "Reject",
   "header.rejection.reason": "Reject Reason",
   "header.results.recorded": "Results Recorded",

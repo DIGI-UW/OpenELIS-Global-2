@@ -1991,6 +1991,7 @@
   "header.label.study.ciexport": "Exporter un fichier CSV par date",
   "header.label.study.vlloadtrends": "Rapport d'exportation des données de charge virale",
   "header.label.version": "Version:",
+  "header.label.user.slide.title": "Utilisateur",
   "header.reject": "Rejeter",
   "header.rejection.reason": "Raison du rejet",
   "header.results.recorded": "Résultats enregistrés",

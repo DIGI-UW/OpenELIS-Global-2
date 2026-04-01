@@ -1,3 +1,20 @@
+/* =============================================================================
+ * GLOBAL CSS TOKENS
+ * Reusable design tokens for consistent styling across components
+ * ============================================================================= */
+
+:root {
+  /* Interactive elements - hover states and backgrounds */
+  --oe-hover-light: rgb(223, 218, 232);
+  --oe-bg-hover: #f4f4f4;
+  --oe-border-subtle: #8d8d8d;
+
+  /* Text hierarchy - primary, secondary and tertiary colors */
+  --oe-text-primary: rgb(131, 121, 148);
+  --oe-text-secondary: rgb(75, 85, 99);
+  --oe-text-dark: #161616;
+}
+
 /* Sidenav style improvements — fix/011-sidenav-styles */
 .logo {
   height: 40px;
@@ -32,18 +49,73 @@ li.userDetails {
   cursor: default;
 }
 
+/* =============================================================================
+ * USER SLIDE PANEL STYLES
+ * Complete styles for user slide panel components
+ * ============================================================================= */
+
 li.clickableUserDetails {
   cursor: pointer;
+  font-weight: 600;
 }
 
-li.clickableUserDetails:hover {
-  background: #f3f3f3;
+/* User slide panel list reset */
+.user-slide-panel .slide-over-body .list-reset {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-/* Hover in user slide follows notification panel pattern */
-.slide-over-body li.clickableUserDetails:hover {
-  background: #f3f3f3;
+/* Hover in user slide follows notification panel pattern - scoped to user panel only */
+.user-slide-panel .slide-over-body li.clickableUserDetails:hover {
+  background-color: var(--oe-hover-light);
   border-radius: 0.5rem;
+}
+
+/* User slide panel header */
+.user-slide-panel .slide-over-header {
+  margin-top: 1%;
+  padding: 2%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* User slide panel spacer */
+.slide-over-spacer {
+  margin-top: 40px;
+}
+
+/* UserSlidePanel text styling - scoped to user panel to avoid affecting other slide-overs */
+.user-slide-panel .slide-over-body .selectLocale .cds--label,
+.user-slide-panel .slide-over-body .selectLocale .cds--form__helper-text {
+  color: var(--oe-text-primary) !important;
+  font-weight: 600;
+}
+
+.user-slide-panel .slide-over-body .cds--label,
+.user-slide-panel .slide-over-body li.userDetails,
+.user-slide-panel .slide-over-body .userDetails {
+  color: var(--oe-text-primary) !important;
+  font-weight: 600;
+}
+
+/* UserSlidePanel version text - lighter color for version info */
+.user-slide-panel .slide-over-body .version-text {
+  color: var(--oe-text-secondary) !important;
+  font-weight: 400;
+}
+
+/* UserSlidePanel arrow styling - scoped to user panel only */
+.user-slide-panel .slide-over-body .selectLocale .cds--select__arrow {
+  fill: var(--oe-text-primary);
+}
+
+/* Ensure Select styling is visible in white theme - scoped to user panel only */
+.user-slide-panel .slide-over-body .selectLocale .cds--select-input {
+  color: var(--oe-text-primary) !important;
+  background-color: var(--oe-bg-hover);
+  border-bottom-color: var(--oe-border-subtle);
 }
 
 .adminPageContent {
@@ -54,7 +126,7 @@ li.clickableUserDetails:hover {
   margin: 0 5% 0 2%;
 }
 
-/* -----------------------------------------------------------------------------
+/* =============================================================================
  * Login page layout
  * -----------------------------------------------------------------------------
  * The global layout can retain a persisted LOCK sidenav mode even when the user
@@ -648,46 +720,6 @@ button {
 
 /* Base link styles - Let Carbon handle default backgrounds (no overrides!) */
 
-/* ============================================================================
- * UNIFIED ACTIVE/HOVER STYLES - Works for ALL levels (top-level + subnavs)
- * ============================================================================
- */
-
-/* Active state - Left border + background color, NO other borders */
-/* Use single selector to avoid double borders - only target links within menu items */
-.cds--side-nav__menu-item .cds--side-nav__link--current,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
-  border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
-  background-color: var(
-    --cds-layer-selected-01,
-    rgba(255, 255, 255, 0.1)
-  ) !important; /* Restore active background */
-  padding-left: calc(
-    1rem - 4px
-  ) !important; /* Compensate for 4px border to prevent double border */
-  border-right: none !important;
-  border-top: none !important;
-  border-bottom: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* Ensure nav-scoped active background wins specificity */
-nav.cds--side-nav .cds--side-nav__link--current,
-nav.cds--side-nav .cds--side-nav__link[aria-current="page"] {
-  background-color: var(
-    --cds-layer-selected-01,
-    rgba(255, 255, 255, 0.1)
-  ) !important;
-}
-
-/* Remove any ::before pseudo-elements that might add borders */
-.cds--side-nav__menu-item .cds--side-nav__link--current::before,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]::before {
-  display: none !important;
-  content: none !important;
-}
-nav.cds--side-nav .cds--side-nav__link--current::before,
 nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
   display: none !important;
   content: none !important;

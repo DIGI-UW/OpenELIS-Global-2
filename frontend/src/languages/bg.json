@@ -1991,6 +1991,7 @@
   "header.label.study.ciexport": "Експорт на CSV файл по дата",
   "header.label.study.vlloadtrends": "Отчет за експорт на данни за вирусен товар",
   "header.label.version": "Версия:",
+  "header.label.user.slide.title": "Потребител",
   "header.reject": "Отхвърли",
   "header.rejection.reason": "Причина за отхвърляне",
   "header.results.recorded": "Записани резултати",
