@@ -3723,4 +3723,6 @@
   "barcode.labels.order.row": "Étiquettes de commande",
   "barcode.labels.sample.row": "Étiquettes d'échantillon {sampleNumber}",
   "barcode.labels.running.total": "Total cumulé"
+,
+  "error.field.required": "Ce champ est obligatoire"
 }

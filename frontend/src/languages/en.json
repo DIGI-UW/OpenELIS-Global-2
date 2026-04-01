@@ -3773,4 +3773,6 @@
   "barcode.labels.order.row": "Order labels",
   "barcode.labels.sample.row": "Specimen labels sample {sampleNumber}",
   "barcode.labels.running.total": "Running total"
+,
+  "error.field.required": "This field is required"
 }
