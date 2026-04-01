@@ -8,10 +8,10 @@ repo/operator settings required for the split E2E workflow model.
 - `03 - E2E` is build-only. It produces transient `e2e-cache` images for
   non-forks and emits build-context artifacts for downstream orchestrators.
 - `E2E / Tests` is the non-fork `workflow_run` wrapper. It owns the stable
-  `03 Checkpoint - E2E` check and keeps the detailed job graph behind that
-  single PR-facing contract.
+  `03 Checkpoint - E2E` status context and keeps the detailed job graph behind
+  that single PR-facing contract.
 - `03 - E2E - Fork PR` is the privileged `pull_request_target` executor. It owns
-  the authoritative fork-only checkpoint `03 Checkpoint - E2E - Fork PR`.
+  the authoritative fork-only status context `03 Checkpoint - E2E - Fork PR`.
 - `Publish Images` is post-merge only (`push`/`release`) and gated on the
   successful `03 Checkpoint - E2E` status.
 
@@ -44,8 +44,10 @@ Requires default-branch merge (controls `workflow_run` orchestration):
 - Fork PRs: `03 - E2E` records `fork-fallback`, `E2E / Tests` reports
   `03 Checkpoint - E2E` as `not_applicable`, and `03 Checkpoint - E2E - Fork PR`
   becomes the authoritative executor after maintainer approval.
-- Status/check reporting remains isolated in tiny reporter/gate jobs rather than
-  the heavy execution graph.
+- Synthetic checkpoint reporting uses commit statuses, not checks, so the PR
+  rows can link directly to the authoritative workflow graphs.
+- Do not publish a check and a status with the same checkpoint name; GitHub can
+  treat both as required if branch protection references that shared name.
 
 ## Branch Protection Contract
 

@@ -1,6 +1,6 @@
 # Runs non-fork E2E tests after the build workflow completes.
-# The workflow_run graph stays behind the stable `03 Checkpoint - E2E` check so
-# the PR surface stays clean while detailed execution remains one click away.
+# The workflow_run graph stays behind the stable `03 Checkpoint - E2E` status so
+# the PR-facing checkpoint can link directly to the authoritative run.
 name: E2E / Tests
 
 on:
@@ -108,51 +108,30 @@ jobs:
     if: needs.setup.outputs.head_sha != ''
     runs-on: ubuntu-latest
     permissions:
-      checks: write
+      statuses: write
     steps:
-      - name: Create or update checkpoint check run
+      - name: Post checkpoint status
         uses: actions/github-script@v7
         with:
           script: |
             const sha = '${{ needs.setup.outputs.head_sha }}';
-            const name = '03 Checkpoint - E2E';
+            const contextName = '03 Checkpoint - E2E';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
+            const state = isFork ? 'success' : 'pending';
+            const description = isFork
+              ? 'Not applicable - fork PRs use 03 Checkpoint - E2E - Fork PR'
+              : 'Playwright, Cypress, and analyzer-harness suites are running...';
 
-            const { data: { check_runs } } = await github.rest.checks.listForRef({
+            await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: sha,
-              check_name: name,
-              filter: 'latest'
+              sha,
+              state,
+              context: contextName,
+              description,
+              target_url: runUrl
             });
-
-            const output = {
-              title: 'E2E wrapper running',
-              summary: '${{ needs.setup.outputs.is_fork }}' === 'true'
-                ? 'Non-fork checkpoint wrapper is preparing a not_applicable result because fork PRs are handled by 03 Checkpoint - E2E - Fork PR.'
-                : 'Playwright, Cypress, and analyzer-harness suites are running behind this wrapper.'
-            };
-
-            if (check_runs.length > 0) {
-              await github.rest.checks.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                check_run_id: check_runs[0].id,
-                status: 'in_progress',
-                details_url: runUrl,
-                output
-              });
-            } else {
-              await github.rest.checks.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                head_sha: sha,
-                name,
-                status: 'in_progress',
-                details_url: runUrl,
-                output
-              });
-            }
 
   playwright-core:
     name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
@@ -589,65 +568,38 @@ jobs:
     needs: [setup, set-pending-status, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
-      checks: write
+      statuses: write
     steps:
-      - name: Update checkpoint check run with results
+      - name: Update checkpoint status
         uses: actions/github-script@v7
         with:
           script: |
             const sha = '${{ needs.setup.outputs.head_sha }}';
-            const name = '03 Checkpoint - E2E';
+            const contextName = '03 Checkpoint - E2E';
             const gateResult = '${{ needs.e2e-gate.result }}';
             const imageTransfer = '${{ needs.setup.outputs.image_transfer }}';
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-
-            let conclusion, title, summary;
+            let state, description;
             if (isFork) {
-              conclusion = 'success';
-              title = 'Non-fork checkpoint not applicable';
-              summary = 'Fork PRs are validated by the separate `03 Checkpoint - E2E - Fork PR` checkpoint.';
+              state = 'success';
+              description = 'Not applicable - fork PRs use 03 Checkpoint - E2E - Fork PR';
             } else if (imageTransfer !== 'ghcr') {
-              conclusion = 'failure';
-              title = 'E2E build failed';
-              summary = 'No Docker images were produced for the non-fork E2E wrapper.';
+              state = 'failure';
+              description = 'E2E build failed - no Docker images were produced';
             } else if (gateResult === 'success') {
-              conclusion = 'success';
-              title = 'E2E tests passed';
-              summary = 'All non-fork Playwright, Cypress, and analyzer-harness suites passed.';
+              state = 'success';
+              description = 'All non-fork Playwright, Cypress, and analyzer-harness suites passed';
             } else {
-              conclusion = 'failure';
-              title = 'E2E tests failed';
-              summary = 'One or more non-fork E2E suites failed. Click Details to open the full wrapper workflow.';
+              state = 'failure';
+              description = 'One or more non-fork E2E suites failed';
             }
-
-            const { data: { check_runs } } = await github.rest.checks.listForRef({
+            await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: sha,
-              check_name: name,
-              filter: 'latest'
+              sha,
+              state,
+              context: contextName,
+              description,
+              target_url: runUrl
             });
-
-            if (check_runs.length > 0) {
-              await github.rest.checks.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                check_run_id: check_runs[0].id,
-                status: 'completed',
-                conclusion,
-                details_url: runUrl,
-                output: { title, summary }
-              });
-            } else {
-              await github.rest.checks.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                head_sha: sha,
-                name,
-                status: 'completed',
-                conclusion,
-                details_url: runUrl,
-                output: { title, summary }
-              });
-            }

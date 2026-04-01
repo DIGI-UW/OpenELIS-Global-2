@@ -21,6 +21,7 @@ jobs:
       is_fork: ${{ steps.context.outputs.is_fork }}
       pr_number: ${{ steps.context.outputs.pr_number }}
       head_sha: ${{ steps.context.outputs.head_sha }}
+      status_sha: ${{ steps.context.outputs.status_sha }}
       core_demo_changed: ${{ steps.demo-diff.outputs.core_demo_changed }}
       harness_demo_changed: ${{ steps.demo-diff.outputs.harness_demo_changed }}
     steps:
@@ -30,12 +31,14 @@ jobs:
           IS_FORK="${{ github.event.pull_request.head.repo.fork && 'true' || 'false' }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
           HEAD_SHA="refs/pull/${PR_NUMBER}/merge"
+          STATUS_SHA="${{ github.event.pull_request.head.sha }}"
 
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "status_sha=$STATUS_SHA" >> "$GITHUB_OUTPUT"
 
-          echo "Context: fork=$IS_FORK pr=#$PR_NUMBER checkout_ref=$HEAD_SHA"
+          echo "Context: fork=$IS_FORK pr=#$PR_NUMBER checkout_ref=$HEAD_SHA status_sha=$STATUS_SHA"
 
       - name: Detect demo-spec diff buckets for PR
         id: demo-diff
@@ -201,6 +204,37 @@ jobs:
           path: /tmp/e2e-image-map-base.txt
           if-no-files-found: error
           retention-days: 1
+
+  set-pending-status:
+    name: Set Fork Pending Status
+    needs: setup
+    if: needs.setup.outputs.status_sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post fork checkpoint status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.setup.outputs.status_sha }}';
+            const contextName = '03 Checkpoint - E2E - Fork PR';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
+            const state = isFork ? 'pending' : 'success';
+            const description = isFork
+              ? 'Fork Playwright, Cypress, and analyzer-harness suites are running...'
+              : 'Not applicable - non-fork PRs use 03 Checkpoint - E2E';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: contextName,
+              description,
+              target_url: runUrl
+            });
 
   playwright-core:
     name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
@@ -574,7 +608,7 @@ jobs:
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
 
   e2e-gate:
-    name: 03 Checkpoint - E2E - Fork PR
+    name: Fork E2E Gate
     if: always()
     needs:
       [
@@ -628,3 +662,43 @@ jobs:
             exit 1
           fi
           echo "03 Checkpoint - E2E - Fork PR passed."
+
+  report-status:
+    name: Report Fork Status
+    if: always() && needs.setup.outputs.status_sha != ''
+    needs: [setup, set-pending-status, e2e-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Update fork checkpoint status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.setup.outputs.status_sha }}';
+            const contextName = '03 Checkpoint - E2E - Fork PR';
+            const gateResult = '${{ needs.e2e-gate.result }}';
+            const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let state, description;
+            if (!isFork) {
+              state = 'success';
+              description = 'Not applicable - non-fork PRs use 03 Checkpoint - E2E';
+            } else if (gateResult === 'success') {
+              state = 'success';
+              description = 'All fork Playwright, Cypress, and analyzer-harness suites passed';
+            } else {
+              state = 'failure';
+              description = 'One or more fork E2E suites failed';
+            }
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: contextName,
+              description,
+              target_url: runUrl
+            });
