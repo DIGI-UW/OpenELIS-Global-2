@@ -28,7 +28,6 @@ HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
 HARNESS_PLUGIN_DIR="$HARNESS_DIR/volume/plugins"
 source "$HARNESS_DIR/compose-stack.sh"
-LOCAL_COMPOSE_FILES=($(compose_args_local true))
 if [ -f "$HARNESS_DIR/.env" ]; then
   ENV_FILE="$HARNESS_DIR/.env"
 elif [ -f "$REPO_ROOT/.env" ]; then
@@ -47,12 +46,17 @@ fi
 FULL_RESET=false
 SKIP_FIXTURES=false
 DO_BUILD=false
+USE_LETSENCRYPT=false
 SKIP_LETSENCRYPT=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --build)
             DO_BUILD=true
+            shift
+            ;;
+        --letsencrypt)
+            USE_LETSENCRYPT=true
             shift
             ;;
         --full-reset)
@@ -77,6 +81,8 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+LOCAL_COMPOSE_FILES=($(compose_args_local "$USE_LETSENCRYPT"))
 
 echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}  Analyzer Harness – Reset test env${NC}"
@@ -126,21 +132,25 @@ find "$REPO_ROOT/plugins/analyzers" -type f -path "*/target/*.jar" \
 PLUGIN_COUNT=$(find "$HARNESS_PLUGIN_DIR" -maxdepth 1 -type f -name "*.jar" | wc -l | tr -d ' ')
 echo -e "  ${GREEN}✓ Staged ${PLUGIN_COUNT} plugin jars${NC}"
 
-# Step 3: Start stack (with LetsEncrypt override so proxy uses same env/domain as main)
-echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
+# Step 3: Start stack
+if [ "$USE_LETSENCRYPT" = true ]; then
+    echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test + letsencrypt)...${NC}"
+else
+    echo -e "${YELLOW}[3/5] Starting harness stack (dev + analyzer-test)...${NC}"
+fi
 cd "$HARNESS_DIR"
 docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" up -d --remove-orphans
 echo -e "  ${GREEN}✓ Stack started${NC}"
 
-# Step 4: Wait for webapp
-echo -e "${YELLOW}[4/5] Waiting for webapp...${NC}"
-MAX_WAIT=120
+# Step 4: Wait for OE login over the harness proxy
+echo -e "${YELLOW}[4/5] Waiting for OE login readiness...${NC}"
+MAX_WAIT=240
 WAIT_INTERVAL=5
 ELAPSED=0
 
 while [ $ELAPSED -lt $MAX_WAIT ]; do
-    if curl -sk https://localhost/ 2>/dev/null | grep -q "OpenELIS\|Login"; then
-        echo -e "  ${GREEN}✓ Webapp ready (${ELAPSED}s)${NC}"
+    if "$HARNESS_DIR/scripts/verify-login.sh" >/dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Login ready (${ELAPSED}s)${NC}"
         break
     fi
     sleep $WAIT_INTERVAL
@@ -149,12 +159,12 @@ while [ $ELAPSED -lt $MAX_WAIT ]; do
 done
 
 if [ $ELAPSED -ge $MAX_WAIT ]; then
-    echo -e "  ${RED}✗ Webapp not ready after ${MAX_WAIT}s${NC}"
+    echo -e "  ${RED}✗ Login not ready after ${MAX_WAIT}s${NC}"
     exit 1
 fi
 
-# Step 4b: Let's Encrypt setup when LETSENCRYPT_DOMAIN + LETSENCRYPT_EMAIL are set
-if [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
+# Step 4b: Optional Let's Encrypt setup
+if [ "$USE_LETSENCRYPT" = true ] && [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "${LETSENCRYPT_EMAIL:-}" ]; then
     echo -e "${YELLOW}[3b] Setting up Let's Encrypt for ${LETSENCRYPT_DOMAIN}...${NC}"
     if "$HARNESS_DIR/scripts/generate-letsencrypt-certs.sh"; then
         docker compose "${ENV_ARGS[@]}" "${LOCAL_COMPOSE_FILES[@]}" restart proxy
@@ -165,6 +175,8 @@ if [ "$SKIP_LETSENCRYPT" = false ] && [ -n "${LETSENCRYPT_DOMAIN:-}" ] && [ -n "
 else
     if [ "$SKIP_LETSENCRYPT" = true ]; then
         echo -e "${YELLOW}[3b] Skipping Let's Encrypt (--skip-letsencrypt)${NC}"
+    elif [ "$USE_LETSENCRYPT" = false ]; then
+        echo -e "${YELLOW}[3b] Skipping Let's Encrypt (local self-signed mode)${NC}"
     else
         echo -e "${YELLOW}[3b] Skipping Let's Encrypt (set LETSENCRYPT_DOMAIN and LETSENCRYPT_EMAIL in .env to enable)${NC}"
     fi
