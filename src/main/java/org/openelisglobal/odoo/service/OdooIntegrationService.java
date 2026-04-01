@@ -60,7 +60,6 @@ public class OdooIntegrationService {
     @Autowired
     private AnalysisService analysisService;
 
-    
     /**
      * Creates an invoice in Odoo directly from a Sample (used by retry job). Builds
      * a minimal SamplePatientUpdateData wrapper around the sample, reconstructing
@@ -113,26 +112,29 @@ public class OdooIntegrationService {
     }
 
     public void createInvoice(SamplePatientUpdateData updateData) {
+        if (updateData == null) {
+            throw new IllegalArgumentException("updateData must not be null");
+        }
+
+        String accessionNumber = updateData.getAccessionNumber();
+        if (accessionNumber == null) {
+            throw new IllegalArgumentException("Accession number is required for Odoo invoice creation");
+        }
+
         if (!odooConnection.isAvailable()) {
             throw new org.openelisglobal.odoo.exception.OdooUnavailableException(
-                    "Odoo connection is not available for sample: " + updateData.getAccessionNumber());
-        }
-        if (updateData.getAccessionNumber() == null) {
-            throw new IllegalArgumentException("Accession number is required for Odoo invoice creation");
+                    "Odoo connection is not available for sample: " + accessionNumber);
         }
 
         try {
             Map<String, Object> invoiceData = createInvoiceData(updateData);
             Integer invoiceId = odooConnection.create("account.move", List.of(invoiceData));
             if (invoiceId == null) {
-                throw new OdooOperationException(
-                        "Odoo returned null invoice ID for sample: " + updateData.getAccessionNumber());
+                throw new OdooOperationException("Odoo returned null invoice ID for sample: " + accessionNumber);
             }
-            log.info("Successfully created invoice in Odoo with ID: {} for sample: {}", invoiceId,
-                    updateData.getAccessionNumber());
+            log.info("Successfully created invoice in Odoo with ID: {} for sample: {}", invoiceId, accessionNumber);
         } catch (Exception e) {
-            log.error("Error creating invoice in Odoo for sample {}: {}", updateData.getAccessionNumber(),
-                    e.getMessage(), e);
+            log.error("Error creating invoice in Odoo for sample {}: {}", accessionNumber, e.getMessage(), e);
             throw new OdooOperationException("Failed to create invoice in Odoo", e);
         }
     }
@@ -158,7 +160,7 @@ public class OdooIntegrationService {
 
     /**
      * Gets or creates a partner in Odoo for the patient associated with the sample.
-     * 
+     *
      * @param updateData The sample data containing patient information
      * @return The partner ID in Odoo
      */
@@ -218,7 +220,7 @@ public class OdooIntegrationService {
 
     /**
      * Finds a partner in Odoo by national ID.
-     * 
+     *
      * @param nationalId The patient's national ID
      * @return The partner ID if found, null otherwise
      */
@@ -264,7 +266,7 @@ public class OdooIntegrationService {
 
     /**
      * Finds a partner in Odoo by name as a fallback.
-     * 
+     *
      * @param firstName The patient's first name
      * @param lastName  The patient's last name
      * @return The partner ID if found, null otherwise
@@ -312,7 +314,7 @@ public class OdooIntegrationService {
 
     /**
      * Creates partner data for Odoo from patient and person information.
-     * 
+     *
      * @param patient The patient
      * @param person  The person associated with the patient
      * @return Map containing partner data for Odoo
