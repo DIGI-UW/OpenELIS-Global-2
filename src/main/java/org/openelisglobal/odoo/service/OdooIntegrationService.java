@@ -60,12 +60,7 @@ public class OdooIntegrationService {
     @Autowired
     private AnalysisService analysisService;
 
-    /**
-     * Creates an invoice in Odoo for the given sample data.
-     *
-     * @param updateData The sample data containing order information
-     * @throws OdooOperationException if there's an error creating the invoice
-     */
+    
     /**
      * Creates an invoice in Odoo directly from a Sample (used by retry job). Builds
      * a minimal SamplePatientUpdateData wrapper around the sample, reconstructing
