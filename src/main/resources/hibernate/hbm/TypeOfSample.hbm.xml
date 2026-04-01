@@ -35,7 +35,7 @@
         <property name="sortOrder" column="sort_order" type="integer" />
         <many-to-one name="localization"
             class="org.openelisglobal.localization.valueholder.Localization"
-            fetch="select" lazy="false">
+            fetch="select" lazy="false" cascade="all">
             <column name="name_localization_id" precision="10" scale="0" />
         </many-to-one>
 
