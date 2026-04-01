@@ -86,7 +86,7 @@ cd ..
 # E2E (Playwright) — requires analyzer harness + DATABASE_CONTAINER
 # /restart-analyzer-harness --full-reset --build  # then:
 # TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 \
-#   npm run pw:test -- playwright/tests/fileImportConfig.spec.ts playwright/tests/fileImportQuantStudio.spec.ts
+#   npm run pw:test -- playwright/tests/file-import-ui.spec.ts playwright/tests/file-import-results.spec.ts
 
 # Hot reload
 docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
@@ -131,9 +131,10 @@ cd ../../..
 ```
 
 Place QS5/QS7 .xls files in `src/test/resources/testdata/quantstudio/` before
-running integration tests. Playwright E2E uses
-`frontend/playwright/fixtures/quantstudio-qs7.xls` and `file-import-setup.sql`
-(loads E2E-FILE-CSV-Analyzer and E2E-FILE-QuantStudio-Analyzer).
+running integration tests. Current branch Playwright coverage uses
+`frontend/playwright/tests/demo-quantstudio-file-config.spec.ts` for visible UI
+defaults and `frontend/playwright/tests/file-import-results.spec.ts` for the
+bridge-watched import path.
 
 ## M4: Wondfo CSV Profile (OGC-344)
 
@@ -152,8 +153,8 @@ cd plugins/analyzers/GenericFile
 mvn test -Dtest="GenericFileLineInserterTest"
 cd ../../..
 
-# Watcher integration test (app side)
-mvn test -pl . -Dtest="FileImportWatchServiceIntegrationTest"
+# Bridge-owned watcher verification currently lives in harness/runtime proofs;
+# no OE-side FileImportWatchService integration test exists on this branch.
 ```
 
 Place `history.csv` in `src/test/resources/testdata/wondfo/` before running
@@ -161,21 +162,22 @@ integration tests.
 
 ## Key Files to Know
 
-| File                                                            | Ownership    | What It Does                                               |
-| --------------------------------------------------------------- | ------------ | ---------------------------------------------------------- |
-| `analyzer/valueholder/FileImportConfiguration.java`             | App          | File transport config (directories, `fileFormat`, watcher) |
-| `analyzer/valueholder/AnalyzerPluginConfig.java`                | App          | Per-analyzer JSONB config; stores profile defaults         |
-| `analyzer/service/FileImportServiceImpl.java`                   | App          | Format dispatch → reader → plugin handoff                  |
-| `analyzer/service/FileImportWatchService.java`                  | App          | Polls directories for new files                            |
-| `analyzer/service/PluginRegistryService.java`                   | App          | Auto-discovers plugins as `AnalyzerType` rows              |
-| `analyzerimport/analyzerreaders/FileAnalyzerReader.java`        | App          | CSV/TSV normalization                                      |
-| `analyzerimport/analyzerreaders/ExcelAnalyzerReader.java`       | App (new M3) | .xls/.xlsx normalization                                   |
-| `plugins/analyzers/GenericFile/...GenericFileAnalyzer.java`     | Plugin       | Plugin entry point                                         |
-| `plugins/analyzers/GenericFile/...GenericFileLineInserter.java` | Plugin       | Profile-driven mapper                                      |
-| `projects/analyzer-profiles/file/quantstudio.json`              | Profile (M3) | QuantStudio QS5/QS7 column mapping                         |
-| `projects/analyzer-profiles/file/wondfo-csv.json`               | Profile (M4) | Wondfo 40-column CSV mapping                               |
-| `frontend/src/components/analyzers/constants.js`                | App          | Protocol defaults (FILE→ASTM removed)                      |
-| `frontend/src/components/analyzers/FileImportConfiguration/`    | App          | Admin config panel                                         |
+| File                                                            | Ownership    | What It Does                                                                  |
+| --------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- |
+| `analyzer/valueholder/FileImportConfiguration.java`             | App          | File transport config (directories, `fileFormat`, bridge registration inputs) |
+| `analyzer/valueholder/AnalyzerPluginConfig.java`                | App          | Per-analyzer JSONB config; stores profile defaults                            |
+| `analyzer/service/FileImportServiceImpl.java`                   | App          | Format dispatch → reader → plugin handoff                                     |
+| `analyzer/service/AnalyzerBridgeStartupRegistrar.java`          | App          | Registers FILE analyzers with the bridge on startup                           |
+| `analyzer/service/BridgeRegistrationService.java`               | App          | Pushes FILE runtime metadata to the bridge                                    |
+| `analyzer/service/PluginRegistryService.java`                   | App          | Auto-discovers plugins as `AnalyzerType` rows                                 |
+| `analyzerimport/analyzerreaders/FileAnalyzerReader.java`        | App          | CSV/TSV normalization                                                         |
+| `analyzerimport/analyzerreaders/ExcelAnalyzerReader.java`       | App (new M3) | .xls/.xlsx normalization                                                      |
+| `plugins/analyzers/GenericFile/...GenericFileAnalyzer.java`     | Plugin       | Plugin entry point                                                            |
+| `plugins/analyzers/GenericFile/...GenericFileLineInserter.java` | Plugin       | Profile-driven mapper                                                         |
+| `projects/analyzer-profiles/file/quantstudio.json`              | Profile (M3) | QuantStudio QS5/QS7 column mapping                                            |
+| `projects/analyzer-profiles/file/wondfo-csv.json`               | Profile (M4) | Wondfo 40-column CSV mapping                                                  |
+| `frontend/src/components/analyzers/constants.js`                | App          | Protocol defaults (FILE→ASTM removed)                                         |
+| `frontend/src/components/analyzers/FileImportConfiguration/`    | App          | Admin config panel                                                            |
 
 ## Final Verification (M1A+M1B+M3)
 
@@ -183,7 +185,7 @@ integration tests.
 - [ ] Frontend Jest:
       `npm test -- --watchAll=false --testPathPattern="FileImport"`
 - [ ] Playwright E2E:
-      `TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 npm run pw:test -- playwright/tests/fileImportConfig.spec.ts playwright/tests/fileImportQuantStudio.spec.ts`
+      `TEST_USER=admin TEST_PASS=adminADMIN! DATABASE_CONTAINER=analyzer-harness-db-1 npm run pw:test -- playwright/tests/file-import-ui.spec.ts playwright/tests/file-import-results.spec.ts`
 - [ ] i18n: `fileImport.format.*` and `file.import.configuration.fileFormat*`
       present in `en.json` and `fr.json`
 
