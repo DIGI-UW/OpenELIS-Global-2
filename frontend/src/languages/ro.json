@@ -1201,6 +1201,7 @@
   "header.label.study.ciexport": "Export fișier CSV după dată",
   "header.label.study.vlloadtrends": "Raport export date încărcare virală",
   "header.label.version": "Versiune:",
+  "header.label.user.slide.title": "Utilizator",
   "header.reject": "Respinge",
   "header.rejection.reason": "Motiv respingere",
   "header.results.recorded": "Rezultate înregistrate",

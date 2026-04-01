@@ -1,3 +1,20 @@
+/* =============================================================================
+ * GLOBAL CSS TOKENS
+ * Reusable design tokens for consistent styling across components
+ * ============================================================================= */
+
+:root {
+  /* Interactive elements - hover states and backgrounds */
+  --oe-hover-light: rgb(223, 218, 232);
+  --oe-bg-hover: #f4f4f4;
+  --oe-border-subtle: #8d8d8d;
+
+  /* Text hierarchy - primary, secondary and tertiary colors */
+  --oe-text-primary: rgb(131, 121, 148);
+  --oe-text-secondary: rgb(75, 85, 99);
+  --oe-text-dark: #161616;
+}
+
 /* Sidenav style improvements — fix/011-sidenav-styles */
 .logo {
   height: 40px;
@@ -32,18 +49,73 @@ li.userDetails {
   cursor: default;
 }
 
+/* =============================================================================
+ * USER SLIDE PANEL STYLES
+ * Complete styles for user slide panel components
+ * ============================================================================= */
+
 li.clickableUserDetails {
   cursor: pointer;
+  font-weight: 600;
 }
 
-li.clickableUserDetails:hover {
-  background: #f3f3f3;
+/* User slide panel list reset */
+.user-slide-panel .slide-over-body .list-reset {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-/* Hover in user slide follows notification panel pattern */
-.slide-over-body li.clickableUserDetails:hover {
-  background: #f3f3f3;
+/* Hover in user slide follows notification panel pattern - scoped to user panel only */
+.user-slide-panel .slide-over-body li.clickableUserDetails:hover {
+  background-color: var(--oe-hover-light);
   border-radius: 0.5rem;
+}
+
+/* User slide panel header */
+.user-slide-panel .slide-over-header {
+  margin-top: 1%;
+  padding: 2%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* User slide panel spacer */
+.slide-over-spacer {
+  margin-top: 40px;
+}
+
+/* UserSlidePanel text styling - scoped to user panel to avoid affecting other slide-overs */
+.user-slide-panel .slide-over-body .selectLocale .cds--label,
+.user-slide-panel .slide-over-body .selectLocale .cds--form__helper-text {
+  color: var(--oe-text-primary) !important;
+  font-weight: 600;
+}
+
+.user-slide-panel .slide-over-body .cds--label,
+.user-slide-panel .slide-over-body li.userDetails,
+.user-slide-panel .slide-over-body .userDetails {
+  color: var(--oe-text-primary) !important;
+  font-weight: 600;
+}
+
+/* UserSlidePanel version text - lighter color for version info */
+.user-slide-panel .slide-over-body .version-text {
+  color: var(--oe-text-secondary) !important;
+  font-weight: 400;
+}
+
+/* UserSlidePanel arrow styling - scoped to user panel only */
+.user-slide-panel .slide-over-body .selectLocale .cds--select__arrow {
+  fill: var(--oe-text-primary);
+}
+
+/* Ensure Select styling is visible in white theme - scoped to user panel only */
+.user-slide-panel .slide-over-body .selectLocale .cds--select-input {
+  color: var(--oe-text-primary) !important;
+  background-color: var(--oe-bg-hover);
+  border-bottom-color: var(--oe-border-subtle);
 }
 
 .adminPageContent {
@@ -54,7 +126,7 @@ li.clickableUserDetails:hover {
   margin: 0 5% 0 2%;
 }
 
-/* -----------------------------------------------------------------------------
+/* =============================================================================
  * Login page layout
  * -----------------------------------------------------------------------------
  * The global layout can retain a persisted LOCK sidenav mode even when the user
@@ -546,46 +618,6 @@ button {
 
 /* Base link styles - Let Carbon handle default backgrounds (no overrides!) */
 
-/* ============================================================================
- * UNIFIED ACTIVE/HOVER STYLES - Works for ALL levels (top-level + subnavs)
- * ============================================================================
- */
-
-/* Active state - Left border + background color, NO other borders */
-/* Use single selector to avoid double borders - only target links within menu items */
-.cds--side-nav__menu-item .cds--side-nav__link--current,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"] {
-  border-left: 4px solid var(--cds-link-primary, #0f62fe) !important;
-  background-color: var(
-    --cds-layer-selected-01,
-    rgba(255, 255, 255, 0.1)
-  ) !important; /* Restore active background */
-  padding-left: calc(
-    1rem - 4px
-  ) !important; /* Compensate for 4px border to prevent double border */
-  border-right: none !important;
-  border-top: none !important;
-  border-bottom: none !important;
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-/* Ensure nav-scoped active background wins specificity */
-nav.cds--side-nav .cds--side-nav__link--current,
-nav.cds--side-nav .cds--side-nav__link[aria-current="page"] {
-  background-color: var(
-    --cds-layer-selected-01,
-    rgba(255, 255, 255, 0.1)
-  ) !important;
-}
-
-/* Remove any ::before pseudo-elements that might add borders */
-.cds--side-nav__menu-item .cds--side-nav__link--current::before,
-.cds--side-nav__menu-item .cds--side-nav__link[aria-current="page"]::before {
-  display: none !important;
-  content: none !important;
-}
-nav.cds--side-nav .cds--side-nav__link--current::before,
 nav.cds--side-nav .cds--side-nav__link[aria-current="page"]::before {
   display: none !important;
   content: none !important;
@@ -916,159 +948,4 @@ nav.cds--side-nav .cds--side-nav__link::before {
   .reduced-padding-nav-menu-item.cds--side-nav__menu-item
   .cds--side-nav__link[aria-current="page"] {
   padding-left: calc(7rem - 4px) !important;
-}
-
-.slide-over-header {
-  margin-top: 1%;
-  padding: 2%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.slide-over-spacer {
-  margin-top: 40px;
-}
-
-/* =============================================================================
-   USER SLIDE PANEL - Carbon Design System
-   Side panel for user consistent with notifications
-   ============================================================================= */
-
-.user-slide-panel {
-  position: fixed;
-  top: 53px;
-  right: 0;
-  width: 90%;
-  max-width: 90%;
-  height: calc(100% - 20px);
-  border-radius: 10px;
-  z-index: 7999;
-  visibility: hidden;
-  pointer-events: none;
-  transition: visibility 0s linear 0.4s;
-}
-
-.user-slide-panel.open {
-  visibility: visible;
-  pointer-events: auto;
-  transition: visibility 0s;
-}
-
-.user-slide-backdrop {
-  position: fixed;
-  top: 53px;
-  left: 0;
-  width: 100%;
-  height: calc(100% - 53px);
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity 0.4s ease-in-out,
-    visibility 0.4s ease-in-out;
-  z-index: -1;
-}
-
-.user-slide-panel.open .user-slide-backdrop {
-  opacity: 1;
-  visibility: visible;
-}
-
-.user-slide-content {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background: var(--cds-layer);
-  border-radius: var(--cds-border-radius, 8px);
-  overflow: hidden;
-  box-shadow: var(--cds-shadow-md, 0 4px 6px rgba(0, 0, 0, 0.1));
-  transform: translateX(100%);
-  transition: transform 0.4s ease-in-out;
-  display: flex;
-  flex-direction: column;
-}
-
-.user-slide-panel.open .user-slide-content {
-  transform: translateX(0);
-}
-
-.user-slide-header {
-  display: flex;
-  align-items: center;
-  padding: var(--cds-spacing-05, 16px);
-  background: var(--cds-layer-02, #f1f1f1);
-  flex-shrink: 0;
-}
-
-.user-slide-close-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  line-height: 1;
-  width: 2rem;
-  height: 2rem;
-  color: inherit;
-}
-
-.user-slide-close-btn:hover {
-  opacity: 0.7;
-}
-
-.user-slide-title {
-  flex-grow: 1;
-  font-size: var(--cds-heading-01-font-size, 18px);
-  font-weight: var(--cds-heading-01-font-weight, bold);
-  text-align: center;
-  color: var(--cds-text-primary, #161616);
-}
-
-.user-slide-body {
-  padding: 0px 6px;
-  margin: 1px;
-  overflow-y: auto;
-  flex: 1;
-  background: var(--cds-layer, white);
-}
-
-/* Responsive styles */
-@media screen and (min-width: 768px) {
-  .user-slide-panel {
-    width: 25%;
-    max-width: 50%;
-  }
-}
-
-@media screen and (max-width: 375px) {
-  .user-slide-panel {
-    width: 90%;
-  }
-}
-
-/* Fix text colors in user slide for white background */
-.slide-over-body .selectLocale .cds--label,
-.slide-over-body .selectLocale .cds--form__helper-text,
-.slide-over-body .cds--label,
-.slide-over-body li.userDetails,
-.slide-over-body .userDetails {
-  color: #161616 !important;
-}
-
-/* Ensure Select text is visible in white theme */
-.slide-over-body .selectLocale .cds--select-input {
-  color: #161616 !important;
-  background-color: #f4f4f4 !important;
-  border-bottom-color: #8d8d8d !important;
-}
-
-.slide-over-body .selectLocale .cds--select__arrow {
-  fill: #161616 !important;
 }

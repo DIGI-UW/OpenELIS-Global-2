@@ -1201,6 +1201,7 @@
   "header.label.study.ciexport": "按日期导出CSV文件",
   "header.label.study.vlloadtrends": "病毒载量数据导出报告",
   "header.label.version": "版本：",
+  "header.label.user.slide.title": "用户",
   "header.reject": "拒绝",
   "header.rejection.reason": "拒绝原因",
   "header.results.recorded": "记录的结果",
