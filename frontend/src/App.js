@@ -5,12 +5,22 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
+import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
+import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
+import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
+import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
+import MyProgramsPage from "./components/eqa/MyProgramsPage";
+import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
+import EQAResultsPage from "./components/eqa/EQAResultsPage";
+import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
 import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import AnalyzerTypesPage from "./pages/AnalyzerTypesPage";
 import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
 import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
 import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
@@ -20,7 +30,7 @@ import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
-import { languages } from "./languages";
+import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -63,7 +73,6 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 
 export default function App() {
   const defaultLocale =
@@ -164,21 +173,30 @@ export default function App() {
       })
         .then((response) => response.text())
         .then((html) => {
-          // Use a hidden iframe instead of a popup to process SAML SLO silently
-          const iframe = document.createElement("iframe");
-          iframe.style.display = "none";
-          iframe.name = "saml-logout-frame";
-          document.body.appendChild(iframe);
-          iframe.contentDocument.write(html);
-          iframe.contentDocument.close();
-          // Remove the iframe after a short delay to allow the logout request to complete
-          setTimeout(() => {
-            if (iframe.parentNode) {
-              iframe.parentNode.removeChild(iframe);
-            }
-          }, 5000);
-          getUserSessionDetails();
-          window.location.href = config.loginRedirect;
+          // Parse the SAML SLO response and submit the form in the current
+          // window — no popup, no iframe needed.
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const samlForm = doc.querySelector("form");
+
+          if (samlForm) {
+            const form = document.createElement("form");
+            form.method = samlForm.method || "POST";
+            form.action = samlForm.action;
+            Array.from(samlForm.querySelectorAll("input")).forEach((input) => {
+              const hidden = document.createElement("input");
+              hidden.type = "hidden";
+              hidden.name = input.name;
+              hidden.value = input.value;
+              form.appendChild(hidden);
+            });
+            document.body.appendChild(form);
+            form.submit();
+          } else {
+            // No SAML form in response — fall back to a direct redirect
+            getUserSessionDetails();
+            window.location.href = config.loginRedirect;
+          }
         })
         .catch((error) => {
           console.error(error);
@@ -204,11 +222,13 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    if (!languages[lang]) {
+    // Check if we have messages for this language
+    const messages = languageMessages[lang] || languages[lang]?.messages;
+    if (!messages) {
       lang = "en";
     }
     setLocale(lang);
-    setMessages(languages[lang].messages);
+    setMessages(languageMessages[lang] || languages["en"].messages);
     localStorage.setItem("locale", lang);
   };
 
@@ -495,6 +515,54 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
+                  path="/Alerts"
+                  exact
+                  component={() => <AlertsDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAOrders"
+                  exact
+                  component={() => <EQAOrdersPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAMyPrograms"
+                  exact
+                  component={() => <MyProgramsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAManagement"
+                  exact
+                  component={() => <EQAManagementDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAResults"
+                  exact
+                  component={() => <EQAResultsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAParticipants"
+                  exact
+                  component={() => <EQAParticipantsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQADistribution/create"
+                  exact
+                  component={() => <CreateDistribution />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQADistribution"
+                  exact
+                  component={() => <EQADistributionDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/Storage"
                   exact
                   component={() => <StorageDashboard />}
@@ -539,6 +607,12 @@ export default function App() {
                   path="/analyzers/custom-field-types"
                   exact
                   component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/types"
+                  exact
+                  component={() => <AnalyzerTypesPage />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute

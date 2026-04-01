@@ -73,9 +73,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
             // Set sequence to maxId (next nextval() will return maxId+1)
             jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
         } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            // Note: logger is package-private in BaseWebContextSensitiveTest
-            System.out.println("Failed to clean analyzer test data: " + e.getMessage());
+            // Cleanup is best effort - don't fail if it doesn't work
         }
     }
 
@@ -125,13 +123,6 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         int status = createResult.getResponse().getStatus();
         String responseBody = createResult.getResponse().getContentAsString();
 
-        // Debug: Print status and response if not 201
-        if (status != 201) {
-            System.out.println("DEBUG: Analyzer creation failed with status: " + status);
-            System.out.println("DEBUG: Response body: " + responseBody);
-            System.out.println("DEBUG: Request body: " + createBody);
-        }
-
         // Assert creation succeeded
         assertEquals("Analyzer creation should succeed", 201, status);
 
@@ -163,8 +154,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: GET endpoint should return analyzer
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
@@ -198,8 +192,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Update analyzer
         String updateBody = "{\"name\":\"Updated Name\",\"analyzerType\":\"Hematology Analyzer\",\"active\":false}";
@@ -231,8 +228,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: POST delete endpoint returns 200 with deletion result
         // (fresh analyzer has no recent results → hard delete → 200 with message)
@@ -265,8 +265,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Mock service to return job ID
         String mockJobId = "test-job-id-123";
@@ -304,8 +307,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         String jobId = "test-job-id-456";
 
@@ -344,8 +350,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         String invalidJobId = "invalid-job-id";
 
@@ -413,11 +422,171 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isCreated()).andReturn();
 
         String responseBody = createResult.getResponse().getContentAsString();
-        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
-        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
 
         // Act & Assert: pluginLoaded should be false (no plugin JAR loaded)
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.pluginLoaded").value(false));
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers with non-numeric pluginTypeId should not
+     * throw NumberFormatException.
+     *
+     * Regression test for "For input string: generic-astm" bug: the frontend
+     * fallback list used hardcoded string IDs like "generic-astm" instead of
+     * database numeric IDs. The backend should gracefully resolve these by name
+     * rather than crashing with a 500.
+     */
+    @Test
+    public void testCreateAnalyzer_WithNonNumericPluginTypeId_ReturnsCreated() throws Exception {
+        String uniqueName = "TEST-NonNumericPlugin-" + System.currentTimeMillis();
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
+                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+
+        // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
+        // instead of 500 NumberFormatException
+        mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists())
+                .andExpect(jsonPath("$.name").value(uniqueName));
+    }
+
+    /**
+     * Test: PUT /rest/analyzer/analyzers/{id} with non-numeric pluginTypeId should
+     * not throw NumberFormatException.
+     *
+     * Same regression test as above, but for the update path.
+     */
+    @Test
+    public void testUpdateAnalyzer_WithNonNumericPluginTypeId_ReturnsOk() throws Exception {
+        // Arrange: Create analyzer first (without pluginTypeId)
+        String uniqueName = "TEST-NonNumericPluginUpdate-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
+                + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
+                new TypeReference<Map<String, Object>>() {
+                });
+        String analyzerId = String.valueOf(responseMap.get("id"));
+
+        // Act: Update with non-numeric pluginTypeId "generic-astm"
+        String updateBody = "{\"pluginTypeId\":\"generic-astm\"}";
+
+        // Should return 200 (gracefully resolving by name) instead of 500
+        mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId).contentType(MediaType.APPLICATION_JSON)
+                .content(updateBody)).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(analyzerId));
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{id}/test-connection with HL7 protocol
+     * returns real connectivity result (not hardcoded success)
+     */
+    @Test
+    public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
+        String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"192.168.1.100\","
+                + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
+                + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andReturn();
+        assertEquals("HL7 analyzer creation should succeed", 201, createResult.getResponse().getStatus());
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Test connection: should return real result (not hardcoded success)
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
+                .andExpect(jsonPath("$.ipAddress").value("192.168.1.100")).andExpect(jsonPath("$.port").value(5380))
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.protocol").value("HL7_V2_3_1"))
+                // Must have TCP reachability info (not just hardcoded success)
+                .andExpect(jsonPath("$.tcpReachable").exists()).andExpect(jsonPath("$.message").exists());
+    }
+
+    /**
+     * Test: POST /rest/analyzer/analyzers/{id}/test-connection with HL7 protocol
+     * and no IP/port returns proper error
+     */
+    @Test
+    public void testTestConnection_WithHl7Protocol_NoIpPort_ReturnsConfigError() throws Exception {
+        String uniqueName = "TEST-HL7-NoIP-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"HEMATOLOGY\",\"protocolVersion\":\"HL7_V2_3_1\",\"testUnitIds\":[]}";
+
+        MvcResult createResult = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andReturn();
+        assertEquals(201, createResult.getResponse().getStatus());
+
+        String responseBody = createResult.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Test connection without IP/port should fail with config error
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(false)).andExpect(jsonPath("$.message").exists());
+    }
+
+    /**
+     * Test: CommunicationMode is persisted and returned in analyzer response
+     */
+    @Test
+    public void testCreateAnalyzer_WithCommunicationMode_PersistsMode() throws Exception {
+        String uniqueName = "TEST-CommMode-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName
+                + "\",\"analyzerType\":\"CHEMISTRY\",\"ipAddress\":\"192.168.1.50\","
+                + "\"port\":6001,\"protocolVersion\":\"HL7_V2_3_1\","
+                + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // Verify GET returns communicationMode
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
+                .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
+    }
+
+    /**
+     * Test: Null communicationMode defaults to ANALYZER_INITIATED in effective mode
+     */
+    @Test
+    public void testCreateAnalyzer_WithNullCommunicationMode_DefaultsToAnalyzerInitiated() throws Exception {
+        String uniqueName = "TEST-NullCommMode-" + System.currentTimeMillis();
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\",\"testUnitIds\":[]}";
+
+        MvcResult result = mockMvc
+                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
+                .andExpect(status().isCreated()).andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String analyzerId = responseBody.substring(responseBody.indexOf("\"id\":\"") + 6);
+        analyzerId = analyzerId.substring(0, analyzerId.indexOf("\""));
+
+        // communicationMode should be null (not set), but effective should default
+        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
     }
 }
