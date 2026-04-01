@@ -14,6 +14,7 @@
 package org.openelisglobal.analyzerresults.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -24,6 +25,7 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Stores raw results from analyzer instruments before processing and
@@ -44,7 +46,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     private String id;
 
     @Column(name = "ANALYZER_ID", precision = 10, scale = 0)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String analyzerId;
 
     @Column(name = "ACCESSION_NUMBER", length = 20)
@@ -60,7 +62,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     private String units;
 
     @Column(name = "DUPLICATE_ID", length = 10)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String duplicateAnalyzerResultId;
 
     @Column(name = "ISCONTROL", length = 1)
@@ -70,7 +72,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     private boolean isReadOnly = false;
 
     @Column(name = "test_id")
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
     @Column(name = "test_result_type", length = 1)

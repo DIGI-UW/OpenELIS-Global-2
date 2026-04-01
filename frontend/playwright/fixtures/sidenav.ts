@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { SHORT_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Sidenav Page Object - encapsulates sidenav interactions
@@ -130,7 +131,7 @@ export class Sidenav {
   async hasStorageSubnav(): Promise<boolean> {
     const btn = this.nav.getByRole("button", { name: "Storage", exact: true });
     try {
-      await btn.waitFor({ state: "visible", timeout: 3000 });
+      await btn.waitFor({ state: "visible", timeout: SHORT_TIMEOUT });
       return true;
     } catch {
       return false;

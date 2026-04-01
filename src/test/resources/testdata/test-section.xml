@@ -1,14 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
 
-    <localization id="201" description="Test Description 1"
-        english="TB" french="TB" />
-
-    <localization id="202" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
-
-    <localization id="203" description="Test Description 3"
-        english="blood test" french="Merci" />
+    <localization id="201" description="Test Description 1" />
+    <localization id="202" description="Test Description 2" />
+    <localization id="203" description="Test Description 3" />
+    <localization_value id="1" localization_id="201"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="201"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="202"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="202"
+        locale="fr" value="Urinalysis" />
+    <localization_value id="5" localization_id="203"
+        locale="en" value="blood test" />
+    <localization_value id="6" localization_id="203"
+        locale="fr" value="Merci" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <organization id="1001" name="Central Health Lab"
         city="Algiers" zip_code="16000" mls_sentinel_lab_flag="Y"

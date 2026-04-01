@@ -87,7 +87,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
         List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
         boolean found = false;
         for (AnalyzerTestMapping m : mappings) {
-            if ("901".equals(m.getAnalyzerTypeId()) && m.getAnalyzerTestName().equals("New Test")
+            if (savedAnalyzer.getId().equals(m.getAnalyzerId()) && m.getAnalyzerTestName().equals("New Test")
                     && m.getTestId().equals("101")) {
                 found = true;
                 break;
@@ -120,9 +120,8 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
 
         List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
         boolean found = false;
-        String typeId = existingAnalyzer.getAnalyzerType() != null ? existingAnalyzer.getAnalyzerType().getId() : null;
         for (AnalyzerTestMapping m : mappings) {
-            if (typeId != null && typeId.equals(m.getAnalyzerTypeId()) && m.getAnalyzerTestName().equals("Updated Test")
+            if (existingAnalyzer.getId().equals(m.getAnalyzerId()) && m.getAnalyzerTestName().equals("Updated Test")
                     && m.getTestId().equals("103")) {
                 found = true;
                 break;
@@ -140,8 +139,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();
         mapping.setAnalyzerTestName("Glucose Test");
         mapping.setTestId("101");
-        mapping.setAnalyzerTypeId(
-                existingAnalyzer.getAnalyzerType() != null ? existingAnalyzer.getAnalyzerType().getId() : null);
+        mapping.setAnalyzerId(existingAnalyzer.getId());
         newMappings.add(mapping);
 
         List<AnalyzerTestMapping> existingMappings = new ArrayList<>();
