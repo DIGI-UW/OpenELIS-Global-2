@@ -36,7 +36,7 @@ public class OdooSyncQueue extends BaseObject<Long> {
     private SyncStatus status = SyncStatus.PENDING;
 
     @Column(name = "retry_count", nullable = false)
-    private int retryCount = 1;
+    private int retryCount = 0;
 
     @Column(name = "max_retries", nullable = false)
     private int maxRetries = 3;
@@ -139,6 +139,6 @@ public class OdooSyncQueue extends BaseObject<Long> {
     }
 
     public boolean hasExceededMaxRetries() {
-        return retryCount > maxRetries;
+        return retryCount >= maxRetries;
     }
 }
