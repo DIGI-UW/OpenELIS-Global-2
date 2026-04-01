@@ -49,6 +49,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -88,14 +89,19 @@ import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.multipart.support.MultipartFilter;
 
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @Configuration
 public class SecurityConfig {
 
     // TODO should we move these to the properties files?
     // pages that have special security constraints
+    // Bridge endpoints (/analyzer/fhir, /analyzer/astm, /analyzer/hl7,
+    // /rest/analyzer/analyzers)
+    // are NOT in OPEN_PAGES — the bridge sends Basic auth for all OE calls.
+    // With @Order(1) on httpBasicServletFilterChain, Basic auth is processed first.
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
-            "/rest/site-branding/**" };
+            "/rest/site-branding/**", "/rest/supportedlocales/active" };
     public static final String[] LOGIN_PAGES = { "/LoginPage", "/ValidateLogin", "/session" };
 
     public static final String[] AUTH_OPEN_PAGES = { "/Home", "/Dashboard", "/Logout", "/MasterListsPage",
@@ -131,28 +137,6 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
-        CharacterEncodingFilter filter = new CharacterEncodingFilter();
-        filter.setEncoding("UTF-8");
-        filter.setForceEncoding(true);
-        http.addFilterBefore(filter, CsrfFilter.class);
-        MultipartFilter multipartFilter = new MultipartFilter();
-        multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
-        http.addFilterBefore(multipartFilter, CsrfFilter.class);
-
-        // for all requests going to open pages, use this security configuration
-        http.securityMatcher(OPEN_PAGES)
-                .authorizeHttpRequests(auth -> auth
-                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
-                        .permitAll().anyRequest().permitAll())
-                // disable csrf as it is not needed for open pages
-                .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
-        return http.build();
-    }
-
-    @Bean
-    @Order(2)
     @ConditionalOnProperty(property = "org.itech.login.basic", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain httpBasicServletFilterChain(HttpSecurity http) throws Exception {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
@@ -175,6 +159,28 @@ public class SecurityConfig {
 
                 .addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
                 // add security headers
+                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
+        CharacterEncodingFilter filter = new CharacterEncodingFilter();
+        filter.setEncoding("UTF-8");
+        filter.setForceEncoding(true);
+        http.addFilterBefore(filter, CsrfFilter.class);
+        MultipartFilter multipartFilter = new MultipartFilter();
+        multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
+        http.addFilterBefore(multipartFilter, CsrfFilter.class);
+
+        // for all requests going to open pages, use this security configuration
+        http.securityMatcher(OPEN_PAGES)
+                .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
+                        .permitAll().anyRequest().permitAll())
+                // disable csrf as it is not needed for open pages
+                .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
     }

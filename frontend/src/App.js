@@ -5,12 +5,22 @@ import { confirmAlert } from "react-confirm-alert";
 import Layout from "./components/layout/Layout";
 import Home from "./components/Home";
 import StorageDashboard from "./components/storage/StorageDashboard";
+import AlertsDashboard from "./components/alerts/AlertsDashboard";
+import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
+import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
+import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
+import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
+import MyProgramsPage from "./components/eqa/MyProgramsPage";
+import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
+import EQAResultsPage from "./components/eqa/EQAResultsPage";
+import InventoryManagement from "./components/inventory/InventoryManagement";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
 import FieldMapping from "./components/analyzers/FieldMapping/FieldMapping";
 import ErrorDashboardPage from "./pages/ErrorDashboardPage";
 import CustomFieldTypeManagementPage from "./pages/CustomFieldTypeManagementPage";
+import AnalyzerTypesPage from "./pages/AnalyzerTypesPage";
 import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
 import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
 import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
@@ -20,7 +30,7 @@ import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import "./App.css";
-import { languages } from "./languages";
+import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
@@ -63,7 +73,6 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
-import InventoryManagement from "./components/inventory/InventoryManagement";
 
 export default function App() {
   const defaultLocale =
@@ -213,11 +222,13 @@ export default function App() {
   };
 
   const changeLanguageReact = (lang) => {
-    if (!languages[lang]) {
+    // Check if we have messages for this language
+    const messages = languageMessages[lang] || languages[lang]?.messages;
+    if (!messages) {
       lang = "en";
     }
     setLocale(lang);
-    setMessages(languages[lang].messages);
+    setMessages(languageMessages[lang] || languages["en"].messages);
     localStorage.setItem("locale", lang);
   };
 
@@ -504,6 +515,54 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
+                  path="/Alerts"
+                  exact
+                  component={() => <AlertsDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAOrders"
+                  exact
+                  component={() => <EQAOrdersPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAMyPrograms"
+                  exact
+                  component={() => <MyProgramsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAManagement"
+                  exact
+                  component={() => <EQAManagementDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAResults"
+                  exact
+                  component={() => <EQAResultsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQAParticipants"
+                  exact
+                  component={() => <EQAParticipantsPage />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQADistribution/create"
+                  exact
+                  component={() => <CreateDistribution />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/EQADistribution"
+                  exact
+                  component={() => <EQADistributionDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/Storage"
                   exact
                   component={() => <StorageDashboard />}
@@ -548,6 +607,12 @@ export default function App() {
                   path="/analyzers/custom-field-types"
                   exact
                   component={() => <CustomFieldTypeManagementPage />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/types"
+                  exact
+                  component={() => <AnalyzerTypesPage />}
                   role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
