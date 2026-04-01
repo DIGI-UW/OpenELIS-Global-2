@@ -6,14 +6,21 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.note.service.NoteService;
+import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
+import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.resultvalidation.bean.RetestRequest;
 import org.openelisglobal.resultvalidation.bean.ValidationDetailsDTO;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +47,9 @@ public class ValidationDetailsServiceImpl implements ValidationDetailsService {
 
     @Autowired
     private SampleService sampleService;
+
+    @Autowired
+    private NoteService noteService;
 
     @Autowired
     private TestService testService;
@@ -189,4 +199,32 @@ public class ValidationDetailsServiceImpl implements ValidationDetailsService {
     public ValidationDetailsDTO.DeltaCheck calculateDeltaCheck(String analysisId, String currentValue) {
         return null;
     }
+
+    @Override
+    @Transactional
+    public int processRetestRequest(RetestRequest retestRequest) {
+        String sysUserId = retestRequest.getRequestedBy();
+        String technicalAcceptanceStatusId = SpringContext.getBean(IStatusService.class)
+                .getStatusID(AnalysisStatus.TechnicalAcceptance);
+        String biologistRejectedStatusId = SpringContext.getBean(IStatusService.class)
+                .getStatusID(AnalysisStatus.BiologistRejected);
+
+        int processedCount = 0;
+        for (String analysisId : retestRequest.getResultIds()) {
+            Analysis analysis = analysisService.get(analysisId);
+            if (analysis != null && technicalAcceptanceStatusId.equals(analysis.getStatusId())) {
+                analysis.setStatusId(biologistRejectedStatusId);
+                analysis.setSysUserId(sysUserId);
+                analysisService.update(analysis);
+
+                Note note = noteService.createSavableNote(analysis, NoteType.INTERNAL,
+                        "[RETEST REQUESTED] " + retestRequest.getReason(), RESULT_SUBJECT, sysUserId);
+                noteService.insert(note);
+                processedCount++;
+            }
+        }
+        return processedCount;
+    }
+
+    private static final String RESULT_SUBJECT = "Result Note";
 }

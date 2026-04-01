@@ -1,7 +1,10 @@
 package org.openelisglobal.resultvalidation.service;
 
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -11,6 +14,7 @@ import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.notification.service.TestNotificationService;
@@ -18,6 +22,7 @@ import org.openelisglobal.notification.valueholder.NotificationConfigOption.Noti
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.bean.ValidationFilterCriteria;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -156,5 +161,97 @@ public class ResultValidationServiceImpl implements ResultValidationService {
         sampleFinishedStatus.add(Integer.parseInt(
                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
         return sampleFinishedStatus;
+    }
+
+    @Override
+    public List<AnalysisItem> applyFilters(List<AnalysisItem> resultList, ValidationFilterCriteria criteria) {
+        List<AnalysisItem> filtered = new ArrayList<>(resultList);
+
+        filtered = applyLabNumberFilter(filtered, criteria.getLabNumberFrom(), criteria.getLabNumberTo());
+        filtered = applyDateFilter(filtered, criteria.getDateFrom(), criteria.getDateTo());
+        filtered = applyAnalyzerFilter(filtered, criteria.getAnalyzer());
+        filtered = applyEnteredByFilter(filtered, criteria.getEnteredBy());
+        filtered = applyNormalFilter(filtered, criteria.getNormal());
+        filtered = applyFlaggedFilter(filtered, criteria.getFlagged());
+
+        return filtered;
+    }
+
+    private List<AnalysisItem> applyLabNumberFilter(List<AnalysisItem> items, String from, String to) {
+        if (StringUtils.isBlank(from) && StringUtils.isBlank(to)) {
+            return items;
+        }
+        return items.stream().filter(item -> {
+            String accessionNumber = item.getAccessionNumber();
+            if (StringUtils.isNotBlank(from) && accessionNumber.compareTo(from) < 0) {
+                return false;
+            }
+            if (StringUtils.isNotBlank(to) && accessionNumber.compareTo(to) > 0) {
+                return false;
+            }
+            return true;
+        }).collect(Collectors.toList());
+    }
+
+    private List<AnalysisItem> applyDateFilter(List<AnalysisItem> items, String dateFrom, String dateTo) {
+        if (StringUtils.isBlank(dateFrom) && StringUtils.isBlank(dateTo)) {
+            return items;
+        }
+        try {
+            Date fromDate = StringUtils.isNotBlank(dateFrom) ? DateUtil.convertStringDateToSqlDate(dateFrom) : null;
+            Date toDate = StringUtils.isNotBlank(dateTo) ? DateUtil.convertStringDateToSqlDate(dateTo) : null;
+            return items.stream().filter(item -> {
+                if (item.getTestDate() == null) {
+                    return false;
+                }
+                Date testDate = DateUtil.convertStringDateToSqlDate(item.getTestDate());
+                if (fromDate != null && testDate.before(fromDate)) {
+                    return false;
+                }
+                if (toDate != null && testDate.after(toDate)) {
+                    return false;
+                }
+                return true;
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "applyDateFilter",
+                    "Error parsing date filters: " + e.getMessage());
+            return items;
+        }
+    }
+
+    private List<AnalysisItem> applyAnalyzerFilter(List<AnalysisItem> items, String analyzer) {
+        if (StringUtils.isBlank(analyzer)) {
+            return items;
+        }
+        return items.stream().filter(item -> analyzer.equals(item.getAnalyzer())).collect(Collectors.toList());
+    }
+
+    private List<AnalysisItem> applyEnteredByFilter(List<AnalysisItem> items, String enteredBy) {
+        if (StringUtils.isBlank(enteredBy)) {
+            return items;
+        }
+        return items.stream().filter(item -> {
+            if (item.getEnteredByObject() != null) {
+                return enteredBy.equals(item.getEnteredByObject().getName());
+            }
+            return false;
+        }).collect(Collectors.toList());
+    }
+
+    private List<AnalysisItem> applyNormalFilter(List<AnalysisItem> items, String normalParam) {
+        if (StringUtils.isBlank(normalParam)) {
+            return items;
+        }
+        boolean isNormal = Boolean.parseBoolean(normalParam);
+        return items.stream().filter(item -> item.isNormal() == isNormal).collect(Collectors.toList());
+    }
+
+    private List<AnalysisItem> applyFlaggedFilter(List<AnalysisItem> items, String flaggedParam) {
+        if (StringUtils.isBlank(flaggedParam) || !Boolean.parseBoolean(flaggedParam)) {
+            return items;
+        }
+        return items.stream().filter(item -> item.getFlags() != null && !item.getFlags().isEmpty())
+                .collect(Collectors.toList());
     }
 }

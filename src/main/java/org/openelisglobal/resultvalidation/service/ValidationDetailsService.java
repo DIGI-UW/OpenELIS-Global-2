@@ -34,4 +34,12 @@ public interface ValidationDetailsService {
     java.util.List<ValidationDetailsDTO.Attachment> getAttachments(String analysisId);
 
     ValidationDetailsDTO.DeltaCheck calculateDeltaCheck(String analysisId, String currentValue);
+
+    /**
+     * Process retest requests by updating analysis status and creating notes.
+     *
+     * @param retestRequest the retest request containing analysis IDs and reason
+     * @return the number of analyses successfully processed
+     */
+    int processRetestRequest(org.openelisglobal.resultvalidation.bean.RetestRequest retestRequest);
 }

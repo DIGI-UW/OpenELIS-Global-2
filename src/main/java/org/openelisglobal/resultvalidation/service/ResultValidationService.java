@@ -15,4 +15,11 @@ public interface ResultValidationService {
     void persistdata(List<Result> deletableList, List<Analysis> analysisUpdateList, ArrayList<Result> resultUpdateList,
             List<AnalysisItem> resultItemList, ArrayList<Sample> sampleUpdateList, ArrayList<Note> noteUpdateList,
             IResultSaveService resultSaveService, List<IResultUpdate> updaters, String sysUserId);
+
+    /**
+     * Apply filter criteria to a validation result list. Filters by lab number
+     * range, date range, analyzer, entered-by, normal/abnormal, and flagged status.
+     */
+    List<AnalysisItem> applyFilters(List<AnalysisItem> resultList,
+            org.openelisglobal.resultvalidation.bean.ValidationFilterCriteria criteria);
 }

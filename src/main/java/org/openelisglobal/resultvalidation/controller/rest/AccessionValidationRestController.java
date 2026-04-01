@@ -5,7 +5,6 @@ import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -24,7 +23,6 @@ import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
@@ -229,7 +227,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 filteredresultList = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), resultList,
                         Constants.ROLE_VALIDATION);
 
-                filteredresultList = applyAdditionalFilters(request, filteredresultList);
+                filteredresultList = resultValidationService.applyFilters(filteredresultList,
+                        buildFilterCriteria(request));
 
                 request.setAttribute("pageSize", filteredresultList.size());
                 form.setSearchFinished(true);
@@ -687,25 +686,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             retestRequest.setRequestedAt(java.time.LocalDateTime.now()
                     .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
 
-            String technicalAcceptanceStatusId = SpringContext.getBean(IStatusService.class)
-                    .getStatusID(AnalysisStatus.TechnicalAcceptance);
-            String biologistRejectedStatusId = SpringContext.getBean(IStatusService.class)
-                    .getStatusID(AnalysisStatus.BiologistRejected);
-
-            int processedCount = 0;
-            for (String analysisId : retestRequest.getResultIds()) {
-                Analysis analysis = analysisService.get(analysisId);
-                if (analysis != null && technicalAcceptanceStatusId.equals(analysis.getStatusId())) {
-                    analysis.setStatusId(biologistRejectedStatusId);
-                    analysis.setSysUserId(sysUserId);
-                    analysisService.update(analysis);
-
-                    Note note = noteService.createSavableNote(analysis, NoteType.INTERNAL,
-                            "[RETEST REQUESTED] " + retestRequest.getReason(), RESULT_SUBJECT, sysUserId);
-                    noteService.insert(note);
-                    processedCount++;
-                }
-            }
+            int processedCount = validationDetailsService.processRetestRequest(retestRequest);
 
             response.put("success", true);
             response.put("message", "Retest request processed successfully");
@@ -720,89 +701,25 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         return response;
     }
 
-    /**
-     * Apply additional filters from query parameters to the result list
-     */
-    private List<AnalysisItem> applyAdditionalFilters(HttpServletRequest request, List<AnalysisItem> resultList) {
-        List<AnalysisItem> filtered = new ArrayList<>(resultList);
-
-        String labNumberFrom = request.getParameter("labNumberFrom");
-        String labNumberTo = request.getParameter("labNumberTo");
-        if (StringUtils.isNotBlank(labNumberFrom) || StringUtils.isNotBlank(labNumberTo)) {
-            filtered = filtered.stream().filter(item -> {
-                String accessionNumber = item.getAccessionNumber();
-                if (StringUtils.isNotBlank(labNumberFrom) && accessionNumber.compareTo(labNumberFrom) < 0) {
-                    return false;
-                }
-                if (StringUtils.isNotBlank(labNumberTo) && accessionNumber.compareTo(labNumberTo) > 0) {
-                    return false;
-                }
-                return true;
-            }).collect(Collectors.toList());
-        }
-
-        String dateFrom = request.getParameter("dateFrom");
-        String dateTo = request.getParameter("dateTo");
-        if (StringUtils.isNotBlank(dateFrom) || StringUtils.isNotBlank(dateTo)) {
-            try {
-                Date fromDate = StringUtils.isNotBlank(dateFrom) ? DateUtil.convertStringDateToSqlDate(dateFrom) : null;
-                Date toDate = StringUtils.isNotBlank(dateTo) ? DateUtil.convertStringDateToSqlDate(dateTo) : null;
-                final Date finalFromDate = fromDate;
-                final Date finalToDate = toDate;
-
-                filtered = filtered.stream().filter(item -> {
-                    if (item.getTestDate() == null) {
-                        return false;
-                    }
-                    Date testDate = DateUtil.convertStringDateToSqlDate(item.getTestDate());
-                    if (finalFromDate != null && testDate.before(finalFromDate)) {
-                        return false;
-                    }
-                    if (finalToDate != null && testDate.after(finalToDate)) {
-                        return false;
-                    }
-                    return true;
-                }).collect(Collectors.toList());
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "applyAdditionalFilters",
-                        "Error parsing date filters: " + e.getMessage());
-            }
-        }
-
-        String analyzer = request.getParameter("analyzer");
-        if (StringUtils.isNotBlank(analyzer)) {
-            filtered = filtered.stream().filter(item -> analyzer.equals(item.getAnalyzer()))
-                    .collect(Collectors.toList());
-        }
-
-        String enteredBy = request.getParameter("enteredBy");
-        if (StringUtils.isNotBlank(enteredBy)) {
-            filtered = filtered.stream().filter(item -> {
-                if (item.getEnteredByObject() != null) {
-                    return enteredBy.equals(item.getEnteredByObject().getName());
-                }
-                return false;
-            }).collect(Collectors.toList());
-        }
-
-        String normalParam = request.getParameter("normal");
-        if (StringUtils.isNotBlank(normalParam)) {
-            boolean isNormal = Boolean.parseBoolean(normalParam);
-            filtered = filtered.stream().filter(item -> item.isNormal() == isNormal).collect(Collectors.toList());
-        }
-
-        String flaggedParam = request.getParameter("flagged");
-        if (StringUtils.isNotBlank(flaggedParam) && Boolean.parseBoolean(flaggedParam)) {
-            filtered = filtered.stream().filter(item -> item.getFlags() != null && !item.getFlags().isEmpty())
-                    .collect(Collectors.toList());
-        }
-
-        return filtered;
+    private org.openelisglobal.resultvalidation.bean.ValidationFilterCriteria buildFilterCriteria(
+            HttpServletRequest request) {
+        org.openelisglobal.resultvalidation.bean.ValidationFilterCriteria criteria = new org.openelisglobal.resultvalidation.bean.ValidationFilterCriteria();
+        criteria.setLabNumberFrom(request.getParameter("labNumberFrom"));
+        criteria.setLabNumberTo(request.getParameter("labNumberTo"));
+        criteria.setDateFrom(request.getParameter("dateFrom"));
+        criteria.setDateTo(request.getParameter("dateTo"));
+        criteria.setAnalyzer(request.getParameter("analyzer"));
+        criteria.setEnteredBy(request.getParameter("enteredBy"));
+        criteria.setNormal(request.getParameter("normal"));
+        criteria.setFlagged(request.getParameter("flagged"));
+        return criteria;
     }
 
     /**
      * Process validation directly from the form without relying on session cache.
-     * This handles REST API calls from the new React frontend.
+     * This handles REST API calls from the new React frontend. Delegates to
+     * createUpdateList to share core accept/reject logic with the session-cache
+     * path and avoid drift between the two code paths.
      */
     private ResultValidationForm processValidationDirectly(HttpServletRequest request, ResultValidationForm form) {
         List<AnalysisItem> resultItemList = form.getResultList();
@@ -820,38 +737,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
         IResultSaveService resultSaveService = new ResultValidationSaveService();
         List<IResultUpdate> updaters = ValidationUpdateRegister.getRegisteredUpdaters();
+        boolean areListeners = !updaters.isEmpty();
 
-        List<String> analysisIdList = new ArrayList<>();
-
-        for (AnalysisItem analysisItem : resultItemList) {
-            if (analysisItem.getIsAccepted() || analysisItem.getIsRejected()) {
-                Analysis analysis = analysisService.get(analysisItem.getAnalysisId());
-                if (analysis == null) {
-                    LogEvent.logWarn(this.getClass().getSimpleName(), "processValidationDirectly",
-                            "Analysis not found for id: " + analysisItem.getAnalysisId());
-                    continue;
-                }
-
-                analysis.setSysUserId(getSysUserId(request));
-
-                if (!analysisIdList.contains(analysis.getId())) {
-                    if (analysisItem.getIsAccepted()) {
-                        analysis.setStatusId(
-                                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
-                        analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
-                        analysisIdList.add(analysis.getId());
-                        analysisUpdateList.add(analysis);
-                    }
-
-                    if (analysisItem.getIsRejected()) {
-                        analysis.setStatusId(SpringContext.getBean(IStatusService.class)
-                                .getStatusID(AnalysisStatus.BiologistRejected));
-                        analysisIdList.add(analysis.getId());
-                        analysisUpdateList.add(analysis);
-                    }
-                }
-            }
-        }
+        createUpdateList(resultItemList, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, areListeners);
 
         if (!analysisUpdateList.isEmpty()) {
             try {
