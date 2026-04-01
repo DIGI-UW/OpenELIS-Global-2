@@ -74,10 +74,10 @@
     }
   },
   "default_test_mappings": [
-    { "analyzer_code": "MTB-RIF", "test_name_hint": "Mycobacterium tuberculosis DNA", "loinc": "23826-1", "unit": "" },
-    { "analyzer_code": "RIF", "test_name_hint": "Rifampin Resistance", "loinc": "46244-0", "unit": "" },
-    { "analyzer_code": "MTB-RIF-ULTRA", "test_name_hint": "MTB/RIF Ultra", "loinc": "23826-1", "unit": "" },
-    { "analyzer_code": "HIV-VL", "test_name_hint": "HIV-1 RNA", "loinc": "20447-9", "unit": "copies/mL" }
+    { "test_code": "MTB-RIF", "test_name_hint": "Mycobacterium tuberculosis DNA", "loinc": "23826-1", "unit": "" },
+    { "test_code": "RIF", "test_name_hint": "Rifampin Resistance", "loinc": "46244-0", "unit": "" },
+    { "test_code": "MTB-RIF-ULTRA", "test_name_hint": "MTB/RIF Ultra", "loinc": "23826-1", "unit": "" },
+    { "test_code": "HIV-VL", "test_name_hint": "HIV-1 RNA", "loinc": "20447-9", "unit": "copies/mL" }
   ],
   "configDefaults": {
     "fileFormat": "CSV",

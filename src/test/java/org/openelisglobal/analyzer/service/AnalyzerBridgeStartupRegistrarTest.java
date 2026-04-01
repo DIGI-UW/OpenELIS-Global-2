@@ -3,11 +3,12 @@ package org.openelisglobal.analyzer.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,6 +23,8 @@ import org.springframework.context.event.ContextRefreshedEvent;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerBridgeStartupRegistrarTest {
+
+    private static final int ASYNC_TIMEOUT_MS = 5_000;
 
     @Mock
     private AnalyzerService analyzerService;
@@ -61,22 +64,43 @@ public class AnalyzerBridgeStartupRegistrarTest {
 
         when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
         when(fileImportService.getByAnalyzerId(2009)).thenReturn(Optional.of(cfg));
-        when(bridgeRegistrationService.registerFile(any(), any(), any(), any())).thenReturn(true);
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any())).thenReturn(true);
 
-        registrar.reRegisterActiveAnalyzers(rootContextRefreshedEvent());
+        // onStartup dispatches async — use timeout to wait for completion
+        registrar.onStartup(rootContextRefreshedEvent());
 
-        verify(bridgeRegistrationService).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
-                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"));
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
+                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"), eq(Map.of()));
+    }
+
+    @Test
+    public void shouldRegisterFileAnalyzerWithColumnMappings() {
+        FileImportConfiguration cfg = new FileImportConfiguration();
+        cfg.setImportDirectory("/data/analyzer-imports/quantstudio");
+        cfg.setFilePattern("*.xlsx");
+        cfg.setColumnMappings(Map.of("Sample Name", "sampleId", "CT", "result"));
+
+        when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
+        when(fileImportService.getByAnalyzerId(2009)).thenReturn(Optional.of(cfg));
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any())).thenReturn(true);
+
+        registrar.onStartup(rootContextRefreshedEvent());
+
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
+                eq("/data/analyzer-imports/quantstudio"), eq("*.xlsx"),
+                eq(Map.of("Sample Name", "sampleId", "CT", "result")));
     }
 
     @Test
     public void shouldSkipDeletedAnalyzerOnStartup() {
         analyzer.setStatus(Analyzer.AnalyzerStatus.DELETED);
-        when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
 
-        registrar.reRegisterActiveAnalyzers(rootContextRefreshedEvent());
+        registrar.onStartup(rootContextRefreshedEvent());
 
-        verify(bridgeRegistrationService, never()).registerFile(any(), any(), any(), any());
-        verify(bridgeRegistrationService, never()).registerTcp(any(), any(), any(), any(), any());
+        // Allow async work to complete, then verify no registration happened
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerFile(any(), any(), any(), any(),
+                any());
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerTcp(any(), any(), any(), any(),
+                any());
     }
 }

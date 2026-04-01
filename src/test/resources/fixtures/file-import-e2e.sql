@@ -28,6 +28,13 @@ DELETE FROM analysis_qaevent WHERE analysis_id IN (SELECT id FROM tmp_harn_analy
 DELETE FROM analysis WHERE id IN (SELECT id FROM tmp_harn_analysis_ids);
 DROP TABLE IF EXISTS tmp_harn_analysis_ids;
 
+DELETE FROM observation_history
+WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%')
+   OR sample_item_id IN (
+       SELECT id FROM sample_item WHERE samp_id IN (
+           SELECT id FROM sample WHERE accession_number LIKE 'HARN-%'
+       )
+   );
 DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
 DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
 DELETE FROM sample WHERE accession_number LIKE 'HARN-%';
