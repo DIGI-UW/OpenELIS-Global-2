@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { ErrorDashboardPage } from "../fixtures/error-dashboard";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { ErrorDashboardPage } from "../../../fixtures/error-dashboard";
 
 test.describe("Analyzer Pages Navigation", () => {
   test("navigates to analyzer list page", async ({ page }) => {

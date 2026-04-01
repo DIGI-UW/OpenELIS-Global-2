@@ -1,19 +1,20 @@
 import { expect, Page, test } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
-import { acceptAndVerifyResults } from "../helpers/accept-results";
-import { createDemoPresentation } from "../helpers/demo-presentation";
-import type { DemoPresentation } from "../helpers/demo-presentation";
+import { acceptAndVerifyResults } from "../../../helpers/accept-results";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import type { DemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
-} from "../helpers/analyzer-dashboard";
+} from "../../../helpers/analyzer-dashboard";
 import {
   accessionTextRegExp,
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
-} from "../helpers/results-ui";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
+} from "../../../helpers/results-ui";
+import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
 
 /**
  * Analyzer harness: FILE drop → staged results → accept (one story per FILE
@@ -27,12 +28,8 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
  * (skipped automatically when the directory is absent).
  */
 
-const REPO_ROOT = path.resolve(__dirname, "../../..");
-const FIXTURES_DIR = path.join(__dirname, "../fixtures");
-const HOST_IMPORTS_BASE = path.join(
-  REPO_ROOT,
-  "projects/analyzer-harness/volume/analyzer-imports",
-);
+const FIXTURES_DIR = path.resolve(__dirname, "../../../fixtures");
+const HOST_IMPORTS_BASE = resolveHarnessImportsDir(__dirname);
 
 const DEFAULT_FILE_IMPORT_POLL_MS = 60_000;
 const DEFAULT_FILE_IMPORT_DROP_BUFFER_MS = 45_000;

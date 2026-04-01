@@ -1,16 +1,16 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { AnalyzerFormPage } from "../fixtures/analyzer-form";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import {
   ensureAnalyzerByName,
   GENEXPERT_DEFAULT_ANALYZER,
-} from "../helpers/ensure-analyzer";
+} from "../../../helpers/ensure-analyzer";
 import {
   QUICK_TIMEOUT,
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
-} from "../helpers/timeouts";
+} from "../../../helpers/timeouts";
 
 test.describe("Analyzer Plugin Config", () => {
   test("profile selection prefills implemented analyzer fields", async ({

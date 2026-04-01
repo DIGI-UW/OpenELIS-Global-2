@@ -1,9 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { AnalyzerFormPage } from "../fixtures/analyzer-form";
-import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
-import { createDemoPresentation } from "../helpers/demo-presentation";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
+import { cleanupAnalyzerByName } from "../../../helpers/cleanup-analyzer";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 /**
  * Demo: QuantStudio 7 — Generic File profile walkthrough.

@@ -1,7 +1,11 @@
 import { expect, test, Page, Locator, TestInfo } from "@playwright/test";
-import { showSceneLabel, showTitleCard } from "../helpers/title-card";
-import { videoPause } from "../helpers/video-pause";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
+import { videoPause } from "../../../helpers/video-pause";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 /**
  * OGC-284 — Barcode label quantity workflow (user stories)
@@ -143,29 +147,34 @@ async function selectPatient(
   // Carbon radio: click the visible label sibling instead of forcing the hidden input
   await firstRadio.locator("xpath=..").locator("label").click();
 
-  // Wait for patient form hydration before moving to the next wizard step.
-  await expect(page.locator('[data-cy="patientSelectionReady"]')).toBeVisible({
+  // Patient selection now flips to the form before all hydrated fields settle.
+  const patientForm = page
+    .locator(
+      '[data-cy="patientSelectionReady"], [data-cy="patientSelectionPending"]',
+    )
+    .first();
+  await expect(patientForm).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
-  await expect(page.locator("input#lastName")).toHaveValue(
+  await expect(patientForm.locator("input#lastName")).toHaveValue(
     new RegExp(lastName, "i"),
     {
       timeout: UI_TIMEOUT,
     },
   );
-  await expect(page.locator("input#firstName")).toHaveValue(
+  await expect(patientForm.locator("input#firstName")).toHaveValue(
     new RegExp(firstName, "i"),
     {
       timeout: UI_TIMEOUT,
     },
   );
-  await expect(page.locator("input#primaryPhone")).toBeVisible({
+  await expect(patientForm.locator("input#primaryPhone")).toBeVisible({
     timeout: UI_TIMEOUT,
   });
 
   // Search results can omit fields that the Add Order validation schema still
   // requires (national ID, gender, DOB). Backfill them before advancing.
-  const nationalIdInput = page.locator("input#nationalId");
+  const nationalIdInput = patientForm.locator("input#nationalId");
   if (await nationalIdInput.isVisible()) {
     if (!(await nationalIdInput.inputValue()).trim()) {
       await nationalIdInput.fill(`DEMO-${Date.now()}`);
@@ -185,7 +194,7 @@ async function selectPatient(
       await page.locator('label[for="radio-1"]').click();
     }
 
-    const birthDateInput = page.locator("input#date-picker-default-id");
+    const birthDateInput = patientForm.locator("input#date-picker-default-id");
     if (
       (await birthDateInput.isVisible()) &&
       !(await birthDateInput.inputValue()).trim()
@@ -270,10 +279,25 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
 
   const siteInput = page.locator("input#siteName");
   if (await siteInput.isVisible()) {
-    await siteInput.clear();
-    await siteInput.fill("CAMES MAN");
-    await pause(1200);
-    await pickFirstAutosuggestOptional(page, pause);
+    const siteQueries = ["CAMES MAN", "CAMES", "C"];
+    for (const query of siteQueries) {
+      await siteInput.clear();
+      await siteInput.fill(query);
+      await pause(900);
+      await pickFirstAutosuggestOptional(page, pause);
+      if ((await siteInput.inputValue()).trim()) {
+        break;
+      }
+    }
+    await expect(siteInput).not.toHaveValue("", { timeout: UI_TIMEOUT });
+  }
+
+  const requesterDepartment = page.locator("select#requesterDepartmentId");
+  if (await requesterDepartment.isVisible()) {
+    const optionCount = await requesterDepartment.locator("option").count();
+    if (optionCount > 1 && !(await requesterDepartment.inputValue()).trim()) {
+      await requesterDepartment.selectOption({ index: 1 });
+    }
   }
 
   const requesterLookup = page.locator("input#requesterId");
@@ -567,6 +591,16 @@ test("US2 — Capture label quantities during sample creation", async ({
   await scrollToAndPause(page, submitBtn, pause, 1000);
   await expect(submitBtn).toBeEnabled({ timeout: UI_TIMEOUT });
   await submitBtn.click();
+  const saveErrorNotice = page
+    .locator('[role="alert"], .bx--inline-notification')
+    .filter({ hasText: /error|failed/i })
+    .first();
+
+  if (await saveErrorNotice.isVisible()) {
+    throw new Error(
+      `Order save failed with visible UI error: ${(await saveErrorNotice.innerText()).trim()}`,
+    );
+  }
   await expectOrderEntrySaveSuccess(page);
 
   // ── Success: confirm quantities saved ───────────────────────────

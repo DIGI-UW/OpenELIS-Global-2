@@ -1,9 +1,16 @@
 import { expect, test } from "@playwright/test";
-import { UI_TIMEOUT } from "../helpers/timeouts";
+import { UI_TIMEOUT } from "../../../helpers/timeouts";
+
+async function gotoSamplePatientEntry(page) {
+  await page.goto("/SamplePatientEntry", { waitUntil: "domcontentloaded" });
+  await expect(page.locator('[data-cy="searchPatientTabButton"]')).toBeVisible({
+    timeout: UI_TIMEOUT,
+  });
+}
 
 test.describe("OGC-284 labels UI", () => {
   test("Add Order shows shared labels section", async ({ page }) => {
-    await page.goto("/SamplePatientEntry");
+    await gotoSamplePatientEntry(page);
 
     const addSampleBtn = page.getByRole("button", {
       name: /incomplete add sample/i,

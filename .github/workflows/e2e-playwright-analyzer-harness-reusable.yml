@@ -31,24 +31,37 @@ on:
         required: false
         type: string
         default: ""
+      playwright_project:
+        description: "Harness Playwright project to run (normal PR CI: harness-demo; optional: harness-foundational, harness-demo-video, harness-manual-only)"
+        required: false
+        type: string
+        default: "harness-demo"
+      test_file:
+        description: "Optional single Playwright spec path to run within the selected project"
+        required: false
+        type: string
+        default: ""
+      pr_number:
+        description: "Optional PR number for evidence comment updates on workflow_dispatch runs"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
   packages: read
   actions: read
+  issues: write
+  pull-requests: write
 
 jobs:
   demo-shards:
-    name: Demo ${{ matrix.shard_index }}/${{ matrix.shard_total }}
+    name: ${{ matrix.job_name }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - shard_index: 1
-            shard_total: 2
-          - shard_index: 2
-            shard_total: 2
+        include: ${{ fromJSON((inputs.playwright_project == 'harness-demo-video' || inputs.playwright_project == 'harness-manual-only') && '[{"job_name":"Harness Single","shard_index":1,"shard_total":1,"artifact_suffix":"single"}]' || '[{"job_name":"Demo 1/2","shard_index":1,"shard_total":2,"artifact_suffix":"demo-1"},{"job_name":"Demo 2/2","shard_index":2,"shard_total":2,"artifact_suffix":"demo-2"}]') }}
 
     steps:
       - name: Checkout code
@@ -161,7 +174,7 @@ jobs:
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       - name: Start analyzer harness stack (no rebuild)
-        run: docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
+        run: docker compose -f build.docker-compose.yml -f projects/analyzer-harness/docker-compose.base.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
 
       - name: Validate cert material in shared volume mounts
         run: |
@@ -169,10 +182,41 @@ jobs:
           docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
 
       - name: Wait for OpenELIS, bridge, and simulator readiness
+        env:
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
         run: |
-          timeout 120 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
-          timeout 120 bash -c 'until curl -s -f http://localhost:8442/actuator/health > /dev/null; do sleep 2; done'
-          timeout 120 bash -c 'until curl -s -f http://localhost:8085/health > /dev/null; do sleep 2; done'
+          wait_for_url() {
+            local label="$1"
+            local timeout_seconds="$2"
+            local curl_command="$3"
+
+            echo "Waiting for ${label}..."
+            timeout "$timeout_seconds" bash -c "until ${curl_command} > /dev/null; do sleep 2; done"
+            echo "${label} is ready."
+          }
+
+          wait_for_login() {
+            local timeout_seconds="$1"
+
+            echo "Waiting for OpenELIS login readiness..."
+            timeout "$timeout_seconds" bash -c '
+              until bash projects/analyzer-harness/scripts/verify-login.sh --base-url https://localhost >/dev/null 2>&1; do
+                sleep 2
+              done
+            '
+            echo "OpenELIS login is ready."
+          }
+
+          wait_for_login 240
+          wait_for_url \
+            "bridge readiness" \
+            120 \
+            "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health"
+          wait_for_url \
+            "simulator readiness" \
+            120 \
+            "curl -s -f --connect-timeout 2 --max-time 3 http://localhost:8085/health"
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
@@ -203,22 +247,77 @@ jobs:
 
       - name: Verify analyzer test mappings exist (prevent unmapped-result race)
         run: |
-          for analyzer in "Cepheid GeneXpert (ASTM Mode)" "QuantStudio 5" "QuantStudio 7" "FluoroCycler XT" "Mindray BC-5380" "Mindray BS-200" "Mindray BS-300"; do
-            MAPPINGS=$(curl -sk -u "$TEST_USER:$TEST_PASS" \
-              "$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers" | \
-              python3 -c "import json,sys; data=json.load(sys.stdin); a=[x for x in data if x.get('name')=='$analyzer']; print(len(a[0].get('testMappings',[])) if a else 0)" 2>/dev/null || echo "0")
-            echo "$analyzer: $MAPPINGS test mappings"
-            if [ "$MAPPINGS" = "0" ]; then
-              echo "::warning::Analyzer '$analyzer' has no test mappings — results will be unmapped"
+          REQUIRED_ANALYZERS=(
+            "Cepheid GeneXpert (ASTM Mode)"
+            "QuantStudio 5"
+            "QuantStudio 7"
+            "FluoroCycler XT"
+            "Mindray BC-5380"
+            "Mindray BS-200"
+            "Mindray BS-300"
+          )
+
+          MAX_ATTEMPTS=12
+          SLEEP_SECONDS=5
+          ATTEMPT=1
+
+          while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
+            echo "Mapping gate attempt ${ATTEMPT}/${MAX_ATTEMPTS}"
+            MISSING=0
+            for analyzer in "${REQUIRED_ANALYZERS[@]}"; do
+              MAPPINGS=$(docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A \
+                -c "SELECT COUNT(*) FROM clinlims.analyzer_test_map m JOIN clinlims.analyzer a ON a.id = m.analyzer_id WHERE a.name = '$analyzer';" \
+                2>/dev/null | tr -d '[:space:]' || echo 0)
+              MAPPINGS="${MAPPINGS:-0}"
+              echo "$analyzer: $MAPPINGS test mappings"
+              if [ "$MAPPINGS" = "0" ]; then
+                MISSING=1
+              fi
+            done
+
+            if [ "$MISSING" = "0" ]; then
+              echo "Analyzer mapping gate passed."
+              exit 0
             fi
+
+            if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Mappings still missing; sleeping ${SLEEP_SECONDS}s..."
+              sleep "$SLEEP_SECONDS"
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
           done
+
+          echo "::error::Analyzer mapping gate failed: one or more required analyzers still have 0 test mappings"
+          exit 1
         env:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
-      - name: Run analyzer Playwright harness-demo shard
-        run: npm run pw:test -- --project=harness-demo --workers=1 --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+      - name: Run analyzer Playwright project
+        run: |
+          case "${{ inputs.playwright_project }}" in
+            harness-demo|harness-foundational|harness-demo-video|harness-manual-only) ;;
+            *)
+              echo "::error::Unsupported Playwright project: ${{ inputs.playwright_project }}"
+              exit 1
+              ;;
+          esac
+
+          CMD=(npm run pw:test -- --project=${{ inputs.playwright_project }} --workers=1)
+
+          if [ "${{ matrix.shard_total }}" -gt "1" ]; then
+            CMD+=("--shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}")
+          fi
+
+          if [ -n "${{ inputs.test_file }}" ]; then
+            CMD+=("${{ inputs.test_file }}")
+          fi
+
+          printf 'Running command:'
+          printf ' %q' "${CMD[@]}"
+          printf '\n'
+          "${CMD[@]}"
         working-directory: frontend
         env:
           CI: true
@@ -234,10 +333,19 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: analyzer-blob-report-demo-${{ matrix.shard_index }}
+          name: analyzer-blob-report-${{ matrix.artifact_suffix }}
           path: frontend/blob-report
           if-no-files-found: ignore
           retention-days: 1
+
+      - name: Upload shard test-results
+        if: ${{ !cancelled() && inputs.playwright_project == 'harness-demo-video' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-test-results-${{ matrix.artifact_suffix }}
+          path: frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload failure screenshots
         if: failure()
@@ -300,6 +408,15 @@ jobs:
           pattern: analyzer-blob-report-*
           merge-multiple: true
 
+      - name: Download test-results from shard jobs
+        if: ${{ inputs.playwright_project == 'harness-demo-video' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-test-results
+          pattern: analyzer-test-results-*
+          merge-multiple: true
+
       - name: Resolve Playwright version for report merge
         id: playwright-version
         working-directory: frontend
@@ -326,12 +443,123 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Create CI video evidence bundle (HTML report + test-results)
+        if: ${{ always() && inputs.playwright_project == 'harness-demo-video' }}
+        working-directory: frontend
+        run: |
+          BUNDLE="analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}.zip"
+          INPUTS=()
+
+          if [ -d "playwright-report" ]; then
+            INPUTS+=("playwright-report")
+          fi
+          if [ -d "all-test-results" ]; then
+            INPUTS+=("all-test-results")
+          fi
+
+          if [ "${#INPUTS[@]}" -eq 0 ]; then
+            echo "No report/test-results directories found; skipping bundle."
+            exit 0
+          fi
+
+          zip -r "$BUNDLE" "${INPUTS[@]}"
+          echo "Created video evidence bundle: $BUNDLE"
+
+      - name: Upload CI video evidence bundle
+        if: ${{ always() && inputs.playwright_project == 'harness-demo-video' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}
+          path: frontend/analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}.zip
+          if-no-files-found: ignore
+          retention-days: 14
+
   analyzer-e2e-gate:
     name: Checkpoint
     if: always()
     needs: [demo-shards, merge-reports]
     runs-on: ubuntu-latest
     steps:
+      - name: Publish analyzer evidence summary
+        if: ${{ always() }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          {
+            echo "## Analyzer Playwright PR Evidence"
+            echo ""
+            echo "- Workflow run: [view run](${RUN_URL})"
+            echo "- Artifacts page: [view artifacts](${RUN_URL}#artifacts)"
+            echo "- Playwright project: \`${{ inputs.playwright_project }}\`"
+            echo "- HTML report artifact: \`analyzer-playwright-report-html-attempt-${{ github.run_attempt }}\`"
+            echo "- Demo shards result: \`${{ needs.demo-shards.result }}\`"
+            echo "- Merge reports result: \`${{ needs.merge-reports.result }}\`"
+            if [[ "${{ inputs.playwright_project }}" == "harness-demo-video" ]]; then
+              echo "- Video evidence artifact: \`analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}\`"
+            else
+              echo "- Video evidence: not requested for this run"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert PR evidence comment
+        if: ${{ always() && (github.event_name == 'pull_request' || inputs.pr_number != '') }}
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          DEMO_RESULT: ${{ needs.demo-shards.result }}
+          MERGE_RESULT: ${{ needs.merge-reports.result }}
+          PLAYWRIGHT_PROJECT: ${{ inputs.playwright_project }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const marker = '<!-- analyzer-playwright-evidence -->';
+            const prNumber = process.env.PR_NUMBER || context.payload.pull_request?.number;
+            if (!prNumber) {
+              core.info('No pull_request context found; skipping evidence comment.');
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const artifactsUrl = `${runUrl}#artifacts`;
+            const videoLine = process.env.PLAYWRIGHT_PROJECT === 'harness-demo-video'
+              ? `- Video evidence artifact: \`analyzer-playwright-video-evidence-attempt-${process.env.RUN_ATTEMPT}\``
+              : '- Video evidence: not requested for this run';
+            const body = `${marker}
+            ## Analyzer Playwright Evidence
+            - Workflow run: [view run](${runUrl})
+            - Artifacts: [view artifacts](${artifactsUrl})
+            - Playwright project: \`${process.env.PLAYWRIGHT_PROJECT}\`
+            - HTML report artifact: \`analyzer-playwright-report-html-attempt-${process.env.RUN_ATTEMPT}\`
+            - Demo shards result: \`${process.env.DEMO_RESULT}\`
+            - Merge reports result: \`${process.env.MERGE_RESULT}\`
+            ${videoLine}`;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated evidence comment ${existing.id}`);
+            } else {
+              const created = await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info(`Created evidence comment ${created.data.id}`);
+            }
+
       - name: Enforce shard, demo, and merge success
         run: |
           if [[ "${{ needs.demo-shards.result }}" != "success" ]]; then

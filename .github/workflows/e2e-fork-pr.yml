@@ -1,80 +1,44 @@
-# Runs non-fork E2E tests after the build workflow completes.
-# The workflow_run graph stays behind the stable `03 Checkpoint - E2E` status so
-# the PR-facing checkpoint can link directly to the authoritative run.
-name: E2E / Tests
+# Native fork E2E executor. This workflow is the privileged fork path under
+# pull_request_target; repository approval settings remain the trust boundary.
+name: 03 - E2E - Fork PR
 
 on:
-  workflow_run:
-    workflows: ["03 - E2E"]
-    types: [completed]
+  pull_request_target:
+    branches: [develop]
 
 concurrency:
-  group: e2e-tests-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  group: e2e-fork-pr-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
   setup:
     name: Setup
-    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
       pull-requests: read
     outputs:
       is_fork: ${{ steps.context.outputs.is_fork }}
       pr_number: ${{ steps.context.outputs.pr_number }}
-      pr_sha: ${{ steps.context.outputs.pr_sha }}
       head_sha: ${{ steps.context.outputs.head_sha }}
-      event_name: ${{ steps.context.outputs.event_name }}
-      image_transfer: ${{ steps.context.outputs.image_transfer }}
+      status_sha: ${{ steps.context.outputs.status_sha }}
       core_demo_changed: ${{ steps.demo-diff.outputs.core_demo_changed }}
       harness_demo_changed: ${{ steps.demo-diff.outputs.harness_demo_changed }}
-      build_run_id: ${{ github.event.workflow_run.id }}
     steps:
-      - name: Download build context artifact
-        id: download
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-build-context
-          path: /tmp/e2e-build-context
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Parse build context
+      - name: Capture pull request context
         id: context
         run: |
-          if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
-            echo "No build context artifact — build likely failed."
-            echo "is_fork=false" >> "$GITHUB_OUTPUT"
-            echo "image_transfer=none" >> "$GITHUB_OUTPUT"
-            echo "event_name=unknown" >> "$GITHUB_OUTPUT"
-            echo "pr_number=" >> "$GITHUB_OUTPUT"
-            echo "pr_sha=" >> "$GITHUB_OUTPUT"
-            echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          IS_FORK="$(cat /tmp/e2e-build-context/is_fork 2>/dev/null || echo 'false')"
-          IMAGE_TRANSFER="$(cat /tmp/e2e-build-context/image_transfer 2>/dev/null || echo 'none')"
-          EVENT_NAME="$(cat /tmp/e2e-build-context/event_name 2>/dev/null || echo 'unknown')"
-          PR_NUMBER="$(cat /tmp/e2e-build-context/pr_number 2>/dev/null || echo '')"
-          PR_SHA="$(cat /tmp/e2e-build-context/pr_sha 2>/dev/null || echo '')"
-          HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
-
-          if [ -z "$HEAD_SHA" ]; then
-            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
-          fi
+          IS_FORK="${{ github.event.pull_request.head.repo.fork && 'true' || 'false' }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          HEAD_SHA="refs/pull/${PR_NUMBER}/merge"
+          STATUS_SHA="${{ github.event.pull_request.head.sha }}"
 
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
-          echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
-          echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "pr_sha=$PR_SHA" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "status_sha=$STATUS_SHA" >> "$GITHUB_OUTPUT"
 
-          echo "Build context: is_fork=$IS_FORK image_transfer=$IMAGE_TRANSFER event=$EVENT_NAME pr=#$PR_NUMBER head_sha=$HEAD_SHA"
+          echo "Context: fork=$IS_FORK pr=#$PR_NUMBER checkout_ref=$HEAD_SHA status_sha=$STATUS_SHA"
 
       - name: Detect demo-spec diff buckets for PR
         id: demo-diff
@@ -84,11 +48,6 @@ jobs:
         run: |
           echo "core_demo_changed=false" >> "$GITHUB_OUTPUT"
           echo "harness_demo_changed=false" >> "$GITHUB_OUTPUT"
-
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No PR number in workflow_run context; demo-video auto-trigger disabled."
-            exit 0
-          fi
 
           gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' > /tmp/pr-files.txt
           echo "Changed files from PR #$PR_NUMBER:"
@@ -102,26 +61,170 @@ jobs:
             echo "harness_demo_changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-  set-pending-status:
-    name: Set Pending Status
+  fork-rebuild:
+    name: Shared Build (Fork Rebuild)
     needs: setup
-    if: needs.setup.outputs.head_sha != ''
+    if: needs.setup.outputs.is_fork == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout PR merge ref
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ needs.setup.outputs.pr_number }}/merge
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Build OpenELIS artifacts for plugin compilation
+        run: |
+          cd dataexport/dataexport-core
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          mvn clean install -DskipTests -Dmaven.test.skip=true
+          cd ..
+          # NOTE: Do NOT add -Dmaven.test.skip=true here — the root build must
+          # compile test classes so maven-jar-plugin produces the test-jar
+          # (openelisglobal:jar:tests) required by GenericASTM/File/HL7 plugins.
+          mvn clean install -DskipTests -Dspotless.check.skip=true -Dfix.version=3
+
+      - name: Build plugins
+        run: mvn clean install -DskipTests -Dmaven.test.skip=true
+        working-directory: plugins
+
+      - name: Stage plugin jars for runtime loading
+        run: |
+          rm -rf volume/plugins/*
+          find plugins/analyzers -type f -path "*/target/*.jar" \
+            ! -name "*sources.jar" ! -name "*javadoc.jar" \
+            -exec cp {} volume/plugins/ \;
+          ls -lah volume/plugins
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build all compose images (cached, read-only)
+        uses: docker/bake-action@v5
+        with:
+          files: |
+            build.docker-compose.yml
+            .github/ci/ci.analyzer-harness.yml
+          load: true
+          set: |
+            *.cache-from=type=gha,scope=e2e-shared
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push compose images to GHCR
+        run: |
+          TAG="sha-${{ github.event.pull_request.head.sha }}"
+          OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          export TAG OWNER_LOWER
+          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
+          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
+          xargs -r -I{} -P4 bash -lc '
+            image="$1"
+            [ -z "$image" ] && exit 0
+            if docker image inspect "$image" >/dev/null 2>&1; then
+              image_repo="$(echo "$image" | tr "[:upper:]" "[:lower:]" | sed "s|[^a-z0-9._/-]|-|g")"
+              ghcr_image="ghcr.io/${OWNER_LOWER}/openelis-global-2/e2e-cache/${image_repo}:${TAG}"
+              docker tag "$image" "$ghcr_image"
+              push_err=$(docker push "$ghcr_image" 2>&1) && {
+                printf "%s|%s\n" "$image" "$ghcr_image"
+              } || {
+                echo "PUSH FAILED ($image): $push_err" >&2
+                exit 1
+              }
+            else
+              echo "WARN: skipping $image (not built locally)" >&2
+            fi
+          ' _ {} < /tmp/e2e-images-full.txt | sort -u > /tmp/e2e-image-map.txt
+
+          awk -F'|' 'NR==FNR {base[$1]=1; next} ($1 in base) {print}' \
+            /tmp/e2e-images-base.txt /tmp/e2e-image-map.txt > /tmp/e2e-image-map-base.txt
+
+          if [ ! -s /tmp/e2e-image-map.txt ]; then
+            echo "::error::No images were pushed to GHCR"
+            exit 1
+          fi
+          if [ ! -s /tmp/e2e-image-map-base.txt ]; then
+            echo "WARN: no base compose image mappings found; falling back to full image map."
+            cp /tmp/e2e-image-map.txt /tmp/e2e-image-map-base.txt
+          fi
+          echo "Pushed image mappings:"
+          cat /tmp/e2e-image-map.txt
+
+      - name: Upload plugin jars artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: volume/plugins/*.jar
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload Docker image map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map.txt
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Upload base Docker image map artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-image-map-base
+          path: /tmp/e2e-image-map-base.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  set-pending-status:
+    name: Set Fork Pending Status
+    needs: setup
+    if: needs.setup.outputs.status_sha != ''
     runs-on: ubuntu-latest
     permissions:
       statuses: write
     steps:
-      - name: Post checkpoint status
+      - name: Post fork checkpoint status
         uses: actions/github-script@v7
         with:
           script: |
-            const sha = '${{ needs.setup.outputs.head_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const sha = '${{ needs.setup.outputs.status_sha }}';
+            const contextName = '03 Checkpoint - E2E - Fork PR';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
-            const state = isFork ? 'success' : 'pending';
+            const state = isFork ? 'pending' : 'success';
             const description = isFork
-              ? 'Not applicable - fork PRs use 03 Checkpoint - E2E - Fork PR'
-              : 'Playwright, Cypress, and analyzer-harness suites are running...';
+              ? 'Fork Playwright, Cypress, and analyzer-harness suites are running...'
+              : 'Not applicable - non-fork PRs use 03 Checkpoint - E2E';
 
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
@@ -135,8 +238,8 @@ jobs:
 
   playwright-core:
     name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
-    needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.image_transfer == 'ghcr'
+    needs: [setup, fork-rebuild]
+    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -188,13 +291,11 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download image map from build workflow
+      - name: Download image map from fork rebuild
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
-          run-id: ${{ needs.setup.outputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -287,8 +388,8 @@ jobs:
 
   analyzer-harness:
     name: Analyzer Harness
-    needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.image_transfer == 'ghcr'
+    needs: [setup, fork-rebuild]
+    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
     permissions:
       contents: read
@@ -297,8 +398,8 @@ jobs:
       issues: write
       pull-requests: write
     with:
-      build_run_id: ${{ needs.setup.outputs.build_run_id }}
-      is_fork: ${{ needs.setup.outputs.is_fork }}
+      build_run_id: ""
+      is_fork: ${{ 'true' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -306,8 +407,8 @@ jobs:
 
   core-demo-video-evidence:
     name: Core Demo Video Evidence
-    needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.pr_number != '' && needs.setup.outputs.core_demo_changed == 'true' && needs.setup.outputs.image_transfer == 'ghcr'
+    needs: [setup, fork-rebuild]
+    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.core_demo_changed == 'true' && needs.fork-rebuild.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -351,13 +452,11 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download image map from build workflow
+      - name: Download image map from fork rebuild
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
-          run-id: ${{ needs.setup.outputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -474,8 +573,8 @@ jobs:
 
   analyzer-harness-video-evidence:
     name: Analyzer Harness Demo Video Evidence
-    needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.pr_number != '' && needs.setup.outputs.harness_demo_changed == 'true' && needs.setup.outputs.image_transfer == 'ghcr'
+    needs: [setup, fork-rebuild]
+    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.harness_demo_changed == 'true' && needs.fork-rebuild.result == 'success'
     uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
     permissions:
       contents: read
@@ -484,8 +583,8 @@ jobs:
       issues: write
       pull-requests: write
     with:
-      build_run_id: ${{ needs.setup.outputs.build_run_id }}
-      is_fork: ${{ needs.setup.outputs.is_fork }}
+      build_run_id: ""
+      is_fork: ${{ 'true' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
@@ -494,26 +593,27 @@ jobs:
 
   cypress:
     name: Cypress
-    needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.image_transfer == 'ghcr'
+    needs: [setup, fork-rebuild]
+    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
     uses: ./.github/workflows/e2e-cypress-deprecated.yml
     permissions:
       contents: read
       packages: read
       actions: read
     with:
-      build_run_id: ${{ needs.setup.outputs.build_run_id }}
-      is_fork: ${{ needs.setup.outputs.is_fork }}
+      build_run_id: ""
+      is_fork: ${{ 'true' }}
       head_sha: ${{ needs.setup.outputs.head_sha }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
 
   e2e-gate:
-    name: E2E Gate
+    name: Fork E2E Gate
     if: always()
     needs:
       [
         setup,
+        fork-rebuild,
         playwright-core,
         analyzer-harness,
         core-demo-video-evidence,
@@ -524,20 +624,21 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Enforce non-fork E2E results or report fork delegation
+      - name: Enforce fork E2E results or report non-fork no-op
         run: |
-          if [[ "${{ needs.setup.outputs.is_fork }}" == "true" ]]; then
-            echo "Fork PR detected; this wrapper is not authoritative."
+          if [[ "${{ needs.setup.outputs.is_fork }}" != "true" ]]; then
+            echo "Non-fork PR detected; fork-native workflow is not authoritative for this run."
+            echo "Not applicable."
             {
-              echo "## 03 Checkpoint - E2E"
+              echo "## 03 Checkpoint - E2E - Fork PR"
               echo ""
               echo "Status: \`not_applicable\`"
-              echo "Reason: fork PRs are handled by \`03 Checkpoint - E2E - Fork PR\`."
+              echo "Reason: non-fork PRs are handled by \`03 Checkpoint - E2E\`."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if [[ "${{ needs.setup.outputs.image_transfer }}" != "ghcr" ]]; then
-            echo "No GHCR image transfer available for non-fork E2E."
+          if [[ "${{ needs.fork-rebuild.result }}" != "success" ]]; then
+            echo "Fork rebuild failed: ${{ needs.fork-rebuild.result }}"
             exit 1
           fi
           if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
@@ -560,40 +661,38 @@ jobs:
             echo "Cypress failed: ${{ needs.cypress.result }}"
             exit 1
           fi
-          echo "Non-fork E2E gate passed."
+          echo "03 Checkpoint - E2E - Fork PR passed."
 
   report-status:
-    name: Report Status
-    if: always() && needs.setup.outputs.head_sha != ''
+    name: Report Fork Status
+    if: always() && needs.setup.outputs.status_sha != ''
     needs: [setup, set-pending-status, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
       statuses: write
     steps:
-      - name: Update checkpoint status
+      - name: Update fork checkpoint status
         uses: actions/github-script@v7
         with:
           script: |
-            const sha = '${{ needs.setup.outputs.head_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const sha = '${{ needs.setup.outputs.status_sha }}';
+            const contextName = '03 Checkpoint - E2E - Fork PR';
             const gateResult = '${{ needs.e2e-gate.result }}';
-            const imageTransfer = '${{ needs.setup.outputs.image_transfer }}';
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
             let state, description;
-            if (isFork) {
+            if (!isFork) {
               state = 'success';
-              description = 'Not applicable - fork PRs use 03 Checkpoint - E2E - Fork PR';
-            } else if (imageTransfer !== 'ghcr') {
-              state = 'failure';
-              description = 'E2E build failed - no Docker images were produced';
+              description = 'Not applicable - non-fork PRs use 03 Checkpoint - E2E';
             } else if (gateResult === 'success') {
               state = 'success';
-              description = 'All non-fork Playwright, Cypress, and analyzer-harness suites passed';
+              description = 'All fork Playwright, Cypress, and analyzer-harness suites passed';
             } else {
               state = 'failure';
-              description = 'One or more non-fork E2E suites failed';
+              description = 'One or more fork E2E suites failed';
             }
+
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,

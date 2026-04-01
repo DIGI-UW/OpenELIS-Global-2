@@ -15,34 +15,31 @@
 
 import { expect, test } from "@playwright/test";
 import * as path from "path";
-import { createDemoPresentation } from "../helpers/demo-presentation";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
-} from "../helpers/analyzer-dashboard";
+} from "../../../helpers/analyzer-dashboard";
 import {
   createAnalyzerFromProfile,
   teardownAnalyzer,
-} from "../helpers/create-analyzer-from-profile";
-import { testAnalyzerConnection } from "../helpers/test-analyzer-connection";
-import { pushAnalyzerResult } from "../helpers/push-analyzer-result";
-import { acceptAndVerifyResults } from "../helpers/accept-results";
+} from "../../../helpers/create-analyzer-from-profile";
+import { testAnalyzerConnection } from "../../../helpers/test-analyzer-connection";
+import { pushAnalyzerResult } from "../../../helpers/push-analyzer-result";
+import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import {
   accessionTextRegExp,
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
-} from "../helpers/results-ui";
-import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
-import type { AnalyzerTestConfig } from "../helpers/analyzer-test-config";
+} from "../../../helpers/results-ui";
+import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
+import type { AnalyzerTestConfig } from "../../../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = "http://localhost:8085";
 const RESULTS_TIMEOUT = 90_000;
 
-const REPO_ROOT = path.resolve(__dirname, "../../..");
-const HOST_IMPORTS_BASE = path.join(
-  REPO_ROOT,
-  "projects/analyzer-harness/volume/analyzer-imports",
-);
+const HOST_IMPORTS_BASE = resolveHarnessImportsDir(__dirname);
 
 // ── Analyzer Configurations ──────────────────────────────────────
 //
@@ -83,10 +80,10 @@ const CONFIGS: AnalyzerTestConfig[] = [
       destination: "mllp://placeholder:2575",
     },
     expectedResults: [
-      { result: "7.5", testName: "WBC" },
-      { result: "4.82", testName: "RBC" },
-      { result: "14.2", testName: "HGB" },
-      { result: "42", testName: "HCT" },
+      { result: "7.5", testName: "White Blood Cells" },
+      { result: "4.82", testName: "Red Blood Cells" },
+      { result: "14.2", testName: "Hemoglobin" },
+      { result: "42", testName: "Hematocrit" },
     ],
   },
   {
@@ -105,10 +102,10 @@ const CONFIGS: AnalyzerTestConfig[] = [
       destination: "mllp://placeholder:2575",
     },
     expectedResults: [
-      { result: "1.1", testName: "CREA" },
+      { result: "1.1", testName: "Creatinine" },
       { result: "32", testName: "ALT" },
       { result: "28", testName: "AST" },
-      { result: "92", testName: "GLU" },
+      { result: "92", testName: "Glucose" },
     ],
   },
   {
@@ -127,10 +124,10 @@ const CONFIGS: AnalyzerTestConfig[] = [
       destination: "mllp://placeholder:2575",
     },
     expectedResults: [
-      { result: "0.8", testName: "CREA" },
+      { result: "0.8", testName: "Creatinine" },
       { result: "19", testName: "ALT" },
       { result: "24", testName: "AST" },
-      { result: "88", testName: "GLU" },
+      { result: "88", testName: "Glucose" },
     ],
   },
   // ── FILE Analyzers ─────────────────────────────────────────────
@@ -148,7 +145,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
       importDir: path.join(HOST_IMPORTS_BASE, "demo--quantstudio-7/incoming"),
       filePrefix: "qs7-e2e-",
     },
-    expectedResults: [{ result: "1520.5" }],
+    expectedResults: [
+      { sampleId: "HARN-QS7-2026-00001", result: "1520.5" },
+      { sampleId: "HARN-QS7-2026-00002", result: "45200" },
+      { sampleId: "HARN-QS7-2026-00005", result: "3200.8" },
+    ],
   },
   {
     name: "Demo: QuantStudio 5",
@@ -164,7 +165,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
       importDir: path.join(HOST_IMPORTS_BASE, "demo--quantstudio-5/incoming"),
       filePrefix: "qs5-e2e-",
     },
-    expectedResults: [{ result: "1520.5" }],
+    expectedResults: [
+      { sampleId: "HARN-QS5-2026-00001", result: "1520.5" },
+      { sampleId: "HARN-QS5-2026-00002", result: "45200" },
+      { sampleId: "HARN-QS5-2026-00005", result: "3200.8" },
+    ],
   },
   {
     name: "Demo: FluoroCycler XT",
@@ -180,7 +185,11 @@ const CONFIGS: AnalyzerTestConfig[] = [
       importDir: path.join(HOST_IMPORTS_BASE, "demo--fluorocycler-xt/incoming"),
       filePrefix: "fc-e2e-",
     },
-    expectedResults: [{ result: "28.5" }],
+    expectedResults: [
+      { sampleId: "HARN-FC-2026-00001", result: "28.5" },
+      { sampleId: "HARN-FC-2026-00002", result: "31.2" },
+      { sampleId: "HARN-FC-2026-00003", result: "Negative" },
+    ],
   },
 ];
 
@@ -200,14 +209,24 @@ async function verifyResults(
   const resultsRegion = page.locator(".orderLegendBody, table").first();
   await expect(resultsRegion).toBeVisible({ timeout: UI_TIMEOUT });
 
-  // Verify accession number
-  await expect(
-    resultsRegion.getByText(accessionTextRegExp(sampleId)).first(),
-  ).toBeVisible({ timeout: UI_TIMEOUT });
-
   // Verify each expected result value
   for (const expected of config.expectedResults) {
-    await expectResultVisible(resultsRegion, expected.result);
+    if (expected.testName) {
+      await expect(
+        page.getByText(expected.testName, { exact: false }).first(),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(
+        page.locator(`input[value*="${expected.result}"]`).first(),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      continue;
+    }
+
+    const expectedSampleId = expected.sampleId || sampleId;
+    const accessionRow = resultsRegion
+      .getByRole("row", { name: accessionTextRegExp(expectedSampleId) })
+      .first();
+    await expect(accessionRow).toBeVisible({ timeout: UI_TIMEOUT });
+    await expectResultVisible(accessionRow, expected.result);
   }
 
   await presentation.pause(2_000);

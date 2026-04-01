@@ -19,6 +19,7 @@ import { cleanupAnalyzerByName } from "./cleanup-analyzer";
 import type { DemoPresentation } from "./demo-presentation";
 import type { AnalyzerTestConfig } from "./analyzer-test-config";
 import { LONG_TIMEOUT } from "./timeouts";
+import { resolveDbContainer } from "./db-container";
 
 const SIMULATOR_URL = "http://localhost:8085";
 
@@ -182,10 +183,7 @@ export async function teardownAnalyzer(
  * CASCADE FK on analyzer_test_map handles test mapping cleanup automatically.
  */
 function hardDeleteAnalyzerFromDb(analyzerName: string): void {
-  const container =
-    process.env.DATABASE_CONTAINER ||
-    process.env.DB_CONTAINER ||
-    "openelisglobal-database";
+  const container = resolveDbContainer();
   const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = '${analyzerName}'); DELETE FROM clinlims.analyzer WHERE name = '${analyzerName}';`;
   try {
     execFileSync("docker", [
