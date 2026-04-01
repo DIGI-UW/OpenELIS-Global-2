@@ -56,6 +56,10 @@ services:
       - SERVER_SSL_ENABLED=false
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - BRIDGE_FILE_ENABLED=true
+      # Fast polling for CI — files are written atomically by Playwright tests.
+      # Production keeps FileConfig.java defaults (5000ms poll, 3000ms stability).
+      - BRIDGE_FILE_POLL_INTERVAL_MS=1000
+      - BRIDGE_FILE_FILE_STABILITY_TIMEOUT_MS=500
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
       # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
