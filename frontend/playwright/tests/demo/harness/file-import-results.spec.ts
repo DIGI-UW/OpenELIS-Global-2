@@ -28,7 +28,7 @@ import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
  * (skipped automatically when the directory is absent).
  */
 
-const FIXTURES_DIR = path.join(__dirname, "../fixtures");
+const FIXTURES_DIR = path.resolve(__dirname, "../../../fixtures");
 const HOST_IMPORTS_BASE = resolveHarnessImportsDir(__dirname);
 
 const DEFAULT_FILE_IMPORT_POLL_MS = 60_000;
