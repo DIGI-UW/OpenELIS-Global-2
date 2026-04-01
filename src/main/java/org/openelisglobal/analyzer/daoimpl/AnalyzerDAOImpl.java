@@ -21,6 +21,7 @@ import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +46,9 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
             Analyzer result = query.uniqueResult();
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
-            throw new LIMSRuntimeException("Multiple Analyzers found for IP address: " + ipAddress, e);
+            LogEvent.logWarn("AnalyzerDAOImpl", "findByIpAddress",
+                    "Multiple analyzers share IP " + ipAddress + " — falling through to next identification strategy");
+            return Optional.empty();
         }
     }
 
@@ -109,5 +112,23 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         query.setParameter("id", Integer.valueOf(id));
         Analyzer result = query.uniqueResult();
         return Optional.ofNullable(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIpAddressAndPort(String ipAddress, Integer port) {
+        if (ipAddress == null || ipAddress.trim().isEmpty() || port == null || port < 1) {
+            return Optional.empty();
+        }
+        try {
+            String hql = "FROM Analyzer a WHERE a.ipAddress = :ipAddress AND a.port = :port";
+            Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+            query.setParameter("ipAddress", ipAddress.trim());
+            query.setParameter("port", port);
+            Analyzer result = query.uniqueResult();
+            return Optional.ofNullable(result);
+        } catch (org.hibernate.NonUniqueResultException e) {
+            throw new LIMSRuntimeException("Multiple Analyzers found for IP " + ipAddress + " and port " + port, e);
+        }
     }
 }
