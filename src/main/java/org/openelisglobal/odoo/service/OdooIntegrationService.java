@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
@@ -61,7 +62,7 @@ public class OdooIntegrationService {
 
     /**
      * Creates an invoice in Odoo for the given sample data.
-     * 
+     *
      * @param updateData The sample data containing order information
      * @throws OdooOperationException if there's an error creating the invoice
      */
@@ -104,7 +105,9 @@ public class OdooIntegrationService {
                 }
             }
             if (!tests.isEmpty()) {
-                collections.add(new SampleTestCollection(sampleItem, tests, null, null, null, null, null));
+                SampleAddService sampleAddService = SpringContext.getBean(SampleAddService.class);
+                collections.add(
+                        sampleAddService.new SampleTestCollection(sampleItem, tests, null, null, null, null, null));
             }
         }
         if (collections.isEmpty()) {
@@ -212,7 +215,6 @@ public class OdooIntegrationService {
             log.info("Created new partner in Odoo with ID: {} for patient: {} {}", partnerId, person.getFirstName(),
                     person.getLastName());
             return partnerId;
-
         } catch (Exception e) {
             log.error("Error getting or creating patient partner: {}", e.getMessage(), e);
             return 1;
