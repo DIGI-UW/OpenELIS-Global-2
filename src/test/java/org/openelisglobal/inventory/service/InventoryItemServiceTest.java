@@ -172,18 +172,13 @@ public class InventoryItemServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void deactivateItem_shouldNotThrowExceptionForNonExistentItem() {
-        // get() throws exception for non-existent IDs in this codebase
-        // deactivateItem should handle this gracefully — verify it propagates
-        // or silently ignores based on actual behaviour
+    public void deactivateItem_shouldSetIsActiveToNForValidItem() {
         InventoryItem item = inventoryItemService.get(1000L);
         assertNotNull("Valid item should exist", item);
 
-        // Verify deactivate works on valid item — non-existent ID test
-        // removed as get() throws for missing IDs (consistent with RegionService
-        // behaviour)
         inventoryItemService.deactivateItem(1000L, "1");
-        assertEquals("N", inventoryItemService.get(1000L).getIsActive());
+
+        assertEquals("Item should be deactivated", "N", inventoryItemService.get(1000L).getIsActive());
     }
 
     @Test
