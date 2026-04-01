@@ -141,6 +141,9 @@ public class MenuRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(20, menuWrapper.getMenu().getPresentationOrder());
     }
 
+    // NOTE: Tests in this class depend on the fixture data in menu.xml.
+    // Any changes to menu.xml may affect count assertions and ID-based lookups
+    // here.
     @Test
     public void getMenuTree_shouldReturn200WithJsonContentType() throws Exception {
         MvcResult urlResult = super.mockMvc.perform(get("/rest/menu").accept(MediaType.APPLICATION_JSON_VALUE)
