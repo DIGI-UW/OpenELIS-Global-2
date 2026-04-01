@@ -56,14 +56,17 @@ the CI run:
 - job summary with run/artifact links
 - sticky PR comment (`Analyzer Playwright Evidence`) updated each run attempt
 
-Normal PR validation runs publish HTML evidence for `harness-demo`. Video-bearing
-evidence is optional and only published for explicit `harness-demo-video` runs:
+Normal PR validation runs publish HTML evidence for `harness-demo`.
+
+Video-bearing demo evidence is opt-in and runs outside required checkpoint
+graphs via manual workflows:
 
 - zipped video evidence bundle: `analyzer-playwright-video-evidence-attempt-*`
   (contains `playwright-report` + `test-results` with videos)
+- `playwright-core-demo-video-evidence-attempt-*` (core demo workflow)
 
-This keeps evidence tied to the exact CI run and avoids manual artifact uploads
-in PR discussion threads while keeping video collection opt-in.
+This keeps required checkpoint graphs focused on authoritative suites while
+preserving manual evidence collection when needed.
 
 To generate CI-hosted video evidence for a PR, run the manual workflow
 `E2E / Playwright / Analyzer Harness (Manual)` with:
@@ -71,6 +74,9 @@ To generate CI-hosted video evidence for a PR, run the manual workflow
 - `playwright_project: harness-demo-video`
 - optional `test_file` if you want a single demo spec only
 - optional `pr_number` if you want the workflow to update the PR evidence comment
+
+For core demo videos, run `E2E / Playwright / Demo Video Evidence (Manual)` and
+enable `run_core_demo_video`.
 
 ## Fixtures
 
