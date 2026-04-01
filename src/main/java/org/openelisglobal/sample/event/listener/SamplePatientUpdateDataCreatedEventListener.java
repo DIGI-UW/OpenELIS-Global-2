@@ -38,6 +38,13 @@ public class SamplePatientUpdateDataCreatedEventListener {
         SamplePatientUpdateData updateData = event.getUpdateData();
         String accessionNumber = updateData != null ? updateData.getAccessionNumber() : "unknown";
 
+        if (updateData == null) {
+            LogEvent.logError(this.getClass().getSimpleName(), "handleSamplePatientUpdateDataCreatedEvent",
+                    "SamplePatientUpdateData is null; skipping Odoo invoice creation for sample " + accessionNumber
+                            + ".");
+            return;
+        }
+
         try {
             odooIntegrationService.createInvoice(updateData);
         } catch (OdooUnavailableException e) {
