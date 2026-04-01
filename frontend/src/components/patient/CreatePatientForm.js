@@ -471,8 +471,10 @@ function CreatePatientForm(props) {
         setHealthDistricts([]);
       }
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
-      let patient = props.selectedPatient;
-      patient.patientUpdateStatus = "UPDATE";
+      let patient = {
+        ...props.selectedPatient,
+        patientUpdateStatus: "NO_ACTION",
+      };
       patient.photo = "";
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
@@ -504,7 +506,7 @@ function CreatePatientForm(props) {
         patientContact: patientContact,
       });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
-      setFormAction("UPDATE");
+      setFormAction("NO_ACTION");
       // Fetch patient photo if patient exists
       getFromOpenElisServer(
         `/rest/patient-photos/${patient.patientPK}/${false}`,
@@ -768,6 +770,7 @@ function CreatePatientForm(props) {
                 orderFormValues={props.orderFormValues}
                 setOrderFormValues={props.setOrderFormValues}
                 formAction={formAction}
+                selectedPatient={props.selectedPatient}
               />
             )}
             {/* fieldset[disabled] propagates to all descendant HTML form controls */}
