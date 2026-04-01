@@ -17,6 +17,7 @@ public class PatientMergeAuditDAOTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        cleanRowsInCurrentConnection(new String[] { "patient_merge_audit" });
         executeDataSetWithStateManagement("testdata/person.xml");
         executeDataSetWithStateManagement("testdata/patient.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
@@ -45,14 +46,14 @@ public class PatientMergeAuditDAOTest extends BaseWebContextSensitiveTest {
         assertTrue("Should return empty for non-existent ID", patientMergeAuditDAO.get(99999L).isEmpty());
     }
 
-    @Test
-    public void testFindByPrimaryPatientId() {
+   @Test
+    public void testInsertAndRetrieveAudit() {
         PatientMergeAudit audit = new PatientMergeAudit();
         audit.setPrimaryPatientId(1L);
         audit.setMergedPatientId(2L);
         audit.setMergeDate(new Timestamp(System.currentTimeMillis()));
         audit.setPerformedByUserId(1L);
-        audit.setReason("Test find by primary patient");
+        audit.setReason("Test insert and retrieve audit");
 
         Long id = patientMergeAuditDAO.insert(audit);
         assertNotNull("Should insert audit", id);

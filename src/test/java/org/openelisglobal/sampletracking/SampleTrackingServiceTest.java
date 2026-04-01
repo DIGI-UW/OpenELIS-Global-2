@@ -153,7 +153,8 @@ public class SampleTrackingServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getMatchingOrderedPage_ShouldReturnAMatchingOrderedPageOfSampleTrackings_UsingAPropertyNameAndValueAndAList() {
         PAGE_SIZE = Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
-        sampleTrackingList = sampleTrackingService.getMatchingOrderedPage("sosDesc", "Emergency", orderProperties, true, 1);
+        sampleTrackingList = sampleTrackingService.getMatchingOrderedPage("sosDesc", "Emergency", orderProperties, true,
+                1);
         assertTrue(PAGE_SIZE >= sampleTrackingList.size());
     }
 

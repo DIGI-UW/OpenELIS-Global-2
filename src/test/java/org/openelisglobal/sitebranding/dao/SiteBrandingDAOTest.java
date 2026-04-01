@@ -1,6 +1,7 @@
 package org.openelisglobal.sitebranding.dao;
 
 import static org.junit.Assert.*;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -13,10 +14,10 @@ public class SiteBrandingDAOTest extends BaseWebContextSensitiveTest {
     private SiteBrandingDAO siteBrandingDAO;
 
     @Before
-public void setUp() throws Exception {
-    super.setUp();
-    executeDataSetWithStateManagement("testdata/site-branding.xml");
-}
+    public void setUp() throws Exception {
+        super.setUp();
+        executeDataSetWithStateManagement("testdata/site-branding.xml");
+    }
 
     private SiteBranding createTestBranding(String primaryColor) {
         SiteBranding branding = new SiteBranding();

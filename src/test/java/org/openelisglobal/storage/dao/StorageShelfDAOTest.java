@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.dao;
 
 import static org.junit.Assert.*;
+
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,6 +30,8 @@ public class StorageShelfDAOTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        cleanRowsInCurrentConnection(
+                new String[] { "storage_rack", "storage_shelf", "storage_device", "storage_room" });
         String uniqueCode = java.util.UUID.randomUUID().toString().substring(0, 6);
 
         testRoom = new StorageRoom();

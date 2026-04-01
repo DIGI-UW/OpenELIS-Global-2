@@ -265,7 +265,7 @@ public class PatientMergeConsolidationServiceIntegrationTest extends BaseWebCont
 
     private int getCount(String query, String patientId) {
         try (java.sql.Connection conn = dataSource.getConnection();
-             java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+                java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setLong(1, Long.parseLong(patientId));
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {

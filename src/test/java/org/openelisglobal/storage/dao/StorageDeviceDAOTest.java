@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.dao;
 
 import static org.junit.Assert.*;
+
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -24,6 +25,8 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        cleanRowsInCurrentConnection(
+                new String[] { "storage_rack", "storage_shelf", "storage_device", "storage_room" });
         String uniqueCode = java.util.UUID.randomUUID().toString().substring(0, 6);
 
         testRoom = new StorageRoom();
@@ -73,8 +76,10 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
     public void testFindByParentRoomId_WithValidRoom_ReturnsDevices() {
         List<StorageDevice> results = storageDeviceDAO.findByParentRoomId(testRoom.getId());
         assertEquals("Should return two devices", 2, results.size());
-        assertTrue("Should contain device 1", results.stream().anyMatch(d -> d.getCode().equals(testDevice1.getCode())));
-        assertTrue("Should contain device 2", results.stream().anyMatch(d -> d.getCode().equals(testDevice2.getCode())));
+        assertTrue("Should contain device 1",
+                results.stream().anyMatch(d -> d.getCode().equals(testDevice1.getCode())));
+        assertTrue("Should contain device 2",
+                results.stream().anyMatch(d -> d.getCode().equals(testDevice2.getCode())));
     }
 
     @Test
@@ -101,7 +106,9 @@ public class StorageDeviceDAOTest extends BaseWebContextSensitiveTest {
     public void testGetAll_ReturnsAllDevices() {
         List<StorageDevice> results = storageDeviceDAO.getAll();
         assertTrue("Should return at least 2 devices", results.size() >= 2);
-        assertTrue("Should contain device 1", results.stream().anyMatch(d -> d.getCode().equals(testDevice1.getCode())));
-        assertTrue("Should contain device 2", results.stream().anyMatch(d -> d.getCode().equals(testDevice2.getCode())));
+        assertTrue("Should contain device 1",
+                results.stream().anyMatch(d -> d.getCode().equals(testDevice1.getCode())));
+        assertTrue("Should contain device 2",
+                results.stream().anyMatch(d -> d.getCode().equals(testDevice2.getCode())));
     }
 }
