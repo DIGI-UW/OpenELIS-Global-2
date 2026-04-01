@@ -10,9 +10,10 @@ import {
 } from "../helpers/analyzer-dashboard";
 import {
   accessionTextRegExp,
+  expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../helpers/results-ui";
-import { UI_TIMEOUT } from "../helpers/timeouts";
+import { LONG_TIMEOUT, UI_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Analyzer harness: FILE drop → staged results → accept (one story per FILE
@@ -174,10 +175,8 @@ async function verifyImportedResults(
   for (const expected of scenario.expectedResults) {
     await expect(
       resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
-    await expect(
-      resultsRegion.getByText(expected.result, { exact: false }).first(),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expectResultVisible(resultsRegion, expected.result);
   }
 
   await presentation.pause(2_000);

@@ -15,28 +15,33 @@
     "HTTP": { "default_port": 8080 },
     "TCP/IP": {}
   },
+  "communication": {
+    "mode": "ANALYZER_INITIATED",
+    "supports_lis_initiated": true,
+    "notes": "HL7 push (ORU^R01) + query (QBP^Z01/Z03) per Cepheid LIS spec. Analyzer initiates all connections in current OE implementation. Bidirectional QBP support documented but not yet LIS-initiated (OGC-336)."
+  },
   "msh3_pattern": "GENEXPERT|CEPHEID",
   "default_test_mappings": [
     {
-      "analyzer_code": "MTB",
+      "test_code": "MTB",
       "test_name_hint": "Mycobacterium tuberculosis DNA",
       "loinc": "23826-1",
       "unit": ""
     },
     {
-      "analyzer_code": "RIF",
+      "test_code": "RIF",
       "test_name_hint": "Rifampin Resistance",
       "loinc": "46244-0",
       "unit": ""
     },
     {
-      "analyzer_code": "COVID19",
+      "test_code": "COVID19",
       "test_name_hint": "SARS-CoV-2 RNA",
       "loinc": "94500-6",
       "unit": ""
     },
     {
-      "analyzer_code": "HIV",
+      "test_code": "HIV",
       "test_name_hint": "HIV-1 RNA",
       "loinc": "20447-9",
       "unit": "copies/mL"

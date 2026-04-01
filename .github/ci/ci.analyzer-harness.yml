@@ -1,5 +1,3 @@
-version: "3.3"
-
 services:
   astm-simulator:
     build:
@@ -11,13 +9,18 @@ services:
     # analyzer-mock-server submodule revision for Playwright expectations.
     volumes:
       - ./projects/analyzer-harness/e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5000:9600"
       - "8085:8080"
+      - "5380:5380"
+      - "6001:6001"
+      - "6002:6002"
     environment:
-      - ASTM_PORT=9600
-      - ASTM_TEMPLATE=genexpert_astm
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
       - RESPONSE_DELAY_MS=0
+      - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
+      - MOCK_CONTAINER_NAME=openelis-astm-simulator
     command: >
       python -u server.py
       --port 9600
@@ -45,19 +48,19 @@ services:
       - "12000:12001"
       - "2575:2575"    # MLLP HL7 listener (OGC-325)
     volumes:
+      - key_trust-store-volume:/etc/openelis-global
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - SERVER_SSL_ENABLED=false
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - BRIDGE_FILE_ENABLED=true
-      - BRIDGE_OPENELIS_URL=https://oe.openelis.org:8443/OpenELIS-Global
-      - BRIDGE_OPENELIS_USERNAME=admin
-      - BRIDGE_OPENELIS_PASSWORD=adminADMIN!
-      - BRIDGE_OPENELIS_INSECURETLS=true
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
       # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=admin
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=adminADMIN!
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
       # TEST-ONLY: disables hostname verification for self-signed harness certs
       - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true

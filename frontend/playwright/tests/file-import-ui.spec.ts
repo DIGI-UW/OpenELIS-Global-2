@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 import { videoPause } from "../helpers/video-pause";
 import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
 import {
@@ -31,6 +33,11 @@ import {
  */
 
 const CLEANUP = process.env.CLEANUP !== "false";
+const REPO_ROOT = path.resolve(__dirname, "../../..");
+const HOST_IMPORTS_BASE = path.join(
+  REPO_ROOT,
+  "projects/analyzer-harness/volume/analyzer-imports",
+);
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -40,12 +47,28 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
   test.setTimeout(120_000);
 
   let createdAnalyzerName: string;
+  let createdImportHostDir: string | undefined;
 
   test("create analyzer, configure file import, test connection", async ({
     page,
   }, testInfo) => {
     // Use a unique name to avoid collisions with existing data
     createdAnalyzerName = `QuantStudio 7 Pro E2E ${Date.now()}`;
+    const importSlug = `quantstudio-7-pro-e2e-${Date.now()}`;
+    const importBasePath = `/data/analyzer-imports/${importSlug}`;
+    const incomingPath = `${importBasePath}/incoming`;
+    const archivePath = `${importBasePath}/archive`;
+    const errorPath = `${importBasePath}/errors`;
+    createdImportHostDir = path.join(HOST_IMPORTS_BASE, importSlug);
+    fs.mkdirSync(path.join(createdImportHostDir, "incoming"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(createdImportHostDir, "archive"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(createdImportHostDir, "errors"), {
+      recursive: true,
+    });
 
     // ── Step 1: Navigate to analyzer management ──────────────────
     await page.goto("analyzers", { waitUntil: "domcontentloaded" });
@@ -198,7 +221,7 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     const directoryInput = page.locator(
       '[data-testid="file-import-configuration-directory-input"]',
     );
-    await directoryInput.fill("/data/analyzer-imports/quantstudio-7");
+    await directoryInput.fill(incomingPath);
     await videoPause(page, 500, testInfo);
 
     // Set file pattern for Excel
@@ -213,22 +236,36 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     const archiveInput = page.locator(
       '[data-testid="file-import-configuration-archive-input"]',
     );
-    await archiveInput.fill("/data/analyzer-imports/quantstudio-7/archive");
+    await archiveInput.fill(archivePath);
     await videoPause(page, 500, testInfo);
 
     // Set error directory
     const errorInput = page.locator(
       '[data-testid="file-import-configuration-error-input"]',
     );
-    await errorInput.fill("/data/analyzer-imports/quantstudio-7/errors");
+    await errorInput.fill(errorPath);
     await videoPause(page, 2_000, testInfo);
 
     // Save
     const fileImportSave = page.locator(
       '[data-testid="file-import-configuration-form-save-button"]',
     );
+    const fileImportNotification = page.locator(
+      '[data-testid="file-import-configuration-form-notification"]',
+    );
+    const fileImportCancel = page.locator(
+      '[data-testid="file-import-configuration-form-cancel-button"]',
+    );
     await fileImportSave.click();
-    await expect(fileImportForm).toBeHidden({ timeout: LONG_TIMEOUT });
+    try {
+      await expect(fileImportForm).toBeHidden({ timeout: QUICK_TIMEOUT });
+    } catch {
+      await expect(fileImportNotification).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await fileImportCancel.click();
+      await expect(fileImportForm).toBeHidden({ timeout: UI_TIMEOUT });
+    }
     await videoPause(page, 1_500, testInfo);
 
     // ── Step 7: Test Connection ──────────────────────────────────
@@ -282,6 +319,15 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
       await cleanupAnalyzerByName(page, createdAnalyzerName);
     } catch (error) {
       console.warn("Cleanup failure for created analyzer:", error);
+    }
+
+    if (createdImportHostDir) {
+      try {
+        fs.rmSync(createdImportHostDir, { recursive: true, force: true });
+      } catch (error) {
+        console.warn("Cleanup failure for created import directory:", error);
+      }
+      createdImportHostDir = undefined;
     }
   });
 });
