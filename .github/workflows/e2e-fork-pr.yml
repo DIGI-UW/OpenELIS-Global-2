@@ -1,6 +1,6 @@
 # Native fork E2E executor. This workflow is the privileged fork path under
 # pull_request_target; repository approval settings remain the trust boundary.
-name: E2E (Fork PR)
+name: 03 - E2E - Fork PR
 
 on:
   pull_request_target:
@@ -574,7 +574,7 @@ jobs:
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
 
   e2e-gate:
-    name: E2E (Fork PR)
+    name: 03 Checkpoint - E2E - Fork PR
     if: always()
     needs:
       [
@@ -596,7 +596,7 @@ jobs:
             echo "Non-fork PR detected; fork-native workflow is not authoritative for this run."
             echo "Not applicable."
             {
-              echo "## E2E (Fork PR)"
+              echo "## 03 Checkpoint - E2E - Fork PR"
               echo ""
               echo "Status: \`not_applicable\`"
               echo "Reason: non-fork PRs are handled by \`03 Checkpoint - E2E\`."
@@ -627,4 +627,4 @@ jobs:
             echo "Cypress failed: ${{ needs.cypress.result }}"
             exit 1
           fi
-          echo "E2E (Fork PR) passed."
+          echo "03 Checkpoint - E2E - Fork PR passed."

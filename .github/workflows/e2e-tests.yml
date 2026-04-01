@@ -129,7 +129,7 @@ jobs:
             const output = {
               title: 'E2E wrapper running',
               summary: '${{ needs.setup.outputs.is_fork }}' === 'true'
-                ? 'Non-fork checkpoint wrapper is preparing a not_applicable result because fork PRs are handled by E2E (Fork PR).'
+                ? 'Non-fork checkpoint wrapper is preparing a not_applicable result because fork PRs are handled by 03 Checkpoint - E2E - Fork PR.'
                 : 'Playwright, Cypress, and analyzer-harness suites are running behind this wrapper.'
             };
 
@@ -553,7 +553,7 @@ jobs:
               echo "## 03 Checkpoint - E2E"
               echo ""
               echo "Status: \`not_applicable\`"
-              echo "Reason: fork PRs are handled by \`E2E (Fork PR)\`."
+              echo "Reason: fork PRs are handled by \`03 Checkpoint - E2E - Fork PR\`."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -606,7 +606,7 @@ jobs:
             if (isFork) {
               conclusion = 'success';
               title = 'Non-fork checkpoint not applicable';
-              summary = 'Fork PRs are validated by the separate `E2E (Fork PR)` checkpoint.';
+              summary = 'Fork PRs are validated by the separate `03 Checkpoint - E2E - Fork PR` checkpoint.';
             } else if (imageTransfer !== 'ghcr') {
               conclusion = 'failure';
               title = 'E2E build failed';
