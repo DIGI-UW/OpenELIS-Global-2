@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NceCategoryDAOImpl extends BaseDAOImpl<NceCategory, String> implements NceCategoryDAO {
+public class NceCategoryDAOImpl extends BaseDAOImpl<NceCategory, Integer> implements NceCategoryDAO {
 
     public NceCategoryDAOImpl() {
         super(NceCategory.class);

@@ -8,7 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 /**
  * Service interface for NceAttachment operations.
  */
-public interface NceAttachmentService extends BaseObjectService<NceAttachment, String> {
+public interface NceAttachmentService extends BaseObjectService<NceAttachment, Integer> {
 
     /**
      * Find all attachments for a given NCE.

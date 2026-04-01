@@ -206,6 +206,25 @@
     </changeSet>
 
     <!-- ================================================================== -->
+    <!-- Add last_updated column to nce_action_log table                    -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-013-add-nce-action-log-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_action_log"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_action_log" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column to nce_action_log table</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_action_log">
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
     <!-- Add NCE Dashboard menu item under Non-Conformity menu              -->
     <!-- ================================================================== -->
     <changeSet author="reagan-meant" id="nce-012-add-dashboard-menu">

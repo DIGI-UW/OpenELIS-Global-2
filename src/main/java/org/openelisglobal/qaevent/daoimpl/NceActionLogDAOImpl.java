@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, String> implements NceActionLogDAO {
+public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, Integer> implements NceActionLogDAO {
 
     public NceActionLogDAOImpl() {
         super(NceActionLog.class);
@@ -22,19 +22,19 @@ public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, String> imple
 
     @Override
     @Transactional(readOnly = true)
-    public List<NceActionLog> getNceActionLogByNceId(String nceId) throws LIMSRuntimeException {
+    public List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException {
         List<NceActionLog> list = new ArrayList<>();
         try {
             String sqlString = "from NceActionLog nc where nc.ncEventId = :param";
 
             Query<NceActionLog> query = entityManager.unwrap(Session.class).createQuery(sqlString, NceActionLog.class);
-            query.setParameter("param", Integer.parseInt(nceId));
+            query.setParameter("param", nceId);
 
             list = query.list();
             return list;
         } catch (RuntimeException exception) {
             LogEvent.logError(exception);
-            throw new LIMSRuntimeException("Error in NceActionLog getNceActionLogByNceId(String nceId)", exception);
+            throw new LIMSRuntimeException("Error in NceActionLog getNceActionLogByNceId(Integer nceId)", exception);
         }
     }
 }

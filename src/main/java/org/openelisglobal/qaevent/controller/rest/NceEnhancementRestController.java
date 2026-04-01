@@ -70,7 +70,7 @@ public class NceEnhancementRestController extends BaseRestController {
 
         for (NcEvent event : allEvents) {
             NceDashboardItemDTO item = new NceDashboardItemDTO();
-            item.id = event.getId();
+            item.id = String.valueOf(event.getId());
             item.nceNumber = event.getNceNumber();
             item.title = event.getTitle();
             item.description = event.getDescription();
@@ -124,7 +124,7 @@ public class NceEnhancementRestController extends BaseRestController {
         List<NceCategoryDTO> result = categories.stream()
                 .filter(cat -> cat.getActive() == null || Boolean.TRUE.equals(cat.getActive())).map(cat -> {
                     NceCategoryDTO dto = new NceCategoryDTO();
-                    dto.id = cat.getId();
+                    dto.id = String.valueOf(cat.getId());
                     dto.name = cat.getLocalizedName();
 
                     List<NceType> types = nceTypeService.getNceTypesByCategoryId(cat.getId());
@@ -132,7 +132,7 @@ public class NceEnhancementRestController extends BaseRestController {
                             .filter(type -> type.getActive() == null || Boolean.TRUE.equals(type.getActive()))
                             .map(type -> {
                                 NceTypeDTO typeDto = new NceTypeDTO();
-                                typeDto.id = type.getId();
+                                typeDto.id = String.valueOf(type.getId());
                                 typeDto.name = type.getLocalizedName();
                                 return typeDto;
                             }).collect(Collectors.toList());

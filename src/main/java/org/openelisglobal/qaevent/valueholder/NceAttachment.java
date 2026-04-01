@@ -13,7 +13,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "nce_attachment", schema = "clinlims")
-public class NceAttachment extends BaseObject<String> {
+public class NceAttachment extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
@@ -49,13 +49,13 @@ public class NceAttachment extends BaseObject<String> {
     }
 
     @Override
-    public String getId() {
-        return id != null ? String.valueOf(id) : null;
+    public Integer getId() {
+        return id;
     }
 
     @Override
-    public void setId(String id) {
-        this.id = id != null ? Integer.valueOf(id) : null;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public Integer getNceId() {

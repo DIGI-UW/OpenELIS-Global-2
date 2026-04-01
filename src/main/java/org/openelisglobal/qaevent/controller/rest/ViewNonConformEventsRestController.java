@@ -136,7 +136,8 @@ public class ViewNonConformEventsRestController extends BaseRestController {
                             + cat.getLocalizedName() + ", active=" + cat.getActive());
             Boolean active = cat.getActive();
             if (active == null || Boolean.TRUE.equals(active)) {
-                result.add(new IdValuePair(cat.getId() != null ? cat.getId() : "", cat.getLocalizedName()));
+                result.add(new IdValuePair(cat.getId() != null ? String.valueOf(cat.getId()) : "",
+                        cat.getLocalizedName()));
             }
         }
         LogEvent.logInfo(this.getClass().getSimpleName(), "getNceCategoriesAsIdValuePairs",
@@ -152,7 +153,7 @@ public class ViewNonConformEventsRestController extends BaseRestController {
                 "Found " + types.size() + " types");
         for (NceType type : types) {
             if (type.getActive() == null || Boolean.TRUE.equals(type.getActive())) {
-                result.add(new IdValuePair(type.getId(), type.getLocalizedName()));
+                result.add(new IdValuePair(String.valueOf(type.getId()), type.getLocalizedName()));
             }
         }
         LogEvent.logInfo(this.getClass().getSimpleName(), "getNceTypesAsIdValuePairs",

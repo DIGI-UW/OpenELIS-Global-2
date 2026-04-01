@@ -12,7 +12,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "nce_specimen", schema = "clinlims")
-public class NceSpecimen extends BaseObject<String> {
+public class NceSpecimen extends BaseObject<Integer> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nce_specimen_seq_gen")
@@ -27,13 +27,13 @@ public class NceSpecimen extends BaseObject<String> {
     private Integer sampleItemId;
 
     @Override
-    public String getId() {
-        return id != null ? String.valueOf(id) : null;
+    public Integer getId() {
+        return id;
     }
 
     @Override
-    public void setId(String id) {
-        this.id = id != null ? Integer.valueOf(id) : null;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public Integer getNceId() {

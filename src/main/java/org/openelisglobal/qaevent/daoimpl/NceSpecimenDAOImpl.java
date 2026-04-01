@@ -1,7 +1,6 @@
 package org.openelisglobal.qaevent.daoimpl;
 
 import java.util.List;
-import java.util.Optional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -14,52 +13,36 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, String> implements NceSpecimenDAO {
+public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, Integer> implements NceSpecimenDAO {
 
     public NceSpecimenDAOImpl() {
         super(NceSpecimen.class);
     }
 
     @Override
-    public List<NceSpecimen> getSpecimenByNceId(String nceId) throws LIMSRuntimeException {
+    public List<NceSpecimen> getSpecimenByNceId(Integer nceId) throws LIMSRuntimeException {
         List<NceSpecimen> list;
         try {
             String sql = "from NceSpecimen ns where ns.nceId=:nceId ";
             Query<NceSpecimen> query = entityManager.unwrap(Session.class).createQuery(sql, NceSpecimen.class);
-            query.setParameter("nceId", Integer.parseInt(nceId));
+            query.setParameter("nceId", nceId);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in NceSpecimen getSpecimenByNceId(String nceId)", e);
+            throw new LIMSRuntimeException("Error in NceSpecimen getSpecimenByNceId(Integer nceId)", e);
         }
         return list;
     }
 
     @Override
-    public List<NceSpecimen> getSpecimenBySampleId(String sampleId) {
+    public List<NceSpecimen> getSpecimenBySampleId(Integer sampleId) {
         List<NceSpecimen> list;
         String sql = "from NceSpecimen ns where ns.sampleItemId=:sampleId ";
         Query<NceSpecimen> query = entityManager.unwrap(Session.class).createQuery(sql, NceSpecimen.class);
-        query.setParameter("sampleId", Integer.parseInt(sampleId));
+        query.setParameter("sampleId", sampleId);
         list = query.list();
 
         return list;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<NceSpecimen> get(String id) {
-        try {
-            Integer intId = id != null ? Integer.valueOf(id) : null;
-            NceSpecimen object = entityManager.find(NceSpecimen.class, intId);
-            return Optional.ofNullable(object);
-        } catch (NumberFormatException e) {
-            LogEvent.logError(e);
-            return Optional.empty();
-        } catch (RuntimeException e) {
-            LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in NceSpecimenDAOImpl get", e);
-        }
     }
 
     @Override

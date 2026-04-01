@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Component
 @Transactional
-public class NceAttachmentDAOImpl extends BaseDAOImpl<NceAttachment, String> implements NceAttachmentDAO {
+public class NceAttachmentDAOImpl extends BaseDAOImpl<NceAttachment, Integer> implements NceAttachmentDAO {
 
     public NceAttachmentDAOImpl() {
         super(NceAttachment.class);

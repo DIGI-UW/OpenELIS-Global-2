@@ -14,7 +14,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "nc_event", schema = "clinlims")
-public class NcEvent extends BaseObject<String> {
+public class NcEvent extends BaseObject<Integer> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nc_event_seq_gen")
@@ -132,13 +132,13 @@ public class NcEvent extends BaseObject<String> {
     private String resolutionNotes;
 
     @Override
-    public String getId() {
-        return id != null ? String.valueOf(id) : null;
+    public Integer getId() {
+        return id;
     }
 
     @Override
-    public void setId(String id) {
-        this.id = id != null ? Integer.valueOf(id) : null;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public Date getReportDate() {

@@ -8,14 +8,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-import jakarta.persistence.Version;
-import java.sql.Timestamp;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.valueholder.Localization;
 
 @Entity
 @Table(name = "nce_category", schema = "clinlims")
-public class NceCategory extends BaseObject<String> {
+public class NceCategory extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
@@ -34,22 +32,18 @@ public class NceCategory extends BaseObject<String> {
     @Column(name = "active")
     private Boolean active;
 
-    @Version
-    @Column(name = "last_updated")
-    private Timestamp lastupdated;
-
     // TODO: Add name_localization_id column to database before enabling
     @Transient
     private Localization nameLocalization;
 
     @Override
-    public String getId() {
-        return id != null ? String.valueOf(id) : null;
+    public Integer getId() {
+        return id;
     }
 
     @Override
-    public void setId(String id) {
-        this.id = id != null ? Integer.valueOf(id) : null;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -74,14 +68,6 @@ public class NceCategory extends BaseObject<String> {
 
     public void setActive(Boolean active) {
         this.active = active;
-    }
-
-    public Timestamp getLastupdated() {
-        return lastupdated;
-    }
-
-    public void setLastupdated(Timestamp lastupdated) {
-        this.lastupdated = lastupdated;
     }
 
     public Localization getNameLocalization() {

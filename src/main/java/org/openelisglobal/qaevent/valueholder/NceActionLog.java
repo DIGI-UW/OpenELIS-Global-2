@@ -13,7 +13,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "nce_action_log", schema = "clinlims")
-public class NceActionLog extends BaseObject<String> {
+public class NceActionLog extends BaseObject<Integer> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nce_action_log_seq_gen")
@@ -52,13 +52,13 @@ public class NceActionLog extends BaseObject<String> {
     private Date reviewDate;
 
     @Override
-    public String getId() {
-        return id != null ? String.valueOf(id) : null;
+    public Integer getId() {
+        return id;
     }
 
     @Override
-    public void setId(String id) {
-        this.id = id != null ? Integer.valueOf(id) : null;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public String getCorrectiveAction() {

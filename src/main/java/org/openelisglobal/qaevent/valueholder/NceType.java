@@ -8,14 +8,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-import java.sql.Timestamp;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.valueholder.Localization;
 
 @Entity
 @Table(name = "nce_type", schema = "clinlims")
-public class NceType extends BaseObject<String> {
+public class NceType extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
@@ -37,21 +36,18 @@ public class NceType extends BaseObject<String> {
     @Column(name = "active")
     private Boolean active;
 
-    @Column(name = "last_updated")
-    private Timestamp lastupdated;
-
     // TODO: Add name_localization_id column to database before enabling
     @Transient
     private Localization nameLocalization;
 
     @Override
-    public String getId() {
-        return id != null ? String.valueOf(id) : null;
+    public Integer getId() {
+        return id;
     }
 
     @Override
-    public void setId(String id) {
-        this.id = id != null ? Integer.valueOf(id) : null;
+    public void setId(Integer id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -86,14 +82,6 @@ public class NceType extends BaseObject<String> {
         this.categoryId = categoryId;
     }
 
-    public Timestamp getLastupdated() {
-        return lastupdated;
-    }
-
-    public void setLastupdated(Timestamp lastupdated) {
-        this.lastupdated = lastupdated;
-    }
-
     public Localization getNameLocalization() {
         return nameLocalization;
     }
@@ -124,12 +112,11 @@ public class NceType extends BaseObject<String> {
             return false;
         NceType nceType = (NceType) o;
         return Objects.equals(id, nceType.id) && Objects.equals(name, nceType.name)
-                && Objects.equals(displayKey, nceType.displayKey) && Objects.equals(active, nceType.active)
-                && Objects.equals(lastupdated, nceType.lastupdated);
+                && Objects.equals(displayKey, nceType.displayKey) && Objects.equals(active, nceType.active);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, displayKey, active, lastupdated);
+        return Objects.hash(id, name, displayKey, active);
     }
 }

@@ -61,7 +61,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         event.setReportDate(new java.sql.Date(System.currentTimeMillis()));
         event = ncEventService.save(event);
         for (String specimenId : specimens) {
-            Integer nceId = Integer.parseInt(event.getId());
+            Integer nceId = event.getId();
             Integer sampleItemId = Integer.parseInt(specimenId);
 
             // Check if this specimen is already linked to this NCE
@@ -78,7 +78,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean update(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setSysUserId(form.getCurrentUserId());
             // date from input field - try multiple formats
@@ -121,7 +121,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean updateFollowUp(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setStatus("CAPA");
             ncEvent.setLaboratoryComponent(form.getLaboratoryComponent());
@@ -212,7 +212,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             form.setSuspectedCauses(event.getSuspectedCauses());
             form.setProposedAction(event.getProposedAction());
             form.setNceNumber(event.getNceNumber());
-            form.setId(event.getId());
+            form.setId(String.valueOf(event.getId()));
             form.setLabOrderNumber(event.getLabOrderNumber());
             form.setReportingUnit(event.getReportingUnitId());
 
@@ -263,7 +263,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 al.setDateCompleted(getDate(actionLog.element("dateCompleted").getText(), "dd/MM/yyyy"));
                 al.setPersonResponsible(actionLog.element("personResponsible").getText());
                 if (actionLog.element("id") != null) {
-                    al.setId(actionLog.element("id").getText());
+                    al.setId(Integer.valueOf(actionLog.element("id").getText()));
                 }
                 nceActionLogList.add(al);
             }
@@ -309,7 +309,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             List<NceActionLog> actionLogs = form.getActionLog();
             if (actionLogs != null) {
                 for (NceActionLog actionLog : actionLogs) {
-                    actionLog.setNcEventId(Integer.parseInt(ncEvent.getId()));
+                    actionLog.setNcEventId(ncEvent.getId());
                     actionLog.setSysUserId(form.getCurrentUserId());
                     nceActionLogService.save(actionLog);
                 }
@@ -319,7 +319,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean updateCorrectiveAction(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy")); // Convert the string to a Date
@@ -334,7 +334,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean resolveNCEvent(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             setActionLogs(form, ncEvent);

@@ -163,7 +163,7 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
 
         // Find the corresponding nce_category
         NceCategory category = findCategoryByName(categoryName);
-        Integer categoryId = category != null ? Integer.valueOf(category.getId()) : null;
+        Integer categoryId = category != null ? category.getId() : null;
 
         // Check if type already exists by name
         NceType existing = findTypeByName(name);

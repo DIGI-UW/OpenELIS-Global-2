@@ -4,7 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qaevent.valueholder.NceType;
 
-public interface NceTypeService extends BaseObjectService<NceType, String> {
+public interface NceTypeService extends BaseObjectService<NceType, Integer> {
 
     List<NceType> getAllNceTypes();
 
@@ -14,5 +14,5 @@ public interface NceTypeService extends BaseObjectService<NceType, String> {
      * @param categoryId the category ID
      * @return list of NCE types in that category
      */
-    List<NceType> getNceTypesByCategoryId(String categoryId);
+    List<NceType> getNceTypesByCategoryId(Integer categoryId);
 }

@@ -116,7 +116,7 @@ public class ReportNonConformingEventController extends BaseController {
         NcEvent event = nonConformingEventWorker.create(labOrderNumber, Arrays.asList(sampleItemIds.split(",")),
                 systemUser.getId(), form.getNceNumber());
         form.setNceNumber(event.getNceNumber());
-        form.setId(event.getId());
+        form.setId(String.valueOf(event.getId()));
 
         form.setLabOrderNumber(labOrderNumber);
         Sample sample = getSampleForLabNumber(labOrderNumber);
@@ -159,7 +159,7 @@ public class ReportNonConformingEventController extends BaseController {
         for (NceCategory cat : categories) {
             Boolean active = cat.getActive();
             if (active == null || Boolean.TRUE.equals(active)) {
-                result.add(new IdValuePair(cat.getId() != null ? cat.getId() : "", cat.getName()));
+                result.add(new IdValuePair(cat.getId() != null ? String.valueOf(cat.getId()) : "", cat.getName()));
             }
         }
         return result;

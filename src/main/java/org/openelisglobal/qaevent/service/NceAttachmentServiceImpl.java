@@ -21,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
  * Service implementation for NceAttachment operations.
  */
 @Service
-public class NceAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<NceAttachment, String>
+public class NceAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<NceAttachment, Integer>
         implements NceAttachmentService {
 
     @Value("${org.openelisglobal.nce.attachment.path:/var/lib/openelis-global/nce-attachments}")
@@ -58,7 +58,7 @@ public class NceAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<Nce
         attachment.setUploadedBy(uploadedBy);
         attachment.setUploadedDate(Timestamp.from(Instant.now()));
 
-        String id = baseObjectDAO.insert(attachment);
+        Integer id = baseObjectDAO.insert(attachment);
         attachment.setId(id);
         return attachment;
     }

@@ -4,11 +4,11 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 
-public interface NceSpecimenService extends BaseObjectService<NceSpecimen, String> {
+public interface NceSpecimenService extends BaseObjectService<NceSpecimen, Integer> {
 
-    List<NceSpecimen> getSpecimenByNceId(String nceId);
+    List<NceSpecimen> getSpecimenByNceId(Integer nceId);
 
-    List<NceSpecimen> getSpecimenBySampleItemId(String sampleId);
+    List<NceSpecimen> getSpecimenBySampleItemId(Integer sampleId);
 
     boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId);
 }

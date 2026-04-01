@@ -132,7 +132,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
                     Arrays.asList(params.get("specimenId").split(",")), systemUser.getId(), ncenumber);
 
             eventData.setNceNumber(event.getNceNumber());
-            eventData.setId(event.getId());
+            eventData.setId(String.valueOf(event.getId()));
 
             Sample sample = getSampleForLabNumber(params.get("labOrderNumber"));
             if (sample != null) {
@@ -183,7 +183,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
 
                 NcEvent newEvent = nonConformingEventWorker.create(form.getLabOrderNumber(), specimens, sysUserId,
                         nceNumber);
-                form.setId(newEvent.getId());
+                form.setId(String.valueOf(newEvent.getId()));
             }
 
             form.setCurrentUserId(sysUserId);
@@ -222,7 +222,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
 
                 NcEvent newEvent = nonConformingEventWorker.create(form.getLabOrderNumber(), specimens, sysUserId,
                         nceNumber);
-                form.setId(newEvent.getId());
+                form.setId(String.valueOf(newEvent.getId()));
             }
 
             form.setCurrentUserId(sysUserId);
@@ -285,7 +285,8 @@ public class ReportNonConformEventsRestController extends BaseRestController {
         for (NceCategory cat : categories) {
             Boolean active = cat.getActive();
             if (active == null || Boolean.TRUE.equals(active)) {
-                result.add(new IdValuePair(cat.getId() != null ? cat.getId() : "", cat.getLocalizedName()));
+                result.add(new IdValuePair(cat.getId() != null ? String.valueOf(cat.getId()) : "",
+                        cat.getLocalizedName()));
             }
         }
         return result;

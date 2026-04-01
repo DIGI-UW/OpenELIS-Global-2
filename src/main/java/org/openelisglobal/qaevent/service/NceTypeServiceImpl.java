@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NceTypeServiceImpl extends AuditableBaseObjectServiceImpl<NceType, String> implements NceTypeService {
+public class NceTypeServiceImpl extends AuditableBaseObjectServiceImpl<NceType, Integer> implements NceTypeService {
 
     @Autowired
     protected NceTypeDAO baseObjectDAO;
@@ -26,7 +26,7 @@ public class NceTypeServiceImpl extends AuditableBaseObjectServiceImpl<NceType, 
 
     @Override
     @Transactional(readOnly = true)
-    public List<NceType> getNceTypesByCategoryId(String categoryId) {
+    public List<NceType> getNceTypesByCategoryId(Integer categoryId) {
         return baseObjectDAO.getNceTypesByCategoryId(categoryId);
     }
 

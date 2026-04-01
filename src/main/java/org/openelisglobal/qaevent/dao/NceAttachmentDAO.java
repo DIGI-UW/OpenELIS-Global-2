@@ -7,7 +7,7 @@ import org.openelisglobal.qaevent.valueholder.NceAttachment;
 /**
  * DAO interface for NceAttachment entities.
  */
-public interface NceAttachmentDAO extends BaseDAO<NceAttachment, String> {
+public interface NceAttachmentDAO extends BaseDAO<NceAttachment, Integer> {
 
     /**
      * Find all attachments for a given NCE.

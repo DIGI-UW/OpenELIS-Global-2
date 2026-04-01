@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NceCategoryServiceImpl extends AuditableBaseObjectServiceImpl<NceCategory, String>
+public class NceCategoryServiceImpl extends AuditableBaseObjectServiceImpl<NceCategory, Integer>
         implements NceCategoryService {
 
     @Autowired

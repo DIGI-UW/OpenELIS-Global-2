@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class NceTypeDAOImpl extends BaseDAOImpl<NceType, String> implements NceTypeDAO {
+public class NceTypeDAOImpl extends BaseDAOImpl<NceType, Integer> implements NceTypeDAO {
 
     public NceTypeDAOImpl() {
         super(NceType.class);
@@ -36,12 +36,12 @@ public class NceTypeDAOImpl extends BaseDAOImpl<NceType, String> implements NceT
 
     @Override
     @Transactional(readOnly = true)
-    public List<NceType> getNceTypesByCategoryId(String categoryId) throws LIMSRuntimeException {
+    public List<NceType> getNceTypesByCategoryId(Integer categoryId) throws LIMSRuntimeException {
         List<NceType> list;
         try {
             String sql = "from NceType nt where nt.categoryId = :categoryId order by nt.id";
             Query<NceType> query = entityManager.unwrap(Session.class).createQuery(sql, NceType.class);
-            query.setParameter("categoryId", Integer.valueOf(categoryId));
+            query.setParameter("categoryId", categoryId);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
