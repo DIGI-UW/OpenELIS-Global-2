@@ -80,28 +80,58 @@ jobs:
 
           echo "Build context: is_fork=$IS_FORK image_transfer=$IMAGE_TRANSFER event=$EVENT_NAME pr=#$PR_NUMBER head_sha=$HEAD_SHA"
 
-  # ─── Set pending status on PR ───────────────────────────────────────────────
+  # ─── Set pending check run on PR ────────────────────────────────────────────
   set-pending-status:
     name: Set Pending Status
     needs: setup
     if: needs.setup.outputs.image_transfer != 'none' && needs.setup.outputs.head_sha != ''
     runs-on: ubuntu-latest
     permissions:
-      statuses: write
+      checks: write
     steps:
-      - name: Post pending commit status
+      - name: Create or update check run to in_progress
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.repos.createCommitStatus({
+            const sha = '${{ needs.setup.outputs.head_sha }}';
+            const name = '03 Checkpoint - E2E';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            // Find existing check run (created by e2e-pending-status.yml)
+            const { data: { check_runs } } = await github.rest.checks.listForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ needs.setup.outputs.head_sha }}',
-              state: 'pending',
-              context: '03 Checkpoint - E2E',
-              description: 'E2E tests running...',
-              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+              ref: sha,
+              check_name: name,
+              filter: 'latest'
             });
+
+            if (check_runs.length > 0) {
+              await github.rest.checks.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                check_run_id: check_runs[0].id,
+                status: 'in_progress',
+                details_url: runUrl,
+                output: {
+                  title: 'E2E tests running',
+                  summary: 'Playwright, Cypress, and Analyzer Harness tests are in progress...'
+                }
+              });
+            } else {
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head_sha: sha,
+                name,
+                status: 'in_progress',
+                details_url: runUrl,
+                output: {
+                  title: 'E2E tests running',
+                  summary: 'Playwright, Cypress, and Analyzer Harness tests are in progress...'
+                }
+              });
+            }
 
   # ─── Fork Rebuild ───────────────────────────────────────────────────────────
   # Only runs for fork PRs. Rebuilds from GHA cache (fast) and pushes to GHCR
@@ -490,40 +520,69 @@ jobs:
           echo "E2E gate passed."
 
   # ─── Report Status ──────────────────────────────────────────────────────────
-  # Posts commit status back to PR so results are visible in the PR checks tab.
-  # workflow_run checks don't automatically appear on PRs.
+  # Updates the check run on the PR with final E2E results.
+  # workflow_run checks don't automatically appear on PRs, so we manage our own.
   report-status:
     name: Report Status
     if: always() && needs.setup.outputs.head_sha != ''
     needs: [setup, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
-      statuses: write
+      checks: write
     steps:
-      - name: Post commit status to PR
+      - name: Update check run with results
         uses: actions/github-script@v7
         with:
           script: |
+            const sha = '${{ needs.setup.outputs.head_sha }}';
+            const name = '03 Checkpoint - E2E';
             const gateResult = '${{ needs.e2e-gate.result }}';
             const imageTransfer = '${{ needs.setup.outputs.image_transfer }}';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            let state, description;
+            let conclusion, title, summary;
             if (imageTransfer === 'none') {
-              state = 'failure';
-              description = 'E2E build failed — no images produced';
+              conclusion = 'failure';
+              title = 'E2E build failed';
+              summary = 'No Docker images were produced — E2E tests could not run.';
             } else if (gateResult === 'success') {
-              state = 'success';
-              description = 'E2E tests passed';
+              conclusion = 'success';
+              title = 'E2E tests passed';
+              summary = 'All Playwright, Cypress, and Analyzer Harness tests passed.';
             } else {
-              state = 'failure';
-              description = 'E2E tests failed';
+              conclusion = 'failure';
+              title = 'E2E tests failed';
+              summary = 'One or more E2E test suites failed. Click **Details** to view the full run.';
             }
-            await github.rest.repos.createCommitStatus({
+
+            // Find existing check run (created by e2e-pending-status.yml or set-pending-status job)
+            const { data: { check_runs } } = await github.rest.checks.listForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: '${{ needs.setup.outputs.head_sha }}',
-              state,
-              context: '03 Checkpoint - E2E',
-              description,
-              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+              ref: sha,
+              check_name: name,
+              filter: 'latest'
             });
+
+            if (check_runs.length > 0) {
+              await github.rest.checks.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                check_run_id: check_runs[0].id,
+                status: 'completed',
+                conclusion,
+                details_url: runUrl,
+                output: { title, summary }
+              });
+            } else {
+              await github.rest.checks.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head_sha: sha,
+                name,
+                status: 'completed',
+                conclusion,
+                details_url: runUrl,
+                output: { title, summary }
+              });
+            }
