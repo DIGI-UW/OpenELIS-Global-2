@@ -45,6 +45,7 @@ services:
       - TZ=Africa/Nairobi
       - SPRING_LIQUIBASE_CONTEXTS=test
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+      - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - lucene_index-vol:/var/lib/lucene_index

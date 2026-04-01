@@ -3,6 +3,12 @@
 **Input**: design documents in `specs/012-generic-astm-plugin-profiles/`  
 **Tests**: mandatory before implementation in each milestone
 
+**Current branch note**: This task file now reflects the consolidated
+`fix/013-hl7-test-connection` branch rather than the original standalone 012
+milestone branch history. FILE-specific profile ownership remains tracked in
+`014`; unchecked items below should be read as remaining verification/regression
+work on this branch.
+
 ## Format
 
 `[ID] [P?] [Milestone] Description`
@@ -68,19 +74,19 @@
 - [x] T017 [M1] Implement `AnalyzerPluginConfigService` (CRUD + validation +
       QC/transform evaluators). [Refs: FR-014, FR-015, FR-016, FR-018, FR-019,
       BR-13, CR-006]
-- [ ] T018 [P] [M1] Implement `AnalyzerPendingCodeService`
+- [x] T018 [P] [M1] Implement `AnalyzerPendingCodeService`
       (detect/increment/cap/purge/resolve/ignore). [Refs: FR-021, BR-16, SC-005]
-- [ ] T019 [M1] Enhance `AnalyzerServiceImpl.autoCreateTestMappings()` to
+- [x] T019 [M1] Enhance `AnalyzerServiceImpl.autoCreateTestMappings()` to
       populate `configDefaults`. [Refs: FR-022, FR-024, SC-002]
-- [ ] T020 [M1] Enforce activation gate in analyzer status transition (BR-12 via
+- [x] T020 [M1] Enforce activation gate in analyzer status transition (BR-12 via
       JSONB config). [Refs: BR-12, SC-003]
-- [ ] T021 [M1] Extend `AnalyzerMappingPreviewServiceImpl` with v1.2 outputs
+- [x] T021 [M1] Extend `AnalyzerMappingPreviewServiceImpl` with v1.2 outputs
       from JSONB config. [Refs: FR-020, BR-15, SC-004]
-- [ ] T060 [M1] Implement port conflict validation for active analyzer listeners
+- [x] T060 [M1] Implement port conflict validation for active analyzer listeners
       (BR-11).
-- [ ] T061 [M1] Implement profile schema validation on profile read/apply path
+- [x] T061 [M1] Implement profile schema validation on profile read/apply path
       (BR-18).
-- [ ] T062 [M1] Enforce built-in profile immutability in runtime profile APIs
+- [x] T062 [M1] Enforce built-in profile immutability in runtime profile APIs
       (BR-20).
 
 ### Controllers and RBAC
@@ -93,25 +99,27 @@
 
 ### Tests
 
-- [ ] T025 [M1] ORM mapping tests for new entities.
-- [ ] T026 [P] [M1] Service unit tests for plugin config service.
-- [ ] T027 [P] [M1] Service unit tests for pending code service.
-- [ ] T028 [P] [M1] Controller tests for plugin-config APIs and RBAC.
+- [x] T025 [M1] ORM mapping tests for new entities. _(Current branch contains
+      dedicated entity/service/controller verification coverage; remaining
+      deferred items below capture the still-open integration gaps.)_
+- [x] T026 [P] [M1] Service unit tests for plugin config service.
+- [x] T027 [P] [M1] Service unit tests for pending code service.
+- [x] T028 [P] [M1] Controller tests for plugin-config APIs and RBAC.
 - [ ] T029 [M1] Integration test: profile apply -> mappings + plugin config
       defaults. [Refs: FR-024, SC-002]
 - [ ] T030 [M1] Integration test: activation gate + preview extension behavior.
       [Refs: BR-12, FR-020, SC-003, SC-004]
-- [ ] T063 [P] [M1] Validation tests for aggregation window bounds (`BY_SESSION`
+- [x] T063 [P] [M1] Validation tests for aggregation window bounds (`BY_SESSION`
       5-300) (BR-14).
 - [ ] T064 [P] [M1] Integration tests for pending-code cap/purge behavior and
       status transitions (BR-16).
 - [ ] T065 [P] [M1] Parsing/preview tests for 1-indexed ASTM field/component
       extraction references (BR-17).
-- [ ] T066 [P] [M1] Negative tests for profile schema validation failures
+- [x] T066 [P] [M1] Negative tests for profile schema validation failures
       (BR-18).
-- [ ] T067 [P] [M1] Tests that profile mutation/update APIs reject writes to
+- [x] T067 [P] [M1] Tests that profile mutation/update APIs reject writes to
       built-in filesystem templates (BR-20).
-- [ ] T068 [P] [M1] Tests for active analyzer port conflict detection and
+- [x] T068 [P] [M1] Tests for active analyzer port conflict detection and
       conflict response payload (BR-11).
 
 ### Build and gate

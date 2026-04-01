@@ -97,6 +97,14 @@ Each milestone = 1 PR. Use `[P]` prefix for parallel milestones._
 | M2  | `feat/013-ogc-327-bc5380-hl7`              | First analyzer validation target using BC-5380 profile seed and the proven listener path                                                            | US2, US3     | BC-5380 validation proof accepted on the post-`OGC-325` path                                                          | M1         |
 | M3  | `feat/013-ogc-326-bs-series-hl7`           | Combined BS-series delivery branch committed to BS-200 and BS-300, with early BS-300 evidence validation inside the branch                          | US2, US3     | BS-200 target validated and BS-300 early-equivalence check explicitly passed or rejected with documented scope impact | M2         |
 
+**Cross-Cutting Fix**: `fix/013-hl7-test-connection` (PR #3195 / current
+consolidation branch). This branch carries the shared implementation for
+CommunicationMode (ANALYZER_INITIATED, LIS_INITIATED, BOTH), unified
+bridge-routed test-connection with TCP-only probe, Liquibase changes, and the
+removal of direct OE→analyzer socket query code. Treat it as current branch
+state for downstream planning; update the wording again when it is merged to
+`develop`.
+
 **Note on branch naming**: These branches intentionally omit the `-mN-`
 milestone numbering from the constitution's
 `feat/{NNN}[-{jira}]-{name}-m{N}-{desc}` pattern because each branch maps 1:1 to
@@ -242,7 +250,14 @@ define the minimum evidence contract for downstream implementation branches.
       specific analyzer type so that the full path—mock → transport →
       `/analyzer/hl7` → ingestion—is exercised with a known message format (e.g.
       BC-5380 profile for M2, BS-series profile for M3). Evidence gates accept
-      proof that uses the mock configured with the appropriate HL7 profile.
+      proof that uses the mock configured with the appropriate HL7 profile. The
+      mock MUST also listen on the analyzer's configured port for inbound MLLP
+      connections and respond with proper HL7 ACK, matching real analyzer
+      behavior (test-connection, future LIS-initiated communication).
+- [x] **Test-Connection Parity**: HL7 test-connection exercises TCP connectivity
+      validation adapted for communication mode semantics. Bridge health is
+      checked for all modes; TCP to analyzer is always attempted when IP/port
+      configured.
 - [ ] **Frontend Unit Tests**: Only required if downstream HL7 work introduces
       UI changes
 - [ ] **Browser E2E Tests**: Only required if downstream HL7 work introduces
@@ -265,9 +280,12 @@ define the minimum evidence contract for downstream implementation branches.
   selection make the E2E run reproducible and evidence-valid (same message
   format as the target analyzer).
 - **BS-Series Validation**: Dedicated `mindray-bs200.json` and
-  `mindray-bs300.json` profiles exist. Strict 013 mock generation derives OBX
-  code/unit semantics from these profiles through a thin adapter in
-  `tools/analyzer-mock-server/profile_adapter.py`.
+  `mindray-bs300.json` profiles exist. Strict 013 mock generation uses
+  `tools/analyzer-mock-server/hl7_generator.py` with JSON templates loaded by
+  `template_loader.py` from `tools/analyzer-mock-server/templates/`. Each
+  BS-series mock template (`mindray_bs200.json`, `mindray_bs300.json`) defines
+  the same OBX code/unit/seedValue fields as the corresponding analyzer profile,
+  ensuring E2E messages match the expected ingestion shape.
 - **Harness Usage**: Use `projects/analyzer-harness/` for environment alignment.
   Use `scripts/test-hl7-profiles.sh` as the canonical strict-013 proof command:
   it enforces fixture/link guards and executes BC-5380, BS-200, and BS-300 via

@@ -35,6 +35,7 @@ import {
   Popup,
   Search,
   DataCheck,
+  ConnectionSignal,
 } from "@carbon/icons-react";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import {
@@ -63,6 +64,7 @@ import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCance
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
+import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
@@ -95,6 +97,8 @@ import {
   LanguageManagement,
   TranslationManagement,
 } from "./localizationManagement";
+import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu";
+import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
 
 function Admin() {
   const intl = useIntl();
@@ -369,6 +373,12 @@ function Admin() {
           >
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
+          <SideNavLink
+            renderIcon={Settings}
+            onClick={handleNavigation(`${path}/loggingManagement`)}
+          >
+            <FormattedMessage id="logging.management.label" />
+          </SideNavLink>
           <SideNavMenu
             title={intl.formatMessage({
               id: "sidenav.label.admin.localization",
@@ -395,6 +405,12 @@ function Admin() {
               />
             </SideNavMenuItem>
           </SideNavMenu>
+          <SideNavLink
+            renderIcon={ConnectionSignal}
+            onClick={handleNavigation(`${path}/externalConnections`)}
+          >
+            <FormattedMessage id="externalconnections.browse.title" />
+          </SideNavLink>
           <SideNavLink
             renderIcon={Catalog}
             target="_blank"
@@ -638,6 +654,18 @@ function Admin() {
         <Route
           path={`${path}/SearchIndexManagement`}
           component={SearchIndexManagement}
+        />
+        <Route
+          path={`${path}/loggingManagement`}
+          component={LoggingManagement}
+        />
+        <Route
+          path={`${path}/externalConnections`}
+          component={ExternalConnectionMenu}
+        />
+        <Route
+          path={`${path}/externalConnectionEdit`}
+          component={ExternalConnectionAddModify}
         />
       </Switch>
     </>

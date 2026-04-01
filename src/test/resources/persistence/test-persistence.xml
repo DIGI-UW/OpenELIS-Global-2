@@ -131,6 +131,21 @@
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
+        <!-- User Role entities (Required for real UserService filtering) -->
+        <class>org.openelisglobal.userrole.valueholder.UserLabUnitRoles</class>
+        <class>org.openelisglobal.userrole.valueholder.LabUnitRoleMap</class>
+
+        <!-- EQA entities -->
+        <class>org.openelisglobal.eqa.valueholder.EQAProgram</class>
+        <class>org.openelisglobal.eqa.valueholder.SampleEQA</class>
+        <class>org.openelisglobal.eqa.valueholder.EQADistribution</class>
+        <class>org.openelisglobal.eqa.valueholder.EQALabEnrollmentLabUnit</class>
+        <class>org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap</class>
+        <class>org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAProgramEnrollment</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
+        <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
