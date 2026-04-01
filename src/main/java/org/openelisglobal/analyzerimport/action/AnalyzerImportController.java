@@ -86,6 +86,8 @@ public class AnalyzerImportController implements IActionConstants {
         }
     }
 
+    /** @deprecated Use bridge FHIR routing → POST /analyzer/fhir instead. */
+    @Deprecated
     @PostMapping("/analyzer/astm")
     public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
@@ -133,6 +135,8 @@ public class AnalyzerImportController implements IActionConstants {
      * HTTP endpoint for HL7 ORU^R01 messages (e.g. from mock server or HL7 bridge).
      * Body is raw HL7 message; analyzer is identified from MSH segment.
      */
+    /** @deprecated Use bridge FHIR routing → POST /analyzer/fhir instead. */
+    @Deprecated
     @PostMapping("/analyzer/hl7")
     public void doPostHl7(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {

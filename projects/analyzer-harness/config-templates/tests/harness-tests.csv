@@ -1,0 +1,24 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr
+# Hematology — Mindray BC-5380 (13 tests)
+White Blood Cells,Hematology,Whole Blood,6690-2,Y,Y,1,10*3/uL,White Blood Cells,Globules Blancs
+Red Blood Cells,Hematology,Whole Blood,789-8,Y,Y,2,10*6/uL,Red Blood Cells,Globules Rouges
+Hemoglobin,Hematology,Whole Blood,718-7,Y,Y,3,g/dL,Hemoglobin,Hémoglobine
+Hematocrit,Hematology,Whole Blood,4544-3,Y,Y,4,%,Hematocrit,Hématocrite
+Mean Corpuscular Volume,Hematology,Whole Blood,787-2,Y,Y,5,fL,MCV,VGM
+Mean Corpuscular Hemoglobin,Hematology,Whole Blood,785-6,Y,Y,6,pg,MCH,TCMH
+Mean Corpuscular Hemoglobin Concentration,Hematology,Whole Blood,786-4,Y,Y,7,g/dL,MCHC,CCMH
+Platelet Count,Hematology,Whole Blood,777-3,Y,Y,8,10*3/uL,Platelet Count,Numération Plaquettaire
+Neutrophils,Hematology,Whole Blood,751-8,Y,Y,9,10*3/uL,Neutrophils,Neutrophiles
+Lymphocytes,Hematology,Whole Blood,736-9,Y,Y,10,10*3/uL,Lymphocytes,Lymphocytes
+Monocytes,Hematology,Whole Blood,742-7,Y,Y,11,10*3/uL,Monocytes,Monocytes
+Eosinophils,Hematology,Whole Blood,711-2,Y,Y,12,10*3/uL,Eosinophils,Éosinophiles
+Basophils,Hematology,Whole Blood,704-7,Y,Y,13,10*3/uL,Basophils,Basophiles
+# Biochemistry — Mindray BS-200/BS-300 (8 tests)
+Glucose,Biochemistry,Serum|Plasma,2345-7,Y,Y,20,mg/dL,Glucose,Glucose
+Creatinine,Biochemistry,Serum|Plasma,2160-0,Y,Y,21,mg/dL,Creatinine,Créatinine
+Alanine Aminotransferase,Biochemistry,Serum,1742-6,Y,Y,22,U/L,ALT,ALAT
+Aspartate Aminotransferase,Biochemistry,Serum,1920-8,Y,Y,23,U/L,AST,ASAT
+Albumin,Biochemistry,Serum,1751-7,Y,Y,24,g/dL,Albumin,Albumine
+Total Protein,Biochemistry,Serum,2885-2,Y,Y,25,g/dL,Total Protein,Protéines Totales
+Total Bilirubin,Biochemistry,Serum,1975-2,Y,Y,26,mg/dL,Total Bilirubin,Bilirubine Totale
+Blood Urea Nitrogen,Biochemistry,Serum|Plasma,3094-0,Y,Y,27,mg/dL,BUN,Urée
