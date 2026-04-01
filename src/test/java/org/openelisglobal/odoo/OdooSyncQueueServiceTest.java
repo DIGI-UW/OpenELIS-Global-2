@@ -235,12 +235,12 @@ public class OdooSyncQueueServiceTest {
     }
 
     @Test
-    public void hasExceededMaxRetries_falseWhenRetryCountEqualsMax() {
+    public void hasExceededMaxRetries_trueWhenRetryCountEqualsMax() {
         OdooSyncQueue item = buildPendingItem();
         item.setRetryCount(3);
         item.setMaxRetries(3);
 
-        assertFalse(item.hasExceededMaxRetries());
+        assertTrue(item.hasExceededMaxRetries());
     }
 
     @Test
