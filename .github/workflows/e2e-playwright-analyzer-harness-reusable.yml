@@ -21,6 +21,16 @@ on:
         required: false
         type: string
         default: ""
+      test_user:
+        description: "CI login user for E2E harness execution"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password for E2E harness execution"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -31,7 +41,6 @@ jobs:
   demo-shards:
     name: Demo ${{ matrix.shard_index }}/${{ matrix.shard_total }}
     runs-on: ubuntu-latest
-    environment: e2e
     strategy:
       fail-fast: false
       matrix:
@@ -47,6 +56,7 @@ jobs:
         with:
           ref: ${{ inputs.head_sha || github.sha }}
           submodules: recursive
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -171,8 +181,8 @@ jobs:
         run: bash projects/analyzer-harness/seed-analyzers.sh
         env:
           BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS }}
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           DB_CONTAINER: openelisglobal-database
 
       - name: Fix analyzer-imports permissions (bridge creates dirs as root)
@@ -204,8 +214,8 @@ jobs:
           done
         env:
           BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS }}
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
       - name: Run analyzer Playwright harness-demo shard
         run: npm run pw:test -- --project=harness-demo --workers=1 --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
@@ -214,8 +224,8 @@ jobs:
           CI: true
           ANALYZER_HARNESS: "true"
           BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS }}
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           # Must match bridge.file.pollIntervalMs (bridge default: 5000ms)
           FILE_IMPORT_POLL_MS: "5000"
           FILE_IMPORT_DROP_BUFFER_MS: "45000"
@@ -274,6 +284,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
