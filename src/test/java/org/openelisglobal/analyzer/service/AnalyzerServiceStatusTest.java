@@ -259,7 +259,7 @@ public class AnalyzerServiceStatusTest {
 
     @Test
     public void testFindByIdentifierPatternMatch_NullIdentifier_ReturnsEmpty() {
-        assertEquals(Optional.empty(), analyzerServiceImpl.findByIdentifierPatternMatch(null));
+        assertEquals(Optional.empty(), analyzerServiceImpl.findByIdentifierPatternMatch((String) null));
     }
 
     @Test
@@ -332,6 +332,45 @@ public class AnalyzerServiceStatusTest {
 
         assertTrue(result.isPresent());
         assertEquals("FIRST", result.get().getId());
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_ListIdentifiers_PrefersMoreSpecificPattern() {
+        Analyzer genericAnalyzer = new Analyzer();
+        genericAnalyzer.setId("GENERIC");
+        genericAnalyzer.setName("Generic Mindray");
+        genericAnalyzer.setIdentifierPattern("MINDRAY");
+
+        Analyzer specificAnalyzer = new Analyzer();
+        specificAnalyzer.setId("SPECIFIC");
+        specificAnalyzer.setName("Mindray BS-200");
+        specificAnalyzer.setIdentifierPattern("MINDRAY.*BS.?200");
+
+        List<Analyzer> list = new ArrayList<>();
+        list.add(genericAnalyzer);
+        list.add(specificAnalyzer);
+        when(baseObjectDAO.findGenericAnalyzersWithPatterns()).thenReturn(list);
+
+        Optional<Analyzer> result = analyzerServiceImpl
+                .findByIdentifierPatternMatch(List.of("Mindray BS-200", "BS-200", "Mindray"));
+
+        assertTrue(result.isPresent());
+        assertEquals("SPECIFIC", result.get().getId());
+    }
+
+    @Test
+    public void testFindByIdentifierPatternMatch_ListIdentifiers_UsesUppercaseFallback() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("UPPER");
+        analyzer.setName("Mindray BS-200");
+        analyzer.setIdentifierPattern("MINDRAY.*BS.?200");
+        when(baseObjectDAO.findGenericAnalyzersWithPatterns()).thenReturn(Collections.singletonList(analyzer));
+
+        Optional<Analyzer> result = analyzerServiceImpl
+                .findByIdentifierPatternMatch(List.of("Mindray BS-200", "BS-200", "Mindray"));
+
+        assertTrue(result.isPresent());
+        assertEquals("UPPER", result.get().getId());
     }
 
     @Test

@@ -19,8 +19,20 @@ public interface FileImportConfigurationDAO extends BaseDAO<FileImportConfigurat
 
     /**
      * Find all active FileImportConfiguration entries
-     * 
+     *
      * @return List of active configurations
      */
     java.util.List<FileImportConfiguration> findAllActive();
+
+    /**
+     * Find active configurations that overlap with a given directory and file
+     * format, excluding a specific analyzer ID (for update validation).
+     *
+     * @param importDirectory   the import directory path to check
+     * @param fileFormat        the file format (CSV, EXCEL, etc.)
+     * @param excludeAnalyzerId analyzer ID to exclude (null for create validation)
+     * @return list of overlapping active configurations
+     */
+    java.util.List<FileImportConfiguration> findActiveByImportDirectoryAndFileFormat(String importDirectory,
+            String fileFormat, Integer excludeAnalyzerId);
 }

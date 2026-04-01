@@ -240,6 +240,9 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private String defaultResultValue;
 
+    private boolean isEqaSample = false;
+    private String eqaPriority;
+
     private ReferralItem referralItem;
     private ResultFileForm resultFile;
 
@@ -881,6 +884,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setNonconforming(boolean nonconforming) {
         this.nonconforming = nonconforming;
+    }
+
+    public boolean isEqaSample() {
+        return isEqaSample;
+    }
+
+    public void setEqaSample(boolean eqaSample) {
+        this.isEqaSample = eqaSample;
+    }
+
+    public String getEqaPriority() {
+        return eqaPriority;
+    }
+
+    public void setEqaPriority(String eqaPriority) {
+        this.eqaPriority = eqaPriority;
     }
 
     public String getQualifiedDictionaryId() {

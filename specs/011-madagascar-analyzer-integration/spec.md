@@ -77,6 +77,25 @@ openelisglobal-plugins repository to reduce development effort by approximately
   This keeps architecture consistent with existing ASTM bridge pattern and
   avoids additional hardware costs beyond USB adapters.
 
+### Session 2026-02-25 (Bugfix: Config Form Separation)
+
+- Q: Should the analyzer form's "Load Default Config" set instance-level fields
+  (name, port, IP) from the config template? → A: **No — config and instance
+  fields must be clearly separated.** Config templates contain plugin metadata
+  (identifier_pattern, category, protocol, test_mappings). Instance fields
+  (name, IP, port, status) are user-provided per physical machine. Loading a
+  config should populate plugin fields only.
+- Q: Should default configs contain test mappings that get auto-created on save?
+  → A: **Yes — configs may contain `default_test_mappings` (LOINC-based) that
+  are auto-persisted as `AnalyzerTestMapping` records when creating an
+  analyzer.** Mappings that can't be resolved (unknown LOINC) are skipped
+  gracefully.
+- Q: How should the frontend handle non-numeric plugin type IDs? → A: **Frontend
+  should use real DB IDs from API, not hardcoded fallbacks.** The
+  `FALLBACK_PLUGIN_TYPES` constant with string IDs ("generic-astm") caused
+  `NumberFormatException` on the backend. Backend also adds
+  `resolvePluginType()` as defense-in-depth for alias-to-name mapping.
+
 ---
 
 ## User Scenarios & Testing _(mandatory)_
