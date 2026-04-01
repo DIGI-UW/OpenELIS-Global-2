@@ -88,7 +88,8 @@ Key principles to verify:
       Valueholder→DAO→Service→Controller→Form)
 - [ ] Carbon Design System (NO Bootstrap/Tailwind)
 - [ ] FHIR R4 compliance (for external-facing entities)
-- [ ] React Intl (NO hardcoded strings)
+- [ ] React Intl (NO hardcoded strings, new keys in `en.json` ONLY — Transifex
+      is source of truth for non-English translations)
 - [ ] Test-Driven Development (TDD workflow)
 - [ ] Liquibase for schema changes
 - [ ] @Transactional in services ONLY (NOT controllers)

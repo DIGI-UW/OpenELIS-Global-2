@@ -226,9 +226,9 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
-          # Must match bridge.file.pollIntervalMs (bridge default: 5000ms)
-          FILE_IMPORT_POLL_MS: "5000"
-          FILE_IMPORT_DROP_BUFFER_MS: "45000"
+          # Must match bridge.file.poll-interval-ms (CI override: 1000ms)
+          FILE_IMPORT_POLL_MS: "1000"
+          FILE_IMPORT_DROP_BUFFER_MS: "15000"
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
