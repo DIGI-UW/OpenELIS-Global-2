@@ -68,20 +68,16 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void testGetAll_ShouldReturnAllLots() throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots").contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").isNotEmpty())
-                .andExpect(jsonPath("$[0].lotNumber").isNotEmpty());
+        mockMvc.perform(get("/rest/inventory/lots").contentType("application/json")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").isNotEmpty()).andExpect(jsonPath("$[0].lotNumber").isNotEmpty());
     }
 
     @Test
     public void testGetById_WithValidId_ShouldReturnLot() throws Exception {
         mockMvc.perform(get("/rest/inventory/lots/1000").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1000))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(1000))
                 .andExpect(jsonPath("$.lotNumber").value("LOT-2025-001"))
-                .andExpect(jsonPath("$.currentQuantity").value(100.00))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.currentQuantity").value(100.00)).andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
@@ -93,81 +89,61 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
     @Test
     public void testGetByItemId_WithValidItemId_ShouldReturnLotsForItem() throws Exception {
         // Item 1000 has 2 lots in test data
-        mockMvc.perform(
-                get("/rest/inventory/lots/item/1000").contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].inventoryItem.id").value(1000))
+        mockMvc.perform(get("/rest/inventory/lots/item/1000").contentType("application/json"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].inventoryItem.id").value(1000))
                 .andExpect(jsonPath("$[1].inventoryItem.id").value(1000));
     }
 
     @Test
     public void testGetByItemId_WithInvalidItemId_ShouldReturnEmptyList() throws Exception {
-        mockMvc.perform(
-                get("/rest/inventory/lots/item/99999").contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+        mockMvc.perform(get("/rest/inventory/lots/item/99999").contentType("application/json"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
     }
 
     @Test
     public void testGetAvailableLotsFEFO_ShouldReturnLotsInFEFOOrder() throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/item/1000/available")
-                        .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].qcStatus").value("PASSED"))
+        mockMvc.perform(get("/rest/inventory/lots/item/1000/available").contentType("application/json"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].qcStatus").value("PASSED"))
                 .andExpect(jsonPath("$[0].status").value("ACTIVE"));
     }
 
     @Test
-    public void testGetByLocationId_WithValidLocationId_ShouldReturnLotsInLocation()
-            throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/location/1000")
-                        .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].storageLocation.id").value(1000))
+    public void testGetByLocationId_WithValidLocationId_ShouldReturnLotsInLocation() throws Exception {
+        mockMvc.perform(get("/rest/inventory/lots/location/1000").contentType("application/json"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].storageLocation.id").value(1000))
                 .andExpect(jsonPath("$[1].storageLocation.id").value(1000));
     }
 
     @Test
-    public void testGetByLocationId_WithInvalidLocationId_ShouldReturnEmptyList()
-            throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/location/99999")
-                        .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+    public void testGetByLocationId_WithInvalidLocationId_ShouldReturnEmptyList() throws Exception {
+        mockMvc.perform(get("/rest/inventory/lots/location/99999").contentType("application/json"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
     }
 
     @Test
     public void testGetByLotNumber_WithValidLotNumber_ShouldReturnLot() throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/lot-number/LOT-2025-001")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lotNumber").value("LOT-2025-001"))
+        mockMvc.perform(get("/rest/inventory/lots/lot-number/LOT-2025-001").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.lotNumber").value("LOT-2025-001"))
                 .andExpect(jsonPath("$.id").value(1000));
     }
 
     @Test
     public void testGetByLotNumber_WithInvalidLotNumber_ShouldReturnNotFound() throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/lot-number/INVALID-LOT")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/rest/inventory/lots/lot-number/INVALID-LOT").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    public void testGetTotalQuantity_WithValidItemId_ShouldReturnTotalQuantity()
-            throws Exception {
+    public void testGetTotalQuantity_WithValidItemId_ShouldReturnTotalQuantity() throws Exception {
         // Item 1000 has lots with 100.00 + 50.00 = 150.00 total
-        mockMvc.perform(get("/rest/inventory/lots/item/1000/total-quantity")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.quantity").value(150.0));
+        mockMvc.perform(get("/rest/inventory/lots/item/1000/total-quantity").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.quantity").value(150.0));
     }
 
     @Test
     public void testGetExpiringLots_ShouldReturnExpiringLots() throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/expiring?days=30")
-                        .contentType("application/json"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].lotNumber").value("LOT-2025-002"));
+        mockMvc.perform(get("/rest/inventory/lots/expiring?days=30").contentType("application/json"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].lotNumber").value("LOT-2025-002"));
     }
 
     @Test
@@ -205,14 +181,11 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         Timestamp expirationDate = new Timestamp(System.currentTimeMillis() + 86400000L * 365);
         newLot.setExpirationDate(expirationDate);
 
-        MvcResult result = mockMvc.perform(post("/rest/inventory/lots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newLot))
-                        .session(mockSession))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.lotNumber").value("LOT-2025-NEW"))
-                .andExpect(jsonPath("$.currentQuantity").value(50.0))
-                .andExpect(jsonPath("$.fhirUuid").isNotEmpty())
+        MvcResult result = mockMvc
+                .perform(post("/rest/inventory/lots").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newLot)).session(mockSession))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.lotNumber").value("LOT-2025-NEW"))
+                .andExpect(jsonPath("$.currentQuantity").value(50.0)).andExpect(jsonPath("$.fhirUuid").isNotEmpty())
                 .andReturn();
 
         String responseBody = result.getResponse().getContentAsString();
@@ -239,11 +212,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         newLot.setReceiptDate(new Timestamp(System.currentTimeMillis()));
         newLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86400000L * 365));
 
-        mockMvc.perform(post("/rest/inventory/lots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newLot))
-                        .session(mockSession))
-                .andExpect(status().isCreated())
+        mockMvc.perform(post("/rest/inventory/lots").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newLot)).session(mockSession)).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.fhirUuid").isNotEmpty());
     }
 
@@ -260,10 +230,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         invalidItem.setId(99999L);
         newLot.setInventoryItem(invalidItem);
 
-        mockMvc.perform(post("/rest/inventory/lots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newLot))
-                        .session(mockSession))
+        mockMvc.perform(post("/rest/inventory/lots").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newLot)).session(mockSession))
                 .andExpect(status().isBadRequest());
     }
 
@@ -272,31 +240,22 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         OpenLotRequest openRequest = new OpenLotRequest();
         openRequest.setOpenedDate(new Timestamp(System.currentTimeMillis()));
 
-        mockMvc.perform(post("/rest/inventory/lots/1000/open")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(openRequest))
-                        .session(mockSession))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1000))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        mockMvc.perform(post("/rest/inventory/lots/1000/open").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(openRequest)).session(mockSession)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1000)).andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
     public void testOpenLot_WithoutOpenedDate_ShouldUseCurrentDate() throws Exception {
-        mockMvc.perform(post("/rest/inventory/lots/1000/open")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new OpenLotRequest()))
-                        .session(mockSession))
+        mockMvc.perform(post("/rest/inventory/lots/1000/open").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new OpenLotRequest())).session(mockSession))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void testProcessExpired_ShouldReturnCountOfUpdatedLots() throws Exception {
-        mockMvc.perform(post("/rest/inventory/lots/process-expired")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .session(mockSession))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lotsUpdated").isNotEmpty());
+        mockMvc.perform(post("/rest/inventory/lots/process-expired").contentType(MediaType.APPLICATION_JSON)
+                .session(mockSession)).andExpect(status().isOk()).andExpect(jsonPath("$.lotsUpdated").isNotEmpty());
     }
 
     // ==================== PUT Endpoints Tests ====================
@@ -306,17 +265,12 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         InventoryLot lotToUpdate = inventoryLotService.get(1000L);
         lotToUpdate.setCurrentQuantity(75.0);
 
-        mockMvc.perform(put("/rest/inventory/lots/1000")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(lotToUpdate))
-                        .session(mockSession))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1000))
-                .andExpect(jsonPath("$.currentQuantity").value(75.0));
+        mockMvc.perform(put("/rest/inventory/lots/1000").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lotToUpdate)).session(mockSession)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1000)).andExpect(jsonPath("$.currentQuantity").value(75.0));
 
         InventoryLot updatedLot = inventoryLotService.get(1000L);
-        assertEquals("Lot should be updated in database", 75.0, updatedLot.getCurrentQuantity(),
-                0.01);
+        assertEquals("Lot should be updated in database", 75.0, updatedLot.getCurrentQuantity(), 0.01);
     }
 
     @Test
@@ -334,11 +288,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         InventoryItem item = inventoryItemService.get(1000L);
         lotToUpdate.setInventoryItem(item);
 
-        mockMvc.perform(put("/rest/inventory/lots/1000")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(lotToUpdate))
-                        .session(mockSession))
-                .andExpect(status().isOk());
+        mockMvc.perform(put("/rest/inventory/lots/1000").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lotToUpdate)).session(mockSession)).andExpect(status().isOk());
 
         InventoryLot updatedLot = inventoryLotService.get(1000L);
         assertEquals("FHIR UUID should be preserved", originalUUID, updatedLot.getFhirUuid());
@@ -350,10 +301,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         lotToUpdate.setLotNumber("LOT-INVALID");
         lotToUpdate.setCurrentQuantity(50.0);
 
-        mockMvc.perform(put("/rest/inventory/lots/99999")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(lotToUpdate))
-                        .session(mockSession))
+        mockMvc.perform(put("/rest/inventory/lots/99999").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lotToUpdate)).session(mockSession))
                 .andExpect(status().isNotFound());
     }
 
@@ -363,11 +312,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         request.setQcStatus(QCStatus.FAILED);
         request.setNotes("Failed QC test - contamination detected");
 
-        mockMvc.perform(put("/rest/inventory/lots/1000/qc-status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(put("/rest/inventory/lots/1000/qc-status").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.qcStatus").value("FAILED"));
 
         InventoryLot updatedLot = inventoryLotService.get(1000L);
@@ -379,11 +325,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         QCStatusRequest request = new QCStatusRequest();
         request.setQcStatus(QCStatus.PENDING);
 
-        mockMvc.perform(put("/rest/inventory/lots/1000/qc-status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(put("/rest/inventory/lots/1000/qc-status").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.qcStatus").value("PENDING"));
     }
 
@@ -392,11 +335,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         StatusRequest request = new StatusRequest();
         request.setStatus(LotStatus.EXPIRED);
 
-        mockMvc.perform(put("/rest/inventory/lots/1000/status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(put("/rest/inventory/lots/1000/status").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("EXPIRED"));
 
         InventoryLot updatedLot = inventoryLotService.get(1000L);
@@ -409,16 +349,12 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         request.setNewQuantity(85.0);
         request.setReason("Breakage during storage");
 
-        mockMvc.perform(post("/rest/inventory/lots/1000/adjust")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(post("/rest/inventory/lots/1000/adjust").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentQuantity").value(85.0));
 
         InventoryLot updatedLot = inventoryLotService.get(1000L);
-        assertEquals("Quantity should be adjusted", 85.0, updatedLot.getCurrentQuantity(),
-                0.01);
+        assertEquals("Quantity should be adjusted", 85.0, updatedLot.getCurrentQuantity(), 0.01);
     }
 
     @Test
@@ -427,11 +363,8 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         request.setNewQuantity(0.0);
         request.setReason("Complete consumption");
 
-        mockMvc.perform(post("/rest/inventory/lots/1000/adjust")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(post("/rest/inventory/lots/1000/adjust").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.currentQuantity").value(0.0));
     }
 
@@ -441,33 +374,26 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         request.setReason("Expired");
         request.setNotes("Lot has expired and must be disposed");
 
-        mockMvc.perform(post("/rest/inventory/lots/1000/dispose")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request))
-                        .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(post("/rest/inventory/lots/1000/dispose").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DISPOSED"));
 
         InventoryLot disposedLot = inventoryLotService.get(1000L);
-        assertEquals("Lot should be marked as DISPOSED", LotStatus.DISPOSED,
-                disposedLot.getStatus());
+        assertEquals("Lot should be marked as DISPOSED", LotStatus.DISPOSED, disposedLot.getStatus());
     }
 
     @Test
     public void testDisposeLot_WithoutRequest_ShouldDisposeWithoutNotes() throws Exception {
-        mockMvc.perform(post("/rest/inventory/lots/1000/dispose")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .session(mockSession))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DISPOSED"));
+        mockMvc.perform(
+                post("/rest/inventory/lots/1000/dispose").contentType(MediaType.APPLICATION_JSON).session(mockSession))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("DISPOSED"));
     }
 
     // ==================== Error Handling Tests ====================
 
     @Test
     public void testGetById_WithInvalidIdFormat_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/invalid-id")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/rest/inventory/lots/invalid-id").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
     }
 
@@ -481,27 +407,22 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         InventoryItem item = inventoryItemService.get(1000L);
         newLot.setInventoryItem(item);
 
-        mockMvc.perform(post("/rest/inventory/lots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(newLot)))
-                .andExpect(status().isInternalServerError());
+        mockMvc.perform(post("/rest/inventory/lots").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(newLot))).andExpect(status().isInternalServerError());
     }
 
     // ==================== Edge Case Tests ====================
 
     @Test
-    public void testGetTotalQuantity_WithItemHavingNoLots_ShouldReturnZeroOrNull()
-            throws Exception {
-        mockMvc.perform(get("/rest/inventory/lots/item/1001/total-quantity")
-                        .contentType(MediaType.APPLICATION_JSON))
+    public void testGetTotalQuantity_WithItemHavingNoLots_ShouldReturnZeroOrNull() throws Exception {
+        mockMvc.perform(get("/rest/inventory/lots/item/1001/total-quantity").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void testGetAvailableLotsFEFO_ShouldReturnOnlyAvailableLots() throws Exception {
         // Only lots with PASSED QC status and ACTIVE/IN_USE status should be returned
-        mockMvc.perform(get("/rest/inventory/lots/item/1000/available")
-                        .contentType(MediaType.APPLICATION_JSON))
+        mockMvc.perform(get("/rest/inventory/lots/item/1000/available").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
     }
 
@@ -511,28 +432,20 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
         InventoryLot lot = inventoryLotService.get(1000L);
         lot.setCurrentQuantity(90.0);
 
-        mockMvc.perform(put("/rest/inventory/lots/1000")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(lot))
-                        .session(mockSession))
-                .andExpect(status().isOk());
+        mockMvc.perform(put("/rest/inventory/lots/1000").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lot)).session(mockSession)).andExpect(status().isOk());
 
         // Update QC status
         QCStatusRequest qcRequest = new QCStatusRequest();
         qcRequest.setQcStatus(QCStatus.PENDING);
 
-        mockMvc.perform(put("/rest/inventory/lots/1000/qc-status")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(qcRequest))
-                        .session(mockSession))
-                .andExpect(status().isOk());
+        mockMvc.perform(put("/rest/inventory/lots/1000/qc-status").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(qcRequest)).session(mockSession)).andExpect(status().isOk());
 
         // Verify both updates were applied
         InventoryLot updatedLot = inventoryLotService.get(1000L);
-        assertEquals("Current quantity should be updated", 90.0,
-                updatedLot.getCurrentQuantity(), 0.01);
-        assertEquals("QC status should be updated", QCStatus.PENDING,
-                updatedLot.getQcStatus());
+        assertEquals("Current quantity should be updated", 90.0, updatedLot.getCurrentQuantity(), 0.01);
+        assertEquals("QC status should be updated", QCStatus.PENDING, updatedLot.getQcStatus());
     }
 
     @Test
@@ -552,13 +465,10 @@ public class InventoryLotRestControllerTest extends BaseWebContextSensitiveTest 
             newLot.setStorageLocation(location);
 
             newLot.setReceiptDate(new Timestamp(System.currentTimeMillis()));
-            newLot.setExpirationDate(
-                    new Timestamp(System.currentTimeMillis() + 86400000L * 365));
+            newLot.setExpirationDate(new Timestamp(System.currentTimeMillis() + 86400000L * 365));
 
-            mockMvc.perform(post("/rest/inventory/lots")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(newLot))
-                            .session(mockSession))
+            mockMvc.perform(post("/rest/inventory/lots").contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(newLot)).session(mockSession))
                     .andExpect(status().isCreated());
         }
     }
