@@ -1,9 +1,5 @@
 {
-  "analyzerName": "E2E-FILE-CSV-Analyzer",
-  "formatCsv": "CSV",
+  "analyzerName": "QuantStudio 5",
   "formatTsv": "TSV",
-  "formatExcel": "EXCEL",
-  "importDirectory": "/data/analyzer-imports/e2e-csv/incoming",
-  "archiveDirectory": "/data/analyzer-imports/e2e-csv/processed",
-  "errorDirectory": "/data/analyzer-imports/e2e-csv/errors"
+  "formatExcel": "EXCEL"
 }

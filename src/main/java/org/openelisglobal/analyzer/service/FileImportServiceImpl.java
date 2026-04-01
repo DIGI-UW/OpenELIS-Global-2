@@ -30,6 +30,7 @@ import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.form.AnalyzerRunPreviewForm;
 import org.openelisglobal.analyzer.form.PreviewRecordForm;
 import org.openelisglobal.analyzer.form.SubmitRequestForm;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload;
 import org.openelisglobal.analyzer.valueholder.AnalyzerRun;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
@@ -56,6 +57,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Value("${file.import.base.directory:/data/analyzer-imports}")
     private String baseImportDir;
+
+    @Autowired
+    private AnalyzerService analyzerService;
 
     @Autowired
     private FileImportConfigurationDAO fileImportConfigurationDAO;
@@ -98,6 +102,14 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Transactional(readOnly = true)
     public List<FileImportConfiguration> getAllActive() {
         return fileImportConfigurationDAO.findAllActive();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<FileImportConfiguration> findOverlappingConfigs(String importDirectory, String fileFormat,
+            Integer excludeAnalyzerId) {
+        return fileImportConfigurationDAO.findActiveByImportDirectoryAndFileFormat(importDirectory, fileFormat,
+                excludeAnalyzerId);
     }
 
     @Override
@@ -150,8 +162,6 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             return new FileAnalyzerReader(configuration);
         case "EXCEL":
             return new ExcelAnalyzerReader(configuration);
-        case "XML":
-            return new org.openelisglobal.analyzerimport.analyzerreaders.XmlAnalyzerReader(configuration);
         default:
             LogEvent.logWarn(this.getClass().getSimpleName(), "getReaderForFormat",
                     "Unknown file format '" + fileFormat + "', defaulting to CSV reader");
@@ -637,6 +647,15 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         // Derive file pattern from supported_extensions or fileFormat
         String filePattern = deriveFilePattern(configData, fileFormat);
 
+        // Validate glob syntax before persisting — invalid patterns crash the bridge at
+        // runtime
+        try {
+            java.nio.file.FileSystems.getDefault().getPathMatcher("glob:" + filePattern);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid file pattern '" + filePattern + "' for analyzer " + analyzerId + ": " + e.getMessage());
+        }
+
         // Build default directory paths using sanitized analyzer name
         String safeName = analyzerName != null ? analyzerName.replaceAll("[^a-zA-Z0-9_-]", "-").toLowerCase()
                 : "analyzer-" + analyzerId;
@@ -659,9 +678,29 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
         fileImportConfigurationDAO.insert(config);
 
+        // Also set FILE fields directly on the Analyzer entity (unified transport
+        // config).
+        // This ensures the bridge bootstrap pull includes FILE config in the REST
+        // response.
+        try {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null) {
+                analyzer.setImportDirectory(importDir);
+                analyzer.setFilePattern(filePattern);
+                analyzer.setColumnMappings(columnMappings);
+                analyzer.setFileFormat(fileFormat);
+                analyzer.setSysUserId(sysUserId);
+                analyzerService.update(analyzer);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateFromProfile",
+                    "Failed to set FILE fields on Analyzer entity (bridge bootstrap may not see FILE config): "
+                            + e.getMessage());
+        }
+
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
                 "Auto-created FileImportConfiguration for analyzer " + analyzerId + " (format=" + fileFormat
-                        + ", importDir=" + importDir + ")");
+                        + ", pattern=" + filePattern + ", importDir=" + importDir + ")");
     }
 
     @SuppressWarnings("unchecked")
@@ -672,8 +711,8 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             if (exts.size() == 1) {
                 return "*" + exts.get(0);
             }
-            // Multiple extensions: use first one as primary pattern
-            return "*" + exts.get(0);
+            // Multiple extensions: use brace glob to match any (e.g., *{.xls,.xlsx})
+            return "*{" + String.join(",", exts) + "}";
         }
         // Fall back based on format
         switch (fileFormat) {
@@ -681,8 +720,6 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             return "*.xls";
         case "TSV":
             return "*.tsv";
-        case "XML":
-            return "*.xml";
         default:
             return "*.csv";
         }

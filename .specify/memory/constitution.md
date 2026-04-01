@@ -791,8 +791,8 @@ implementation details.
 
 - **Playwright** (RECOMMENDED for new tests): Modern async/await patterns,
   auto-waiting, better debugging, parallel execution
-- **Cypress** (EXISTING tests): Existing test suite continues to use Cypress;
-  migration is optional
+- **Cypress** (EXISTING tests only): Do not create new Cypress tests. Existing
+  test suite continues to use Cypress and will be migrated over time
 - **Selection Guidance**: Consult Testing Roadmap
   (`.specify/guides/testing-roadmap.md`) Section "When to Use Playwright vs
   Cypress" for framework selection criteria
@@ -802,7 +802,7 @@ implementation details.
 1. **During Development (Fast Iteration):**
 
    - Run tests individually or in small chunks (5-10 tests)
-   - Playwright: `npx playwright test {spec}.spec.ts`
+   - Playwright: `npm run pw:test -- {spec}.spec.ts`
    - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
    - Purpose: Fast feedback loop while coding
    - **Rationale**: Running tests individually provides faster feedback, easier
@@ -812,7 +812,7 @@ implementation details.
 
    - MUST validate full suite locally with fail-fast enabled
    - Cypress: `npm run cy:failfast`
-   - Playwright: `npx playwright test`
+   - Playwright: `npm run pw:test`
    - Purpose: Catch integration issues BEFORE pushing to CI
    - **Rationale**: CI is expensive (60+ minutes per failure). Validating
      locally before pushing saves time, money, and catches issues faster.
@@ -842,14 +842,14 @@ This wastes 60+ minutes of CI time and delays feedback when issues are found.
 ```bash
 # 1. Development (fast iteration)
 # Playwright (recommended for new tests)
-npx playwright test sidenav.spec.ts    # Individual file
+npm run pw:test -- sidenav.spec.ts     # Individual file
 
 # Cypress (existing tests)
 npm run cy:spec "cypress/e2e/storageAssignment.cy.js"  # Individual file
 
 # 2. Pre-push validation (MANDATORY before pushing)
 npm run cy:failfast                     # Cypress full suite with fail-fast
-npx playwright test                     # Playwright full suite
+npm run pw:test                         # Playwright full suite
 
 # 3. Test specific feature area
 npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
@@ -1022,12 +1022,31 @@ hardcoded English text in components.
 - Use `intl.formatMessage({ id: 'storage.location.label' })` for all text
 - Supported locales: en (English), fr (French), ar (Arabic), es (Spanish), hi
   (Hindi), pt (Portuguese), sw (Swahili)
-- New features MUST provide translations for at least en + fr
+- New features MUST add keys to `en.json` ONLY (see Translation Workflow below)
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
+**Translation Workflow (Transifex)**:
+
+Transifex is the **source of truth** for all non-English translations. The
+project lives under the OpenMRS organization: `o:openmrs:p:openelis-1:r:enjson`.
+
+- **Developers**: Add new i18n keys to `frontend/src/languages/en.json` ONLY. Do
+  NOT edit `fr.json`, `es.json`, or any other locale file. A CI check
+  ("Translation source-of-truth check") will block PRs that modify non-English
+  locale files.
+- **Source push** (`tx-push.yml`): On every push to `develop`, `en.json` is
+  automatically uploaded to Transifex.
+- **Translators**: Add translations on the
+  [Transifex project](https://explore.transifex.com/openmrs/openelis-1/).
+- **Translation pull** (`tx-pull.yml`): Daily at 20:30 UTC, translations are
+  pulled from Transifex and auto-merged to `develop` via the
+  `chore/update-transifex` branch.
+
 **Rationale**: OpenELIS operates in multilingual countries (e.g., Rwanda: en/fr,
 Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
+Transifex provides a single source of truth for translations, enabling community
+translators to contribute without touching code.
 
 **Example**:
 
@@ -1039,7 +1058,7 @@ Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
 <Button>{intl.formatMessage({ id: 'button.save.location' })}</Button>
 ```
 
-**Translation Files** (`en.json`):
+**Translation Files** — developers edit `en.json` only:
 
 ```json
 {
@@ -1333,9 +1352,11 @@ naming conventions and milestone workflow.
 
 **CI/CD Pipeline** (GitHub Actions):
 
-- **`ci.yml`**: Maven build + JaCoCo coverage report
+- **`backend.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
-- **`frontend-qa.yml`**: Cypress E2E tests
+- **`frontend.yml`**: Frontend static/unit/image quality gate
+- **`e2e-playwright.yml`**: Playwright E2E (core + analyzer harness)
+- **`e2e-cypress-deprecated.yml`**: Cypress E2E tests (deprecated track)
 - **`build-installer.yml`**: Offline installer packaging
 
 All checks MUST pass before merge.

@@ -1,5 +1,15 @@
 # Supported Analyzers Inventory Contract
 
+## 2026-03-18 Addendum: FILE Transport Ownership
+
+During 014 remediation, FILE transport ownership is standardized as:
+
+- Bridge: watch/poll directories and deliver payloads.
+- OpenELIS: configure analyzers and process delivered files.
+
+Any legacy wording that implies OpenELIS owns primary FILE polling should be
+interpreted as pre-remediation behavior.
+
 **Version:** 1.0.0  
 **Date:** 2026-02-02  
 **Status:** Authoritative Source of Truth

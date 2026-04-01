@@ -1,186 +1,88 @@
 SET search_path TO clinlims;
 
-DELETE FROM file_import_configuration
-WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE 'E2E-FILE-%');
+-- ============================================================================
+-- 0. Analyzer harness lane residue (accepted + pending results on HARN-*)
+--    Runs before dashboard cleanup on every full fixture load. Storage E2E
+--    samples (E2E001, etc.) are intentionally untouched.
+-- ============================================================================
+DELETE FROM analyzer_results WHERE accession_number LIKE 'HARN-%';
 
-DELETE FROM analyzer_plugin_config
-WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE 'E2E-FILE-%');
+DROP TABLE IF EXISTS tmp_harn_analysis_ids;
+CREATE TEMP TABLE tmp_harn_analysis_ids AS
+SELECT a.id
+  FROM analysis a
+  JOIN sample_item si ON si.id = a.sampitem_id
+  JOIN sample s ON s.id = si.samp_id
+ WHERE s.accession_number LIKE 'HARN-%';
 
-DELETE FROM analyzer
-WHERE name LIKE 'E2E-FILE-%';
+DELETE FROM referral_result
+ WHERE referral_id IN (SELECT id FROM referral WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids));
+DELETE FROM referral WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM result WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM note
+ WHERE reference_table = 4
+   AND reference_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM analysis_qaevent_action
+ WHERE analysis_qaevent_id IN (SELECT id FROM analysis_qaevent WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids));
+DELETE FROM analysis_qaevent WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids);
+DELETE FROM analysis WHERE id IN (SELECT id FROM tmp_harn_analysis_ids);
+DROP TABLE IF EXISTS tmp_harn_analysis_ids;
 
-DELETE FROM analyzer_type
-WHERE name LIKE 'E2E-FILE-%';
+DELETE FROM observation_history
+WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%')
+   OR sample_item_id IN (
+       SELECT id FROM sample_item WHERE samp_id IN (
+           SELECT id FROM sample WHERE accession_number LIKE 'HARN-%'
+       )
+   );
+DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
+DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
+DELETE FROM sample WHERE accession_number LIKE 'HARN-%';
 
-INSERT INTO analyzer_type (
-  id,
-  name,
-  description,
-  protocol,
-  plugin_class_name,
-  is_generic_plugin,
-  is_active,
-  sys_user_id,
-  last_updated
-) VALUES (
-  nextval('analyzer_type_seq'),
-  'E2E-FILE-GenericFile',
-  'E2E GenericFile analyzer type',
-  'FILE',
-  'org.openelisglobal.plugins.analyzer.genericfile.GenericFileAnalyzer',
-  true,
-  true,
-  '1',
-  NOW()
-);
+-- ============================================================================
+-- E2E Cleanup + Dashboard Preparation
+--
+-- Purpose: (1) Clean up stale/out-of-scope analyzers for a clean dashboard,
+--          (2) Deactivate all non-generic analyzer types.
+--
+-- Analyzer creation is handled by seed-analyzers.sh via REST API, NOT SQL.
+-- ============================================================================
 
-INSERT INTO analyzer (
-  id,
-  name,
-  analyzer_type,
-  description,
-  is_active,
-  protocol_version,
-  status,
-  analyzer_type_id,
-  last_updated
-) VALUES (
-  nextval('analyzer_seq'),
-  'E2E-FILE-CSV-Analyzer',
-  'MOLECULAR',
-  'E2E file import analyzer',
-  true,
-  NULL,
-  'ACTIVE',
-  (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
-  NOW()
-);
+-- 1. Clean up stale E2E analyzers created by Playwright (timestamped names)
+DELETE FROM analyzer_results
+WHERE analyzer_id IN (SELECT id FROM analyzer WHERE name LIKE '%E2E %' OR name LIKE 'E2E-FILE-%');
+DELETE FROM notebook_analysers
+WHERE analyser_id IN (SELECT id FROM analyzer WHERE name LIKE '%E2E %' OR name LIKE 'E2E-FILE-%');
+DELETE FROM analyzer WHERE name LIKE '%E2E %';
+DELETE FROM analyzer WHERE name LIKE 'E2E-FILE-%';
 
-INSERT INTO file_import_configuration (
-  id,
-  analyzer_id,
-  import_directory,
-  file_pattern,
-  archive_directory,
-  error_directory,
-  column_mappings,
-  delimiter,
-  has_header,
-  active,
-  fhir_uuid,
-  sys_user_id,
-  last_updated,
-  file_format
-) VALUES (
-  '11111111-1111-1111-1111-111111111111',
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-CSV-Analyzer'),
-  '/data/analyzer-imports/e2e-csv/incoming',
-  '*.csv',
-  '/data/analyzer-imports/e2e-csv/processed',
-  '/data/analyzer-imports/e2e-csv/errors',
-  '{"Sample_ID":"sampleId","Test_Code":"testCode","Result":"result"}',
-  ',',
-  true,
-  true,
-  '11111111-1111-1111-1111-111111111111',
-  '1',
-  NOW(),
-  'CSV'
-);
+-- 2. Clean up legacy 1000-series analyzers (Feature 004, fully retired)
+DELETE FROM analyzer_results WHERE analyzer_id IN (1000,1001,1002,1003,1004);
+DELETE FROM notebook_analysers WHERE analyser_id IN (1000,1001,1002,1003,1004);
+DELETE FROM analyzer WHERE id IN (1000,1001,1002,1003,1004);
 
-INSERT INTO analyzer_plugin_config (
-  analyzer_id,
-  config,
-  sys_user_id,
-  last_updated
-) VALUES (
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-CSV-Analyzer'),
-  '{
-    "profileMeta":{"id":"e2e-file-csv","version":"1.0","displayName":"E2E File CSV"},
-    "protocol":{"name":"FILE","format":"CSV"},
-    "column_mapping":{"Sample_ID":"sampleId","Test_Code":"testCode","Result":"result"},
-    "default_test_mappings":{"VL":"HIV-VL"},
-    "configDefaults":{"fileFormat":"CSV","delimiter":",","hasHeader":true}
-  }'::jsonb,
-  '1',
-  NOW()
-);
+-- 3. Clean up old fixture-loaded analyzers (replaced by REST API seeding)
+DELETE FROM analyzer_test_map WHERE analyzer_id IN ('2013', '2014', '3001', '3002', '3003');
+DELETE FROM file_import_configuration WHERE analyzer_id IN (3001, 3002, 3003);
+DELETE FROM analyzer_results WHERE analyzer_id IN (2013, 2014, 3001, 3002, 3003);
+DELETE FROM notebook_analysers WHERE analyser_id IN (2013, 2014, 3001, 3002, 3003);
+DELETE FROM analyzer WHERE id IN (2013, 2014, 3001, 3002, 3003);
 
--- E2E-FILE-QuantStudio-Analyzer (GenericFile + QuantStudio profile)
-INSERT INTO analyzer (
-  id,
-  name,
-  analyzer_type,
-  description,
-  is_active,
-  protocol_version,
-  status,
-  analyzer_type_id,
-  last_updated
-) VALUES (
-  nextval('analyzer_seq'),
-  'E2E-FILE-QuantStudio-Analyzer',
-  'MOLECULAR',
-  'E2E QuantStudio file import analyzer',
-  true,
-  NULL,
-  'ACTIVE',
-  (SELECT id FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile'),
-  NOW()
-);
+-- 4. Clean up Mindray analyzers from 011 fixtures (not in current UAT scope)
+DELETE FROM analyzer_results WHERE analyzer_id IN (2006,2007,2008,2012);
+DELETE FROM notebook_analysers WHERE analyser_id IN (2006,2007,2008,2012);
+DELETE FROM analyzer WHERE id IN (2006,2007,2008,2012);
 
-INSERT INTO file_import_configuration (
-  id,
-  analyzer_id,
-  import_directory,
-  file_pattern,
-  archive_directory,
-  error_directory,
-  column_mappings,
-  delimiter,
-  has_header,
-  active,
-  fhir_uuid,
-  sys_user_id,
-  last_updated,
-  file_format
-) VALUES (
-  '22222222-2222-2222-2222-222222222222',
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-QuantStudio-Analyzer'),
-  '/data/analyzer-imports/e2e-qs/incoming',
-  '*.xls',
-  '/data/analyzer-imports/e2e-qs/processed',
-  '/data/analyzer-imports/e2e-qs/errors',
-  '{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue","Well Position":"position"}',
-  E'\t',
-  true,
-  true,
-  '22222222-2222-2222-2222-222222222222',
-  '1',
-  NOW(),
-  'EXCEL'
-);
+-- 5. Deactivate all legacy (non-generic) analyzer types for clean dashboard
+UPDATE analyzer_type SET is_active = false
+WHERE name NOT IN ('Generic ASTM', 'Generic HL7', 'Generic File');
 
-INSERT INTO analyzer_plugin_config (
-  analyzer_id,
-  config,
-  sys_user_id,
-  last_updated
-) VALUES (
-  (SELECT id FROM analyzer WHERE name = 'E2E-FILE-QuantStudio-Analyzer'),
-  '{
-    "profileMeta":{"id":"quantstudio","version":"1.0.0","displayName":"QuantStudio QS5/QS7"},
-    "protocol":{"name":"FILE","format":"EXCEL"},
-    "column_mapping":{"Sample Name":"sampleId","Target Name":"testCode","Quantity Mean":"result","CT":"ctValue"},
-    "default_test_mappings":{"VIH-1":"HIV-1 VL (LOINC 20447-9)","IC":"Internal Control"},
-    "configDefaults":{"fileFormat":"EXCEL","hasHeader":true,"sheetIndex":0}
-  }'::jsonb,
-  '1',
-  NOW()
-);
+-- 6. Ensure the 3 generic types are active
+UPDATE analyzer_type SET is_active = true
+WHERE name IN ('Generic ASTM', 'Generic HL7', 'Generic File');
 
+-- Verification
 SELECT
-  (SELECT COUNT(*) FROM analyzer_type WHERE name = 'E2E-FILE-GenericFile') AS analyzer_type_count,
-  (SELECT COUNT(*) FROM analyzer WHERE name LIKE 'E2E-FILE-%') AS analyzer_count,
-  (SELECT COUNT(*) FROM file_import_configuration fic JOIN analyzer a ON fic.analyzer_id = a.id WHERE a.name LIKE 'E2E-FILE-%') AS file_config_count,
-  (SELECT COUNT(*) FROM analyzer_plugin_config apc JOIN analyzer a ON apc.analyzer_id = a.id WHERE a.name LIKE 'E2E-FILE-%') AS plugin_config_count;
+  (SELECT COUNT(*) FROM analyzer_type WHERE is_active = true) AS active_type_count,
+  (SELECT COUNT(*) FROM analyzer WHERE is_active = true) AS active_analyzer_count,
+  (SELECT string_agg(name, ', ' ORDER BY name) FROM analyzer_type WHERE is_active = true) AS active_types;
