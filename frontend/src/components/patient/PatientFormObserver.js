@@ -58,6 +58,31 @@ const normalizePatientForComparison = (patient = {}) => ({
   addressHierarchy: normalizeAddressHierarchy(patient),
 });
 
+export const mergePatientIntoOrderFormValues = (
+  orderFormValues = {},
+  values = {},
+  patientUpdateStatus,
+) => {
+  const nextPatientProperties = {
+    ...values,
+    patientUpdateStatus,
+  };
+
+  if (
+    orderFormValues.patientUpdateStatus === patientUpdateStatus &&
+    JSON.stringify(orderFormValues.patientProperties || {}) ===
+      JSON.stringify(nextPatientProperties)
+  ) {
+    return orderFormValues;
+  }
+
+  return {
+    ...orderFormValues,
+    patientUpdateStatus,
+    patientProperties: nextPatientProperties,
+  };
+};
+
 export const derivePatientUpdateStatus = (
   values,
   selectedPatient,
@@ -75,8 +100,7 @@ export const derivePatientUpdateStatus = (
 
 const PatientFormObserver = (props) => {
   const { values } = useFormikContext();
-  const { orderFormValues, setOrderFormValues, formAction, selectedPatient } =
-    props;
+  const { setOrderFormValues, formAction, selectedPatient } = props;
 
   useEffect(() => {
     const patientUpdateStatus = derivePatientUpdateStatus(
@@ -85,21 +109,14 @@ const PatientFormObserver = (props) => {
       formAction,
     );
 
-    setOrderFormValues({
-      ...orderFormValues,
-      patientUpdateStatus,
-      patientProperties: {
-        ...values,
+    setOrderFormValues((previousOrderFormValues) =>
+      mergePatientIntoOrderFormValues(
+        previousOrderFormValues,
+        values,
         patientUpdateStatus,
-      },
-    });
-  }, [
-    formAction,
-    orderFormValues,
-    selectedPatient,
-    setOrderFormValues,
-    values,
-  ]);
+      ),
+    );
+  }, [formAction, selectedPatient, setOrderFormValues, values]);
 
   return null;
 };

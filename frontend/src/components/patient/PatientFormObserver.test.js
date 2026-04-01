@@ -1,4 +1,7 @@
-import { derivePatientUpdateStatus } from "./PatientFormObserver";
+import {
+  derivePatientUpdateStatus,
+  mergePatientIntoOrderFormValues,
+} from "./PatientFormObserver";
 
 describe("derivePatientUpdateStatus", () => {
   const selectedPatient = {
@@ -52,5 +55,62 @@ describe("derivePatientUpdateStatus", () => {
 
   it("preserves add semantics for new patients", () => {
     expect(derivePatientUpdateStatus({}, {}, "ADD")).toBe("ADD");
+  });
+});
+
+describe("mergePatientIntoOrderFormValues", () => {
+  it("reuses the previous order form object when patient state is unchanged", () => {
+    const orderFormValues = {
+      sampleOrderItems: { labNo: "ABC-123" },
+      patientUpdateStatus: "NO_ACTION",
+      patientProperties: {
+        patientPK: "9001000",
+        firstName: "John",
+        lastName: "TEST-Smith",
+        patientUpdateStatus: "NO_ACTION",
+      },
+    };
+
+    const result = mergePatientIntoOrderFormValues(
+      orderFormValues,
+      {
+        patientPK: "9001000",
+        firstName: "John",
+        lastName: "TEST-Smith",
+      },
+      "NO_ACTION",
+    );
+
+    expect(result).toBe(orderFormValues);
+  });
+
+  it("updates patientProperties while preserving unrelated order state", () => {
+    const orderFormValues = {
+      sampleOrderItems: { labNo: "ABC-123" },
+      patientUpdateStatus: "NO_ACTION",
+      patientProperties: {
+        patientPK: "9001000",
+        firstName: "John",
+        lastName: "TEST-Smith",
+        patientUpdateStatus: "NO_ACTION",
+      },
+    };
+
+    const result = mergePatientIntoOrderFormValues(
+      orderFormValues,
+      {
+        patientPK: "9001000",
+        firstName: "John",
+        lastName: "TEST-Smith",
+        primaryPhone: "555-9999",
+      },
+      "UPDATE",
+    );
+
+    expect(result).not.toBe(orderFormValues);
+    expect(result.sampleOrderItems).toEqual(orderFormValues.sampleOrderItems);
+    expect(result.patientUpdateStatus).toBe("UPDATE");
+    expect(result.patientProperties.primaryPhone).toBe("555-9999");
+    expect(result.patientProperties.patientUpdateStatus).toBe("UPDATE");
   });
 });
