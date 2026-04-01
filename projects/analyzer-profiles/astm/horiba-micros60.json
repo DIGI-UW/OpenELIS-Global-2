@@ -16,49 +16,49 @@
   },
   "default_test_mappings": [
     {
-      "analyzer_code": "WBC",
+      "test_code": "WBC",
       "test_name_hint": "White Blood Cells",
       "loinc": "6690-2",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "RBC",
+      "test_code": "RBC",
       "test_name_hint": "Red Blood Cells",
       "loinc": "789-8",
       "unit": "10^6/uL"
     },
     {
-      "analyzer_code": "HGB",
+      "test_code": "HGB",
       "test_name_hint": "Hemoglobin",
       "loinc": "718-7",
       "unit": "g/dL"
     },
     {
-      "analyzer_code": "HCT",
+      "test_code": "HCT",
       "test_name_hint": "Hematocrit",
       "loinc": "4544-3",
       "unit": "%"
     },
     {
-      "analyzer_code": "PLT",
+      "test_code": "PLT",
       "test_name_hint": "Platelet Count",
       "loinc": "777-3",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "LYMPH",
+      "test_code": "LYMPH",
       "test_name_hint": "Lymphocytes",
       "loinc": "736-9",
       "unit": "%"
     },
     {
-      "analyzer_code": "MID",
+      "test_code": "MID",
       "test_name_hint": "Mid Cells",
       "loinc": "35058-2",
       "unit": "%"
     },
     {
-      "analyzer_code": "GRAN",
+      "test_code": "GRAN",
       "test_name_hint": "Granulocytes",
       "loinc": "19023-1",
       "unit": "%"

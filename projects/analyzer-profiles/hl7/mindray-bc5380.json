@@ -9,92 +9,97 @@
   "manufacturer": "Mindray",
   "category": "HEMATOLOGY",
   "protocol": { "name": "HL7", "version": "2.3.1" },
-  "identifier_pattern": "MINDRAY.*BC.?5380",
+  "identifier_pattern": "MINDRAY.*BC.?5380|BC.?5380",
   "transport": ["TCP/IP"],
   "transport_config": {
     "TCP/IP": { "default_port": 5380, "framing": "MLLP" }
   },
+  "communication": {
+    "mode": "ANALYZER_INITIATED",
+    "supports_lis_initiated": true,
+    "notes": "HL7 push (ORU^R01) via MLLP. Bidirectional ORM^O01/ORR^O02 documented in vendor manual but not yet implemented in OE (OGC-327)."
+  },
   "msh3_pattern": "MINDRAY",
   "default_test_mappings": [
     {
-      "analyzer_code": "WBC",
+      "test_code": "WBC",
       "test_name_hint": "White Blood Cells",
       "loinc": "6690-2",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "RBC",
+      "test_code": "RBC",
       "test_name_hint": "Red Blood Cells",
       "loinc": "789-8",
       "unit": "10^6/uL"
     },
     {
-      "analyzer_code": "HGB",
+      "test_code": "HGB",
       "test_name_hint": "Hemoglobin",
       "loinc": "718-7",
       "unit": "g/dL"
     },
     {
-      "analyzer_code": "HCT",
+      "test_code": "HCT",
       "test_name_hint": "Hematocrit",
       "loinc": "4544-3",
       "unit": "%"
     },
     {
-      "analyzer_code": "MCV",
+      "test_code": "MCV",
       "test_name_hint": "Mean Corpuscular Volume",
       "loinc": "787-2",
       "unit": "fL"
     },
     {
-      "analyzer_code": "MCH",
+      "test_code": "MCH",
       "test_name_hint": "Mean Corpuscular Hemoglobin",
       "loinc": "785-6",
       "unit": "pg"
     },
     {
-      "analyzer_code": "MCHC",
+      "test_code": "MCHC",
       "test_name_hint": "Mean Corpuscular Hemoglobin Concentration",
       "loinc": "786-4",
       "unit": "g/dL"
     },
     {
-      "analyzer_code": "PLT",
+      "test_code": "PLT",
       "test_name_hint": "Platelet Count",
       "loinc": "777-3",
       "unit": "10^3/uL"
     },
     {
-      "analyzer_code": "NEUT",
+      "test_code": "NEUT",
       "test_name_hint": "Neutrophils",
       "loinc": "751-8",
       "unit": "%"
     },
     {
-      "analyzer_code": "LYMPH",
+      "test_code": "LYMPH",
       "test_name_hint": "Lymphocytes",
       "loinc": "736-9",
       "unit": "%"
     },
     {
-      "analyzer_code": "MONO",
+      "test_code": "MONO",
       "test_name_hint": "Monocytes",
       "loinc": "742-7",
       "unit": "%"
     },
     {
-      "analyzer_code": "EOS",
+      "test_code": "EOS",
       "test_name_hint": "Eosinophils",
       "loinc": "711-2",
       "unit": "%"
     },
     {
-      "analyzer_code": "BASO",
+      "test_code": "BASO",
       "test_name_hint": "Basophils",
       "loinc": "704-7",
       "unit": "%"
     }
   ],
   "configDefaults": {},
-  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). MSH-3 sending application = 'MINDRAY'. Complete CBC panel with 5-part differential."
+  "notes": "Requires MLLP framing (0x0B start, 0x1C 0x0D end). Seed profile assumes sender identity is matched dynamically from MSH-3/MSH-4 candidates, not a hardcoded allowlist. Real HL7 captures are still pending."
 }
