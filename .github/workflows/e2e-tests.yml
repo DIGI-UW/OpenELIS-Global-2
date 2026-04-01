@@ -204,22 +204,17 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull and retag prebuilt compose images
-        run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
+        run: E2E_IMAGE_MAP_FILE=/tmp/e2e-image-map/e2e-image-map-base.txt bash scripts/e2e/pull-retag-e2e-images.sh
 
       - name: Start OpenELIS containers (no rebuild)
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
 
-      - name: Wait for application to be ready
-        run: |
-          echo "Waiting for application to respond..."
-          timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
-          echo "Application is ready"
+      - name: Wait for OpenELIS login readiness
+        env:
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+          TIMEOUT_SECONDS: "240"
+        run: bash scripts/e2e/wait-for-openelis-login.sh
 
       - name: Load E2E foundational + demo patient data (order entry / OGC-284)
         run: |
@@ -367,20 +362,17 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull and retag prebuilt compose images
-        run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
+        run: E2E_IMAGE_MAP_FILE=/tmp/e2e-image-map/e2e-image-map-base.txt bash scripts/e2e/pull-retag-e2e-images.sh
 
       - name: Start OpenELIS containers (no rebuild)
         run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
 
-      - name: Wait for application to be ready
-        run: |
-          timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
+      - name: Wait for OpenELIS login readiness
+        env:
+          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+          TIMEOUT_SECONDS: "240"
+        run: bash scripts/e2e/wait-for-openelis-login.sh
 
       - name: Load E2E foundational + demo patient data
         run: |

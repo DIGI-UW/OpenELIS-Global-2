@@ -91,6 +91,19 @@ Analyzer rows used by harness tests are created via REST API seeding:
   `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`, and
   `FluoroCycler XT` using profile-based `defaultConfigId`
 
+### Harness environment contract
+
+- **Database container**: `openelisglobal-database` (service `db.openelis.org` in
+  `build.docker-compose.yml` / `projects/analyzer-harness/docker-compose.base.yml`).
+  Playwright helpers honor `HARNESS_DB_CONTAINER`, `DATABASE_CONTAINER`, or
+  `DB_CONTAINER` (first match).
+- **Host import directory**: `projects/analyzer-harness/volume/analyzer-imports`
+  (bind-mounted for bridge file drops). Override with `HARNESS_ANALYZER_IMPORTS_DIR`
+  if the workspace layout is non-standard.
+- **CI readiness**: `scripts/e2e/wait-for-openelis-login.sh` (core E2E) and
+  `scripts/e2e/wait-for-analyzer-harness-readiness.sh` (full harness) — prefer
+  these over curling `/` so tests start only after `ValidateLogin` succeeds.
+
 ## Demo Contract
 
 `core-demo`, `core-demo-video`, `harness-demo`, and `harness-demo-video` exist

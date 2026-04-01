@@ -149,13 +149,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull and retag prebuilt compose images
-        run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
+        run: E2E_IMAGE_MAP_FILE=/tmp/e2e-image-map/e2e-image-map.txt bash scripts/e2e/pull-retag-e2e-images.sh
 
       - name: Create analyzer import bind mount directories
         run: |
@@ -185,38 +179,8 @@ jobs:
         env:
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
-        run: |
-          wait_for_url() {
-            local label="$1"
-            local timeout_seconds="$2"
-            local curl_command="$3"
-
-            echo "Waiting for ${label}..."
-            timeout "$timeout_seconds" bash -c "until ${curl_command} > /dev/null; do sleep 2; done"
-            echo "${label} is ready."
-          }
-
-          wait_for_login() {
-            local timeout_seconds="$1"
-
-            echo "Waiting for OpenELIS login readiness..."
-            timeout "$timeout_seconds" bash -c '
-              until bash projects/analyzer-harness/scripts/verify-login.sh --base-url https://localhost >/dev/null 2>&1; do
-                sleep 2
-              done
-            '
-            echo "OpenELIS login is ready."
-          }
-
-          wait_for_login 240
-          wait_for_url \
-            "bridge readiness" \
-            120 \
-            "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health"
-          wait_for_url \
-            "simulator readiness" \
-            120 \
-            "curl -s -f --connect-timeout 2 --max-time 3 http://localhost:8085/health"
+          TIMEOUT_SECONDS: "240"
+        run: bash scripts/e2e/wait-for-analyzer-harness-readiness.sh
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execSync } from "child_process";
+import { execFileSync, execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 
@@ -50,8 +50,9 @@ const bundlePrefix =
   "analyzer-harness-demo-video-playwright-report";
 const zipName = `${bundlePrefix}-${stamp}.zip`;
 
-execSync(`zip -r "${zipName}" playwright-report test-results`, {
+execFileSync("zip", ["-r", zipName, "playwright-report", "test-results"], {
   stdio: "inherit",
+  cwd: frontendDir,
 });
 
 console.log(`Created bundle: ${zipName}`);
