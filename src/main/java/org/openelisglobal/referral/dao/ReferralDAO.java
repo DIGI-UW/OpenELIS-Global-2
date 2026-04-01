@@ -26,7 +26,7 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
 
     // public boolean insertData(Referral referral) throws LIMSRuntimeException;
 
-    public Referral getReferralById(Integer referralId) throws LIMSRuntimeException;
+    public Referral getReferralById(String referralId) throws LIMSRuntimeException;
 
     public Referral getReferralByAnalysisId(Integer analysisId) throws LIMSRuntimeException;
 

@@ -43,7 +43,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public Referral getReferralById(Integer referralId) throws LIMSRuntimeException {
+    public Referral getReferralById(String referralId) throws LIMSRuntimeException {
         try {
             Referral referral = entityManager.unwrap(Session.class).get(Referral.class, referralId);
             return referral;

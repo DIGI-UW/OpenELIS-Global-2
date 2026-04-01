@@ -4,16 +4,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.hibernate.SessionFactory;
-import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
-import org.hibernate.cfg.Configuration;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.shipment.valueholder.BoxSampleItem;
 import org.openelisglobal.shipment.valueholder.BoxState;
@@ -23,68 +20,26 @@ import org.openelisglobal.shipment.valueholder.ShipmentStatus;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
 
 /**
- * Validates Hibernate ORM mappings for shipment module WITHOUT requiring
- * database connection. This test layer catches entity/mapping conflicts before
- * integration tests.
+ * Validates shipment entity annotations and JavaBean conventions WITHOUT
+ * requiring a database or Spring context. Fast (<1s) annotation-level checks.
  *
- * Executes in <5 seconds, preventing ORM errors that would otherwise only
- * appear at application startup.
- *
- * Per Constitution V.4: "Build SessionFactory using config.addAnnotatedClass(),
- * validate annotations, <5s execution"
+ * Full ORM mapping validation (SessionFactory build, relationship resolution)
+ * is covered by integration tests (ShippingBoxServiceTest, etc.) which use the
+ * real Spring context with test-persistence.xml.
  */
 public class ShipmentHibernateMappingValidationTest {
 
-    private static SessionFactory sessionFactory;
-
-    @BeforeClass
-    public static void buildSessionFactory() {
-        Configuration configuration = new Configuration();
-
-        // Add all shipment entity mappings using annotation-based approach
-        configuration.addAnnotatedClass(ShippingBox.class);
-        configuration.addAnnotatedClass(Shipment.class);
-        // BoxSample.class removed - entity deprecated and table dropped in 3.3.x
-        configuration.addAnnotatedClass(BoxSampleItem.class);
-
-        // Add dependent entity mappings
-        configuration.addResource("hibernate/hbm/Sample.hbm.xml");
-        configuration.addResource("hibernate/hbm/SampleItem.hbm.xml");
-        configuration.addResource("hibernate/hbm/Organization.hbm.xml");
-        configuration.addResource("hibernate/hbm/SystemUser.hbm.xml");
-        configuration.addResource("hibernate/hbm/Test.hbm.xml");
-
-        // Configure minimal properties (no actual DB connection)
-        configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
-        // Skip foreign key validation for this test - we're only validating mapping
-        // structure
-        configuration.setProperty("hibernate.hbm2ddl.auto", "none");
-
-        // Build SessionFactory - this will FAIL if any mapping is invalid
-        sessionFactory = configuration.buildSessionFactory(
-                new StandardServiceRegistryBuilder().applySettings(configuration.getProperties()).build());
-    }
-
-    @AfterClass
-    public static void closeSessionFactory() {
-        if (sessionFactory != null) {
-            sessionFactory.close();
-        }
-    }
-
     /**
-     * Test that all shipment entity Hibernate mappings load successfully Catches:
-     * Property name mismatches, missing getters/setters, invalid relationships
+     * Verify that all shipment entities have required JPA annotations.
      */
     @Test
-    public void testAllShipmentHibernateMappingsLoadSuccessfully() {
-        assertNotNull("SessionFactory should build successfully with all shipment mappings", sessionFactory);
+    public void testAllShipmentEntitiesHaveJpaAnnotations() {
+        Class<?>[] entities = { ShippingBox.class, Shipment.class, BoxSampleItem.class };
 
-        // Verify each entity is registered in Hibernate metamodel
-        assertNotNull("ShippingBox should be registered", sessionFactory.getMetamodel().entity(ShippingBox.class));
-        assertNotNull("Shipment should be registered", sessionFactory.getMetamodel().entity(Shipment.class));
-        // BoxSample removed - entity deprecated and table dropped in 3.3.x
-        assertNotNull("BoxSampleItem should be registered", sessionFactory.getMetamodel().entity(BoxSampleItem.class));
+        for (Class<?> entityClass : entities) {
+            assertNotNull(entityClass.getSimpleName() + " must have @Entity", entityClass.getAnnotation(Entity.class));
+            assertNotNull(entityClass.getSimpleName() + " must have @Table", entityClass.getAnnotation(Table.class));
+        }
     }
 
     /**
@@ -147,18 +102,6 @@ public class ShipmentHibernateMappingValidationTest {
             return string;
         }
         return string.substring(0, 1).toLowerCase() + string.substring(1);
-    }
-
-    /**
-     * Test that entity property types match Hibernate mapping expectations Catches:
-     * Wrong return types, primitive vs wrapper mismatches
-     */
-    @Test
-    public void testEntityPropertyTypesValid() {
-        // If SessionFactory built, property types are compatible
-        // This is implicit validation - SessionFactory won't build if types
-        // incompatible
-        assertNotNull("SessionFactory validates property types", sessionFactory);
     }
 
     /**

@@ -70,8 +70,7 @@ public class ReferralServiceImpl extends AuditableBaseObjectServiceImpl<Referral
     @Override
     @Transactional(readOnly = true)
     public Referral getReferralById(String referralId) {
-        Integer id = Integer.parseInt(referralId);
-        return getBaseObjectDAO().getReferralById(id);
+        return getBaseObjectDAO().getReferralById(referralId);
     }
 
     @Override
