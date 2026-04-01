@@ -24,24 +24,63 @@
 
     <!-- Localization entries for Unit of Measure -->
     <localization id="1"
-        description="Milligrams per deciliter" english="mg/dL" french="mg/dL" />
-    <localization id="2" description="Grams per liter"
-        english="g/L" french="g/L" />
-    <localization id="3" description="Millimoles per liter"
-        english="mmol/L" french="mmol/L" />
-    <localization id="4" description="Units per liter"
-        english="U/L" french="U/L" />
+        description="Milligrams per deciliter" />
+    <localization id="2" description="Grams per liter" />
+    <localization id="3" description="Millimoles per liter" />
+    <localization id="4" description="Units per liter" />
     <localization id="5"
-        description="Milliequivalents per liter" english="mEq/L"
-        french="mEq/L" />
-    <localization id="6" description="Cells per microliter"
-        english="cells/µL" french="cellules/µL" />
-    <localization id="7" description="Millimeters per hour"
-        english="mm/hr" french="mm/h" />
-    <localization id="8" description="Percentage" english="%"
-        french="%" />
+        description="Milliequivalents per liter" />
+    <localization id="6" description="Cells per microliter" />
+    <localization id="7" description="Millimeters per hour" />
+    <localization id="8" description="Percentage" />
     <localization id="9"
-        description="Micrograms per milliliter" english="µg/mL" french="µg/mL" />
+        description="Micrograms per milliliter" />
     <localization id="10"
-        description="Nanograms per milliliter" english="ng/mL" french="ng/mL" />
+        description="Nanograms per milliliter" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="mg/dL" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="mg/dL" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="g/L" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="g/L" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="mmol/L" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="mmol/L" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="U/L" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="U/L" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="mEq/L" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="mEq/L" />
+    <localization_value id="11" localization_id="6"
+        locale="en" value="cells/µL" />
+    <localization_value id="12" localization_id="6"
+        locale="fr" value="cellules/µL" />
+    <localization_value id="13" localization_id="7"
+        locale="en" value="mm/hr" />
+    <localization_value id="14" localization_id="7"
+        locale="fr" value="mm/h" />
+    <localization_value id="15" localization_id="8"
+        locale="en" value="%" />
+    <localization_value id="16" localization_id="8"
+        locale="fr" value="%" />
+    <localization_value id="17" localization_id="9"
+        locale="en" value="µg/mL" />
+    <localization_value id="18" localization_id="9"
+        locale="fr" value="µg/mL" />
+    <localization_value id="19" localization_id="10"
+        locale="en" value="ng/mL" />
+    <localization_value id="20" localization_id="10"
+        locale="fr" value="ng/mL" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 </dataset>

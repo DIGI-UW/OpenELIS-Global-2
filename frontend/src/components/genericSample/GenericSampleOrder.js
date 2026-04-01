@@ -8,7 +8,6 @@ import {
   Button,
   InlineNotification,
 } from "@carbon/react";
-import { Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -16,11 +15,12 @@ import CustomTimePicker from "../common/CustomTimePicker";
 import CustomSelect from "../common/CustomSelect";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
+import LabelsSection from "../barcodeWorkflow/LabelsSection";
+import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
-import config from "../../config.json";
 
 /**
  * GenericSampleOrder - Configurable sample order entry component
@@ -86,7 +86,7 @@ export default function GenericSampleOrder({
     [initialValues.notebookEntryId],
   );
 
-  // Default fields - only include standard fields that the backend expects
+  // Default fields - only include standard fields that the backend expects (OGC-284: label counts)
   const [defaultForm, setDefaultForm] = useState({
     labNo: initialValues.labNo || "",
     sampleTypeId: initialValues.sampleTypeId || "",
@@ -96,6 +96,8 @@ export default function GenericSampleOrder({
     collector: initialValues.collector || "",
     collectionDate: initialValues.collectionDate || "",
     collectionTime: initialValues.collectionTime || "",
+    numOrderLabels: initialValues.numOrderLabels ?? 1,
+    numSpecimenLabels: initialValues.numSpecimenLabels ?? 1,
   });
 
   // FHIR Questionnaire data and state
@@ -230,22 +232,6 @@ export default function GenericSampleOrder({
 
   const getAnswer = (questionId) => {
     return fhirResponses[questionId] || "";
-  };
-
-  const handlePrintBarCode = (sampleData) => {
-    const params = new URLSearchParams({
-      labNo: sampleData.accessionNumber,
-      type: "generic",
-      quantity: "1",
-      sampleType: sampleData.sampleType || "",
-      sampleQuantity: sampleData.quantity
-        ? `${sampleData.quantity}${sampleData.unitOfMeasure ? " " + sampleData.unitOfMeasure : ""}`
-        : "",
-      from: sampleData.from || "",
-    });
-    const barcodesPdf =
-      config.serverBaseUrl + `/LabelMakerServlet?${params.toString()}`;
-    window.open(barcodesPdf);
   };
 
   const handleNewOrder = () => {
@@ -501,13 +487,12 @@ export default function GenericSampleOrder({
               <div
                 style={{ display: "flex", gap: "1rem", marginTop: "0.5rem" }}
               >
-                <Button
-                  kind="primary"
-                  renderIcon={Printer}
-                  onClick={() => handlePrintBarCode(successData)}
-                >
-                  <FormattedMessage id="print.barcode" />
-                </Button>
+                <PostSavePrintDialog
+                  accessionNumber={successData.accessionNumber}
+                  printableLabelTypes={
+                    successData.postSavePrintDialog?.printableLabelTypes || []
+                  }
+                />
                 <Button kind="secondary" onClick={handleNewOrder}>
                   <FormattedMessage
                     id="genericSample.order.newOrder"
@@ -826,6 +811,45 @@ export default function GenericSampleOrder({
           {/* Custom content render */}
           {renderCustomContent &&
             renderCustomContent(defaultForm, updateDefaultField)}
+
+          {/* OGC-284 shared labels section */}
+          <Grid fullWidth={true}>
+            <Column lg={16} md={8} sm={4}>
+              <Section>
+                <Heading>
+                  <FormattedMessage id="barcode.labels.section.title" />
+                </Heading>
+              </Section>
+              <LabelsSection
+                orderQuantity={Number(defaultForm.numOrderLabels || 1)}
+                specimenQuantities={[
+                  Number(defaultForm.numSpecimenLabels || 1),
+                ]}
+                onChange={(labelsModel) => {
+                  updateDefaultField(
+                    "numOrderLabels",
+                    labelsModel?.orderRow?.quantities?.order ?? 1,
+                  );
+                  updateDefaultField(
+                    "numSpecimenLabels",
+                    labelsModel?.sampleRows?.[0]?.quantities?.specimen ?? 1,
+                  );
+                }}
+                orderLabelText={intl.formatMessage({
+                  id: "barcode.labels.order.row",
+                })}
+                specimenLabelFormatter={(sampleNumber) =>
+                  intl.formatMessage(
+                    { id: "barcode.labels.sample.row" },
+                    { sampleNumber },
+                  )
+                }
+                runningTotalLabel={intl.formatMessage({
+                  id: "barcode.labels.running.total",
+                })}
+              />
+            </Column>
+          </Grid>
 
           {/* FHIR QUESTIONNAIRE SECTION */}
           {showQuestionnaire && (

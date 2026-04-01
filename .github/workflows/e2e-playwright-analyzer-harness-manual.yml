@@ -1,0 +1,17 @@
+# Standalone analyzer harness (manual). PRs to develop run this via e2e-playwright.yml
+# so the harness always runs with the workflow that already exists on the base branch.
+name: E2E / Playwright / Analyzer Harness (Manual)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    with:
+      test_user: ${{ vars.TEST_USER || 'admin' }}
+      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}

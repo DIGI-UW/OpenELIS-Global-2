@@ -145,6 +145,8 @@
 
     <!-- Storage Rack Table (simple container for boxes) -->
     <changeSet id="storage-004-create-storage-rack-table" author="sample-storage-feature">
+        <validCheckSum>8:5bc86d3867b7a3127795006adf6ef715</validCheckSum>
+        <validCheckSum>8:8c3496e3b7c0798d50ea3579f0608c85</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="storage_rack"/>
