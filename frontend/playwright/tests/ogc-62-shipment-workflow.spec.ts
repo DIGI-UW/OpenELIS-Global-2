@@ -180,10 +180,21 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   await showTitleCard(
     page,
     "User Story 2",
-    "As a lab user, I create a new shipment box by selecting a destination facility, temperature requirement, capacity, and optional notes.",
+    "As a lab user, I create a new shipment box by selecting a destination facility, adding a sample, and submitting.",
     3000,
     testInfo,
   );
+
+  // ── Check for available unassigned samples via API ─────────────
+  const unassignedResponse = await page.request.get(
+    "/rest/unassigned-sample/items",
+  );
+  const unassignedItems = await unassignedResponse.json();
+  const hasUnassigned =
+    Array.isArray(unassignedItems) && unassignedItems.length > 0;
+  const sampleAccession = hasUnassigned
+    ? unassignedItems[0].accessionNumber
+    : null;
 
   // ── Navigate to Create Box ──────────────────────────────────────
   await gotoCreateBox(page);
@@ -205,54 +216,52 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .locator('[role="combobox"]')
     .or(page.locator("select"))
     .first();
-  if (await facilityDropdown.isVisible()) {
-    await scrollToAndPause(page, facilityDropdown, pause, 1200);
-    // Try to select the first available option
-    const isSelect =
-      (await facilityDropdown.evaluate((el) => el.tagName)) === "SELECT";
-    if (isSelect) {
-      const options = await facilityDropdown.locator("option").count();
-      if (options > 1) {
-        await facilityDropdown.selectOption({ index: 1 });
-      }
-    } else {
-      // Carbon Dropdown — click to open, then select first item
-      await facilityDropdown.click();
-      const firstItem = page.locator('[role="option"]').first();
-      if (await firstItem.isVisible()) {
-        await firstItem.click();
-      }
+  await expect(facilityDropdown).toBeVisible({ timeout: UI_TIMEOUT });
+  await scrollToAndPause(page, facilityDropdown, pause, 1200);
+
+  // Carbon Dropdown — click label to open, then select first item
+  const isSelect =
+    (await facilityDropdown.evaluate((el) => el.tagName)) === "SELECT";
+  if (isSelect) {
+    const options = await facilityDropdown.locator("option").count();
+    if (options > 1) {
+      await facilityDropdown.selectOption({ index: 1 });
     }
-    await pause(800);
+  } else {
+    await facilityDropdown.click();
+    await expect(page.locator('[role="option"]').first()).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+    await page.locator('[role="option"]').first().click();
+  }
+  await pause(800);
+
+  // ── Add a sample to the box ────────────────────────────────────
+  if (sampleAccession) {
+    await showSceneLabel(page, "US2 · Add Sample to Box", testInfo);
+
+    const sampleSearchInput = page
+      .getByPlaceholder(/accession|sample|search/i)
+      .first();
+    await expect(sampleSearchInput).toBeVisible({ timeout: UI_TIMEOUT });
+    await scrollToAndPause(page, sampleSearchInput, pause, 800);
+    await sampleSearchInput.fill(sampleAccession);
+
+    // Click the search/add button
+    const searchBtn = page
+      .getByRole("button", { name: /search|add|find/i })
+      .first();
+    await expect(searchBtn).toBeVisible({ timeout: UI_TIMEOUT });
+    await searchBtn.click();
+
+    // Wait for the sample to appear in the added list
+    await expect(page.getByText(sampleAccession)).toBeVisible({
+      timeout: UI_TIMEOUT,
+    });
+    await pause(1000);
   }
 
-  // ── Set temperature requirement ─────────────────────────────────
-  await showSceneLabel(page, "US2 · Temperature Requirement", testInfo);
-
-  const tempDropdown = page
-    .locator('[role="combobox"]')
-    .or(page.locator("select"))
-    .nth(1);
-  if (await tempDropdown.isVisible()) {
-    await scrollToAndPause(page, tempDropdown, pause, 800);
-    const isSelect =
-      (await tempDropdown.evaluate((el) => el.tagName)) === "SELECT";
-    if (isSelect) {
-      const options = await tempDropdown.locator("option").count();
-      if (options > 1) {
-        await tempDropdown.selectOption({ index: 1 });
-      }
-    } else {
-      await tempDropdown.click();
-      const firstItem = page.locator('[role="option"]').first();
-      if (await firstItem.isVisible()) {
-        await firstItem.click();
-      }
-    }
-    await pause(600);
-  }
-
-  // ── Add notes ───────────────────────────────────────────────────
+  // ── Fill optional fields ───────────────────────────────────────
   await showSceneLabel(page, "US2 · Box Notes", testInfo);
 
   const notesInput = page
@@ -278,19 +287,25 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   const createBtn = page
     .getByRole("button", { name: /create|save|submit/i })
     .first();
-  if (await createBtn.isVisible()) {
-    await scrollToAndPause(page, createBtn, pause, 1000);
+  await expect(createBtn).toBeVisible({ timeout: UI_TIMEOUT });
+  await scrollToAndPause(page, createBtn, pause, 1000);
+
+  if (sampleAccession) {
+    // We added a sample + selected a facility — button should be enabled
     await expect(createBtn).toBeEnabled({ timeout: UI_TIMEOUT });
     await createBtn.click();
 
-    // Wait for either a success notification or navigation to box details
+    // Wait for success
     const successNotification = page.getByText(/created|success/i);
     const boxDetailsPage = page.getByText(/box.*detail|BOX-/i);
-
     await expect(successNotification.or(boxDetailsPage).first()).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
     await pause(2000);
+  } else {
+    // No unassigned samples available — button stays disabled (missing sample)
+    await expect(createBtn).toBeDisabled();
+    await pause(1000);
   }
 
   await showTitleCard(
