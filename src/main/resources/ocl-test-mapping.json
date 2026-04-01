@@ -1,0 +1,750 @@
+{
+  "version": "1.0.0",
+  "description": "OCL Test to Sample Type and Test Section mapping based on LOINC, WHO, CDC medical standards",
+  "defaults": {
+    "sampleType": "Whole Blood",
+    "testSection": "Hematology"
+  },
+  "mappings": {
+    "24 hour Urine Protein": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "AFB Stain (Sputum) - A": {
+      "sampleType": "Sputum",
+      "testSection": "Bacteria"
+    },
+    "AFB Stain (Sputum) - B": {
+      "sampleType": "Sputum",
+      "testSection": "Bacteria"
+    },
+    "APTT": {
+      "sampleType": "Plasma",
+      "testSection": "Hematology"
+    },
+    "Alanine Aminotransferase (ALT/SGPT)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Albumin - Pericardial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Albumin - Peritoneal Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Albumin - Synovial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Albumin/Globulin Ratio - Pericardial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Albumin/Globulin Ratio - Peritoneal Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Albumin/Globulin Ratio - Synovial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Albumni - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Alkaline phosphatase": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Amylase": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Anti-streptolysin O titer (ASO)": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Aspartate aminotransferase (AST/SGOT)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Bands form": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Basophils": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Beta Choriogonadotropin (B-hCG)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Bleeding time (min)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Blood - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Blood cross-matching": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Blood group": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "C - Reactive Protein (CRP)": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "CA 125": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Casts - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Cholera RDT": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Clotting time (min)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Color - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Colour - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Colour - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Consistency - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Culture and Sensitivity - Vaginal Swab": {
+      "sampleType": "Fluid",
+      "testSection": "Bacteria"
+    },
+    "Culture and Senstivity - Pericardial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Bacteria"
+    },
+    "Culture and Senstivity - Peritoneal Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Bacteria"
+    },
+    "Culture and Senstivity - Sputum": {
+      "sampleType": "Sputum",
+      "testSection": "Bacteria"
+    },
+    "Culture and Senstivity - Synovial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Bacteria"
+    },
+    "Culture and sensitivity, blood": {
+      "sampleType": "Whole Blood",
+      "testSection": "Bacteria"
+    },
+    "Culture and sensitivity, urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Cyst - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Dengue IgG": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Dengue IgM": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Dengue NS1": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Direct bilirubin": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Eosinophils": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Epithelial cells - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Erythrocyte sedimentation rate (ESR)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "GeneXpert": {
+      "sampleType": "Sputum",
+      "testSection": "Molecular Biology"
+    },
+    "Glucose (Fasting)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Glucose (Postprandial)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Glucose (Random)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Glucose - Pericardial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Glucose - Peritoneal Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Glucose - Pleural Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Glucose - Synovial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Gram Stain -  Sputum": {
+      "sampleType": "Sputum",
+      "testSection": "Bacteria"
+    },
+    "Gram Stain - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Gram stain": {
+      "sampleType": "Variable",
+      "testSection": "Bacteria"
+    },
+    "Granulocyte count (10^3/uL)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "H. Pylori - Serum": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "H. Pylori Stool Ag": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "HBsAg - Serum": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "HCV - Blood": {
+      "sampleType": "Whole Blood",
+      "testSection": "Serology"
+    },
+    "HCV - Serum": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "HDL": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "HIV - RDT": {
+      "sampleType": "Whole Blood",
+      "testSection": "Serology"
+    },
+    "HIV - Serum": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "HIV viral load": {
+      "sampleType": "Plasma",
+      "testSection": "Molecular Biology"
+    },
+    "Haemoglobin": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Haemoglobin A1c (HbA1c)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Biochemistry"
+    },
+    "Hepatitis A ( IgM anti HAV)- RDT": {
+      "sampleType": "Whole Blood",
+      "testSection": "Serology"
+    },
+    "Hepatitis E (IgM anti HEV)": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "International normalized ratio (INR)": {
+      "sampleType": "Plasma",
+      "testSection": "Hematology"
+    },
+    "KOH preparation": {
+      "sampleType": "Variable",
+      "testSection": "Bacteria"
+    },
+    "LDH": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Lactate Dehydrogenase (LDH) - Pericardial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Lactate Dehydrogenase (LDH) - Peritoneal Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Lactate Dehydrogenase (LDH) - Pleural Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Lactate Dehydrogenase (LDH) - Synovial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Liquification Time - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Low-density lipoprotein (LDL)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Lymphocytes": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Malaria RDT": {
+      "sampleType": "Whole Blood",
+      "testSection": "Serology"
+    },
+    "Malaria smear impression": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Mantoux Test": {
+      "sampleType": "Intradermal",
+      "testSection": "Immunology"
+    },
+    "Mean cell hemoglobin concentration(MCHC)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Mean corpuscular hemoglobin (MCH)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Mean corpuscular volume (MCV)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Microalbumin - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Monocytes": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Morphology - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Motility - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Mucus - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Neutrophils": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Occult Blood - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Oral Glucose Tolerance Test- OGTT (75 GM- 1 Hour)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Oral Glucose Tolerance Test- OGTT (75 GM- 2 Hour)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Oral Glucose Tolerance Test- OGTT (75 GM- 3 Hour)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Oral Glucose Tolerance Test- OGTT (75 GM- 4 Hour)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Others - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Others - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Ova - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Oxalate - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "PAP smear": {
+      "sampleType": "Fluid",
+      "testSection": "Cytology"
+    },
+    "PBS for Malaria": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "PH - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Packed cell volume": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Parasites - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Phosphates - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Platelets": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Prothrombin time (PT)": {
+      "sampleType": "Plasma",
+      "testSection": "Hematology"
+    },
+    "Pus - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Pus Cells - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Pus Cells - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "RBCs - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Rapid plasma reagin (RPR)": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Red Blood Cell - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Red Blood Cell - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Red blood cells (RBC)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Rheumatoid factor": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Scrub Typhus - IgM": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Scrub Typhus -IgG": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Serum Magnesium": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Serum albumin": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Serum calcium": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Serum creatinine (mg/dL)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Serum lipase": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Serum potassium (K)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Serum sodium (NA)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Stool culture (bacterial)": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Sugar - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Thyroid Stimulating Hormone (TSH)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Thyroxine (T4)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Total Cholesterol": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Total Protein - Pericardial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Total Protein - Peritoneal Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Total Protein - Pleural Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Total Protein - Synovial Fluid": {
+      "sampleType": "Fluid",
+      "testSection": "Biochemistry"
+    },
+    "Total Sperm count - semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Total WBC count": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Total bilirubin": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Total protein": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Transparency-Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Triglycerides": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Triiodothyronine (T3)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Troponin-I": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Undigested Food Particles - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Urates - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Urea - Serum": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Uric acid - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Uric acid, serum": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Urine bile pigment test": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Urine bile salt test": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Urine ketone test": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Urine nitrite test": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Urine pregnancy test (UPT)": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "Urobilinogen - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "VDRL": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Very Low Density Lipoprotein (VLDL)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Viscoscity - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Vitamin B12 Test": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Vitamin D Test": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Volume - Semen": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "WBC - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Yeast - Stool": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Yeast cells - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "pH - Urine": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "rK-39 (Leishmania Antigen) (Test)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Serology"
+    },
+    "AFB Stain, Sputum": {
+      "sampleType": "Sputum",
+      "testSection": "Bacteria"
+    },
+    "Basic Serology": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Blood Banking": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Complete Blood Count (CBC)": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Dengue": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    },
+    "Differential Count": {
+      "sampleType": "Whole Blood",
+      "testSection": "Hematology"
+    },
+    "Lipid Profile Test": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Liver Function Test (LFT)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "PT/INR": {
+      "sampleType": "Plasma",
+      "testSection": "Hematology"
+    },
+    "Renal Function Test (RFT)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Scrub Typhus - RDT": {
+      "sampleType": "Whole Blood",
+      "testSection": "Serology"
+    },
+    "Semen Examination": {
+      "sampleType": "Semen",
+      "testSection": "Biochemistry"
+    },
+    "Stool RE/ME": {
+      "sampleType": "Stool",
+      "testSection": "Bacteria"
+    },
+    "Thyroid(TFT)": {
+      "sampleType": "Serum",
+      "testSection": "Biochemistry"
+    },
+    "Urine RE/ME": {
+      "sampleType": "Urines",
+      "testSection": "Bacteria"
+    },
+    "Urine Specific Test": {
+      "sampleType": "Urines",
+      "testSection": "Biochemistry"
+    },
+    "WIDAL": {
+      "sampleType": "Serum",
+      "testSection": "Serology"
+    }
+  }
+}

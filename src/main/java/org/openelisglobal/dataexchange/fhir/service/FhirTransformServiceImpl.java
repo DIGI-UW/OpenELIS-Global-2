@@ -1411,29 +1411,39 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
                 CodeableConcept codeableConcept = new CodeableConcept();
+                // Use dictionary.guid if available (from OCL import), otherwise use derived
+                // UUID
+                // Send UUID coding FIRST for OpenMRS concept matching
+                String dictUuid = dictionary.getGuid() != null && !dictionary.getGuid().isEmpty() ? dictionary.getGuid()
+                        : generateStableGuidForDictionary(dictionary);
+                codeableConcept.addCoding(new Coding("urn:uuid", dictUuid,
+                        dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
+                                : dictionary.getLocalizedDictionaryName().getEnglish()));
+                // Add LOINC coding SECOND for interoperability
                 if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
                     codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
                             dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
                                     : dictionary.getLocalizedDictionaryName().getEnglish()));
                 }
-                codeableConcept.addCoding(
-                        new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
-                                dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
                 observation.setValue(codeableConcept);
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
                 CodeableConcept codeableConcept = new CodeableConcept();
+                // Use dictionary.guid if available (from OCL import), otherwise use derived
+                // UUID
+                // Send UUID coding FIRST for OpenMRS concept matching
+                String dictUuid = dictionary.getGuid() != null && !dictionary.getGuid().isEmpty() ? dictionary.getGuid()
+                        : generateStableGuidForDictionary(dictionary);
+                codeableConcept.addCoding(new Coding("urn:uuid", dictUuid,
+                        dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
+                                : dictionary.getLocalizedDictionaryName().getEnglish()));
+                // Add LOINC coding SECOND for interoperability
                 if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
                     codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
                             dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
                                     : dictionary.getLocalizedDictionaryName().getEnglish()));
                 }
-                codeableConcept.addCoding(
-                        new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
-                                dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
                 observation.setValue(codeableConcept);
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
                 Quantity quantity = new Quantity();
@@ -1830,5 +1840,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
 
         fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+    }
+
+    /**
+     * Generate a stable UUID for dictionary entries that don't have a stored guid.
+     * This ensures consistency with TestFhirTransformServiceImpl for test creation.
+     */
+    private String generateStableGuidForDictionary(Dictionary dict) {
+        String namespace = "openelis-dictionary";
+        String name = "dict-" + dict.getId();
+        return UUID.nameUUIDFromBytes((namespace + ":" + name).getBytes()).toString();
     }
 }

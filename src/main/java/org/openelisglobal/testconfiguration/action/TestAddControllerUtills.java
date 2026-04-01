@@ -119,7 +119,7 @@ public class TestAddControllerUtills {
             test.setAntimicrobialResistance("Y".equals(testAddParams.antimicrobialResistance));
             test.setIsReportable("N");
             test.setTestSection(testSection);
-            test.setGuid(String.valueOf(UUID.randomUUID()));
+            test.setGuid(testAddParams.guid != null ? testAddParams.guid : String.valueOf(UUID.randomUUID()));
             ArrayList<String> orderedTests = testAddParams.sampleList.get(i).orderedTests;
             for (int j = 0; j < orderedTests.size(); j++) {
                 if ("0".equals(orderedTests.get(j))) {
@@ -238,6 +238,7 @@ public class TestAddControllerUtills {
             extractPanels(obj, parser, testAddParams);
             testAddParams.uomId = (String) obj.get("uom");
             testAddParams.loinc = (String) obj.get("loinc");
+            testAddParams.guid = (String) obj.get("guid");
             testAddParams.price = (String) obj.get("price");
             testAddParams.resultTypeId = (String) obj.get("resultType");
             extractSampleTypes(obj, parser, testAddParams);
@@ -351,6 +352,7 @@ public class TestAddControllerUtills {
         ArrayList<String> panelList = new ArrayList<>();
         String uomId;
         public String loinc;
+        public String guid; // OCL concept UUID to be used as test GUID
         String price;
         String resultTypeId;
         ArrayList<SampleTypeListAndTestOrder> sampleList = new ArrayList<>();

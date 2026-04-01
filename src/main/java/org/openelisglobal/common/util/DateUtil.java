@@ -19,9 +19,13 @@ import java.text.ParseException;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.Period;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -118,6 +122,12 @@ public class DateUtil {
             try {
                 returnDate = new java.sql.Date(format.parse(date).getTime());
             } catch (ParseException e) {
+                // Fallback: accept both MM/dd/yyyy HH:mm and dd/MM/yyyy HH:mm (and with
+                // seconds) regardless of locale.
+                Timestamp ts = parseFlexibleTimestamp(date);
+                if (ts != null) {
+                    return new java.sql.Date(ts.getTime());
+                }
                 LogEvent.logError(e);
                 throw new LIMSRuntimeException("Error parsing date", e);
             }
@@ -133,6 +143,12 @@ public class DateUtil {
             try {
                 returnTimestamp = new Timestamp(format.parse(date).getTime());
             } catch (ParseException e) {
+                // Fallback: accept both MM/dd/yyyy and dd/MM/yyyy regardless of locale.
+                LocalDate parsed = parseFlexibleLocalDate(date,
+                        ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
+                if (parsed != null) {
+                    return Timestamp.valueOf(parsed.atStartOfDay());
+                }
                 LogEvent.logError(e);
                 throw new LIMSRuntimeException("Error parsing date", e);
             }
@@ -148,11 +164,117 @@ public class DateUtil {
             try {
                 returnTimestamp = new Timestamp(format.parse(date).getTime());
             } catch (ParseException e) {
+                // Fallback: accept both MM/dd/yyyy HH:mm and dd/MM/yyyy HH:mm (and with
+                // seconds) regardless of locale.
+                Timestamp ts = parseFlexibleTimestamp(date);
+                if (ts != null) {
+                    return ts;
+                }
                 LogEvent.logError(e);
                 throw new LIMSRuntimeException("Error parsing date", e);
             }
         }
         return returnTimestamp;
+    }
+
+    /**
+     * Parse a date string in either MM/dd/yyyy or dd/MM/yyyy strictly.
+     *
+     * If both interpretations are valid (ambiguous case like 03/04/2026), the
+     * preference is determined by the provided locale tag (en-US => MM/dd/yyyy,
+     * otherwise dd/MM/yyyy).
+     *
+     * @param input              date string
+     * @param preferredLocaleTag locale tag (e.g. en-US, fr-FR)
+     * @return parsed LocalDate or null if invalid
+     */
+    public static LocalDate parseFlexibleLocalDate(String input, String preferredLocaleTag) {
+        if (input == null) {
+            return null;
+        }
+        String normalized = input.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        normalized = normalized.replaceAll(AMBIGUOUS_DATE_SEGMENT, "01");
+
+        DateTimeFormatter mmdd = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("MM/dd/uuuu")
+                .toFormatter().withResolverStyle(ResolverStyle.STRICT);
+        DateTimeFormatter ddmm = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("dd/MM/uuuu")
+                .toFormatter().withResolverStyle(ResolverStyle.STRICT);
+
+        LocalDate asMmDd = null;
+        LocalDate asDdMm = null;
+        try {
+            asMmDd = LocalDate.parse(normalized, mmdd);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            asDdMm = LocalDate.parse(normalized, ddmm);
+        } catch (DateTimeParseException ignored) {
+        }
+
+        if (asMmDd == null && asDdMm == null) {
+            return null;
+        }
+        if (asMmDd != null && asDdMm == null) {
+            return asMmDd;
+        }
+        if (asDdMm != null && asMmDd == null) {
+            return asDdMm;
+        }
+
+        // Ambiguous: both valid. Choose deterministically.
+        boolean preferUs = preferredLocaleTag != null && preferredLocaleTag.equalsIgnoreCase("en-US");
+        return preferUs ? asMmDd : asDdMm;
+    }
+
+    private static Timestamp parseFlexibleTimestamp(String input) {
+        if (input == null) {
+            return null;
+        }
+        String normalized = input.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        normalized = normalized.replaceAll(AMBIGUOUS_DATE_SEGMENT, "01");
+
+        String datePart = normalized;
+        String timePart = null;
+        int spaceIdx = normalized.indexOf(' ');
+        if (spaceIdx > 0) {
+            datePart = normalized.substring(0, spaceIdx);
+            timePart = normalized.substring(spaceIdx + 1).trim();
+            if (timePart.isEmpty()) {
+                timePart = null;
+            }
+        }
+
+        LocalDate date = parseFlexibleLocalDate(datePart,
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
+        if (date == null) {
+            return null;
+        }
+
+        LocalTime time = LocalTime.MIDNIGHT;
+        if (timePart != null) {
+            DateTimeFormatter hhmm = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("HH:mm")
+                    .toFormatter().withResolverStyle(ResolverStyle.STRICT);
+            DateTimeFormatter hhmmss = new DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern("HH:mm:ss")
+                    .toFormatter().withResolverStyle(ResolverStyle.STRICT);
+            try {
+                time = LocalTime.parse(timePart, hhmm);
+            } catch (DateTimeParseException e) {
+                try {
+                    time = LocalTime.parse(timePart, hhmmss);
+                } catch (DateTimeParseException ignored) {
+                    return null;
+                }
+            }
+        }
+
+        LocalDateTime dt = LocalDateTime.of(date, time);
+        return Timestamp.valueOf(dt);
     }
 
     public static Timestamp convertStringDateToTimestampWithPatternNoLocale(String date, String pattern)

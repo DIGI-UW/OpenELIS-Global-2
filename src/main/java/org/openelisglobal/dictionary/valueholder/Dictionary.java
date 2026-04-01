@@ -29,6 +29,8 @@ public class Dictionary extends BaseObject<String> {
 
     private String loincCode;
 
+    private String guid;
+
     public class ComparatorLocalizedName implements Comparator<Dictionary> {
         @Override
         public int compare(Dictionary o1, Dictionary o2) {
@@ -161,6 +163,14 @@ public class Dictionary extends BaseObject<String> {
 
     public void setLoincCode(String loincCode) {
         this.loincCode = loincCode;
+    }
+
+    public String getGuid() {
+        return guid;
+    }
+
+    public void setGuid(String guid) {
+        this.guid = guid;
     }
 
 }

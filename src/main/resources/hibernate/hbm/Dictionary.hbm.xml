@@ -36,6 +36,9 @@
         <property name="loincCode" type="java.lang.String">
             <column name="LOINC_CODE" length="20" />
         </property>
+        <property name="guid" type="java.lang.String">
+            <column name="GUID" length="128" />
+        </property>
         <property name="sortOrder" column="sort_order"
             type="java.lang.Integer" />
         <many-to-one name="localizedDictionaryName"

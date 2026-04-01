@@ -479,7 +479,18 @@ function DictionaryManagement() {
                   data-cy="addButton"
                   style={{ width: isMobile ? "100%" : "auto" }}
                   disabled={!editMode}
-                  onClick={() => setOpen(true)}
+                  onClick={() => {
+                    // Reset form state for new entry
+                    setDictionaryNumber("");
+                    setCategory("");
+                    setDictionaryEntry("");
+                    setLocalAbbreviation("");
+                    setIsActive(yesOrNo.find((item) => item.id === "Y"));
+                    setLoincCode("");
+                    dirtyFieldsRef.current = new Set();
+                    setEditMode(true);
+                    setOpen(true);
+                  }}
                 >
                   {intl.formatMessage({
                     id: "admin.page.configuration.formEntryConfigMenu.button.add",

@@ -55,8 +55,17 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
     @Value("${org.openelisglobal.ocl.import.default.sampletype:Whole Blood}")
     private String defaultSampleType;
 
+    @Value("${org.openelisglobal.ocl.import.cleanup.enabled:true}")
+    private boolean cleanupEnabled;
+
+    @Value("${org.openelisglobal.ocl.import.cleanup.force:false}")
+    private boolean forceCleanup;
+
     @Autowired
     private OclZipImporter oclZipImporter;
+
+    @Autowired
+    private TestPanelCleanupService cleanupService;
 
     @Autowired
     private TestAddService testAddService;
@@ -132,6 +141,25 @@ public class OclConfigurationHandler implements DomainConfigurationHandler {
      */
     public void performImport(List<JsonNode> oclNodes) {
         log.info("OCL Import: Found {} nodes to process.", oclNodes.size());
+
+        // Step 1: Cleanup existing demo tests/panels before import
+        if (cleanupEnabled) {
+            log.info("OCL Import: Cleanup enabled, checking database...");
+            if (forceCleanup) {
+                log.warn(
+                        "OCL Import: Force cleanup enabled - will remove ALL tests/panels regardless of patient data!");
+                int removed = cleanupService.cleanupAllTestsAndPanels();
+                log.info("OCL Import: Removed {} tests/panels during force cleanup", removed);
+            } else {
+                int removed = cleanupService.safeCleanup();
+                if (removed < 0) {
+                    log.warn("OCL Import: Database contains patient data, skipping cleanup. "
+                            + "Set org.openelisglobal.ocl.import.cleanup.force=true to override.");
+                } else {
+                    log.info("OCL Import: Removed {} tests/panels during safe cleanup", removed);
+                }
+            }
+        }
 
         int conceptCount = 0;
         int testsCreated = 0;

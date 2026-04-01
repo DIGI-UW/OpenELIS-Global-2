@@ -110,6 +110,24 @@ public class SampleAddService {
                 Map<String, String> testIdToSampleTypeMap = getTestIdToSelectionMap(
                         sampleItem.attributeValue("testSampleTypeMap"));
 
+                // High-signal mapping diagnostics. Empty panels/maps can lead to null
+                // analysis.panel.
+                if (GenericValidator.isBlankOrNull(panelIDs)) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createSampleTestCollection",
+                            "sampleXML panels is blank/empty. testIDs=" + testIDs + ", accessionNumber="
+                                    + (sample != null ? sample.getAccessionNumber() : null));
+                }
+                if (GenericValidator.isBlankOrNull(sampleItem.attributeValue("testSectionMap"))) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createSampleTestCollection",
+                            "sampleXML testSectionMap is blank/empty. testIDs=" + testIDs + ", accessionNumber="
+                                    + (sample != null ? sample.getAccessionNumber() : null));
+                }
+                if (GenericValidator.isBlankOrNull(sampleItem.attributeValue("testSampleTypeMap"))) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "createSampleTestCollection",
+                            "sampleXML testSampleTypeMap is blank/empty. testIDs=" + testIDs + ", accessionNumber="
+                                    + (sample != null ? sample.getAccessionNumber() : null));
+                }
+
                 String collectionDate = sampleItem.attributeValue("date") == null ? null
                         : sampleItem.attributeValue("date").trim();
                 String collectionTime = sampleItem.attributeValue("time") == null ? null
@@ -197,6 +215,10 @@ public class SampleAddService {
         }
 
         List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(test.getId());
+        if (panelItems == null || panelItems.isEmpty()) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getPanelForTest", "No PanelItems found for testId="
+                    + test.getId() + ", accessionNumber=" + (sample != null ? sample.getAccessionNumber() : null));
+        }
 
         for (PanelItem panelItem : panelItems) {
             Panel panel = panelIdPanelMap.get(panelItem.getPanel().getId());
@@ -205,6 +227,10 @@ public class SampleAddService {
             }
         }
 
+        LogEvent.logWarn(this.getClass().getSimpleName(), "getPanelForTest",
+                "Panel could not be resolved for testId=" + test.getId() + ". panelIdPanelMapSize="
+                        + (panelIdPanelMap != null ? panelIdPanelMap.size() : null) + ", accessionNumber="
+                        + (sample != null ? sample.getAccessionNumber() : null));
         return null;
     }
 

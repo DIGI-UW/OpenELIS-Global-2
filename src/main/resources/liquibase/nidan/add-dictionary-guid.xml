@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="add-dictionary-guid-column" author="Pravin Timalsina">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="dictionary" columnName="guid"/>
+            </not>
+        </preConditions>
+
+        <addColumn schemaName="clinlims" tableName="dictionary">
+            <column name="guid" type="VARCHAR(128)"/>
+        </addColumn>
+
+        <!-- Ensure dictionary GUIDs are unique when present -->
+        <sql>
+            CREATE UNIQUE INDEX IF NOT EXISTS dictionary_guid_uk
+            ON clinlims.dictionary (guid)
+            WHERE guid IS NOT NULL;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

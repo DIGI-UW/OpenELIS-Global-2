@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSFrozenRecordException;
@@ -36,6 +37,11 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
         if (duplicateDictionaryExists(dictionary)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + dictionary.getDictEntry());
         } else {
+            // Generate UUID if not already set (defense-in-depth for UI-created
+            // dictionaries)
+            if (dictionary.getGuid() == null || dictionary.getGuid().isEmpty()) {
+                dictionary.setGuid(UUID.randomUUID().toString());
+            }
             return super.update(dictionary);
         }
     }
@@ -46,6 +52,10 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
         if (duplicateDictionaryExists(dictionary)) {
             throw new LIMSDuplicateRecordException("Duplicate record exists for " + dictionary.getDictEntry());
         } else {
+            // Generate UUID if not already set (for UI-created dictionaries)
+            if (dictionary.getGuid() == null || dictionary.getGuid().isEmpty()) {
+                dictionary.setGuid(UUID.randomUUID().toString());
+            }
             return super.insert(dictionary);
         }
     }

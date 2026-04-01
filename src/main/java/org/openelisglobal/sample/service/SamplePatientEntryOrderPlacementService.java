@@ -63,7 +63,17 @@ public class SamplePatientEntryOrderPlacementService {
     public void placeOrder(HttpServletRequest request, SamplePatientEntryForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        LogEvent.logWarn(this.getClass().getSimpleName(), "placeOrder", "ENTER. hasBindingErrors="
+                + (result != null && result.hasErrors()) + ", externalOrderNumber="
+                + (form != null && form.getSampleOrderItems() != null
+                        ? form.getSampleOrderItems().getExternalOrderNumber()
+                        : null)
+                + ", labNo="
+                + (form != null && form.getSampleOrderItems() != null ? form.getSampleOrderItems().getLabNo() : null));
+
         if (result.hasErrors()) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "placeOrder",
+                    "SHORT-CIRCUIT: binding errors pre-validation. errors=" + result.getErrorCount());
             return;
         }
 
@@ -71,6 +81,11 @@ public class SamplePatientEntryOrderPlacementService {
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
         SampleOrderItem sampleOrder = form.getSampleOrderItems();
+
+        LogEvent.logWarn(this.getClass().getSimpleName(), "placeOrder",
+                "Prepared updateData. sysUserId=" + updateData.getCurrentUserId() + ", patientPK="
+                        + (patientInfo != null ? patientInfo.getPatientPK() : null) + ", receivedTime="
+                        + sampleOrder.getReceivedTime() + ", priority=" + sampleOrder.getPriority());
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -135,11 +150,20 @@ public class SamplePatientEntryOrderPlacementService {
         updateData.validateSample(result);
 
         if (result.hasErrors()) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "placeOrder",
+                    "Validation failed after updateData.validateSample(). errorsCount=" + result.getErrorCount()
+                            + ", accessionNumber=" + updateData.getAccessionNumber() + ", sampleItemsTestsCount="
+                            + (updateData.getSampleItemsTests() != null ? updateData.getSampleItemsTests().size()
+                                    : null));
             return;
         }
 
         try {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "placeOrder", "PERSIST BEGIN accessionNumber="
+                    + updateData.getAccessionNumber() + ", externalOrderNumber=" + updateData.getReferringId());
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
+            LogEvent.logWarn(this.getClass().getSimpleName(), "placeOrder", "PERSIST DONE accessionNumber="
+                    + updateData.getAccessionNumber() + ", externalOrderNumber=" + updateData.getReferringId());
 
             try {
                 SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
@@ -180,7 +204,12 @@ public class SamplePatientEntryOrderPlacementService {
             if (e.getCause() instanceof StaleObjectStateException) {
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
-                LogEvent.logDebug(e);
+                // logError so stack traces show even if debug is disabled.
+                LogEvent.logError(this.getClass().getSimpleName(), "placeOrder",
+                        "Caught LIMSRuntimeException while persisting sample. accessionNumber="
+                                + updateData.getAccessionNumber() + ", externalOrderNumber="
+                                + updateData.getReferringId());
+                LogEvent.logError(e);
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
             LogEvent.logInfo(this.getClass().getSimpleName(), "placeOrder", result.toString());
