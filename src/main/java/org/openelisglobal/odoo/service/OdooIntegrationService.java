@@ -7,6 +7,8 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
@@ -17,6 +19,8 @@ import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -33,6 +37,7 @@ import org.springframework.stereotype.Service;
 public class OdooIntegrationService {
 
     private static final Logger log = LogManager.getLogger(OdooIntegrationService.class);
+
     @Value("${org.openelisglobal.odoo.map.testname.locale:en}")
     private String testMapLocale;
 
@@ -48,6 +53,12 @@ public class OdooIntegrationService {
     @Autowired
     private PatientService patientService;
 
+    @Autowired
+    private SampleItemService sampleItemService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
     /**
      * Creates an invoice in Odoo for the given sample data.
      * 
@@ -56,7 +67,9 @@ public class OdooIntegrationService {
      */
     /**
      * Creates an invoice in Odoo directly from a Sample (used by retry job). Builds
-     * a minimal SamplePatientUpdateData wrapper around the sample.
+     * a minimal SamplePatientUpdateData wrapper around the sample, reconstructing
+     * the sampleItemsTests from the DB so the retry path produces invoices with the
+     * same line items as the original first-attempt path.
      */
     public void createInvoiceForSample(org.openelisglobal.sample.valueholder.Sample sample) {
         org.openelisglobal.sample.action.util.SamplePatientUpdateData updateData = new org.openelisglobal.sample.action.util.SamplePatientUpdateData(
@@ -65,7 +78,40 @@ public class OdooIntegrationService {
         if (sample != null && sample.getAccessionNumber() != null) {
             updateData.setAccessionNumber(sample.getAccessionNumber());
         }
+
+        if (sample != null && sample.getId() != null) {
+            updateData.setSampleItemsTests(buildSampleTestCollections(sample));
+        }
+
         createInvoice(updateData);
+    }
+
+    /**
+     * Reconstructs the {@link SampleTestCollection} list for the given sample by
+     * querying its persisted {@link SampleItem}s and their associated
+     * {@link Analysis} records. Only analyses that carry a non-null {@link Test}
+     * are included. Used by the retry path where sampleItemsTests is not populated
+     * by the normal order-entry flow.
+     */
+    private List<SampleTestCollection> buildSampleTestCollections(org.openelisglobal.sample.valueholder.Sample sample) {
+        List<SampleTestCollection> collections = new ArrayList<>();
+        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        for (SampleItem sampleItem : sampleItems) {
+            List<Test> tests = new ArrayList<>();
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (analysis.getTest() != null) {
+                    tests.add(analysis.getTest());
+                }
+            }
+            if (!tests.isEmpty()) {
+                collections.add(new SampleTestCollection(sampleItem, tests, null, null, null, null, null));
+            }
+        }
+        if (collections.isEmpty()) {
+            log.warn("No test analyses found for sample {} during retry — invoice will have no line items",
+                    sample.getAccessionNumber());
+        }
+        return collections;
     }
 
     public void createInvoice(SamplePatientUpdateData updateData) {
