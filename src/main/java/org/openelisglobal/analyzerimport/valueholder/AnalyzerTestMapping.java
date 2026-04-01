@@ -27,18 +27,17 @@ import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Maps analyzer-specific test names to OpenELIS test IDs. Uses composite
- * primary key (@EmbeddedId) combining analyzerTypeId and analyzerTestName.
+ * primary key (@EmbeddedId) combining analyzerId and analyzerTestName.
  *
  * <p>
- * Test mappings are a property of the plugin TYPE (capability), not a physical
- * device instance. A GeneXpert plugin always maps "MTB RIF" to the same
- * OpenELIS test, regardless of which physical device sent the data.
+ * Test mappings are per-analyzer — each physical instrument owns its own set of
+ * test code → OE test mappings, loaded from its profile.
  */
 @Entity
 @Table(name = "analyzer_test_map")
 public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
     @EmbeddedId
     private AnalyzerTestMappingPK compoundId = new AnalyzerTestMappingPK();
@@ -46,11 +45,6 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
     @Column(name = "test_id")
     @Convert(converter = StringToIntegerConverter.class)
     private String testId;
-
-    /** Legacy column — nullable, no longer part of PK. */
-    @Column(name = "analyzer_id")
-    @Convert(converter = StringToIntegerConverter.class)
-    private String analyzerId;
 
     @Transient
     private String uniqueIdentifyer;
@@ -66,24 +60,16 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     @Override
     public String getStringId() {
-        return compoundId == null ? "0" : compoundId.getAnalyzerTypeId();
-    }
-
-    public void setAnalyzerTypeId(String analyzerTypeId) {
-        uniqueIdentifyer = null;
-        compoundId.setAnalyzerTypeId(analyzerTypeId);
-    }
-
-    public String getAnalyzerTypeId() {
-        return compoundId == null ? null : compoundId.getAnalyzerTypeId();
+        return compoundId == null ? "0" : compoundId.getAnalyzerId();
     }
 
     public void setAnalyzerId(String analyzerId) {
-        this.analyzerId = analyzerId;
+        uniqueIdentifyer = null;
+        compoundId.setAnalyzerId(analyzerId);
     }
 
     public String getAnalyzerId() {
-        return analyzerId;
+        return compoundId == null ? null : compoundId.getAnalyzerId();
     }
 
     public String getAnalyzerTestName() {
@@ -109,7 +95,7 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     public String getUniqueIdentifyer() {
         if (GenericValidator.isBlankOrNull(uniqueIdentifyer)) {
-            uniqueIdentifyer = getAnalyzerTypeId() + "-" + getAnalyzerTestName();
+            uniqueIdentifyer = getAnalyzerId() + "-" + getAnalyzerTestName();
         }
 
         return uniqueIdentifyer;

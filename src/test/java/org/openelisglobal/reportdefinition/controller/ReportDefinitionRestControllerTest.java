@@ -47,7 +47,7 @@ public class ReportDefinitionRestControllerTest extends BaseWebContextSensitiveT
                         MockMvcRequestBuilders.get("/rest/reports/definitions").contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$").isArray())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(3));
+                .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(4));
     }
 
     @Test
@@ -76,6 +76,6 @@ public class ReportDefinitionRestControllerTest extends BaseWebContextSensitiveT
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(MockMvcResultMatchers.status().isOk())
                 .andExpect(MockMvcResultMatchers.jsonPath("$").isArray())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(2));
+                .andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(3));
     }
 }

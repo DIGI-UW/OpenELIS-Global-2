@@ -18,31 +18,31 @@
   "msh3_pattern": "ARCHITECT|ABBOTT",
   "default_test_mappings": [
     {
-      "analyzer_code": "HIV",
+      "test_code": "HIV",
       "test_name_hint": "HIV Antigen/Antibody",
       "loinc": "75622-1",
       "unit": ""
     },
     {
-      "analyzer_code": "HBsAg",
+      "test_code": "HBsAg",
       "test_name_hint": "Hepatitis B Surface Antigen",
       "loinc": "5196-1",
       "unit": ""
     },
     {
-      "analyzer_code": "HCV",
+      "test_code": "HCV",
       "test_name_hint": "Hepatitis C Antibody",
       "loinc": "16128-1",
       "unit": ""
     },
     {
-      "analyzer_code": "TSH",
+      "test_code": "TSH",
       "test_name_hint": "Thyroid Stimulating Hormone",
       "loinc": "3016-3",
       "unit": "mIU/L"
     },
     {
-      "analyzer_code": "FERR",
+      "test_code": "FERR",
       "test_name_hint": "Ferritin",
       "loinc": "2276-4",
       "unit": "ng/mL"
