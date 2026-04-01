@@ -6,8 +6,8 @@ perform an analyzer harness environment restart workflow with:
 - **Container restart** with force-recreate for harness services
 - **Optional database reset** (drop volumes with `--full-reset`)
 - **Plugin jar staging** into `volume/plugins` (same runtime prep as CI)
-- **Fixture loading** (`load-test-fixtures.sh --analyzers=full`) and **analyzer
-  seeding** (`seed-analyzers.sh`)
+- **Fixture loading** (non-test data only — test metadata comes from CSV config)
+  and **analyzer seeding** (`seed-analyzers.sh`)
 - **Analyzer infrastructure verification** (ASTM bridge, simulator, virtual
   serial)
 
@@ -52,7 +52,8 @@ $ARGUMENTS
 
 Interpret arguments best-effort. Support these patterns:
 
-- `/restart-analyzer-harness` → Full restart (restart containers, load fixtures)
+- `/restart-analyzer-harness` → Full reset + restart (drop DB, rebuild, seed —
+  default behavior)
 - `/restart-analyzer-harness --full-reset` → Drop database volumes before
   restart (clean slate)
 - `/restart-analyzer-harness --skip-fixtures` → Skip loading test fixtures
@@ -168,6 +169,13 @@ Choose command based on `--full-reset` flag:
   `USE_LE_COMPOSE` — see preflight.)
 
   This removes database and other volumes (clean slate).
+
+  **Also clear configuration checksums** (stored on bind-mounted filesystem, NOT
+  in the DB — so they survive volume drops and cause OE to skip CSV loading):
+
+  ```bash
+  rm -f $REPO_ROOT/projects/analyzer-harness/volume/configuration/backend/*-checksums.properties
+  ```
 
 - **Without `--full-reset`**:
   ```bash
@@ -321,27 +329,33 @@ set) / failed (warn)]"
 
 **Skip if `--skip-fixtures` was passed.**
 
-Load test fixtures via `load-test-fixtures.sh` with harness DB port:
+**IMPORTANT: Test metadata (tests, test sections, sample types) is loaded from
+CSV config files by OE's `ConfigurationInitializationService` at startup. Do NOT
+run SQL fixture scripts that insert test data — they will overwrite the
+CSV-loaded tests and destroy LOINC codes needed for `autoCreateTestMappings`.**
+
+The authoritative harness CSV config files live in
+`projects/analyzer-harness/config-templates/`. CI mounts that directory directly
+into OE, and local `bootstrap.sh` copies that same directory into the harness
+volume before startup. OE reads those CSVs on startup.
+
+Load ONLY non-test fixtures (foundational patient/sample data, storage):
 
 ```bash
 cd $REPO_ROOT
 export DB_PORT=15432
 export DB_HOST=localhost
 
-if [ "$FULL_RESET" = true ]; then
-    ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
-else
-    ./src/test/resources/load-test-fixtures.sh --analyzers=full --reset --no-verify
-fi
+./src/test/resources/load-test-fixtures.sh --skip-tests --analyzers=full --no-verify
 ```
 
-This loads:
+If `--skip-tests` flag doesn't exist in the script, either:
 
-- Foundational data (e2e-foundational-data.sql)
-- Analyzer types + cleanup (analyzer-minimal.sql, file-import-e2e.sql)
-- Storage fixtures (storage-e2e.generated.sql from DBUnit)
+- Use `--skip-fixtures` to skip ALL fixture loading (tests come from CSV), OR
+- Verify the fixture script does NOT overwrite `clinlims.test` rows that have
+  LOINC codes
 
-Report: "Loaded fixtures (foundational + analyzer types + storage)"
+Report: "Loaded fixtures (non-test data only — tests loaded from CSV config)"
 
 ### 6b) Seed analyzers via REST API (checkpoint #6b)
 

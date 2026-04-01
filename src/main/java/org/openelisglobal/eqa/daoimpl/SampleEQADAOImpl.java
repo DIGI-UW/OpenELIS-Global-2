@@ -28,10 +28,11 @@ public class SampleEQADAOImpl extends BaseDAOImpl<SampleEQA, Long> implements Sa
     @Transactional(readOnly = true)
     public Optional<SampleEQA> findBySampleId(Long sampleId) {
         try {
-            String hql = "FROM SampleEQA s WHERE s.sampleId = :sampleId";
-            Query<SampleEQA> query = entityManager.unwrap(Session.class).createQuery(hql, SampleEQA.class);
+            String sql = "SELECT * FROM sample_eqa WHERE sample_id = :sampleId";
+            jakarta.persistence.Query query = entityManager.createNativeQuery(sql, SampleEQA.class);
             query.setParameter("sampleId", sampleId);
-            return query.uniqueResultOptional();
+            List<SampleEQA> results = query.getResultList();
+            return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
         } catch (Exception e) {
             logger.error("Error retrieving SampleEQA for sample: {}", sampleId, e);
             throw new LIMSRuntimeException("Error retrieving SampleEQA by sample ID", e);

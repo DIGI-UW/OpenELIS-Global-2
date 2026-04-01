@@ -15,13 +15,35 @@ public class BridgeRegistrationService {
 
     private static final String CLASS_NAME = "BridgeRegistrationService";
 
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     @Value("${analyzer.bridge.url:}")
     private String bridgeBaseUrl;
 
     private final HttpClient httpClient;
 
     public BridgeRegistrationService() {
-        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+        HttpClient client;
+        try {
+            javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+            sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    return new java.security.cert.X509Certificate[0];
+                }
+
+                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
+                }
+
+                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
+                }
+            } }, new java.security.SecureRandom());
+            client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).sslContext(sslContext).build();
+        } catch (Exception e) {
+            LogEvent.logWarn(CLASS_NAME, "BridgeRegistrationService",
+                    "SSL context init failed, using default client: " + e.getMessage());
+            client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+        }
+        this.httpClient = client;
     }
 
     /** Register a TCP analyzer (ASTM/HL7) with the bridge. */
@@ -30,25 +52,46 @@ public class BridgeRegistrationService {
             return false;
         }
 
-        String sourceId = ip;
-        String json = String.format("{\"oeAnalyzerId\":\"%s\",\"sourceId\":\"%s\",\"name\":\"%s\",\"protocol\":\"%s\"}",
-                oeAnalyzerId, sourceId, escapeJson(name), protocol != null ? protocol : "ASTM");
-
-        return callRegister(json, oeAnalyzerId);
+        try {
+            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("oeAnalyzerId", oeAnalyzerId);
+            payload.put("sourceId", ip);
+            payload.put("name", name);
+            payload.put("protocol", protocol != null ? protocol : "ASTM");
+            String json = objectMapper.writeValueAsString(payload);
+            return callRegister(json, oeAnalyzerId);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            LogEvent.logError(CLASS_NAME, "registerTcp", "Failed to build registration JSON: " + e.getMessage());
+            return false;
+        }
     }
 
-    /** Register a FILE analyzer with the bridge. */
-    public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern) {
+    /**
+     * Register a FILE analyzer with the bridge, including column mappings for FHIR
+     * parsing.
+     */
+    public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern,
+            java.util.Map<String, String> columnMappings) {
         if (!isBridgeConfigured()) {
             return false;
         }
 
-        String json = String.format(
-                "{\"oeAnalyzerId\":\"%s\",\"sourceId\":\"%s\",\"name\":\"%s\",\"protocol\":\"FILE\",\"filePattern\":\"%s\"}",
-                oeAnalyzerId, escapeJson(watchDir), escapeJson(name),
-                escapeJson(filePattern != null ? filePattern : ""));
-
-        return callRegister(json, oeAnalyzerId);
+        try {
+            java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+            payload.put("oeAnalyzerId", oeAnalyzerId);
+            payload.put("sourceId", watchDir);
+            payload.put("name", name);
+            payload.put("protocol", "FILE");
+            payload.put("filePattern", filePattern != null ? filePattern : "");
+            if (columnMappings != null && !columnMappings.isEmpty()) {
+                payload.put("columnMappings", columnMappings);
+            }
+            String json = objectMapper.writeValueAsString(payload);
+            return callRegister(json, oeAnalyzerId);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            LogEvent.logError(CLASS_NAME, "registerFile", "Failed to build registration JSON: " + e.getMessage());
+            return false;
+        }
     }
 
     /** Unregister an analyzer from the bridge. */
@@ -110,10 +153,4 @@ public class BridgeRegistrationService {
         return true;
     }
 
-    private String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 }

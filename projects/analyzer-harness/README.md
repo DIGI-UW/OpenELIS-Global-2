@@ -1,17 +1,52 @@
-# Analyzer Harness (isolated docker-compose)
+# Analyzer Harness
 
-Isolated dev + analyzer testing. Domain: **analyzers.openelis-global.org** (same
-env/Let's Encrypt as main).
+This directory now follows a single authoritative path for analyzer E2E parity.
 
-## What’s included
+## Authoritative Base (required for CI parity)
 
-- `docker-compose.dev.yml`: OpenELIS (WAR-mounted) + DB + frontend + proxy
-- `docker-compose.analyzer-test.yml`: ASTM simulator + ASTM-HTTP bridge +
-  virtual serial
-- `docker-compose.letsencrypt.yml`: Let's Encrypt override; `build.sh`,
-  `reset-env.sh` (e.g. `--build --full-reset`)
+The analyzer harness CI gate runs from the repository root using:
 
-## Build and start from scratch
+- `build.docker-compose.yml`
+- `.github/ci/ci.analyzer-harness.yml`
+- `.github/workflows/e2e-playwright-analyzer-harness-reusable.yml`
+
+Use `ci-parity-test.sh` for exact local reproduction of that CI path.
+
+```bash
+./projects/analyzer-harness/ci-parity-test.sh
+```
+
+The script performs:
+
+- strict preflight validation (no silent assumptions)
+- exact CI step order (compose up, readiness, fixtures, seed, permissions,
+  Playwright)
+- deterministic evidence capture in `/tmp/oe-ci-parity-<timestamp>/`
+
+## Startup Catalog
+
+The authoritative harness startup catalog lives under
+`projects/analyzer-harness/config-templates/`.
+
+- CI mounts that directory directly into OE's startup configuration path.
+- Local harness bootstrap copies that same directory into the harness volume.
+- Do not add or update harness test catalog CSVs under any other source tree.
+
+`seed-analyzers.sh` now hard-fails if the startup catalog cannot realize the
+required profile mappings for the seeded analyzers.
+
+## Local Convenience Flavors
+
+Legacy local compose files remain for convenience during migration:
+
+- `docker-compose.dev.yml`
+- `docker-compose.analyzer-test.yml`
+- `docker-compose.letsencrypt.yml`
+
+They are local-only flavors and must not drift behaviorally from the
+authoritative CI base for critical analyzer flows.
+
+## Build and start from scratch (legacy local flavor)
 
 ```bash
 ./build.sh
@@ -21,7 +56,7 @@ env/Let's Encrypt as main).
 Uses `.env` from this dir or repo root (e.g.
 `LETSENCRYPT_DOMAIN=analyzers.openelis-global.org`).
 
-## Quick start
+## Quick start (legacy local flavor)
 
 From this directory:
 
@@ -35,7 +70,7 @@ docker compose -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml up -d
 ```
 
-Then load analyzer fixtures from the repo root:
+Then load analyzer fixtures from the repo root (legacy flow):
 
 ```bash
 cd /home/ubuntu/OpenELIS-Global-2
@@ -62,7 +97,13 @@ Frontend changes hot-reload automatically (mounted volume).
 
 ## Resetting the test environment
 
-From this directory (or repo root), run:
+For exact CI parity, prefer:
+
+```bash
+./projects/analyzer-harness/ci-parity-test.sh
+```
+
+For legacy local convenience mode, run:
 
 ```bash
 ./projects/analyzer-harness/reset-env.sh [options]
