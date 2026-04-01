@@ -3,7 +3,9 @@ package org.openelisglobal.analyzer.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Socket;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,17 +42,12 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerQueryServiceImpl.class);
 
-    // ASTM LIS2-A2 Control Characters
-    private static final byte ENQ = 0x05; // Enquiry - Start transmission
-    private static final byte ACK = 0x06; // Acknowledge - Positive response
-    private static final byte NAK = 0x15; // Negative Acknowledge
-    private static final byte EOT = 0x04; // End of Transmission
-    private static final byte STX = 0x02; // Start of Text (frame start)
-    private static final byte ETX = 0x03; // End of Text (frame end)
-    private static final byte CR = 0x0D; // Carriage Return
-    private static final byte LF = 0x0A; // Line Feed
-
     private final Map<String, Map<String, Object>> jobStore = new ConcurrentHashMap<>();
+
+    @org.springframework.beans.factory.annotation.Value("${analyzer.bridge.url:}")
+    private String analyzerBridgeUrl;
+
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
     private final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -212,7 +209,7 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             int timeoutMinutes = getQueryTimeout();
             int timeoutMs = timeoutMinutes * 60 * 1000;
 
-            List<Map<String, Object>> fields = queryAnalyzerASTM(ipAddress, port, timeoutMs, status);
+            List<Map<String, Object>> fields = queryViaBridge(ipAddress, port, timeoutMs, status);
 
             // Store fields directly in database (single source of truth)
             addLog(status, String.format("Storing %d fields in database", fields.size()));
@@ -249,177 +246,117 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     }
 
     /**
-     * Query analyzer via ASTM protocol and return parsed fields
+     * Query analyzer via the bridge's /api/query endpoint. The bridge handles the
+     * ASTM ENQ/ACK/frame exchange — OE never opens direct sockets to analyzers.
      */
-    private List<Map<String, Object>> queryAnalyzerASTM(String ipAddress, Integer port, int timeoutMs,
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> queryViaBridge(String ipAddress, Integer port, int timeoutMs,
             Map<String, Object> status) throws IOException {
-        Socket socket = null;
-        List<Map<String, Object>> fields = new ArrayList<>();
+
+        if (analyzerBridgeUrl == null || analyzerBridgeUrl.isBlank()) {
+            throw new IOException("Bridge URL not configured (analyzer.bridge.url) — cannot query analyzer");
+        }
+
+        String endpoint = analyzerBridgeUrl.replaceAll("/+$", "") + "/api/query";
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("host", ipAddress);
+        payload.put("port", port);
+        payload.put("timeoutMs", timeoutMs);
+        String json;
+        try {
+            json = objectMapper.writeValueAsString(payload);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IOException("Failed to build query request JSON", e);
+        }
+
+        addLog(status, "Sending query via bridge: " + endpoint);
+        status.put("progress", 30);
 
         try {
-            socket = new Socket();
-            socket.connect(new java.net.InetSocketAddress(ipAddress, port), 5000);
-            socket.setSoTimeout(timeoutMs);
+            URL url = new URL(endpoint);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+                javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
+                javax.net.ssl.SSLContext sslContext = javax.net.ssl.SSLContext.getInstance("TLS");
+                sslContext.init(null, new javax.net.ssl.TrustManager[] { new javax.net.ssl.X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return new java.security.cert.X509Certificate[0];
+                    }
 
-            addLog(status, "TCP connection established");
-            status.put("progress", 30);
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
 
-            InputStream in = socket.getInputStream();
-            OutputStream out = socket.getOutputStream();
-
-            // Phase 1: ENQ/ACK handshake
-            addLog(status, "Sending ENQ (Enquiry)");
-            out.write(ENQ);
-            out.flush();
-
-            int response = in.read();
-            if (response != ACK) {
-                throw new IOException("Expected ACK (0x06), received: 0x" + String.format("%02X", response & 0xFF));
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String s) {
+                    }
+                } }, new java.security.SecureRandom());
+                httpsConn.setSSLSocketFactory(sslContext.getSocketFactory());
+                httpsConn.setHostnameVerifier((hostname, session) -> true);
             }
-            addLog(status, "Received ACK (Acknowledge)");
-            status.put("progress", 40);
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(timeoutMs + 10000); // bridge timeout + buffer
 
-            // Phase 2: Send query message (header only - indicates query)
-            addLog(status, "Sending query message (header record)");
-            String headerRecord = "H|\\^&|||OpenELIS^Query^1.0|||||||LIS2-A2";
-            sendFrame(out, headerRecord, 1);
-
-            // Wait for ACK
-            response = in.read();
-            if (response != ACK) {
-                throw new IOException("Frame not ACKed, received: 0x" + String.format("%02X", response & 0xFF));
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes(StandardCharsets.UTF_8));
             }
 
-            // Send EOT to end transmission
-            addLog(status, "Sending EOT (End of Transmission)");
-            out.write(EOT);
-            out.flush();
-            status.put("progress", 50);
-
-            // Phase 3: Wait for server response (server initiates with ENQ)
-            addLog(status, "Waiting for server response");
-            response = in.read();
-            if (response == ENQ) {
-                addLog(status, "Received ENQ from server, sending ACK");
-                out.write(ACK);
-                out.flush();
-            } else {
-                throw new IOException(
-                        "Expected ENQ from server, received: 0x" + String.format("%02X", response & 0xFF));
+            int httpStatus = conn.getResponseCode();
+            String body = "";
+            try (InputStream is = (httpStatus < 400) ? conn.getInputStream() : conn.getErrorStream()) {
+                if (is != null) {
+                    body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
             }
 
-            // Phase 4: Receive frames from server
-            addLog(status, "Receiving field data frames");
             status.put("progress", 60);
 
-            int frameNumber = 1;
-            List<String> records = new ArrayList<>();
+            if (httpStatus != 200) {
+                throw new IOException("Bridge query returned HTTP " + httpStatus + ": " + body);
+            }
 
-            while (true) {
-                // Read frame: <STX><FN><data><ETX><checksum><CR><LF>
-                int stx = in.read();
-                if (stx == EOT) {
-                    addLog(status, "Received EOT, end of transmission");
-                    break;
-                }
-                if (stx != STX) {
-                    throw new IOException("Expected STX (0x02), received: 0x" + String.format("%02X", stx & 0xFF));
-                }
+            Map<String, Object> bridgeResponse = objectMapper.readValue(body,
+                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                    });
 
-                // Read frame number
-                int fn = in.read();
-                if (fn < '1' || fn > '7') {
-                    throw new IOException("Invalid frame number: " + (char) fn);
-                }
+            Boolean success = (Boolean) bridgeResponse.get("success");
+            if (!Boolean.TRUE.equals(success)) {
+                String error = (String) bridgeResponse.getOrDefault("error", "Unknown bridge error");
+                throw new IOException("Bridge query failed: " + error);
+            }
 
-                // Read until ETX
-                StringBuilder frameData = new StringBuilder();
-                int b;
-                while ((b = in.read()) != ETX) {
-                    if (b == -1) {
-                        throw new IOException("Unexpected end of stream");
-                    }
-                    frameData.append((char) b);
-                }
-
-                // Read checksum (2 hex digits)
-                byte[] checksumBytes = new byte[2];
-                in.read(checksumBytes);
-
-                // Read CR/LF
-                in.read(); // CR
-                in.read(); // LF
-
-                String record = frameData.toString();
-                records.add(record);
-                addLog(status, String.format("Received frame %d: %s", frameNumber,
-                        record.length() > 50 ? record.substring(0, 50) + "..." : record));
-
-                // ACK the frame
-                out.write(ACK);
-                out.flush();
-
-                frameNumber++;
-                if (frameNumber > 7) {
-                    frameNumber = 1;
+            // Forward bridge logs to job status
+            Object logsObj = bridgeResponse.get("logs");
+            if (logsObj instanceof List) {
+                for (Object log : (List<Object>) logsObj) {
+                    addLog(status, "[bridge] " + log);
                 }
             }
 
-            addLog(status, String.format("Parsing %d records", records.size()));
+            // Parse records from bridge response
+            List<String> records = new ArrayList<>();
+            Object recordsObj = bridgeResponse.get("records");
+            if (recordsObj instanceof List) {
+                for (Object r : (List<Object>) recordsObj) {
+                    records.add(String.valueOf(r));
+                }
+            }
+
+            addLog(status, String.format("Parsing %d records from bridge response", records.size()));
             status.put("progress", 80);
 
-            fields = parseFieldRecords(records);
-            addLog(status, String.format("Extracted %d fields from response", fields.size()));
+            List<Map<String, Object>> fields = parseFieldRecords(records);
+            addLog(status, String.format("Extracted %d fields", fields.size()));
 
-            logger.info("[QUERY_ASTM] Parsed {} fields from analyzer response", fields.size());
-            for (int i = 0; i < fields.size(); i++) {
-                Map<String, Object> field = fields.get(i);
-                logger.info("[QUERY_ASTM] Parsed field {}: fieldName='{}', astmRef='{}', unit='{}', type='{}'", i + 1,
-                        field.get("fieldName"), field.get("astmRef"), field.get("unit"), field.get("fieldType"));
-            }
+            logger.info("[QUERY] Parsed {} fields via bridge for {}:{}", fields.size(), ipAddress, port);
+            return fields;
 
-        } finally {
-            if (socket != null && !socket.isClosed()) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    logger.debug("Error closing socket", e);
-                }
-            }
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Bridge query error: " + e.getMessage(), e);
         }
-
-        return fields;
-    }
-
-    /**
-     * Send an ASTM frame
-     */
-    private void sendFrame(OutputStream out, String content, int frameNumber) throws IOException {
-        byte[] frameNumBytes = String.valueOf(frameNumber).getBytes();
-        byte[] contentBytes = content.getBytes("UTF-8");
-
-        // Calculate checksum: sum of frame number + content + ETX, mod 256
-        int checksum = 0;
-        for (byte b : frameNumBytes) {
-            checksum += b & 0xFF;
-        }
-        for (byte b : contentBytes) {
-            checksum += b & 0xFF;
-        }
-        checksum += ETX;
-        checksum = checksum % 256;
-
-        String checksumStr = String.format("%02X", checksum);
-
-        // Build frame: <STX><FN><content><ETX><checksum><CR><LF>
-        out.write(STX);
-        out.write(frameNumBytes);
-        out.write(contentBytes);
-        out.write(ETX);
-        out.write(checksumStr.getBytes());
-        out.write(CR);
-        out.write(LF);
-        out.flush();
     }
 
     /**

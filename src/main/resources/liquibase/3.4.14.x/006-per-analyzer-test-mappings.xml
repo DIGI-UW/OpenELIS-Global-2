@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      OGC-492: Re-key analyzer_test_map to per-analyzer mappings.
+
+      Migration 009 moved PK to (analyzer_type_id, analyzer_test_name) and
+      deleted "phantom" Analyzer rows. This was wrong — test mappings are
+      per-analyzer, not per-type. With generic plugins (Generic HL7, Generic ASTM,
+      Generic File), multiple analyzers share a type, and PK collisions prevent
+      per-analyzer mappings.
+
+      This migration:
+      1. Ensures every mapping row has a valid analyzer_id
+      2. Re-keys PK to (analyzer_id, analyzer_test_name)
+      3. Drops analyzer_type_id from the table (no role in mappings)
+    -->
+
+    <!-- Step 1: For mappings with null analyzer_id, resolve from first Analyzer
+         of the same type. If no Analyzer exists, create one. -->
+    <changeSet id="013-006-01-resolve-analyzer-id" author="ogc-492">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer_test_map" columnName="analyzer_type_id"/>
+        </preConditions>
+        <comment>OGC-492: Ensure every test mapping has a valid analyzer_id</comment>
+        <sql>
+            <!-- Create Analyzer rows for types that have mappings but no Analyzer -->
+            INSERT INTO analyzer (id, name, analyzer_type_id, is_active, last_updated)
+            SELECT nextval('analyzer_seq'),
+                   at.name,
+                   at.id,
+                   true,
+                   NOW()
+            FROM analyzer_type at
+            WHERE at.id IN (
+                SELECT DISTINCT atm.analyzer_type_id
+                FROM analyzer_test_map atm
+                WHERE atm.analyzer_id IS NULL
+            )
+            AND NOT EXISTS (
+                SELECT 1 FROM analyzer a WHERE a.analyzer_type_id = at.id
+            );
+
+            <!-- Resolve null analyzer_id from first Analyzer of that type -->
+            UPDATE analyzer_test_map atm
+            SET analyzer_id = (
+                SELECT MIN(a.id) FROM analyzer a
+                WHERE a.analyzer_type_id = atm.analyzer_type_id
+            )
+            WHERE atm.analyzer_id IS NULL
+            AND atm.analyzer_type_id IS NOT NULL;
+        </sql>
+    </changeSet>
+
+    <!-- Step 2: Deduplicate on new PK (analyzer_id, analyzer_test_name) before
+         creating constraint. Same analyzer + same test code = keep one row. -->
+    <changeSet id="013-006-02-deduplicate-on-analyzer-id" author="ogc-492">
+        <comment>OGC-492: Deduplicate mappings before creating per-analyzer PK</comment>
+        <sql>
+            <!-- Remove rows that still have no analyzer_id (orphans) -->
+            DELETE FROM analyzer_test_map WHERE analyzer_id IS NULL;
+
+            <!-- Deduplicate on (analyzer_id, analyzer_test_name) -->
+            DELETE FROM analyzer_test_map a
+            USING analyzer_test_map b
+            WHERE a.ctid &lt; b.ctid
+            AND a.analyzer_id = b.analyzer_id
+            AND a.analyzer_test_name = b.analyzer_test_name;
+        </sql>
+    </changeSet>
+
+    <!-- Step 3: Drop old PK and FK on analyzer_type_id -->
+    <changeSet id="013-006-03-drop-type-pk" author="ogc-492">
+        <preConditions onFail="MARK_RAN">
+            <primaryKeyExists tableName="analyzer_test_map" primaryKeyName="analyzer_test_map_pk"/>
+        </preConditions>
+        <comment>OGC-492: Drop type-based PK and FK</comment>
+        <dropPrimaryKey tableName="analyzer_test_map" constraintName="analyzer_test_map_pk"/>
+        <sql>
+            ALTER TABLE analyzer_test_map DROP CONSTRAINT IF EXISTS analyzer_test_map_analyzer_type_fk;
+        </sql>
+    </changeSet>
+
+    <!-- Step 4: Create new per-analyzer PK -->
+    <changeSet id="013-006-04-create-analyzer-pk" author="ogc-492">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <primaryKeyExists tableName="analyzer_test_map" primaryKeyName="analyzer_test_map_pk"/>
+            </not>
+        </preConditions>
+        <comment>OGC-492: New PK keyed by analyzer instance, not type</comment>
+        <addNotNullConstraint tableName="analyzer_test_map"
+                              columnName="analyzer_id"
+                              columnDataType="NUMERIC(10,0)"/>
+        <addPrimaryKey tableName="analyzer_test_map"
+                       columnNames="analyzer_id, analyzer_test_name"
+                       constraintName="analyzer_test_map_pk"/>
+        <addForeignKeyConstraint baseTableName="analyzer_test_map"
+                                 baseColumnNames="analyzer_id"
+                                 constraintName="analyzer_test_map_analyzer_fk"
+                                 referencedTableName="analyzer"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- Step 5: Drop analyzer_type_id column (no role in test mappings) -->
+    <changeSet id="013-006-05-drop-type-column" author="ogc-492">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="analyzer_test_map" columnName="analyzer_type_id"/>
+        </preConditions>
+        <comment>OGC-492: analyzer_type has no role in test mappings — drop from table</comment>
+        <dropColumn tableName="analyzer_test_map" columnName="analyzer_type_id"/>
+    </changeSet>
+
+</databaseChangeLog>
