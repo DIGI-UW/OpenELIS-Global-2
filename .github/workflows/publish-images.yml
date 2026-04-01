@@ -1,5 +1,6 @@
 # Publishes tested images after merge/release only.
-# Triggered by native 03 - E2E completion and gated on its native checkpoint job.
+# Triggered by 03 - E2E build completion and gated on the wrapper-reported
+# `03 Checkpoint - E2E` contract.
 name: Publish Images
 
 on:
