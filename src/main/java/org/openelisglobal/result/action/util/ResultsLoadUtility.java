@@ -790,13 +790,22 @@ public class ResultsLoadUtility {
         }
 
         // EQA indicator: look up the SampleEQA record for this sample
-        Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
-        SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
-        if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
-            testItem.setEqaSample(true);
-            if (sampleEQA.getEqaPriority() != null) {
-                testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+        try {
+            Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
+            SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
+            if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+                testItem.setEqaSample(true);
+                if (sampleEQA.getEqaPriority() != null) {
+                    testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+                }
             }
+        } catch (RuntimeException e) {
+            // Log and ignore to prevent breaking the whole report if EQA lookup fails
+            String sampleIdStr = (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
+                    ? analysis.getSampleItem().getSample().getId()
+                    : "null";
+            LogEvent.logError(
+                    "Error looking up EQA status for analysis " + analysis.getId() + ", sample " + sampleIdStr, e);
         }
 
         Result quantifiedResult = analysisService.getQuantifiedResult(analysis);
