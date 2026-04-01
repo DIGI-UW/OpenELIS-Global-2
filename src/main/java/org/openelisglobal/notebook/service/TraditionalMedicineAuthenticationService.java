@@ -21,8 +21,7 @@ public interface TraditionalMedicineAuthenticationService {
     enum AuthenticationMethod {
         MORPHOLOGICAL_EXAMINATION("morphological_examination", "Morphological examination"),
         MICROSCOPIC_ANALYSIS("microscopic_analysis", "Microscopic analysis"),
-        MOLECULAR_IDENTIFICATION("molecular_identification", "Molecular identification (DNA barcoding: ITS, rbcL, matK genes)"),
-        OTHER("other","Other");
+        MOLECULAR_IDENTIFICATION("molecular_identification", "Molecular identification (DNA barcoding: ITS, rbcL, matK genes)");
 
         private final String id;
         private final String label;
