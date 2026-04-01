@@ -3,6 +3,7 @@ package org.openelisglobal.common.util;
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -19,23 +20,45 @@ public class ControllerUtills {
             return String.valueOf(usd.getSystemUserId());
         }
 
-        // Strategy 2: Spring Security principal (fallback for authenticated REST calls)
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()
-                && !(auth instanceof org.springframework.security.authentication.AnonymousAuthenticationToken)
-                && auth.getName() != null) {
-            try {
-                org.openelisglobal.login.service.LoginUserService loginService = org.openelisglobal.spring.util.SpringContext
-                        .getBean(org.openelisglobal.login.service.LoginUserService.class);
-                org.openelisglobal.login.valueholder.LoginUser loginUser = loginService.getUserProfile(auth.getName());
-                if (loginUser != null) {
-                    return String.valueOf(loginUser.getSystemUserId());
+        // Strategy 2: UserContextHolder (handles SecurityContext, daemon, and all other
+        // contexts — with cached DB lookups)
+        try {
+            UserContextHolder holder = SpringContext.getBean(UserContextHolder.class);
+            return holder.getCurrentSysUserId();
+        } catch (IllegalStateException | org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
+            // Spring context not yet initialized (early startup)
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the current user's system user ID without requiring an
+     * HttpServletRequest. Works in HTTP, scheduled, async, and daemon contexts.
+     */
+    public static String getSysUserId() {
+        // Try session-based resolution first if we're in a web context
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (requestAttributes instanceof ServletRequestAttributes) {
+            HttpServletRequest request = ((ServletRequestAttributes) requestAttributes).getRequest();
+            if (request != null) {
+                UserSessionData usd = (UserSessionData) request.getSession()
+                        .getAttribute(IActionConstants.USER_SESSION_DATA);
+                if (usd == null) {
+                    usd = (UserSessionData) request.getAttribute(IActionConstants.USER_SESSION_DATA);
                 }
-            } catch (Exception e) {
-                org.openelisglobal.common.log.LogEvent.logDebug(ControllerUtills.class.getSimpleName(), "getSysUserId",
-                        "SecurityContext fallback failed: " + e.getMessage());
+                if (usd != null) {
+                    return String.valueOf(usd.getSystemUserId());
+                }
             }
+        }
+
+        // Fall back to UserContextHolder (works in all contexts)
+        try {
+            UserContextHolder holder = SpringContext.getBean(UserContextHolder.class);
+            return holder.getCurrentSysUserId();
+        } catch (IllegalStateException | org.springframework.beans.factory.NoSuchBeanDefinitionException e) {
+            // Spring context not yet initialized (early startup)
         }
 
         return null;
@@ -55,5 +78,4 @@ public class ControllerUtills {
         }
         return false;
     }
-
 }

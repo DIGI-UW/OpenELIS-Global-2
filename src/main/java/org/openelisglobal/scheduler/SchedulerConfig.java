@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -19,6 +20,7 @@ import org.openelisglobal.dataexchange.MalariaSurveilance.MalariaSurveilanceJob;
 import org.openelisglobal.dataexchange.aggregatereporting.AggregateReportJob;
 import org.openelisglobal.scheduler.service.CronSchedulerService;
 import org.openelisglobal.scheduler.valueholder.CronScheduler;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.spring.util.SpringContext;
 import org.quartz.Job;
 import org.quartz.JobDetail;
@@ -32,6 +34,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.SchedulingConfigurer;
 import org.springframework.scheduling.config.ScheduledTaskRegistrar;
+import org.springframework.security.concurrent.DelegatingSecurityContextScheduledExecutorService;
 
 @Configuration
 @EnableScheduling
@@ -52,6 +55,9 @@ public class SchedulerConfig implements SchedulingConfigurer {
     @Autowired
     private CronSchedulerService cronSchedulerService;
 
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
+
     private Scheduler reloadableScheduler;
 
     @Bean("resultsResendTime")
@@ -71,7 +77,9 @@ public class SchedulerConfig implements SchedulingConfigurer {
 
     @Bean(destroyMethod = "shutdown")
     public Executor taskExecutor() {
-        return Executors.newScheduledThreadPool(10);
+        ScheduledExecutorService raw = Executors.newScheduledThreadPool(10);
+        return new DelegatingSecurityContextScheduledExecutorService(raw,
+                daemonContextExecutor.createDaemonSecurityContext());
     }
 
     @Override

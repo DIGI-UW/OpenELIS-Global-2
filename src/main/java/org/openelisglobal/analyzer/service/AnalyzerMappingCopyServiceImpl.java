@@ -9,6 +9,7 @@ import org.openelisglobal.analyzer.dao.AnalyzerFieldMappingDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,9 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
 
     private final AnalyzerFieldMappingDAO analyzerFieldMappingDAO;
     private final AnalyzerFieldDAO analyzerFieldDAO;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Autowired
     public AnalyzerMappingCopyServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
@@ -129,7 +133,7 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                     newMapping.setIsActive(sourceMapping.getIsActive());
                     newMapping.setSpecimenTypeConstraint(sourceMapping.getSpecimenTypeConstraint());
                     newMapping.setPanelConstraint(sourceMapping.getPanelConstraint());
-                    newMapping.setSysUserId("1"); // Default system user
+                    newMapping.setSysUserId(userContextHolder.requireSysUserId());
 
                     analyzerFieldMappingDAO.insert(newMapping);
                     result.setCopiedCount(result.getCopiedCount() + 1);

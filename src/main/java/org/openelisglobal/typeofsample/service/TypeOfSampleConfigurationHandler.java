@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
@@ -51,6 +52,9 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
 
     @Autowired
     private LocalizationValueService localizationValueService;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Override
     public String getDomainName() {
@@ -301,7 +305,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             }
         }
 
-        sampleType.setSysUserId("1"); // System user for configuration loading
+        sampleType.setSysUserId(userContextHolder.requireSysUserId());
 
         // Handle localization
         processLocalization(sampleType, values, description, localizationColumns);
@@ -319,7 +323,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
         // Set legacy en/fr fields for compatibility
         localization.setEnglish(translations.getOrDefault("en", description));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
-        localization.setSysUserId("1");
+        localization.setSysUserId(userContextHolder.requireSysUserId());
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -357,7 +361,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             sampleType.setSortOrder(defaultSortOrder);
         }
 
-        sampleType.setSysUserId("1"); // System user for configuration loading
+        sampleType.setSysUserId(userContextHolder.requireSysUserId());
 
         String sampleTypeId = typeOfSampleService.insert(sampleType);
         sampleType.setId(sampleTypeId);
@@ -413,7 +417,7 @@ public class TypeOfSampleConfigurationHandler implements DomainConfigurationHand
             localization.setDescription("sampleType name");
             localization.setEnglish(translations.getOrDefault("en", description));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", description)));
-            localization.setSysUserId("1");
+            localization.setSysUserId(userContextHolder.requireSysUserId());
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             sampleType.setLocalization(localization);

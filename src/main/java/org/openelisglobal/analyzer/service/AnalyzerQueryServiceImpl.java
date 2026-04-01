@@ -20,6 +20,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,9 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
 
     @Autowired
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Override
     public String startQuery(String analyzerId) {
@@ -552,7 +556,7 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             }
 
             field.setIsActive(true);
-            field.setSysUserId("1");
+            field.setSysUserId(userContextHolder.requireSysUserId());
 
             logger.info(
                     "[STORE_FIELD] Creating field: id={}, fieldName='{}', astmRef='{}', unit='{}', type='{}', analyzerId={}",

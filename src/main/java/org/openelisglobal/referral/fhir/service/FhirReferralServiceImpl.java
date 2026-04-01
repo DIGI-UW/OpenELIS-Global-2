@@ -37,6 +37,7 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.registration.ValidationUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
@@ -119,6 +120,8 @@ public class FhirReferralServiceImpl implements FhirReferralService {
     private TestService testService;
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     private final String RESULT_SUBJECT = "Result Note";
     private String RESULT_TABLE_ID;
@@ -292,7 +295,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
         analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
         analysis.setReleasedDate(DateUtil.getNowAsTimestamp());
-        analysis.setSysUserId("1");
+        analysis.setSysUserId(userContextHolder.requireSysUserId());
 
         analysisUpdateList.add(analysis);
 
@@ -382,7 +385,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             result.setValue(((StringType) observation.getValue()).getValueAsString());
         }
 
-        result.setSysUserId("1");
+        result.setSysUserId(userContextHolder.requireSysUserId());
         LogEvent.logDebug(this.getClass().getSimpleName(), "getResultFromObservation", "result made from observation");
         return result;
     }
@@ -430,7 +433,7 @@ public class FhirReferralServiceImpl implements FhirReferralService {
                 "got referralresults for referral");
         referralSet.setExistingReferralResults(referralResults == null ? new ArrayList<>() : referralResults);
         ReferralResult referralResult = referralSet.getNextReferralResult();
-        referralResult.setSysUserId("1");
+        referralResult.setSysUserId(userContextHolder.requireSysUserId());
         referralResult.setReferralId(referral.getId());
         referralResult.setReferralReportDate(DateUtil.getNowAsTimestamp());
         referralResult.setTestId(analysis.getTest().getId());

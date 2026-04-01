@@ -16,6 +16,7 @@
 
 package org.openelisglobal.common.services;
 
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
@@ -38,6 +39,7 @@ public class PluginPermissionService implements IPluginPermissionService {
     private SystemModuleUrlService moduleUrlService = SpringContext.getBean(SystemModuleUrlService.class);
     private RoleService roleService = SpringContext.getBean(RoleService.class);
     private RoleModuleService roleModuleService = SpringContext.getBean(RoleModuleService.class);
+    private UserContextHolder userContextHolder = SpringContext.getBean(UserContextHolder.class);
 
     public static IPluginPermissionService getInstance() {
         return SpringContext.getBean(IPluginPermissionService.class);
@@ -64,7 +66,7 @@ public class PluginPermissionService implements IPluginPermissionService {
             module.setHasDeleteFlag("Y");
             module.setHasSelectFlag("Y");
             module.setHasUpdateFlag("Y");
-            module.setSysUserId("1");
+            module.setSysUserId(userContextHolder.requireSysUserId());
         }
         return module;
     }
@@ -77,7 +79,7 @@ public class PluginPermissionService implements IPluginPermissionService {
             moduleUrl = new SystemModuleUrl();
             moduleUrl.setUrlPath(urlPath);
             moduleUrl.setSystemModule(systemModule);
-            moduleUrl.setSysUserId("1");
+            moduleUrl.setSysUserId(userContextHolder.requireSysUserId());
         }
         return moduleUrl;
     }
@@ -115,7 +117,7 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (roleModule.getId() == null) {
             roleModule.setRole(role);
             roleModule.setSystemModule(module);
-            roleModule.setSysUserId("1");
+            roleModule.setSysUserId(userContextHolder.requireSysUserId());
             roleModule.setHasAdd("Y");
             roleModule.setHasDelete("Y");
             roleModule.setHasSelect("Y");
@@ -157,7 +159,7 @@ public class PluginPermissionService implements IPluginPermissionService {
         if (roleModule.getId() == null) {
             roleModule.setRole(role);
             roleModule.setSystemModule(module);
-            roleModule.setSysUserId("1");
+            roleModule.setSysUserId(userContextHolder.requireSysUserId());
             roleModule.setHasAdd("Y");
             roleModule.setHasDelete("Y");
             roleModule.setHasSelect("Y");

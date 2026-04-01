@@ -7,6 +7,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.notification.service.sender.ClientNotificationSender;
@@ -50,6 +51,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private TestNotificationConfigService testNotificationConfigService;
     @Autowired
     private AnalysisNotificationConfigService analysisNotificationConfigService;
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Value("${org.openelisglobal.ozeki.active:false}")
     private Boolean ozekiActive;
@@ -74,7 +77,7 @@ public class TestNotificationServiceImpl implements TestNotificationService {
         template.setMessageTemplate("[testName] testing results have been finalized for Patient : "
                 + "[patientFirstName] [patientLastNameInitial].\n\n" + "Result : [testResult]");
         template.setSubjectTemplate("[testName] Testing Results");
-        template.setSysUserId("1");
+        template.setSysUserId(userContextHolder.getDaemonSysUserId());
         template.setType(type);
         notificationPayloadTemplateService.save(template);
         return template;
@@ -115,7 +118,7 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private void createAndSendResultsNotificationsToConfiguredSources(NotificationNature nature, Result result,
             Optional<? extends NotificationConfig<?>> notificationConfig) {
         ClientResultsViewBean resultsViewInfo = new ClientResultsViewBean(result);
-        resultsViewInfo.setSysUserId("1");
+        resultsViewInfo.setSysUserId(userContextHolder.requireSysUserId());
         resultsViewInfo = clientResultsViewInfoService.save(resultsViewInfo);
 
         String resultForDisplay = "";

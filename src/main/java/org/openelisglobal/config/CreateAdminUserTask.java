@@ -15,6 +15,7 @@ import org.openelisglobal.common.provider.validation.PasswordValidationFactory;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -25,6 +26,10 @@ public class CreateAdminUserTask {
 
     @Autowired
     private LoginUserService loginService;
+
+    @Autowired
+    @Qualifier("daemonSysUserId")
+    private String daemonSysUserId;
 
     @PostConstruct
     private void ensureAdminUserIsCreated() {
@@ -43,7 +48,7 @@ public class CreateAdminUserTask {
 
     private LoginUser createAdminUser() throws LIMSException {
         LoginUser login = new LoginUser();
-        login.setSysUserId("1");
+        login.setSysUserId(daemonSysUserId);
         login.setLoginName(LoginUserService.DEFAULT_ADMIN_USER_NAME);
         login.setPasswordExpiredDate(getExpiredDate());
         login.setAccountLocked(IActionConstants.NO);

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Create a dedicated daemon system user for scheduled tasks, async operations,
+       and system-initiated actions. Replaces hardcoded admin user ID "1" in
+       background operations. Daemon user cannot log in (no login_user record). -->
+  <changeSet id="20260331-001-add-daemon-system-user" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.system_user WHERE login_name = 'daemon'
+      </sqlCheck>
+    </preConditions>
+
+    <insert schemaName="clinlims" tableName="system_user">
+      <column name="id" valueSequenceNext="system_user_seq"/>
+      <column name="external_id" value="SYSTEM_DAEMON"/>
+      <column name="login_name" value="daemon"/>
+      <column name="last_name" value="Daemon"/>
+      <column name="first_name" value="System"/>
+      <column name="initials" value="SD"/>
+      <column name="is_active" value="Y"/>
+      <column name="is_employee" value="N"/>
+      <column name="lastupdated" valueComputed="${now}"/>
+    </insert>
+  </changeSet>
+
+  <!-- Store the daemon user ID in site_information for runtime lookup -->
+  <changeSet id="20260331-002-store-daemon-user-id" author="openelis">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT count(*) FROM clinlims.site_information WHERE name = 'daemon_system_user_id'
+      </sqlCheck>
+    </preConditions>
+
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq"/>
+      <column name="name" value="daemon_system_user_id"/>
+      <column name="lastupdated" valueComputed="${now}"/>
+      <column name="description" value="System user ID for daemon/background operations"/>
+      <column name="value" valueComputed="(SELECT CAST(id AS VARCHAR) FROM clinlims.system_user WHERE login_name = 'daemon')"/>
+      <column name="encrypted" value="false"/>
+      <column name="value_type" value="text"/>
+      <column name="group" value="0"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>

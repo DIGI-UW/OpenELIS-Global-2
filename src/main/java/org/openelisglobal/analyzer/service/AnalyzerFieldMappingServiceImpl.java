@@ -18,6 +18,7 @@ import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,6 +75,9 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
     @Autowired(required = false)
     private CustomFieldTypeService customFieldTypeService;
+
+    @Autowired
+    private UserContextHolder userContextHolder;
 
     @Autowired
     public AnalyzerFieldMappingServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
@@ -368,7 +372,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         mapping.setIsActive(isActive != null ? isActive : false);
         mapping.setSpecimenTypeConstraint(specimenTypeConstraint);
         mapping.setPanelConstraint(panelConstraint);
-        mapping.setSysUserId("1"); // Default system user (should come from security context)
+        mapping.setSysUserId(userContextHolder.requireSysUserId());
 
         String mappingId = createMapping(mapping);
         return getMappingWithCompleteData(mappingId);

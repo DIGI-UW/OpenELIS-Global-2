@@ -16,6 +16,7 @@ import javax.imageio.stream.ImageInputStream;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,9 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
     @Autowired
     private SiteBrandingService siteBrandingService;
 
+    @Autowired
+    private UserContextHolder userContextHolder;
+
     @Override
     public String getDomainName() {
         return "site-branding";
@@ -101,7 +105,7 @@ public class SiteBrandingConfigurationHandler implements DomainConfigurationHand
 
         // Get or create branding entity
         SiteBranding branding = siteBrandingService.getBranding();
-        branding.setSysUserId("1"); // System user for configuration loading
+        branding.setSysUserId(userContextHolder.requireSysUserId());
 
         // Process logo files
         processLogoFile(brandingConfig, "headerLogo", branding, LogoType.HEADER);
