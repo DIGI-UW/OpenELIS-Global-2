@@ -110,6 +110,7 @@ function PathologyStainingPage({
     // Quality Control
     qcStatus: "PASS",
     qcStainIntensity: true,
+    qcMountingQuality: true,
     qcBackgroundClean: true,
     qcControlsValid: true,
     qcLabelingCorrect: true,
@@ -316,6 +317,7 @@ function PathologyStainingPage({
       // QC fields
       qcStatus: "PASS",
       qcStainIntensity: true,
+      qcMountingQuality: true,
       qcBackgroundClean: true,
       qcControlsValid: true,
       qcLabelingCorrect: true,
@@ -363,6 +365,7 @@ function PathologyStainingPage({
               // QC fields
               qcStatus: response.qcStatus || "PASS",
               qcStainIntensity: response.qcStainIntensity !== false,
+              qcMountingQuality: response.qcMountingQuality !== false,
               qcBackgroundClean: response.qcBackgroundClean !== false,
               qcControlsValid: response.qcControlsValid !== false,
               qcLabelingCorrect: response.qcLabelingCorrect !== false,
@@ -1456,6 +1459,24 @@ function PathologyStainingPage({
                     setStainingData((prev) => ({
                       ...prev,
                       qcStainIntensity: e.target.checked,
+                    }))
+                  }
+                  disabled={stainingViewMode}
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <Checkbox
+                  id="qcMountingQuality"
+                  name="qcMountingQuality"
+                  labelText={intl.formatMessage({
+                    id: "pathology.qc.staining.qcMountingQuality",
+                    defaultMessage: "Mounting quality verified",
+                  })}
+                  checked={stainingData.qcMountingQuality}
+                  onChange={(e) =>
+                    setStainingData((prev) => ({
+                      ...prev,
+                      qcMountingQuality: e.target.checked,
                     }))
                   }
                   disabled={stainingViewMode}

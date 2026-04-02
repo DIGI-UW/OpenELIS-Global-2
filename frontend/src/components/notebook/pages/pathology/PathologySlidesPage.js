@@ -104,7 +104,6 @@ function PathologySlidesPage({
     // Quality Control
     qcStatus: "PASS",
     qcSectionQuality: true,
-    qcMountingQuality: true,
     qcLabelingCorrect: true,
     qcSlideIntegrity: true,
     qcIssues: "",
@@ -344,7 +343,6 @@ function PathologySlidesPage({
       // QC fields
       qcStatus: "PASS",
       qcSectionQuality: true,
-      qcMountingQuality: true,
       qcLabelingCorrect: true,
       qcSlideIntegrity: true,
       qcIssues: "",
@@ -385,7 +383,6 @@ function PathologySlidesPage({
               // QC fields
               qcStatus: response.qcStatus || "PASS",
               qcSectionQuality: response.qcSectionQuality !== false,
-              qcMountingQuality: response.qcMountingQuality !== false,
               qcLabelingCorrect: response.qcLabelingCorrect !== false,
               qcSlideIntegrity: response.qcSlideIntegrity !== false,
               qcIssues: response.qcIssues || "",
@@ -1636,24 +1633,6 @@ function PathologySlidesPage({
                     setSlideData((prev) => ({
                       ...prev,
                       qcSectionQuality: e.target.checked,
-                    }))
-                  }
-                  disabled={slideViewMode}
-                />
-              </Column>
-              <Column lg={4} md={4} sm={4}>
-                <Checkbox
-                  id="qcMountingQuality"
-                  name="qcMountingQuality"
-                  labelText={intl.formatMessage({
-                    id: "pathology.qc.slides.mountingQuality",
-                    defaultMessage: "Mounting quality verified",
-                  })}
-                  checked={slideData.qcMountingQuality}
-                  onChange={(e) =>
-                    setSlideData((prev) => ({
-                      ...prev,
-                      qcMountingQuality: e.target.checked,
                     }))
                   }
                   disabled={slideViewMode}
