@@ -214,7 +214,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getUnassignedReferrals");
@@ -248,7 +248,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(hql, Referral.class);
             query.setParameter("sampleItemId", sampleItemId);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getReferralsBySampleItemId");
@@ -274,7 +274,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
         try {
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
 
             if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
                 List<Integer> excludedIdsAsInt = excludedSampleItemIds.stream()
@@ -309,7 +309,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
         try {
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED.name());
+            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
             query.setParameter("accessionNumber", "%" + accessionNumber + "%");
 
             if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {

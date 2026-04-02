@@ -36,8 +36,9 @@ const SampleAssignmentModal = ({
 
   // Sync selection state from DataTable render callback via ref to avoid
   // setState-in-render. The render callback writes to the ref, and this
-  // effect picks it up on the next tick.
+  // effect picks it up on the next tick. Only poll while the modal is open.
   useEffect(() => {
+    if (!open) return;
     const interval = setInterval(() => {
       if (pendingSelectionRef.current !== null) {
         const pending = pendingSelectionRef.current;
@@ -46,7 +47,7 @@ const SampleAssignmentModal = ({
       }
     }, 50);
     return () => clearInterval(interval);
-  }, []);
+  }, [open]);
 
   useEffect(() => {
     if (open) {
