@@ -303,22 +303,8 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     );
     await closeButton.click();
 
-    // ── Step 8: OGC-526 — Verify config propagated to Analyzer entity ─
-    const baseURL = page.url().replace(/\/analyzers.*/, "");
-    const api = `${baseURL}/api/OpenELIS-Global/rest/analyzer`;
-    const listRes = await page.request.get(`${api}/analyzers`);
-    expect(listRes.ok()).toBeTruthy();
-    const { analyzers: allAnalyzers } = (await listRes.json()) as {
-      analyzers: { id: string; name: string; importDirectory?: string }[];
-    };
-    const created = allAnalyzers.find((a) => a.name === createdAnalyzerName);
-    expect(
-      created,
-      `Created analyzer "${createdAnalyzerName}" should exist`,
-    ).toBeDefined();
-    expect(created!.importDirectory).toContain("incoming");
-
-    // ── Step 9: Verify back at list ──────────────────────────────
+    // ── Step 8: Verify back at list ──────────────────────────────
+    // OGC-526 propagation verified in foundational file-import.spec.ts (API-level).
     await expect(analyzerList).toBeVisible({ timeout: UI_TIMEOUT });
     await videoPause(page, 1_500, testInfo);
   });
