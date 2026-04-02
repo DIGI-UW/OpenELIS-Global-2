@@ -1,7 +1,11 @@
 import { expect, test, Page, TestInfo } from "@playwright/test";
-import { showSceneLabel, showTitleCard } from "../helpers/title-card";
-import { videoPause } from "../helpers/video-pause";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
+import { videoPause } from "../../../helpers/video-pause";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 /**
  * OGC-62 — Shipment management workflow (user stories)

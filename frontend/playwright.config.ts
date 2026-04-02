@@ -20,10 +20,7 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
  */
 
 // Demo story proof on the build stack (video-ready).
-const CORE_DEMO_TESTS = [
-  "**/demo/core/**/*.spec.ts",
-  "**/ogc-62-shipment-workflow.spec.ts",
-];
+const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
 
 // Core foundational verification (ci-safe).
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
