@@ -16,6 +16,7 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.Bundle;
@@ -58,20 +59,23 @@ public class ServiceRequestProvider implements IResourceProvider {
         }
         try {
             String analysisUuid = theId.getIdPart();
-            Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid)).get(0);
-            if (analysis == null) {
-                throw new ResourceNotFoundException("Analysis with FHIR ID :" + analysisUuid + " ,doesnot exixt");
+            List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
+
+            if (analyses == null || analyses.isEmpty()) {
+                // This will now correctly return HTTP 404
+                throw new ResourceNotFoundException("Analysis with FHIR ID: " + analysisUuid + " does not exist");
             }
+
+            Analysis analysis = analyses.get(0);
             return fhirTransformService.transformToServiceRequest(analysis.getId());
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
-            throw e;
+            throw e; // FHIR server will map ResourceNotFoundException to 404
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Patient: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while Reading Patient", e);
         }
-
     }
 
     @Search
