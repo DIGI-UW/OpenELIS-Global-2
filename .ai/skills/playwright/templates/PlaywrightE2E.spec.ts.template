@@ -11,6 +11,8 @@ test.describe("Feature Name", () => {
     page.on("pageerror", (err) => {
       consoleErrors.push(`PAGE ERROR: ${err.message}`);
     });
+    // NOTE: console/pageerror listeners are for diagnostic tests only.
+    // Demo specs (core-demo, harness-demo) should omit these listeners.
 
     // Arrange
     // Selector priority: getByRole -> getByLabel -> data-testid -> text -> CSS(last resort)
@@ -25,6 +27,11 @@ test.describe("Feature Name", () => {
     const result = page.locator('[data-testid="expected-result"]');
     await expect(result).toBeVisible();
 
+    // For multi-step workflows, use test.step() to organize sections:
+    // await test.step('Step description', async () => {
+    //   // actions + at least one expect() per step
+    // });
+
     // Optional debug context capture pattern for unstable async flows
     // try {
     //   await expect(page.locator('[data-testid="async-state"]')).toBeVisible();
@@ -36,14 +43,15 @@ test.describe("Feature Name", () => {
     //   throw e;
     // }
 
-    // Optional demo pacing (no-op outside demo-video)
+    // Optional demo pacing (no-op outside core-demo-video / harness-demo-video)
     await videoPause(page, 750, testInfo);
   });
 });
 
 /**
  * Post-write checklist:
- * [ ] Added spec to frontend/playwright.config.ts testMatch (or DEMO_TESTS)
+ * [ ] Added spec to frontend/playwright.config.ts testMatch (or CORE_DEMO_TESTS /
+ *     HARNESS_DEMO_TESTS)
  * [ ] Validation passed:
  *     python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/<spec>.spec.ts
  * [ ] Ran narrow scope:

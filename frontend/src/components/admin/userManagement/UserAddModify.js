@@ -1316,6 +1316,7 @@ function UserAddModify() {
                         <br />
                         <Checkbox
                           id={`all-permissions-${key}`}
+                          data-testid={`all-permissions-${(userDataShow?.testSections?.find((s) => s.id === key)?.value || key).replace(/\s+/g, "-")}`}
                           labelText={"All Permissions"}
                           checked={["4", "5", "7", "10"].every(
                             (num) =>

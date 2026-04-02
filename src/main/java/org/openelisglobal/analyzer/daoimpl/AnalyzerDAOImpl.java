@@ -21,6 +21,7 @@ import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,7 +46,9 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
             Analyzer result = query.uniqueResult();
             return Optional.ofNullable(result);
         } catch (org.hibernate.NonUniqueResultException e) {
-            throw new LIMSRuntimeException("Multiple Analyzers found for IP address: " + ipAddress, e);
+            LogEvent.logWarn("AnalyzerDAOImpl", "findByIpAddress",
+                    "Multiple analyzers share IP " + ipAddress + " — falling through to next identification strategy");
+            return Optional.empty();
         }
     }
 
