@@ -13,9 +13,11 @@ services:
   # Default ASTM template: genexpert_astm (GeneXpert ASTM, fixture ID 2013)
   # HL7 templates available via /simulate/hl7/{template} API.
   astm-simulator:
+    container_name: openelis-astm-simulator
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
+    image: openelis-astm-simulator.harness
     volumes:
       - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
       - /var/run/docker.sock:/var/run/docker.sock  # TEST/HARNESS ONLY — dynamic analyzer network management
@@ -28,8 +30,8 @@ services:
     environment:
       - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
       - RESPONSE_DELAY_MS=0
-      - BRIDGE_CONTAINER_NAME=analyzer-harness-openelis-analyzer-bridge-1
-      - MOCK_CONTAINER_NAME=analyzer-harness-astm-simulator-1
+      - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
+      - MOCK_CONTAINER_NAME=openelis-astm-simulator
     command: >
       python -u server.py
       --port 9600
@@ -57,10 +59,11 @@ services:
   # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
   #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
+    container_name: openelis-analyzer-bridge
     build:
       context: ../../tools/openelis-analyzer-bridge
       dockerfile: Dockerfile
-    image: itechuw/openelis-analyzer-bridge:latest
+    image: openelis-analyzer-bridge.harness
     ports:
       - "8442:8443" # HTTPS API port
       - "12000:12001" # ASTM listen port (inbound from analyzers)
@@ -78,7 +81,7 @@ services:
       - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
       # Bridge connects directly to OE (not through proxy), so no /api/ prefix
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/OpenELIS-Global/analyzer
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=admin
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=adminADMIN!
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
@@ -90,7 +93,9 @@ services:
       - ORG_ITECH_AHB_MLLP_ENABLED=true
       - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
-      - analyzer-net
+      analyzer-net:
+        aliases:
+          - bridge.openelis.org
     restart: unless-stopped
 
   virtual-serial:
@@ -111,9 +116,9 @@ services:
     restart: unless-stopped
 
   # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
-  oe:
+  oe.openelis.org:
     environment:
-      - ANALYZER_BRIDGE_URL=https://openelis-analyzer-bridge:8443
+      - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
     networks:
       default:
       analyzer-net:
