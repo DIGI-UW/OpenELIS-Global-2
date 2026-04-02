@@ -35,8 +35,9 @@ async function navigateToConfig(page: Page, configName: RegExp) {
     await formEntryMenu.click();
   }
 
-  // Click the specific config item by its visible text
-  const menuItem = adminNav.getByText(configName);
+  // Click the config menu item — use the <a> link element, not the text span,
+  // so the click reaches Carbon's SideNavMenuItem onClick handler
+  const menuItem = adminNav.getByRole("link", { name: configName });
   await expect(menuItem).toBeVisible({ timeout: UI_TIMEOUT });
   await menuItem.click();
 }
