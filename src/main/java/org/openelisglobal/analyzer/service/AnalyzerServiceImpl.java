@@ -333,6 +333,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
         case DELETED:
             return newStatus == AnalyzerStatus.INACTIVE;
+        case PENDING_REGISTRATION:
+            return newStatus == AnalyzerStatus.SETUP || newStatus == AnalyzerStatus.INACTIVE;
         default:
             return false;
         }

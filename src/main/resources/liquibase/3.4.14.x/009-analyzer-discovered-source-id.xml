@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="013-009-01" author="OGC-526">
+        <comment>Add discovered_source_id column for bridge-discovered analyzer stubs</comment>
+        <addColumn tableName="analyzer" schemaName="clinlims">
+            <column name="discovered_source_id" type="VARCHAR(500)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
