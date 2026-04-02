@@ -146,12 +146,14 @@ function OEHeader({
   }, [userSessionDetails.authenticated]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
-      if (response) {
-        setIsTrainingInstallation(response.trainingInstallation);
-      }
-    });
-  }, []);
+    if (userSessionDetails.authenticated) {
+      getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
+        if (response) {
+          setIsTrainingInstallation(response.trainingInstallation);
+        }
+      });
+    }
+  }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
     return userSessionDetails.authenticated ? "User" : "Lang";

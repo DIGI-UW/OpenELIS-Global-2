@@ -46,9 +46,7 @@ function DatabaseCleaning() {
           setNotification({
             kind: "error",
             title: intl.formatMessage({ id: "alert.error" }),
-            message:
-              errorData.error ||
-              intl.formatMessage({ id: "database.clean.error" }),
+            message: intl.formatMessage({ id: "database.clean.error" }),
           });
         }
       },
