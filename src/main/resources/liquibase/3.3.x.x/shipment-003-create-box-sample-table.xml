@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="shipment-003-create-sequence" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <sequenceExists sequenceName="box_sample_seq"/>
+            </not>
+        </preConditions>
+        <createSequence sequenceName="box_sample_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <changeSet id="shipment-003-create-box-sample-table" author="pkomena">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="box_sample"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="box_sample">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="shipping_box_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sample_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="added_date" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="position_in_box" type="INT"/>
+            <column name="reception_status" type="VARCHAR(50)"/>
+            <column name="reception_notes" type="TEXT"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="NOW()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <rollback>
+            <dropTable tableName="box_sample"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>
