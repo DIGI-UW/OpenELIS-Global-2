@@ -23,6 +23,16 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
 
+export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
+  if (!queryValue) {
+    return "/AnalyzerResults";
+  }
+
+  return queryMode === "id"
+    ? `/AnalyzerResults?id=${queryValue}`
+    : `/AnalyzerResults?type=${queryValue}`;
+};
+
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
 
@@ -131,7 +141,10 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/AnalyzerResults?type=" + props.type;
+      window.location.href = buildAnalyzerResultsRedirectUrl(
+        props.queryMode,
+        props.queryValue || props.type,
+      );
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {

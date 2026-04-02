@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# Build script for analyzer harness: WAR + all harness Docker images.
-# Does not build the webapp image; the oe service uses the mounted WAR.
+# Build script for analyzer harness: WAR + harness Docker images + CI parity images.
+#
+# The local reset flow uses the dev/analyzer-test compose stack, but the local
+# CI parity flow (`ci-parity-test.sh`) uses `build.docker-compose.yml` plus the
+# analyzer harness CI overlay with `--no-build`. After a cold Docker cleanup we
+# need both image sets available, otherwise the supported reboot path and the
+# supported parity path drift apart.
 #
 # Usage: ./build.sh [options]
 #   --skip-war     Skip Maven WAR build (use existing target/OpenELIS-Global.war)
@@ -11,8 +16,10 @@ set -e
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
-COMPOSE_DEV="$HARNESS_DIR/docker-compose.dev.yml"
-COMPOSE_ANALYZER="$HARNESS_DIR/docker-compose.analyzer-test.yml"
+source "$HARNESS_DIR/compose-stack.sh"
+
+LOCAL_COMPOSE_FILES=($(compose_args_local false))
+CI_COMPOSE_FILES=($(compose_args_ci))
 
 SKIP_WAR=false
 SKIP_IMAGES=false
@@ -62,10 +69,12 @@ else
 fi
 
 if [ "$SKIP_IMAGES" != true ]; then
-  echo "[2/2] Building harness Docker images (astm-simulator, openelis-analyzer-bridge)..."
+  echo "[2/2] Building harness Docker images (dev stack + parity image set)..."
   cd "$HARNESS_DIR"
-  docker compose -f "$COMPOSE_DEV" -f "$COMPOSE_ANALYZER" build
-  echo "  ✓ Images built"
+  docker compose "${LOCAL_COMPOSE_FILES[@]}" build
+  cd "$REPO_ROOT"
+  docker compose "${CI_COMPOSE_FILES[@]}" build
+  echo "  ✓ Images built (dev stack + CI parity)"
   echo ""
 else
   echo "[2/2] Skipping Docker image build (--skip-images)"
