@@ -11,7 +11,7 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import  {OEToastNotification} from "../common/OEToastNotification";
+import { OEToastNotification } from "../common/OEToastNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
 import {
