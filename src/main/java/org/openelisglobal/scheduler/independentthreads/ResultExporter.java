@@ -72,7 +72,7 @@ public class ResultExporter {
     }
 
     @Scheduled(fixedRateString = "#{resultsResendTime}")
-    private void exportResults() {
+    void exportResults() {
         if (shouldReportResults()) {
             List<ReportExternalExport> reportList = reportExternalExportService
                     .getUnsentReportExports(resultReportTypeId);

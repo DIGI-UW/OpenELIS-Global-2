@@ -17,6 +17,7 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.role.valueholder.Role;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -24,6 +25,9 @@ public class RolesConfigurationHandlerTest {
 
     @Mock
     private RoleService roleService;
+
+    @Mock
+    private UserContextHolder userContextHolder;
 
     @InjectMocks
     private RolesConfigurationHandler handler;
@@ -42,6 +46,8 @@ public class RolesConfigurationHandlerTest {
         testRole.setActive(true);
         testRole.setEditable(true);
         testRole.setGroupingRole(false);
+
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
     }
 
     @Test

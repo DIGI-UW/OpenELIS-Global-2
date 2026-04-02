@@ -6,6 +6,9 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 public class DaemonAuthenticationTokenTest extends BaseWebContextSensitiveTest {
 
@@ -34,8 +37,22 @@ public class DaemonAuthenticationTokenTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getAuthorities_returnsEmpty() {
+    public void getAuthorities_containsRoleSystem() {
         DaemonAuthenticationToken token = new DaemonAuthenticationToken("42");
-        assertTrue(token.getAuthorities().isEmpty());
+        assertEquals(1, token.getAuthorities().size());
+        assertTrue(token.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_SYSTEM")));
+    }
+
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
+
+    @Test
+    public void executeAsDaemon_securityContextCarriesRoleSystem() {
+        daemonContextExecutor.executeAsDaemon(() -> {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            assertTrue("Should be DaemonAuthenticationToken", auth instanceof DaemonAuthenticationToken);
+            assertTrue("Should have ROLE_SYSTEM",
+                    auth.getAuthorities().contains(new SimpleGrantedAuthority("ROLE_SYSTEM")));
+        });
     }
 }

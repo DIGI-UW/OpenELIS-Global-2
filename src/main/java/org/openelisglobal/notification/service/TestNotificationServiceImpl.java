@@ -27,6 +27,7 @@ import org.openelisglobal.notification.valueholder.TestNotificationConfig;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.testresultsview.service.ClientResultsViewInfoService;
 import org.openelisglobal.testresultsview.valueholder.ClientResultsViewBean;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -53,6 +54,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private AnalysisNotificationConfigService analysisNotificationConfigService;
     @Autowired
     private UserContextHolder userContextHolder;
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
 
     @Value("${org.openelisglobal.ozeki.active:false}")
     private Boolean ozekiActive;
@@ -63,7 +66,8 @@ public class TestNotificationServiceImpl implements TestNotificationService {
 
     @PostConstruct
     public void init() {
-        ensureNotificationsPayloadTemplatesExist(NotificationPayloadType.TEST_RESULT);
+        daemonContextExecutor
+                .executeAsDaemon(() -> ensureNotificationsPayloadTemplatesExist(NotificationPayloadType.TEST_RESULT));
     }
 
     private void ensureNotificationsPayloadTemplatesExist(NotificationPayloadType testResult) {

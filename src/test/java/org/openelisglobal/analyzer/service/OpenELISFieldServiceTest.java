@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.test.dao.TestDAO;
 import org.openelisglobal.test.service.TestService;
@@ -38,6 +39,9 @@ public class OpenELISFieldServiceTest {
     @Mock
     private LocalizationService localizationService;
 
+    @Mock
+    private UserContextHolder userContextHolder;
+
     @InjectMocks
     private OpenELISFieldServiceImpl openELISFieldService;
 
@@ -45,6 +49,8 @@ public class OpenELISFieldServiceTest {
 
     @Before
     public void setUp() {
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
+
         testForm = new OpenELISFieldForm();
         testForm.setEntityType(OpenELISFieldForm.EntityType.TEST);
         testForm.setFieldName("Glucose Test");

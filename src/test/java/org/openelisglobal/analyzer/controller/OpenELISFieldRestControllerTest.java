@@ -17,6 +17,7 @@ import org.openelisglobal.login.dao.UserModuleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -24,9 +25,9 @@ import org.springframework.web.context.WebApplicationContext;
 
 /**
  * Integration tests for OpenELISFieldRestController.
- * 
+ *
  * Test Coverage Goal: >80%
- * 
+ *
  * Note: Using BaseWebContextSensitiveTest pattern since @WebMvcTest
  * dependencies not available. @WebMvcTest would be preferred for unit-level
  * controller testing.

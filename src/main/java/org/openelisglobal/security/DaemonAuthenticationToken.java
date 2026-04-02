@@ -1,7 +1,8 @@
 package org.openelisglobal.security;
 
-import java.util.Collections;
+import java.util.List;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /**
  * Authentication token representing the daemon/system user. This token is
@@ -16,7 +17,7 @@ public class DaemonAuthenticationToken extends AbstractAuthenticationToken {
     private final String daemonSysUserId;
 
     public DaemonAuthenticationToken(String daemonSysUserId) {
-        super(Collections.emptyList());
+        super(List.of(new SimpleGrantedAuthority("ROLE_SYSTEM")));
         this.daemonSysUserId = daemonSysUserId;
         setAuthenticated(true);
     }

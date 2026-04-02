@@ -45,6 +45,7 @@ import org.openelisglobal.externalconnections.valueholder.ExternalConnection;
 import org.openelisglobal.externalconnections.valueholder.ExternalConnection.ProgrammedConnection;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.spring.util.SpringContext;
@@ -56,6 +57,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
 
     @Autowired
     private SiteInformationService siteInformationService;
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
     @Autowired
     private BasicAuthenticationDataService basicAuthenticationDataService;
     @Autowired
@@ -86,6 +89,12 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
 
     @PostConstruct
     public void initialize() {
+        // Entire init runs in daemon context — this is a boot-time system operation
+        // that writes SiteInformation and triggers @Async refreshConfigurations().
+        daemonContextExecutor.executeAsDaemon(this::doInitialize);
+    }
+
+    private void doInitialize() {
         LogEvent.logDebug(this.getClass().getSimpleName(), "initialize", "initializing configuration");
         hardcodedDefaultProperties = loadHardcodedProperties();
         defaultProperties = loadFromPropertyFileResource(defaultPropertyFile);

@@ -17,6 +17,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
@@ -48,6 +49,9 @@ public class ConfigurationInitializationService implements ApplicationListener<C
      */
     @Value("${org.openelisglobal.configuration.instance-id:#{null}}")
     private String instanceId;
+
+    @Autowired
+    private DaemonContextExecutor daemonContextExecutor;
 
     private List<DomainConfigurationHandler> domainHandlers;
 
@@ -82,6 +86,13 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             return;
         }
 
+        // Configuration handlers write SiteInformation, Localization, etc. during
+        // startup — a system operation with no human user. Run in daemon context
+        // per the Daemon Eligibility Contract (Mechanism 2).
+        daemonContextExecutor.executeAsDaemon(this::loadAllDomainConfigurations);
+    }
+
+    private void loadAllDomainConfigurations() {
         LogEvent.logInfo(CLASS_NAME, "onApplicationEvent",
                 "Starting configuration initialization from " + configurationBaseDir + "...");
 

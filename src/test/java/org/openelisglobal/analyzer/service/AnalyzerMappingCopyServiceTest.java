@@ -19,6 +19,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerField;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.util.UserContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Unit tests for AnalyzerMappingCopyService implementation
@@ -33,6 +35,9 @@ public class AnalyzerMappingCopyServiceTest {
     @Mock
     private AnalyzerFieldDAO analyzerFieldDAO;
 
+    @Mock
+    private UserContextHolder userContextHolder;
+
     private AnalyzerMappingCopyServiceImpl analyzerMappingCopyService;
 
     private Analyzer sourceAnalyzer;
@@ -43,6 +48,8 @@ public class AnalyzerMappingCopyServiceTest {
     @Before
     public void setUp() {
         analyzerMappingCopyService = new AnalyzerMappingCopyServiceImpl(analyzerFieldMappingDAO, analyzerFieldDAO);
+        ReflectionTestUtils.setField(analyzerMappingCopyService, "userContextHolder", userContextHolder);
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
 
         // Setup source analyzer
         sourceAnalyzer = new Analyzer();

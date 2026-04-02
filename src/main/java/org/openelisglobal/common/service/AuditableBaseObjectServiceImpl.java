@@ -7,7 +7,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,11 +83,7 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
             if (userId != null) {
                 baseObject.setSysUserId(userId);
             } else {
-                // Last resort: use daemon user to avoid null constraint violations
-                baseObject.setSysUserId(userContextHolder.getDaemonSysUserId());
-                LogEvent.logWarn(this.getClass().getSimpleName(), "fillSysUserIdIfMissing",
-                        "No user context available — falling back to daemon user for "
-                                + baseObject.getClass().getSimpleName());
+                throw new LIMSRuntimeException("No user context for " + baseObject.getClass().getSimpleName());
             }
         }
     }

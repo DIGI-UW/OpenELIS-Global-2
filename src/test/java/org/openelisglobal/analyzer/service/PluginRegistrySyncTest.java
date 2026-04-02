@@ -32,6 +32,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.common.util.UserContextHolder;
 
 /**
  * Tests for PluginRegistryService.linkLegacyAnalyzersToTypes().
@@ -52,8 +53,16 @@ public class PluginRegistrySyncTest {
     @Mock
     private PluginAnalyzerService pluginAnalyzerService;
 
+    @Mock
+    private UserContextHolder userContextHolder;
+
     @InjectMocks
     private PluginRegistryService service;
+
+    @org.junit.Before
+    public void setUp() {
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
+    }
 
     // ── Exact match: analyzer name == plugin class simple name ─────────────
 

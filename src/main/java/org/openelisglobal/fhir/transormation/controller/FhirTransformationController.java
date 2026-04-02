@@ -53,7 +53,7 @@ public class FhirTransformationController extends BaseController {
     private boolean transformOnStartup;
 
     @Scheduled(initialDelay = 10 * 1000, fixedRate = Long.MAX_VALUE)
-    private void transformOEObjectsOnBoot() throws FhirLocalPersistingException, IOException {
+    void transformOEObjectsOnBoot() throws FhirLocalPersistingException, IOException {
         if (!transformOnStartup) {
             return;
         }
