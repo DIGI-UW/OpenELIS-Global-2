@@ -22,8 +22,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.PluginAnalyzerService;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
+import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Service;
@@ -80,7 +80,7 @@ public class PluginRegistryService {
     private PluginAnalyzerService pluginAnalyzerService;
 
     @Autowired
-    private UserContextHolder userContextHolder;
+    private DaemonContextExecutor daemonContextExecutor;
 
     /**
      * Auto-discover and register all loaded analyzer plugins in the analyzer_type
@@ -98,6 +98,10 @@ public class PluginRegistryService {
     @PostConstruct
     @Transactional
     public void registerLoadedPlugins() {
+        daemonContextExecutor.executeAsDaemon(() -> doRegisterLoadedPlugins());
+    }
+
+    private void doRegisterLoadedPlugins() {
         LogEvent.logInfo(this.getClass().getName(), "registerLoadedPlugins",
                 "Auto-discovering loaded analyzer plugins...");
 
@@ -203,7 +207,6 @@ public class PluginRegistryService {
 
             if (matched != null) {
                 analyzer.setAnalyzerType(matched);
-                analyzer.setSysUserId(userContextHolder.requireSysUserId());
                 analyzerService.save(analyzer);
                 LogEvent.logInfo(this.getClass().getName(), "linkLegacyAnalyzersToTypes",
                         "Linked analyzer '" + analyzerName + "' to type '" + matched.getName() + "'");
@@ -234,7 +237,6 @@ public class PluginRegistryService {
         type.setPluginClassName(className);
         type.setGenericPlugin(isGeneric);
         type.setActive(true);
-        type.setSysUserId(userContextHolder.requireSysUserId());
 
         if (isGeneric) {
             type.setIdentifierPattern(getDefaultIdentifierPattern(className));

@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.security.WithDaemonUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,7 @@ import org.springframework.web.context.WebApplicationContext;
 @WebAppConfiguration
 @TestPropertySource("classpath:common.properties")
 @ActiveProfiles("test")
+@WithDaemonUser
 public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJUnit4SpringContextTests {
 
     Logger logger = LoggerFactory.getLogger(getClass());
