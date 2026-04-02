@@ -523,11 +523,12 @@ button {
   padding-top: 10px !important;
 }
 
-.cds--side-nav__link-text {
+/* Scoped to Header sidenav (isChildOfHeader adds --ux class) to avoid
+   breaking admin/analyzer page sidenavs */
+.cds--side-nav--ux .cds--side-nav__link-text {
   width: 100%;
   overflow: visible !important;
   min-width: 40px !important;
-  display: inline-flex !important;
   white-space: normal !important;
   word-wrap: break-word !important;
   line-height: 1.3 !important;
@@ -563,14 +564,14 @@ button {
   background-color: var(--cds-background, #295785);
 }
 
-.cds--side-nav__link a {
+.cds--side-nav--ux .cds--side-nav__link a {
   pointer-events: auto;
   text-decoration: none !important;
   white-space: normal !important;
   word-wrap: break-word !important;
 }
 
-.cds--side-nav__link a:hover {
+.cds--side-nav--ux .cds--side-nav__link a:hover {
   background-color: var(--cds-background, #295785);
 }
 
@@ -601,8 +602,8 @@ button {
   background-color: var(--cds-background-hover, #072655);
 }
 
-.cds--side-nav__menu-item .cds--side-nav__link,
-.cds--side-nav__menu .cds--side-nav__link {
+.cds--side-nav--ux .cds--side-nav__menu-item .cds--side-nav__link,
+.cds--side-nav--ux .cds--side-nav__menu .cds--side-nav__link {
   white-space: normal !important;
   word-wrap: break-word !important;
   min-height: 2rem !important;
@@ -613,12 +614,12 @@ button {
   margin: 0 !important;
 }
 
-.cds--side-nav__menu-item {
+.cds--side-nav--ux .cds--side-nav__menu-item {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
 
-.cds--side-nav__icon {
+.cds--side-nav--ux .cds--side-nav__icon {
   flex-shrink: 0;
   margin-top: 0.2rem;
 }
