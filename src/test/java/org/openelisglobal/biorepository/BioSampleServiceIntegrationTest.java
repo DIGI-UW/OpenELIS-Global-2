@@ -282,12 +282,12 @@ public class BioSampleServiceIntegrationTest extends BaseWebContextSensitiveTest
         SampleItem sampleItem = createTestSampleItem(testSample, "BIO-COUNT-BSL-" + System.currentTimeMillis());
 
         BioSample bioSample = new BioSample();
-        bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_4);
+        bioSample.setBiosafetyLevel(BiosafetyLevel.BSL_3);
         bioSample.setSysUserId(testUser.getId().toString());
         bioSampleService.createForSampleItem(sampleItem, bioSample);
 
         // Act
-        long count = bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_4);
+        long count = bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_3);
 
         // Assert
         assertTrue("Should have at least 1 BSL-4 sample", count >= 1);

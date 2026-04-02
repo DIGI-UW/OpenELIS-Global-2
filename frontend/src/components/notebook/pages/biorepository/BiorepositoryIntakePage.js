@@ -1022,8 +1022,6 @@ function BiorepositoryIntakePage({
                                               bslColor = "teal";
                                             } else if (cell.value === "BSL_3") {
                                               bslColor = "purple";
-                                            } else if (cell.value === "BSL_4") {
-                                              bslColor = "red";
                                             }
                                             return (
                                               <TableCell key={cell.id}>

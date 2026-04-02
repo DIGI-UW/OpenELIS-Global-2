@@ -293,8 +293,7 @@ public class BioSampleRestController extends BaseRestController {
     public ResponseEntity<Map<String, Long>> getBiosafetyStats() {
         Map<String, Long> stats = Map.of("BSL_1", bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_1), "BSL_2",
                 bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_2), "BSL_3",
-                bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_3), "BSL_4",
-                bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_4));
+                bioSampleService.countByBiosafetyLevel(BiosafetyLevel.BSL_3) );
 
         return ResponseEntity.ok(stats);
     }
@@ -1172,7 +1171,7 @@ public class BioSampleRestController extends BaseRestController {
                 try {
                     BiosafetyLevel.valueOf(bsl.trim());
                 } catch (IllegalArgumentException e) {
-                    rowResult.addError("Invalid biosafety level: " + bsl + ". Must be BSL_1, BSL_2, BSL_3, or BSL_4");
+                    rowResult.addError("Invalid biosafety level: " + bsl + ". Must be BSL_1, BSL_2, Or BSL_3");
                 }
             }
 

@@ -195,7 +195,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
         // Validate biosafety level per spec FR-MAN-003
         if (
           row.biosafetyLevel &&
-          !["BSL_1", "BSL_2", "BSL_3", "BSL_4"].includes(row.biosafetyLevel)
+          !["BSL_1", "BSL_2", "BSL_3"].includes(row.biosafetyLevel)
         ) {
           errors.push({
             row: i + 1,
@@ -204,7 +204,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
               {
                 id: "biorepository.manifest.error.invalidBSL",
                 defaultMessage:
-                  "Invalid biosafety level: {value}. Must be BSL_1, BSL_2, BSL_3, or BSL_4",
+                  "Invalid biosafety level: {value}. Must be BSL_1, BSL_2, Or BSL_3",
               },
               { value: row.biosafetyLevel },
             ),

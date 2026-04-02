@@ -624,8 +624,6 @@ function BiorepositoryQCInspectionPage({
                                   bslColor = "teal";
                                 else if (cell.value === "BSL_3")
                                   bslColor = "purple";
-                                else if (cell.value === "BSL_4")
-                                  bslColor = "red";
                                 return (
                                   <TableCell key={cell.id}>
                                     <Tag type={bslColor}>{cell.value}</Tag>
