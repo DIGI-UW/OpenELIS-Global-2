@@ -102,24 +102,41 @@ test.describe("General Configurations", () => {
       timeout: UI_TIMEOUT,
     });
 
-    // Toggle the value
-    const falseOption = page.getByText("False", { exact: true });
-    const trueOption = page.getByText("True", { exact: true });
-    if (await falseOption.isVisible()) {
-      await falseOption.click();
-    } else if (await trueOption.isVisible()) {
-      await trueOption.click();
-    }
+    // Read current selected value, then toggle to opposite
+    const falseRadio = page
+      .locator(".cds--radio-button__label")
+      .filter({ hasText: "False" });
+    const trueRadio = page
+      .locator(".cds--radio-button__label")
+      .filter({ hasText: "True" });
+
+    // Determine which is currently checked via the hidden input
+    const falseInput = falseRadio.locator("..").locator("input");
+    const isFalseChecked = await falseInput.isChecked().catch(() => false);
+    const targetValue = isFalseChecked ? "True" : "False";
+
+    // Click the opposite value
+    const targetRadio = targetValue === "True" ? trueRadio : falseRadio;
+    await targetRadio.click();
 
     // Save
     const saveBtn = page.locator("[data-cy='save-Button']");
     await expect(saveBtn).toBeVisible({ timeout: UI_TIMEOUT });
     await saveBtn.click();
 
-    // Verify we returned to the config list
+    // Verify we returned to the config list with the toggled value
     await expect(page.locator("h2")).not.toContainText("Edit Record", {
       timeout: UI_TIMEOUT,
     });
     await expect(page.locator("table")).toBeVisible({ timeout: UI_TIMEOUT });
+
+    // Verify the table shows the new value
+    const firstRowCells = page.locator("table tbody tr").first().locator("td");
+    await expect(firstRowCells.nth(2)).toContainText(
+      targetValue.toLowerCase(),
+      {
+        timeout: UI_TIMEOUT,
+      },
+    );
   });
 });

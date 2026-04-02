@@ -517,7 +517,7 @@ button {
   -ms-overflow-style: none; /* IE/Edge */
 }
 
-.cds--side-nav__navigation {
+.cds--side-nav--ux .cds--side-nav__navigation {
   overflow-y: auto !important;
   overflow-x: visible !important;
   padding-top: 10px !important;
