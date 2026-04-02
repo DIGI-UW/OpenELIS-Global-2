@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, Page } from "@playwright/test";
 import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -10,30 +10,48 @@ import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
  * selectors (no hard-coded cell indexes or .first() radio clicks).
  */
 
+/** Expand a Carbon SideNavMenu by clicking its button if not already expanded */
+async function expandSideNavMenu(page: Page, menuText: RegExp | string) {
+  const menuButton = page
+    .locator(".cds--side-nav__submenu")
+    .filter({ hasText: menuText });
+  const isExpanded = await menuButton.getAttribute("aria-expanded");
+  if (isExpanded !== "true") {
+    await menuButton.click();
+  }
+}
+
+/** Navigate to a config page via the admin sidenav */
+async function navigateToConfig(page: Page, dataCy: string) {
+  // Expand the "Form Entry Configuration" parent menu
+  await expandSideNavMenu(page, /Form Entry|formEntry/i);
+
+  // Click the specific config submenu item
+  const menuItem = page.locator(`[data-cy="${dataCy}"]`);
+  await expect(menuItem).toBeVisible({ timeout: UI_TIMEOUT });
+  await menuItem.click();
+}
+
 const CONFIG_PAGES = [
   {
     name: "NonConformity Configuration",
     dataCy: "nonConformConfig",
-    parentMenu: "admin.formEntryConfig",
     url: "/NonConformityConfigurationMenu",
   },
   {
     name: "WorkPlan Configuration",
     dataCy: "workPlanConfig",
-    parentMenu: "admin.formEntryConfig",
     url: "/WorkplanConfigurationMenu",
   },
   {
     name: "Site Information",
     dataCy: "siteInfoMenu",
-    parentMenu: "admin.formEntryConfig",
     url: "/SiteInformationMenu",
   },
 ];
 
 test.describe("General Configurations", () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to admin page
     await page.goto("/MasterListsPage", { waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(/MasterListsPage/, { timeout: LONG_TIMEOUT });
   });
@@ -42,38 +60,29 @@ test.describe("General Configurations", () => {
     test(`${config.name} — loads and displays config table`, async ({
       page,
     }) => {
-      // Click the config menu item via data-cy attribute
-      const menuItem = page.locator(`[data-cy="${config.dataCy}"]`);
-      await expect(menuItem).toBeVisible({ timeout: UI_TIMEOUT });
-      await menuItem.click();
+      await navigateToConfig(page, config.dataCy);
 
-      // Verify we navigated to the config page
+      // Verify navigation
       await expect(page).toHaveURL(new RegExp(config.url), {
         timeout: LONG_TIMEOUT,
       });
 
-      // Verify the page title heading is visible
+      // Verify page title and table
       await expect(page.locator("h2")).toBeVisible({ timeout: UI_TIMEOUT });
-
-      // Verify the config table has rows
       const table = page.locator("table");
       await expect(table).toBeVisible({ timeout: UI_TIMEOUT });
-      const rows = table.locator("tbody tr");
-      const rowCount = await rows.count();
+      const rowCount = await table.locator("tbody tr").count();
       expect(rowCount).toBeGreaterThan(0);
     });
   }
 
   test("NonConformity — toggle a config value", async ({ page }) => {
-    // Navigate to NonConformity config
-    const menuItem = page.locator('[data-cy="nonConformConfig"]');
-    await expect(menuItem).toBeVisible({ timeout: UI_TIMEOUT });
-    await menuItem.click();
+    await navigateToConfig(page, "nonConformConfig");
     await expect(page).toHaveURL(/NonConformityConfiguration/, {
       timeout: LONG_TIMEOUT,
     });
 
-    // Select the first config row's radio button by clicking its label
+    // Select the first config row's radio button
     const firstRadio = page.locator(".cds--radio-button__label").first();
     await expect(firstRadio).toBeVisible({ timeout: UI_TIMEOUT });
     await firstRadio.click();
@@ -88,10 +97,9 @@ test.describe("General Configurations", () => {
       timeout: UI_TIMEOUT,
     });
 
-    // Find current value and toggle it
+    // Toggle the value
     const falseOption = page.getByText("False", { exact: true });
     const trueOption = page.getByText("True", { exact: true });
-
     if (await falseOption.isVisible()) {
       await falseOption.click();
     } else if (await trueOption.isVisible()) {
@@ -107,8 +115,6 @@ test.describe("General Configurations", () => {
     await expect(page.locator("h2")).not.toContainText("Edit Record", {
       timeout: UI_TIMEOUT,
     });
-
-    // Verify table is still visible (config list reloaded)
     await expect(page.locator("table")).toBeVisible({ timeout: UI_TIMEOUT });
   });
 });
