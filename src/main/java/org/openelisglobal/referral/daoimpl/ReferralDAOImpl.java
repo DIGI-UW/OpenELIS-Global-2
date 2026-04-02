@@ -210,11 +210,11 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
         // Filter in SQL for performance: exclude lost, canceled, and already assigned
         // referrals
         String sql = "FROM Referral r WHERE r.assignedBox IS NULL "
-                + "AND (r.lostStatus IS NULL OR r.lostStatus = false) " + "AND r.status != :canceledStatus";
+                + "AND (r.lostStatus IS NULL OR r.lostStatus = false) " + "AND r.status != 'CANCELED'";
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(sql, Referral.class);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
+
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getUnassignedReferrals");
@@ -242,13 +242,13 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     public List<Referral> getReferralsBySampleItemId(Integer sampleItemId) {
         String hql = "SELECT DISTINCT r" + " FROM Referral r" + " JOIN FETCH r.analysis a"
                 + " JOIN FETCH a.sampleItem si" + " LEFT JOIN FETCH a.test t" + " LEFT JOIN FETCH r.organization org"
-                + " WHERE si.id = :sampleItemId" + "   AND r.status != :canceledStatus"
+                + " WHERE si.id = :sampleItemId" + "   AND r.status != 'CANCELED'"
                 + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)" + " ORDER BY r.requestDate";
 
         try {
             Query<Referral> query = entityManager.unwrap(Session.class).createQuery(hql, Referral.class);
             query.setParameter("sampleItemId", sampleItemId);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
+
             return query.list();
         } catch (HibernateException e) {
             handleException(e, "getReferralsBySampleItemId");
@@ -263,7 +263,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
                 + " s.collectionDate, si.sortOrder" + " FROM Referral r" + " JOIN r.analysis a"
                 + " JOIN a.sampleItem si" + " JOIN si.sample s" + " LEFT JOIN si.typeOfSample tos"
                 + " WHERE r.assignedBox IS NULL" + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)"
-                + "   AND r.status != :canceledStatus" + "   AND (si.rejected IS NULL OR si.rejected = false)"
+                + "   AND r.status != 'CANCELED'" + "   AND (si.rejected IS NULL OR si.rejected = false)"
                 + "   AND (si.voided IS NULL OR si.voided = false)";
 
         if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
@@ -274,7 +274,6 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
         try {
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
 
             if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
                 List<Integer> excludedIdsAsInt = excludedSampleItemIds.stream()
@@ -298,7 +297,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
                 + " s.collectionDate, si.sortOrder" + " FROM Referral r" + " JOIN r.analysis a"
                 + " JOIN a.sampleItem si" + " JOIN si.sample s" + " LEFT JOIN si.typeOfSample tos"
                 + " WHERE r.assignedBox IS NULL" + "   AND (r.lostStatus IS NULL OR r.lostStatus = false)"
-                + "   AND r.status != :canceledStatus" + "   AND (si.rejected IS NULL OR si.rejected = false)"
+                + "   AND r.status != 'CANCELED'" + "   AND (si.rejected IS NULL OR si.rejected = false)"
                 + "   AND (si.voided IS NULL OR si.voided = false)" + "   AND s.accessionNumber LIKE :accessionNumber";
 
         if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
@@ -309,7 +308,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
         try {
             Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
-            query.setParameter("canceledStatus", ReferralStatus.CANCELED);
+
             query.setParameter("accessionNumber", "%" + accessionNumber + "%");
 
             if (excludedSampleItemIds != null && !excludedSampleItemIds.isEmpty()) {
