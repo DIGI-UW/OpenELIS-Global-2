@@ -118,7 +118,7 @@ test.describe("FILE config persistence", () => {
     );
     expect(putRes.ok()).toBeTruthy();
 
-    // Re-read and verify
+    // Re-read and verify file config
     const verifyRes = await page.request.get(
       `${api}/file-import/configurations/analyzer/${found!.id}`,
     );
@@ -126,6 +126,13 @@ test.describe("FILE config persistence", () => {
     const updated = await verifyRes.json();
     expect(updated.fileFormat).toBe("TSV");
     expect(updated.filePattern).toBe("*.tsv");
+
+    // OGC-526: Verify unified fields propagated to the Analyzer entity
+    const analyzerRes = await page.request.get(`${api}/analyzers/${found!.id}`);
+    expect(analyzerRes.ok()).toBeTruthy();
+    const analyzerEntity = await analyzerRes.json();
+    expect(analyzerEntity.fileFormat).toBe("TSV");
+    expect(analyzerEntity.filePattern).toBe("*.tsv");
 
     // Revert to original so other tests see the seeded state
     const revertRes = await page.request.put(
