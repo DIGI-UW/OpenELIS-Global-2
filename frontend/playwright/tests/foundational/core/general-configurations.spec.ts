@@ -51,9 +51,14 @@ const CONFIG_PAGES = [
 ];
 
 test.describe("General Configurations", () => {
+  test.setTimeout(60_000);
+
   test.beforeEach(async ({ page }) => {
-    await page.goto("/MasterListsPage", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/MasterListsPage/, { timeout: LONG_TIMEOUT });
+    await page.goto("/MasterListsPage");
+    // Wait for the admin sidenav to fully render (React SPA hydration + data load)
+    await expect(page.locator(".cds--side-nav__submenu").first()).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
   });
 
   for (const config of CONFIG_PAGES) {
