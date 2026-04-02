@@ -1,18 +1,22 @@
 import { expect, Locator, Page, test } from "@playwright/test";
-import { acceptAndVerifyResults } from "../helpers/accept-results";
-import { createDemoPresentation } from "../helpers/demo-presentation";
-import type { DemoPresentation } from "../helpers/demo-presentation";
+import { acceptAndVerifyResults } from "../../../helpers/accept-results";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import type { DemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
   goToAnalyzerDashboard,
-} from "../helpers/analyzer-dashboard";
-import { cleanupAnalyzersMatching } from "../helpers/cleanup-analyzer";
+} from "../../../helpers/analyzer-dashboard";
+import { cleanupAnalyzersMatching } from "../../../helpers/cleanup-analyzer";
 import {
   accessionTextRegExp,
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
-} from "../helpers/results-ui";
-import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+} from "../../../helpers/results-ui";
+import {
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+} from "../../../helpers/timeouts";
 
 const SIMULATOR_URL = "http://localhost:8085";
 // Use the bridge IP on the dedicated GeneXpert mock subnet so the simulator

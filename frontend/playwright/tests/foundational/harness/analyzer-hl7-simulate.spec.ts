@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
-import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const HL7_ANALYZER_NAME = "Mindray BC-5380";
 

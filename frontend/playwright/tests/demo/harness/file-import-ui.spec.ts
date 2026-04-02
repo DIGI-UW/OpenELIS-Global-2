@@ -1,14 +1,15 @@
 import { test, expect } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
-import { videoPause } from "../helpers/video-pause";
-import { cleanupAnalyzerByName } from "../helpers/cleanup-analyzer";
+import { videoPause } from "../../../helpers/video-pause";
+import { cleanupAnalyzerByName } from "../../../helpers/cleanup-analyzer";
+import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
 import {
   QUICK_TIMEOUT,
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
-} from "../helpers/timeouts";
+} from "../../../helpers/timeouts";
 
 /**
  * QuantStudio 7 MVP Workflow E2E
@@ -33,11 +34,7 @@ import {
  */
 
 const CLEANUP = process.env.CLEANUP !== "false";
-const REPO_ROOT = path.resolve(__dirname, "../../..");
-const HOST_IMPORTS_BASE = path.join(
-  REPO_ROOT,
-  "projects/analyzer-harness/volume/analyzer-imports",
-);
+const HOST_IMPORTS_BASE = resolveHarnessImportsDir(__dirname);
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

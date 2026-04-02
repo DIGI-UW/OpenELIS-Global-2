@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { AnalyzerListPage } from "../fixtures/analyzer-list";
+import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import {
   ensureAnalyzerByName,
   GENEXPERT_DEFAULT_ANALYZER,
-} from "../helpers/ensure-analyzer";
-import { UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
+} from "../../../helpers/ensure-analyzer";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * Analyzer Simulator E2E
