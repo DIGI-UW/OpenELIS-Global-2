@@ -485,7 +485,13 @@ chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" ||
 with_timeout_wait 60 "webapp cert material" "docker exec openelisglobal-webapp sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
 with_timeout_wait 60 "bridge cert material" "docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
 
-with_timeout_wait 240 "OpenELIS readiness" "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost/ > /dev/null" 2>&1 | tee -a "$RUN_LOG"
+(
+  cd "$REPO_ROOT"
+  export TEST_USER="$TEST_USER_RESOLVED"
+  export TEST_PASS="$TEST_PASS_RESOLVED"
+  export TIMEOUT_SECONDS=240
+  bash scripts/e2e/wait-for-openelis-login.sh
+) 2>&1 | tee -a "$RUN_LOG"
 with_timeout_wait 120 "bridge readiness" "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
 with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --max-time 3 http://localhost:8085/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
 

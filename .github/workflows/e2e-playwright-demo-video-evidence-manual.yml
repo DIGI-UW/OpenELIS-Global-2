@@ -1,0 +1,70 @@
+# Opt-in workflow for demo video evidence, separated from required checkpoint graphs.
+name: E2E / Playwright / Demo Video Evidence (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_core_demo_video:
+        description: "Run core demo video evidence"
+        required: true
+        default: true
+        type: boolean
+      run_harness_demo_video:
+        description: "Run analyzer harness demo video evidence"
+        required: true
+        default: false
+        type: boolean
+      build_run_id:
+        description: "Run ID that produced e2e-image-map-base/e2e-image-map artifacts (optional for same-run fork rebuild flows)"
+        required: false
+        default: ""
+        type: string
+      is_fork:
+        description: "Whether artifacts should be read from same run (fork rebuild path)"
+        required: true
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+      head_sha:
+        description: "Ref/SHA to test (for PRs, use refs/pull/<number>/merge)"
+        required: false
+        default: ""
+        type: string
+      pr_number:
+        description: "Optional PR number to update with analyzer harness evidence comment"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  core-demo-video-evidence:
+    if: inputs.run_core_demo_video
+    uses: ./.github/workflows/e2e-playwright-core-demo-video-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    with:
+      build_run_id: ${{ inputs.build_run_id }}
+      is_fork: ${{ inputs.is_fork }}
+      head_sha: ${{ inputs.head_sha }}
+      test_user: ${{ vars.TEST_USER || 'admin' }}
+      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+
+  harness-demo-video-evidence:
+    if: inputs.run_harness_demo_video
+    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      issues: write
+      pull-requests: write
+    with:
+      build_run_id: ${{ inputs.build_run_id }}
+      is_fork: ${{ inputs.is_fork }}
+      head_sha: ${{ inputs.head_sha }}
+      test_user: ${{ vars.TEST_USER || 'admin' }}
+      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+      pr_number: ${{ inputs.pr_number }}
+      playwright_project: harness-demo-video

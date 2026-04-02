@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   setup:
-    name: Setup
+    name: E2E Context
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,46 +20,33 @@ jobs:
     outputs:
       is_fork: ${{ steps.context.outputs.is_fork }}
       pr_number: ${{ steps.context.outputs.pr_number }}
-      head_sha: ${{ steps.context.outputs.head_sha }}
       status_sha: ${{ steps.context.outputs.status_sha }}
-      core_demo_changed: ${{ steps.demo-diff.outputs.core_demo_changed }}
-      harness_demo_changed: ${{ steps.demo-diff.outputs.harness_demo_changed }}
+      checkout_ref: ${{ steps.context.outputs.checkout_ref }}
+      build_run_id: ${{ steps.context.outputs.build_run_id }}
+      artifact_source_mode: ${{ steps.context.outputs.artifact_source_mode }}
+      artifact_map_kind: ${{ steps.context.outputs.artifact_map_kind }}
+      include_plugin_jars: ${{ steps.context.outputs.include_plugin_jars }}
+      checkpoint_context: ${{ steps.context.outputs.checkpoint_context }}
     steps:
       - name: Capture pull request context
         id: context
         run: |
           IS_FORK="${{ github.event.pull_request.head.repo.fork && 'true' || 'false' }}"
           PR_NUMBER="${{ github.event.pull_request.number }}"
-          HEAD_SHA="refs/pull/${PR_NUMBER}/merge"
+          CHECKOUT_REF="refs/pull/${PR_NUMBER}/merge"
           STATUS_SHA="${{ github.event.pull_request.head.sha }}"
 
           echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
-          echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "checkout_ref=$CHECKOUT_REF" >> "$GITHUB_OUTPUT"
           echo "status_sha=$STATUS_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_run_id=" >> "$GITHUB_OUTPUT"
+          echo "artifact_source_mode=same_run" >> "$GITHUB_OUTPUT"
+          echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
+          echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
+          echo "checkpoint_context=03 Checkpoint - E2E - Fork PR" >> "$GITHUB_OUTPUT"
 
-          echo "Context: fork=$IS_FORK pr=#$PR_NUMBER checkout_ref=$HEAD_SHA status_sha=$STATUS_SHA"
-
-      - name: Detect demo-spec diff buckets for PR
-        id: demo-diff
-        env:
-          PR_NUMBER: ${{ steps.context.outputs.pr_number }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "core_demo_changed=false" >> "$GITHUB_OUTPUT"
-          echo "harness_demo_changed=false" >> "$GITHUB_OUTPUT"
-
-          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" --paginate --jq '.[].filename' > /tmp/pr-files.txt
-          echo "Changed files from PR #$PR_NUMBER:"
-          sed 's/^/  - /' /tmp/pr-files.txt || true
-
-          if grep -qE '^frontend/playwright/tests/demo/core/.*\.spec\.ts$' /tmp/pr-files.txt; then
-            echo "core_demo_changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-          if grep -qE '^frontend/playwright/tests/demo/harness/.*\.spec\.ts$' /tmp/pr-files.txt; then
-            echo "harness_demo_changed=true" >> "$GITHUB_OUTPUT"
-          fi
+          echo "Context: fork=$IS_FORK pr=#$PR_NUMBER checkout_ref=$CHECKOUT_REF status_sha=$STATUS_SHA"
 
   fork-rebuild:
     name: Shared Build (Fork Rebuild)
@@ -73,7 +60,7 @@ jobs:
       - name: Checkout PR merge ref
         uses: actions/checkout@v4
         with:
-          ref: refs/pull/${{ needs.setup.outputs.pr_number }}/merge
+          ref: ${{ needs.setup.outputs.checkout_ref }}
           submodules: recursive
           persist-credentials: false
 
@@ -236,161 +223,11 @@ jobs:
               target_url: runUrl
             });
 
-  playwright-core:
-    name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
+  authoritative-executor:
+    name: Authoritative E2E Executor
     needs: [setup, fork-rebuild]
     if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-      actions: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - shard_index: 1
-            shard_total: 2
-          - shard_index: 2
-            shard_total: 2
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.head_sha }}
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Enforce Playwright guards
-        run: npm run pw:guard
-        working-directory: frontend
-
-      - name: Restore Playwright browser cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-        working-directory: frontend
-
-      - name: Prepare .env from template
-        run: cp .env.example .env
-
-      - name: Download image map from fork rebuild
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map-base
-          path: /tmp/e2e-image-map
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull and retag prebuilt compose images
-        run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
-
-      - name: Start OpenELIS containers (no rebuild)
-        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
-
-      - name: Wait for application to be ready
-        run: |
-          echo "Waiting for application to respond..."
-          timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done' || exit 1
-          echo "Application is ready"
-
-      - name: Load E2E foundational + demo patient data (order entry / OGC-284)
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/e2e-foundational-data.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/analyzer-harness-e2e.sql
-
-      - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/fixtures/file-import-e2e.sql
-
-      - name: Create analyzer import directories in container
-        run: |
-          docker exec openelisglobal-webapp mkdir -p \
-            /data/analyzer-imports/e2e-qs5/incoming \
-            /data/analyzer-imports/e2e-qs7/incoming \
-            /data/analyzer-imports/e2e-fluorocycler/incoming
-
-      - name: Run Playwright tests
-        run: npm run pw:test -- --project=core-app --project=core-demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
-        working-directory: frontend
-        env:
-          CI: true
-          BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}
-
-      - name: Upload blob report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-blob-report-${{ matrix.shard_index }}
-          path: frontend/blob-report
-          if-no-files-found: ignore
-          retention-days: 1
-
-      - name: Upload failure screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-screenshots-${{ matrix.shard_index }}
-          path: frontend/test-results/**/test-failed-*.png
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Upload test traces
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-traces-${{ matrix.shard_index }}
-          path: frontend/test-results/**/trace.zip
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Dump docker logs on failure
-        if: failure()
-        uses: jwalton/gh-docker-logs@v2
-        with:
-          tail: "100"
-
-  analyzer-harness:
-    name: Analyzer Harness
-    needs: [setup, fork-rebuild]
-    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
-    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
+    uses: ./.github/workflows/e2e-authoritative-reusable.yml
     permissions:
       contents: read
       packages: read
@@ -398,214 +235,33 @@ jobs:
       issues: write
       pull-requests: write
     with:
-      build_run_id: ""
-      is_fork: ${{ 'true' }}
-      head_sha: ${{ needs.setup.outputs.head_sha }}
+      checkout_ref: ${{ needs.setup.outputs.checkout_ref }}
+      status_sha: ${{ needs.setup.outputs.status_sha }}
+      build_run_id: ${{ needs.setup.outputs.build_run_id }}
+      artifact_source_mode: ${{ needs.setup.outputs.artifact_source_mode }}
+      artifact_map_kind: ${{ needs.setup.outputs.artifact_map_kind }}
+      include_plugin_jars: ${{ needs.setup.outputs.include_plugin_jars }}
+      is_fork: ${{ needs.setup.outputs.is_fork }}
+      pr_number: ${{ needs.setup.outputs.pr_number }}
+      checkpoint_context: ${{ needs.setup.outputs.checkpoint_context }}
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
-      pr_number: ${{ needs.setup.outputs.pr_number }}
 
-  core-demo-video-evidence:
-    name: Core Demo Video Evidence
-    needs: [setup, fork-rebuild]
-    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.core_demo_changed == 'true' && needs.fork-rebuild.result == 'success'
+  non-fork-path-not-applicable:
+    name: Non-Fork Path Not Applicable
+    needs: setup
+    if: needs.setup.outputs.is_fork != 'true'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-      actions: read
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.head_sha }}
-          submodules: recursive
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Enforce Playwright guards
-        run: npm run pw:guard
-        working-directory: frontend
-
-      - name: Restore Playwright browser cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-        working-directory: frontend
-
-      - name: Prepare .env from template
-        run: cp .env.example .env
-
-      - name: Download image map from fork rebuild
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-image-map-base
-          path: /tmp/e2e-image-map
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Pull and retag prebuilt compose images
+      - name: Summarize no-op path
         run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
-
-      - name: Start OpenELIS containers (no rebuild)
-        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
-
-      - name: Wait for application to be ready
-        run: |
-          timeout 60 bash -c 'until curl -k -s -f https://localhost/ > /dev/null; do sleep 2; done'
-
-      - name: Load E2E foundational + demo patient data
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/e2e-foundational-data.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/analyzer-harness-e2e.sql
-
-      - name: Run Playwright core demo video tests
-        run: npm run pw:test -- --project=core-demo-video --workers=1
-        working-directory: frontend
-        env:
-          CI: true
-          BASE_URL: https://localhost
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ vars.TEST_PASS || 'adminADMIN!' }}
-          PLAYWRIGHT_SLOWMO: "500"
-
-      - name: Resolve Playwright version for report merge
-        id: core-video-playwright-version
-        working-directory: frontend
-        run: |
-          VERSION=$(node -e "const lock=require('./package-lock.json'); const pkg=require('./package.json'); const clean=(s)=>s?String(s).replace(/^[~^]/,''):''; const v=(lock.packages?.['node_modules/playwright']?.version)||(lock.packages?.['node_modules/@playwright/test']?.version)||clean(pkg.devDependencies?.['@playwright/test'])||clean(pkg.dependencies?.playwright); if(!v){console.error('Unable to resolve Playwright version for report merge'); process.exit(1);} process.stdout.write(v);")
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Build core demo video HTML report
-        if: ${{ always() }}
-        run: |
-          if [ -d ./blob-report ] && [ -n "$(ls -A ./blob-report 2>/dev/null)" ]; then
-            npx --yes playwright@${{ steps.core-video-playwright-version.outputs.version }} merge-reports --reporter html ./blob-report
-          else
-            echo "No blob report found; skipping HTML report merge."
-          fi
-        working-directory: frontend
-
-      - name: Create core demo video evidence bundle
-        if: ${{ always() }}
-        working-directory: frontend
-        run: |
-          BUNDLE="playwright-core-demo-video-evidence-attempt-${{ github.run_attempt }}.zip"
-          INPUTS=()
-          if [ -d "playwright-report" ]; then
-            INPUTS+=("playwright-report")
-          fi
-          if [ -d "test-results" ]; then
-            INPUTS+=("test-results")
-          fi
-          if [ "${#INPUTS[@]}" -eq 0 ]; then
-            echo "No report/test-results directories found; skipping bundle."
-            exit 0
-          fi
-          zip -r "$BUNDLE" "${INPUTS[@]}"
-
-      - name: Upload core demo video blob report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-demo-video-blob-report
-          path: frontend/blob-report
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload core demo video test-results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-demo-video-test-results
-          path: frontend/test-results
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload core demo video HTML report
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-demo-video-report-html-attempt-${{ github.run_attempt }}
-          path: frontend/playwright-report/
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload core demo video evidence bundle
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-core-demo-video-evidence-attempt-${{ github.run_attempt }}
-          path: frontend/playwright-core-demo-video-evidence-attempt-${{ github.run_attempt }}.zip
-          if-no-files-found: ignore
-          retention-days: 14
-
-  analyzer-harness-video-evidence:
-    name: Analyzer Harness Demo Video Evidence
-    needs: [setup, fork-rebuild]
-    if: needs.setup.outputs.is_fork == 'true' && needs.setup.outputs.harness_demo_changed == 'true' && needs.fork-rebuild.result == 'success'
-    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
-    permissions:
-      contents: read
-      packages: read
-      actions: read
-      issues: write
-      pull-requests: write
-    with:
-      build_run_id: ""
-      is_fork: ${{ 'true' }}
-      head_sha: ${{ needs.setup.outputs.head_sha }}
-      test_user: ${{ vars.TEST_USER || 'admin' }}
-      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
-      pr_number: ${{ needs.setup.outputs.pr_number }}
-      playwright_project: harness-demo-video
-
-  cypress:
-    name: Cypress
-    needs: [setup, fork-rebuild]
-    if: needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success'
-    uses: ./.github/workflows/e2e-cypress-deprecated.yml
-    permissions:
-      contents: read
-      packages: read
-      actions: read
-    with:
-      build_run_id: ""
-      is_fork: ${{ 'true' }}
-      head_sha: ${{ needs.setup.outputs.head_sha }}
-      test_user: ${{ vars.TEST_USER || 'admin' }}
-      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+          echo "Non-fork PR detected; fork-native workflow is not authoritative."
+          {
+            echo "## 03 Checkpoint - E2E - Fork PR"
+            echo ""
+            echo "Status: \`not_applicable\`"
+            echo "Reason: non-fork PRs are handled by \`03 Checkpoint - E2E\`."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   e2e-gate:
     name: Fork E2E Gate
@@ -614,11 +270,8 @@ jobs:
       [
         setup,
         fork-rebuild,
-        playwright-core,
-        analyzer-harness,
-        core-demo-video-evidence,
-        analyzer-harness-video-evidence,
-        cypress,
+        authoritative-executor,
+        non-fork-path-not-applicable,
       ]
     runs-on: ubuntu-latest
     permissions:
@@ -627,38 +280,18 @@ jobs:
       - name: Enforce fork E2E results or report non-fork no-op
         run: |
           if [[ "${{ needs.setup.outputs.is_fork }}" != "true" ]]; then
-            echo "Non-fork PR detected; fork-native workflow is not authoritative for this run."
-            echo "Not applicable."
-            {
-              echo "## 03 Checkpoint - E2E - Fork PR"
-              echo ""
-              echo "Status: \`not_applicable\`"
-              echo "Reason: non-fork PRs are handled by \`03 Checkpoint - E2E\`."
-            } >> "$GITHUB_STEP_SUMMARY"
+            if [[ "${{ needs.non-fork-path-not-applicable.result }}" != "success" ]]; then
+              echo "Non-fork no-op path failed: ${{ needs.non-fork-path-not-applicable.result }}"
+              exit 1
+            fi
             exit 0
           fi
           if [[ "${{ needs.fork-rebuild.result }}" != "success" ]]; then
             echo "Fork rebuild failed: ${{ needs.fork-rebuild.result }}"
             exit 1
           fi
-          if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
-            echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.analyzer-harness.result }}" != "success" && "${{ needs.analyzer-harness.result }}" != "skipped" ]]; then
-            echo "Analyzer Harness failed: ${{ needs.analyzer-harness.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.core-demo-video-evidence.result }}" != "success" && "${{ needs.core-demo-video-evidence.result }}" != "skipped" ]]; then
-            echo "Core Demo Video Evidence failed: ${{ needs.core-demo-video-evidence.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.analyzer-harness-video-evidence.result }}" != "success" && "${{ needs.analyzer-harness-video-evidence.result }}" != "skipped" ]]; then
-            echo "Analyzer Harness Demo Video Evidence failed: ${{ needs.analyzer-harness-video-evidence.result }}"
-            exit 1
-          fi
-          if [[ "${{ needs.cypress.result }}" != "success" ]]; then
-            echo "Cypress failed: ${{ needs.cypress.result }}"
+          if [[ "${{ needs.authoritative-executor.result }}" != "success" ]]; then
+            echo "Authoritative executor failed: ${{ needs.authoritative-executor.result }}"
             exit 1
           fi
           echo "03 Checkpoint - E2E - Fork PR passed."

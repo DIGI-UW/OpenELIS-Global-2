@@ -177,14 +177,19 @@ export async function teardownAnalyzer(
   }
 }
 
+/** Escape a value for use inside a PostgreSQL single-quoted literal. */
+function escapePgStringLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 /**
- * Remove a soft-deleted analyzer from the DB so tests leave zero trace.
- * Follows the execFileSync + docker psql pattern from file-import-setup.ts.
+ * Hard-delete analyzer rows after UI soft-delete (test isolation).
  * CASCADE FK on analyzer_test_map handles test mapping cleanup automatically.
  */
 function hardDeleteAnalyzerFromDb(analyzerName: string): void {
   const container = resolveDbContainer();
-  const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = '${analyzerName}'); DELETE FROM clinlims.analyzer WHERE name = '${analyzerName}';`;
+  const nameLiteral = escapePgStringLiteral(analyzerName);
+  const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ${nameLiteral}); DELETE FROM clinlims.analyzer WHERE name = ${nameLiteral};`;
   try {
     execFileSync("docker", [
       "exec",

@@ -149,13 +149,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull and retag prebuilt compose images
-        run: |
-          xargs -r -I{} -P4 bash -lc '
-            IFS="|" read -r source_image ghcr_image <<< "$1"
-            [ -z "$source_image" ] && exit 0
-            docker pull "$ghcr_image" >/dev/null
-            docker tag "$ghcr_image" "$source_image"
-          ' _ {} < /tmp/e2e-image-map/e2e-image-map.txt
+        run: E2E_IMAGE_MAP_FILE=/tmp/e2e-image-map/e2e-image-map.txt bash scripts/e2e/pull-retag-e2e-images.sh
 
       - name: Create analyzer import bind mount directories
         run: |
@@ -185,38 +179,8 @@ jobs:
         env:
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
-        run: |
-          wait_for_url() {
-            local label="$1"
-            local timeout_seconds="$2"
-            local curl_command="$3"
-
-            echo "Waiting for ${label}..."
-            timeout "$timeout_seconds" bash -c "until ${curl_command} > /dev/null; do sleep 2; done"
-            echo "${label} is ready."
-          }
-
-          wait_for_login() {
-            local timeout_seconds="$1"
-
-            echo "Waiting for OpenELIS login readiness..."
-            timeout "$timeout_seconds" bash -c '
-              until bash projects/analyzer-harness/scripts/verify-login.sh --base-url https://localhost >/dev/null 2>&1; do
-                sleep 2
-              done
-            '
-            echo "OpenELIS login is ready."
-          }
-
-          wait_for_login 240
-          wait_for_url \
-            "bridge readiness" \
-            120 \
-            "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health"
-          wait_for_url \
-            "simulator readiness" \
-            120 \
-            "curl -s -f --connect-timeout 2 --max-time 3 http://localhost:8085/health"
+          TIMEOUT_SECONDS: "240"
+        run: bash scripts/e2e/wait-for-analyzer-harness-readiness.sh
 
       - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
         run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
@@ -484,19 +448,32 @@ jobs:
         if: ${{ always() }}
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          OVERALL_STATUS="✅ Ready for review"
+          if [[ "${{ needs.demo-shards.result }}" != "success" || "${{ needs.merge-reports.result }}" != "success" ]]; then
+            OVERALL_STATUS="❌ Needs attention"
+          fi
           {
             echo "## Analyzer Playwright PR Evidence"
             echo ""
-            echo "- Workflow run: [view run](${RUN_URL})"
-            echo "- Artifacts page: [view artifacts](${RUN_URL}#artifacts)"
-            echo "- Playwright project: \`${{ inputs.playwright_project }}\`"
-            echo "- HTML report artifact: \`analyzer-playwright-report-html-attempt-${{ github.run_attempt }}\`"
-            echo "- Demo shards result: \`${{ needs.demo-shards.result }}\`"
-            echo "- Merge reports result: \`${{ needs.merge-reports.result }}\`"
+            echo "**Status:** ${OVERALL_STATUS}"
+            echo ""
+            echo "### Quick links"
+            echo "- [Workflow run](${RUN_URL})"
+            echo "- [Artifacts](${RUN_URL}#artifacts)"
+            echo ""
+            echo "### Results"
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Playwright project | \`${{ inputs.playwright_project }}\` |"
+            echo "| Demo shards | \`${{ needs.demo-shards.result }}\` |"
+            echo "| Merge reports | \`${{ needs.merge-reports.result }}\` |"
+            echo ""
+            echo "### Artifacts"
+            echo "- HTML report: \`analyzer-playwright-report-html-attempt-${{ github.run_attempt }}\`"
             if [[ "${{ inputs.playwright_project }}" == "harness-demo-video" ]]; then
-              echo "- Video evidence artifact: \`analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}\`"
+              echo "- Video evidence: \`analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}\`"
             else
-              echo "- Video evidence: not requested for this run"
+              echo "- Video evidence: not requested for this run."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -521,18 +498,33 @@ jobs:
 
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const artifactsUrl = `${runUrl}#artifacts`;
+            const overallStatus = process.env.DEMO_RESULT === 'success' && process.env.MERGE_RESULT === 'success'
+              ? '✅ Ready for review'
+              : '❌ Needs attention';
             const videoLine = process.env.PLAYWRIGHT_PROJECT === 'harness-demo-video'
-              ? `- Video evidence artifact: \`analyzer-playwright-video-evidence-attempt-${process.env.RUN_ATTEMPT}\``
-              : '- Video evidence: not requested for this run';
-            const body = `${marker}
-            ## Analyzer Playwright Evidence
-            - Workflow run: [view run](${runUrl})
-            - Artifacts: [view artifacts](${artifactsUrl})
-            - Playwright project: \`${process.env.PLAYWRIGHT_PROJECT}\`
-            - HTML report artifact: \`analyzer-playwright-report-html-attempt-${process.env.RUN_ATTEMPT}\`
-            - Demo shards result: \`${process.env.DEMO_RESULT}\`
-            - Merge reports result: \`${process.env.MERGE_RESULT}\`
-            ${videoLine}`;
+              ? `- Video evidence: \`analyzer-playwright-video-evidence-attempt-${process.env.RUN_ATTEMPT}\``
+              : '- Video evidence: not requested for this run.';
+            const body = [
+              marker,
+              '## Analyzer Playwright Evidence',
+              '',
+              `**Status:** ${overallStatus}`,
+              '',
+              '### Quick links',
+              `- [Workflow run](${runUrl})`,
+              `- [Artifacts](${artifactsUrl})`,
+              '',
+              '### Results',
+              '| Check | Result |',
+              '| --- | --- |',
+              `| Playwright project | \`${process.env.PLAYWRIGHT_PROJECT}\` |`,
+              `| Demo shards | \`${process.env.DEMO_RESULT}\` |`,
+              `| Merge reports | \`${process.env.MERGE_RESULT}\` |`,
+              '',
+              '### Artifacts',
+              `- HTML report: \`analyzer-playwright-report-html-attempt-${process.env.RUN_ATTEMPT}\``,
+              videoLine,
+            ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,

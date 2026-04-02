@@ -1,26 +1,15 @@
-import { execFileSync } from "child_process";
+/**
+ * Canonical Postgres container name for optional Playwright `docker exec` helpers.
+ *
+ * Compose contract: `container_name: openelisglobal-database` on `db.openelis.org`
+ * (`build.docker-compose.yml`, `projects/analyzer-harness/docker-compose.base.yml`).
+ *
+ * Override when targeting a non-standard stack (first match wins):
+ * `HARNESS_DB_CONTAINER`, `DATABASE_CONTAINER`, `DB_CONTAINER`.
+ * With `includeFileImportOverride`, `FILE_IMPORT_DB_CONTAINER` is checked first.
+ */
 
-const DEFAULT_DB_CONTAINER = "openelisglobal-database";
-const DB_CONTAINER_CANDIDATES = [
-  "analyzer-harness-db-1",
-  "openelisglobal-database",
-];
-
-function getRunningContainers(): Set<string> {
-  try {
-    const output = execFileSync("docker", ["ps", "--format", "{{.Names}}"], {
-      encoding: "utf8",
-    });
-    return new Set(
-      output
-        .split("\n")
-        .map((name) => name.trim())
-        .filter(Boolean),
-    );
-  } catch {
-    return new Set();
-  }
-}
+import { DEFAULT_HARNESS_DB_CONTAINER } from "./harness-contract";
 
 function assertValidContainerName(name: string): void {
   if (!/^[a-zA-Z0-9_.-]+$/.test(name)) {
@@ -28,46 +17,28 @@ function assertValidContainerName(name: string): void {
   }
 }
 
-/**
- * Resolve the DB container for local harness and CI-style stacks.
- *
- * Priority:
- * 1) Explicit env overrides
- *    - When includeFileImportOverride=true: FILE_IMPORT_DB_CONTAINER first,
- *      then DATABASE_CONTAINER, then DB_CONTAINER
- * 2) Active known container names
- * 3) Legacy default
- */
-export function resolveDbContainer(includeFileImportOverride = false): string {
-  const envCandidates: string[] = [];
-  if (includeFileImportOverride) {
-    const fileImportContainer = process.env.FILE_IMPORT_DB_CONTAINER?.trim();
-    if (fileImportContainer) {
-      envCandidates.push(fileImportContainer);
+function firstNonEmptyEnv(keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) {
+      return value;
     }
   }
-  for (const value of [
-    process.env.DATABASE_CONTAINER,
-    process.env.DB_CONTAINER,
-  ]) {
-    const trimmed = value?.trim();
-    if (trimmed) {
-      envCandidates.push(trimmed);
-    }
-  }
+  return undefined;
+}
 
-  if (envCandidates.length > 0) {
-    const chosen = envCandidates[0];
+export function resolveDbContainer(includeFileImportOverride = false): string {
+  const keys: string[] = [];
+  if (includeFileImportOverride) {
+    keys.push("FILE_IMPORT_DB_CONTAINER");
+  }
+  keys.push("HARNESS_DB_CONTAINER", "DATABASE_CONTAINER", "DB_CONTAINER");
+
+  const chosen = firstNonEmptyEnv(keys);
+  if (chosen) {
     assertValidContainerName(chosen);
     return chosen;
   }
 
-  const running = getRunningContainers();
-  for (const candidate of DB_CONTAINER_CANDIDATES) {
-    if (running.has(candidate)) {
-      return candidate;
-    }
-  }
-
-  return DEFAULT_DB_CONTAINER;
+  return DEFAULT_HARNESS_DB_CONTAINER;
 }

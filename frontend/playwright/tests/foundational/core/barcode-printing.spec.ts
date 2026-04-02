@@ -4,7 +4,7 @@ test.describe("Barcode printing", () => {
   test("Print Barcode page loads with pre-print and existing order sections", async ({
     page,
   }) => {
-    await page.goto("/PrintBarcode");
+    await page.goto("/PrintBarcode", { waitUntil: "domcontentloaded" });
 
     await expect(
       page.getByRole("heading", { name: /print bar code labels/i }),
