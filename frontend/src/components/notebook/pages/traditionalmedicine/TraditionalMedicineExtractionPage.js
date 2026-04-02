@@ -127,6 +127,7 @@ function TraditionalMedicineExtractionPage({
     { id: "filter_paper", label: "Filter Paper" },
     { id: "vacuum", label: "Vacuum Filtration" },
     { id: "centrifugation", label: "Centrifugation" },
+    { id: "other", label: "Other" },
   ];
 
   const concentrationOptions = [
