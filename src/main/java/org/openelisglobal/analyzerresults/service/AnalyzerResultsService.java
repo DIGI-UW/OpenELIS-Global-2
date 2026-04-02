@@ -2,8 +2,8 @@ package org.openelisglobal.analyzerresults.service;
 
 import java.util.List;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.service.BaseObjectService;
-import org.openelisglobal.result.controller.AnalyzerResultsController.SampleGrouping;
 
 public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResults, String> {
 

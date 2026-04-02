@@ -1,0 +1,74 @@
+services:
+  certs:
+    container_name: oe-certs
+    environment:
+      KEYSTORE_PW: '"kspass"'
+      TRUSTSTORE_PW: '"tspass"'
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - keys-vol:/etc/ssl/private/
+      - certs-vol:/etc/ssl/certs/
+
+  db.openelis.org:
+    container_name: openelisglobal-database
+    ports:
+      - "15432:5432"
+    environment:
+      DB_PASSWORD: ${OE_DB_PASSWORD:-clinlims}
+      DB_SUPERUSER_PASSWORD: ${ADMIN_PASSWORD:-superuser}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+
+  oe.openelis.org:
+    container_name: openelisglobal-webapp
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    environment:
+      DEFAULT_PW: adminADMIN!
+      TZ: Africa/Nairobi
+      SPRING_LIQUIBASE_CONTEXTS: test
+    networks:
+      default:
+        ipv4_address: 172.20.1.121
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
+
+  fhir.openelis.org:
+    container_name: external-fhir-api
+    ports:
+      - "8081:8080"
+      - "8444:8443"
+
+  frontend.openelis.org:
+    container_name: openelisglobal-front-end
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    tty: true
+
+  proxy:
+    container_name: openelisglobal-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+
+volumes:
+  db-data:
+  key_trust-store-volume:
+  certs-vol:
+  keys-vol:
+  lucene_index-vol:
