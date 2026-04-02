@@ -12,8 +12,8 @@
     <reference_tables id="9994" name="DICTIONARY"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
     <system_user id="1" login_name="admin" last_name="Admin"
-        first_name="System" is_active="Y" is_employee="Y"
-        external_id="EXT001" lastupdated="2023-10-01 12:00:00" />
+        first_name="System" is_active="Y" is_employee="Y" external_id="EXT001"
+        lastupdated="2023-10-01 12:00:00" />
 
     <localization id="1" description="Whole blood sample" />
     <localization id="2" description="Heamatology" />
