@@ -1,6 +1,7 @@
 # API Contracts: 310 Turn Around Time
 
-**Date**: 2026-04-02 **Base Path**: `/rest`
+**Date**: 2026-04-02  
+**Base Path**: `/rest`
 
 ---
 
@@ -10,10 +11,11 @@
 
 List public holidays for a given year.
 
-**Query Parameters**: | Param | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------| | year | integer | No |
-current year | Filter by year | | includeInactive | boolean | No | false |
-Include inactive holidays |
+**Query Parameters**:
+
+- `year` (integer, optional, default: current year) — Filter by year
+- `includeInactive` (boolean, optional, default: false) — Include inactive
+  holidays
 
 **Response 200**:
 
@@ -59,7 +61,7 @@ Create a new public holiday.
 
 - date: required, valid ISO date
 - name: required, max 100 chars, non-blank
-- Duplicate date in same year: 409 Conflict
+- Duplicate date in same year (including recurring occurrences): 409 Conflict
 
 **Permission**: `calendar-management` module (write)
 
@@ -80,7 +82,8 @@ Update an existing holiday.
 }
 ```
 
-**Response 200**: Updated holiday object **Response 404**: Holiday not found
+**Response 200**: Updated holiday object  
+**Response 404**: Holiday not found
 
 **Permission**: `calendar-management` module (write)
 
@@ -90,7 +93,8 @@ Update an existing holiday.
 
 Delete a holiday.
 
-**Response 204**: No Content **Response 404**: Holiday not found
+**Response 204**: No Content  
+**Response 404**: Holiday not found
 
 **Permission**: `calendar-management` module (write)
 
@@ -100,8 +104,8 @@ Delete a holiday.
 
 Import holidays from CSV file.
 
-**Request**: `multipart/form-data` with CSV file **CSV Columns**:
-`date,name,recurring` (recurring: true/false)
+**Request**: `multipart/form-data` with CSV file  
+**CSV Columns**: `date,name,recurring` (recurring: true/false)
 
 **Response 200**:
 
@@ -124,13 +128,17 @@ Import holidays from CSV file.
 
 Export holidays as CSV download.
 
-**Query Parameters**: | Param | Type | Required | Default |
-|-------|------|----------|---------| | year | integer | No | current year |
+**Query Parameters**:
 
-**Response 200**: `text/csv` file download **Headers**:
-`Content-Disposition: attachment; filename="holidays-2026.csv"`
+- `year` (integer, optional, default: current year)
 
-**Permission**: `calendar-management` module (read)
+**Response 200**: `text/csv` file download  
+**Headers**: `Content-Disposition: attachment; filename="holidays-2026.csv"`
+
+**Permission**: `calendar-management` module (write)
+
+> Note: Export requires write permission per spec FR-CM-016 (all mutation and
+> bulk operations gated by write access).
 
 ---
 
@@ -164,8 +172,8 @@ Update weekend day configuration.
 }
 ```
 
-**Response 200**: Updated weekend config **Validation**: Array of integers 0-6,
-no duplicates
+**Response 200**: Updated weekend config  
+**Validation**: Array of integers 0-6, no duplicates
 
 **Permission**: `calendar-management` module (write)
 
@@ -177,24 +185,28 @@ no duplicates
 
 Get TAT summary statistics, histogram, and breakdown for the selected filters.
 
-**Query Parameters**: | Param | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------| | fromDate | ISO date | Yes
-| - | Start of date range | | toDate | ISO date | Yes | - | End of date range |
-| segment | enum | Yes | - | TAT segment (see below) | | calculationMode | enum
-| No | CALENDAR | CALENDAR or WORKING_TIME | | labUnitIds | comma-sep integers |
-No | all | Filter by lab unit IDs | | testIds | comma-sep integers | No | all |
-Filter by test IDs | | panelIds | comma-sep integers | No | all | Filter by
-panel IDs | | priority | enum | No | all | ROUTINE, STAT, ASAP | | sampleTypeId
-| integer | No | all | Filter by sample type | | orderingSiteId | integer | No |
-all | Filter by ordering site | | includeCancelled | boolean | No | false |
-Include cancelled/rejected | | breakdownBy | enum | No | LAB_UNIT | Breakdown
-dimension |
+**Query Parameters**:
 
-**Segment Values**: `ORDER_TO_COLLECTION`, `COLLECTION_TO_RECEIPT`,
+- `fromDate` (ISO date, **required**) — Start of date range
+- `toDate` (ISO date, **required**) — End of date range
+- `segment` (enum, **required**) — TAT segment (see values below)
+- `calculationMode` (enum, optional, default: `CALENDAR`) — `CALENDAR` or
+  `WORKING_TIME`
+- `labUnitIds` (comma-separated integers, optional) — Filter by lab unit IDs
+- `testIds` (comma-separated integers, optional) — Filter by test IDs
+- `panelIds` (comma-separated integers, optional) — Filter by panel IDs
+- `priority` (enum, optional) — `ROUTINE`, `STAT`, `ASAP`
+- `sampleTypeId` (integer, optional) — Filter by sample type
+- `orderingSiteId` (integer, optional) — Filter by ordering site
+- `includeCancelled` (boolean, optional, default: false) — Include
+  cancelled/rejected
+- `breakdownBy` (enum, optional, default: `LAB_UNIT`) — Breakdown dimension
+
+**Segment values**: `ORDER_TO_COLLECTION`, `COLLECTION_TO_RECEIPT`,
 `RECEIPT_TO_TESTING`, `RECEIPT_TO_RESULT`, `RECEIPT_TO_VALIDATION`,
 `RESULT_TO_VALIDATION`, `OVERALL`
 
-**breakdownBy Values**: `LAB_UNIT`, `TEST`, `PRIORITY`, `SAMPLE_TYPE`,
+**breakdownBy values**: `LAB_UNIT`, `TEST`, `PRIORITY`, `SAMPLE_TYPE`,
 `ORDERING_SITE`
 
 **Response 200**:
@@ -233,17 +245,22 @@ dimension |
 
 Get paginated detail list of individual TAT results.
 
-**Query Parameters**: Same filters as summary, plus: | Param | Type | Required |
-Default | |-------|------|----------|---------| | page | integer | No | 1 | |
-pageSize | integer | No | 25 (max 100) | | sortField | string | No | selectedTat
-| | sortOrder | enum | No | desc | | breakdownFilter | string | No | - |
+**Query Parameters**: Same filters as summary, plus:
+
+- `page` (integer, optional, default: 0) — Page number (0-based, per repo
+  convention)
+- `pageSize` (integer, optional, default: 25, max: 100) — Results per page
+- `sortField` (string, optional, default: `selectedTat`) — Sort column
+- `sortOrder` (enum, optional, default: `desc`) — `asc` or `desc`
+- `breakdownFilter` (string, optional) — Filter to specific dimension value from
+  breakdown drill-down
 
 **Response 200**:
 
 ```json
 {
   "totalCount": 1247,
-  "page": 1,
+  "page": 0,
   "pageSize": 25,
   "calculationMode": "CALENDAR",
   "results": [
@@ -268,8 +285,11 @@ pageSize | integer | No | 25 (max 100) | | sortField | string | No | selectedTat
 }
 ```
 
-**Permission**: `tat-report` module (read). Patient name requires patient data
-permission.
+**Permission**: `tat-report` module (read)
+
+**Patient data handling**: When the caller lacks patient-data permission, the
+`patientName` field is omitted from the response (not returned as null or
+empty).
 
 ---
 
@@ -277,12 +297,11 @@ permission.
 
 Get time series trend data.
 
-**Query Parameters**: Same filters as summary, plus: | Param | Type | Required |
-Default | |-------|------|----------|---------| | interval | enum | No | DAILY |
-| compareBy | enum | No | - |
+**Query Parameters**: Same filters as summary, plus:
 
-**interval Values**: `DAILY`, `WEEKLY`, `MONTHLY` **compareBy Values**:
-`LAB_UNIT`, `PRIORITY`, `SAMPLE_TYPE`, `ORDERING_SITE`
+- `interval` (enum, optional, default: `DAILY`) — `DAILY`, `WEEKLY`, `MONTHLY`
+- `compareBy` (enum, optional) — `LAB_UNIT`, `PRIORITY`, `SAMPLE_TYPE`,
+  `ORDERING_SITE`
 
 **Response 200**:
 
@@ -314,10 +333,9 @@ Default | |-------|------|----------|---------| | interval | enum | No | DAILY |
 
 Export TAT report data.
 
-**Query Parameters**: Same filters as summary, plus: | Param | Type | Required |
-Default | |-------|------|----------|---------| | format | enum | Yes | - |
+**Query Parameters**: Same filters as summary, plus:
 
-**format Values**: `CSV`, `PDF`
+- `format` (enum, **required**) — `CSV` or `PDF`
 
 **Response**:
 

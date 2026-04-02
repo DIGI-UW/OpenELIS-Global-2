@@ -286,7 +286,10 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
   are provided; other row actions MUST be disabled while any row is being
   edited.
 - **FR-CM-006**: System MUST prevent duplicate holiday dates within the same
-  year.
+  year. When a one-time holiday conflicts with a recurring holiday occurrence in
+  a target year, the system MUST reject the one-time entry with an error message
+  identifying the conflict. Duplicate detection is enforced at the service layer
+  (not a DB UNIQUE constraint) to account for recurring expansion.
 - **FR-CM-007**: System MUST show a confirmation dialog before deleting a
   holiday.
 - **FR-CM-008**: System MUST support recurring holidays — holidays marked as
@@ -308,9 +311,9 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
   and show a preview before applying.
 - **FR-CM-015**: System MUST support CSV export of the current year's holidays
   with columns: date, name, recurring, active.
-- **FR-CM-016**: System MUST enforce `calendar.manage` permission for add, edit,
-  delete, import, and export operations. Users without this permission see the
-  page in read-only mode.
+- **FR-CM-016**: System MUST enforce write access via the `calendar-management`
+  permission module for add, edit, delete, import, and export operations. Users
+  without write access to this module see the page in read-only mode.
 
 #### TAT Report (OGC-307)
 
@@ -382,7 +385,8 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
   custom CSS frameworks. The JSX mockups provided use Carbon-like styling as
   reference; actual implementation must use real Carbon components.
 - **CR-002**: All UI strings MUST be internationalized via React Intl (no
-  hardcoded text). Translations required for en + fr minimum. This includes all
+  hardcoded text). New message IDs added to `en.json` only — non-English locales
+  (fr, etc.) are managed via Transifex, not direct file edits. This includes all
   stat labels, filter labels, tab names, error messages, and toast
   notifications.
 - **CR-003**: Backend MUST follow 5-layer architecture (Valueholder > DAO >
@@ -433,9 +437,10 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
 3. **No new FHIR resources required**: TAT reporting is an internal analytics
    feature. Calendar and TAT data are not externally-facing entities requiring
    FHIR R4 compliance (Constitution Principle III does not apply).
-4. **Permissions use existing module**: New permissions (`calendar.view`,
-   `calendar.manage`, TAT report view/export) will be added to the existing
-   OpenELIS permission module system, not a new RBAC framework.
+4. **Permissions use existing module system**: New modules
+   (`calendar-management`, `tat-report`) will be added to the existing OpenELIS
+   `system_module` / `system_role_module` permission system, not a new RBAC
+   framework.
 5. **Charting library**: The frontend will use a charting library compatible
    with Carbon Design System for histograms and trend charts. The JSX mockups
    reference Recharts; the actual library choice is an implementation decision.
@@ -450,7 +455,8 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
 ### Constraints (Constitution)
 
 - **UI**: Carbon Design System v1.15+ exclusively (Principle II)
-- **i18n**: React Intl for all strings, en + fr minimum (Principle VII)
+- **i18n**: React Intl for all strings; new keys in `en.json` only, non-English
+  via Transifex (Principle VII)
 - **Architecture**: 5-layer pattern mandatory (Principle IV)
 - **Schema**: Liquibase for all DB changes (Principle VI)
 - **Testing**: TDD workflow, JUnit 4 (Principle V)

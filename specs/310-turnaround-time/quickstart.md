@@ -10,7 +10,7 @@ Backend)
 1. OpenELIS-Global-2 running locally (Docker or native)
 2. Database accessible with clinlims schema
 3. Frontend dev server running (`cd frontend && npm start`)
-4. Playwright installed (`cd frontend && npx playwright install chromium`)
+4. Playwright installed (`cd frontend && npm run pw:install`)
 
 ## Development Order
 
@@ -85,4 +85,4 @@ npm run pw:show-report
 | Liquibase pattern   | `src/main/resources/liquibase/2.8.x.x/reflex_rule.xml`                 |
 | Playwright patterns | `frontend/playwright/tests/demo/core/ogc-62-shipment-workflow.spec.ts` |
 | PW helpers          | `frontend/playwright/helpers/`                                         |
-| PW best practices   | `.specify/guides/playwright-best-practices.md`                         |
+| PW best practices   | `../../.specify/guides/playwright-best-practices.md`                   |

@@ -20,7 +20,10 @@
 
 **Constraints**:
 
-- UNIQUE(holiday_date) per non-recurring entries within same year
+- No DB UNIQUE constraint on holiday_date (recurring expansion makes DB-level
+  uniqueness infeasible). Duplicate detection enforced at the service layer:
+  reject if another holiday (including recurring occurrences) already exists for
+  the same month/day in the target year
 - holiday_name max 100 characters
 - FK sys_user_id references system_user(id)
 
@@ -53,11 +56,11 @@ never inserted/deleted.
 
 ### Sample (timestamps used)
 
-| Field              | Used For Segment                        |
-| ------------------ | --------------------------------------- |
-| entered_date       | Order Created (segments 1, 7)           |
-| collection_date    | Specimen Collected (segments 1, 2)      |
-| received_timestamp | Specimen Received (segments 2, 3, 4, 5) |
+| Field                                         | Used For Segment                        |
+| --------------------------------------------- | --------------------------------------- |
+| entered_date                                  | Order Created (segments 1, 7)           |
+| collection_date                               | Specimen Collected (segments 1, 2)      |
+| received_date (DB) / receivedTimestamp (Java) | Specimen Received (segments 2, 3, 4, 5) |
 
 ### Analysis (timestamps used)
 

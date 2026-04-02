@@ -9,11 +9,11 @@
 ### Decision: Build new TAT reporting alongside existing 96-hour widget
 
 - **Rationale**: The homepage 96-hour delayed TAT widget
-  (`PatientDashBoardProvider.java:152-168`, `Dashboard.tsx:305`) uses a simple
-  threshold check (startedDate to releasedDate > 96 hours). The new TAT module
-  needs full segment-based calculations with Working Time support —
-  fundamentally different architecture. The existing widget remains unchanged
-  (FR-TAT-025).
+  (`src/.../common/rest/provider/PatientDashBoardProvider.java:152-168`,
+  `frontend/src/components/home/Dashboard.tsx:305`) uses a simple threshold
+  check (startedDate to releasedDate > 96 hours). The new TAT module needs full
+  segment-based calculations with Working Time support — fundamentally different
+  architecture. The existing widget remains unchanged (FR-TAT-025).
 - **Alternatives considered**: Extending the existing widget — rejected because
   the widget is a simple count tile, not a reporting surface.
 
@@ -24,7 +24,8 @@
 - **Fields confirmed in codebase**:
   - `sample.entered_date` (Date) — Order Created
   - `sample.collection_date` (Timestamp) — Specimen Collected
-  - `sample.received_timestamp` (Timestamp) — Specimen Received
+  - `sample.received_date` (DB column) / `receivedTimestamp` (Java field) —
+    Specimen Received
   - `analysis.started_date` (Date) — Testing Started (may have incomplete
     coverage)
   - `analysis.completed_date` (Date) — Result Entered

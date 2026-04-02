@@ -221,7 +221,8 @@ following existing OpenELIS project structure. New packages under
 
 ## Testing Strategy
 
-**Reference**: [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
+**Reference**:
+[OpenELIS Testing Roadmap](../../.specify/guides/testing-roadmap.md)
 
 ### Coverage Goals
 
@@ -236,7 +237,7 @@ following existing OpenELIS project structure. New packages under
 - [x] **Unit Tests**: Service layer business logic (JUnit 4 + Mockito)
 
   - **Reference**:
-    [Testing Roadmap - Unit Tests](.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
+    [Testing Roadmap - Unit Tests](../../.specify/guides/testing-roadmap.md#unit-tests-junit-4--mockito)
   - **Coverage Goal**: >80%
   - **Key tests**:
     - `TATCalculationServiceTest` — all 7 segments, Calendar + Working Time
@@ -249,7 +250,7 @@ following existing OpenELIS project structure. New packages under
 - [x] **DAO Tests**: Persistence layer (BaseWebContextSensitiveTest)
 
   - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+    [Testing Roadmap - Backend Testing](../../.specify/guides/testing-roadmap.md#backend-testing)
   - **Key tests**: PublicHoliday CRUD persistence, WeekendConfig seed data,
     query by year with recurring expansion
 
@@ -257,7 +258,7 @@ following existing OpenELIS project structure. New packages under
       MockMvc)
 
   - **Reference**:
-    [Testing Roadmap - Backend Testing](.specify/guides/testing-roadmap.md#backend-testing)
+    [Testing Roadmap - Backend Testing](../../.specify/guides/testing-roadmap.md#backend-testing)
   - **Key tests**: All calendar endpoints (CRUD, import, export, weekends), all
     TAT endpoints (summary, detail, trend, export) with filter combinations
   - **SDD Checkpoint**: After M1/M3 controllers complete, integration tests MUST
@@ -266,7 +267,7 @@ following existing OpenELIS project structure. New packages under
 - [x] **ORM Validation Tests**: Entity mapping validation
 
   - **Reference**:
-    [Testing Roadmap - ORM Validation Tests](.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
+    [Testing Roadmap - ORM Validation Tests](../../.specify/guides/testing-roadmap.md#orm-validation-tests-constitution-v4)
   - **Key tests**: PublicHoliday and WeekendConfig JPA mapping validation
   - **SDD Checkpoint**: After M1 entities created, ORM tests MUST pass in <5s
     without DB
@@ -275,7 +276,7 @@ following existing OpenELIS project structure. New packages under
       Library)
 
   - **Reference**:
-    [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+    [Testing Roadmap - Jest + React Testing Library](../../.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
   - **Coverage Goal**: >70%
   - **Key tests**: CalendarManagement CRUD interactions, TATFilterBar filter
     state, TATStatCards rendering, TATHistogram data transformation,
@@ -286,7 +287,7 @@ following existing OpenELIS project structure. New packages under
 - [x] **E2E Tests**: User story validation (Playwright with video recording)
 
   - **Reference**:
-    [Playwright Best Practices](.specify/guides/playwright-best-practices.md)
+    [Playwright Best Practices](../../.specify/guides/playwright-best-practices.md)
   - **Framework**: Playwright (NOT Cypress — per Testing Roadmap direction)
   - **Bucket**: `demo/core/` (maps to `core-demo` and `core-demo-video`
     projects)

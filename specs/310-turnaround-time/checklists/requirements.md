@@ -5,7 +5,12 @@ to planning **Created**: 2026-04-02 **Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [x] No implementation details (languages, frameworks, APIs) — Note:
+      Constitution Compliance Requirements (CR-001 through CR-008) reference
+      specific technologies (Carbon, React Intl, Liquibase, JUnit 4) because
+      these are non-negotiable project constraints, not feature-specific design
+      choices. They are included as architectural guardrails, not implementation
+      prescriptions.
 - [x] Focused on user value and business needs
 - [x] Written for non-technical stakeholders
 - [x] All mandatory sections completed
