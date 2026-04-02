@@ -16,6 +16,7 @@ import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Configuration handler for NCE (Non-Conforming Event) types. Loads NCE types
@@ -59,6 +60,7 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
     }
 
     @Override
+    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -108,8 +110,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Successfully loaded " + processedCount + " NCE types from " + fileName);
     }
 
     private String[] parseCsvLine(String line) {
@@ -157,7 +157,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
         String active = getValueOrEmpty(values, activeIndex);
 
         if (name.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing name");
             return false;
         }
 
@@ -172,7 +171,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             // Update existing type
             updateType(existing, displayKey, active, categoryId, values, localeColumnIndexes);
             nceTypeService.update(existing);
-            LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine", "Updated NCE type: " + name);
         } else {
             // Create new NCE type with localization
             Localization localization = createLocalization(name, values, localeColumnIndexes);
@@ -186,14 +184,6 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             type.setSysUserId("1");
 
             nceTypeService.insert(type);
-
-            if (categoryId != null) {
-                LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
-                        "Created NCE type: " + name + " linked to category: " + categoryName);
-            } else {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine",
-                        "Created NCE type: " + name + " but no matching category found for: " + categoryName);
-            }
         }
 
         return true;

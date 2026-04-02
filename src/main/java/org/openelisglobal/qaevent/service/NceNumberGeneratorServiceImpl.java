@@ -2,11 +2,10 @@ package org.openelisglobal.qaevent.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import java.time.LocalDate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.springframework.stereotype.Service;
@@ -52,9 +51,9 @@ public class NceNumberGeneratorServiceImpl implements NceNumberGeneratorService 
             // Use native SQL for the cast operation
             String sql = "SELECT MAX(CAST(SUBSTRING(nce_number, 10) AS INTEGER)) "
                     + "FROM clinlims.nc_event WHERE nce_number LIKE :yearPrefix";
-            Query<?> query = entityManager.unwrap(Session.class).createNativeQuery(sql);
+            Query query = entityManager.createNativeQuery(sql);
             query.setParameter("yearPrefix", yearPrefix + "%");
-            Object result = query.uniqueResult();
+            Object result = query.getSingleResult();
             if (result == null) {
                 return 0;
             }

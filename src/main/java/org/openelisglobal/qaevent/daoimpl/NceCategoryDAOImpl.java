@@ -1,8 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -22,16 +21,13 @@ public class NceCategoryDAOImpl extends BaseDAOImpl<NceCategory, Integer> implem
     @Override
     @Transactional(readOnly = true)
     public List<NceCategory> getAllNceCategory() throws LIMSRuntimeException {
-        List<NceCategory> list;
         try {
             String sql = "from NceCategory nc order by nc.id";
-            Query<NceCategory> query = entityManager.unwrap(Session.class).createQuery(sql, NceCategory.class);
-            list = query.list();
-
+            TypedQuery<NceCategory> query = entityManager.createQuery(sql, NceCategory.class);
+            return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in NceCategory getAllNceCategory()", e);
         }
-        return list;
     }
 }

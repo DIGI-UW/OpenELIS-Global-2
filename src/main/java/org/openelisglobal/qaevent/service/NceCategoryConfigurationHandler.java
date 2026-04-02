@@ -15,6 +15,7 @@ import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Configuration handler for NCE (Non-Conforming Event) categories. Loads NCE
@@ -50,6 +51,7 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
     }
 
     @Override
+    @Transactional
     public void processConfiguration(InputStream inputStream, String fileName) throws Exception {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
 
@@ -98,8 +100,6 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             }
         }
 
-        LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
-                "Successfully loaded " + processedCount + " NCE categories from " + fileName);
     }
 
     private String[] parseCsvLine(String line) {
@@ -146,7 +146,6 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
         String active = getValueOrEmpty(values, activeIndex);
 
         if (name.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing name");
             return false;
         }
 
@@ -157,7 +156,6 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             // Update existing category
             updateCategory(existing, displayKey, active, values, localeColumnIndexes);
             nceCategoryService.update(existing);
-            LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine", "Updated NCE category: " + name);
         } else {
             // Create new NCE category with localization
             Localization localization = createLocalization(name, values, localeColumnIndexes);
@@ -170,7 +168,6 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             category.setSysUserId("1");
 
             nceCategoryService.insert(category);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine", "Created NCE category: " + name);
         }
 
         return true;

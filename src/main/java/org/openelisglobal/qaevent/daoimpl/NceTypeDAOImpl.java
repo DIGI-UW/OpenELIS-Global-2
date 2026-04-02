@@ -1,8 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -22,31 +21,27 @@ public class NceTypeDAOImpl extends BaseDAOImpl<NceType, Integer> implements Nce
     @Override
     @Transactional(readOnly = true)
     public List<NceType> getAllNceType() throws LIMSRuntimeException {
-        List<NceType> list;
         try {
             String sql = "from NceType nt order by nt.id";
-            Query<NceType> query = entityManager.unwrap(Session.class).createQuery(sql, NceType.class);
-            list = query.list();
+            TypedQuery<NceType> query = entityManager.createQuery(sql, NceType.class);
+            return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in NceCategory getAllNceType()", e);
+            throw new LIMSRuntimeException("Error in NceType getAllNceType()", e);
         }
-        return list;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<NceType> getNceTypesByCategoryId(Integer categoryId) throws LIMSRuntimeException {
-        List<NceType> list;
         try {
             String sql = "from NceType nt where nt.categoryId = :categoryId order by nt.id";
-            Query<NceType> query = entityManager.unwrap(Session.class).createQuery(sql, NceType.class);
+            TypedQuery<NceType> query = entityManager.createQuery(sql, NceType.class);
             query.setParameter("categoryId", categoryId);
-            list = query.list();
+            return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in NceType getNceTypesByCategoryId()", e);
         }
-        return list;
     }
 }

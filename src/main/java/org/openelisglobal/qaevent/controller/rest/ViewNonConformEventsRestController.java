@@ -5,20 +5,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
-import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
-import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.qaevent.worker.NonConformingEventWorker;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -82,8 +78,8 @@ public class ViewNonConformEventsRestController extends BaseRestController {
         NonConformingEventForm response = new NonConformingEventForm();
 
         response.setnceEventsSearchResults(searchResults);
-        response.setNceCategories(getNceCategoriesAsIdValuePairs());
-        response.setNceTypes(getNceTypesAsIdValuePairs());
+        response.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
+        response.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
         response.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         response.setSeverityConsequencesList(
@@ -122,42 +118,5 @@ public class ViewNonConformEventsRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An error occurred while processing the request." + e);
         }
-    }
-
-    private List<IdValuePair> getNceCategoriesAsIdValuePairs() {
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getNceCategoriesAsIdValuePairs", "Fetching NCE categories");
-        List<IdValuePair> result = new ArrayList<>();
-        List<NceCategory> categories = nceCategoryService.getAllNceCategories();
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getNceCategoriesAsIdValuePairs",
-                "Found " + categories.size() + " categories");
-        for (NceCategory cat : categories) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "getNceCategoriesAsIdValuePairs",
-                    "Category: id=" + cat.getId() + ", name=" + cat.getName() + ", localizedName="
-                            + cat.getLocalizedName() + ", active=" + cat.getActive());
-            Boolean active = cat.getActive();
-            if (active == null || Boolean.TRUE.equals(active)) {
-                result.add(new IdValuePair(cat.getId() != null ? String.valueOf(cat.getId()) : "",
-                        cat.getLocalizedName()));
-            }
-        }
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getNceCategoriesAsIdValuePairs",
-                "Returning " + result.size() + " active categories");
-        return result;
-    }
-
-    private List<IdValuePair> getNceTypesAsIdValuePairs() {
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getNceTypesAsIdValuePairs", "Fetching NCE types");
-        List<IdValuePair> result = new ArrayList<>();
-        List<NceType> types = nceTypeService.getAllNceTypes();
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getNceTypesAsIdValuePairs",
-                "Found " + types.size() + " types");
-        for (NceType type : types) {
-            if (type.getActive() == null || Boolean.TRUE.equals(type.getActive())) {
-                result.add(new IdValuePair(String.valueOf(type.getId()), type.getLocalizedName()));
-            }
-        }
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getNceTypesAsIdValuePairs",
-                "Returning " + result.size() + " active types");
-        return result;
     }
 }

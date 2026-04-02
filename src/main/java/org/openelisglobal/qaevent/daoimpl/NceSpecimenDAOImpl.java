@@ -1,8 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -21,28 +20,23 @@ public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, Integer> implem
 
     @Override
     public List<NceSpecimen> getSpecimenByNceId(Integer nceId) throws LIMSRuntimeException {
-        List<NceSpecimen> list;
         try {
-            String sql = "from NceSpecimen ns where ns.nceId=:nceId ";
-            Query<NceSpecimen> query = entityManager.unwrap(Session.class).createQuery(sql, NceSpecimen.class);
+            String sql = "from NceSpecimen ns where ns.nceId = :nceId";
+            TypedQuery<NceSpecimen> query = entityManager.createQuery(sql, NceSpecimen.class);
             query.setParameter("nceId", nceId);
-            list = query.list();
+            return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in NceSpecimen getSpecimenByNceId(Integer nceId)", e);
         }
-        return list;
     }
 
     @Override
     public List<NceSpecimen> getSpecimenBySampleId(Integer sampleId) {
-        List<NceSpecimen> list;
-        String sql = "from NceSpecimen ns where ns.sampleItemId=:sampleId ";
-        Query<NceSpecimen> query = entityManager.unwrap(Session.class).createQuery(sql, NceSpecimen.class);
+        String sql = "from NceSpecimen ns where ns.sampleItemId = :sampleId";
+        TypedQuery<NceSpecimen> query = entityManager.createQuery(sql, NceSpecimen.class);
         query.setParameter("sampleId", sampleId);
-        list = query.list();
-
-        return list;
+        return query.getResultList();
     }
 
     @Override
@@ -50,10 +44,10 @@ public class NceSpecimenDAOImpl extends BaseDAOImpl<NceSpecimen, Integer> implem
     public boolean existsByNceIdAndSampleItemId(Integer nceId, Integer sampleItemId) {
         try {
             String sql = "SELECT COUNT(*) FROM NceSpecimen ns WHERE ns.nceId = :nceId AND ns.sampleItemId = :sampleItemId";
-            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            TypedQuery<Long> query = entityManager.createQuery(sql, Long.class);
             query.setParameter("nceId", nceId);
             query.setParameter("sampleItemId", sampleItemId);
-            Long count = query.uniqueResult();
+            Long count = query.getSingleResult();
             return count != null && count > 0;
         } catch (RuntimeException e) {
             LogEvent.logError(e);

@@ -141,34 +141,6 @@
     </changeSet>
 
     <!-- ================================================================== -->
-    <!-- NCE seed data is managed via CSV configuration - these are no-ops  -->
-    <!-- ================================================================== -->
-    <changeSet author="reagan-meant" id="nce-005-seed-nce-category">
-        <comment>SKIP - NCE categories are seeded via CSV configuration</comment>
-        <empty/>
-    </changeSet>
-
-    <changeSet author="reagan-meant" id="nce-006-seed-nce-type-preanalytical">
-        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
-        <empty/>
-    </changeSet>
-
-    <changeSet author="reagan-meant" id="nce-007-seed-nce-type-analytical">
-        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
-        <empty/>
-    </changeSet>
-
-    <changeSet author="reagan-meant" id="nce-008-seed-nce-type-postanalytical">
-        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
-        <empty/>
-    </changeSet>
-
-    <changeSet author="reagan-meant" id="nce-009-seed-nce-type-administrative">
-        <comment>SKIP - NCE types are seeded via CSV configuration</comment>
-        <empty/>
-    </changeSet>
-
-    <!-- ================================================================== -->
     <!-- Add reference table entries for new tables                         -->
     <!-- ================================================================== -->
     <changeSet author="reagan-meant" id="nce-010-reference-tables">

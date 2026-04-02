@@ -1,9 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
-import java.util.ArrayList;
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -23,18 +21,14 @@ public class NceActionLogDAOImpl extends BaseDAOImpl<NceActionLog, Integer> impl
     @Override
     @Transactional(readOnly = true)
     public List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException {
-        List<NceActionLog> list = new ArrayList<>();
         try {
-            String sqlString = "from NceActionLog nc where nc.ncEventId = :param";
-
-            Query<NceActionLog> query = entityManager.unwrap(Session.class).createQuery(sqlString, NceActionLog.class);
-            query.setParameter("param", nceId);
-
-            list = query.list();
-            return list;
-        } catch (RuntimeException exception) {
-            LogEvent.logError(exception);
-            throw new LIMSRuntimeException("Error in NceActionLog getNceActionLogByNceId(Integer nceId)", exception);
+            String sql = "from NceActionLog nc where nc.ncEventId = :nceId";
+            TypedQuery<NceActionLog> query = entityManager.createQuery(sql, NceActionLog.class);
+            query.setParameter("nceId", nceId);
+            return query.getResultList();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in NceActionLog getNceActionLogByNceId(Integer nceId)", e);
         }
     }
 }

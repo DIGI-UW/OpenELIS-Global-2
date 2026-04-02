@@ -13,15 +13,12 @@ import org.dom4j.Element;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.dictionary.service.DictionaryService;
-import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
-import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceActionLogService;
+import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
+import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceActionLog;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
@@ -44,13 +41,11 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     @Autowired
     private SampleItemService sampleItemService;
     @Autowired
-    private DictionaryService dictionaryService;
-    @Autowired
-    private DictionaryCategoryService dictionaryCategoryService;
-    @Autowired
     private NceActionLogService nceActionLogService;
-
-    private static final String NCE_CATEGORY_PREFIX = "nce_";
+    @Autowired
+    private NceCategoryService nceCategoryService;
+    @Autowired
+    private NceTypeService nceTypeService;
 
     @Override
     public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber) {
@@ -184,8 +179,8 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     @Override
     public void initFormForFollowUp(String nceNumber, NonConformingEventForm form)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        form.setNceCategories(getNceCategoriesAsIdValuePairs());
-        form.setNceTypes(getNceTypesAsIdValuePairs());
+        form.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
+        form.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
         form.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         form.setSeverityConsequencesList(
@@ -348,40 +343,5 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             return true;
         }
         return false;
-    }
-
-    /**
-     * Get NCE categories from dictionary_category table. Categories are
-     * dictionary_category rows with local_abbrev starting with "nce_".
-     */
-    private List<IdValuePair> getNceCategoriesAsIdValuePairs() {
-        List<IdValuePair> result = new ArrayList<>();
-        List<DictionaryCategory> allCategories = dictionaryCategoryService.getAll();
-        for (DictionaryCategory cat : allCategories) {
-            if (cat.getLocalAbbreviation() != null && cat.getLocalAbbreviation().startsWith(NCE_CATEGORY_PREFIX)) {
-                result.add(new IdValuePair(cat.getId(), cat.getCategoryName()));
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Get NCE types from dictionary table for all NCE categories. Types are
-     * dictionary entries belonging to nce_* dictionary categories.
-     */
-    private List<IdValuePair> getNceTypesAsIdValuePairs() {
-        List<IdValuePair> result = new ArrayList<>();
-        List<DictionaryCategory> allCategories = dictionaryCategoryService.getAll();
-        for (DictionaryCategory cat : allCategories) {
-            if (cat.getLocalAbbreviation() != null && cat.getLocalAbbreviation().startsWith(NCE_CATEGORY_PREFIX)) {
-                List<Dictionary> types = dictionaryService.getDictionaryEntriesByCategoryId(cat.getId());
-                for (Dictionary dict : types) {
-                    if ("Y".equals(dict.getIsActive())) {
-                        result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
-                    }
-                }
-            }
-        }
-        return result;
     }
 }

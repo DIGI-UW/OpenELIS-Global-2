@@ -1,8 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
+import jakarta.persistence.TypedQuery;
 import java.util.List;
-import org.hibernate.Session;
-import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
@@ -26,9 +25,9 @@ public class NceAttachmentDAOImpl extends BaseDAOImpl<NceAttachment, Integer> im
     public List<NceAttachment> findByNceId(Integer nceId) {
         try {
             String sql = "from NceAttachment na where na.nceId = :nceId order by na.uploadedDate desc";
-            Query<NceAttachment> query = entityManager.unwrap(Session.class).createQuery(sql, NceAttachment.class);
+            TypedQuery<NceAttachment> query = entityManager.createQuery(sql, NceAttachment.class);
             query.setParameter("nceId", nceId);
-            return query.list();
+            return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in NceAttachmentDAO findByNceId()", e);
@@ -39,9 +38,7 @@ public class NceAttachmentDAOImpl extends BaseDAOImpl<NceAttachment, Integer> im
     public void deleteByNceId(Integer nceId) {
         try {
             String sql = "delete from NceAttachment na where na.nceId = :nceId";
-            Query<?> query = entityManager.unwrap(Session.class).createQuery(sql);
-            query.setParameter("nceId", nceId);
-            query.executeUpdate();
+            entityManager.createQuery(sql).setParameter("nceId", nceId).executeUpdate();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in NceAttachmentDAO deleteByNceId()", e);
@@ -52,9 +49,9 @@ public class NceAttachmentDAOImpl extends BaseDAOImpl<NceAttachment, Integer> im
     public int countByNceId(Integer nceId) {
         try {
             String sql = "select count(*) from NceAttachment na where na.nceId = :nceId";
-            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            TypedQuery<Long> query = entityManager.createQuery(sql, Long.class);
             query.setParameter("nceId", nceId);
-            Long count = query.uniqueResult();
+            Long count = query.getSingleResult();
             return count != null ? count.intValue() : 0;
         } catch (RuntimeException e) {
             LogEvent.logError(e);

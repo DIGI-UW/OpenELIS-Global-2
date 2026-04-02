@@ -105,24 +105,4 @@ public class DictionaryCategoryDAOImpl extends BaseDAOImpl<DictionaryCategory, S
         return null;
     }
 
-    @Override
-    public DictionaryCategory getDictionaryCategoryByLocalAbbrev(String localAbbrev) throws LIMSRuntimeException {
-
-        String sql = "from DictionaryCategory dc where dc.localAbbreviation = :localAbbrev";
-        try {
-            Query<DictionaryCategory> query = entityManager.unwrap(Session.class).createQuery(sql,
-                    DictionaryCategory.class);
-            query.setParameter("localAbbrev", localAbbrev);
-
-            List<DictionaryCategory> categoryList = query.list();
-
-            if (categoryList.size() > 0) {
-                return categoryList.get(0);
-            }
-        } catch (RuntimeException e) {
-            handleException(e, "getDictionaryCategoryByLocalAbbrev");
-        }
-
-        return null;
-    }
 }

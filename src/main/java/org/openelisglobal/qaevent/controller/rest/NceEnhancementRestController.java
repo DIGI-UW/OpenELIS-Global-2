@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
@@ -63,8 +62,6 @@ public class NceEnhancementRestController extends BaseRestController {
 
     @GetMapping(value = "/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getDashboardData() {
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getDashboardData", "Fetching NCE dashboard data");
-
         List<NcEvent> allEvents = ncEventService.getAll();
         List<NceDashboardItemDTO> nceList = new ArrayList<>();
 
@@ -118,7 +115,6 @@ public class NceEnhancementRestController extends BaseRestController {
 
     @GetMapping(value = "/categories", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<NceCategoryDTO>> getCategories() {
-        LogEvent.logInfo(this.getClass().getSimpleName(), "getCategories", "Fetching NCE categories");
         List<NceCategory> categories = nceCategoryService.getAllNceCategories();
 
         List<NceCategoryDTO> result = categories.stream()

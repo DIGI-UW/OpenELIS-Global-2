@@ -12,16 +12,11 @@ import org.openelisglobal.common.rest.bean.NceSampleItemInfo;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
-import org.openelisglobal.dictionary.service.DictionaryService;
-import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
-import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
-import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.worker.NonConformingEventWorker;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -49,10 +44,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
     private final SampleItemService sampleItemService;
     private final SearchResultsService searchResultsService;
     private final NonConformingEventWorker nonConformingEventWorker;
-    private final DictionaryService dictionaryService;
-    private final DictionaryCategoryService dictionaryCategoryService;
     private final NceCategoryService nceCategoryService;
-    private final NceTypeService nceTypeService;
     private final RequesterService requesterService;
     private final NceAttachmentService nceAttachmentService;
 
@@ -66,17 +58,13 @@ public class ReportNonConformEventsRestController extends BaseRestController {
 
     public ReportNonConformEventsRestController(SampleService sampleService, SampleItemService sampleItemService,
             SearchResultsService searchResultsService, NonConformingEventWorker nonConformingEventWorker,
-            DictionaryService dictionaryService, DictionaryCategoryService dictionaryCategoryService,
-            NceCategoryService nceCategoryService, NceTypeService nceTypeService, RequesterService requesterService,
+            NceCategoryService nceCategoryService, RequesterService requesterService,
             NceAttachmentService nceAttachmentService) {
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
         this.searchResultsService = searchResultsService;
         this.nonConformingEventWorker = nonConformingEventWorker;
-        this.dictionaryService = dictionaryService;
-        this.dictionaryCategoryService = dictionaryCategoryService;
         this.nceCategoryService = nceCategoryService;
-        this.nceTypeService = nceTypeService;
         this.requesterService = requesterService;
         this.nceAttachmentService = nceAttachmentService;
     }
@@ -122,7 +110,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             eventData.setLabOrderNumber(params.get("labOrderNumber"));
             eventData.setSpecimenId(params.get("specimenId"));
             eventData.setCurrentUserId(params.get("currentUserId"));
-            eventData.setNceCategories(getNceCategoriesAsIdValuePairs());
+            eventData.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
 
             SystemUser systemUser = systemUserService.getUserById(getSysUserId(request));
             eventData.setName(systemUser.getFirstName() + " " + systemUser.getLastName());
@@ -153,7 +141,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             requesterService.setSampleId(sample == null ? null : sample.getId());
             eventData.setSite(requesterService.getReferringSiteName());
             eventData.setPrescriberName(requesterService.getRequesterLastFirstName());
-            eventData.setNceCategories(getNceCategoriesAsIdValuePairs());
+            eventData.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
             eventData.setReportDate(DateUtil.formatDateAsText(Calendar.getInstance().getTime()));
 
             return ResponseEntity.ok(eventData);
@@ -166,49 +154,26 @@ public class ReportNonConformEventsRestController extends BaseRestController {
     @PostMapping(value = "/rest/reportnonconformingevent", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form,
             HttpServletRequest request) {
-        try {
-            String sysUserId = getSysUserId(request);
-
-            // If no ID, create a new NCE first
-            if (form.getId() == null || form.getId().isEmpty()) {
-                String nceNumber = form.getNceNumber();
-                if (nceNumber == null || nceNumber.isEmpty()) {
-                    nceNumber = nceNumberGeneratorService.generateNceNumber();
-                }
-
-                List<String> specimens = new ArrayList<>();
-                if (form.getSpecimenId() != null && !form.getSpecimenId().isEmpty()) {
-                    specimens = Arrays.asList(form.getSpecimenId().split(","));
-                }
-
-                NcEvent newEvent = nonConformingEventWorker.create(form.getLabOrderNumber(), specimens, sysUserId,
-                        nceNumber);
-                form.setId(String.valueOf(newEvent.getId()));
-            }
-
-            form.setCurrentUserId(sysUserId);
-            boolean updated = nonConformingEventWorker.update(form);
-            if (updated) {
-                return ResponseEntity.ok().body(Map.of("success", true));
-            } else {
-                return ResponseEntity.ok().body(Map.of("success", false));
-            }
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", e.getMessage()));
-        }
+        return saveNonConformingEvent(form, null, request);
     }
 
     @PostMapping(value = "/rest/reportnonconformingevent/with-attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> postReportNonConformingEventWithAttachments(@RequestPart("nceData") String nceDataJson,
             @RequestPart(value = "files", required = false) List<MultipartFile> files, HttpServletRequest request) {
         try {
+            NonConformingEventForm form = objectMapper.readValue(nceDataJson, NonConformingEventForm.class);
+            return saveNonConformingEvent(form, files, request);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    private ResponseEntity<?> saveNonConformingEvent(NonConformingEventForm form, List<MultipartFile> files,
+            HttpServletRequest request) {
+        try {
             String sysUserId = getSysUserId(request);
 
-            // Parse the JSON form data
-            NonConformingEventForm form = objectMapper.readValue(nceDataJson, NonConformingEventForm.class);
-
-            // If no ID, create a new NCE first
             if (form.getId() == null || form.getId().isEmpty()) {
                 String nceNumber = form.getNceNumber();
                 if (nceNumber == null || nceNumber.isEmpty()) {
@@ -226,14 +191,11 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             }
 
             form.setCurrentUserId(sysUserId);
-
-            // Update the NCE event
             boolean updated = nonConformingEventWorker.update(form);
             if (!updated) {
                 return ResponseEntity.ok().body(Map.of("success", false));
             }
 
-            // Upload attachments if any
             if (files != null && !files.isEmpty()) {
                 Integer userId = Integer.valueOf(sysUserId);
                 Integer nceId = Integer.valueOf(form.getId());
@@ -274,21 +236,5 @@ public class ReportNonConformEventsRestController extends BaseRestController {
 
     private Sample getSampleForLabNumber(String labNumber) throws LIMSInvalidConfigurationException {
         return sampleService.getSampleByAccessionNumber(labNumber);
-    }
-
-    /**
-     * Get NCE categories from nce_category table.
-     */
-    private List<IdValuePair> getNceCategoriesAsIdValuePairs() {
-        List<IdValuePair> result = new ArrayList<>();
-        List<NceCategory> categories = nceCategoryService.getAllNceCategories();
-        for (NceCategory cat : categories) {
-            Boolean active = cat.getActive();
-            if (active == null || Boolean.TRUE.equals(active)) {
-                result.add(new IdValuePair(cat.getId() != null ? String.valueOf(cat.getId()) : "",
-                        cat.getLocalizedName()));
-            }
-        }
-        return result;
     }
 }
