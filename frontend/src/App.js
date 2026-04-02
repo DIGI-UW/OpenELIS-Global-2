@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
-import { IntlProvider } from "react-intl";
+import { useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
-import Layout from "./components/layout/Layout";
+import { IntlProvider } from "react-intl";
+import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import "./App.css";
+import RedirectOldUI from "./RedirectOldUI";
+import UserSessionDetailsContext from "./UserSessionDetailsContext";
+import { Admin } from "./components";
+import ChangePassword from "./components/ChangePassword.js";
 import Home from "./components/Home";
+import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
@@ -14,6 +19,10 @@ import MyProgramsPage from "./components/eqa/MyProgramsPage";
 import EQAParticipantsPage from "./components/eqa/EQAParticipantsPage";
 import EQAResultsPage from "./components/eqa/EQAResultsPage";
 import InventoryManagement from "./components/inventory/InventoryManagement";
+import ShipmentDashboard from "./components/shipment/ShipmentDashboard";
+import BoxCreation from "./components/shipment/BoxCreation";
+import BoxDetails from "./components/shipment/BoxDetails";
+import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
 import AnalyzersPage from "./pages/AnalyzersPage";
@@ -24,17 +33,13 @@ import AnalyzerTypesPage from "./pages/AnalyzerTypesPage";
 import QCDashboardPlaceholder from "./pages/analyzers/QCDashboardPlaceholder";
 import QCAlertsPlaceholder from "./pages/analyzers/QCAlertsPlaceholder";
 import CorrectiveActionsPlaceholder from "./pages/analyzers/CorrectiveActionsPlaceholder";
-import { Admin } from "./components";
 import ResultSearch from "./components/resultPage/ResultSearch";
-import UserSessionDetailsContext from "./UserSessionDetailsContext";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
-import "./App.css";
 import { languages, languageMessages } from "./languages";
 import config from "./config.json";
 import { SecureRoute } from "./components/security";
 import "./index.scss";
-import RedirectOldUI from "./RedirectOldUI";
 import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
 import PatientMerge from "./components/patient/PatientMerge";
@@ -65,7 +70,6 @@ import NonConformIndex from "./components/nonconform/index";
 import SampleBatchEntrySetup from "./components/batchOrderEntry/SampleBatchEntrySetup.js";
 import AuditTrailReportIndex from "./components/reports/auditTrailReport/Index.js";
 import ReferredOutTests from "./components/resultPage/resultsReferredOut/ReferredOutTests.js";
-import ChangePassword from "./components/ChangePassword.js";
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm.js";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder.js";
@@ -73,6 +77,8 @@ import FreezerMonitoringDashboard from "./components/coldStorage/FreezerMonitori
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
+import ShipmentReport from "./components/shipment/ShipmentReport";
+import ShipmentSettings from "./components/shipment/ShipmentSettings";
 
 export default function App() {
   const defaultLocale =
@@ -578,6 +584,47 @@ export default function App() {
                   exact
                   component={() => <InventoryManagement />}
                   role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment"
+                  exact
+                  component={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/create-box"
+                  exact
+                  component={() => <BoxCreation />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/box/:boxId"
+                  exact
+                  component={BoxDetails}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/receive"
+                  exact
+                  component={() => <ReceptionWorkflow />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/reports"
+                  exact
+                  component={() => <ShipmentReport />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/settings"
+                  exact
+                  component={() => <ShipmentSettings />}
+                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/SampleShipment/:tab"
+                  component={() => <ShipmentDashboard />}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/SampleManagement"
