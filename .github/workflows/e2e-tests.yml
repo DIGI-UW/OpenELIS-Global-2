@@ -1,0 +1,242 @@
+# Runs non-fork E2E tests after the build workflow completes.
+# The workflow_run graph stays behind the stable `03 Checkpoint - E2E` status so
+# the PR-facing checkpoint can link directly to the authoritative run.
+name: E2E / Tests
+
+on:
+  workflow_run:
+    workflows: ["03 - E2E"]
+    types: [completed]
+
+concurrency:
+  group: e2e-tests-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: E2E Context
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      is_fork: ${{ steps.context.outputs.is_fork }}
+      pr_number: ${{ steps.context.outputs.pr_number }}
+      checkout_ref: ${{ steps.context.outputs.checkout_ref }}
+      status_sha: ${{ steps.context.outputs.status_sha }}
+      build_run_id: ${{ steps.context.outputs.build_run_id }}
+      artifact_source_mode: ${{ steps.context.outputs.artifact_source_mode }}
+      artifact_map_kind: ${{ steps.context.outputs.artifact_map_kind }}
+      include_plugin_jars: ${{ steps.context.outputs.include_plugin_jars }}
+      checkpoint_context: ${{ steps.context.outputs.checkpoint_context }}
+    steps:
+      - name: Download build context artifact
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-build-context
+          path: /tmp/e2e-build-context
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Parse build context
+        id: context
+        run: |
+          if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
+            echo "No build context artifact — build likely failed."
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            echo "checkout_ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "status_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_source_mode=none" >> "$GITHUB_OUTPUT"
+            echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
+            echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
+            echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          IS_FORK="$(cat /tmp/e2e-build-context/is_fork 2>/dev/null || echo 'false')"
+          IMAGE_TRANSFER="$(cat /tmp/e2e-build-context/image_transfer 2>/dev/null || echo 'none')"
+          PR_NUMBER="$(cat /tmp/e2e-build-context/pr_number 2>/dev/null || echo '')"
+          HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
+          ARTIFACT_SOURCE_MODE="none"
+
+          if [ -z "$HEAD_SHA" ]; then
+            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
+          fi
+          if [ "$IMAGE_TRANSFER" = "ghcr" ]; then
+            ARTIFACT_SOURCE_MODE="cross_run"
+          fi
+
+          echo "is_fork=$IS_FORK" >> "$GITHUB_OUTPUT"
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "checkout_ref=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "status_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+          echo "artifact_source_mode=$ARTIFACT_SOURCE_MODE" >> "$GITHUB_OUTPUT"
+          echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
+          echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
+          echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
+
+          echo "Build context: is_fork=$IS_FORK artifact_source_mode=$ARTIFACT_SOURCE_MODE pr=#$PR_NUMBER checkout_ref=$HEAD_SHA"
+
+  set-pending-status:
+    name: Set Pending Status
+    needs: setup
+    if: needs.setup.outputs.status_sha != ''
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post checkpoint status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.setup.outputs.status_sha }}';
+            const contextName = '03 Checkpoint - E2E';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
+            const state = isFork ? 'success' : 'pending';
+            const description = isFork
+              ? 'Not applicable - fork PRs use 03 Checkpoint - E2E - Fork PR'
+              : 'Playwright, Cypress, and analyzer-harness suites are running...';
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: contextName,
+              description,
+              target_url: runUrl
+            });
+
+  authoritative-executor:
+    name: Authoritative E2E Executor
+    needs: setup
+    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode == 'cross_run'
+    uses: ./.github/workflows/e2e-authoritative-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      issues: write
+      pull-requests: write
+    with:
+      checkout_ref: ${{ needs.setup.outputs.checkout_ref }}
+      status_sha: ${{ needs.setup.outputs.status_sha }}
+      build_run_id: ${{ needs.setup.outputs.build_run_id }}
+      artifact_source_mode: ${{ needs.setup.outputs.artifact_source_mode }}
+      artifact_map_kind: ${{ needs.setup.outputs.artifact_map_kind }}
+      include_plugin_jars: ${{ needs.setup.outputs.include_plugin_jars }}
+      is_fork: ${{ needs.setup.outputs.is_fork }}
+      pr_number: ${{ needs.setup.outputs.pr_number }}
+      checkpoint_context: ${{ needs.setup.outputs.checkpoint_context }}
+      test_user: ${{ vars.TEST_USER || 'admin' }}
+      test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+
+  fork-path-not-applicable:
+    name: Fork Path Not Applicable
+    needs: setup
+    if: needs.setup.outputs.is_fork == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize no-op path
+        run: |
+          echo "Fork PR detected; this wrapper is not authoritative."
+          {
+            echo "## 03 Checkpoint - E2E"
+            echo ""
+            echo "Status: \`not_applicable\`"
+            echo "Reason: fork PRs are handled by \`03 Checkpoint - E2E - Fork PR\`."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  missing-image-transfer:
+    name: Missing Image Transfer
+    needs: setup
+    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report missing transfer
+        run: |
+          echo "No GHCR image transfer available for non-fork E2E."
+          exit 1
+
+  e2e-gate:
+    name: E2E Gate
+    if: always()
+    needs:
+      [
+        setup,
+        authoritative-executor,
+        fork-path-not-applicable,
+        missing-image-transfer,
+      ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Enforce non-fork E2E results or report fork delegation
+        run: |
+          if [[ "${{ needs.setup.outputs.is_fork }}" == "true" ]]; then
+            if [[ "${{ needs.fork-path-not-applicable.result }}" != "success" ]]; then
+              echo "Fork no-op path failed: ${{ needs.fork-path-not-applicable.result }}"
+              exit 1
+            fi
+            exit 0
+          fi
+          if [[ "${{ needs.setup.outputs.artifact_source_mode }}" != "cross_run" ]]; then
+            echo "No GHCR image transfer available for non-fork E2E."
+            exit 1
+          fi
+          if [[ "${{ needs.authoritative-executor.result }}" != "success" ]]; then
+            echo "Authoritative executor failed: ${{ needs.authoritative-executor.result }}"
+            exit 1
+          fi
+          echo "Non-fork E2E gate passed."
+
+  report-status:
+    name: Report Status
+    if: always() && needs.setup.outputs.status_sha != ''
+    needs: [setup, set-pending-status, e2e-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Update checkpoint status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.setup.outputs.status_sha }}';
+            const contextName = '03 Checkpoint - E2E';
+            const gateResult = '${{ needs.e2e-gate.result }}';
+            const artifactSourceMode = '${{ needs.setup.outputs.artifact_source_mode }}';
+            const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            let state, description;
+            if (isFork) {
+              state = 'success';
+              description = 'Not applicable - fork PRs use 03 Checkpoint - E2E - Fork PR';
+            } else if (artifactSourceMode !== 'cross_run') {
+              state = 'failure';
+              description = 'E2E build failed - no Docker images were produced';
+            } else if (gateResult === 'success') {
+              state = 'success';
+              description = 'All non-fork Playwright, Cypress, and analyzer-harness suites passed';
+            } else {
+              state = 'failure';
+              description = 'One or more non-fork E2E suites failed';
+            }
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: contextName,
+              description,
+              target_url: runUrl
+            });

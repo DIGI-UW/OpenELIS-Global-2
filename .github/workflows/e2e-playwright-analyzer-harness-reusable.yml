@@ -1,0 +1,565 @@
+# Invoked by e2e-playwright.yml (every PR) and e2e-playwright-analyzer-harness-manual.yml (workflow_dispatch).
+# When called from e2e-playwright.yml, shared-build has already run and published
+# e2e-image-map + e2e-plugin-jars artifacts. This workflow consumes those.
+name: E2E / Playwright / Analyzer Harness (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      build_run_id:
+        description: "Run ID of the build workflow (for cross-run artifact download). Empty = same run."
+        required: false
+        type: string
+        default: ""
+      is_fork:
+        description: "Whether this is a fork PR (artifacts in same run from fork-rebuild)"
+        required: false
+        type: string
+        default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures harness uses PR's compose/test files, not develop)"
+        required: false
+        type: string
+        default: ""
+      test_user:
+        description: "CI login user for E2E harness execution"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password for E2E harness execution"
+        required: false
+        type: string
+        default: ""
+      playwright_project:
+        description: "Harness Playwright project to run (normal PR CI: harness-demo; optional: harness-foundational, harness-demo-video, harness-manual-only)"
+        required: false
+        type: string
+        default: "harness-demo"
+      test_file:
+        description: "Optional single Playwright spec path to run within the selected project"
+        required: false
+        type: string
+        default: ""
+      pr_number:
+        description: "Optional PR number for evidence comment updates on workflow_dispatch runs"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  packages: read
+  actions: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  demo-shards:
+    name: ${{ matrix.job_name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON((inputs.playwright_project == 'harness-demo-video' || inputs.playwright_project == 'harness-manual-only') && '[{"job_name":"Harness Single","shard_index":1,"shard_total":1,"artifact_suffix":"single"}]' || '[{"job_name":"Demo 1/2","shard_index":1,"shard_total":2,"artifact_suffix":"demo-1"},{"job_name":"Demo 2/2","shard_index":2,"shard_total":2,"artifact_suffix":"demo-2"}]') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.head_sha || github.sha }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
+        working-directory: frontend
+
+      - name: Restore Playwright browser cache
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Prepare .env
+        run: cp .env.example .env
+
+      - name: Download plugin jars from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download plugin jars from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
+
+      - name: Download image map from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map
+          path: /tmp/e2e-image-map
+
+      - name: Restore plugin jars for runtime loading
+        run: |
+          mkdir -p volume/plugins
+          rm -rf volume/plugins/*
+          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
+          ls -lah volume/plugins
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: E2E_IMAGE_MAP_FILE=/tmp/e2e-image-map/e2e-image-map.txt bash scripts/e2e/pull-retag-e2e-images.sh
+
+      - name: Create analyzer import bind mount directories
+        run: |
+          mkdir -p projects/analyzer-harness/volume/analyzer-imports
+          # Pre-create shared and demo-specific incoming/ dirs so the bridge
+          # doesn't create bind-mounted folders as root during CI runs.
+          for slug in \
+            quantstudio-5 \
+            quantstudio-7 \
+            fluorocycler-xt \
+            demo--quantstudio-5 \
+            demo--quantstudio-7 \
+            demo--fluorocycler-xt; do
+            mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
+          done
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+
+      - name: Start analyzer harness stack (no rebuild)
+        run: docker compose -f build.docker-compose.yml -f projects/analyzer-harness/docker-compose.base.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900
+
+      - name: Validate cert material in shared volume mounts
+        run: |
+          docker exec openelisglobal-webapp sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+          docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+
+      - name: Wait for OpenELIS, bridge, and simulator readiness
+        env:
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          TIMEOUT_SECONDS: "240"
+        run: bash scripts/e2e/wait-for-analyzer-harness-readiness.sh
+
+      - name: "Load test fixtures (parity with local: foundational + analyzer types + cleanup + storage)"
+        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+
+      - name: Seed analyzers via REST API (profile-based test mappings + bridge registration)
+        run: bash projects/analyzer-harness/seed-analyzers.sh
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          DB_CONTAINER: openelisglobal-database
+
+      - name: Fix analyzer-imports permissions (bridge creates dirs as root)
+        run: |
+          # Bridge creates incoming/ dirs asynchronously after seed registration.
+          # Wait for all expected directories to appear, then fix permissions.
+          for dir in \
+            quantstudio-5 \
+            quantstudio-7 \
+            fluorocycler-xt \
+            demo--quantstudio-5 \
+            demo--quantstudio-7 \
+            demo--fluorocycler-xt; do
+            timeout 120 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
+            echo "Found: $dir/incoming"
+          done
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+
+      - name: Verify analyzer test mappings exist (prevent unmapped-result race)
+        run: |
+          REQUIRED_ANALYZERS=(
+            "Cepheid GeneXpert (ASTM Mode)"
+            "QuantStudio 5"
+            "QuantStudio 7"
+            "FluoroCycler XT"
+            "Mindray BC-5380"
+            "Mindray BS-200"
+            "Mindray BS-300"
+          )
+
+          MAX_ATTEMPTS=12
+          SLEEP_SECONDS=5
+          ATTEMPT=1
+
+          while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
+            echo "Mapping gate attempt ${ATTEMPT}/${MAX_ATTEMPTS}"
+            MISSING=0
+            for analyzer in "${REQUIRED_ANALYZERS[@]}"; do
+              MAPPINGS=$(docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A \
+                -c "SELECT COUNT(*) FROM clinlims.analyzer_test_map m JOIN clinlims.analyzer a ON a.id = m.analyzer_id WHERE a.name = '$analyzer';" \
+                2>/dev/null | tr -d '[:space:]' || echo 0)
+              MAPPINGS="${MAPPINGS:-0}"
+              echo "$analyzer: $MAPPINGS test mappings"
+              if [ "$MAPPINGS" = "0" ]; then
+                MISSING=1
+              fi
+            done
+
+            if [ "$MISSING" = "0" ]; then
+              echo "Analyzer mapping gate passed."
+              exit 0
+            fi
+
+            if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Mappings still missing; sleeping ${SLEEP_SECONDS}s..."
+              sleep "$SLEEP_SECONDS"
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          echo "::error::Analyzer mapping gate failed: one or more required analyzers still have 0 test mappings"
+          exit 1
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+
+      - name: Run analyzer Playwright project
+        run: |
+          case "${{ inputs.playwright_project }}" in
+            harness-demo|harness-foundational|harness-demo-video|harness-manual-only) ;;
+            *)
+              echo "::error::Unsupported Playwright project: ${{ inputs.playwright_project }}"
+              exit 1
+              ;;
+          esac
+
+          CMD=(npm run pw:test -- --project=${{ inputs.playwright_project }} --workers=1)
+
+          if [ "${{ matrix.shard_total }}" -gt "1" ]; then
+            CMD+=("--shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}")
+          fi
+
+          if [ -n "${{ inputs.test_file }}" ]; then
+            CMD+=("${{ inputs.test_file }}")
+          fi
+
+          printf 'Running command:'
+          printf ' %q' "${CMD[@]}"
+          printf '\n'
+          "${CMD[@]}"
+        working-directory: frontend
+        env:
+          CI: true
+          ANALYZER_HARNESS: "true"
+          BASE_URL: https://localhost
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          # Must match bridge.file.poll-interval-ms (CI override: 1000ms)
+          FILE_IMPORT_POLL_MS: "1000"
+          FILE_IMPORT_DROP_BUFFER_MS: "15000"
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-blob-report-${{ matrix.artifact_suffix }}
+          path: frontend/blob-report
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload shard test-results
+        if: ${{ !cancelled() && inputs.playwright_project == 'harness-demo-video' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-test-results-${{ matrix.artifact_suffix }}
+          path: frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-screenshots-demo-${{ matrix.shard_index }}
+          path: frontend/test-results/**/test-failed-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-traces-demo-${{ matrix.shard_index }}
+          path: frontend/test-results/**/trace.zip
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Extract application and Tomcat logs from container
+        if: failure()
+        run: |
+          mkdir -p /tmp/oe-logs /tmp/tomcat-logs
+          docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. /tmp/oe-logs/ 2>/dev/null || true
+          docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== Extracted files ==="
+          ls -la /tmp/oe-logs/ /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Errors ==="
+          find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== Tomcat Errors ==="
+          find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+        with:
+          tail: "2000"
+
+  merge-reports:
+    name: Report Merge
+    if: ${{ always() && !cancelled() }}
+    needs: [demo-shards]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Download blob reports from shard jobs
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-blob-reports
+          pattern: analyzer-blob-report-*
+          merge-multiple: true
+
+      - name: Download test-results from shard jobs
+        if: ${{ inputs.playwright_project == 'harness-demo-video' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-test-results
+          pattern: analyzer-test-results-*
+          merge-multiple: true
+
+      - name: Resolve Playwright version for report merge
+        id: playwright-version
+        working-directory: frontend
+        run: |
+          VERSION=$(node -e "const lock=require('./package-lock.json'); const pkg=require('./package.json'); const clean=(s)=>s?String(s).replace(/^[~^]/,''):''; const v=(lock.packages?.['node_modules/playwright']?.version)||(lock.packages?.['node_modules/@playwright/test']?.version)||clean(pkg.devDependencies?.['@playwright/test'])||clean(pkg.dependencies?.playwright); if(!v){console.error('Unable to resolve Playwright version for report merge'); process.exit(1);} process.stdout.write(v);")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Using Playwright version: $VERSION"
+
+      - name: Merge blob reports into HTML report when artifacts exist
+        run: |
+          if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            npx --yes playwright@${{ steps.playwright-version.outputs.version }} merge-reports --reporter html ./all-blob-reports
+          else
+            echo "No blob reports available; skipping merge."
+          fi
+        working-directory: frontend
+
+      - name: Upload merged HTML report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-report-html-attempt-${{ github.run_attempt }}
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Create CI video evidence bundle (HTML report + test-results)
+        if: ${{ always() && inputs.playwright_project == 'harness-demo-video' }}
+        working-directory: frontend
+        run: |
+          BUNDLE="analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}.zip"
+          INPUTS=()
+
+          if [ -d "playwright-report" ]; then
+            INPUTS+=("playwright-report")
+          fi
+          if [ -d "all-test-results" ]; then
+            INPUTS+=("all-test-results")
+          fi
+
+          if [ "${#INPUTS[@]}" -eq 0 ]; then
+            echo "No report/test-results directories found; skipping bundle."
+            exit 0
+          fi
+
+          zip -r "$BUNDLE" "${INPUTS[@]}"
+          echo "Created video evidence bundle: $BUNDLE"
+
+      - name: Upload CI video evidence bundle
+        if: ${{ always() && inputs.playwright_project == 'harness-demo-video' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}
+          path: frontend/analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}.zip
+          if-no-files-found: ignore
+          retention-days: 14
+
+  analyzer-e2e-gate:
+    name: Checkpoint
+    if: always()
+    needs: [demo-shards, merge-reports]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish analyzer evidence summary
+        if: ${{ always() }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          OVERALL_STATUS="✅ Ready for review"
+          if [[ "${{ needs.demo-shards.result }}" != "success" || "${{ needs.merge-reports.result }}" != "success" ]]; then
+            OVERALL_STATUS="❌ Needs attention"
+          fi
+          {
+            echo "## Analyzer Playwright PR Evidence"
+            echo ""
+            echo "**Status:** ${OVERALL_STATUS}"
+            echo ""
+            echo "### Quick links"
+            echo "- [Workflow run](${RUN_URL})"
+            echo "- [Artifacts](${RUN_URL}#artifacts)"
+            echo ""
+            echo "### Results"
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Playwright project | \`${{ inputs.playwright_project }}\` |"
+            echo "| Demo shards | \`${{ needs.demo-shards.result }}\` |"
+            echo "| Merge reports | \`${{ needs.merge-reports.result }}\` |"
+            echo ""
+            echo "### Artifacts"
+            echo "- HTML report: \`analyzer-playwright-report-html-attempt-${{ github.run_attempt }}\`"
+            if [[ "${{ inputs.playwright_project }}" == "harness-demo-video" ]]; then
+              echo "- Video evidence: \`analyzer-playwright-video-evidence-attempt-${{ github.run_attempt }}\`"
+            else
+              echo "- Video evidence: not requested for this run."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert PR evidence comment
+        if: ${{ always() && (github.event_name == 'pull_request' || inputs.pr_number != '') }}
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          DEMO_RESULT: ${{ needs.demo-shards.result }}
+          MERGE_RESULT: ${{ needs.merge-reports.result }}
+          PLAYWRIGHT_PROJECT: ${{ inputs.playwright_project }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        with:
+          script: |
+            const marker = '<!-- analyzer-playwright-evidence -->';
+            const prNumber = process.env.PR_NUMBER || context.payload.pull_request?.number;
+            if (!prNumber) {
+              core.info('No pull_request context found; skipping evidence comment.');
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const artifactsUrl = `${runUrl}#artifacts`;
+            const overallStatus = process.env.DEMO_RESULT === 'success' && process.env.MERGE_RESULT === 'success'
+              ? '✅ Ready for review'
+              : '❌ Needs attention';
+            const videoLine = process.env.PLAYWRIGHT_PROJECT === 'harness-demo-video'
+              ? `- Video evidence: \`analyzer-playwright-video-evidence-attempt-${process.env.RUN_ATTEMPT}\``
+              : '- Video evidence: not requested for this run.';
+            const body = [
+              marker,
+              '## Analyzer Playwright Evidence',
+              '',
+              `**Status:** ${overallStatus}`,
+              '',
+              '### Quick links',
+              `- [Workflow run](${runUrl})`,
+              `- [Artifacts](${artifactsUrl})`,
+              '',
+              '### Results',
+              '| Check | Result |',
+              '| --- | --- |',
+              `| Playwright project | \`${process.env.PLAYWRIGHT_PROJECT}\` |`,
+              `| Demo shards | \`${process.env.DEMO_RESULT}\` |`,
+              `| Merge reports | \`${process.env.MERGE_RESULT}\` |`,
+              '',
+              '### Artifacts',
+              `- HTML report: \`analyzer-playwright-report-html-attempt-${process.env.RUN_ATTEMPT}\``,
+              videoLine,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated evidence comment ${existing.id}`);
+            } else {
+              const created = await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info(`Created evidence comment ${created.data.id}`);
+            }
+
+      - name: Enforce shard, demo, and merge success
+        run: |
+          if [[ "${{ needs.demo-shards.result }}" != "success" ]]; then
+            echo "Harness demo shard jobs failed: ${{ needs.demo-shards.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then
+            echo "Merge reports job failed: ${{ needs.merge-reports.result }}"
+            exit 1
+          fi
+          echo "Analyzer E2E required gate passed."
