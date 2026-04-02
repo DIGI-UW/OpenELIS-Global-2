@@ -23,7 +23,7 @@ test.describe("OGC-284 labels UI", () => {
   });
 
   test("Generic sample order shows shared labels section", async ({ page }) => {
-    await page.goto("/GenericSample/Order");
+    await page.goto("/GenericSample/Order", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByTestId("labels-section-root")).toBeVisible();
     await expect(page.getByLabel(/order labels/i)).toBeVisible();
