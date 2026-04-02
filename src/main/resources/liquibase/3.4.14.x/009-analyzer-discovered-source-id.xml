@@ -11,4 +11,14 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="013-009-02" author="OGC-526">
+        <comment>Add UNREGISTERED_SOURCE to analyzer_error.error_type CHECK constraint</comment>
+        <sql>
+            ALTER TABLE clinlims.analyzer_error DROP CONSTRAINT IF EXISTS chk_error_type;
+            ALTER TABLE clinlims.analyzer_error
+            ADD CONSTRAINT chk_error_type
+            CHECK (error_type IN ('MAPPING', 'VALIDATION', 'TIMEOUT', 'PROTOCOL', 'CONNECTION', 'QC_MAPPING_INCOMPLETE', 'QC_SERVICE_UNAVAILABLE', 'UNREGISTERED_SOURCE'));
+        </sql>
+    </changeSet>
+
 </databaseChangeLog>

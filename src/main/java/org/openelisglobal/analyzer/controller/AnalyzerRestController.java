@@ -1434,57 +1434,50 @@ public class AnalyzerRestController extends BaseRestController {
     @PostMapping("/discovered-sources")
     public ResponseEntity<Map<String, Object>> reportDiscoveredSource(@RequestBody Map<String, String> body,
             HttpServletRequest request) {
-        try {
-            String sourceId = body.get("sourceId");
-            String protocol = body.get("protocol");
-            String protocolHint = body.get("protocolHint");
-            String transport = body.get("transport");
+        String sourceId = body.get("sourceId");
+        String protocol = body.get("protocol");
+        String protocolHint = body.get("protocolHint");
+        String transport = body.get("transport");
 
-            if (sourceId == null || sourceId.isBlank()) {
-                return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError("sourceId is required"));
-            }
-
-            // Idempotent: check for existing stub with same discoveredSourceId
-            List<Analyzer> all = analyzerService.getAll();
-            Optional<Analyzer> existing = all.stream().filter(a -> sourceId.equals(a.getDiscoveredSourceId()))
-                    .findFirst();
-            if (existing.isPresent()) {
-                Analyzer stub = existing.get();
-                Map<String, Object> response = new LinkedHashMap<>();
-                response.put("analyzerId", stub.getId());
-                response.put("status", stub.getStatus().name());
-                response.put("alreadyExists", true);
-                return ResponseEntity.ok(response);
-            }
-
-            // Create stub analyzer
-            String displayName = (protocolHint != null && !protocolHint.isBlank()) ? protocolHint
-                    : "Unknown Analyzer (" + sourceId + ")";
-            Analyzer stub = new Analyzer();
-            stub.setName(displayName);
-            stub.setStatus(AnalyzerStatus.PENDING_REGISTRATION);
-            stub.setDiscoveredSourceId(sourceId);
-            stub.setSysUserId("bridge-discovery");
-            String analyzerId = analyzerService.insert(stub);
-
-            // Create error dashboard entry for visibility
-            Analyzer created = analyzerService.get(analyzerId);
-            String errorMsg = String.format(
-                    "Unregistered source discovered: sourceId=%s, protocol=%s, transport=%s, hint=%s", sourceId,
-                    protocol, transport, protocolHint);
-            analyzerErrorService.createError(created, AnalyzerError.ErrorType.UNREGISTERED_SOURCE,
-                    AnalyzerError.Severity.WARNING, errorMsg, null);
-
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("analyzerId", analyzerId);
-            response.put("status", AnalyzerStatus.PENDING_REGISTRATION.name());
-            response.put("alreadyExists", false);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (Exception e) {
-            logger.error("Failed to process discovered source", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
+        if (sourceId == null || sourceId.isBlank()) {
+            return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError("sourceId is required"));
         }
+
+        // Idempotent: check for existing stub with same discoveredSourceId
+        List<Analyzer> all = analyzerService.getAll();
+        Optional<Analyzer> existing = all.stream().filter(a -> sourceId.equals(a.getDiscoveredSourceId())).findFirst();
+        if (existing.isPresent()) {
+            Analyzer stub = existing.get();
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("analyzerId", stub.getId());
+            response.put("status", stub.getStatus().name());
+            response.put("alreadyExists", true);
+            return ResponseEntity.ok(response);
+        }
+
+        // Create stub analyzer
+        String displayName = (protocolHint != null && !protocolHint.isBlank()) ? protocolHint
+                : "Unknown Analyzer (" + sourceId + ")";
+        Analyzer stub = new Analyzer();
+        stub.setName(displayName);
+        stub.setStatus(AnalyzerStatus.PENDING_REGISTRATION);
+        stub.setDiscoveredSourceId(sourceId);
+        stub.setSysUserId("bridge-discovery");
+        String analyzerId = analyzerService.insert(stub);
+
+        // Create error dashboard entry for visibility
+        Analyzer created = analyzerService.get(analyzerId);
+        String errorMsg = String.format(
+                "Unregistered source discovered: sourceId=%s, protocol=%s, transport=%s, hint=%s", sourceId, protocol,
+                transport, protocolHint);
+        analyzerErrorService.createError(created, AnalyzerError.ErrorType.UNREGISTERED_SOURCE,
+                AnalyzerError.Severity.WARNING, errorMsg, null);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("analyzerId", analyzerId);
+        response.put("status", AnalyzerStatus.PENDING_REGISTRATION.name());
+        response.put("alreadyExists", false);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
 }
