@@ -1012,3 +1012,14 @@ nav.cds--side-nav .cds--side-nav__link::before {
   .cds--side-nav__link[aria-current="page"] {
   padding-left: calc(7rem - 4px) !important;
 }
+
+/* Training installation badge — WCAG AA compliant contrast */
+.training-installation-badge {
+  background-color: #da1e28;
+  color: #ffffff;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 0.85em;
+}

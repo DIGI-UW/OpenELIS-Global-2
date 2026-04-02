@@ -18,7 +18,7 @@
       <column name="value" value="false" />
       <column name="value_type" value="text" />
       <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
-      <column name="lastupdated" valueDate="now()" />
+      <column name="lastupdated" valueComputed="now()" />
     </insert>
   </changeSet>
 

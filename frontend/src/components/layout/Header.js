@@ -652,17 +652,7 @@ function OEHeader({
                   <FormattedMessage id="header.label.version" /> &nbsp;{" "}
                   {configurationProperties?.releaseNumber}
                   {isTrainingInstallation && (
-                    <span
-                      style={{
-                        backgroundColor: "#ff8800",
-                        color: "white",
-                        padding: "2px 6px",
-                        marginLeft: "8px",
-                        borderRadius: "3px",
-                        fontWeight: "bold",
-                        fontSize: "0.85em",
-                      }}
-                    >
+                    <span className="training-installation-badge">
                       <FormattedMessage id="training.installation.message" />
                     </span>
                   )}

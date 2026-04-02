@@ -8,12 +8,14 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.DatabaseCleanService;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
-public class DatabaseCleaningRestController extends BaseController {
+public class DatabaseCleaningRestController {
 
     @Autowired
     private DatabaseCleanService databaseCleanService;
@@ -36,6 +38,7 @@ public class DatabaseCleaningRestController extends BaseController {
         return ResponseEntity.ok(new StatusResponse(isTrainingInstallation));
     }
 
+    @PreAuthorize("hasRole('GLOBAL_ADMIN')")
     @PostMapping(value = "/database-cleaning", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> cleanDatabase(HttpServletRequest request) {
 
@@ -54,7 +57,7 @@ public class DatabaseCleaningRestController extends BaseController {
             history.setNameKey("Database");
             history.setReferenceId("0");
             history.setReferenceTable("0");
-            history.setSysUserId(getSysUserId(request));
+            history.setSysUserId(ControllerUtills.getSysUserId(request));
             historyService.save(history);
 
             PatientUtil.invalidateUnknownPatients();
@@ -64,21 +67,6 @@ public class DatabaseCleaningRestController extends BaseController {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error cleaning database", e);
         }
-    }
-
-    @Override
-    protected String findLocalForward(String forward) {
-        return null;
-    }
-
-    @Override
-    protected String getPageTitleKey() {
-        return null;
-    }
-
-    @Override
-    protected String getPageSubtitleKey() {
-        return null;
     }
 
     private static class StatusResponse {
