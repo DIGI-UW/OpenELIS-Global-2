@@ -21,4 +21,12 @@
         </sql>
     </changeSet>
 
+    <changeSet id="013-009-03" author="OGC-526">
+        <comment>UNIQUE index on discovered_source_id for race-safe idempotency</comment>
+        <createIndex tableName="analyzer" schemaName="clinlims"
+                     indexName="idx_analyzer_discovered_source_id" unique="true">
+            <column name="discovered_source_id"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

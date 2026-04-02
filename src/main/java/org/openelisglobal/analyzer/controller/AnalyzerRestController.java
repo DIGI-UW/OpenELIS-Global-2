@@ -1429,11 +1429,11 @@ public class AnalyzerRestController extends BaseRestController {
     /**
      * POST /rest/analyzer/discovered-sources Report an unknown analyzer source
      * discovered by the bridge. Creates a PENDING_REGISTRATION stub if no analyzer
-     * with this sourceId exists. Idempotent: returns existing stub on duplicate.
+     * with this sourceId exists. Idempotent via UNIQUE constraint on
+     * discovered_source_id: duplicate inserts return the existing stub.
      */
     @PostMapping("/discovered-sources")
-    public ResponseEntity<Map<String, Object>> reportDiscoveredSource(@RequestBody Map<String, String> body,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> reportDiscoveredSource(@RequestBody Map<String, String> body) {
         String sourceId = body.get("sourceId");
         String protocol = body.get("protocol");
         String protocolHint = body.get("protocolHint");
@@ -1443,41 +1443,67 @@ public class AnalyzerRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError("sourceId is required"));
         }
 
-        // Idempotent: check for existing stub with same discoveredSourceId
-        List<Analyzer> all = analyzerService.getAll();
-        Optional<Analyzer> existing = all.stream().filter(a -> sourceId.equals(a.getDiscoveredSourceId())).findFirst();
-        if (existing.isPresent()) {
-            Analyzer stub = existing.get();
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("analyzerId", stub.getId());
-            response.put("status", stub.getStatus().name());
-            response.put("alreadyExists", true);
-            return ResponseEntity.ok(response);
+        // Build display name with length safety (Analyzer.name is VARCHAR(100))
+        String displayName = (protocolHint != null && !protocolHint.isBlank()) ? protocolHint
+                : "Unknown (" + sourceId + ")";
+        if (displayName.length() > 100) {
+            displayName = displayName.substring(0, 97) + "...";
         }
 
-        // Create stub analyzer
-        String displayName = (protocolHint != null && !protocolHint.isBlank()) ? protocolHint
-                : "Unknown Analyzer (" + sourceId + ")";
         Analyzer stub = new Analyzer();
         stub.setName(displayName);
         stub.setStatus(AnalyzerStatus.PENDING_REGISTRATION);
         stub.setDiscoveredSourceId(sourceId);
         stub.setSysUserId("bridge-discovery");
-        String analyzerId = analyzerService.insert(stub);
 
-        // Create error dashboard entry for visibility
-        Analyzer created = analyzerService.get(analyzerId);
-        String errorMsg = String.format(
-                "Unregistered source discovered: sourceId=%s, protocol=%s, transport=%s, hint=%s", sourceId, protocol,
-                transport, protocolHint);
-        analyzerErrorService.createError(created, AnalyzerError.ErrorType.UNREGISTERED_SOURCE,
-                AnalyzerError.Severity.WARNING, errorMsg, null);
+        // Try insert. UNIQUE index on discovered_source_id handles races.
+        // On duplicate, catch the constraint violation and return existing stub.
+        String analyzerId;
+        try {
+            analyzerId = analyzerService.insert(stub);
+        } catch (Exception e) {
+            if (isDuplicateKeyViolation(e)) {
+                Optional<Analyzer> existing = analyzerService.findByDiscoveredSourceId(sourceId);
+                if (existing.isPresent()) {
+                    Analyzer found = existing.get();
+                    Map<String, Object> response = new LinkedHashMap<>();
+                    response.put("analyzerId", found.getId());
+                    response.put("status", found.getStatus().name());
+                    response.put("alreadyExists", true);
+                    return ResponseEntity.ok(response);
+                }
+            }
+            throw e;
+        }
+
+        // Error dashboard entry — best-effort (stub is the critical data)
+        try {
+            Analyzer created = analyzerService.get(analyzerId);
+            String errorMsg = String.format(
+                    "Unregistered source discovered: sourceId=%s, protocol=%s, transport=%s, hint=%s", sourceId,
+                    protocol, transport, protocolHint);
+            analyzerErrorService.createError(created, AnalyzerError.ErrorType.UNREGISTERED_SOURCE,
+                    AnalyzerError.Severity.WARNING, errorMsg, null);
+        } catch (Exception e) {
+            logger.warn("Failed to create error entry for discovered source {}: {}", sourceId, e.getMessage());
+        }
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("analyzerId", analyzerId);
         response.put("status", AnalyzerStatus.PENDING_REGISTRATION.name());
         response.put("alreadyExists", false);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    private boolean isDuplicateKeyViolation(Throwable e) {
+        while (e != null) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("duplicate key") || msg.contains("unique constraint"))) {
+                return true;
+            }
+            e = e.getCause();
+        }
+        return false;
     }
 
 }

@@ -510,4 +510,10 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
         LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
                 "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        return baseObjectDAO.findByDiscoveredSourceId(discoveredSourceId);
+    }
 }

@@ -129,6 +129,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
                         config.getImportDirectory(), config.getFilePattern(), config.getColumnMappings());
             }
         } catch (Exception e) {
+            LogEvent.logError(e);
             LogEvent.logWarn(this.getClass().getSimpleName(), "syncToAnalyzerAndBridge",
                     "Failed to sync FILE config to Analyzer/bridge: " + e.getMessage());
         }
