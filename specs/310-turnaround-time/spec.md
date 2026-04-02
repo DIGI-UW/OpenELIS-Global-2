@@ -357,7 +357,7 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
   uncalculable TAT segments, excluding them from aggregations.
 - **FR-TAT-015**: Trends tab MUST display a time series chart with configurable
   aggregation (Daily, Weekly, Monthly) and toggleable metric lines (Mean,
-  Median, 90th Percentile).
+  Median, 90th Percentile). Default: Median and 90th Percentile on, Mean off.
 - **FR-TAT-016**: Trends tab MUST support multi-series comparison by dimension
   (Lab Unit, Priority, Sample Type, Ordering Site).
 - **FR-TAT-017**: Trends tab MUST support an optional volume overlay showing
@@ -367,7 +367,9 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
 - **FR-TAT-019**: When Working Time mode is selected and no holidays are
   configured, system MUST display a warning with a link to Calendar Management.
 - **FR-TAT-020**: System MUST support CSV export (up to 100,000 rows) including
-  all TAT segments and both Calendar and Working Time values.
+  all TAT segments and both Calendar and Working Time values. TAT values in CSV
+  MUST be decimal hours (e.g., `3.7`) for spreadsheet compatibility, not
+  formatted strings. Raw timestamps MUST be ISO 8601.
 - **FR-TAT-021**: System MUST support PDF export including summary stats,
   histogram, breakdown table, trend chart, and up to 1,000 detail rows.
 - **FR-TAT-022**: System MUST handle 10,000+ results without browser performance
@@ -426,21 +428,30 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
 
 ### Assumptions
 
-1. **Existing timestamps are reliable**: The `sample.received_date`,
-   `sample.collection_date`, `sample.entered_date`, `analysis.started_date`,
-   `analysis.completed_date`, and `analysis.released_date` fields are
-   consistently populated in the database. The `started_date` field may have
-   incomplete coverage (noted in the requirements doc) — the UI will show a data
+1. **Existing timestamps have mixed precision**: Codebase analysis confirms that
+   `sample.collectionDate` and `sample.receivedTimestamp` are
+   `java.sql.Timestamp` (with time-of-day), but `analysis.startedDate`,
+   `analysis.completedDate`, and `analysis.releasedDate` are `java.sql.Date`
+   (date-only, no time). `sample.enteredDate` is also date-only. This means
+   segments 1-2 (using Sample timestamps) have hour-level precision, while
+   segments 3-7 (using Analysis fields) have day-level precision only. The UI
+   MUST clearly indicate precision level per segment (e.g., "3h 42m" for
+   segments with time, "~2 days" for date-only segments). The `started_date`
+   field may also have incomplete coverage — the UI will show a data
    completeness indicator if coverage is low.
 2. **Working Time uses 24-hour days**: On non-excluded days, all 24 hours count
-   as working time. This reflects that many labs operate 24/7 on working days.
+   as working time. Partial days count only actual elapsed hours on that day.
+   Example: Friday 4:00 PM to Monday 9:00 AM with Sat/Sun excluded = Friday 8h +
+   Monday 9h = 17h working time. If both start and end fall on excluded days,
+   Working Time TAT is 0.
 3. **No new FHIR resources required**: TAT reporting is an internal analytics
    feature. Calendar and TAT data are not externally-facing entities requiring
    FHIR R4 compliance (Constitution Principle III does not apply).
 4. **Permissions use existing module system**: New modules
-   (`calendar-management`, `tat-report`) will be added to the existing OpenELIS
-   `system_module` / `system_role_module` permission system, not a new RBAC
-   framework.
+   (`CalendarManagement`, `TATReport` — PascalCase per codebase convention) will
+   be added to the existing OpenELIS `system_module` / `system_module_url` /
+   `system_role_module` permission system, not a new RBAC framework. All three
+   tables must be populated for URL-based access control to work.
 5. **Charting library**: The frontend will use a charting library compatible
    with Carbon Design System for histograms and trend charts. The JSX mockups
    reference Recharts; the actual library choice is an implementation decision.

@@ -8,15 +8,15 @@
 
 ### PublicHoliday
 
-| Field        | Type                     | Required | Description                                                 |
-| ------------ | ------------------------ | -------- | ----------------------------------------------------------- |
-| id           | Integer (PK, sequence)   | Yes      | Auto-generated primary key                                  |
-| holiday_date | DATE                     | Yes      | The holiday date                                            |
-| holiday_name | VARCHAR(100)             | Yes      | Descriptive name                                            |
-| is_recurring | BOOLEAN                  | No       | If true, repeats annually on same month/day. Default: false |
-| is_active    | BOOLEAN                  | No       | If false, excluded from TAT calculations. Default: true     |
-| lastupdated  | TIMESTAMP                | Yes      | Audit: last modification timestamp                          |
-| sys_user_id  | INTEGER (FK system_user) | Yes      | Audit: user who last modified                               |
+| Field        | Type                   | Required | Description                                                                                                                                                                              |
+| ------------ | ---------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id           | Integer (PK, sequence) | Yes      | Auto-generated primary key                                                                                                                                                               |
+| holiday_date | DATE                   | Yes      | The holiday date                                                                                                                                                                         |
+| holiday_name | VARCHAR(100)           | Yes      | Descriptive name                                                                                                                                                                         |
+| is_recurring | BOOLEAN                | No       | If true, repeats annually on same month/day. Default: false                                                                                                                              |
+| is_active    | BOOLEAN                | No       | If false, excluded from TAT calculations. Default: true                                                                                                                                  |
+| lastupdated  | TIMESTAMP              | Yes      | Audit: last modification timestamp                                                                                                                                                       |
+| sys_user_id  | VARCHAR(36)            | Yes      | Audit: user who last modified (string ID, not FK — per codebase convention). NOTE: `BaseObject.sysUserId` is `@Transient`; subclass MUST add `@Column(name = "sys_user_id")` to persist. |
 
 **Constraints**:
 
@@ -25,7 +25,8 @@
   reject if another holiday (including recurring occurrences) already exists for
   the same month/day in the target year
 - holiday_name max 100 characters
-- FK sys_user_id references system_user(id)
+- sys_user_id is a string user ID (from `getSysUserId(request)`), not an integer
+  FK
 
 **Lifecycle**: Created > Active > Inactive (soft) > Deleted (hard)
 
@@ -33,13 +34,13 @@
 
 ### WeekendConfig
 
-| Field       | Type                     | Required | Description                                       |
-| ----------- | ------------------------ | -------- | ------------------------------------------------- |
-| id          | Integer (PK, sequence)   | Yes      | Auto-generated primary key                        |
-| day_of_week | INTEGER                  | Yes      | 0=Sunday, 1=Monday, ..., 6=Saturday               |
-| is_weekend  | BOOLEAN                  | No       | Whether this day is a weekend day. Default: false |
-| lastupdated | TIMESTAMP                | Yes      | Audit: last modification timestamp                |
-| sys_user_id | INTEGER (FK system_user) | Yes      | Audit: user who last modified                     |
+| Field       | Type                   | Required | Description                                                                                      |
+| ----------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| id          | Integer (PK, sequence) | Yes      | Auto-generated primary key                                                                       |
+| day_of_week | INTEGER                | Yes      | 0=Sunday, 1=Monday, ..., 6=Saturday                                                              |
+| is_weekend  | BOOLEAN                | No       | Whether this day is a weekend day. Default: false                                                |
+| lastupdated | TIMESTAMP              | Yes      | Audit: last modification timestamp                                                               |
+| sys_user_id | VARCHAR(36)            | Yes      | Audit: user who last modified (string ID, `@Column` override required on `BaseObject.sysUserId`) |
 
 **Constraints**:
 
@@ -56,19 +57,26 @@ never inserted/deleted.
 
 ### Sample (timestamps used)
 
-| Field                                         | Used For Segment                        |
-| --------------------------------------------- | --------------------------------------- |
-| entered_date                                  | Order Created (segments 1, 7)           |
-| collection_date                               | Specimen Collected (segments 1, 2)      |
-| received_date (DB) / receivedTimestamp (Java) | Specimen Received (segments 2, 3, 4, 5) |
+| Field                                 | Java Type            | Precision | Used For Segment                        |
+| ------------------------------------- | -------------------- | --------- | --------------------------------------- |
+| entered_date (DB: ENTERED_DATE)       | `java.sql.Date`      | Date only | Order Created (segments 1, 7)           |
+| collection_date (DB: COLLECTION_DATE) | `java.sql.Timestamp` | DateTime  | Specimen Collected (segments 1, 2)      |
+| receivedTimestamp (DB: RECEIVED_DATE) | `java.sql.Timestamp` | DateTime  | Specimen Received (segments 2, 3, 4, 5) |
+
+Use `getReceivedTimestamp()` (not `getReceivedDate()` which converts to Date).
 
 ### Analysis (timestamps used)
 
-| Field          | Used For Segment                      |
-| -------------- | ------------------------------------- |
-| started_date   | Testing Started (segment 3)           |
-| completed_date | Result Entered (segments 4, 6)        |
-| released_date  | Validated/Released (segments 5, 6, 7) |
+| Field                              | Java Type       | Precision | Used For Segment                      |
+| ---------------------------------- | --------------- | --------- | ------------------------------------- |
+| startedDate (DB: STARTED_DATE)     | `java.sql.Date` | Date only | Testing Started (segment 3)           |
+| completedDate (DB: COMPLETED_DATE) | `java.sql.Date` | Date only | Result Entered (segments 4, 6)        |
+| releasedDate (DB: RELEASED_DATE)   | `java.sql.Date` | Date only | Validated/Released (segments 5, 6, 7) |
+
+**WARNING**: Analysis fields are date-only. Segments 3-7 will have day-level
+precision, not hour-level. Use `Analysis.releasedDate` (not
+`Sample.releasedDate`) for validation timestamp — both entities have this field
+but they represent different things.
 
 ---
 

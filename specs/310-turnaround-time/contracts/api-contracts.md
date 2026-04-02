@@ -37,7 +37,7 @@ List public holidays for a given year.
 }
 ```
 
-**Permission**: `calendar-management` module (read)
+**Permission**: `CalendarManagement` module (read)
 
 ---
 
@@ -63,7 +63,7 @@ Create a new public holiday.
 - name: required, max 100 chars, non-blank
 - Duplicate date in same year (including recurring occurrences): 409 Conflict
 
-**Permission**: `calendar-management` module (write)
+**Permission**: `CalendarManagement` module (write)
 
 ---
 
@@ -85,7 +85,7 @@ Update an existing holiday.
 **Response 200**: Updated holiday object  
 **Response 404**: Holiday not found
 
-**Permission**: `calendar-management` module (write)
+**Permission**: `CalendarManagement` module (write)
 
 ---
 
@@ -96,7 +96,7 @@ Delete a holiday.
 **Response 204**: No Content  
 **Response 404**: Holiday not found
 
-**Permission**: `calendar-management` module (write)
+**Permission**: `CalendarManagement` module (write)
 
 ---
 
@@ -120,7 +120,7 @@ Import holidays from CSV file.
 }
 ```
 
-**Permission**: `calendar-management` module (write)
+**Permission**: `CalendarManagement` module (write)
 
 ---
 
@@ -135,7 +135,7 @@ Export holidays as CSV download.
 **Response 200**: `text/csv` file download  
 **Headers**: `Content-Disposition: attachment; filename="holidays-2026.csv"`
 
-**Permission**: `calendar-management` module (write)
+**Permission**: `CalendarManagement` module (write)
 
 > Note: Export requires write permission per spec FR-CM-016 (all mutation and
 > bulk operations gated by write access).
@@ -156,7 +156,7 @@ Get weekend day configuration.
 
 (0=Sunday, 6=Saturday)
 
-**Permission**: `calendar-management` module (read)
+**Permission**: `CalendarManagement` module (read)
 
 ---
 
@@ -175,7 +175,7 @@ Update weekend day configuration.
 **Response 200**: Updated weekend config  
 **Validation**: Array of integers 0-6, no duplicates
 
-**Permission**: `calendar-management` module (write)
+**Permission**: `CalendarManagement` module (write)
 
 ---
 
@@ -237,7 +237,7 @@ Get TAT summary statistics, histogram, and breakdown for the selected filters.
 }
 ```
 
-**Permission**: `tat-report` module (read)
+**Permission**: `TATReport` module (read)
 
 ---
 
@@ -285,7 +285,7 @@ Get paginated detail list of individual TAT results.
 }
 ```
 
-**Permission**: `tat-report` module (read)
+**Permission**: `TATReport` module (read)
 
 **Patient data handling**: When the caller lacks patient-data permission, the
 `patientName` field is omitted from the response (not returned as null or
@@ -325,7 +325,7 @@ Get time series trend data.
 }
 ```
 
-**Permission**: `tat-report` module (read)
+**Permission**: `TATReport` module (read)
 
 ---
 
@@ -344,4 +344,4 @@ Export TAT report data.
 - PDF: `application/pdf` download with summary, histogram, breakdown, trend
   chart, up to 1000 detail rows
 
-**Permission**: `tat-report` module (read)
+**Permission**: `TATReport` module (read)
