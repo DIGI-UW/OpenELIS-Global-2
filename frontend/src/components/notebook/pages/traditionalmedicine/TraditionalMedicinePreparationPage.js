@@ -104,6 +104,10 @@ function TraditionalMedicinePreparationPage({
       id: "freshly_processed",
       label: "Freshly processed samples: Used immediately",
     },
+    {
+      id: "other",
+      label: "Other",
+    },
   ];
 
   // Drying method options (per SRS)
