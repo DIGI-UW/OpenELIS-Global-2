@@ -30,6 +30,7 @@ public class MethodServiceTest extends BaseWebContextSensitiveTest {
         method.setDescription("asking questions");
         method.setActiveBeginDate(date);
         method.setIsActive("Y");
+        method.setSysUserId("1");
 
         String methodId = mService.insert(method);
         Method createMethod = mService.get(methodId);
