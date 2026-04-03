@@ -175,7 +175,10 @@ public class PatientReportServiceImpl implements PatientReportService {
         // creating and populating a set to store all testids
         Set<String> testIds = new HashSet<>();
         for (TestResultItem item : results) {
-            testIds.add(item.getTestId());
+            String testid = item.getTestId();
+            if (testid != null) {
+                testIds.add(testid);
+            }
         }
 
         // fetching all tests by testids
