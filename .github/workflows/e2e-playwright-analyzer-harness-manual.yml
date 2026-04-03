@@ -4,6 +4,27 @@ name: E2E / Playwright / Analyzer Harness (Manual)
 
 on:
   workflow_dispatch:
+    inputs:
+      playwright_project:
+        description: "Harness Playwright project to run"
+        required: true
+        default: "harness-demo"
+        type: choice
+        options:
+          - harness-foundational
+          - harness-demo
+          - harness-demo-video
+          - harness-manual-only
+      test_file:
+        description: "Optional single Playwright spec path (for example: playwright/tests/demo/harness/analyzer-demo-flow.spec.ts)"
+        required: false
+        default: ""
+        type: string
+      pr_number:
+        description: "Optional PR number to update with the generated evidence comment"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   run:
@@ -12,6 +33,11 @@ jobs:
       contents: read
       packages: read
       actions: read
+      issues: write
+      pull-requests: write
     with:
       test_user: ${{ vars.TEST_USER || 'admin' }}
       test_pass: ${{ vars.TEST_PASS || 'adminADMIN!' }}
+      playwright_project: ${{ inputs.playwright_project }}
+      test_file: ${{ inputs.test_file }}
+      pr_number: ${{ inputs.pr_number }}
