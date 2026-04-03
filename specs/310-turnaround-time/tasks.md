@@ -308,8 +308,11 @@ DataTable pattern
       `admin.calendarManagement.importPreview`, `admin.calendarManagement.year`,
       `admin.calendarManagement.noHolidays`,
       `admin.calendarManagement.duplicateDate`,
-      `admin.calendarManagement.imported`, `admin.calendarManagement.skipped`.
-      (Only en.json — fr via Transifex per CR-002.)
+      `admin.calendarManagement.imported`, `admin.calendarManagement.skipped`,
+      `admin.calendarManagement.holidayCount` (MF-5: "{count} holidays
+      configured for {year}"), `admin.calendarManagement.saveError`,
+      `admin.calendarManagement.loadError` (MF-3: error states). (Only en.json —
+      fr via Transifex per CR-002.)
 
 ### TDD: Jest Tests First
 
@@ -317,9 +320,11 @@ DataTable pattern
       `frontend/src/components/admin/calendarManagement/__tests__/CalendarManagement.test.js`
       — test: renders holiday table, add holiday inline, edit holiday inline,
       delete with confirmation, year filter changes, weekend checkboxes toggle,
-      read-only mode (no action buttons), empty state. Use React Testing
-      Library. Mock `getFromOpenElisServer` and
-      `postToOpenElisServerJsonResponse`.
+      read-only mode (no action buttons), empty state, inactive holidays
+      visually dimmed (MF-14: AC-CAL-11 coverage), footer shows holiday count
+      (MF-5), loading skeleton during data fetch (MF-2), error notification on
+      API failure (MF-3). Use React Testing Library. Mock
+      `getFromOpenElisServer` and `postToOpenElisServerJsonResponse`.
 - [ ] T022 [P] [US1] Write Jest tests for CsvImportPreview component in
       `frontend/src/components/admin/calendarManagement/__tests__/CsvImportPreview.test.js`
       — test: renders preview table, shows validation errors, import/cancel
@@ -329,11 +334,19 @@ DataTable pattern
 
 - [ ] T023 [US1] Create `CalendarManagement.js` main component in
       `frontend/src/components/admin/calendarManagement/CalendarManagement.js` —
-      Carbon DataTable with inline add/edit rows per mockup. Columns: Date (with
-      day-of-week), Holiday Name, Recurring (Annual/One-time Tag), Status
-      (Active/Inactive Tag), Actions (Edit/Delete IconButtons). Year filter
-      Dropdown. "Add Holiday" Button. Use `useIntl()` and `<FormattedMessage>`
-      for all strings. Call
+      Carbon DataTable with inline add/edit rows per mockup (MF-18: inline, NOT
+      modal — intentional design choice over requirements doc). Columns: Date
+      (with day-of-week), Holiday Name, Recurring (Annual/One-time Tag), Status
+      (Active/Inactive Tag — inactive rows visually dimmed per AC-CAL-11),
+      Actions (Edit/Delete IconButtons). Year filter Dropdown. "Add Holiday"
+      Button. Footer showing "{count} holidays configured for {year}" (MF-5).
+      Add `data-testid` attributes on key elements for Playwright page objects
+      (MF-13): `holiday-table`, `add-holiday-button`, `holiday-inline-row`,
+      `save-holiday-button`, `cancel-holiday-button`, `year-dropdown`,
+      `import-csv-button`, `export-csv-button`, `holiday-count-footer`. Show
+      `DataTableSkeleton` during initial load (MF-2). Show `InlineNotification`
+      kind="error" on API failure (MF-3). Use `useIntl()` and
+      `<FormattedMessage>` for all strings. Call
       `getFromOpenElisServer("/rest/calendar/holidays?year=...")`. Follow
       pattern from
       `frontend/src/components/admin/OrganizationManagement/OrganizationManagement.js`.
@@ -367,12 +380,17 @@ DataTable pattern
 
 ### Playwright E2E with Video (US1)
 
-- [ ] T029 [US1] `/plan-record-playwright` — Plan Playwright test for US1
+- [ ] T029a [US1] Create E2E test data seeding: either a SQL fixture
+      `src/test/resources/tat-demo-data.sql` with sample holidays, OR an
+      API-based setup function in `frontend/playwright/helpers/seed-calendar.ts`
+      that uses `page.request.post("/rest/calendar/holidays", ...)` to create
+      test holidays before each test run. (CF-5: test data seeding gap.)
+- [ ] T029b [US1] `/plan-record-playwright` — Plan Playwright test for US1
       calendar management workflow. Define steps: navigate Admin > Calendar
-      Management, verify page loads with empty/seeded holidays, add holiday
-      inline, edit holiday, delete holiday with confirmation, toggle weekend
-      checkboxes, import CSV, export CSV, verify read-only mode. Map to spec.md
-      US1 acceptance scenarios 1-10.
+      Management, verify page loads with seeded holidays, add holiday inline,
+      edit holiday, delete holiday with confirmation, toggle weekend checkboxes,
+      verify inactive holiday is dimmed (MF-14: AC-CAL-11), import CSV, export
+      CSV, verify read-only mode. Map to spec.md US1 acceptance scenarios 1-10.
 - [ ] T030 [US1] Create page object
       `frontend/playwright/fixtures/calendar-management.ts` — locators: holiday
       table (`[data-testid="holiday-table"]`), add button, inline edit row,
@@ -561,15 +579,17 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 
 - [ ] T053 [US2] Add i18n message keys to `frontend/src/languages/en.json` —
       keys for: `reports.tat.title`, `reports.tat.description`,
-      `reports.tat.generateReport`, `reports.tat.segment.*` (all 7 segment
-      names), `reports.tat.calendarTime`, `reports.tat.workingTime`,
-      `reports.tat.workingTimeInfo`, `reports.tat.noHolidaysWarning`,
-      `reports.tat.totalResults`, `reports.tat.meanTat`,
-      `reports.tat.medianTat`, `reports.tat.percentile90`, `reports.tat.minTat`,
-      `reports.tat.maxTat`, `reports.tat.stdDeviation`,
-      `reports.tat.distribution`, `reports.tat.breakdownBy`,
-      `reports.tat.summary`, `reports.tat.detailList`, `reports.tat.trends`,
-      `reports.tat.noResults`, `reports.tat.insufficientData`,
+      `reports.tat.generateReport`, `reports.tat.clearFilters` (MF-1),
+      `reports.tat.segment.*` (all 7 segment names), `reports.tat.calendarTime`,
+      `reports.tat.workingTime`, `reports.tat.workingTimeInfo`,
+      `reports.tat.noHolidaysWarning`, `reports.tat.totalResults`,
+      `reports.tat.meanTat`, `reports.tat.medianTat`,
+      `reports.tat.percentile90`, `reports.tat.minTat`, `reports.tat.maxTat`,
+      `reports.tat.stdDeviation`, `reports.tat.distribution`,
+      `reports.tat.breakdownBy`, `reports.tat.clickRowHint` (MF-12: "Click a row
+      to view individual results"), `reports.tat.summary`,
+      `reports.tat.detailList`, `reports.tat.trends`, `reports.tat.noResults`,
+      `reports.tat.insufficientData`, `reports.tat.loadError` (MF-3),
       `reports.tat.dateRange`, `reports.tat.labUnit`, `reports.tat.testPanel`,
       `reports.tat.priority.*`, `reports.tat.sampleType`,
       `reports.tat.orderingSite`, `reports.tat.includeCancelled`,
@@ -582,9 +602,11 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 - [ ] T054 [P] [US2] Write Jest tests for TATFilterBar component in
       `frontend/src/components/reports/tat/__tests__/TATFilterBar.test.js` —
       test: renders all filter controls, date range defaults to last 30 days,
-      segment defaults to "Receipt to Validation", calculation mode toggle,
-      "Generate Report" button click calls callback with filter state, quick
-      date presets work.
+      segment defaults to "Receipt to Validation", calculation mode
+      ContentSwitcher toggle (MF-7), "Generate Report" button click calls
+      callback with filter state, "Clear Filters" button resets all to defaults
+      (MF-1), quick date presets work, include-cancelled checkbox toggles
+      (MF-15: AC-18 coverage), empty/no-results state (MF-2).
 - [ ] T055 [P] [US2] Write Jest tests for TATStatCards component in
       `frontend/src/components/reports/tat/__tests__/TATStatCards.test.js` —
       test: renders 7 stat cards with correct labels and formatted values (e.g.,
@@ -603,31 +625,42 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
       `frontend/src/components/reports/tat/TATReport.js` — main page with Carbon
       Tabs (Summary, Detail List, Trends). Manages shared filter state. Calls
       `getFromOpenElisServer("/rest/reports/tat/summary?...")` on "Generate
-      Report" click. Passes data to active tab. Shows loading state during
-      fetch.
+      Report" click. Passes data to active tab. Shows `SkeletonText` / loading
+      state during fetch (MF-2). Shows `InlineNotification` kind="error" on API
+      failure (MF-3). Active filter summary badges below tabs showing segment
+      name, calculation mode, and date range (MF-4). Add `data-testid`
+      attributes on key elements for Playwright: `tat-report`,
+      `generate-report-button`, `tab-summary`, `tab-detail`, `tab-trends`,
+      `filter-summary-badges` (MF-13).
 - [ ] T058 [US2] Create `TATFilterBar.js` in
       `frontend/src/components/reports/tat/TATFilterBar.js` — Carbon DatePicker
       (range), Dropdown (lab unit, segment, sample type, ordering site),
-      MultiSelect (test/panel with typeahead), RadioButtonGroup (calculation
-      mode: Calendar/Working Time), Checkbox (include cancelled), Button
-      ("Generate Report"). Quick date preset buttons. All strings via
-      `<FormattedMessage>`.
+      MultiSelect (test/panel with typeahead), ContentSwitcher (calculation
+      mode: Calendar/Working Time — MF-7: use ContentSwitcher not
+      RadioButtonGroup per mockup pattern), Checkbox (include cancelled), Button
+      ("Generate Report"), Button kind="ghost" ("Clear Filters" — MF-1). Quick
+      date preset buttons. All strings via `<FormattedMessage>`.
 - [ ] T059 [US2] Create `TATStatCards.js` in
       `frontend/src/components/reports/tat/TATStatCards.js` — 7 Carbon Tile
-      components displaying Total Results, Mean, Median, 90th %ile, Min, Max,
-      Std Dev. Format hours as "Xh Ym" using helper function. Show "Insufficient
-      data" when null.
+      components in 4+3 layout (first row: Total Results, Mean, Median, 90th
+      %ile; second row: Min, Max, Std Dev). Median card has teal highlight
+      background (MF-10). Format hours as "Xh Ym" using helper function. Show
+      "Insufficient data" when null.
 - [ ] T060 [US2] Create `TATHistogram.js` in
       `frontend/src/components/reports/tat/TATHistogram.js` — use
-      `@carbon/charts-react` SimpleBarChart. Auto-calculated bins from API
-      response. Vertical reference lines for median and p90. Tooltip on hover
-      showing count and percentage.
+      `@carbon/charts-react` SimpleBarChart. Use fixed non-uniform bins from
+      requirements doc: 0-1h, 1-2h, 2-3h, 3-4h, 4-6h, 6-8h, 8-12h, 12-24h,
+      24-48h, 48h+ (HF-1). Color grading: teal for early bins, yellow for
+      mid-range, orange/red for high bins (MF-9). Vertical reference lines for
+      median and p90. Tooltip on hover showing count and percentage.
 - [ ] T061 [US2] Create `TATBreakdownTable.js` in
       `frontend/src/components/reports/tat/TATBreakdownTable.js` — Carbon
       DataTable with columns: dimension value, count, mean, median, p90, max.
-      Sortable headers. Dropdown to select breakdown dimension (Lab Unit, Test,
-      Priority, Sample Type, Ordering Site). Row click triggers drill-down
-      callback (navigates to Detail List tab filtered to that value).
+      Max column: apply red text + bold when value >24h (MF-11). Sortable
+      headers. Dropdown to select breakdown dimension (Lab Unit, Test, Priority,
+      Sample Type, Ordering Site). Row click triggers drill-down callback
+      (navigates to Detail List tab filtered to that value). Helper text below
+      table: "Click a row to view individual results" (MF-12).
 - [ ] T062 [US2] Create `TATSummaryTab.js` in
       `frontend/src/components/reports/tat/TATSummaryTab.js` — composition
       component: TATStatCards + TATHistogram + TATBreakdownTable. Working Time
@@ -646,14 +679,22 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 
 ### Playwright E2E with Video (US2)
 
-- [ ] T065 [US2] `/plan-record-playwright` — Plan Playwright test for US2 TAT
+- [ ] T065a [US2] Create E2E test data seeding for TAT report: SQL fixture or
+      API-based setup in `frontend/playwright/helpers/seed-tat-data.ts` that
+      creates 10-15 sample/analysis records with realistic timestamps spanning
+      last 90 days, multiple priorities (ROUTINE, STAT), sample types, and lab
+      units. Must include at least one STAT sample (for red border in US3).
+      (CF-5: test data seeding gap.)
+- [ ] T065b [US2] `/plan-record-playwright` — Plan Playwright test for US2 TAT
       summary workflow. Define steps mapping to spec.md US2 acceptance scenarios
       1-8: navigate to Reports > Turn Around Time, verify default filters (last
       30 days, Receipt to Validation, Calendar Time), click Generate Report,
-      verify 7 stat cards render, verify histogram with percentile markers,
-      verify breakdown table with lab units, click breakdown row to drill-down,
-      change TAT segment, toggle Working Time mode (verify info bar + excluded
-      day count), test warning when no holidays.
+      verify 7 stat cards render, verify histogram is visible (MF-16: assert
+      chart presence not data values), verify breakdown table with lab units,
+      click breakdown row to drill-down, change TAT segment, toggle Working Time
+      mode via ContentSwitcher (verify info bar + excluded day count), test
+      warning when no holidays, toggle include-cancelled checkbox (MF-15: AC-18
+      coverage).
 - [ ] T066 [US2] Create page object `frontend/playwright/fixtures/tat-report.ts`
       — locators: filter bar controls, generate button, stat cards, histogram
       chart, breakdown table, tab navigation, Working Time toggle, info/warning
@@ -663,9 +704,11 @@ contracts/api-contracts.md (GET /rest/reports/tat/summary)
 - [ ] T067 [US2] `/write-playwright-test` — Create
       `frontend/playwright/tests/demo/core/ogc-307-tat-summary.spec.ts` — use
       `test.step()` per acceptance scenario, `showTitleCard()` + `videoPause()`
-      for demo. Use page object from T066. Assert on visible stat card values,
-      histogram presence, breakdown table rows, info/warning bar text. Follow
-      Playwright best practices (no force:true, no response.ok() as pass/fail).
+      for demo. Use page object from T066. Assert on visible stat card values
+      (text content), histogram presence (SVG visible — MF-16: do NOT assert on
+      specific bar data values, rely on Jest for data correctness), breakdown
+      table rows, info/warning bar text. Follow Playwright best practices (no
+      force:true, no response.ok() as pass/fail).
 - [ ] T068 [US2] `/audit-playwright` — Run guards + test without video + test
       with video recording.
 - [ ] T069 [US2] If test failures: `/debug-playwright` — diagnose and fix.
@@ -734,27 +777,31 @@ endpoints)
 - [ ] T077 [US3] Create `TATDetailListTab.js` in
       `frontend/src/components/reports/tat/TATDetailListTab.js` — Carbon
       DataTable with server-side pagination (Pagination component, 0-based page
-      param). Columns per contracts detail response: Lab Number (link to order
-      view via
+      param). Show `DataTableSkeleton` during page load/sort (MF-2). Columns per
+      contracts detail response: Lab Number (link to order view via
       `<a href="/SamplePatientEntry?accessionNumber=..." target="_blank">`),
       Test, Lab Unit, Priority, all timestamps, Selected Segment TAT, Overall
       TAT. STAT priority rows: apply `border-left: 3px solid #DA1E28` (Carbon
       red). Missing timestamps: "—". Uncalculable TAT: "N/A" (gray text). Column
       visibility dropdown (Checkbox list) for optional columns (Patient, Sample
       Type, Ordering Site, Testing Started, Result Entered) — persist in
-      sessionStorage. Default sort: Selected Segment TAT descending. Fetch via
+      sessionStorage. Default sort: Selected Segment TAT descending. Secondary
+      sort: Lab Number ascending (MF-6). Fetch via
       `getFromOpenElisServer("/rest/reports/tat/detail?page=0&pageSize=25&sortField=selectedTat&sortOrder=desc&...")`.
 
 ### Frontend Components (US4 — Trends)
 
 - [ ] T078 [US4] Create `TATTrendsTab.js` in
       `frontend/src/components/reports/tat/TATTrendsTab.js` — use
-      `@carbon/charts-react` LineChart for trend lines. Aggregation interval
-      selector (Carbon Dropdown: Daily/Weekly/Monthly). Metric line toggles
-      (Carbon Toggle: Mean, Median, 90th Percentile). Compare-by selector
-      (Carbon Dropdown: None, Lab Unit, Priority, Sample Type, Ordering Site) —
-      renders multi-series with `chartColors` from mockup. Volume overlay toggle
-      (Carbon Toggle) — renders ComboChart with bar + line. Fetch via
+      `@carbon/charts-react` LineChart for trend lines. Show `SkeletonText`
+      during data fetch (MF-2). Aggregation interval selector (Carbon Dropdown:
+      Daily/Weekly/Monthly). Metric line toggles (Carbon Checkbox — MF-8: use
+      Checkbox not Toggle, since users may want multiple metrics
+      simultaneously). Default: Median + 90th Percentile on, Mean off
+      (FR-TAT-015). Compare-by selector (Carbon Dropdown: None, Lab Unit,
+      Priority, Sample Type, Ordering Site) — renders multi-series with
+      `chartColors` from mockup. Volume overlay toggle (Carbon Toggle) — renders
+      ComboChart with bar + line. Fetch via
       `getFromOpenElisServer("/rest/reports/tat/trend?interval=DAILY&...")`.
 
 ### Frontend Components (US5 — Export)
@@ -787,15 +834,22 @@ endpoints)
       helpers.
 - [ ] T085 [US4] `/plan-record-playwright` — Plan Playwright test for US4
       trends. Steps from spec.md US4 scenarios 1-4: switch to Trends tab, verify
-      chart renders, change aggregation interval, enable Compare by Lab Unit,
+      chart is visible (MF-16: assert SVG/chart container presence, not specific
+      data points), change aggregation interval, enable Compare by Lab Unit,
       toggle volume overlay.
 - [ ] T086 [US4] `/write-playwright-test` — Create
-      `frontend/playwright/tests/demo/core/ogc-307-tat-trends.spec.ts`
+      `frontend/playwright/tests/demo/core/ogc-307-tat-trends.spec.ts`. Assert
+      chart container visibility and user interaction (toggle controls), NOT
+      specific chart data values (MF-16).
 - [ ] T087 [US5] `/plan-record-playwright` — Plan Playwright test for US5
-      export. Steps from spec.md US5 scenarios 1-2: click Export > CSV (verify
-      download starts), click Export > PDF (verify download starts).
+      export. Steps from spec.md US5 scenarios 1-2: click Export > CSV, click
+      Export > PDF. Assert download initiation via
+      `page.waitForEvent('download')` and verify `suggestedFilename()` contains
+      `.csv` or `.pdf` (MF-17: verify download starts, not file content — file
+      content correctness tested in backend unit/integration tests).
 - [ ] T088 [US5] `/write-playwright-test` — Create
-      `frontend/playwright/tests/demo/core/ogc-307-tat-export.spec.ts`
+      `frontend/playwright/tests/demo/core/ogc-307-tat-export.spec.ts`. Use
+      `page.waitForEvent('download')` pattern (MF-17).
 - [ ] T089 `/audit-playwright` — Run `npm run pw:guard` for all new test files.
       Run full `npm run pw:test:core-demo` suite. Run
       `npm run pw:test:core-demo-video` for all US3/US4/US5 tests. Verify all

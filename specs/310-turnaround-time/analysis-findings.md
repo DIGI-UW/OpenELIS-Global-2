@@ -139,30 +139,33 @@ use programmatic PDF generation (iText is also on the classpath).
 
 ---
 
-## Medium-Priority Findings (Document, Fix During Implementation)
+## Medium-Priority Findings — ALL INTEGRATED INTO TASKS
 
-| ID    | Finding                                                             | Source                   | Resolution                                                         |
-| ----- | ------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
-| MF-1  | Missing "Clear Filters" button                                      | TAT mockup line 497-502  | Add to T058                                                        |
-| MF-2  | Missing loading states for Calendar page, Detail List, Trends       | Mockup analysis          | Add Carbon `DataTableSkeleton` / `SkeletonText` to component tasks |
-| MF-3  | Missing error state handling (API failures)                         | Mockup analysis          | Add generic error notification pattern                             |
-| MF-4  | Active filter summary badges below tabs                             | TAT mockup lines 548-559 | Add to T062                                                        |
-| MF-5  | Calendar footer count "{N} holidays configured"                     | Cal mockup line 381-383  | Add to T023, T020                                                  |
-| MF-6  | Secondary sort (Lab Number ascending) for detail list               | TAT requirements doc     | Add to T077                                                        |
-| MF-7  | Calculation mode: use ContentSwitcher not RadioButtonGroup          | TAT mockup pattern       | Update T058                                                        |
-| MF-8  | Metric line toggles: use Checkbox not Carbon Toggle                 | TAT mockup pattern       | Update T078                                                        |
-| MF-9  | Histogram color grading (teal -> yellow -> orange by bin)           | TAT mockup lines 602-604 | Add to T060                                                        |
-| MF-10 | Stat card Median highlight (teal background)                        | TAT mockup line 566      | Add to T059                                                        |
-| MF-11 | Breakdown max column red highlight for >24h                         | TAT mockup line 662      | Add to T061                                                        |
-| MF-12 | "Click a row to view individual results" helper text                | TAT mockup lines 669-671 | Add i18n key and mention in T061                                   |
-| MF-13 | data-testid attributes for Playwright page objects                  | Mockup analysis          | Add to T023/T057                                                   |
-| MF-14 | AC-CAL-11 inactive dimming not in Jest/E2E test lists               | Coverage analysis        | Add to T021/T029                                                   |
-| MF-15 | AC-18 include-cancelled toggle not in any E2E step                  | Coverage analysis        | Add to T065                                                        |
-| MF-16 | Chart assertions: clarify "visible" not "data values"               | PW feasibility analysis  | Update T067/T086                                                   |
-| MF-17 | File download assertions: verify initiation not content             | PW feasibility analysis  | Update T088                                                        |
-| MF-18 | Modal vs inline: requirements doc shows modal, spec chose inline    | Jira doc discrepancy     | Spec's inline choice is intentional — document                     |
-| MF-19 | `analysis.enteredDate` DB column is `ENTRY_DATE` not `entered_date` | Codebase analysis        | Note in data-model.md                                              |
-| MF-20 | Both Sample and Analysis have `releasedDate` fields                 | Codebase analysis        | Clarify: use `Analysis.releasedDate` for TAT segments              |
+| ID    | Finding                                                             | Integrated Into                                   | Status |
+| ----- | ------------------------------------------------------------------- | ------------------------------------------------- | ------ |
+| MF-1  | Missing "Clear Filters" button                                      | T053 (i18n), T054 (Jest), T058 (component)        | Done   |
+| MF-2  | Missing loading states for Calendar page, Detail List, Trends       | T021 (Jest), T023, T057, T077, T078               | Done   |
+| MF-3  | Missing error state handling (API failures)                         | T020 (i18n), T021 (Jest), T023, T053 (i18n), T057 | Done   |
+| MF-4  | Active filter summary badges below tabs                             | T057 (TATReport component)                        | Done   |
+| MF-5  | Calendar footer count "{N} holidays configured"                     | T020 (i18n), T021 (Jest), T023 (component)        | Done   |
+| MF-6  | Secondary sort (Lab Number ascending) for detail list               | T077 (TATDetailListTab)                           | Done   |
+| MF-7  | Calculation mode: use ContentSwitcher not RadioButtonGroup          | T054 (Jest), T058 (component)                     | Done   |
+| MF-8  | Metric line toggles: use Checkbox not Carbon Toggle                 | T078 (TATTrendsTab)                               | Done   |
+| MF-9  | Histogram color grading (teal -> yellow -> orange by bin)           | T060 (TATHistogram)                               | Done   |
+| MF-10 | Stat card Median highlight (teal background)                        | T059 (TATStatCards)                               | Done   |
+| MF-11 | Breakdown max column red highlight for >24h                         | T061 (TATBreakdownTable)                          | Done   |
+| MF-12 | "Click a row to view individual results" helper text                | T053 (i18n), T061 (component)                     | Done   |
+| MF-13 | data-testid attributes for Playwright page objects                  | T023 (Calendar), T057 (TAT Report)                | Done   |
+| MF-14 | AC-CAL-11 inactive dimming not in Jest/E2E test lists               | T021 (Jest), T029b (PW plan)                      | Done   |
+| MF-15 | AC-18 include-cancelled toggle not in any E2E step                  | T054 (Jest), T065b (PW plan)                      | Done   |
+| MF-16 | Chart assertions: clarify "visible" not "data values"               | T067, T085, T086 (PW tests)                       | Done   |
+| MF-17 | File download assertions: verify initiation not content             | T087, T088 (PW tests)                             | Done   |
+| MF-18 | Modal vs inline: requirements doc shows modal, spec chose inline    | T023 (explicit note)                              | Done   |
+| MF-19 | `analysis.enteredDate` DB column is `ENTRY_DATE` not `entered_date` | data-model.md already documents                   | Done   |
+| MF-20 | Both Sample and Analysis have `releasedDate` fields                 | data-model.md WARNING section                     | Done   |
+
+**CF-5 (test data seeding)** also integrated: T029a (calendar E2E seed), T065a
+(TAT report E2E seed).
 
 ---
 
