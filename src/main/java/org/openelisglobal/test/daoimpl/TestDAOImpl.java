@@ -380,7 +380,7 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     public List<Test> getTestsByIds(Set<String> ids) throws LIMSRuntimeException {
         try {
             if (ids == null || ids.isEmpty()) {
-                return new ArrayList<>();
+                return Collections.emptyList();
             }
 
             String hql = "from Test t where t.id in (:ids)";
