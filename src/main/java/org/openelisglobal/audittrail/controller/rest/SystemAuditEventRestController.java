@@ -284,7 +284,7 @@ public class SystemAuditEventRestController {
             }
             return changes;
         } catch (Exception e) {
-            LogEvent.logWarn("SystemAuditEventRestController",
+            LogEvent.logWarn("SystemAuditEventRestController", "parseChanges",
                     "Failed to parse changes for history " + history.getId());
             return Collections.emptyMap();
         }
@@ -339,7 +339,8 @@ public class SystemAuditEventRestController {
             LocalDate date = LocalDate.parse(dateStr);
             return Timestamp.from(date.atStartOfDay(ZoneId.of("UTC")).toInstant());
         } catch (java.time.format.DateTimeParseException e) {
-            LogEvent.logWarn("SystemAuditEventRestController", "Invalid startDate format: " + dateStr);
+            LogEvent.logWarn("SystemAuditEventRestController", "parseStartDate",
+                    "Invalid startDate format: " + dateStr);
             return null;
         }
     }
@@ -351,7 +352,8 @@ public class SystemAuditEventRestController {
             LocalDate date = LocalDate.parse(dateStr);
             return Timestamp.from(date.atTime(LocalTime.MAX).atZone(ZoneId.of("UTC")).toInstant());
         } catch (java.time.format.DateTimeParseException e) {
-            LogEvent.logWarn("SystemAuditEventRestController", "Invalid endDate format: " + dateStr);
+            LogEvent.logWarn("SystemAuditEventRestController", "parseEndDate",
+                    "Invalid endDate format: " + dateStr);
             return null;
         }
     }
