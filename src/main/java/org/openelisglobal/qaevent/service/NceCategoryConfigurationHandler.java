@@ -77,6 +77,14 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             }
         }
 
+        // Load all existing categories into a map for O(1) lookups
+        Map<String, NceCategory> existingByName = new HashMap<>();
+        for (NceCategory cat : nceCategoryService.getAllNceCategories()) {
+            if (cat.getName() != null) {
+                existingByName.put(cat.getName(), cat);
+            }
+        }
+
         int processedCount = 0;
         String line;
         int lineNumber = 1;
@@ -90,7 +98,7 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             try {
                 String[] values = parseCsvLine(line);
                 boolean processed = processCsvLine(values, nameIndex, displayKeyIndex, activeIndex,
-                        localeColumnIndexes);
+                        localeColumnIndexes, existingByName);
                 if (processed) {
                     processedCount++;
                 }
@@ -140,7 +148,7 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
     }
 
     private boolean processCsvLine(String[] values, int nameIndex, int displayKeyIndex, int activeIndex,
-            Map<String, Integer> localeColumnIndexes) {
+            Map<String, Integer> localeColumnIndexes, Map<String, NceCategory> existingByName) {
         String name = getValueOrEmpty(values, nameIndex);
         String displayKey = getValueOrEmpty(values, displayKeyIndex);
         String active = getValueOrEmpty(values, activeIndex);
@@ -149,8 +157,8 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             return false;
         }
 
-        // Check if category already exists by name
-        NceCategory existing = findCategoryByName(name);
+        // Check if category already exists by name (O(1) lookup)
+        NceCategory existing = existingByName.get(name);
 
         if (existing != null) {
             // Update existing category
@@ -168,19 +176,12 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
             category.setSysUserId("1");
 
             nceCategoryService.insert(category);
+
+            // Add to map for potential subsequent lookups within same import
+            existingByName.put(name, category);
         }
 
         return true;
-    }
-
-    private NceCategory findCategoryByName(String name) {
-        List<NceCategory> all = nceCategoryService.getAllNceCategories();
-        for (NceCategory cat : all) {
-            if (name.equals(cat.getName())) {
-                return cat;
-            }
-        }
-        return null;
     }
 
     private void updateCategory(NceCategory category, String displayKey, String active, String[] values,

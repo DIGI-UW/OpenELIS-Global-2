@@ -1,24 +1,17 @@
 import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   Button,
-  Column,
-  Grid,
   Search,
   Select,
   SelectItem,
   Tag,
   Tile,
   Pagination,
-  ExpandableTile,
-  TileAboveTheFoldContent,
-  TileBelowTheFoldContent,
   Tabs,
   TabList,
   Tab,
   TabPanels,
   TabPanel,
-  OverflowMenu,
-  OverflowMenuItem,
   Modal,
   TextArea,
   Loading,
@@ -40,26 +33,19 @@ import { NotificationContext } from "../../layout/Layout";
 import { useHistory } from "react-router-dom";
 import "./NceDashboard.css";
 
-const SEVERITY_CONFIG = {
-  CRITICAL: { color: "#da1e28", bgColor: "#fff1f1", label: "Critical" },
-  MAJOR: { color: "#fa4d56", bgColor: "#fff1f1", label: "Major" },
-  MINOR: { color: "#f1c21b", bgColor: "#fff8e1", label: "Minor" },
-  LOW: { color: "#42be65", bgColor: "#defbe6", label: "Low" },
-};
-
 const STATUS_CONFIG = {
-  Pending: { type: "green", icon: InProgress, label: "Open" },
+  Pending: { type: "green", icon: InProgress, labelKey: "nce.status.open" },
   "Under Investigation": {
     type: "blue",
     icon: InProgress,
-    label: "Under Investigation",
+    labelKey: "nce.status.underInvestigation",
   },
   "Corrective Action": {
     type: "purple",
     icon: CheckmarkFilled,
-    label: "Corrective Action",
+    labelKey: "nce.status.correctiveAction",
   },
-  Closed: { type: "gray", icon: CheckmarkFilled, label: "Closed" },
+  Closed: { type: "gray", icon: CheckmarkFilled, labelKey: "nce.status.closed" },
 };
 
 export const NceDashboard = () => {
@@ -222,15 +208,13 @@ export const NceDashboard = () => {
   };
 
   // Handle acknowledge
-  const handleAcknowledge = (nce) => {
+  const handleAcknowledge = () => {
     // TODO: Implement acknowledge API call
-    console.log("Acknowledge NCE:", nce.id);
   };
 
   // Handle assign
-  const handleAssign = (nce) => {
+  const handleAssign = () => {
     // TODO: Implement assign modal/API
-    console.log("Assign NCE:", nce.id);
   };
 
   // Handle add note
@@ -243,7 +227,6 @@ export const NceDashboard = () => {
   // Submit note
   const submitNote = () => {
     // TODO: Implement note submission API
-    console.log("Submit note for NCE:", selectedNce?.id, noteText);
     setNoteModalOpen(false);
     setSelectedNce(null);
     setNoteText("");
@@ -469,7 +452,9 @@ export const NceDashboard = () => {
                       type={STATUS_CONFIG[nce.status]?.type || "gray"}
                       size="sm"
                     >
-                      {STATUS_CONFIG[nce.status]?.label || nce.status}
+                      {STATUS_CONFIG[nce.status]?.labelKey
+                        ? intl.formatMessage({ id: STATUS_CONFIG[nce.status].labelKey })
+                        : nce.status}
                     </Tag>
                     {isOverdue(nce) && (
                       <Tag type="red" size="sm">

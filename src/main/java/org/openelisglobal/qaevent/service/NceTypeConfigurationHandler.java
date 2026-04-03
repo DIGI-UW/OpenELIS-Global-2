@@ -87,6 +87,21 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
+        // Load all existing types and categories into maps for O(1) lookups
+        Map<String, NceType> existingTypesByName = new HashMap<>();
+        for (NceType type : nceTypeService.getAllNceTypes()) {
+            if (type.getName() != null) {
+                existingTypesByName.put(type.getName(), type);
+            }
+        }
+
+        Map<String, NceCategory> existingCategoriesByName = new HashMap<>();
+        for (NceCategory cat : nceCategoryService.getAllNceCategories()) {
+            if (cat.getName() != null) {
+                existingCategoriesByName.put(cat.getName(), cat);
+            }
+        }
+
         int processedCount = 0;
         String line;
         int lineNumber = 1;
@@ -100,7 +115,7 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             try {
                 String[] values = parseCsvLine(line);
                 boolean processed = processCsvLine(values, nameIndex, displayKeyIndex, categoryNameIndex, activeIndex,
-                        localeColumnIndexes);
+                        localeColumnIndexes, existingTypesByName, existingCategoriesByName);
                 if (processed) {
                     processedCount++;
                 }
@@ -150,7 +165,8 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
     }
 
     private boolean processCsvLine(String[] values, int nameIndex, int displayKeyIndex, int categoryNameIndex,
-            int activeIndex, Map<String, Integer> localeColumnIndexes) {
+            int activeIndex, Map<String, Integer> localeColumnIndexes, Map<String, NceType> existingTypesByName,
+            Map<String, NceCategory> existingCategoriesByName) {
         String name = getValueOrEmpty(values, nameIndex);
         String displayKey = getValueOrEmpty(values, displayKeyIndex);
         String categoryName = getValueOrEmpty(values, categoryNameIndex);
@@ -160,12 +176,12 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             return false;
         }
 
-        // Find the corresponding nce_category
-        NceCategory category = findCategoryByName(categoryName);
+        // Find the corresponding nce_category (O(1) lookup)
+        NceCategory category = categoryName.isEmpty() ? null : existingCategoriesByName.get(categoryName);
         Integer categoryId = category != null ? category.getId() : null;
 
-        // Check if type already exists by name
-        NceType existing = findTypeByName(name);
+        // Check if type already exists by name (O(1) lookup)
+        NceType existing = existingTypesByName.get(name);
 
         if (existing != null) {
             // Update existing type
@@ -184,32 +200,12 @@ public class NceTypeConfigurationHandler implements DomainConfigurationHandler {
             type.setSysUserId("1");
 
             nceTypeService.insert(type);
+
+            // Add to map for potential subsequent lookups within same import
+            existingTypesByName.put(name, type);
         }
 
         return true;
-    }
-
-    private NceType findTypeByName(String name) {
-        List<NceType> all = nceTypeService.getAllNceTypes();
-        for (NceType type : all) {
-            if (name.equals(type.getName())) {
-                return type;
-            }
-        }
-        return null;
-    }
-
-    private NceCategory findCategoryByName(String categoryName) {
-        if (categoryName == null || categoryName.isEmpty()) {
-            return null;
-        }
-        List<NceCategory> all = nceCategoryService.getAllNceCategories();
-        for (NceCategory cat : all) {
-            if (categoryName.equals(cat.getName())) {
-                return cat;
-            }
-        }
-        return null;
     }
 
     private void updateType(NceType type, String displayKey, String active, Integer categoryId, String[] values,

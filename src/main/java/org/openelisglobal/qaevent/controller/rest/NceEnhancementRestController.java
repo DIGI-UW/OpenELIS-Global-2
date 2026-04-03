@@ -1,16 +1,23 @@
 package org.openelisglobal.qaevent.controller.rest;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
 import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceAttachment;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.qaevent.valueholder.NceType;
@@ -19,9 +26,13 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -53,6 +64,9 @@ public class NceEnhancementRestController extends BaseRestController {
 
     @Autowired
     private SampleService sampleService;
+
+    @Autowired
+    private NceAttachmentService nceAttachmentService;
 
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateNceNumber() {
@@ -137,6 +151,48 @@ public class NceEnhancementRestController extends BaseRestController {
                 }).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Download an NCE attachment file.
+     *
+     * @param attachmentId the attachment ID
+     * @return the file as a downloadable resource
+     */
+    @GetMapping(value = "/attachments/{attachmentId}/download")
+    public ResponseEntity<Resource> downloadAttachment(@PathVariable Integer attachmentId) {
+        NceAttachment attachment = nceAttachmentService.get(attachmentId);
+        if (attachment == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            Path filePath = Paths.get(attachment.getFilePath());
+            if (!Files.exists(filePath)) {
+                LogEvent.logError(this.getClass().getSimpleName(), "downloadAttachment",
+                        "Attachment file not found on disk: " + filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            byte[] fileContent = Files.readAllBytes(filePath);
+            ByteArrayResource resource = new ByteArrayResource(fileContent);
+
+            String contentType = attachment.getFileType();
+            if (contentType == null || contentType.isEmpty()) {
+                contentType = "application/octet-stream";
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + attachment.getFileName() + "\"")
+                    .contentLength(fileContent.length)
+                    .body(resource);
+        } catch (IOException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "downloadAttachment",
+                    "Error reading attachment file: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     public static class NceCategoryDTO {

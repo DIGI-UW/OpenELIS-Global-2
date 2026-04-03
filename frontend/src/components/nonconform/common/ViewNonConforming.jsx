@@ -367,7 +367,6 @@ export const ViewNonConformingEvent = () => {
                           name="radio-group"
                           onClick={() => {
                             setSelected(row.nceNumber);
-                            console.log(row);
                           }}
                           labelText=""
                           id={row.id}
@@ -529,14 +528,17 @@ export const ViewNonConformingEvent = () => {
                   type={
                     data.severity === "CRITICAL"
                       ? "red"
-                      : data.severity === "HIGH"
+                      : data.severity === "MAJOR"
                         ? "magenta"
-                        : data.severity === "MEDIUM"
+                        : data.severity === "MINOR"
                           ? "blue"
                           : "green"
                   }
                 >
-                  {data.severity}
+                  <FormattedMessage
+                    id={`nce.severity.${data.severity?.toLowerCase() || "low"}`}
+                    defaultMessage={data.severity || "Low"}
+                  />
                 </Tag>
               </div>
             </Column>

@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.bean.NceSampleInfo;
@@ -164,8 +165,10 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             NonConformingEventForm form = objectMapper.readValue(nceDataJson, NonConformingEventForm.class);
             return saveNonConformingEvent(form, files, request);
         } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "postReportNonConformingEventWithAttachments",
+                    e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("success", false, "error", e.getMessage()));
+                    .body(Map.of("success", false, "error", "Failed to process request"));
         }
     }
 
@@ -208,9 +211,14 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok().body(Map.of("success", true));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        } catch (IllegalArgumentException e) {
+            // Validation error (file size, type, etc.) - safe to return to client
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("success", false, "error", e.getMessage()));
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "saveNonConformingEvent", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", "An unexpected error occurred while saving the NCE"));
         }
     }
 

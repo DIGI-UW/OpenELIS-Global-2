@@ -2,12 +2,14 @@ package org.openelisglobal.qaevent.valueholder;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -36,8 +38,8 @@ public class NceType extends BaseObject<Integer> {
     @Column(name = "active")
     private Boolean active;
 
-    // TODO: Add name_localization_id column to database before enabling
-    @Transient
+    @OneToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "name_localization_id", referencedColumnName = "id")
     private Localization nameLocalization;
 
     @Override

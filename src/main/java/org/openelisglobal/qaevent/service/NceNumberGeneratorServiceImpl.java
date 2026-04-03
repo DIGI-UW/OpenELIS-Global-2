@@ -12,8 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service implementation for generating unique NCE numbers. Thread-safe
- * implementation using database-level locking.
+ * Service implementation for generating unique NCE numbers.
+ *
+ * <p>Uses synchronized method to ensure thread safety within the single JVM.
+ * A unique constraint on nc_event.nce_number (added via Liquibase migration
+ * nce-016) provides an additional safety net against duplicates.
  */
 @Service
 public class NceNumberGeneratorServiceImpl implements NceNumberGeneratorService {
@@ -48,7 +51,6 @@ public class NceNumberGeneratorServiceImpl implements NceNumberGeneratorService 
     public int getCurrentSequenceForYear(int year) {
         try {
             String yearPrefix = String.format("%s-%d-", NCE_NUMBER_PREFIX, year);
-            // Use native SQL for the cast operation
             String sql = "SELECT MAX(CAST(SUBSTRING(nce_number, 10) AS INTEGER)) "
                     + "FROM clinlims.nc_event WHERE nce_number LIKE :yearPrefix";
             Query query = entityManager.createNativeQuery(sql);

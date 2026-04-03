@@ -197,6 +197,62 @@
     </changeSet>
 
     <!-- ================================================================== -->
+    <!-- Add name_localization_id to nce_category table                     -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-014-add-nce-category-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_category"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_category" columnName="name_localization_id"/>
+            </not>
+        </preConditions>
+        <comment>Add name_localization_id column to nce_category table for localization support</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_category">
+            <column name="name_localization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="fk_nce_category_localization"
+            baseTableSchemaName="clinlims"
+            baseTableName="nce_category"
+            baseColumnNames="name_localization_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="localization"
+            referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add name_localization_id to nce_type table                         -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-015-add-nce-type-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_type"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_type" columnName="name_localization_id"/>
+            </not>
+        </preConditions>
+        <comment>Add name_localization_id column to nce_type table for localization support</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_type">
+            <column name="name_localization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="fk_nce_type_localization"
+            baseTableSchemaName="clinlims"
+            baseTableName="nce_type"
+            baseColumnNames="name_localization_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="localization"
+            referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
     <!-- Add NCE Dashboard menu item under Non-Conformity menu              -->
     <!-- ================================================================== -->
     <changeSet author="reagan-meant" id="nce-012-add-dashboard-menu">
@@ -219,6 +275,26 @@
                 true
             FROM clinlims.menu;
         </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add unique constraint on nc_event.nce_number                       -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-016-unique-nce-number">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <columnExists schemaName="clinlims" tableName="nc_event" columnName="nce_number"/>
+            <not>
+                <indexExists schemaName="clinlims" indexName="uq_nc_event_nce_number"/>
+            </not>
+        </preConditions>
+        <comment>Add unique constraint on nce_number to prevent duplicate NCE numbers</comment>
+
+        <addUniqueConstraint
+            schemaName="clinlims"
+            tableName="nc_event"
+            columnNames="nce_number"
+            constraintName="uq_nc_event_nce_number"/>
     </changeSet>
 
 </databaseChangeLog>
