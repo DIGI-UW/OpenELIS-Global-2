@@ -114,7 +114,7 @@ export async function createAnalyzerFromProfile(
   // Select profile (auto-fills fields)
   if (config.profileName) {
     await form.selectDefaultConfig(config.profileName);
-    await presentation.pause(1_000);
+    await presentation.pause(500);
   }
 
   // Select analyzer type (may already be set by profile)
