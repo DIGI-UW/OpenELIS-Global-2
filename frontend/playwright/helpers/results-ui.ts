@@ -1,5 +1,5 @@
 import { expect, Locator, Page } from "@playwright/test";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "./timeouts";
+import { LONG_TIMEOUT, SHORT_TIMEOUT, UI_TIMEOUT } from "./timeouts";
 
 /**
  * Mirrors {@link frontend/src/components/utils/Utils.js} `convertAlphaNumLabNumForDisplay`.
@@ -89,18 +89,17 @@ async function navigateUntilVisible(
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      // First attempt navigates; retries reload the same page context.
-      // page.reload() reuses the existing frame, avoiding the dispatcher
-      // object churn from repeated goto() that causes
-      // "Object with guid response@… was not bound in the connection".
+      // Retry in the same frame and wait on visible content instead of a full
+      // load event. That avoids dispatcher churn on results pages that keep
+      // fetching data after navigation starts.
       if (attempt === 1) {
         await page.goto(url, {
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
           timeout: perAttemptTimeoutMs,
         });
       } else {
         await page.reload({
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
           timeout: perAttemptTimeoutMs,
         });
       }
@@ -139,6 +138,29 @@ export async function openAnalyzerResultsAndWaitForText(
     () => locatorForAccessionNumber(page, visibleText),
     options,
   );
+}
+
+/**
+ * Verify a result value is visible on the staging page. Checks input fields
+ * first (editable numeric results render as <input>), falls back to text nodes
+ * (read-only or dictionary results render as plain text).
+ */
+export async function expectResultVisible(
+  resultsRegion: Locator,
+  resultValue: string,
+): Promise<void> {
+  const inputResult = resultsRegion
+    .locator(`input[value*="${resultValue}"]`)
+    .first();
+  try {
+    await expect(inputResult).toBeVisible({ timeout: SHORT_TIMEOUT });
+    return;
+  } catch {
+    // Input not found — try text match
+  }
+  await expect(
+    resultsRegion.getByText(resultValue, { exact: false }).first(),
+  ).toBeVisible({ timeout: UI_TIMEOUT });
 }
 
 export async function openAccessionResultsAndWaitForText(
