@@ -18,8 +18,11 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import jakarta.annotation.PostConstruct;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,6 +63,25 @@ public class SystemAuditEventRestController {
     @Autowired
     private SystemUserService systemUserService;
 
+    // Cached at startup — reference table mappings rarely change
+    private Map<String, String> refTableNameToId = Collections.emptyMap();
+    private Map<String, String> refTableIdToName = Collections.emptyMap();
+
+    @PostConstruct
+    private void initRefTableCache() {
+        Map<String, String> nameToId = new HashMap<>();
+        Map<String, String> idToName = new HashMap<>();
+        for (String tableName : SYSTEM_ENTITY_TABLE_NAMES) {
+            ReferenceTables rt = referenceTablesService.getReferenceTableByName(tableName);
+            if (rt != null) {
+                nameToId.put(tableName, rt.getId());
+                idToName.put(rt.getId(), tableName);
+            }
+        }
+        this.refTableNameToId = Collections.unmodifiableMap(nameToId);
+        this.refTableIdToName = Collections.unmodifiableMap(idToName);
+    }
+
     @GetMapping("/rest/systemAuditEvents")
     public ResponseEntity<Map<String, Object>> getSystemAuditEvents(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate, @RequestParam(required = false) String userId,
@@ -77,7 +99,6 @@ public class SystemAuditEventRestController {
                 page, safePageSize);
         long totalItems = historyService.getSystemEventHistoryCount(start, end, userId, refTableIds, action, search);
 
-        Map<String, String> refTableIdToName = buildRefTableIdToNameMap();
         Map<String, String> userCache = new HashMap<>();
 
         List<Map<String, Object>> items = events.stream().map(h -> {
@@ -88,6 +109,7 @@ public class SystemAuditEventRestController {
             item.put("entityType", refTableIdToName.getOrDefault(h.getReferenceTable(), h.getReferenceTable()));
             item.put("entityId", h.getReferenceId());
             item.put("action", mapActivity(h.getActivity()));
+            item.put("changes", parseChanges(h));
             return item;
         }).collect(Collectors.toList());
 
@@ -104,14 +126,11 @@ public class SystemAuditEventRestController {
     @GetMapping("/rest/systemAuditEvents/entityTypes")
     public ResponseEntity<List<Map<String, String>>> getEntityTypes() {
         List<Map<String, String>> types = new ArrayList<>();
-        for (String tableName : SYSTEM_ENTITY_TABLE_NAMES) {
-            ReferenceTables rt = referenceTablesService.getReferenceTableByName(tableName);
-            if (rt != null) {
-                Map<String, String> entry = new LinkedHashMap<>();
-                entry.put("id", rt.getId());
-                entry.put("name", tableName);
-                types.add(entry);
-            }
+        for (Map.Entry<String, String> entry : refTableNameToId.entrySet()) {
+            Map<String, String> type = new LinkedHashMap<>();
+            type.put("id", entry.getValue());
+            type.put("name", entry.getKey());
+            types.add(type);
         }
         return ResponseEntity.ok(types);
     }
@@ -131,7 +150,7 @@ public class SystemAuditEventRestController {
 
         List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search, 1,
                 MAX_EXPORT_ROWS);
-        Map<String, String> refTableIdToName = buildRefTableIdToNameMap();
+        // refTableIdToName is cached at startup via @PostConstruct
         Map<String, String> userCache = new HashMap<>();
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -165,7 +184,7 @@ public class SystemAuditEventRestController {
 
         List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search, 1,
                 MAX_EXPORT_ROWS);
-        Map<String, String> refTableIdToName = buildRefTableIdToNameMap();
+        // refTableIdToName is cached at startup via @PostConstruct
         Map<String, String> userCache = new HashMap<>();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -217,34 +236,55 @@ public class SystemAuditEventRestController {
 
     private List<String> resolveReferenceTableIds(String entityType) {
         if (entityType == null || entityType.isEmpty()) {
-            List<String> allIds = new ArrayList<>();
-            for (String tableName : SYSTEM_ENTITY_TABLE_NAMES) {
-                ReferenceTables rt = referenceTablesService.getReferenceTableByName(tableName);
-                if (rt != null) {
-                    allIds.add(rt.getId());
-                }
-            }
-            return allIds;
+            return new ArrayList<>(refTableNameToId.values());
         }
         List<String> ids = new ArrayList<>();
         for (String name : entityType.split(",")) {
-            ReferenceTables rt = referenceTablesService.getReferenceTableByName(name.trim());
-            if (rt != null) {
-                ids.add(rt.getId());
+            String id = refTableNameToId.get(name.trim());
+            if (id != null) {
+                ids.add(id);
             }
         }
         return ids;
     }
 
-    private Map<String, String> buildRefTableIdToNameMap() {
-        Map<String, String> map = new HashMap<>();
-        for (String tableName : SYSTEM_ENTITY_TABLE_NAMES) {
-            ReferenceTables rt = referenceTablesService.getReferenceTableByName(tableName);
-            if (rt != null) {
-                map.put(rt.getId(), tableName);
-            }
+    /**
+     * Parse the XML-encoded changes blob into a map of field name → new value. The
+     * format is: {@code <fieldName>value</fieldName>\n} per changed field.
+     */
+    private Map<String, String> parseChanges(History history) {
+        if (history.getChanges() == null || "I".equals(history.getActivity())) {
+            return Collections.emptyMap();
         }
-        return map;
+        try {
+            String xml = new String(history.getChanges(), StandardCharsets.UTF_8);
+            Map<String, String> changes = new LinkedHashMap<>();
+            int pos = 0;
+            while (pos < xml.length()) {
+                int openStart = xml.indexOf('<', pos);
+                if (openStart < 0) break;
+                int openEnd = xml.indexOf('>', openStart);
+                if (openEnd < 0) break;
+                String tag = xml.substring(openStart + 1, openEnd);
+                if (tag.startsWith("/")) {
+                    pos = openEnd + 1;
+                    continue;
+                }
+                String closeTag = "</" + tag + ">";
+                int closeStart = xml.indexOf(closeTag, openEnd);
+                if (closeStart < 0) {
+                    pos = openEnd + 1;
+                    continue;
+                }
+                String value = xml.substring(openEnd + 1, closeStart);
+                changes.put(tag, value);
+                pos = closeStart + closeTag.length();
+            }
+            return changes;
+        } catch (Exception e) {
+            LogEvent.logWarn("SystemAuditEventRestController", "Failed to parse changes for history " + history.getId());
+            return Collections.emptyMap();
+        }
     }
 
     private String resolveUserName(String sysUserId, Map<String, String> cache) {
