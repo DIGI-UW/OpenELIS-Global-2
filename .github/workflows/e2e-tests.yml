@@ -9,7 +9,7 @@ on:
     types: [completed]
 
 concurrency:
-  group: e2e-tests-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  group: e2e-tests-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
