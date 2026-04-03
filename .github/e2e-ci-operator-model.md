@@ -41,8 +41,8 @@ Requires default-branch merge (controls `workflow_run` orchestration):
 
 - Non-fork PRs: `03 - E2E` publishes GHCR cache directly, then `E2E / Tests`
   consumes those artifacts (`cross_run` mode) and reports `03 Checkpoint - E2E`.
-- Fork PRs: `03 - E2E` records `fork-fallback` (read-only token cannot push
-  to GHCR), then `E2E / Tests` detects the fork via the build-context artifact,
+- Fork PRs: `03 - E2E` records `fork-fallback` (read-only token cannot push to
+  GHCR), then `E2E / Tests` detects the fork via the build-context artifact,
   runs `fork-rebuild` within the `workflow_run` context (which has the repo's
   write token), pushes images to GHCR, and passes them to the executor via
   `same_run` artifact mode. This follows the GitHub Security Lab recommended
