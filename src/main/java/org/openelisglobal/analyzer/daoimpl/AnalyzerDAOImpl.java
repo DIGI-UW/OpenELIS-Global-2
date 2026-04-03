@@ -131,4 +131,17 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
             throw new LIMSRuntimeException("Multiple Analyzers found for IP " + ipAddress + " and port " + port, e);
         }
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        if (discoveredSourceId == null || discoveredSourceId.isBlank()) {
+            return Optional.empty();
+        }
+        String hql = "FROM Analyzer a WHERE a.discoveredSourceId = :sourceId";
+        Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
+        query.setParameter("sourceId", discoveredSourceId);
+        Analyzer result = query.uniqueResult();
+        return Optional.ofNullable(result);
+    }
 }

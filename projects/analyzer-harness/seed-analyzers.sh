@@ -295,38 +295,13 @@ echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
 # Clean stale data (default). Ensures clean baseline on every startup.
+# Matches container_name on db.openelis.org in docker-compose.base.yml / build.docker-compose.yml.
 resolve_db_container() {
-  local names
-  names="$(docker ps -a --format '{{.Names}}' || true)"
-
   if [ -n "${DB_CONTAINER:-}" ]; then
     echo "$DB_CONTAINER"
     return 0
   fi
-
-  for candidate in analyzer-harness-db-1 openelisglobal-database; do
-    if printf '%s\n' "$names" | grep -Fx "$candidate" >/dev/null; then
-      echo "$candidate"
-      return 0
-    fi
-  done
-
-  local detected
-  detected=$(printf '%s\n' "$names" | grep -i 'db' | head -n 1 || true)
-  if [ -n "$detected" ]; then
-    echo "$detected"
-    return 0
-  fi
-
-  echo "ERROR: Could not determine database container for analyzer cleanup." >&2
-  if [ -n "$names" ]; then
-    echo "Known containers: $names" | tr '\n' ' ' >&2
-    echo >&2
-  else
-    echo "Known containers: (none)" >&2
-  fi
-  echo "Set DB_CONTAINER explicitly to override auto-detection." >&2
-  return 1
+  echo "openelisglobal-database"
 }
 
 DB_CONTAINER="$(resolve_db_container)"
