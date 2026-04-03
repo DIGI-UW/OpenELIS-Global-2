@@ -89,18 +89,17 @@ async function navigateUntilVisible(
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      // First attempt navigates; retries reload the same page context.
-      // page.reload() reuses the existing frame, avoiding the dispatcher
-      // object churn from repeated goto() that causes
-      // "Object with guid response@… was not bound in the connection".
+      // Retry in the same frame and wait on visible content instead of a full
+      // load event. That avoids dispatcher churn on results pages that keep
+      // fetching data after navigation starts.
       if (attempt === 1) {
         await page.goto(url, {
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
           timeout: perAttemptTimeoutMs,
         });
       } else {
         await page.reload({
-          waitUntil: "load",
+          waitUntil: "domcontentloaded",
           timeout: perAttemptTimeoutMs,
         });
       }
