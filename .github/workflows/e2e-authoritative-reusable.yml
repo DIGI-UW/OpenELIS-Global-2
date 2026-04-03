@@ -74,14 +74,12 @@ jobs:
       actions: read
     with:
       projects: "core-app,core-demo"
-      shard_total: 2
       artifact_prefix: "core"
       compose_files: "build.docker-compose.yml"
       fixture_mode: "core"
       setup_analyzer_harness: false
       build_run_id: ${{ inputs.build_run_id }}
       artifact_source_mode: ${{ inputs.artifact_source_mode }}
-      is_fork: ${{ inputs.is_fork }}
       checkout_ref: ${{ inputs.checkout_ref }}
       test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
       test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
@@ -98,14 +96,12 @@ jobs:
       actions: read
     with:
       projects: "harness-foundational,harness-demo"
-      shard_total: 2
       artifact_prefix: "harness"
       compose_files: "build.docker-compose.yml,projects/analyzer-harness/docker-compose.base.yml,.github/ci/ci.analyzer-harness.yml"
       fixture_mode: "harness"
       setup_analyzer_harness: true
       build_run_id: ${{ inputs.build_run_id }}
       artifact_source_mode: ${{ inputs.artifact_source_mode }}
-      is_fork: ${{ inputs.is_fork }}
       checkout_ref: ${{ inputs.checkout_ref }}
       test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
       test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}

@@ -12,11 +12,6 @@ on:
         description: "Comma-separated Playwright projects to run (e.g. core-app,core-demo)"
         required: true
         type: string
-      shard_total:
-        description: "Number of shards to split tests across"
-        required: false
-        type: number
-        default: 2
       artifact_prefix:
         description: "Prefix for artifact names (e.g. core, harness)"
         required: true
@@ -47,11 +42,6 @@ on:
         required: false
         type: string
         default: "cross_run"
-      is_fork:
-        description: "Whether execution context is fork-native"
-        required: false
-        type: string
-        default: "false"
       checkout_ref:
         description: "Ref to checkout for test execution"
         required: false
@@ -71,7 +61,7 @@ on:
 jobs:
   # ─── Test Shards ────────────────────────────────────────────────────────────
   test-shards:
-    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/${{ inputs.shard_total }}
+    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/2
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -196,12 +186,16 @@ jobs:
 
       - name: Start containers (no rebuild)
         run: |
-          COMPOSE_CMD="docker compose"
+          COMPOSE_CMD=(docker compose)
           IFS=',' read -ra FILES <<< "${{ inputs.compose_files }}"
           for f in "${FILES[@]}"; do
-            COMPOSE_CMD+=" -f $f"
+            f="${f#"${f%%[![:space:]]*}"}"
+            f="${f%"${f##*[![:space:]]}"}"
+            if [ -n "$f" ]; then
+              COMPOSE_CMD+=(-f "$f")
+            fi
           done
-          $COMPOSE_CMD up -d --no-build --wait --wait-timeout 900
+          "${COMPOSE_CMD[@]}" up -d --no-build --wait --wait-timeout 900
 
       - name: Validate cert material in shared volume mounts
         if: inputs.setup_analyzer_harness
@@ -328,7 +322,10 @@ jobs:
           for p in "${PROJECTS[@]}"; do
             CMD+=("--project=$p")
           done
-          CMD+=("--shard=${{ matrix.shard_index }}/${{ inputs.shard_total }}")
+          CMD+=("--shard=${{ matrix.shard_index }}/2")
+          if [[ "${{ inputs.setup_analyzer_harness }}" == "true" ]]; then
+            CMD+=("--workers=1")
+          fi
           printf 'Running: %s\n' "${CMD[*]}"
           "${CMD[@]}"
         working-directory: frontend
@@ -397,6 +394,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
@@ -411,6 +409,15 @@ jobs:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*
           merge-multiple: true
+
+      - name: Validate blob reports were downloaded
+        if: ${{ needs.test-shards.result == 'success' }}
+        run: |
+          if [ ! -d ./all-blob-reports ] || [ -z "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            echo "::error::Test shards succeeded but no blob reports were downloaded"
+            exit 1
+          fi
+        working-directory: frontend
 
       - name: Resolve Playwright version for report merge
         id: playwright-version
