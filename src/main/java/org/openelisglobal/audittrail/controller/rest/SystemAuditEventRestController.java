@@ -93,10 +93,11 @@ public class SystemAuditEventRestController {
         Timestamp end = parseEndDate(endDate);
         List<String> refTableIds = resolveReferenceTableIds(entityType);
 
+        int safePage = Math.max(1, page);
         int safePageSize = Math.max(1, Math.min(pageSize, 100));
 
         List<History> events = historyService.getSystemEventHistory(start, end, userId, refTableIds, action, search,
-                page, safePageSize);
+                safePage, safePageSize);
         long totalItems = historyService.getSystemEventHistoryCount(start, end, userId, refTableIds, action, search);
 
         Map<String, String> userCache = new HashMap<>();
@@ -115,7 +116,7 @@ public class SystemAuditEventRestController {
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("events", items);
-        response.put("page", page);
+        response.put("page", safePage);
         response.put("pageSize", safePageSize);
         response.put("totalItems", totalItems);
         response.put("totalPages", (int) Math.ceil((double) totalItems / safePageSize));
