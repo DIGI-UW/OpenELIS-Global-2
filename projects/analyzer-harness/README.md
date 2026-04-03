@@ -6,6 +6,7 @@ This directory now follows a single authoritative path for analyzer E2E parity.
 
 The analyzer harness CI gate runs from the repository root using:
 
+- `projects/analyzer-harness/docker-compose.base.yml`
 - `build.docker-compose.yml`
 - `.github/ci/ci.analyzer-harness.yml`
 - `.github/workflows/e2e-playwright-analyzer-harness-reusable.yml`
@@ -35,18 +36,20 @@ The authoritative harness startup catalog lives under
 `seed-analyzers.sh` now hard-fails if the startup catalog cannot realize the
 required profile mappings for the seeded analyzers.
 
-## Local Convenience Flavors
+## Local Compose Layers
 
-Legacy local compose files remain for convenience during migration:
+Local harness startup now uses the same canonical service identities as CI, with
+local-only overrides layered on top:
 
+- `docker-compose.base.yml`
 - `docker-compose.dev.yml`
 - `docker-compose.analyzer-test.yml`
 - `docker-compose.letsencrypt.yml`
 
-They are local-only flavors and must not drift behaviorally from the
-authoritative CI base for critical analyzer flows.
+These files must not drift behaviorally from the authoritative CI harness path
+for critical analyzer flows.
 
-## Build and start from scratch (legacy local flavor)
+## Build and start from scratch
 
 ```bash
 ./build.sh
@@ -56,7 +59,7 @@ authoritative CI base for critical analyzer flows.
 Uses `.env` from this dir or repo root (e.g.
 `LETSENCRYPT_DOMAIN=analyzers.openelis-global.org`).
 
-## Quick start (legacy local flavor)
+## Quick start
 
 From this directory:
 
@@ -64,10 +67,10 @@ From this directory:
 cd /home/ubuntu/OpenELIS-Global-2/projects/analyzer-harness
 
 # Start core stack
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml up -d
 
 # Start analyzer test infrastructure (bridge + simulator + virtual serial)
-docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml up -d
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d
 ```
 
 Then load analyzer fixtures from the repo root (legacy flow):
@@ -79,9 +82,10 @@ cd /home/ubuntu/OpenELIS-Global-2
 
 ## Hot reload (after backend code changes)
 
-The harness mounts `../../target/OpenELIS-Global.war` into the `oe` container.
-After changing Java code, rebuild the WAR and **force-recreate** the container
-(Tomcat caches the exploded WAR; a plain `restart` will serve stale classes):
+The harness mounts `../../target/OpenELIS-Global.war` into the `oe.openelis.org`
+container. After changing Java code, rebuild the WAR and **force-recreate** the
+container (Tomcat caches the exploded WAR; a plain `restart` will serve stale
+classes):
 
 ```bash
 # From repo root
@@ -89,8 +93,8 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # From harness directory — force-recreate clears the Tomcat WAR cache
 cd projects/analyzer-harness
-docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml \
-  -f docker-compose.letsencrypt.yml up -d --force-recreate oe
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml \
+  -f docker-compose.letsencrypt.yml up -d --force-recreate oe.openelis.org
 ```
 
 Frontend changes hot-reload automatically (mounted volume).
@@ -103,7 +107,7 @@ For exact CI parity, prefer:
 ./projects/analyzer-harness/ci-parity-test.sh
 ```
 
-For legacy local convenience mode, run:
+For local restart mode, run:
 
 ```bash
 ./projects/analyzer-harness/reset-env.sh [options]
