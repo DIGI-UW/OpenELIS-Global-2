@@ -35,10 +35,15 @@ public class TATCalculationServiceImpl implements TATCalculationService {
             return null;
         }
 
+        // Reject negative durations (data entry errors where end < start)
+        Duration elapsed = Duration.between(start.toInstant(), end.toInstant());
+        if (elapsed.isNegative()) {
+            return null;
+        }
+
         if (mode == TATCalculationMode.CALENDAR) {
-            // Simple elapsed hours
-            long hours = Duration.between(start.toInstant(), end.toInstant()).toHours();
-            long minutes = Duration.between(start.toInstant(), end.toInstant()).toMinutes() % 60;
+            long hours = elapsed.toHours();
+            long minutes = elapsed.toMinutes() % 60;
             return BigDecimal.valueOf(hours)
                     .add(BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP));
         }
@@ -74,7 +79,12 @@ public class TATCalculationServiceImpl implements TATCalculationService {
                 LocalDate holidayDate = h.getHolidayDate().toLocalDate();
                 if (h.getIsRecurring()) {
                     // For recurring, check the same month/day in the target year
-                    holidayDate = LocalDate.of(year, holidayDate.getMonthValue(), holidayDate.getDayOfMonth());
+                    try {
+                        holidayDate = LocalDate.of(year, holidayDate.getMonthValue(), holidayDate.getDayOfMonth());
+                    } catch (java.time.DateTimeException e) {
+                        // Feb 29 in non-leap year — skip this holiday for this year
+                        continue;
+                    }
                 }
                 if (!holidayDate.isBefore(from) && !holidayDate.isAfter(to)) {
                     excluded.add(holidayDate);

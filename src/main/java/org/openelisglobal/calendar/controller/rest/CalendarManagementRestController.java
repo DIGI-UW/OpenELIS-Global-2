@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/rest/calendar")
@@ -50,7 +51,8 @@ public class CalendarManagementRestController extends BaseRestController {
 
     @GetMapping("/holidays")
     public ResponseEntity<Map<String, Object>> getHolidays(@RequestParam(required = false) Integer year,
-            @RequestParam(defaultValue = "false") boolean includeInactive) {
+            @RequestParam(defaultValue = "false") boolean includeInactive, HttpServletRequest request) {
+        requireAuthenticatedUser(request);
         int targetYear = year != null ? year : Calendar.getInstance().get(Calendar.YEAR);
         List<PublicHoliday> holidays = publicHolidayService.getHolidaysForYear(targetYear, includeInactive);
         Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());
@@ -68,7 +70,7 @@ public class CalendarManagementRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> createHoliday(@RequestBody Map<String, Object> body,
             HttpServletRequest request) {
         PublicHoliday holiday = parseHolidayFromBody(body);
-        Integer sysUserId = Integer.valueOf(getSysUserId(request));
+        Integer sysUserId = requireAuthenticatedUser(request);
         try {
             PublicHoliday created = publicHolidayService.create(holiday, sysUserId);
             Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());
@@ -89,7 +91,7 @@ public class CalendarManagementRestController extends BaseRestController {
             return ResponseEntity.notFound().build();
         }
         updateHolidayFromBody(existing, body);
-        Integer sysUserId = Integer.valueOf(getSysUserId(request));
+        Integer sysUserId = requireAuthenticatedUser(request);
         try {
             PublicHoliday updated = publicHolidayService.update(existing, sysUserId);
             Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());
@@ -103,7 +105,8 @@ public class CalendarManagementRestController extends BaseRestController {
     }
 
     @DeleteMapping("/holidays/{id}")
-    public ResponseEntity<Void> deleteHoliday(@PathVariable Integer id) {
+    public ResponseEntity<Void> deleteHoliday(@PathVariable Integer id, HttpServletRequest request) {
+        requireAuthenticatedUser(request);
         PublicHoliday existing = publicHolidayService.getById(id);
         if (existing == null) {
             return ResponseEntity.notFound().build();
@@ -118,7 +121,7 @@ public class CalendarManagementRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> importHolidays(@RequestParam("file") MultipartFile file,
             @RequestParam(required = false) Integer year, HttpServletRequest request) throws IOException {
         int targetYear = year != null ? year : Calendar.getInstance().get(Calendar.YEAR);
-        Integer sysUserId = Integer.valueOf(getSysUserId(request));
+        Integer sysUserId = requireAuthenticatedUser(request);
 
         List<PublicHoliday> parsed = parseCsvFile(file);
         PublicHolidayService.ImportResult result = publicHolidayService.importHolidays(parsed, targetYear, sysUserId);
@@ -132,8 +135,9 @@ public class CalendarManagementRestController extends BaseRestController {
     }
 
     @GetMapping("/holidays/export")
-    public void exportHolidays(@RequestParam(required = false) Integer year, HttpServletResponse response)
-            throws IOException {
+    public void exportHolidays(@RequestParam(required = false) Integer year, HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
+        requireAuthenticatedUser(request);
         int targetYear = year != null ? year : Calendar.getInstance().get(Calendar.YEAR);
         List<PublicHoliday> holidays = publicHolidayService.getHolidaysForYear(targetYear, true);
 
@@ -151,7 +155,8 @@ public class CalendarManagementRestController extends BaseRestController {
     // ========== Weekend Config Endpoints ==========
 
     @GetMapping("/weekends")
-    public ResponseEntity<Map<String, Object>> getWeekends() {
+    public ResponseEntity<Map<String, Object>> getWeekends(HttpServletRequest request) {
+        requireAuthenticatedUser(request);
         List<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers();
         return ResponseEntity.ok(Map.of("weekendDays", weekendDays));
     }
@@ -170,7 +175,7 @@ public class CalendarManagementRestController extends BaseRestController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Day of week must be 0-6, got: " + day));
             }
         }
-        Integer sysUserId = Integer.valueOf(getSysUserId(request));
+        Integer sysUserId = requireAuthenticatedUser(request);
         weekendConfigService.updateWeekendDays(weekendDays, sysUserId);
         return ResponseEntity.ok(Map.of("weekendDays", weekendDays));
     }
@@ -197,8 +202,20 @@ public class CalendarManagementRestController extends BaseRestController {
 
     private PublicHoliday parseHolidayFromBody(Map<String, Object> body) {
         PublicHoliday holiday = new PublicHoliday();
-        holiday.setHolidayDate(Date.valueOf((String) body.get("date")));
-        holiday.setHolidayName((String) body.get("name"));
+        String dateStr = (String) body.get("date");
+        String name = (String) body.get("name");
+        if (dateStr == null || dateStr.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "date is required");
+        }
+        if (name == null || name.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
+        }
+        try {
+            holiday.setHolidayDate(Date.valueOf(dateStr));
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format, expected yyyy-MM-dd");
+        }
+        holiday.setHolidayName(name.trim());
         holiday.setIsRecurring(body.get("isRecurring") != null && (Boolean) body.get("isRecurring"));
         return holiday;
     }
@@ -254,12 +271,27 @@ public class CalendarManagementRestController extends BaseRestController {
         return holidays;
     }
 
+    /** CSV formula injection protection + quoting */
     private String escapeCsv(String value) {
-        if (value == null)
+        if (value == null) {
             return "";
+        }
+        // Prevent CSV formula injection (=, +, -, @, \t, \r)
+        if (!value.isEmpty() && "=+-@\t\r".indexOf(value.charAt(0)) >= 0) {
+            value = "'" + value;
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;
+    }
+
+    /** Verify user is authenticated, return user ID or throw 401 */
+    private Integer requireAuthenticatedUser(HttpServletRequest request) {
+        String userId = getSysUserId(request);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+        }
+        return Integer.valueOf(userId);
     }
 }

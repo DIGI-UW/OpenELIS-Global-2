@@ -1,11 +1,15 @@
 package org.openelisglobal.reports.tat.bean;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 
 public class TATResult {
 
     private String labNumber;
+
+    /** Not populated in V1 — gated by patient-data permission in future. */
+    @JsonIgnore
     private String patientName;
     private String testName;
     private String labUnit;
