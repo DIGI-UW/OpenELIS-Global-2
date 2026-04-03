@@ -1,7 +1,12 @@
 package org.openelisglobal.report.service.impl;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
@@ -166,6 +171,22 @@ public class PatientReportServiceImpl implements PatientReportService {
 
         // Define Rows
         List<ReportRow> rows = new ArrayList<>();
+
+        // creating and populating a set to store all testids
+        Set<String> testIds = new HashSet<>();
+        for (TestResultItem item : results) {
+            testIds.add(item.getTestId());
+        }
+
+        // fetching all tests by testids
+        List<Test> tests = testService.getTestsByIds(testIds);
+
+        // storing all tests in a map for O(1) lookup
+        Map<String, Test> testsMap = new HashMap<>();
+        for (Test test : tests) {
+            testsMap.put(test.getId(), test);
+        }
+
         for (TestResultItem item : results) {
             if (item.getIsGroupSeparator()) {
                 continue;
@@ -179,7 +200,7 @@ public class PatientReportServiceImpl implements PatientReportService {
 
             // Build row data by column key so order matches definition
             for (ReportColumn col : columns) {
-                String value = getCellValue(col.getKey(), item, patient, orgName, clinician, collectionDate);
+                String value = getCellValue(col.getKey(), item, patient, orgName, clinician, collectionDate, testsMap);
                 row.addData(col.getKey(), value);
                 row.addCell(value);
             }
@@ -190,45 +211,45 @@ public class PatientReportServiceImpl implements PatientReportService {
     }
 
     private String getCellValue(String key, TestResultItem item, Patient patient, String orgName, String clinician,
-            String collectionDate) {
+            String collectionDate, Map<String, Test> testsMap) {
         if (key == null) {
             return "";
         }
         switch (key) {
-        case "accessionNumber":
-            return item.getAccessionNumber() != null ? item.getAccessionNumber() : "";
-        case "patientName":
-            return item.getPatientName() != null ? item.getPatientName() : "";
-        case "patientExternalId":
-            return patient.getExternalId() != null ? patient.getExternalId() : "";
-        case "patientGender":
-            return patient.getGender() != null ? patient.getGender() : "";
-        case "patientDateOfBirth":
-            return patient.getBirthDateForDisplay() != null ? patient.getBirthDateForDisplay() : "";
-        case "organizationName":
-            return orgName != null ? orgName : "";
-        case "sampleCollectionDate":
-            return collectionDate != null ? collectionDate : "";
-        case "sampleReceivedDate":
-            return item.getReceivedDate() != null ? item.getReceivedDate() : "";
-        case "clinicianName":
-            return clinician != null ? clinician : "";
-        case "testName":
-            return item.getTestName() != null ? item.getTestName() : "";
-        case "testDescription":
-            if (item.getTestId() != null) {
-                org.openelisglobal.test.valueholder.Test test = testService.getTestById(item.getTestId());
-                if (test != null && test.getDescription() != null) {
-                    return test.getDescription();
+            case "accessionNumber":
+                return item.getAccessionNumber() != null ? item.getAccessionNumber() : "";
+            case "patientName":
+                return item.getPatientName() != null ? item.getPatientName() : "";
+            case "patientExternalId":
+                return patient.getExternalId() != null ? patient.getExternalId() : "";
+            case "patientGender":
+                return patient.getGender() != null ? patient.getGender() : "";
+            case "patientDateOfBirth":
+                return patient.getBirthDateForDisplay() != null ? patient.getBirthDateForDisplay() : "";
+            case "organizationName":
+                return orgName != null ? orgName : "";
+            case "sampleCollectionDate":
+                return collectionDate != null ? collectionDate : "";
+            case "sampleReceivedDate":
+                return item.getReceivedDate() != null ? item.getReceivedDate() : "";
+            case "clinicianName":
+                return clinician != null ? clinician : "";
+            case "testName":
+                return item.getTestName() != null ? item.getTestName() : "";
+            case "testDescription":
+                if (item.getTestId() != null) {
+                    Test test = testsMap.get(item.getTestId());
+                    if (test != null && test.getDescription() != null) {
+                        return test.getDescription();
+                    }
                 }
-            }
-            return "";
-        case "analysisStatus":
-            return item.getAnalysisStatusId() != null ? item.getAnalysisStatusId() : "";
-        case "resultValue":
-            return item.getResultValue() != null ? item.getResultValue() : "";
-        default:
-            return "";
+                return "";
+            case "analysisStatus":
+                return item.getAnalysisStatusId() != null ? item.getAnalysisStatusId() : "";
+            case "resultValue":
+                return item.getResultValue() != null ? item.getResultValue() : "";
+            default:
+                return "";
         }
     }
 }
