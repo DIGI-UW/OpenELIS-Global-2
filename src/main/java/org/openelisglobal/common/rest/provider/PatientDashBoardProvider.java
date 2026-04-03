@@ -153,12 +153,12 @@ public class PatientDashBoardProvider {
                 iStatusService.getStatusID(AnalysisStatus.Finalized));
 
         List<Analysis> delayedAnalyses = new ArrayList<>();
+        Duration threshold = Duration.ofHours(96);
         analyses.forEach(analysis -> {
             if (analysis.getStartedDate() != null && analysis.getReleasedDate() != null) {
-                Long hoursDiff = Duration
-                        .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant())
-                        .toHours();
-                if (hoursDiff > 96) {
+                Duration elapsed = Duration.between(analysis.getStartedDate().toInstant(),
+                        analysis.getReleasedDate().toInstant());
+                if (elapsed.compareTo(threshold) > 0) {
                     delayedAnalyses.add(analysis);
                 }
             }
