@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- ============================================================ -->
+  <!-- 1. public_holiday table                                       -->
+  <!-- ============================================================ -->
+  <changeSet id="tat-003-01" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="public_holiday" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create public_holiday table for TAT Working Time calculations</comment>
+    <createSequence schemaName="clinlims" sequenceName="public_holiday_seq" startValue="1"/>
+    <createTable schemaName="clinlims" tableName="public_holiday">
+      <column name="id" type="INTEGER" defaultValueSequenceNext="public_holiday_seq">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="holiday_date" type="DATE">
+        <constraints nullable="false"/>
+      </column>
+      <column name="holiday_name" type="VARCHAR(100)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="is_recurring" type="BOOLEAN" defaultValueBoolean="false"/>
+      <column name="is_active" type="BOOLEAN" defaultValueBoolean="true"/>
+      <column name="sys_user_id" type="INTEGER">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 2. weekend_config table + seed data                           -->
+  <!-- ============================================================ -->
+  <changeSet id="tat-003-02" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="weekend_config" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Create weekend_config table with seed data (Sat+Sun as default weekends)</comment>
+    <createSequence schemaName="clinlims" sequenceName="weekend_config_seq" startValue="1"/>
+    <createTable schemaName="clinlims" tableName="weekend_config">
+      <column name="id" type="INTEGER" defaultValueSequenceNext="weekend_config_seq">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="day_of_week" type="INTEGER">
+        <constraints nullable="false" unique="true"/>
+      </column>
+      <column name="is_weekend" type="BOOLEAN" defaultValueBoolean="false"/>
+      <column name="sys_user_id" type="INTEGER">
+        <constraints nullable="false"/>
+      </column>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+    <!-- Seed 7 rows: Sun(0), Mon(1), ..., Sat(6). Saturday+Sunday = weekend -->
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="0"/><column name="is_weekend" valueBoolean="true"/><column name="sys_user_id" value="1"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="1"/><column name="is_weekend" valueBoolean="false"/><column name="sys_user_id" value="1"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="2"/><column name="is_weekend" valueBoolean="false"/><column name="sys_user_id" value="1"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="3"/><column name="is_weekend" valueBoolean="false"/><column name="sys_user_id" value="1"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="4"/><column name="is_weekend" valueBoolean="false"/><column name="sys_user_id" value="1"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="5"/><column name="is_weekend" valueBoolean="false"/><column name="sys_user_id" value="1"/>
+    </insert>
+    <insert schemaName="clinlims" tableName="weekend_config">
+      <column name="day_of_week" value="6"/><column name="is_weekend" valueBoolean="true"/><column name="sys_user_id" value="1"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 3. System Modules: CalendarManagement + TATReport             -->
+  <!-- ============================================================ -->
+  <changeSet id="tat-003-03" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'CalendarManagement'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add CalendarManagement system module</comment>
+    <insert tableName="system_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="CalendarManagement"/>
+      <column name="description" value="Calendar management for public holidays and weekend configuration"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="Y"/>
+      <column name="has_update_flag" value="Y"/>
+      <column name="has_delete_flag" value="Y"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="tat-003-04" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'TATReport'
+      </sqlCheck>
+    </preConditions>
+    <comment>Add TATReport system module</comment>
+    <insert tableName="system_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_seq"/>
+      <column name="name" value="TATReport"/>
+      <column name="description" value="Turn Around Time reporting and analytics"/>
+      <column name="has_select_flag" value="Y"/>
+      <column name="has_add_flag" value="N"/>
+      <column name="has_update_flag" value="N"/>
+      <column name="has_delete_flag" value="N"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 4. System Module URLs                                         -->
+  <!-- ============================================================ -->
+  <changeSet id="tat-003-05" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'CalendarManagement'
+      </sqlCheck>
+    </preConditions>
+    <comment>Register Calendar Management URLs</comment>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/CalendarManagement"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
+    </insert>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/calendar"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="tat-003-06" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'TATReport'
+      </sqlCheck>
+    </preConditions>
+    <comment>Register TAT Report URLs</comment>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/TATReport"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
+    </insert>
+    <insert tableName="system_module_url" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_module_url_seq"/>
+      <column name="url_path" value="/rest/reports/tat"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
+    </insert>
+  </changeSet>
+
+  <!-- ============================================================ -->
+  <!-- 5. Role Assignments: Global Administrator                     -->
+  <!-- ============================================================ -->
+  <changeSet id="tat-003-07" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'CalendarManagement'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
+      </sqlCheck>
+    </preConditions>
+    <comment>Assign CalendarManagement module to Global Administrator</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="Y"/>
+      <column name="has_update" value="Y"/>
+      <column name="has_delete" value="Y"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
+    </insert>
+  </changeSet>
+
+  <changeSet id="tat-003-08" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'TATReport'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Global Administrator'
+      </sqlCheck>
+    </preConditions>
+    <comment>Assign TATReport module to Global Administrator</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="N"/>
+      <column name="has_update" value="N"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
+    </insert>
+  </changeSet>
+
+  <!-- Also assign TATReport to Results role (lab managers typically have this) -->
+  <changeSet id="tat-003-09" author="tat-module">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'TATReport'
+      </sqlCheck>
+      <sqlCheck expectedResult="1">
+        SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results'
+      </sqlCheck>
+    </preConditions>
+    <comment>Assign TATReport module to Results role</comment>
+    <insert tableName="system_role_module" schemaName="clinlims">
+      <column name="id" valueSequenceNext="system_role_module_seq"/>
+      <column name="has_select" value="Y"/>
+      <column name="has_add" value="N"/>
+      <column name="has_update" value="N"/>
+      <column name="has_delete" value="N"/>
+      <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
+      <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
+    </insert>
+  </changeSet>
+
+</databaseChangeLog>
