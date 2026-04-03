@@ -41,8 +41,9 @@ export default defineConfig({
 
   // Parallelization
   fullyParallel: true,
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 1 : undefined,
   // Shard tests in CI via CLI: --shard=current/total (see e.g. analyzer-e2e workflow)
+  // CI uses 1 worker to avoid OOM browser crashes on GH Actions runners (7GB RAM)
 
   // CI safeguards
   forbidOnly: !!process.env.CI,

@@ -304,6 +304,7 @@ test.describe("QuantStudio 7 MVP Workflow", () => {
     await closeButton.click();
 
     // ── Step 8: Verify back at list ──────────────────────────────
+    // OGC-526 propagation verified in foundational file-import.spec.ts (API-level).
     await expect(analyzerList).toBeVisible({ timeout: UI_TIMEOUT });
     await videoPause(page, 1_500, testInfo);
   });

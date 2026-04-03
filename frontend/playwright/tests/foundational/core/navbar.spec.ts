@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Navbar (Header) actions", () => {
   test("logo click navigates to home", async ({ page }) => {
-    await page.goto("/Storage/samples");
+    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#sidenav-menu-button")).toBeVisible();
 
     // Carbon HeaderName renders an anchor; clicking should navigate home
@@ -11,7 +11,7 @@ test.describe("Navbar (Header) actions", () => {
   });
 
   test("search icon toggles search bar", async ({ page }) => {
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#search-Icon")).toBeVisible();
 
     await page.locator("#search-Icon").click();
@@ -23,7 +23,7 @@ test.describe("Navbar (Header) actions", () => {
   });
 
   test("notifications icon opens notifications panel", async ({ page }) => {
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#notification-Icon")).toBeVisible();
 
     await page.locator("#notification-Icon").click();
@@ -37,7 +37,7 @@ test.describe("Navbar (Header) actions", () => {
   test("user icon opens user panel (logout + language selector visible)", async ({
     page,
   }) => {
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#user-Icon")).toBeVisible();
 
     await page.locator("#user-Icon").click();
@@ -48,7 +48,7 @@ test.describe("Navbar (Header) actions", () => {
   });
 
   test("help icon toggles help panel", async ({ page }) => {
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#user-Help")).toBeVisible();
 
     await page.locator("#user-Help").click();
