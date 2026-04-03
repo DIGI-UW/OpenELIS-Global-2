@@ -11,15 +11,12 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.workplan.form.WorkplanForm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.context.TestExecutionListeners;
-import org.springframework.test.context.support.DependencyInjectionTestExecutionListener;
-import org.springframework.test.context.support.DirtiesContextTestExecutionListener;
+import org.openelisglobal.login.valueholder.UserSessionData;
 
 /**
  * Integration tests for WorkplanByPanelRestController.
- *
  * TEST DATA MANAGEMENT: - Uses DBUnit fixture:
- * testdata/WorkplanByPanelRestControllerTestData.xml - ID ranges: 30001-30999
+ * testdata/workplan-by-panel-controller.xml - ID ranges: 30001-30999
  * (domain), 40001-40999 (tests), 50001-50999 (samples) - All test data designed
  * to avoid collisions with other fixtures
  *
@@ -31,17 +28,15 @@ import org.springframework.test.context.support.DirtiesContextTestExecutionListe
  * grouping by accession number - Patient name header insertion (when
  * configured) - Empty panel handling (edge case) - Audit field integrity
  */
-@TestExecutionListeners({ DependencyInjectionTestExecutionListener.class, DirtiesContextTestExecutionListener.class })
 public class WorkplanByPanelRestControllerTest extends BaseWebContextSensitiveTest {
 
-    private static final String TEST_DATA_FILE = "testdata/WorkplanByPanelRestControllerTestData.xml";
+    private static final String TEST_DATA_FILE = "testdata/workplan-by-panel-controller.xml";
     private static final String VALID_PANEL_ID = "30001";
     private static final String EMPTY_PANEL_ID = "30002";
     private static final String INVALID_PANEL_ID = "-1";
 
-    // ✅ Mark as optional - will inject if available, otherwise skip tests
-    // gracefully
-    @Autowired(required = false)
+
+    @Autowired
     private WorkplanByPanelRestController controller;
 
     private HttpServletRequest mockRequest;
@@ -52,10 +47,6 @@ public class WorkplanByPanelRestControllerTest extends BaseWebContextSensitiveTe
     @Before
     public void setUp() throws Exception {
         // Skip tests if controller not available (bean not in context)
-        if (controller == null) {
-            throw new org.junit.AssumptionViolatedException(
-                    "WorkplanByPanelRestController bean not found in test context - skipping test");
-        }
 
         executeDataSetWithStateManagement(TEST_DATA_FILE);
         mockRequest = createMockRequest("1"); // User ID 1 (admin)
@@ -125,6 +116,18 @@ public class WorkplanByPanelRestControllerTest extends BaseWebContextSensitiveTe
                         current.getSampleGroupingNumber() != previous.getSampleGroupingNumber());
             }
         }
+
+    }
+
+    @Test
+    public void testShowWorkPlanByPanelWithInvalidPanelIdReturnsEmpty()
+            throws Exception {
+        WorkplanForm form = controller.showWorkPlanByPanel(
+                mockRequest, INVALID_PANEL_ID);
+        assertNotNull("Form should not be null for invalid ID", form);
+        assertTrue("Should return empty list for invalid panel ID",
+                form.getWorkplanTests() == null ||
+                        form.getWorkplanTests().isEmpty());
     }
 
     /**
@@ -166,7 +169,7 @@ public class WorkplanByPanelRestControllerTest extends BaseWebContextSensitiveTe
         boolean foundNonConforming = false;
 
         for (TestResultItem item : tests) {
-            // ✅ CORRECT: isNonconforming() returns primitive boolean
+            //  CORRECT: isNonconforming() returns primitive boolean
             if (item.isNonconforming()) {
                 foundNonConforming = true;
             } else {
@@ -178,15 +181,15 @@ public class WorkplanByPanelRestControllerTest extends BaseWebContextSensitiveTe
         assertTrue("Should have at least conforming or non-conforming items", foundConforming || foundNonConforming);
     }
 
-    /**
-     * HELPER: Create mock HttpServletRequest with user context.
-     *
-     * @param userId System user ID
-     * @return Mock request with user set in session
-     */
     private HttpServletRequest createMockRequest(String userId) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setParameter("userId", userId);
+
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(Integer.parseInt(userId));
+        request.getSession().setAttribute("userSessionData", sessionData);
+
         return request;
     }
+
 }

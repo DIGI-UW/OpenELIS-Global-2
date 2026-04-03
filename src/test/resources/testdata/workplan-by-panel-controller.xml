@@ -5,12 +5,12 @@
     Core domain objects (person, patient, test_section, panel, type_of_sample)
     - 40001–40999: Test definitions - 50001–50999: Sample and analysis data TABLE
     DEPENDENCY ORDER (parents before children): 1. clinlims_user (sys_user references)
-    2. address, person (required by patient FK chain) 3. patient (required by
-    sample_human) 4. test_section, test (required by analysis) 5. panel, panel_item
-    (test grouping) 6. type_of_sample (required by sample_item) 7. sample, sample_item
-    (lab samples and items) 8. sample_human (patient-sample join) 9. analysis
-    (the core test data) AUDIT FIELDS: All rows have explicit last_updated timestamps
-    and sys_user_id for proper audit trail compliance (OpenELIS Principle II). -->
+    2. person (required by patient FK chain) 3. patient (required by sample_human)
+    4. test_section, test (required by analysis) 5. panel, panel_item (test grouping)
+    6. type_of_sample (required by sample_item) 7. sample, sample_item (lab samples
+    and items) 8. sample_human (patient-sample join) 9. analysis (the core test
+    data) AUDIT FIELDS: All rows have explicit last_updated timestamps and sys_user_id
+    for proper audit trail compliance (OpenELIS Principle II). -->
 <dataset>
 
     <!-- ============================================================================
