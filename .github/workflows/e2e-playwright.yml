@@ -1,6 +1,6 @@
-# Build-only workflow for E2E pipeline. Builds Docker images and pushes to GHCR.
-# Tests run in the separate "E2E / Tests" workflow (triggered via workflow_run).
-# This split ensures fork and non-fork PRs see identical CI checks.
+# Build-only workflow for the E2E pipeline. Non-fork tests run later in the
+# workflow_run wrapper so the PR-facing checkpoint can stay clean, while fork
+# PRs delegate real execution to the pull_request_target workflow.
 name: 03 - E2E
 
 on:
@@ -18,9 +18,9 @@ concurrency:
 
 jobs:
   # ─── Shared Build ───────────────────────────────────────────────────────────
-  # Single image producer for the entire E2E run. Builds all Docker images,
-  # pushes to GHCR (non-fork) or signals fork-fallback. Downstream test jobs
-  # run in the "E2E / Tests" workflow_run workflow.
+  # Single image producer for the E2E pipeline. The downstream workflow_run
+  # wrapper consumes these artifacts for non-fork execution and reports the
+  # stable `03 Checkpoint - E2E` contract.
   shared-build:
     name: Shared Build
     runs-on: ubuntu-latest
@@ -111,7 +111,6 @@ jobs:
           docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
           docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
 
-          # Attempt GHCR push — may fail for fork PRs (read-only packages token)
           PUSH_FAILED=false
           xargs -r -I{} -P4 bash -lc '
             image="$1"
@@ -145,11 +144,10 @@ jobs:
             echo "Pushed image mappings:"
             cat /tmp/e2e-image-map.txt
           elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            # Fork PRs can't push to GHCR (read-only token) — tests will rebuild via workflow_run
             echo "mode=fork-fallback" >> "$GITHUB_OUTPUT"
-            echo "::warning::GHCR push denied (fork PR) — E2E tests will rebuild from cache in 'E2E / Tests' workflow"
+            echo "::warning::GHCR push denied for fork PR — delegated fork executor will rebuild from cache"
           else
-            echo "::error::GHCR push failed (not a fork PR — this is a real failure)"
+            echo "::error::GHCR push failed (non-fork path)"
             exit 1
           fi
 
@@ -180,9 +178,9 @@ jobs:
           echo "$PR_SHA" > /tmp/e2e-build-context/pr_sha
           echo "$HEAD_SHA" > /tmp/e2e-build-context/head_sha
 
-          echo "Build context: mode=${{ steps.push-images.outputs.mode }} event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
+          echo "Build context: mode=${MODE:-none} event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
 
-      - name: Upload build context for test workflow
+      - name: Upload build context for E2E wrapper workflow
         if: always()
         uses: actions/upload-artifact@v4
         with:
