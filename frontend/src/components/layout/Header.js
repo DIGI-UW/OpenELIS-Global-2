@@ -10,7 +10,7 @@ import {
   Pin,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
-import HelpMenu from "./HelpMenu";
+import HelpMenu from "./HelpMenu.tsx";
 import React, {
   createRef,
   useContext,
