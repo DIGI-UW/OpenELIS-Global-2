@@ -94,11 +94,8 @@ export class AnalyzerFormPage {
     await expect(trigger).toBeEnabled({ timeout: UI_TIMEOUT });
     await trigger.click();
 
-    // Scope listbox via aria-controls so we target the correct one
-    const listboxId = await trigger.first().getAttribute("aria-controls");
-    const listbox = listboxId
-      ? this.page.locator(`#${CSS.escape(listboxId)}`)
-      : this.page.getByRole("listbox");
+    // Scope listbox to this dropdown's container (Carbon renders it as a child)
+    const listbox = dropdown.getByRole("listbox");
     await expect(listbox).toBeVisible({ timeout: UI_TIMEOUT });
 
     try {
