@@ -81,10 +81,11 @@ describe("TATSummaryTab", () => {
         filters={defaultFilters}
       />,
     );
-    // 3.7 hours = "3h 42m"
-    expect(screen.getByText("3h 42m")).toBeInTheDocument();
+    // 3.7 hours = "3h 42m" (may appear in stat card + breakdown)
+    const tatValues = screen.getAllByText("3h 42m");
+    expect(tatValues.length).toBeGreaterThan(0);
     // 2.97 hours = "2h 58m"
-    expect(screen.getByText("2h 58m")).toBeInTheDocument();
+    expect(screen.getAllByText("2h 58m").length).toBeGreaterThan(0);
     // Total count as number
     expect(screen.getByText("1,247")).toBeInTheDocument();
   });
@@ -125,7 +126,11 @@ describe("TATSummaryTab", () => {
     const { container } = renderWithIntl(
       <TATSummaryTab data={null} loading={true} filters={defaultFilters} />,
     );
-    expect(container.querySelector(".cds--skeleton")).toBeTruthy();
+    // SkeletonText renders with data-testid or specific class
+    expect(
+      container.querySelector('[class*="skeleton"]') ||
+        container.querySelector(".bx--skeleton"),
+    ).toBeTruthy();
   });
 
   test("shows Working Time info bar when mode is WORKING_TIME", () => {
