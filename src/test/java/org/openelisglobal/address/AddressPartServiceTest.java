@@ -76,7 +76,7 @@ public class AddressPartServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void insertAddressPart_shouldPersistAndBeRetrievableById() {
         AddressPart part = new AddressPart();
-        part.setPartName("Pathway"); // ← change "Street" to "Pathway"
+        part.setPartName("Pathway");
         part.setDisplayOrder("10");
         part.setSysUserId("1");
 
