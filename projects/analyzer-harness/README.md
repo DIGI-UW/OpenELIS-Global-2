@@ -1,15 +1,53 @@
-# Analyzer Harness (isolated docker-compose)
+# Analyzer Harness
 
-Isolated dev + analyzer testing. Domain: **analyzers.openelis-global.org** (same
-env/Let's Encrypt as main).
+This directory now follows a single authoritative path for analyzer E2E parity.
 
-## What’s included
+## Authoritative Base (required for CI parity)
 
-- `docker-compose.dev.yml`: OpenELIS (WAR-mounted) + DB + frontend + proxy
-- `docker-compose.analyzer-test.yml`: ASTM simulator + ASTM-HTTP bridge +
-  virtual serial
-- `docker-compose.letsencrypt.yml`: Let's Encrypt override; `build.sh`,
-  `reset-env.sh` (e.g. `--build --full-reset`)
+The analyzer harness CI gate runs from the repository root using:
+
+- `projects/analyzer-harness/docker-compose.base.yml`
+- `build.docker-compose.yml`
+- `.github/ci/ci.analyzer-harness.yml`
+- `.github/workflows/e2e-playwright-analyzer-harness-reusable.yml`
+
+Use `ci-parity-test.sh` for exact local reproduction of that CI path.
+
+```bash
+./projects/analyzer-harness/ci-parity-test.sh
+```
+
+The script performs:
+
+- strict preflight validation (no silent assumptions)
+- exact CI step order (compose up, readiness, fixtures, seed, permissions,
+  Playwright)
+- deterministic evidence capture in `/tmp/oe-ci-parity-<timestamp>/`
+
+## Startup Catalog
+
+The authoritative harness startup catalog lives under
+`projects/analyzer-harness/config-templates/`.
+
+- CI mounts that directory directly into OE's startup configuration path.
+- Local harness bootstrap copies that same directory into the harness volume.
+- Do not add or update harness test catalog CSVs under any other source tree.
+
+`seed-analyzers.sh` now hard-fails if the startup catalog cannot realize the
+required profile mappings for the seeded analyzers.
+
+## Local Compose Layers
+
+Local harness startup now uses the same canonical service identities as CI, with
+local-only overrides layered on top:
+
+- `docker-compose.base.yml`
+- `docker-compose.dev.yml`
+- `docker-compose.analyzer-test.yml`
+- `docker-compose.letsencrypt.yml`
+
+These files must not drift behaviorally from the authoritative CI harness path
+for critical analyzer flows.
 
 ## Build and start from scratch
 
@@ -29,22 +67,47 @@ From this directory:
 cd /home/ubuntu/OpenELIS-Global-2/projects/analyzer-harness
 
 # Start core stack
-docker compose -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml up -d
 
 # Start analyzer test infrastructure (bridge + simulator + virtual serial)
-docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml up -d
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d
 ```
 
-Then load analyzer fixtures from the repo root:
+Then load analyzer fixtures from the repo root (legacy flow):
 
 ```bash
 cd /home/ubuntu/OpenELIS-Global-2
 ./src/test/resources/load-analyzer-test-data.sh --dataset-011
 ```
 
+## Hot reload (after backend code changes)
+
+The harness mounts `../../target/OpenELIS-Global.war` into the `oe.openelis.org`
+container. After changing Java code, rebuild the WAR and **force-recreate** the
+container (Tomcat caches the exploded WAR; a plain `restart` will serve stale
+classes):
+
+```bash
+# From repo root
+mvn clean install -DskipTests -Dmaven.test.skip=true
+
+# From harness directory — force-recreate clears the Tomcat WAR cache
+cd projects/analyzer-harness
+docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml \
+  -f docker-compose.letsencrypt.yml up -d --force-recreate oe.openelis.org
+```
+
+Frontend changes hot-reload automatically (mounted volume).
+
 ## Resetting the test environment
 
-From this directory (or repo root), run:
+For exact CI parity, prefer:
+
+```bash
+./projects/analyzer-harness/ci-parity-test.sh
+```
+
+For local restart mode, run:
 
 ```bash
 ./projects/analyzer-harness/reset-env.sh [options]

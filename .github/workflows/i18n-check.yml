@@ -1,4 +1,4 @@
-name: i18n Quality Check
+name: Validation / i18n
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
 
 jobs:
   check-duplicate-keys:
+    name: Duplicate key check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,4 +27,46 @@ jobs:
               for e in errors: print(f'::error::{e}')
               sys.exit(1)
           print('All i18n files OK — no duplicate keys')
+          "
+
+  check-translation-source:
+    name: Translation source-of-truth check
+    if: github.head_ref != 'chore/update-transifex'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure only en.json is modified (translations belong on Transifex)
+        run: |
+          python3 -c "
+          import subprocess, sys
+
+          base = 'origin/' + '${{ github.base_ref }}'
+          result = subprocess.run(
+              ['git', 'diff', '--name-only', base + '...HEAD', '--',
+               'frontend/src/languages/'],
+              capture_output=True, text=True, check=True)
+          changed = [f for f in result.stdout.strip().split('\n') if f.strip()]
+
+          non_english = [f for f in changed
+                         if f.endswith('.json') and not f.endswith('/en.json')]
+
+          if non_english:
+              print('::error::Non-English translation files were modified in this PR.')
+              print('::error::Translations should be done on Transifex, not in code.')
+              print('::error::Only frontend/src/languages/en.json should be edited by developers.')
+              print()
+              print('Files that should not be modified:')
+              for f in non_english:
+                  print(f'  - {f}')
+              print()
+              print('If you added new i18n keys, add them ONLY to en.json.')
+              print('Translators will provide translations via Transifex.')
+              print()
+              print('If this is a Transifex sync PR, ensure it uses the')
+              print('chore/update-transifex branch (auto-bypasses this check).')
+              sys.exit(1)
+          print('i18n source-of-truth OK — only en.json modified')
           "

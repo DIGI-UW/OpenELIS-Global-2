@@ -1,0 +1,69 @@
+.page-title {
+  margin-bottom: 1.5rem;
+  width: 100%;
+}
+
+.page-title-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.page-title-back-button {
+  margin-right: 0.25rem;
+}
+
+.page-title-breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.page-title-breadcrumb-link {
+  background: none;
+  border: none;
+  color: var(--cds-link-01);
+  cursor: pointer;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  font-family: inherit;
+  padding: 0;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.page-title-breadcrumb-link:hover {
+  color: var(--cds-link-01-hover);
+  text-decoration: underline;
+}
+
+.page-title-breadcrumb-current {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  font-family: inherit;
+  color: var(--cds-text-primary);
+}
+
+.page-title-breadcrumb-separator {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  font-family: inherit;
+  color: var(--cds-text-secondary);
+  user-select: none;
+}
+
+.page-title-subtitle {
+  color: var(--cds-text-secondary);
+  font-size: 0.875rem;
+  margin-left: 2.5rem; /* Align with title (back button width + gap) */
+}
+
+/* When no back arrow is present */
+.page-title-header:not(:has(.page-title-back-button)) .page-title-subtitle {
+  margin-left: 0;
+}

@@ -64,7 +64,7 @@ public abstract class WHONETCSVRoutineSampleExportReport extends WHONETCSVRoutin
         }
 
         ByteArrayOutputStream buffer = new ByteArrayOutputStream(100000);
-        buffer.write(WHONETcsvRoutineColumnBuilder.getColumnNamesLine().getBytes("windows-1252"));
+        buffer.write(WHONETcsvRoutineColumnBuilder.getColumnNamesLine().getBytes("UTF-8"));
 
         writeResultsToBuffer(buffer);
 
@@ -74,7 +74,7 @@ public abstract class WHONETCSVRoutineSampleExportReport extends WHONETCSVRoutin
     protected void writeResultsToBuffer(ByteArrayOutputStream buffer)
             throws IOException, UnsupportedEncodingException, SQLException, ParseException {
         while (WHONETcsvRoutineColumnBuilder.next()) {
-            buffer.write(WHONETcsvRoutineColumnBuilder.nextLine().getBytes("windows-1252"));
+            buffer.write(WHONETcsvRoutineColumnBuilder.nextLine().getBytes("UTF-8"));
         }
     }
 }

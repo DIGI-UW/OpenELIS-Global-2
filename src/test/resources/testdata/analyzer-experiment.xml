@@ -4,17 +4,17 @@
         machine_id="COBAS6800-001" analyzer_type="MOLECULAR"
         description="Automated molecular analyzer for PCR testing"
         location="Main Laboratory - Room 101" is_active="true"
-        has_setup_page="true" lastupdated="2023-01-01 12:00:00" />
+        has_setup_page="true" last_updated="2023-01-01 12:00:00" />
     <analyzer id="102" name="ABL800 FLEX" machine_id="ABL800-123"
         analyzer_type="CHEMISTRY"
         description="Blood gas and electrolyte analyzer"
         location="Emergency Department - Station 3" is_active="true"
-        has_setup_page="false" lastupdated="2023-01-01 12:30:00" />
+        has_setup_page="false" last_updated="2023-01-01 12:30:00" />
     <analyzer id="103" name="Sysmex XN-1000"
         machine_id="SYSMEX-XN1000-45" analyzer_type="HEMATOLOGY"
         description="Automated hematology analyzer"
         location="Hematology Lab - Room 203" is_active="false"
-        has_setup_page="true" lastupdated="2023-01-01 13:00:00" />
+        has_setup_page="true" last_updated="2023-01-01 13:00:00" />
 
     <analyzer_experiment id="1" analyzer_id="101"
         name="Blood Chemistry Analysis"
