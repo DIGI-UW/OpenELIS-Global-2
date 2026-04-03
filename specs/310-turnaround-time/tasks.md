@@ -45,7 +45,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### TDD: Tests First
 
-- [ ] T000b Write unit test verifying hour-level precision for Analysis
+- [x] T000b Write unit test verifying hour-level precision for Analysis
       timestamp fields in
       `src/test/java/org/openelisglobal/analysis/AnalysisTimestampPrecisionTest.java`
       — create Analysis, set `startedDate` to a `Timestamp` with time 14:30:00,
@@ -53,7 +53,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
       midnight). Do same for `completedDate` and `releasedDate`. This test MUST
       FAIL before the HBM fix is applied. JUnit 4, extend
       `BaseWebContextSensitiveTest`.
-- [ ] T000c Write unit test for fixed TAT hour calculation in
+- [x] T000c Write unit test for fixed TAT hour calculation in
       `src/test/java/org/openelisglobal/common/rest/provider/PatientDashBoardProviderTATTest.java`
       — given startedDate = Monday 09:00 and releasedDate = Monday 15:00, assert
       TAT = 6 hours (not 0 or 24). This test MUST FAIL before the provider fix.
@@ -124,11 +124,11 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Verification & PR
 
-- [ ] T000i Run full Maven test suite: `mvn test -DskipTests=false` — ALL
+- [x] T000i Run full Maven test suite: `mvn test -DskipTests=false` — ALL
       existing tests must still pass. Run the new precision tests from T000b and
       T000c — they must now PASS.
 - [x] T000j Run `mvn spotless:apply` to ensure formatting compliance.
-- [ ] T000k Create PR `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` >
+- [x] T000k Create PR `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` >
       `develop`. Title:
       `fix(analysis): restore hour-level precision for Analysis timestamp fields`.
       Description: HBM mapping incorrectly used java.sql.Date for TIMESTAMP
