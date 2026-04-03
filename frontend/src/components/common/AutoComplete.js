@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
+import { useIntl } from "react-intl";
 import "../admin/reflexTests/ReflexStyles.css";
 import { TextInput } from "@carbon/react";
 
 function AutoComplete(props) {
+  const intl = useIntl();
   const allowFreeText = props.allowFreeText;
 
   const [textValue, setTextValue] = useState("");
@@ -98,43 +100,41 @@ function AutoComplete(props) {
     }
   };
 
-  let suggestionsListComponent;
-  if (showSuggestions && userInput) {
-    if (filteredSuggestions.length) {
-      suggestionsListComponent = (
-        <div className="suggestions-container">
-          <ul className="suggestions">
-            {filteredSuggestions.map((suggestion, index) => {
-              let className;
-              // Flag the active suggestion with a class
-              if (index === activeSuggestion) {
-                className = "suggestion-active";
-              }
-              return (
-                <li
-                  data-cy="auto-suggestion"
-                  className={className}
-                  key={index}
-                  onClick={(e) => onClick(e, suggestion.id, suggestion)}
-                >
-                  {suggestion.value}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      );
-    } else {
-      suggestionsListComponent = (
-        <div className="no-suggestions">
-          <em>No suggestions available.</em>
-        </div>
-      );
-    }
+  const showNoMatchesHelper =
+    showSuggestions &&
+    Boolean(userInput) &&
+    filteredSuggestions.length === 0 &&
+    !invalid;
+
+  let suggestionsListComponent = null;
+  if (showSuggestions && userInput && filteredSuggestions.length > 0) {
+    suggestionsListComponent = (
+      <div className="suggestions-container">
+        <ul className="suggestions">
+          {filteredSuggestions.map((suggestion, index) => {
+            let className;
+            // Flag the active suggestion with a class
+            if (index === activeSuggestion) {
+              className = "suggestion-active";
+            }
+            return (
+              <li
+                data-cy="auto-suggestion"
+                className={className}
+                key={index}
+                onClick={(e) => onClick(e, suggestion.id, suggestion)}
+              >
+                {suggestion.value}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
   }
 
   return (
-    <>
+    <div className="openelis-autocomplete">
       <TextInput
         type="text"
         id={props.id}
@@ -147,9 +147,14 @@ function AutoComplete(props) {
         invalid={invalid}
         required={props.required ? props.required : false}
         invalidText={props.invalidText}
+        helperText={
+          showNoMatchesHelper
+            ? intl.formatMessage({ id: "rulebuilder.label.noSuggestions" })
+            : undefined
+        }
       />
       {suggestionsListComponent}
-    </>
+    </div>
   );
 }
 

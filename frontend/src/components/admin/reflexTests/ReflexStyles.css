@@ -10,11 +10,9 @@ body {
   margin-top: -1%;
 }
 
-.no-suggestions {
-  color: #999;
-  padding: 0.5rem;
-  z-index: 10000;
-  position: absolute;
+
+.openelis-autocomplete {
+  width: 100%;
 }
 
 .suggestions {
