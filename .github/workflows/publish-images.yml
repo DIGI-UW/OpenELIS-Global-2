@@ -9,7 +9,10 @@ on:
     types: [completed]
 
 concurrency:
-  group: publish-images-${{ github.event.workflow_run.head_sha }}
+  # Push (develop merge): key on github.sha so all triggers for the same
+  # develop HEAD collapse into one run. PR: key on the PR's unique head_sha
+  # so each PR keeps its own independent publish run.
+  group: publish-images-${{ github.event.workflow_run.event == 'push' && github.sha || github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
