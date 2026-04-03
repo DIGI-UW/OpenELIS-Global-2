@@ -4,14 +4,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
-import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -19,9 +17,9 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.BidirectionalAnalyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
-import org.openelisglobal.analyzerimport.util.MappedTestName;
 import org.openelisglobal.analyzerresults.action.AnalyzerResultsPaging;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.controller.BaseController;
@@ -30,47 +28,29 @@ import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.paging.PagingBean.Paging;
-import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.PluginMenuService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
-import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.common.services.StatusService.OrderStatus;
-import org.openelisglobal.common.services.StatusService.RecordStatus;
-import org.openelisglobal.common.services.StatusService.SampleStatus;
-import org.openelisglobal.common.services.StatusSet;
 import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
-import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.note.service.NoteService;
-import org.openelisglobal.note.service.NoteServiceImpl;
-import org.openelisglobal.note.valueholder.Note;
-import org.openelisglobal.patient.util.PatientUtil;
-import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.plugin.AnalyzerImporterPlugin;
-import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.form.AnalyzerResultsForm;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
-import org.openelisglobal.resultlimit.service.ResultLimitService;
-import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
-import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
-import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
@@ -79,14 +59,12 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -128,6 +106,8 @@ public class AnalyzerResultsController extends BaseController {
     private TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+    @Autowired
+    private AnalyzerResultsAcceptService acceptService;
     @Autowired
     private DictionaryService dictionaryService;
     @Autowired
@@ -291,7 +271,6 @@ public class AnalyzerResultsController extends BaseController {
          * another group it will be boosted to the first group
          */
         boolean missingTest = false;
-        resolveMissingTests(analyzerResultsList);
         List<AnalyzerResultItem> analyzerResultItemList = new ArrayList<>();
         List<List<AnalyzerResultItem>> accessionGroupedResultsList = groupAnalyzerResults(analyzerResultsList);
 
@@ -385,36 +364,10 @@ public class AnalyzerResultsController extends BaseController {
         return accessionGroupedResultsList;
     }
 
-    private void resolveMissingTests(List<AnalyzerResults> analyzerResultsList) {
-        boolean reloadCache = true;
-        List<AnalyzerResults> resolvedResults = new ArrayList<>();
-
-        for (AnalyzerResults analyzerResult : analyzerResultsList) {
-            if (GenericValidator.isBlankOrNull(analyzerResult.getTestId())) {
-                if (reloadCache) {
-                    AnalyzerTestNameCache.getInstance().reloadCache();
-                    reloadCache = false;
-                }
-            }
-
-            String analyzerTestName = analyzerResult.getTestName();
-            MappedTestName mappedTestName = AnalyzerTestNameCache.getInstance()
-                    .getMappedTest(getAnalyzerTypeNameFromRequest(), analyzerTestName);
-            if (mappedTestName != null) {
-                analyzerResult.setTestName(mappedTestName.getOpenElisTestName());
-                analyzerResult.setTestId(mappedTestName.getTestId());
-                resolvedResults.add(analyzerResult);
-            }
-        }
-
-        if (resolvedResults.size() > 0) {
-            for (AnalyzerResults analyzerResult : resolvedResults) {
-                analyzerResult.setSysUserId(getSysUserId(request));
-            }
-
-            analyzerResultsService.updateAll(resolvedResults);
-        }
-    }
+    // resolveMissingTests was removed: it mutated the DB on GET requests,
+    // used testName (display name) as a cache lookup key, and didn't update
+    // readOnly — causing the accept flow to skip mapped results.
+    // Test resolution now happens once at FHIR import time.
 
     private List<AnalyzerResults> getAnalyzerResults() {
         return analyzerResultsService.getResultsbyAnalyzer(getAnalyzerIdFromRequest());
@@ -720,11 +673,17 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     protected String getAnalyzerIdFromRequest() {
-        String analyzerId = null;
+        // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
+        String idParam = request.getParameter("id");
+        if (idParam != null && !idParam.isBlank()) {
+            return idParam;
+        }
         String requestType = request.getParameter("type");
-        Analyzer analyzer = analyzerService.getAnalyzerByName(requestType);
-        analyzerId = analyzer != null ? analyzer.getId() : null;
-        return analyzerId;
+        if (requestType != null) {
+            Analyzer analyzer = analyzerService.getAnalyzerByName(requestType);
+            return analyzer != null ? analyzer.getId() : null;
+        }
+        return null;
     }
 
     private void writeErrorResponse(HttpServletResponse response, String safeMessage) {
@@ -770,23 +729,15 @@ public class AnalyzerResultsController extends BaseController {
             paging.updatePagedResults(request, form);
             List<AnalyzerResultItem> resultItemList = paging.getResults(request);
 
-            List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
-
-            if (actionableResults.isEmpty()) {
-                return;
+            for (AnalyzerResultItem item : resultItemList) {
+                if (item.getIsAccepted() || item.getIsRejected() || item.getIsDeleted()) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "showRestAnalyzerResultsSave",
+                            "POST item: accession=" + item.getAccessionNumber() + ", test=" + item.getTestName()
+                                    + ", testId=" + item.getTestId() + ", readOnly=" + item.isReadOnly() + ", accepted="
+                                    + item.getIsAccepted());
+                }
             }
-
-            List<SampleGrouping> sampleGroupList = new ArrayList<>();
-
-            resultItemList.removeAll(actionableResults);
-            List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
-            List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
-                    childlessControls);
-
-            createResultsFromItems(actionableResults, sampleGroupList);
-
-            analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
-                    getSysUserId(request));
+            acceptService.acceptAndPersist(resultItemList, getSysUserId(request));
 
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
@@ -814,33 +765,8 @@ public class AnalyzerResultsController extends BaseController {
         paging.updatePagedResults(request, form);
         List<AnalyzerResultItem> resultItemList = paging.getResults(request);
 
-        List<AnalyzerResultItem> actionableResults = extractActionableResult(resultItemList);
-
-        if (actionableResults.isEmpty()) {
-            return findForward(FWD_SUCCESS_INSERT, form);
-        }
-
-        validateSavableItems(actionableResults, result);
-
-        if (result.hasErrors()) {
-            saveErrors(result);
-
-            return findForward(FWD_VALIDATION_ERROR, form);
-        }
-
-        List<SampleGrouping> sampleGroupList = new ArrayList<>();
-
-        resultItemList.removeAll(actionableResults);
-        List<AnalyzerResultItem> childlessControls = extractChildlessControls(resultItemList);
-        List<AnalyzerResults> deletableAnalyzerResults = getRemovableAnalyzerResults(actionableResults,
-                childlessControls);
-
-        createResultsFromItems(actionableResults, sampleGroupList);
-
         try {
-            analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList,
-                    getSysUserId(request));
-
+            acceptService.acceptAndPersist(resultItemList, getSysUserId(request));
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e.getMessage(), e);
             String errorMsg = "errors.UpdateException";
@@ -864,674 +790,8 @@ public class AnalyzerResultsController extends BaseController {
         // }
     }
 
-    private Errors validateSavableItems(List<AnalyzerResultItem> savableResults, Errors errors) {
-        for (AnalyzerResultItem item : savableResults) {
-            if (item.getIsAccepted() && item.isUserChoicePending()) {
-                StringBuilder augmentedAccession = new StringBuilder(item.getAccessionNumber());
-                augmentedAccession.append(" : ");
-                augmentedAccession.append(item.getTestName());
-                augmentedAccession.append(" - ");
-                augmentedAccession.append(MessageUtil.getMessage("error.reflexStep.notChosen"));
-                String errorMsg = "errors.followingAccession";
-                errors.reject(errorMsg, new String[] { augmentedAccession.toString() }, errorMsg);
-            }
-        }
-
-        return errors;
-    }
-
-    private void createResultsFromItems(List<AnalyzerResultItem> actionableResults,
-            List<SampleGrouping> sampleGroupList) {
-        int groupingNumber = -1;
-        List<AnalyzerResultItem> groupedResultList = new ArrayList<>();
-
-        /*
-         * Basic idea is that analyzerResultItems are put into a groupedResultList if
-         * they have the same grouping number. When the grouping number changes then the
-         * list is converted to a sampleGrouping. Note that the first time through the
-         * groupedResultList is empty so the sampleGrouping is null
-         */
-        for (AnalyzerResultItem analyzerResultItem : actionableResults) {
-            if (analyzerResultItem.getIsDeleted()) {
-                continue;
-            }
-
-            if (analyzerResultItem.getSampleGroupingNumber() != groupingNumber) {
-                groupingNumber = analyzerResultItem.getSampleGroupingNumber();
-
-                SampleGrouping sampleGrouping = createRecordsForNewResult(groupedResultList);
-
-                if (sampleGrouping != null) {
-                    sampleGrouping.triggersToSelectedReflexesMap = new HashMap<>();
-                    sampleGroupList.add(sampleGrouping);
-                }
-
-                groupedResultList = new ArrayList<>();
-            }
-
-            if (!analyzerResultItem.isReadOnly()) {
-                groupedResultList.add(analyzerResultItem);
-            }
-        }
-
-        // for the last set of results the grouping number will not change
-        SampleGrouping sampleGrouping = createRecordsForNewResult(groupedResultList);
-        // TODO currently there are no user selections of reflexes on the analyzer
-        // result page so for now this is ok
-        if (sampleGrouping != null) {
-            sampleGrouping.triggersToSelectedReflexesMap = new HashMap<>();
-            sampleGroupList.add(sampleGrouping);
-        }
-    }
-
-    private SampleGrouping createRecordsForNewResult(List<AnalyzerResultItem> groupedAnalyzerResultItems) {
-
-        if (groupedAnalyzerResultItems != null && !groupedAnalyzerResultItems.isEmpty()) {
-            String accessionNumber = groupedAnalyzerResultItems.get(0).getAccessionNumber();
-            StatusSet statusSet = SpringContext.getBean(IStatusService.class)
-                    .getStatusSetForAccessionNumber(accessionNumber);
-
-            // If neither the test request or demographics has been entered then
-            // both a skeleton set of entries should be made
-            // If either one of them has been done the sketched entries have
-            // been done and we only care if the
-            // sample is a skeleton. Otherwise we just enter the results.
-            // One corner cases includes the results from one analyzer have been
-            // done and this is a different
-            // analyzer, it may or may not be from the same sample
-            if (noEntryDone(statusSet, accessionNumber)) {
-                return createGroupForNoSampleEntryDone(groupedAnalyzerResultItems, statusSet);
-            } else if (statusSet.getSampleRecordStatus() == RecordStatus.NotRegistered
-                    && statusSet.getPatientRecordStatus() == RecordStatus.NotRegistered) {
-                return createGroupForPreviousAnalyzerDone(groupedAnalyzerResultItems, statusSet);
-            } else if (statusSet.getSampleRecordStatus() == RecordStatus.NotRegistered) {
-                return createGroupForDemographicsEntered(groupedAnalyzerResultItems, statusSet);
-            } else {
-                // this is called when just sample entry has been done/ fix
-                return createGroupForSampleAndDemographicsEntered(groupedAnalyzerResultItems, statusSet);
-            }
-        }
-
-        return null;
-    }
-
-    private boolean noEntryDone(StatusSet statusSet, String accessionNumber) {
-        boolean sampleOrPatientEntryDone = statusSet.getPatientRecordStatus() != null
-                || statusSet.getSampleRecordStatus() != null;
-
-        if (sampleOrPatientEntryDone) {
-            return false;
-        }
-
-        // This last case is that non-conformity may have been done
-        return sampleService.getSampleByAccessionNumber(accessionNumber) == null;
-    }
-
-    /*
-     * Demographics and sample are stubbed out but we may need to add a new
-     * sample_item, if the sample type is different then the current one.
-     */
-    private SampleGrouping createGroupForPreviousAnalyzerDone(List<AnalyzerResultItem> groupedAnalyzerResultItems,
-            StatusSet statusSet) {
-        SampleGrouping sampleGrouping = new SampleGrouping();
-        Sample sample = sampleService
-                .getSampleByAccessionNumber(groupedAnalyzerResultItems.get(0).getAccessionNumber());
-
-        List<Analysis> analysisList = new ArrayList<>();
-        List<Result> resultList = new ArrayList<>();
-        Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<Note> noteList = new ArrayList<>();
-
-        // we're not setting the sample status because this doesn't change it.
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(getSysUserId(request));
-
-        Patient patient = sampleHumanService.getPatientForSample(sample);
-        createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
-                resultToUserSelectionMap, noteList, patient);
-
-        // We either have to find an existing sample item or create a new one
-        SampleItem sampleItem = getOrCreateSampleItem(groupedAnalyzerResultItems, sample);
-
-        sampleGrouping.sample = sample;
-        sampleGrouping.sampleItem = sampleItem;
-        sampleGrouping.analysisList = analysisList;
-        sampleGrouping.resultList = resultList;
-        sampleGrouping.noteList = noteList;
-        sampleGrouping.addSample = false;
-        sampleGrouping.addSampleItem = sampleItem.getId() == null;
-        sampleGrouping.statusSet = statusSet;
-        sampleGrouping.accepted = groupedAnalyzerResultItems.get(0).getIsAccepted();
-        sampleGrouping.patient = patient;
-        sampleGrouping.resultToUserserSelectionMap = resultToUserSelectionMap;
-
-        return sampleGrouping;
-    }
-
-    protected SampleItem getOrCreateSampleItem(List<AnalyzerResultItem> groupedAnalyzerResultItems, Sample sample) {
-        List<Analysis> dBAnalysisList = analysisService.getAnalysesBySampleId(sample.getId());
-
-        List<TypeOfSampleTest> typeOfSampleForNewTest = typeOfSampleTestService
-                .getTypeOfSampleTestsForTest(groupedAnalyzerResultItems.get(0).getTestId());
-        List<String> typeOfSampleIds = typeOfSampleForNewTest.stream().map(e -> e.getTypeOfSampleId())
-                .collect(Collectors.toList());
-
-        SampleItem sampleItem = null;
-        int maxSampleItemSortOrder = 0;
-
-        for (Analysis dbAnalysis : dBAnalysisList) {
-            if (!GenericValidator.isBlankOrNull(dbAnalysis.getSampleItem().getSortOrder())) {
-                maxSampleItemSortOrder = Math.max(maxSampleItemSortOrder,
-                        Integer.parseInt(dbAnalysis.getSampleItem().getSortOrder()));
-            }
-            if (typeOfSampleIds.contains(dbAnalysis.getSampleItem().getTypeOfSampleId())) {
-                sampleItem = dbAnalysis.getSampleItem();
-                break;
-            }
-        }
-
-        boolean newSampleItem = sampleItem == null;
-
-        if (newSampleItem) {
-            sampleItem = new SampleItem();
-            sampleItem.setSysUserId(getSysUserId(request));
-            sampleItem.setSortOrder(Integer.toString(maxSampleItemSortOrder + 1));
-            sampleItem.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-            TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleIds.get(0));
-            sampleItem.setTypeOfSample(typeOfSample);
-        }
-        return sampleItem;
-    }
-
-    private SampleGrouping createGroupForDemographicsEntered(List<AnalyzerResultItem> groupedAnalyzerResultItems,
-            StatusSet statusSet) {
-        SampleGrouping sampleGrouping = new SampleGrouping();
-        Sample sample = sampleService
-                .getSampleByAccessionNumber(groupedAnalyzerResultItems.get(0).getAccessionNumber());
-
-        // A previous sample item may exist if there was a previous import and
-        // patient demographics was entered
-        SampleItem sampleItem = getOrCreateSampleItem(groupedAnalyzerResultItems, sample);
-
-        List<Analysis> analysisList = new ArrayList<>();
-        List<Result> resultList = new ArrayList<>();
-        Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<Note> noteList = new ArrayList<>();
-
-        if (SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered).equals(sample.getStatusId())) {
-            sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started));
-        }
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(getSysUserId(request));
-
-        Patient patient = sampleHumanService.getPatientForSample(sample);
-        createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
-                resultToUserSelectionMap, noteList, patient);
-
-        sampleGrouping.sample = sample;
-        sampleGrouping.sampleItem = sampleItem;
-        sampleGrouping.analysisList = analysisList;
-        sampleGrouping.resultList = resultList;
-        sampleGrouping.noteList = noteList;
-        sampleGrouping.addSample = false;
-        sampleGrouping.updateSample = true;
-        sampleGrouping.statusSet = statusSet;
-        sampleGrouping.addSampleItem = sampleItem.getId() == null;
-        sampleGrouping.accepted = groupedAnalyzerResultItems.get(0).getIsAccepted();
-        sampleGrouping.patient = patient;
-        sampleGrouping.resultToUserserSelectionMap = resultToUserSelectionMap;
-
-        return sampleGrouping;
-    }
-
-    private SampleGrouping createGroupForSampleAndDemographicsEntered(
-            List<AnalyzerResultItem> groupedAnalyzerResultItems, StatusSet statusSet) {
-        SampleGrouping sampleGrouping = new SampleGrouping();
-        Sample sample = sampleService
-                .getSampleByAccessionNumber(groupedAnalyzerResultItems.get(0).getAccessionNumber());
-
-        List<Analysis> analysisList = new ArrayList<>();
-        List<Result> resultList = new ArrayList<>();
-        Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<Note> noteList = new ArrayList<>();
-
-        if (SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered).equals(sample.getStatusId())) {
-            sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started));
-        }
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(getSysUserId(request));
-
-        SampleItem sampleItem = null;
-        /*****
-         * this is causing the status id for the sample in the DB to be updated
-         *********/
-        List<Analysis> dBAnalysisList = analysisService.getAnalysesBySampleId(sample.getId());
-        Patient patient = sampleHumanService.getPatientForSample(sample);
-
-        for (AnalyzerResultItem resultItem : groupedAnalyzerResultItems) {
-            Analysis analysis = null;
-
-            for (Analysis dbAnalysis : dBAnalysisList) {
-                if (dbAnalysis.getTest().getId().equals(resultItem.getTestId())) {
-                    analysis = dbAnalysis;
-                    break;
-                }
-            }
-
-            if (analysis == null) {
-                // This is an analysis which is not in the ordered tests but
-                // should be tracked anyway
-                analysis = new Analysis();
-                Test test = testService.get(resultItem.getTestId());
-                analysis.setTest(test);
-                // A new sampleItem may be needed
-                List<TypeOfSample> typeOfSamples = SpringContext.getBean(TypeOfSampleService.class)
-                        .getTypeOfSampleForTest(test.getId());
-                List<SampleItem> sampleItemsForSample = sampleItemService.getSampleItemsBySampleId(sample.getId());
-
-                // if the type of sample is found then assign to analysis
-                // otherwise create it and assign
-                for (SampleItem item : sampleItemsForSample) {
-                    if (typeOfSamples.stream().map(e -> e.getId()).collect(Collectors.toList())
-                            .contains(item.getTypeOfSample().getId())) {
-                        sampleItem = item;
-                        analysis.setSampleItem(sampleItem);
-                    }
-                }
-                if (sampleItem == null) {
-                    sampleItem = new SampleItem();
-                    sampleItem.setSysUserId(getSysUserId(request));
-                    sampleItem.setSortOrder("1");
-                    sampleItem
-                            .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-                    sampleItem.setCollectionDate(DateUtil.getNowAsTimestamp());
-                    sampleItem.setTypeOfSample(typeOfSamples.get(0));
-                    analysis.setSampleItem(sampleItem);
-                }
-            } else {
-                dBAnalysisList.remove(analysis);
-            }
-            // Since this is for a single analyzer we are assuming a single
-            // sample and sample type so a single SampleItem
-            if (sampleItem == null) {
-                sampleItem = analysis.getSampleItem();
-                sampleItem.setSysUserId(getSysUserId(request));
-            }
-
-            populateAnalysis(resultItem, analysis, analysis.getTest());
-            analysis.setSysUserId(getSysUserId(request));
-            analysisList.add(analysis);
-
-            Result result = getResult(analysis, patient, resultItem);
-            resultToUserSelectionMap.put(result, resultItem.getReflexSelectionId());
-
-            resultList.add(result);
-
-            if (GenericValidator.isBlankOrNull(resultItem.getNote())) {
-                noteList.add(null);
-            } else {
-                Note note = noteService.createSavableNote(analysis, NoteServiceImpl.NoteType.INTERNAL,
-                        resultItem.getNote(), RESULT_SUBJECT, getSysUserId(request));
-                noteList.add(note);
-            }
-        }
-
-        sampleGrouping.sample = sample;
-        sampleGrouping.sampleItem = sampleItem;
-        sampleGrouping.analysisList = analysisList;
-        sampleGrouping.resultList = resultList;
-        sampleGrouping.noteList = noteList;
-        sampleGrouping.addSample = false;
-        sampleGrouping.updateSample = true;
-        sampleGrouping.statusSet = statusSet;
-        sampleGrouping.addSampleItem = (sampleItem == null || sampleItem.getId() == null);
-        sampleGrouping.accepted = groupedAnalyzerResultItems.get(0).getIsAccepted();
-        sampleGrouping.patient = patient;
-        sampleGrouping.resultToUserserSelectionMap = resultToUserSelectionMap;
-
-        return sampleGrouping;
-    }
-
-    private SampleGrouping createGroupForNoSampleEntryDone(List<AnalyzerResultItem> groupedAnalyzerResultItems,
-            StatusSet statusSet) {
-        SampleGrouping sampleGrouping = new SampleGrouping();
-        Sample sample = new Sample();
-        SampleHuman sampleHuman = new SampleHuman();
-        SampleItem sampleItem = new SampleItem();
-        sampleItem.setSysUserId(getSysUserId(request));
-        sampleItem.setSortOrder("1");
-        sampleItem.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
-
-        List<Analysis> analysisList = new ArrayList<>();
-        List<Result> resultList = new ArrayList<>();
-        Map<Result, String> resultToUserSelectionMap = new HashMap<>();
-        List<Note> noteList = new ArrayList<>();
-
-        sample.setAccessionNumber(groupedAnalyzerResultItems.get(0).getAccessionNumber());
-        sample.setDomain("H");
-        sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Started));
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setReceivedDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(getSysUserId(request));
-
-        sampleHuman.setPatientId(PatientUtil.getUnknownPatient().getId());
-        sampleHuman.setSysUserId(getSysUserId(request));
-
-        Patient patient = PatientUtil.getUnknownPatient();
-        createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
-                resultToUserSelectionMap, noteList, patient);
-
-        addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber());
-
-        sampleGrouping.sample = sample;
-        sampleGrouping.sampleHuman = sampleHuman;
-        sampleGrouping.sampleItem = sampleItem;
-        sampleGrouping.patient = patient;
-        sampleGrouping.analysisList = analysisList;
-        sampleGrouping.resultList = resultList;
-        sampleGrouping.noteList = noteList;
-        sampleGrouping.addSample = true;
-        sampleGrouping.addSampleItem = true;
-        sampleGrouping.statusSet = statusSet;
-        sampleGrouping.accepted = groupedAnalyzerResultItems.get(0).getIsAccepted();
-        sampleGrouping.resultToUserserSelectionMap = resultToUserSelectionMap;
-
-        return sampleGrouping;
-    }
-
-    private void addSampleTypeToSampleItem(SampleItem sampleItem, List<Analysis> analysisList, String accessionNumber) {
-        if (analysisList.size() > 0) {
-            String typeOfSampleId = getTypeOfSampleId(analysisList, accessionNumber);
-            sampleItem.setTypeOfSample(typeOfSampleService.get(typeOfSampleId));
-        }
-    }
-
-    private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber) {
-        if (IS_RETROCI && accessionNumber.startsWith("LDBS")) {
-            List<TypeOfSampleTest> typeOfSmapleTestList = typeOfSampleTestService
-                    .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
-
-            for (TypeOfSampleTest typeOfSampleTest : typeOfSmapleTestList) {
-                if (DBS_SAMPLE_TYPE_ID.equals(typeOfSampleTest.getTypeOfSampleId())) {
-                    return DBS_SAMPLE_TYPE_ID;
-                }
-            }
-        }
-
-        return typeOfSampleTestService.getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId()).get(0)
-                .getTypeOfSampleId();
-    }
-
-    private void createAndAddItems_Analysis_Results(List<AnalyzerResultItem> groupedAnalyzerResultItems,
-            List<Analysis> analysisList, List<Result> resultList, Map<Result, String> resultToUserSelectionMap,
-            List<Note> noteList, Patient patient) {
-
-        for (AnalyzerResultItem resultItem : groupedAnalyzerResultItems) {
-            Analysis analysis = getExistingAnalysis(resultItem);
-
-            if (analysis == null) {
-                analysis = new Analysis();
-                Test test = testService.get(resultItem.getTestId());
-                populateAnalysis(resultItem, analysis, test);
-            } else {
-                String statusId = SpringContext.getBean(IStatusService.class)
-                        .getStatusID(resultItem.getIsAccepted() ? AnalysisStatus.TechnicalAcceptance
-                                : AnalysisStatus.TechnicalRejected);
-                analysis.setStatusId(statusId);
-            }
-
-            analysis.setSysUserId(getSysUserId(request));
-            analysisList.add(analysis);
-
-            Result result = getResult(analysis, patient, resultItem);
-            resultList.add(result);
-            resultToUserSelectionMap.put(result, resultItem.getReflexSelectionId());
-            if (GenericValidator.isBlankOrNull(resultItem.getNote())) {
-                noteList.add(null);
-            } else {
-                Note note = noteService.createSavableNote(analysis, NoteServiceImpl.NoteType.INTERNAL,
-                        resultItem.getNote(), RESULT_SUBJECT, getSysUserId(request));
-                noteList.add(note);
-            }
-        }
-    }
-
-    private Analysis getExistingAnalysis(AnalyzerResultItem resultItem) {
-        List<Analysis> analysisList = analysisService.getAnalysisByAccessionAndTestId(resultItem.getAccessionNumber(),
-                resultItem.getTestId());
-
-        return analysisList.isEmpty() ? null : analysisList.get(0);
-    }
-
-    private Result getResult(Analysis analysis, Patient patient, AnalyzerResultItem resultItem) {
-
-        Result result = null;
-
-        if (analysis.getId() != null) {
-            List<Result> resultList = resultService.getResultsByAnalysis(analysis);
-
-            if (!resultList.isEmpty()) {
-                result = resultList.get(resultList.size() - 1);
-                // this should be refactored -- it's very close to createNewResult
-                String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
-                TestResult resolvedTestResult = getTestResultForResult(resultItem);
-                result.setTestResult(resolvedTestResult);
-                if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null
-                        && !resultItem.getIsRejected()) {
-                    result.setValue(resolvedTestResult.getValue());
-                } else {
-                    result.setValue(resultValue);
-                }
-                result.setSysUserId(getSysUserId(request));
-
-                setAnalyte(result);
-            }
-        }
-
-        if (result == null) {
-            result = createNewResult(resultItem, patient);
-        }
-
-        return result;
-    }
-
-    private void setAnalyte(Result result) {
-        TestAnalyte testAnalyte = ResultUtil.getTestAnalyteForResult(result);
-
-        if (testAnalyte != null) {
-            result.setAnalyte(testAnalyte.getAnalyte());
-        }
-    }
-
-    private Result createNewResult(AnalyzerResultItem resultItem, Patient patient) {
-        Result result = new Result();
-        String rawValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
-        TestResult resolvedTestResult = getTestResultForResult(resultItem);
-        result.setTestResult(resolvedTestResult);
-        if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null && !resultItem.getIsRejected()) {
-            result.setValue(resolvedTestResult.getValue());
-        } else {
-            result.setValue(rawValue);
-        }
-        result.setResultType(resultItem.getTestResultType());
-        // the results table is not autmatically updated with the significant digits
-        // from TestResult so we must do this
-        if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
-                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
-            } else {
-                LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "createNewResult",
-                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
-            }
-        }
-
-        addMinMaxNormal(result, resultItem, patient);
-        result.setSysUserId(getSysUserId(request));
-
-        return result;
-    }
-
-    private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {
-        boolean limitsFound = false;
-
-        if (resultItem != null) {
-            ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class)
-                    .getResultLimitForTestAndPatient(resultItem.getTestId(), patient);
-            if (resultLimit != null) {
-                result.setMinNormal(resultLimit.getLowNormal());
-                result.setMaxNormal(resultLimit.getHighNormal());
-                limitsFound = true;
-            }
-        }
-
-        if (!limitsFound) {
-            result.setMinNormal(Double.NEGATIVE_INFINITY);
-            result.setMaxNormal(Double.POSITIVE_INFINITY);
-        }
-    }
-
-    private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
-        if ("D".equals(resultItem.getTestResultType())) {
-            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
-                    resultItem.getResult());
-            // ASTM/file imports often store display text (e.g. "NEGATIVE") while
-            // getTestResultsByTestAndDictonaryResult only matches numeric dictionary IDs.
-            // Resolve against this test's dictionary options so we pick the correct entry
-            // when multiple "NEGATIVE" rows exist for different categories.
-            if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
-                String desired = resultItem.getResult().trim();
-                List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
-                if (candidates != null) {
-                    for (TestResult candidate : candidates) {
-                        if (!"D".equals(candidate.getTestResultType())) {
-                            continue;
-                        }
-                        Dictionary dict = dictionaryService.get(candidate.getValue());
-                        if (dict != null && dict.getDictEntry() != null
-                                && desired.equalsIgnoreCase(dict.getDictEntry().trim())) {
-                            testResult = candidate;
-                            break;
-                        }
-                    }
-                }
-            }
-            return testResult;
-        } else {
-            List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
-            // we are assuming there is only one testResult for a numeric
-            // type result
-            if (!testResultList.isEmpty()) {
-                return testResultList.get(0);
-            }
-        }
-
-        return null;
-    }
-
-    private void populateAnalysis(AnalyzerResultItem resultItem, Analysis analysis, Test test) {
-        if (!SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)
-                .equals(analysis.getStatusId())) {
-            String statusId = SpringContext.getBean(IStatusService.class).getStatusID(
-                    resultItem.getIsAccepted() ? AnalysisStatus.TechnicalAcceptance : AnalysisStatus.TechnicalRejected);
-            analysis.setStatusId(statusId);
-            analysis.setAnalysisType(resultItem.getManual() ? ANALYSIS_TYPE_MANUAL : ANALYSIS_TYPE_AUTO);
-            analysis.setCompletedDateForDisplay(resultItem.getCompleteDate());
-            analysis.setTest(test);
-            analysis.setTestSection(test.getTestSection());
-            analysis.setIsReportable(test.getIsReportable());
-            analysis.setRevision("0");
-        }
-    }
-
-    private List<AnalyzerResults> getRemovableAnalyzerResults(List<AnalyzerResultItem> actionableResults,
-            List<AnalyzerResultItem> childlessControls) {
-
-        Set<AnalyzerResults> deletableAnalyzerResults = new HashSet<>();
-
-        for (AnalyzerResultItem resultItem : actionableResults) {
-            AnalyzerResults result = new AnalyzerResults();
-            result.setId(resultItem.getId());
-            deletableAnalyzerResults.add(result);
-        }
-
-        for (AnalyzerResultItem resultItem : childlessControls) {
-            AnalyzerResults result = new AnalyzerResults();
-            result.setId(resultItem.getId());
-            deletableAnalyzerResults.add(result);
-        }
-
-        List<AnalyzerResults> resultList = new ArrayList<>();
-        resultList.addAll(deletableAnalyzerResults);
-        return resultList;
-    }
-
-    private List<AnalyzerResultItem> extractActionableResult(List<AnalyzerResultItem> resultItemList) {
-        List<AnalyzerResultItem> actionableResultList = new ArrayList<>();
-
-        int currentSampleGrouping = 0;
-        boolean acceptResult = false;
-        boolean rejectResult = false;
-        boolean deleteResult = false;
-        String accessionNumber = null;
-
-        for (AnalyzerResultItem resultItem : resultItemList) {
-
-            if (currentSampleGrouping != resultItem.getSampleGroupingNumber()) {
-                currentSampleGrouping = resultItem.getSampleGroupingNumber();
-                acceptResult = resultItem.getIsAccepted();
-                rejectResult = resultItem.getIsRejected();
-                deleteResult = resultItem.getIsDeleted();
-                // this clears the selection in case of failure
-                // Note it also screwed up acception and rejection. This is why we should follow
-                // the struts pattern
-                // resultItem.setIsAccepted(false);
-                // resultItem.setIsRejected(false);
-                // resultItem.setIsDeleted(false);
-                accessionNumber = resultItem.getAccessionNumber();
-            } else {
-                resultItem.setAccessionNumber(accessionNumber);
-                resultItem.setIsAccepted(acceptResult);
-                resultItem.setIsRejected(rejectResult);
-                resultItem.setIsDeleted(deleteResult);
-            }
-
-            if (acceptResult || rejectResult || deleteResult) {
-                actionableResultList.add(resultItem);
-            }
-        }
-
-        return actionableResultList;
-    }
-
-    private List<AnalyzerResultItem> extractChildlessControls(List<AnalyzerResultItem> resultItemList) {
-        /*
-         * A childless control is a control which is adjacent to another control. It is
-         * the first set of controls which will be removed. For that reason we're going
-         * through the list backwards.
-         */
-
-        List<AnalyzerResultItem> childLessControlList = new ArrayList<>();
-        int sampleGroupingNumber = 0;
-        boolean lastGroupIsControl = false;
-        boolean inControlGroup = true; // covers the bottom control has no
-        // children
-
-        for (int i = resultItemList.size() - 1; i >= 0; i--) {
-            AnalyzerResultItem resultItem = resultItemList.get(i);
-
-            if (sampleGroupingNumber != resultItem.getSampleGroupingNumber()) {
-                lastGroupIsControl = inControlGroup;
-                inControlGroup = resultItem.getIsControl();
-                sampleGroupingNumber = resultItem.getSampleGroupingNumber();
-            }
-
-            if (lastGroupIsControl && resultItem.getIsControl()) {
-                childLessControlList.add(resultItem);
-            }
-        }
-
-        return childLessControlList;
-    }
+    // ── Accept business logic extracted to AnalyzerResultsAcceptServiceImpl
+    // (Constitution IV) ──
 
     @Override
     protected String findLocalForward(String forward) {
@@ -1551,7 +811,10 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     private String redirectInsertSuccess() {
-        String successUrl = "redirect:/AnalyzerResults?type=" + Encode.forUriComponent(request.getParameter("type"));
+        // Preserve whichever lookup param was used (id or type)
+        String idParam = request.getParameter("id");
+        String successUrl = idParam != null ? "redirect:/AnalyzerResults?id=" + Encode.forUriComponent(idParam)
+                : "redirect:/AnalyzerResults?type=" + Encode.forUriComponent(request.getParameter("type"));
         if (request.getParameter("page") != null) {
             successUrl += "&page=" + Encode.forUriComponent(request.getParameter("page"));
         }
@@ -1576,20 +839,4 @@ public class AnalyzerResultsController extends BaseController {
         return key;
     }
 
-    public class SampleGrouping {
-        public boolean accepted = true;
-        public Sample sample;
-        public SampleHuman sampleHuman;
-        public Patient patient;
-        public List<Note> noteList;
-        public SampleItem sampleItem;
-        public List<Analysis> analysisList;
-        public List<Result> resultList;
-        public Map<String, List<String>> triggersToSelectedReflexesMap;
-        public StatusSet statusSet;
-        public boolean addSample = false; // implies adding patient
-        public boolean updateSample = false;
-        public boolean addSampleItem = false;
-        public Map<Result, String> resultToUserserSelectionMap;
-    }
 }

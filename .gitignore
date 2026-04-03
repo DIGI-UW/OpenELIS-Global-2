@@ -13,6 +13,7 @@ id_file
 # IDE files #
 .idea/
 .vscode/
+.metadata/
 .classpath
 .settings/
 .project

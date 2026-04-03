@@ -18,7 +18,7 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
     void persistData(Analyzer analyzer, List<AnalyzerTestMapping> testMappings,
             List<AnalyzerTestMapping> existingMappings);
 
-    void persistTestMappings(String analyzerTypeId, List<AnalyzerTestMapping> testMappings,
+    void persistTestMappings(String analyzerId, List<AnalyzerTestMapping> testMappings,
             List<AnalyzerTestMapping> existingMappings);
 
     Optional<Analyzer> getByIpAddress(String ipAddress);
@@ -61,4 +61,6 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
      * @param analyzer The analyzer entity to delete
      */
     void deleteWithDependents(Analyzer analyzer);
+
+    Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
 }
