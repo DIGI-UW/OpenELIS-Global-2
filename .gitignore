@@ -114,3 +114,4 @@ specs/012-generic-astm-plugin-profiles/docs/
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
+GSOC_ANALYSIS/
