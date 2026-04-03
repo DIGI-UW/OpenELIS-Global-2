@@ -35,9 +35,10 @@ async function navigateToConfig(page: Page, configName: RegExp) {
     await formEntryMenu.click();
   }
 
-  // Click the config menu item — use the <a> link element, not the text span,
-  // so the click reaches Carbon's SideNavMenuItem onClick handler
-  const menuItem = adminNav.getByRole("link", { name: configName });
+  // Click the <a> element for the config menu item directly — Carbon's
+  // SideNavMenuItem renders as <a> with onClick (no href), so getByRole("link")
+  // doesn't match. Target the <a> tag and filter by text.
+  const menuItem = adminNav.locator("a").filter({ hasText: configName });
   await expect(menuItem).toBeVisible({ timeout: UI_TIMEOUT });
   await menuItem.click();
 }
@@ -51,7 +52,7 @@ const CONFIG_PAGES = [
   {
     name: "WorkPlan Configuration",
     menuText: /Work.?[Pp]lan Configuration/i,
-    url: /WorkplanConfigurationMenu/,
+    url: /Work[Pp]lanConfigurationMenu/,
   },
   {
     name: "Site Information",
@@ -75,12 +76,17 @@ test.describe("General Configurations", () => {
 
       await expect(page).toHaveURL(config.url, { timeout: LONG_TIMEOUT });
 
-      // Verify page loaded with heading and data table
+      // Verify page loaded with heading and data table with rows
       await expect(page.locator("h2")).toBeVisible({ timeout: UI_TIMEOUT });
       const table = page.locator("table");
       await expect(table).toBeVisible({ timeout: UI_TIMEOUT });
-      const rowCount = await table.locator("tbody tr").count();
-      expect(rowCount).toBeGreaterThan(0);
+      // Table must have at least one data row (tr with a radio button)
+      await expect(
+        table
+          .locator("tr")
+          .filter({ has: page.locator("input[type='radio']") })
+          .first(),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
     });
   }
 
