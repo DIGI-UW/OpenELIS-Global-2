@@ -40,7 +40,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Branch Setup
 
-- [ ] T000a Create milestone branch
+- [x] T000a Create milestone branch
       `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` from `develop`
 
 ### TDD: Tests First
@@ -60,7 +60,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### HBM Mapping Fix
 
-- [ ] T000d Change `Analysis.hbm.xml` at
+- [x] T000d Change `Analysis.hbm.xml` at
       `src/main/resources/hibernate/hbm/Analysis.hbm.xml` lines 56-64 — change
       `type="java.sql.Date"` to `type="java.sql.Timestamp"` for `startedDate`
       (line 56), `completedDate` (line 59), `releasedDate` (line 62). Keep
@@ -68,7 +68,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Java Field Type Fix
 
-- [ ] T000e Update `Analysis.java` at
+- [x] T000e Update `Analysis.java` at
       `src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java` —
       change field types: `private Date startedDate` (line 53) to
       `private Timestamp startedDate`, `private Date completedDate` (line 55) to
@@ -79,7 +79,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 
 ### Caller Site Updates
 
-- [ ] T000f Update setter call sites that create `java.sql.Date` values for
+- [x] T000f Update setter call sites that create `java.sql.Date` values for
       these fields — change to `java.sql.Timestamp`:
   - `ResultValidationController.java:391` —
     `new java.sql.Date(Calendar.getInstance().getTimeInMillis())` to
@@ -106,13 +106,14 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
   - Test files: `AnalysisServiceTest.java:392-394`,
     `AnalyzerResultsServiceTest.java:143` — update `Date.valueOf` to
     `Timestamp.valueOf`
-- [ ] T000g Update `DateUtil.java` — add `getNowAsTimestamp()` method:
+- [x] T000g ~~Update `DateUtil.java`~~ — `getNowAsTimestamp()` already exists at
+      line 555. No change needed.
       `return new java.sql.Timestamp(System.currentTimeMillis())` for use in the
       setter calls above. Keep `getNowAsSqlDate()` for non-Analysis uses.
 
 ### Fix Existing TAT Calculation
 
-- [ ] T000h Fix `PatientDashBoardProvider.java` at
+- [x] T000h Fix `PatientDashBoardProvider.java` at
       `src/main/java/org/openelisglobal/common/rest/provider/PatientDashBoardProvider.java`
       lines 157-168 — replace `.toLocalDate().atStartOfDay()` pattern with
       direct `Timestamp`-aware calculation: convert `getStartedDate()` and
@@ -126,7 +127,7 @@ precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
 - [ ] T000i Run full Maven test suite: `mvn test -DskipTests=false` — ALL
       existing tests must still pass. Run the new precision tests from T000b and
       T000c — they must now PASS.
-- [ ] T000j Run `mvn spotless:apply` to ensure formatting compliance.
+- [x] T000j Run `mvn spotless:apply` to ensure formatting compliance.
 - [ ] T000k Create PR `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` >
       `develop`. Title:
       `fix(analysis): restore hour-level precision for Analysis timestamp fields`.

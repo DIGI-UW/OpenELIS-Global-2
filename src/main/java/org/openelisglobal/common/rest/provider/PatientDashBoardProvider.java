@@ -4,7 +4,6 @@ import ca.uhn.fhir.rest.client.api.IGenericClient;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,12 +83,12 @@ public class PatientDashBoardProvider {
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getStartedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getReleasedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            hours.add(hoursDiff);
+            if (analysis.getStartedDate() != null && analysis.getReleasedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant())
+                        .toHours();
+                hours.add(hoursDiff);
+            }
         });
 
         long sum = 0;
@@ -109,12 +108,12 @@ public class PatientDashBoardProvider {
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getStartedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getCompletedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            hours.add(hoursDiff);
+            if (analysis.getStartedDate() != null && analysis.getCompletedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getStartedDate().toInstant(), analysis.getCompletedDate().toInstant())
+                        .toHours();
+                hours.add(hoursDiff);
+            }
         });
 
         long sum = 0;
@@ -132,12 +131,12 @@ public class PatientDashBoardProvider {
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getCompletedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getReleasedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            hours.add(hoursDiff);
+            if (analysis.getCompletedDate() != null && analysis.getReleasedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getCompletedDate().toInstant(), analysis.getReleasedDate().toInstant())
+                        .toHours();
+                hours.add(hoursDiff);
+            }
         });
 
         long sum = 0;
@@ -155,13 +154,13 @@ public class PatientDashBoardProvider {
 
         List<Analysis> delayedAnalyses = new ArrayList<>();
         analyses.forEach(analysis -> {
-            // Convert java.sql.Date to java.time.LocalDate
-            LocalDate localStartDate = analysis.getStartedDate().toLocalDate();
-            LocalDate localEndDate = analysis.getReleasedDate().toLocalDate();
-            // Calculate time difference in hours
-            Long hoursDiff = Duration.between(localStartDate.atStartOfDay(), localEndDate.atStartOfDay()).toHours();
-            if (hoursDiff > 96) {
-                delayedAnalyses.add(analysis);
+            if (analysis.getStartedDate() != null && analysis.getReleasedDate() != null) {
+                Long hoursDiff = Duration
+                        .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant())
+                        .toHours();
+                if (hoursDiff > 96) {
+                    delayedAnalyses.add(analysis);
+                }
             }
         });
         return delayedAnalyses;

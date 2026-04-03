@@ -53,13 +53,13 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="STATUS" length="3" />
         </property>
-        <property name="startedDate" type="java.sql.Date">
+        <property name="startedDate" type="java.sql.Timestamp">
             <column name="STARTED_DATE" length="7" />
         </property>
-        <property name="completedDate" type="java.sql.Date">
+        <property name="completedDate" type="java.sql.Timestamp">
             <column name="COMPLETED_DATE" length="7" />
         </property>
-        <property name="releasedDate" type="java.sql.Date">
+        <property name="releasedDate" type="java.sql.Timestamp">
             <column name="RELEASED_DATE" length="7" />
         </property>
         <property name="enteredDate" type="java.sql.Timestamp">
