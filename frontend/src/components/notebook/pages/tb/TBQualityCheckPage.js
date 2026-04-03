@@ -360,6 +360,28 @@ function TBQualityCheckPage({
       return;
     }
 
+    const resolvedDestination =
+      bulkApplyValues.destination ||
+      (bulkApplyValues.qcResult === "PASS" ||
+      bulkApplyValues.qcResult === "FAIL_PROCEED"
+        ? "PROCESSING"
+        : "");
+
+    if (
+      bulkApplyValues.qcResult === "PASS_TO_STORAGE" &&
+      resolvedDestination !== "TEMPORARY_STORAGE" &&
+      resolvedDestination !== "LONG_TERM_STORAGE"
+    ) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.qc.error.storageDestinationRequired",
+          defaultMessage:
+            "Please choose Temporary Storage or Long-term Storage for samples routed to storage.",
+        }),
+      );
+      return;
+    }
+
     // Build data object
     const data = {};
 
@@ -379,8 +401,7 @@ function TBQualityCheckPage({
 
     // Add QC result and routing
     if (bulkApplyValues.qcResult) data.qcResult = bulkApplyValues.qcResult;
-    if (bulkApplyValues.destination)
-      data.destination = bulkApplyValues.destination;
+    if (resolvedDestination) data.destination = resolvedDestination;
     if (bulkApplyValues.rejectionReason)
       data.rejectionReason = bulkApplyValues.rejectionReason;
     if (bulkApplyValues.rejectionRemarks)
@@ -596,7 +617,12 @@ function TBQualityCheckPage({
 
           // Route samples to next page based on destination
           const processingIds = passingSamples
-            .filter((s) => s.destination === "PROCESSING")
+            .filter(
+              (s) =>
+                s.destination === "PROCESSING" ||
+                ((!s.destination || s.destination === "") &&
+                  (s.qcResult === "PASS" || s.qcResult === "FAIL_PROCEED")),
+            )
             .map((s) => parseInt(s.id, 10));
 
           const storageIds = passingSamples
