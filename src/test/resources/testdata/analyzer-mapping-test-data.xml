@@ -10,18 +10,20 @@
     <!-- ================================================================= -->
     <!-- ANALYZERS (legacy table, IDs 1000+ to avoid conflicts) -->
     <!-- ================================================================= -->
+    <!-- IDs 1000-1003: Set inactive to avoid "Plugin not found" in dashboard.
+        Reactivate when testing Feature 004 ASTM field mapping workflows. -->
     <analyzer id="1000"
         name="Mock Hematology Analyzer (ASTM Simulator)"
-        analyzer_type="HEMATOLOGY" is_active="true"
+        analyzer_type="HEMATOLOGY" is_active="false"
         last_updated="2025-01-01 00:00:00" />
     <analyzer id="1001" name="Chemistry Analyzer 1"
-        analyzer_type="CHEMISTRY" is_active="true"
+        analyzer_type="CHEMISTRY" is_active="false"
         last_updated="2025-01-01 00:00:00" />
     <analyzer id="1002" name="Immunology Analyzer 1"
-        analyzer_type="IMMUNOLOGY" is_active="true"
+        analyzer_type="IMMUNOLOGY" is_active="false"
         last_updated="2025-01-01 00:00:00" />
     <analyzer id="1003" name="Microbiology Analyzer 1"
-        analyzer_type="MICROBIOLOGY" is_active="true"
+        analyzer_type="MICROBIOLOGY" is_active="false"
         last_updated="2025-01-01 00:00:00" />
     <analyzer id="1004" name="Hematology Analyzer 2 (Inactive)"
         analyzer_type="HEMATOLOGY" is_active="false"
