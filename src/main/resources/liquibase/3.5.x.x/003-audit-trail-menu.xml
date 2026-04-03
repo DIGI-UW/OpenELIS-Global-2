@@ -8,7 +8,9 @@
     <comment>Add Audit Trail as top-level Reports sub-menu (sibling of Routine/Study)</comment>
     <sql>
       INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
-      SELECT nextval('clinlims.menu_seq'), 18, 3, 'menu_reports_audittrail', '/AuditTrailReports', 'sideNav.title.audittrail', true
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports'),
+             3, 'menu_reports_audittrail', '/AuditTrailReports', 'sideNav.title.audittrail', true
       WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail');
     </sql>
   </changeSet>
@@ -16,7 +18,9 @@
   <changeSet id="deactivate-old-audit-trail-menu-entries" author="systemLevelAudit">
     <comment>Deactivate old audit trail entries nested under Routine and Study</comment>
     <sql>
-      UPDATE clinlims.menu SET is_active = false WHERE element_id = 'menu_reports_auditTrail' AND parent_id != 18;
+      UPDATE clinlims.menu SET is_active = false
+        WHERE element_id = 'menu_reports_auditTrail'
+          AND parent_id != (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports');
       UPDATE clinlims.menu SET is_active = false WHERE element_id = 'menu_reports_auditTrail.study';
     </sql>
   </changeSet>
@@ -42,6 +46,16 @@
              2, 'menu_reports_audittrail_order', '/AuditTrailReport?type=order',
              'sideNav.label.audittrail.orderEvents', true
       WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail_order');
+    </sql>
+  </changeSet>
+
+  <changeSet id="add-history-indexes-for-system-audit" author="systemLevelAudit">
+    <comment>Add indexes to support system audit event queries (filter/sort by timestamp, reference_table, sys_user_id)</comment>
+    <sql>
+      CREATE INDEX IF NOT EXISTS idx_history_timestamp_reftable
+        ON clinlims.history (timestamp DESC, reference_table);
+      CREATE INDEX IF NOT EXISTS idx_history_sys_user_id
+        ON clinlims.history (sys_user_id);
     </sql>
   </changeSet>
 

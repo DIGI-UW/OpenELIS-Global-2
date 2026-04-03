@@ -35,11 +35,13 @@ import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 public class SystemAuditEventRestController {
 
     private static final int MAX_EXPORT_ROWS = 10000;
@@ -274,6 +276,13 @@ public class SystemAuditEventRestController {
         if (value == null) {
             return "";
         }
+        // Prevent CSV formula injection (CWE-1236): prefix dangerous leading chars
+        if (!value.isEmpty()) {
+            char first = value.charAt(0);
+            if (first == '=' || first == '+' || first == '-' || first == '@') {
+                value = "'" + value;
+            }
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
@@ -283,14 +292,24 @@ public class SystemAuditEventRestController {
     private Timestamp parseStartDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty())
             return null;
-        LocalDate date = LocalDate.parse(dateStr);
-        return Timestamp.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+        try {
+            LocalDate date = LocalDate.parse(dateStr);
+            return Timestamp.from(date.atStartOfDay(ZoneId.of("UTC")).toInstant());
+        } catch (java.time.format.DateTimeParseException e) {
+            LogEvent.logWarn("SystemAuditEventRestController", "Invalid startDate format: " + dateStr);
+            return null;
+        }
     }
 
     private Timestamp parseEndDate(String dateStr) {
         if (dateStr == null || dateStr.isEmpty())
             return null;
-        LocalDate date = LocalDate.parse(dateStr);
-        return Timestamp.from(date.atTime(LocalTime.MAX).atZone(ZoneId.systemDefault()).toInstant());
+        try {
+            LocalDate date = LocalDate.parse(dateStr);
+            return Timestamp.from(date.atTime(LocalTime.MAX).atZone(ZoneId.of("UTC")).toInstant());
+        } catch (java.time.format.DateTimeParseException e) {
+            LogEvent.logWarn("SystemAuditEventRestController", "Invalid endDate format: " + dateStr);
+            return null;
+        }
     }
 }

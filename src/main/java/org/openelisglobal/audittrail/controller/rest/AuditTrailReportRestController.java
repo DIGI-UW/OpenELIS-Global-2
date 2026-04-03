@@ -22,22 +22,29 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 public class AuditTrailReportRestController {
+
+    private static final String ACCESSION_PATTERN = "^[a-zA-Z0-9\\-]+$";
 
     @GetMapping("/rest/AuditTrailReport")
     public ResponseEntity<AuditTrailViewForm> getAuditTrailReport(@RequestParam String accessionNumber) {
         AuditTrailViewForm response = new AuditTrailViewForm();
+        if (!accessionNumber.matches(ACCESSION_PATTERN)) {
+            return ResponseEntity.badRequest().build();
+        }
 
         AuditTrailViewWorker worker = SpringContext.getBean(AuditTrailViewWorker.class);
         worker.setAccessionNumber(accessionNumber);
         List<AuditTrailItem> items = worker.getAuditTrail();
 
-        if (items.size() == 0) {
+        if (items.isEmpty()) {
             return ResponseEntity.ok(response);
         }
 
@@ -50,13 +57,17 @@ public class AuditTrailReportRestController {
 
     @GetMapping("/rest/AuditTrailReport/exportCsv")
     public void exportCsv(@RequestParam String accessionNumber, HttpServletResponse response) throws IOException {
+        if (!accessionNumber.matches(ACCESSION_PATTERN)) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid accession number format");
+            return;
+        }
         AuditTrailViewWorker worker = SpringContext.getBean(AuditTrailViewWorker.class);
         worker.setAccessionNumber(accessionNumber);
         List<AuditTrailItem> items = worker.getAuditTrail();
 
+        String safeFilename = accessionNumber.replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("text/csv");
-        response.setHeader("Content-Disposition",
-                "attachment; filename=\"order-audit-trail-" + accessionNumber + ".csv\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"order-audit-trail-" + safeFilename + ".csv\"");
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         PrintWriter writer = response.getWriter();
@@ -80,13 +91,18 @@ public class AuditTrailReportRestController {
 
     @GetMapping("/rest/AuditTrailReport/exportPdf")
     public void exportPdf(@RequestParam String accessionNumber, HttpServletResponse response) throws IOException {
+        if (!accessionNumber.matches(ACCESSION_PATTERN)) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid accession number format");
+            return;
+        }
         AuditTrailViewWorker worker = SpringContext.getBean(AuditTrailViewWorker.class);
         worker.setAccessionNumber(accessionNumber);
         List<AuditTrailItem> items = worker.getAuditTrail();
 
+        String safeFilename = accessionNumber.replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("application/pdf");
         response.setHeader("Content-Disposition",
-                "attachment; filename=\"order-audit-trail-" + accessionNumber + ".pdf\"");
+                "attachment; filename=\"order-audit-trail-" + safeFilename + ".pdf\"");
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
@@ -144,6 +160,13 @@ public class AuditTrailReportRestController {
     private String csvEscape(String value) {
         if (value == null) {
             return "";
+        }
+        // Prevent CSV formula injection (CWE-1236): prefix dangerous leading chars
+        if (!value.isEmpty()) {
+            char first = value.charAt(0);
+            if (first == '=' || first == '+' || first == '-' || first == '@') {
+                value = "'" + value;
+            }
         }
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";

@@ -119,11 +119,21 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
             query.setParameter("endDate", endDate);
         }
         if (sysUserId != null && !sysUserId.isEmpty()) {
-            query.setParameter("sysUserId", Integer.parseInt(sysUserId));
+            try {
+                query.setParameter("sysUserId", Integer.parseInt(sysUserId));
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn("HistoryDAOImpl", "Invalid sysUserId (non-numeric): " + sysUserId);
+                query.setParameter("sysUserId", -1);
+            }
         }
         if (referenceTableIds != null && !referenceTableIds.isEmpty()) {
-            query.setParameterList("referenceTableIds",
-                    referenceTableIds.stream().map(Integer::parseInt).collect(Collectors.toList()));
+            try {
+                query.setParameterList("referenceTableIds",
+                        referenceTableIds.stream().map(Integer::parseInt).collect(Collectors.toList()));
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn("HistoryDAOImpl", "Invalid referenceTableId (non-numeric) in list");
+                query.setParameterList("referenceTableIds", List.of(-1));
+            }
         }
         if (activity != null && !activity.isEmpty()) {
             query.setParameter("activity", activity);
