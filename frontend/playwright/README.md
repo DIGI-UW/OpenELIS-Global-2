@@ -28,15 +28,15 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 Tests are organized into projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project                | Purpose                                         | CI                | Infra Required          |
-| ---------------------- | ----------------------------------------------- | ----------------- | ----------------------- |
+| Project                | Purpose                                         | CI                  | Infra Required          |
+| ---------------------- | ----------------------------------------------- | ------------------- | ----------------------- |
 | `core-app`             | Core foundational UI verification               | Every PR (2 shards) | Build stack             |
 | `core-demo`            | UI workflow demos on build stack + SQL fixtures | Every PR (2 shards) | Build stack             |
-| `core-demo-video`      | `core-demo` + slowMo + video                    | Local only        | Build stack             |
+| `core-demo-video`      | `core-demo` + slowMo + video                    | Local only          | Build stack             |
 | `harness-foundational` | Analyzer-stack foundational verification        | Every PR (2 shards) | Full harness            |
 | `harness-demo`         | Analyzer-stack story-proof demos (serial run)   | Every PR (2 shards) | Full harness            |
-| `harness-demo-video`   | `harness-demo` + slowMo + video (serial run)    | Local only        | Full harness            |
-| `harness-manual-only`  | Real-device / operator-managed hardware checks  | Local only        | Full harness + hardware |
+| `harness-demo-video`   | `harness-demo` + slowMo + video (serial run)    | Local only          | Full harness            |
+| `harness-manual-only`  | Real-device / operator-managed hardware checks  | Local only          | Full harness + hardware |
 
 ## CI Workflows
 
@@ -44,10 +44,10 @@ All Playwright tests run through a single parameterized reusable workflow
 (`e2e-playwright-reusable.yml`), called twice by the orchestrator
 (`e2e-authoritative-reusable.yml`):
 
-| Call           | Compose Files                                          | Projects                              | Fixtures                              |
-| -------------- | ------------------------------------------------------ | ------------------------------------- | ------------------------------------- |
-| Playwright Core    | `build.docker-compose.yml`                         | `core-app` + `core-demo`             | 3 SQL files (see below)               |
-| Playwright Harness | `build.docker-compose.yml` + harness overlays      | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --analyzers=full` |
+| Call               | Compose Files                                 | Projects                                | Fixtures                                 |
+| ------------------ | --------------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | 3 SQL files (see below)                  |
+| Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --analyzers=full` |
 
 Both follow the same pattern: **test-shards → merge-reports → gate**. Each
 produces a merged HTML report artifact:
@@ -57,10 +57,10 @@ produces a merged HTML report artifact:
 
 ### Execution Policy
 
-| Policy    | Where        | Video | Projects                                                   |
-| --------- | ------------ | ----- | ---------------------------------------------------------- |
-| **CI**    | Every PR     | Off   | core-app, core-demo, harness-foundational, harness-demo    |
-| **Local** | Dev machine  | Optional | Any project including `-video` variants with slowMo     |
+| Policy    | Where       | Video    | Projects                                                |
+| --------- | ----------- | -------- | ------------------------------------------------------- |
+| **CI**    | Every PR    | Off      | core-app, core-demo, harness-foundational, harness-demo |
+| **Local** | Dev machine | Optional | Any project including `-video` variants with slowMo     |
 
 No `workflow_dispatch` manual workflows exist for Playwright. Video recording
 is local-only via the `-video` project variants.
