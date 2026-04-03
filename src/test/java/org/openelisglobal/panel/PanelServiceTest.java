@@ -157,17 +157,22 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
     @Test(expected = LIMSDuplicateRecordException.class)
     public void insert_shouldThrowException_whenDuplicatePanelNameExists() {
 
-        Panel existingPanel = panelService.getPanelByName("Dataset Panel 1");
+        Panel existingPanel = new Panel();
+        existingPanel.setPanelName("Test Panel For Duplicate");
+        existingPanel.setDescription("Test Description");
+        panelService.insert(existingPanel);
 
         Panel duplicatePanel = new Panel();
-        duplicatePanel.setPanelName(existingPanel.getPanelName());
+        duplicatePanel.setPanelName("Test Panel For Duplicate");
+        duplicatePanel.setDescription("Another description");
+        panelService.insert(duplicatePanel);
         duplicatePanel.setDescription("Another description");
 
         panelService.insert(duplicatePanel);
     }
 
     @Test(expected = LIMSDuplicateRecordException.class)
-    public void insert_shouldThrowException_whenDuplicateDescriptionExists() {
+    public void insert_shouldThrowException_whenDuplicatePanelDescriptionExists() {
 
         Panel existingPanel = panelService.getPanelByName("Dataset Panel 1");
 
@@ -181,7 +186,8 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void getPanelById_shouldReturnNull_whenIdDoesNotExist() {
 
-        Panel panel = panelService.getPanelById("999999");
+        String missingPanelId = "-1";
+        Panel panel = panelService.getPanelById(missingPanelId);
 
         assertNull(panel);
     }
