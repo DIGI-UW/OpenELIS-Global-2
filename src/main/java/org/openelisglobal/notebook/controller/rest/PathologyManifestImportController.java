@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.controller.rest;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,8 +18,6 @@ import org.openelisglobal.notebook.service.PathologyManifestImportService.Parsed
 import org.openelisglobal.notebook.service.PathologyManifestImportService.PathologyManifestImportResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -312,8 +311,8 @@ public class PathologyManifestImportController extends BaseRestController {
      */
     @GetMapping(value = "/manifest-template/clinical", produces = "text/csv")
     @ResponseBody
-    public ResponseEntity<Resource> downloadClinicalTemplate() {
-        return downloadTemplate("pathology-clinical-manifest-template.csv");
+    public void downloadClinicalTemplate(HttpServletResponse response) throws IOException {
+        downloadTemplate("pathology-clinical-manifest-template.csv", response);
     }
 
     /**
@@ -322,27 +321,29 @@ public class PathologyManifestImportController extends BaseRestController {
      */
     @GetMapping(value = "/manifest-template/research", produces = "text/csv")
     @ResponseBody
-    public ResponseEntity<Resource> downloadResearchTemplate() {
-        return downloadTemplate("pathology-research-manifest-template.csv");
+    public void downloadResearchTemplate(HttpServletResponse response) throws IOException {
+        downloadTemplate("pathology-research-manifest-template.csv", response);
     }
 
     /**
      * Common template download logic.
      */
-    private ResponseEntity<Resource> downloadTemplate(String filename) {
-        try {
-            Resource resource = new ClassPathResource("sample-import-templates/" + filename);
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
+    private void downloadTemplate(String filename, HttpServletResponse response) throws IOException {
+        ClassPathResource resource = new ClassPathResource("sample-import-templates/" + filename);
+        if (!resource.exists()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename);
-            headers.add(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8");
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=" + filename);
 
-            return ResponseEntity.ok().headers(headers).body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+        try (InputStream inputStream = resource.getInputStream()) {
+            inputStream.transferTo(response.getOutputStream());
+            response.flushBuffer();
+        } catch (IOException e) {
+            response.reset();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to download template");
         }
     }
 
