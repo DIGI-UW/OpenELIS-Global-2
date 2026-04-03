@@ -1,4 +1,9 @@
-# 014 merge checklist (submodules + OpenELIS #3103)
+# 014 merge checklist reference (submodules + OpenELIS #3103)
+
+This checklist is retained as historical reference for the original 014
+multi-repository merge chain. On the current `fix/013-hl7-test-connection`
+branch, it should be read as evidence of how the work was previously staged, not
+as the authoritative description of current branch/PR state.
 
 **Merge readiness gate** — do not merge a PR until **both** are true on **latest
 `HEAD`**:

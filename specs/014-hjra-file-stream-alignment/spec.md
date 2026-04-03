@@ -11,7 +11,8 @@ For FILE transport, ownership is now explicit:
   delivery.
 - OpenELIS owns analyzer/file configuration and ingestion/processing domain
   logic.
-- OpenELIS app-side polling is fallback-only and disabled by default.
+- No OpenELIS app-side FILE poller is implemented on this branch. If a fallback
+  poller is added later, it must remain disabled by default.
 
 If older sections mention OpenELIS as the active watcher owner, treat this
 section as the authoritative override during remediation.
@@ -33,8 +34,8 @@ establishes:
 1. Stream boundaries for the GenericFile work (what belongs here vs. the ASTM
    lane)
 2. Issue-bundle sequencing and dependency ordering
-3. How OGC-324 (Upload/Review UI) and OGC-329 (File Config + Watcher) couple as
-   a foundation pair
+3. How OGC-324 (Upload/Review UI) and OGC-329 (File Config + bridge runtime
+   contract) couple as a foundation pair
 4. The parser boundary for a GenericFile plugin vs. the current partial
    file-import path
 5. Which analyzers are implementable now vs. blocked by missing real export
@@ -152,15 +153,15 @@ share test mappings but not parsers.
 OGC-329 and OGC-324 are a **coupled foundation pair**. They share:
 
 - The `FileImportConfiguration` entity and its admin UI
-- The file watcher service and its directory structure
+- The bridge registration and watched-directory contract
 - The preview/review flow (OGC-324 uploads feed into the same review path that
-  OGC-329's watcher populates)
+  bridge-delivered FILE imports populate)
 - API endpoints for analyzer plugin discovery
 
 **Sequencing within the pair:**
 
-1. **OGC-329 first** — admin config, plugin API, watcher service, directory
-   management
+1. **OGC-329 first** — admin config, plugin API, bridge registration, and
+   directory management
 2. **OGC-324 second** — upload UI, preview slot system, review mode
 
 OGC-329 must land before OGC-324 because the upload screen needs the plugin
@@ -189,7 +190,7 @@ Wondfo CSV is the second GenericFile profile target because:
   Excel
 - Comparison operator handling (`<2`, `>100`) is a profile-level config concern
 - Field mapping companion guide is complete
-- Validates the watcher-triggered import path with a real GenericFile-backed
+- Validates the bridge-watched import path with a real GenericFile-backed
   analyzer
 
 ### Phase 3: Blocked Analyzers (deferred until export files arrive)
@@ -360,8 +361,8 @@ incomplete.
 - **FR-004**: The admin UI MUST allow configuration of file-import analyzers
   including plugin selection, directory paths, watcher toggle, and polling
   interval.
-- **FR-005**: The file watcher service MUST poll configured directories and
-  auto-import matching files.
+- **FR-005**: The active FILE runtime watcher MUST poll configured directories
+  and auto-import matching files. On this branch, that watcher is bridge-owned.
 - **FR-006**: The upload UI MUST allow manual file upload with preview,
   validation, and submit-to-queue workflow.
 - **FR-007**: The GenericFile plugin MUST interpret the QuantStudio profile to
@@ -402,7 +403,9 @@ incomplete.
 - **GenericFile plugin** (`plugins/analyzers/GenericFile/`): Plugin JAR that
   implements `AnalyzerImporterPlugin`. Owns analyzer-specific file
   interpretation via profile-driven column mapping. Peer to GenericASTM and
-  GenericHL7. Registers with `PluginAnalyzerService` at startup.
+  GenericHL7. Registers with `PluginAnalyzerService` at startup. **Note**:
+  GenericFile plugin does NOT yet exist in the plugins submodule. This is M3
+  scope.
 - **Analyzer Profile** (`projects/analyzer-profiles/file/`): Per-instrument JSON
   file (e.g. `quantstudio.json`, `wondfo-csv.json`). Declares `file_format`,
   `supported_extensions`, `column_mapping`, `default_test_mappings`,
@@ -410,8 +413,8 @@ incomplete.
   instance via the admin setup flow.
 - **FileImportConfiguration**: Per-analyzer file transport settings — directory
   paths, file pattern, `fileFormat`, delimiter, watcher toggle, polling
-  interval. Links to an Analyzer entity. Drives app-side reader selection, not
-  analyzer-specific interpretation.
+  interval. Links to an Analyzer entity. Drives bridge registration plus
+  app-side reader selection; it does not own analyzer-specific interpretation.
 - **AnalyzerPluginConfig**: Per-analyzer JSONB config (`analyzer_plugin_config`
   table). Stores profile defaults applied on setup — column mappings, file
   format, sheet name, etc. The GenericFile plugin reads this at import time.
@@ -424,7 +427,8 @@ incomplete.
   null/unused.
 - **FileFormat** (new config field on `FileImportConfiguration`): Declares the
   expected file format (CSV, TSV, EXCEL). Drives app-side reader selection. Only
-  present for file-import analyzers.
+  present for file-import analyzers. **Note**: `fileFormat` schema field not yet
+  added to `FileImportConfiguration`. This is an M1A blocker.
 
 ---
 
@@ -456,6 +460,18 @@ structured records and a loaded profile/config:
 This is exactly how GenericASTM and GenericHL7 work: the app-side reader handles
 protocol/format parsing, the plugin handles analyzer-specific semantic mapping.
 
+### Current State (as of 2026-03-27)
+
+Bridge detects files via FileWatcher polling, then POSTs raw binary as multipart
+to OE POST `/rest/analyzers/{id}/import`. OE parses xlsx/csv via
+`ExcelAnalyzerReader`/`CSVAnalyzerReader`. OE still owns format-specific
+parsing. Post-MVP direction: bridge parses all formats and sends FHIR R4
+transaction Bundles (DiagnosticReport + Observation) to a unified OE endpoint.
+
+No OpenELIS-side `FileImportWatchService` exists in this branch's Java sources.
+Any references elsewhere to an OE fallback poller are future-direction notes,
+not implemented current-state behavior.
+
 ### Boundary Constraint
 
 The existing
@@ -467,6 +483,11 @@ already using the current interface must not break.
 ---
 
 ## Branch Recommendations
+
+The current remediation state is consolidated on `fix/013-hl7-test-connection`.
+The branch names below remain useful issue-level delivery slices, but on this
+branch they should be read as logical scope boundaries rather than a claim that
+each slice still maps 1:1 to a separate live PR.
 
 | Branch                                    | Issue   | Base                       | Target  |
 | ----------------------------------------- | ------- | -------------------------- | ------- |
