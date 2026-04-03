@@ -40,6 +40,7 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.hibernateConverter.StringListConverter;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "analyzer")
@@ -56,7 +57,7 @@ public class Analyzer extends BaseObject<String> {
     private String id;
 
     @Column(name = "scrip_id", precision = 10, scale = 0)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String script_id;
 
     @Column(name = "name", length = 100)
@@ -80,7 +81,7 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "has_setup_page", length = 1)
     private boolean hasSetupPage;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "analyzer_type_id")
     private AnalyzerType analyzerType;
 
@@ -98,6 +99,31 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "protocol_version", length = 20)
     @Enumerated(EnumType.STRING)
     private ProtocolVersion protocolVersion = ProtocolVersion.ASTM_LIS2_A2;
+
+    @Column(name = "communication_mode", length = 25)
+    @Enumerated(EnumType.STRING)
+    private CommunicationMode communicationMode;
+
+    // --- FILE transport fields (unified with TCP on analyzer table) ---
+
+    @Column(name = "import_directory", length = 500)
+    private String importDirectory;
+
+    @Column(name = "file_pattern", length = 100)
+    private String filePattern;
+
+    @Column(name = "column_mappings_json", columnDefinition = "TEXT")
+    private String columnMappingsJson;
+
+    @Column(name = "file_format", length = 30)
+    private String fileFormat;
+
+    /**
+     * Raw source identifier from bridge discovery (IPv4, IPv6, hostname, file path,
+     * etc.).
+     */
+    @Column(name = "discovered_source_id", length = 500)
+    private String discoveredSourceId;
 
     @Column(name = "test_unit_ids", columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
@@ -222,6 +248,93 @@ public class Analyzer extends BaseObject<String> {
         this.protocolVersion = protocolVersion;
     }
 
+    public CommunicationMode getCommunicationMode() {
+        return communicationMode;
+    }
+
+    public void setCommunicationMode(CommunicationMode communicationMode) {
+        this.communicationMode = communicationMode;
+    }
+
+    /**
+     * Returns the effective communication mode, falling back to
+     * {@link CommunicationMode#ANALYZER_INITIATED} when not explicitly set.
+     */
+    public CommunicationMode getEffectiveCommunicationMode() {
+        return communicationMode != null ? communicationMode : CommunicationMode.ANALYZER_INITIATED;
+    }
+
+    // --- FILE transport field accessors ---
+
+    public String getImportDirectory() {
+        return importDirectory;
+    }
+
+    public void setImportDirectory(String importDirectory) {
+        this.importDirectory = importDirectory;
+    }
+
+    public String getFilePattern() {
+        return filePattern;
+    }
+
+    public void setFilePattern(String filePattern) {
+        this.filePattern = filePattern;
+    }
+
+    public String getColumnMappingsJson() {
+        return columnMappingsJson;
+    }
+
+    public void setColumnMappingsJson(String columnMappingsJson) {
+        this.columnMappingsJson = columnMappingsJson;
+    }
+
+    public String getFileFormat() {
+        return fileFormat;
+    }
+
+    public void setFileFormat(String fileFormat) {
+        this.fileFormat = fileFormat;
+    }
+
+    /**
+     * Deserialize column mappings JSON to Map. Returns empty map if null/empty.
+     */
+    public java.util.Map<String, String> getColumnMappings() {
+        if (columnMappingsJson == null || columnMappingsJson.isBlank()) {
+            return java.util.Collections.emptyMap();
+        }
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            return mapper.readValue(columnMappingsJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {
+                    });
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logWarn("Analyzer", "getColumnMappings",
+                    "Failed to parse column mappings JSON: " + e.getMessage());
+            return java.util.Collections.emptyMap();
+        }
+    }
+
+    /**
+     * Serialize column mappings Map to JSON.
+     */
+    public void setColumnMappings(java.util.Map<String, String> columnMappings) {
+        if (columnMappings == null || columnMappings.isEmpty()) {
+            this.columnMappingsJson = null;
+            return;
+        }
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            this.columnMappingsJson = mapper.writeValueAsString(columnMappings);
+        } catch (Exception e) {
+            org.openelisglobal.common.log.LogEvent.logWarn("Analyzer", "setColumnMappings",
+                    "Failed to serialize column mappings: " + e.getMessage());
+            this.columnMappingsJson = null;
+        }
+    }
+
     public List<String> getTestUnitIds() {
         return testUnitIds;
     }
@@ -254,12 +367,20 @@ public class Analyzer extends BaseObject<String> {
         this.lastActivatedDate = lastActivatedDate;
     }
 
+    public String getDiscoveredSourceId() {
+        return discoveredSourceId;
+    }
+
+    public void setDiscoveredSourceId(String discoveredSourceId) {
+        this.discoveredSourceId = discoveredSourceId;
+    }
+
     /**
      * Enum for analyzer unified status field. Values must match database
      * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE,
-     * DELETED
+     * DELETED, PENDING_REGISTRATION
      */
     public enum AnalyzerStatus {
-        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED
+        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED, PENDING_REGISTRATION
     }
 }

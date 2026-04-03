@@ -808,9 +808,30 @@ Per specification, these are deferred:
 
 ---
 
-**Plan Created**: 2026-01-22 | **Updated**: 2026-01-29 (external plugin
-architecture alignment) **Plan Author**: Claude Code with /speckit.plan **Next
-Step**: Run `/speckit.tasks` to generate task breakdown by milestone
+**Plan Created**: 2026-01-22 | **Updated**: 2026-02-25 (M-BF1 bugfix milestone)
+**Plan Author**: Claude Code with /speckit.plan **Next Step**: Run
+`/speckit.tasks` to generate task breakdown by milestone
+
+## M-BF1: Analyzer Config Form Bugfix (2026-02-25)
+
+**Branch**: `fix/011-analyzer-config-form` (off `fix/plugin-init-order`)
+
+Fixes blocking bugs discovered during GeneXpert ASTM testing:
+
+1. **NumberFormatException**: Frontend `FALLBACK_PLUGIN_TYPES` used string IDs
+   ("generic-astm") that backend tried to parse as numeric DB IDs. Fixed with
+   two-layer defense: backend `resolvePluginType()` + frontend fallback removal.
+2. **Config vs Instance field separation**: `handleDefaultConfigSelect` was
+   setting instance-level fields (name, port) from config templates. Fixed to
+   only set plugin-level fields (identifierPattern, category, protocol).
+3. **Edit mode config dropdown hidden**: Default config loading was gated on
+   `!isEditMode`. Removed guard so configs can be loaded/reloaded in edit mode.
+4. **Test mapping auto-creation**: Added `defaultConfigId` transient field to
+   `AnalyzerForm`. Controller loads config JSON and auto-creates
+   `AnalyzerTestMapping` records via LOINC lookup.
+5. **Form field reorder**: Grouped fields by user mental model: Instance
+   Identity (name, status) → Plugin Config (type, config, pattern, category,
+   protocol) → Connection (IP, port, test).
 
 ---
 

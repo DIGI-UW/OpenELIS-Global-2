@@ -278,10 +278,8 @@ public class UserServiceImpl implements UserService {
                 return testSections;
             }
         }
-        LogEvent.logWarn(this.getClass().getSimpleName(), "getUserTestSections",
-                "no principal object in spring security context. Could not get tests belonging to user");
-        return new ArrayList<>();
 
+        return new ArrayList<>();
     }
 
     @Override
