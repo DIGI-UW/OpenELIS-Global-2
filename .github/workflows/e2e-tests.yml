@@ -362,7 +362,7 @@ jobs:
   # ─── Report ────────────────────────────────────────────────────────────────
   report-status:
     name: Report Status
-    if: always() && needs.setup.outputs.status_sha != ''
+    if: always() && needs.setup.outputs.status_sha != '' && needs.e2e-gate.result != 'cancelled'
     needs: [setup, set-pending-status, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
