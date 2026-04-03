@@ -1,4 +1,5 @@
 import React, { useContext, useState, useRef, useEffect } from "react";
+import { sanitizeHTML } from "../../../utils/sanitize";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../../Style.css";
 import { encodeDate, getFromOpenElisServer, Roles } from "../../utils/Utils";
@@ -303,7 +304,11 @@ function ReferredOutTests(props) {
     } else if (cell.info.header === "notes") {
       return (
         <TableCell key={cell.id}>
-          <div dangerouslySetInnerHTML={{ __html: cell.value }} />
+          <div
+            dangerouslySetInnerHTML={{
+              __html: sanitizeHTML(cell.value),
+            }}
+          />
         </TableCell>
       );
     } else {
