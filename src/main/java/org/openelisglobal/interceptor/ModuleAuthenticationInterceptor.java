@@ -105,10 +105,10 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             sysModsByUrl = filterParamMatches(request, sysModsByUrl);
         }
         if (sysModsByUrl.isEmpty() && REQUIRE_MODULE) {
-            // SECURITY TODO: REST endpoints without SystemModuleUrl DB entries are
-            // auto-allowed for any authenticated user. New REST controllers are
-            // unprotected by default. Fixing requires adding module mappings for all
-            // 110+ REST controllers. Tracked in PR #2782.
+            // SECURITY NOTE: REST endpoints without SystemModuleUrl DB entries are
+            // auto-allowed for any authenticated user. Admin-only controllers are
+            // protected via @PreAuthorize("hasRole('ADMIN')") (added in PR #2794).
+            // Full per-role module mappings are a future enhancement.
             if (isRestFullPath()) {
                 return true;
             }
