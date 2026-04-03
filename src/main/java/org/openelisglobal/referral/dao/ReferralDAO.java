@@ -28,13 +28,13 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
 
     public Referral getReferralById(String referralId) throws LIMSRuntimeException;
 
-    public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException;
+    public Referral getReferralByAnalysisId(Integer analysisId) throws LIMSRuntimeException;
 
     public List<Referral> getReferralsByStatus(List<ReferralStatus> status);
 
     // public void updateData(Referral referral) throws LIMSRuntimeException;
 
-    public List<Referral> getAllReferralsBySampleId(String id) throws LIMSRuntimeException;
+    public List<Referral> getAllReferralsBySampleId(Integer id) throws LIMSRuntimeException;
 
     /**
      * @param organizationId - the PK of an organization
@@ -42,10 +42,60 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
      * @param highDate       - referral request date high
      * @return a list in the of referrals
      */
-    public List<Referral> getAllReferralsByOrganization(String organizationId, Date lowDate, Date highDate);
+    public List<Referral> getAllReferralsByOrganization(Integer organizationId, Date lowDate, Date highDate);
 
-    public List<Referral> getReferralsByAnalysisIds(List<String> analysisIds);
+    public List<Referral> getReferralsByAnalysisIds(List<Integer> analysisIds);
 
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startTimestamp,
-            Timestamp endTimestamp, List<String> testUnitIds, List<String> testIds);
+            Timestamp endTimestamp, List<Integer> testUnitIds, List<Integer> testIds);
+
+    /**
+     * Get all referrals that are not assigned to a shipping box
+     * 
+     * @return list of unassigned referrals
+     */
+    public List<Referral> getUnassignedReferrals();
+
+    /**
+     * Get all referrals assigned to a specific shipping box
+     *
+     * @param boxId - the PK of a shipping box
+     * @return list of referrals assigned to the box
+     */
+    public List<Referral> getReferralsByBoxId(Integer boxId);
+
+    /**
+     * Get all referrals for a specific sample item. Used to group referrals by
+     * sample item for shipment operations.
+     *
+     * @param sampleItemId - the PK of a SampleItem
+     * @return list of referrals for this sample item
+     */
+    public List<Referral> getReferralsBySampleItemId(Integer sampleItemId);
+
+    /**
+     * Get all unassigned referrals grouped by sample item. Returns distinct sample
+     * items that have referrals not yet assigned to a box. Result format:
+     * [sampleItemId, accessionNumber, typeOfSampleName, typeOfSampleId,
+     * collectionDate]
+     *
+     * @param excludedSampleItemIds - List of sample item IDs already in boxes (to
+     *                              exclude)
+     * @return List of Object arrays representing unique sample items with
+     *         unassigned referrals
+     */
+    public List<Object[]> getUnassignedReferralsGroupedBySampleItem(List<String> excludedSampleItemIds);
+
+    /**
+     * Search for sample items with unassigned referrals by accession number.
+     * Returns distinct sample items that match the search term. Result format:
+     * [sampleItemId, accessionNumber, typeOfSampleName, typeOfSampleId,
+     * collectionDate]
+     *
+     * @param accessionNumber       - Partial or full accession number to search
+     * @param excludedSampleItemIds - List of sample item IDs already in boxes (to
+     *                              exclude)
+     * @return List of Object arrays representing matching sample items
+     */
+    public List<Object[]> searchUnassignedByAccessionNumber(String accessionNumber, List<String> excludedSampleItemIds);
 }
