@@ -80,7 +80,7 @@ public class SampleOrganizationDAOImpl extends BaseDAOImpl<SampleOrganization, S
     public void getDataBySample(SampleOrganization sampleOrganization) throws LIMSRuntimeException {
 
         try {
-            String sql = "from SampleOrganization so where samp_id = :param";
+            String sql = "from SampleOrganization so where so.sample.id = :param";
             Query<SampleOrganization> query = entityManager.unwrap(Session.class).createQuery(sql,
                     SampleOrganization.class);
             query.setParameter("param", sampleOrganization.getSample().getId());

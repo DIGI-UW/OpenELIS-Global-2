@@ -55,7 +55,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public Referral getReferralByAnalysisId(Integer analysisId) throws LIMSRuntimeException {
+    public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException {
 
         if (ObjectUtils.isNotEmpty(analysisId)) {
             String sql = "From Referral r where r.analysis.id = :analysisId";
@@ -87,7 +87,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Override
     @Transactional(readOnly = true)
-    public List<Referral> getAllReferralsBySampleId(Integer id) throws LIMSRuntimeException {
+    public List<Referral> getAllReferralsBySampleId(String id) throws LIMSRuntimeException {
         if (ObjectUtils.isNotEmpty(id)) {
             String sql = "FROM Referral r WHERE r.analysis.sampleItem.sample.id = :sampleId";
 
@@ -111,7 +111,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
      */
     @Override
     @Transactional(readOnly = true)
-    public List<Referral> getAllReferralsByOrganization(Integer organizationId, Date lowDate, Date highDate) {
+    public List<Referral> getAllReferralsByOrganization(String organizationId, Date lowDate, Date highDate) {
         String sql = "FROM Referral r WHERE r.organization.id = :organizationId AND r.requestDate >= :lowDate"
                 + " AND r.requestDate <= :highDate";
 
@@ -146,7 +146,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
 
     @Transactional(readOnly = true)
     @Override
-    public List<Referral> getReferralsByAnalysisIds(List<Integer> analysisIds) {
+    public List<Referral> getReferralsByAnalysisIds(List<String> analysisIds) {
         if (analysisIds == null || analysisIds.size() == 0) {
             return new ArrayList<>();
         }
@@ -164,7 +164,7 @@ public class ReferralDAOImpl extends BaseDAOImpl<Referral, String> implements Re
     @Transactional(readOnly = true)
     @Override
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startDate, Timestamp endDate,
-            List<Integer> testUnitIds, List<Integer> testIds) {
+            List<String> testUnitIds, List<String> testIds) {
         String hql = "From Referral r WHERE 1 = 1 ";
         String subHQL = "SELECT a.id FROM Analysis a WHERE 1 = 1 ";
         if (ReferDateType.RESULT.equals(dateType) && startDate != null) {

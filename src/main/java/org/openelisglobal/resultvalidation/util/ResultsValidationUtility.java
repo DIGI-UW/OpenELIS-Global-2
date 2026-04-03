@@ -220,8 +220,7 @@ public class ResultsValidationUtility {
             List<String> statusList) {
 
         List<Analysis> analysisList = analysisService.getAnalysisStartedOn(DateUtil.convertStringDateToSqlDate(date))
-                .stream().filter(analysis -> statusList.contains(Integer.valueOf(analysis.getStatusId())))
-                .collect(Collectors.toList());
+                .stream().filter(analysis -> statusList.contains(analysis.getStatusId())).collect(Collectors.toList());
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
