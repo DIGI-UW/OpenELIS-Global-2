@@ -1,17 +1,17 @@
 # E2E CI Operator Model
 
 This guide explains trust boundaries, PR-facing checkpoints, and the
-repo/operator settings required for the split E2E workflow model.
+repo/operator settings required for the unified E2E workflow model.
 
 ## Workflow Boundary Model
 
 - `03 - E2E` is build-only. It produces transient `e2e-cache` images for
   non-forks and emits build-context artifacts for downstream orchestrators.
-- `E2E / Tests` is the non-fork `workflow_run` wrapper. It owns the stable
-  `03 Checkpoint - E2E` status context and keeps the detailed job graph behind
-  that single PR-facing contract.
-- `03 - E2E - Fork PR` is the privileged `pull_request_target` executor. It owns
-  the authoritative fork-only status context `03 Checkpoint - E2E - Fork PR`.
+- `E2E / Tests` is the unified `workflow_run` wrapper for both fork and non-fork
+  PRs. It owns the stable `03 Checkpoint - E2E` status context and keeps the
+  detailed job graph behind that single PR-facing contract. Fork PRs trigger an
+  inline `fork-rebuild` job that builds and pushes images to GHCR using the
+  repo's write token.
 - `Publish Images` is post-merge only (`push`/`release`) and gated on the
   successful `03 Checkpoint - E2E` status.
 
@@ -40,10 +40,13 @@ Requires default-branch merge (controls `workflow_run` orchestration):
 ## Fork vs Non-Fork Safety Model
 
 - Non-fork PRs: `03 - E2E` publishes GHCR cache directly, then `E2E / Tests`
-  consumes those artifacts and reports `03 Checkpoint - E2E`.
-- Fork PRs: `03 - E2E` records `fork-fallback`, `E2E / Tests` reports
-  `03 Checkpoint - E2E` as `not_applicable`, and `03 Checkpoint - E2E - Fork PR`
-  becomes the authoritative executor after maintainer approval.
+  consumes those artifacts (`cross_run` mode) and reports `03 Checkpoint - E2E`.
+- Fork PRs: `03 - E2E` records `fork-fallback` (read-only token cannot push
+  to GHCR), then `E2E / Tests` detects the fork via the build-context artifact,
+  runs `fork-rebuild` within the `workflow_run` context (which has the repo's
+  write token), pushes images to GHCR, and passes them to the executor via
+  `same_run` artifact mode. This follows the GitHub Security Lab recommended
+  `workflow_run` two-stage pattern for privilege escalation.
 - Synthetic checkpoint reporting uses commit statuses, not checks, so the PR
   rows can link directly to the authoritative workflow graphs.
 - Do not publish a check and a status with the same checkpoint name; GitHub can
@@ -51,16 +54,13 @@ Requires default-branch merge (controls `workflow_run` orchestration):
 
 ## Branch Protection Contract
 
-- Preferred operator rollout for this topology:
-  - require `03 Checkpoint - E2E`
-  - require `03 Checkpoint - E2E - Fork PR`
-- Expected behavior:
-  - non-fork PRs: `03 Checkpoint - E2E` does real work,
-    `03 Checkpoint - E2E - Fork PR` returns `not_applicable`
-  - fork PRs: `03 Checkpoint - E2E - Fork PR` does real work,
-    `03 Checkpoint - E2E` returns `not_applicable`
+- Required status check: `03 Checkpoint - E2E`
+- Both fork and non-fork PRs are handled by `E2E / Tests`, which posts the
+  single `03 Checkpoint - E2E` status to the PR's head SHA.
 - Manual GitHub ruleset updates are the safe rollout path when CLI automation is
   unreliable.
+- NOTE: The legacy `03 Checkpoint - E2E - Fork PR` status context is no longer
+  used and should be removed from required checks if still configured.
 
 ## CI Auth Contract
 
