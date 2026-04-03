@@ -314,7 +314,7 @@ jobs:
   missing-image-transfer:
     name: Missing Image Transfer
     needs: setup
-    if: needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
+    if: needs.setup.result == 'success' && needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
     runs-on: ubuntu-latest
     steps:
       - name: Report missing transfer
@@ -368,7 +368,7 @@ jobs:
   # ─── Report ────────────────────────────────────────────────────────────────
   report-status:
     name: Report Status
-    if: always() && needs.setup.outputs.status_sha != '' && needs.e2e-gate.result != 'cancelled'
+    if: always() && needs.setup.outputs.status_sha != ''
     needs: [setup, set-pending-status, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
@@ -385,7 +385,10 @@ jobs:
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             let state, description;
-            if (artifactSourceMode === 'none' && !isFork) {
+            if (gateResult === 'cancelled') {
+              state = 'error';
+              description = 'E2E run was cancelled';
+            } else if (artifactSourceMode === 'none' && !isFork) {
               state = 'failure';
               description = 'E2E build failed - no Docker images were produced';
             } else if (gateResult === 'success') {
