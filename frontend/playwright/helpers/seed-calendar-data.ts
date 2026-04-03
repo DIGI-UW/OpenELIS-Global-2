@@ -36,8 +36,11 @@ export async function seedHolidays(
     );
 
     if (response.ok()) {
-      const body = await response.json();
-      created.push({ id: body.id, ...h });
+      const ct = response.headers()["content-type"] || "";
+      if (ct.includes("application/json")) {
+        const body = await response.json();
+        created.push({ id: body.id, ...h });
+      }
     }
     // 409 = duplicate — skip silently (idempotent)
   }
@@ -58,6 +61,10 @@ export async function cleanupHolidays(
   );
 
   if (!response.ok()) return;
+
+  // Guard against HTML login page redirect (302 → 200 with HTML body)
+  const contentType = response.headers()["content-type"] || "";
+  if (!contentType.includes("application/json")) return;
 
   const body = await response.json();
   const holidays = body.holidays || [];

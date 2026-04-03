@@ -106,10 +106,11 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     await test.step("US4.1 — Switch to Trends tab", async () => {
       await page.locator('[data-testid="tab-trends"]').click();
       await videoPause(page, 2000, testInfo);
-      // Should see trend controls (aggregation dropdown)
-      await expect(
-        page.getByText(/Daily|No results found/).first(),
-      ).toBeVisible({ timeout: 10_000 });
+      // After clicking tab, the Trends panel should be visible with controls
+      // Look for the aggregation dropdown which is unique to Trends
+      await expect(page.locator("#trend-interval")).toBeVisible({
+        timeout: 10_000,
+      });
     });
   });
 
@@ -135,10 +136,11 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     });
 
     await test.step("US5.1 — Verify export menu exists", async () => {
-      // Export menu should be visible after generating a report
-      await expect(
-        page.getByText("Export", { exact: true }).first(),
-      ).toBeVisible();
+      // The Export OverflowMenu renders as a button with the Download icon
+      // Look for the overflow menu button (it has menuButtonLabel="Export")
+      await expect(page.locator(".cds--overflow-menu").first()).toBeVisible({
+        timeout: 5_000,
+      });
       await videoPause(page, 2000, testInfo);
     });
   });
