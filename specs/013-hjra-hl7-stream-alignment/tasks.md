@@ -69,6 +69,17 @@ artifacts and no CRITICAL/HIGH analysis findings remain.
 **Checkpoint**: Coordination artifacts validated; Gate 1 evidence checklist and
 paired-PR handoff documented; M1 task outline available for branch launch.
 
+### Test-Connection Parity (Cross-Cutting Fix — fix/013-hl7-test-connection, PR #3195)
+
+- [x] T015 [M0] Replace testHl7Connection() stub with unified
+      testTcpAnalyzerConnection() in AnalyzerRestController.java
+- [x] T016 [P] [M0] Add HL7-specific tests + CommunicationMode tests in
+      AnalyzerRestControllerTest.java (4 new tests)
+- [x] T017 [P] [M0] Fix hardcoded "Connection Failed" → i18n key
+      analyzer.form.testConnection.error (en + fr)
+- [x] T018 [M0] Add CommunicationMode enum, Analyzer field, Liquibase migration,
+      frontend dropdown, profile communication.mode blocks, seed script updates
+
 ---
 
 ## Phase 2: Pre-M1 Readiness
