@@ -1,0 +1,281 @@
+# Shared authoritative E2E executor for both non-fork and fork wrappers.
+# Wrappers are responsible for trust/artifact/status boundary normalization.
+name: E2E / Authoritative Executor (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: "Ref to checkout for test execution"
+        required: false
+        type: string
+        default: ""
+      status_sha:
+        description: "Commit SHA used for checkpoint status reporting in wrappers"
+        required: false
+        type: string
+        default: ""
+      build_run_id:
+        description: "Build workflow run id for cross-run artifact downloads"
+        required: false
+        type: string
+        default: ""
+      artifact_source_mode:
+        description: "Artifact source mode: cross_run or same_run"
+        required: false
+        type: string
+        default: "cross_run"
+      artifact_map_kind:
+        description: "Image map selection: base or full"
+        required: false
+        type: string
+        default: "base"
+      include_plugin_jars:
+        description: "Whether harness should consume plugin jars"
+        required: false
+        type: string
+        default: "true"
+      is_fork:
+        description: "Whether execution context is fork-native"
+        required: false
+        type: string
+        default: "false"
+      pr_number:
+        description: "PR number for evidence updates where applicable"
+        required: false
+        type: string
+        default: ""
+      checkpoint_context:
+        description: "Checkpoint context label used by wrapper status jobs"
+        required: false
+        type: string
+        default: "03 Checkpoint - E2E"
+      test_user:
+        description: "CI login user for E2E execution"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password for E2E execution"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  playwright-core:
+    name: Playwright Core ${{ matrix.shard_index }}/${{ matrix.shard_total }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 1
+            shard_total: 2
+          - shard_index: 2
+            shard_total: 2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Resolve image map artifact name
+        id: image-map
+        run: |
+          if [[ "${{ inputs.artifact_map_kind }}" == "full" ]]; then
+            echo "name=e2e-image-map" >> "$GITHUB_OUTPUT"
+            echo "file=e2e-image-map.txt" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=e2e-image-map-base" >> "$GITHUB_OUTPUT"
+            echo "file=e2e-image-map-base.txt" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
+        working-directory: frontend
+
+      - name: Restore Playwright browser cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: frontend
+
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
+      - name: Download image map (cross-run)
+        if: inputs.artifact_source_mode == 'cross_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.image-map.outputs.name }}
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map (same-run)
+        if: inputs.artifact_source_mode == 'same_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.image-map.outputs.name }}
+          path: /tmp/e2e-image-map
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: E2E_IMAGE_MAP_FILE=/tmp/e2e-image-map/${{ steps.image-map.outputs.file }} bash scripts/e2e/pull-retag-e2e-images.sh
+
+      - name: Start OpenELIS containers (no rebuild)
+        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
+
+      - name: Wait for OpenELIS login readiness
+        env:
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          TIMEOUT_SECONDS: "240"
+        run: bash scripts/e2e/wait-for-openelis-login.sh
+
+      - name: Load E2E foundational + demo patient data (order entry / OGC-284)
+        run: |
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/e2e-foundational-data.sql
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/analyzer-harness-e2e.sql
+
+      - name: Load FILE analyzer E2E fixtures (deactivate legacy types)
+        run: |
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/fixtures/file-import-e2e.sql
+
+      - name: Create analyzer import directories in container
+        run: |
+          docker exec openelisglobal-webapp mkdir -p \
+            /data/analyzer-imports/e2e-qs5/incoming \
+            /data/analyzer-imports/e2e-qs7/incoming \
+            /data/analyzer-imports/e2e-fluorocycler/incoming
+
+      - name: Run Playwright tests
+        run: npm run pw:test -- --project=core-app --project=core-demo --shard=${{ matrix.shard_index }}/${{ matrix.shard_total }}
+        working-directory: frontend
+        env:
+          CI: true
+          BASE_URL: https://localhost
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-core-blob-report-${{ matrix.shard_index }}
+          path: frontend/blob-report
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-core-screenshots-${{ matrix.shard_index }}
+          path: frontend/test-results/**/test-failed-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-core-traces-${{ matrix.shard_index }}
+          path: frontend/test-results/**/trace.zip
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+        with:
+          tail: "100"
+
+  analyzer-harness:
+    name: Analyzer Harness
+    if: inputs.include_plugin_jars == 'true'
+    uses: ./.github/workflows/e2e-playwright-analyzer-harness-reusable.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      issues: write
+      pull-requests: write
+    with:
+      build_run_id: ${{ inputs.artifact_source_mode == 'cross_run' && inputs.build_run_id || '' }}
+      is_fork: ${{ inputs.is_fork }}
+      head_sha: ${{ inputs.checkout_ref }}
+      test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+      test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+      pr_number: ${{ inputs.pr_number }}
+
+  cypress:
+    name: Cypress
+    uses: ./.github/workflows/e2e-cypress-deprecated.yml
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    with:
+      build_run_id: ${{ inputs.artifact_source_mode == 'cross_run' && inputs.build_run_id || '' }}
+      is_fork: ${{ inputs.is_fork }}
+      head_sha: ${{ inputs.checkout_ref }}
+      test_user: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+      test_pass: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+
+  e2e-suite-gate:
+    name: E2E Suite Gate
+    if: always()
+    needs: [playwright-core, analyzer-harness, cypress]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce suite outcomes
+        run: |
+          if [[ "${{ needs.playwright-core.result }}" != "success" ]]; then
+            echo "Playwright Core failed: ${{ needs.playwright-core.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.analyzer-harness.result }}" != "success" && "${{ needs.analyzer-harness.result }}" != "skipped" ]]; then
+            echo "Analyzer Harness failed: ${{ needs.analyzer-harness.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.cypress.result }}" != "success" ]]; then
+            echo "Cypress failed: ${{ needs.cypress.result }}"
+            exit 1
+          fi
+          echo "Authoritative E2E suite gate passed."
