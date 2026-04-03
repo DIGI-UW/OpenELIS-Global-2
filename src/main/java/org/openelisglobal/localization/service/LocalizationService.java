@@ -23,4 +23,28 @@ public interface LocalizationService extends BaseObjectService<Localization, Str
     List<Locale> getAllActiveLocales();
 
     Locale getCurrentLocale();
+
+    /**
+     * Find localizations missing a translation for the specified locale.
+     *
+     * @param locale the locale code to check
+     * @return list of Localization entities missing translations
+     */
+    List<Localization> findMissingTranslationsForLocale(String locale);
+
+    /**
+     * Count localizations that have a non-empty translation for the specified
+     * locale.
+     *
+     * @param locale the locale code to check
+     * @return count of translated entries
+     */
+    int countTranslatedForLocale(String locale);
+
+    /**
+     * Get translation statistics for all active locales in a single query.
+     *
+     * @return list of Object arrays [localeCode, displayName, translated, missing]
+     */
+    List<Object[]> getTranslationStatsForAllActiveLocales();
 }

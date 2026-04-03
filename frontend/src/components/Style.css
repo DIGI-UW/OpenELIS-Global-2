@@ -358,13 +358,13 @@ button {
   max-width: 200px;
 }
 
-.cds--select-input {
+/* .cds--select-input {
   max-width: 200px;
 }
 
 .cds--select {
   max-width: 200px;
-}
+} */
 
 .hidden {
   visibility: hidden;
