@@ -99,4 +99,41 @@ public class FileImportRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals("EXCEL", captor.getValue().getFileFormat());
         verify(fileImportService).get(eq("cfg-78"));
     }
+
+    /**
+     * OGC-526: Verify that PUT propagates updated fields through the service layer.
+     * The service's update() override handles Analyzer entity sync + bridge
+     * registration, so the controller just needs to pass the right data through.
+     */
+    @Test
+    public void testUpdateConfiguration_PropagatesDirectoryToService() throws Exception {
+        FileImportConfiguration existing = new FileImportConfiguration();
+        existing.setId("cfg-99");
+        existing.setAnalyzerId(99);
+        existing.setImportDirectory("/tmp/openelis-file-import/old-dir");
+        existing.setFilePattern("*.csv");
+        existing.setFileFormat("CSV");
+        existing.setDelimiter(",");
+        existing.setHasHeader(true);
+        existing.setActive(true);
+
+        when(fileImportService.get("cfg-99")).thenReturn(existing);
+
+        mockMvc.perform(put("/rest/analyzer/file-import/configurations/cfg-99").session(mockSession)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{" + "\"importDirectory\":\"/tmp/openelis-file-import/new-dir\","
+                        + "\"archiveDirectory\":\"/tmp/openelis-file-import/archive\","
+                        + "\"errorDirectory\":\"/tmp/openelis-file-import/error\"," + "\"filePattern\":\"*.tsv\","
+                        + "\"fileFormat\":\"TSV\"," + "\"delimiter\":\"\\t\"," + "\"hasHeader\":true,"
+                        + "\"active\":true" + "}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<FileImportConfiguration> captor = ArgumentCaptor.forClass(FileImportConfiguration.class);
+        verify(fileImportService).update(captor.capture());
+        FileImportConfiguration updated = captor.getValue();
+        assertEquals("New directory should propagate", "/tmp/openelis-file-import/new-dir",
+                updated.getImportDirectory());
+        assertEquals("New pattern should propagate", "*.tsv", updated.getFilePattern());
+        assertEquals("New format should propagate", "TSV", updated.getFileFormat());
+    }
 }
