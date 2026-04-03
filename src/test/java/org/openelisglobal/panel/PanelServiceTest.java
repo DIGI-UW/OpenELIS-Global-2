@@ -11,10 +11,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.openelisglobal.localization.valueholder.Localization;
 
 public class PanelServiceTest extends BaseWebContextSensitiveTest {
 
@@ -180,8 +180,8 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         // STEP 2: Create new panel with same description
         Panel newPanel = new Panel();
         newPanel.setPanelName("Unique Panel Name");
-        newPanel.setDescription(existingPanel.getDescription());  // Same description
-        newPanel.setLocalization(localization);  //  SET LOCALIZATION
+        newPanel.setDescription(existingPanel.getDescription()); // Same description
+        newPanel.setLocalization(localization); // SET LOCALIZATION
 
         // Should throw LIMSDuplicateRecordException
         panelService.insert(newPanel);
@@ -190,7 +190,7 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
     /**
      * TEST 3: Get panel by non-existent ID should return null
      * <p>
-     *  CORRECT - No changes needed
+     * CORRECT - No changes needed
      */
     @Test
     public void getPanelById_shouldReturnNull_whenIdDoesNotExist() {
