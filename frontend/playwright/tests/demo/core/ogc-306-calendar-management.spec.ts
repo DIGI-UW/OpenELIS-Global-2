@@ -1,6 +1,22 @@
 import { test, expect } from "@playwright/test";
 import { showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
+import { isVideoProject } from "../../../helpers/video-pause";
+
+/** Capture a named screenshot — only in video projects (not CI) */
+async function evidence(
+  page: import("@playwright/test").Page,
+  testInfo: import("@playwright/test").TestInfo,
+  name: string,
+) {
+  if (!isVideoProject(testInfo)) return;
+  const screenshot = await page.screenshot({ fullPage: true });
+  await testInfo.attach(name, {
+    body: screenshot,
+    contentType: "image/png",
+  });
+}
+
 test.describe("OGC-306: Calendar Management (US1)", () => {
   test("US1 — Full calendar management workflow", async ({
     page,
@@ -22,16 +38,14 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await expect(
         page.getByRole("heading", { name: "Calendar Management" }),
       ).toBeVisible({ timeout: 15_000 });
+      await evidence(page, testInfo, "US1.1-calendar-management-page");
       await videoPause(page, 2000, testInfo);
     });
 
     await test.step("US1.2 — Verify holiday table and controls render", async () => {
-      // Table renders (with holidays if seeded, or empty state)
       await expect(
         page.locator('[data-testid="holiday-count-footer"]'),
       ).toBeVisible({ timeout: 10_000 });
-
-      // Verify UI controls
       await expect(page.locator('[data-testid="year-dropdown"]')).toBeVisible();
       await expect(
         page.locator('[data-testid="add-holiday-button"]'),
@@ -42,6 +56,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await expect(
         page.locator('[data-testid="export-csv-button"]'),
       ).toBeVisible();
+      await evidence(page, testInfo, "US1.2-table-and-controls");
       await videoPause(page, 2000, testInfo);
     });
 
@@ -50,26 +65,25 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await expect(
         page.locator('[data-testid="holiday-inline-row"]'),
       ).toBeVisible();
-
-      // Save is disabled when form is empty
       await expect(
         page.locator('[data-testid="save-holiday-button"]'),
       ).toBeDisabled();
+      await evidence(page, testInfo, "US1.3-inline-add-form-open");
 
-      // Cancel returns to table
       await page.locator('[data-testid="cancel-holiday-button"]').click();
       await expect(
         page.locator('[data-testid="holiday-inline-row"]'),
       ).not.toBeVisible();
+      await evidence(page, testInfo, "US1.3-inline-add-cancelled");
       await videoPause(page, 1500, testInfo);
     });
 
     await test.step("US1.4 — Verify weekend checkboxes", async () => {
-      // Saturday and Sunday should be checked by default
       const satCheckbox = page.locator('[data-testid="weekend-checkbox-6"]');
       const sunCheckbox = page.locator('[data-testid="weekend-checkbox-0"]');
       await expect(satCheckbox).toBeVisible();
       await expect(sunCheckbox).toBeVisible();
+      await evidence(page, testInfo, "US1.4-weekend-checkboxes");
       await videoPause(page, 1500, testInfo);
     });
 
@@ -80,6 +94,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await expect(
         page.locator('[data-testid="holiday-count-footer"]'),
       ).toContainText("holidays configured for");
+      await evidence(page, testInfo, "US1.5-holiday-count-footer");
       await videoPause(page, 1000, testInfo);
     });
   });

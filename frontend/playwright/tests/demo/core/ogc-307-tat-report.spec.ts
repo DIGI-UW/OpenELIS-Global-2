@@ -1,6 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { showTitleCard } from "../../../helpers/title-card";
-import { videoPause } from "../../../helpers/video-pause";
+import { videoPause, isVideoProject } from "../../../helpers/video-pause";
+
+/** Capture a named screenshot — only in video projects (not CI) */
+async function evidence(
+  page: import("@playwright/test").Page,
+  testInfo: import("@playwright/test").TestInfo,
+  name: string,
+) {
+  if (!isVideoProject(testInfo)) return;
+  const screenshot = await page.screenshot({ fullPage: true });
+  await testInfo.attach(name, {
+    body: screenshot,
+    contentType: "image/png",
+  });
+}
 
 test.describe("OGC-307: TAT Report (US2-US5)", () => {
   test("US2 — TAT Summary report workflow", async ({ page }, testInfo) => {
@@ -21,25 +35,25 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(
         page.getByRole("heading", { name: "Turn Around Time Report" }),
       ).toBeVisible();
+      await evidence(page, testInfo, "US2.1-tat-report-page");
       await videoPause(page, 2000, testInfo);
     });
 
     await test.step("US2.2 — Verify default filter state", async () => {
-      // Segment dropdown should default to "Receipt to Validation"
       await expect(page.locator("#tat-segment")).toBeVisible();
-      // Generate Report button should be present
       await expect(
         page.locator('[data-testid="generate-report-button"]'),
       ).toBeVisible();
+      await evidence(page, testInfo, "US2.2-default-filters");
       await videoPause(page, 1500, testInfo);
     });
 
     await test.step("US2.3 — Generate report", async () => {
       await page.locator('[data-testid="generate-report-button"]').click();
-      // Wait for summary data or no-results message
       await expect(
         page.getByText(/Total Results|No results found/).first(),
       ).toBeVisible({ timeout: 15_000 });
+      await evidence(page, testInfo, "US2.3-report-generated");
       await videoPause(page, 3000, testInfo);
     });
 
@@ -47,6 +61,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(page.locator('[data-testid="tab-summary"]')).toBeVisible();
       await expect(page.locator('[data-testid="tab-detail"]')).toBeVisible();
       await expect(page.locator('[data-testid="tab-trends"]')).toBeVisible();
+      await evidence(page, testInfo, "US2.4-tabs-visible");
       await videoPause(page, 1000, testInfo);
     });
   });
@@ -75,10 +90,10 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     await test.step("US3.1 — Switch to Detail List tab", async () => {
       await page.locator('[data-testid="tab-detail"]').click();
       await videoPause(page, 2000, testInfo);
-      // Should see either a data table or no-results message
       await expect(
         page.getByText(/Lab Number|No results found/).first(),
       ).toBeVisible({ timeout: 10_000 });
+      await evidence(page, testInfo, "US3.1-detail-list-tab");
     });
   });
 
@@ -106,11 +121,10 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     await test.step("US4.1 — Switch to Trends tab", async () => {
       await page.locator('[data-testid="tab-trends"]').click();
       await videoPause(page, 2000, testInfo);
-      // After clicking tab, the Trends panel should be visible with controls
-      // Look for the aggregation dropdown which is unique to Trends
       await expect(page.locator("#trend-interval")).toBeVisible({
         timeout: 10_000,
       });
+      await evidence(page, testInfo, "US4.1-trends-tab");
     });
   });
 
@@ -136,11 +150,10 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     });
 
     await test.step("US5.1 — Verify export menu exists", async () => {
-      // The Export OverflowMenu renders as a button with the Download icon
-      // Look for the overflow menu button (it has menuButtonLabel="Export")
       await expect(page.locator(".cds--overflow-menu").first()).toBeVisible({
         timeout: 5_000,
       });
+      await evidence(page, testInfo, "US5.1-export-menu");
       await videoPause(page, 2000, testInfo);
     });
   });
