@@ -281,9 +281,15 @@ jobs:
   authoritative-executor:
     name: Authoritative E2E Executor
     needs: [setup, fork-rebuild]
+    # always() overrides GitHub's default behavior of skipping jobs when a
+    # dependency (fork-rebuild) is skipped. Without it, non-fork PRs never
+    # reach the executor because fork-rebuild is correctly skipped for them.
     if: >-
-      (needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode == 'cross_run')
-      || (needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success')
+      always()
+      && (
+        (needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode == 'cross_run')
+        || (needs.setup.outputs.is_fork == 'true' && needs.fork-rebuild.result == 'success')
+      )
     uses: ./.github/workflows/e2e-authoritative-reusable.yml
     permissions:
       contents: read
