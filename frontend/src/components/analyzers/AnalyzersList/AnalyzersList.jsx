@@ -26,6 +26,7 @@ import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
+import FileImportConfiguration from "../FileImportConfiguration/FileImportConfiguration";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./AnalyzersList.css";
 
@@ -60,6 +61,10 @@ const AnalyzersList = () => {
     analyzer: null,
   });
   const [copyMappingsModal, setCopyMappingsModal] = useState({
+    open: false,
+    analyzer: null,
+  });
+  const [fileImportModal, setFileImportModal] = useState({
     open: false,
     analyzer: null,
   });
@@ -500,6 +505,7 @@ const AnalyzersList = () => {
                                   ariaLabel={intl.formatMessage({
                                     id: "analyzer.table.actions",
                                   })}
+                                  data-testid={`analyzer-row-overflow-${row.id}`}
                                 >
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
@@ -525,6 +531,18 @@ const AnalyzersList = () => {
                                       });
                                     }}
                                     data-testid={`analyzer-action-test-connection-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.configureFileImport",
+                                    })}
+                                    onClick={() => {
+                                      setFileImportModal({
+                                        open: true,
+                                        analyzer: analyzer,
+                                      });
+                                    }}
+                                    data-testid={`analyzer-action-file-import-${row.id}`}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
@@ -614,6 +632,16 @@ const AnalyzersList = () => {
           onConfirm={(deletedId) => {
             loadAnalyzers();
           }}
+        />
+      )}
+
+      {fileImportModal.open && (
+        <FileImportConfiguration
+          open={fileImportModal.open}
+          onClose={() => {
+            setFileImportModal({ open: false, analyzer: null });
+          }}
+          preselectedAnalyzerId={fileImportModal.analyzer?.id}
         />
       )}
 

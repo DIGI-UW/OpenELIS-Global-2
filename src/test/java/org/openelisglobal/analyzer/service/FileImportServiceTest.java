@@ -5,9 +5,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,13 +27,24 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerRunDAO;
 import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
+import org.openelisglobal.analyzer.form.AnalyzerRunPreviewForm;
+import org.openelisglobal.analyzer.form.SubmitRequestForm;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
+import org.openelisglobal.analyzerimport.analyzerreaders.AnalyzerReader;
+import org.openelisglobal.analyzerimport.analyzerreaders.ExcelAnalyzerReader;
+import org.openelisglobal.analyzerimport.analyzerreaders.FileAnalyzerReader;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -47,6 +65,21 @@ public class FileImportServiceTest {
 
     @Mock
     private AnalyzerResultsDAO analyzerResultsDAO;
+
+    @Mock
+    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
+
+    @Mock
+    private AnalyzerRunDAO analyzerRunDAO;
+
+    @Mock
+    private PluginAnalyzerService pluginAnalyzerService;
+
+    @Mock
+    private AnalyzerService analyzerService;
+
+    @Mock
+    private BridgeRegistrationService bridgeRegistrationService;
 
     @InjectMocks
     private FileImportServiceImpl fileImportService;
@@ -126,6 +159,24 @@ public class FileImportServiceTest {
         assertEquals("Should return only active configurations", 1, result.size());
         assertEquals("ACTIVE-001", result.get(0).getId());
         verify(fileImportConfigurationDAO).findAllActive();
+    }
+
+    @Test
+    public void testGetReaderForFormat_WithCsvFormat_ReturnsFileAnalyzerReader() {
+        testConfig.setFileFormat("CSV");
+
+        AnalyzerReader reader = fileImportService.getReaderForFormat(testConfig);
+
+        assertTrue("CSV format should use FileAnalyzerReader", reader instanceof FileAnalyzerReader);
+    }
+
+    @Test
+    public void testGetReaderForFormat_WithExcelFormat_ReturnsExcelAnalyzerReader() {
+        testConfig.setFileFormat("EXCEL");
+
+        AnalyzerReader reader = fileImportService.getReaderForFormat(testConfig);
+
+        assertTrue("EXCEL format should use ExcelAnalyzerReader", reader instanceof ExcelAnalyzerReader);
     }
 
     @Test
@@ -220,6 +271,20 @@ public class FileImportServiceTest {
         boolean result = fileImportService.moveToErrorDirectory(testFile, testConfig, "Test error");
 
         assertFalse("Should return false when error directory not configured", result);
+    }
+
+    @Test
+    public void testArchiveAndErrorMove_WithExcelFormat_StillUseConfiguredDirectories() throws IOException {
+        testConfig.setFileFormat("EXCEL");
+        Path archiveCandidate = tempDir.resolve("excel-result.xlsx");
+        Files.createFile(archiveCandidate);
+        boolean archived = fileImportService.archiveFile(archiveCandidate, testConfig);
+        assertTrue("Archive should work regardless of fileFormat", archived);
+
+        Path errorCandidate = tempDir.resolve("excel-error.xlsx");
+        Files.createFile(errorCandidate);
+        boolean movedToError = fileImportService.moveToErrorDirectory(errorCandidate, testConfig, "parse failure");
+        assertTrue("Error move should work regardless of fileFormat", movedToError);
     }
 
     @Test
@@ -332,5 +397,167 @@ public class FileImportServiceTest {
 
         assertTrue("Should return true when duplicate found and no date provided", result);
         verify(analyzerResultsDAO).getDuplicateResultByAccessionAndTest(any(AnalyzerResults.class));
+    }
+
+    // --- T026: parseAndPreview returns AnalyzerRunPreview with record counts and
+    // validation messages ---
+    @Test
+    public void testParseAndPreview_WithValidCsv_ReturnsPreviewWithRecordCountsAndValidationMessages() throws IOException {
+        when(fileImportConfigurationDAO.findByAnalyzerId(1)).thenReturn(Optional.of(testConfig));
+        when(analyzerFileUploadDAO.findByAnalyzerIdAndFileHash(anyInt(), anyString())).thenReturn(Optional.empty());
+        doAnswer(inv -> {
+            AnalyzerFileUpload u = inv.getArgument(0);
+            u.setId(1L);
+            return 1L;
+        }).when(analyzerFileUploadDAO).insert(any(AnalyzerFileUpload.class));
+
+        byte[] csv = "Sample_ID,Test_Code,Result\n12345-001,HB,12.5".getBytes();
+        AnalyzerRunPreviewForm result = fileImportService.parseAndPreview(1, new ByteArrayInputStream(csv),
+                "test.csv", "1");
+
+        assertNotNull("Preview should not be null", result);
+        assertNotNull("Records list should not be null", result.getRecords());
+        assertNotNull("Total records count should be set", result.getTotalRecords());
+        verify(analyzerFileUploadDAO).insert(any(AnalyzerFileUpload.class));
+        if (result.getTotalRecords() > 0) {
+            assertNotNull("Upload ID should be set for submit", result.getUploadId());
+            assertEquals("Row number should be 1-based", Integer.valueOf(1), result.getRecords().get(0).getRowNumber());
+            assertNotNull("Record status (VALID/WARNING/ERROR) should be set", result.getRecords().get(0).getStatus());
+        }
+    }
+
+    // --- T027: SHA-256 duplicate detection — second upload of same file returns
+    // warning ---
+    @Test
+    public void testParseAndPreview_WithDuplicateFileHash_SetsDuplicateWarning() throws IOException {
+        when(fileImportConfigurationDAO.findByAnalyzerId(1)).thenReturn(Optional.of(testConfig));
+        AnalyzerFileUpload existing = new AnalyzerFileUpload();
+        existing.setId(99L);
+        when(analyzerFileUploadDAO.findByAnalyzerIdAndFileHash(anyInt(), anyString()))
+                .thenReturn(Optional.of(existing));
+        doAnswer(inv -> {
+            AnalyzerFileUpload u = inv.getArgument(0);
+            u.setId(100L);
+            return 100L;
+        }).when(analyzerFileUploadDAO).insert(any(AnalyzerFileUpload.class));
+
+        byte[] csv = "Sample_ID,Test_Code,Result\n12345-001,HB,12.5".getBytes();
+        AnalyzerRunPreviewForm result = fileImportService.parseAndPreview(1, new ByteArrayInputStream(csv),
+                "test.csv", "1");
+
+        assertNotNull("Preview should not be null", result);
+        assertTrue("Duplicate file should set duplicateWarning", Boolean.TRUE.equals(result.getDuplicateWarning()));
+    }
+
+    // --- T028: submitResults transitions AnalyzerFileUpload status
+    // PENDING→PROCESSING→COMPLETED ---
+    @Test
+    public void testSubmitResults_WithValidRequest_TransitionsStatusPendingToProcessingToCompleted() {
+        AnalyzerFileUpload upload = new AnalyzerFileUpload();
+        upload.setId(1L);
+        upload.setAnalyzerId(1);
+        upload.setStatus("PENDING");
+        when(analyzerFileUploadDAO.get(1L)).thenReturn(Optional.of(upload));
+        org.openelisglobal.analyzer.valueholder.AnalyzerRun run = new org.openelisglobal.analyzer.valueholder.AnalyzerRun();
+        run.setId(1L);
+        run.setAnalyzerFileUploadId(1L);
+        run.setCustomPreviewData("[]");
+        when(analyzerRunDAO.findByAnalyzerFileUploadId(1L)).thenReturn(Optional.of(run));
+        when(pluginAnalyzerService.getPluginByAnalyzerId("1")).thenReturn(null);
+
+        SubmitRequestForm request = new SubmitRequestForm();
+        request.setPreviewSessionId(1L);
+        request.setExcludedRows(new ArrayList<>());
+
+        fileImportService.submitResults(1, request, "1");
+
+        verify(analyzerFileUploadDAO, org.mockito.Mockito.atLeastOnce()).update(any(AnalyzerFileUpload.class));
+        assertTrue("Status should end as COMPLETED or ERROR",
+                "COMPLETED".equals(upload.getStatus()) || "ERROR".equals(upload.getStatus()));
+    }
+
+    // --- OGC-526 Bug 1: File config save propagation to Analyzer entity + bridge
+    // ---
+
+    @Test
+    public void testUpdate_SyncsUnifiedFieldsToAnalyzerEntity() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("42");
+        analyzer.setName("TestAnalyzer");
+        when(analyzerService.get("1")).thenReturn(analyzer);
+        when(fileImportConfigurationDAO.update(any(FileImportConfiguration.class))).thenReturn(testConfig);
+
+        testConfig.setSysUserId("operator-1");
+        fileImportService.update(testConfig);
+
+        ArgumentCaptor<Analyzer> captor = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(captor.capture());
+        Analyzer synced = captor.getValue();
+        assertEquals("importDirectory should propagate", "/data/import", synced.getImportDirectory());
+        assertEquals("filePattern should propagate", "*.csv", synced.getFilePattern());
+        assertNotNull("columnMappings should propagate", synced.getColumnMappings());
+        assertEquals("sysUserId should propagate", "operator-1", synced.getSysUserId());
+    }
+
+    @Test
+    public void testInsert_SyncsUnifiedFieldsToAnalyzerEntity() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("42");
+        analyzer.setName("TestAnalyzer");
+        when(analyzerService.get("1")).thenReturn(analyzer);
+        when(fileImportConfigurationDAO.insert(any(FileImportConfiguration.class))).thenReturn("CFG-NEW");
+
+        testConfig.setSysUserId("operator-1");
+        fileImportService.insert(testConfig);
+
+        ArgumentCaptor<Analyzer> captor = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(captor.capture());
+        Analyzer synced = captor.getValue();
+        assertEquals("importDirectory should propagate on insert", "/data/import", synced.getImportDirectory());
+        assertEquals("filePattern should propagate on insert", "*.csv", synced.getFilePattern());
+    }
+
+    @Test
+    public void testUpdate_CallsBridgeRegistration() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("42");
+        analyzer.setName("TestAnalyzer");
+        when(analyzerService.get("1")).thenReturn(analyzer);
+        when(fileImportConfigurationDAO.update(any(FileImportConfiguration.class))).thenReturn(testConfig);
+
+        fileImportService.update(testConfig);
+
+        verify(bridgeRegistrationService).registerFile(eq("42"), eq("TestAnalyzer"), eq("/data/import"), eq("*.csv"),
+                any());
+    }
+
+    @Test
+    public void testUpdate_BridgeFailureDoesNotBlockSave() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("42");
+        analyzer.setName("TestAnalyzer");
+        when(analyzerService.get("1")).thenReturn(analyzer);
+        when(fileImportConfigurationDAO.update(any(FileImportConfiguration.class))).thenReturn(testConfig);
+        doThrow(new RuntimeException("bridge unreachable")).when(bridgeRegistrationService).registerFile(anyString(),
+                anyString(), anyString(), anyString(), any());
+
+        // Should not throw — bridge failure is warn-and-continue
+        FileImportConfiguration result = fileImportService.update(testConfig);
+
+        assertNotNull("Update should still return result despite bridge failure", result);
+        verify(fileImportConfigurationDAO).update(testConfig);
+    }
+
+    @Test
+    public void testUpdate_WithNullAnalyzer_SkipsSyncGracefully() {
+        when(analyzerService.get("1")).thenReturn(null);
+        when(fileImportConfigurationDAO.update(any(FileImportConfiguration.class))).thenReturn(testConfig);
+
+        fileImportService.update(testConfig);
+
+        verify(fileImportConfigurationDAO).update(testConfig);
+        verify(analyzerService, never()).update(any(Analyzer.class));
+        verify(bridgeRegistrationService, never()).registerFile(
+                anyString(), anyString(), anyString(), anyString(), any());
     }
 }

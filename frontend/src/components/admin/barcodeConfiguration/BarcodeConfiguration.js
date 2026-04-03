@@ -24,7 +24,27 @@ import {
 } from "../../common/CustomNotification.js";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Field, Formik } from "formik";
+import * as Yup from "yup";
 import BarcodeConfigurationFormValues from "../../formModel/innitialValues/BarcodeConfigurationFormValues.js";
+
+const positiveNumber = (msgId) =>
+  Yup.number()
+    .transform((v) => (isNaN(v) ? undefined : v))
+    .positive(msgId)
+    .nullable();
+
+const barcodeConfigurationValidationSchema = Yup.object({
+  heightOrderLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthOrderLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightSpecimenLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthSpecimenLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightBlockLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthBlockLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightSlideLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthSlideLabels: positiveNumber("error.barcode.dimension.positive"),
+  heightFreezerLabels: positiveNumber("error.barcode.dimension.positive"),
+  widthFreezerLabels: positiveNumber("error.barcode.dimension.positive"),
+});
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -61,7 +81,7 @@ function BarcodeConfiguration() {
     }
   };
 
-  function handleDefaultOrderLablesValue(e) {
+  function handleDefaultOrderLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numDefaultOrderLabels: parseFloat(e.target.value),
@@ -69,7 +89,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleDefaultSpecimenLablesValue(e) {
+  function handleDefaultSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numDefaultSpecimenLabels: parseFloat(e.target.value),
@@ -77,7 +97,31 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleMaxOrderLablesValue(e) {
+  function handleDefaultSlideLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numDefaultSlideLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleDefaultBlockLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numDefaultBlockLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleDefaultFreezerLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numDefaultFreezerLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxOrderLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numMaxOrderLabels: parseFloat(e.target.value),
@@ -85,10 +129,34 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleMaxSpecimenLablesValue(e) {
+  function handleMaxSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       numMaxSpecimenLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxSlideLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numMaxSlideLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxBlockLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numMaxBlockLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleMaxFreezerLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      numMaxFreezerLabels: parseFloat(e.target.value),
     });
     setSaveButton(false);
   }
@@ -109,7 +177,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleHeightSpecimenLablesValue(e) {
+  function handleHeightSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       heightSpecimenLabels: parseFloat(e.target.value),
@@ -117,7 +185,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleWidthSpecimenLablesValue(e) {
+  function handleWidthSpecimenLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       widthSpecimenLabels: parseFloat(e.target.value),
@@ -125,7 +193,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleHeightBlockLablesValue(e) {
+  function handleHeightBlockLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       heightBlockLabels: parseFloat(e.target.value),
@@ -133,7 +201,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleWidthBlockLablesValue(e) {
+  function handleWidthBlockLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       widthBlockLabels: parseFloat(e.target.value),
@@ -141,7 +209,7 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleHeightSlideLablesValue(e) {
+  function handleHeightSlideLabelsValue(e) {
     setBarcodeFormValues({
       ...barcodeFromValues,
       heightSlideLabels: parseFloat(e.target.value),
@@ -149,11 +217,27 @@ function BarcodeConfiguration() {
     setSaveButton(false);
   }
 
-  function handleWidthSlideLablesValue(e) {
+  function handleWidthSlideLabelsValue(e) {
     setSaveButton(false);
     setBarcodeFormValues({
       ...barcodeFromValues,
       widthSlideLabels: parseFloat(e.target.value),
+    });
+  }
+
+  function handleHeightFreezerLabelsValue(e) {
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      heightFreezerLabels: parseFloat(e.target.value),
+    });
+    setSaveButton(false);
+  }
+
+  function handleWidthFreezerLabelsValue(e) {
+    setSaveButton(false);
+    setBarcodeFormValues({
+      ...barcodeFromValues,
+      widthFreezerLabels: parseFloat(e.target.value),
     });
   }
 
@@ -216,11 +300,9 @@ function BarcodeConfiguration() {
               <Formik
                 initialValues={barcodeFromValues}
                 enableReinitialize={true}
-                // // validationSchema={}
-                // validateOnChange={false}
-                // validateOnBlur={true}
-                // onSubmit
-                // onChange
+                validationSchema={barcodeConfigurationValidationSchema}
+                validateOnChange={false}
+                validateOnBlur={true}
               >
                 {({
                   values,
@@ -255,15 +337,15 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.order" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.order",
+                              })}
                               invalid={errors.order && touched.order}
                               invalidText={errors.order}
                               value={values.numDefaultOrderLabels}
-                              onChange={(e) => handleDefaultOrderLablesValue(e)}
+                              onChange={(e) => handleDefaultOrderLabelsValue(e)}
                               min={0}
                             />
                           )}
@@ -274,14 +356,71 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.specimen" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.specimen",
+                              })}
                               value={values.numDefaultSpecimenLabels}
                               onChange={(e) =>
-                                handleDefaultSpecimenLablesValue(e)
+                                handleDefaultSpecimenLabelsValue(e)
+                              }
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="slide">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.slide",
+                              })}
+                              invalid={errors.slide && touched.slide}
+                              invalidText={errors.slide}
+                              value={values.numDefaultSlideLabels}
+                              onChange={(e) => handleDefaultSlideLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="specimen">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.block",
+                              })}
+                              value={values.numDefaultBlockLabels}
+                              onChange={(e) => handleDefaultBlockLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="order">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.freezer",
+                              })}
+                              invalid={errors.freezer && touched.freezer}
+                              invalidText={errors.freezer}
+                              value={values.numDefaultFreezerLabels}
+                              onChange={(e) =>
+                                handleDefaultFreezerLabelsValue(e)
                               }
                               min={0}
                             />
@@ -303,13 +442,13 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.order" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.order",
+                              })}
                               value={values.numMaxOrderLabels}
-                              onChange={(e) => handleMaxOrderLablesValue(e)}
+                              onChange={(e) => handleMaxOrderLabelsValue(e)}
                               min={0}
                             />
                           )}
@@ -320,13 +459,64 @@ function BarcodeConfiguration() {
                           {({ field }) => (
                             <TextInput
                               id={field.name}
-                              className="defalut"
+                              className="default"
                               type="number"
-                              labelText={
-                                <FormattedMessage id="siteInfo.title.default.barcode.specimen" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.specimen",
+                              })}
                               value={values.numMaxSpecimenLabels}
-                              onChange={(e) => handleMaxSpecimenLablesValue(e)}
+                              onChange={(e) => handleMaxSpecimenLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="maxSlide">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.slide",
+                              })}
+                              value={values.numMaxSlideLabels}
+                              onChange={(e) => handleMaxSlideLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="maxBlock">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.block",
+                              })}
+                              value={values.numMaxBlockLabels}
+                              onChange={(e) => handleMaxBlockLabelsValue(e)}
+                              min={0}
+                            />
+                          )}
+                        </Field>
+                      </Column>
+                      <Column lg={8} md={8} sm={4}>
+                        <Field name="maxFreezer">
+                          {({ field }) => (
+                            <TextInput
+                              id={field.name}
+                              className="default"
+                              type="number"
+                              labelText={intl.formatMessage({
+                                id: "siteInfo.title.default.barcode.freezer",
+                              })}
+                              value={values.numMaxFreezerLabels}
+                              onChange={(e) => handleMaxFreezerLabelsValue(e)}
                               min={0}
                             />
                           )}
@@ -356,19 +546,7 @@ function BarcodeConfiguration() {
                                 <br />
                                 <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.labnumber" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientdobfull" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientid" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientname" />
-                                  </ListItem>
-                                  <ListItem>
-                                    <FormattedMessage id="datasubmission.siteid" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
                                 </UnorderedList>
                               </div>
@@ -380,16 +558,43 @@ function BarcodeConfiguration() {
                                 <br />
                                 <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.labnumber" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
+                                </UnorderedList>
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.slide" />
+                                <br />
+                                <br />
+                                <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientdobfull" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
+                                </UnorderedList>
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.block" />
+                                <br />
+                                <br />
+                                <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientid" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
+                                </UnorderedList>
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.freezer" />
+                                <br />
+                                <br />
+                                <UnorderedList nested={true}>
                                   <ListItem>
-                                    <FormattedMessage id="barcode.label.info.patientname" />
+                                    <FormattedMessage id="barcode.label.info.labNumber" />
                                   </ListItem>
                                 </UnorderedList>
                               </div>
@@ -410,7 +615,66 @@ function BarcodeConfiguration() {
                                 <FormattedMessage id="siteInfo.title.default.barcode.order" />
                                 <br />
                                 <br />
-                                <FormattedMessage id="siteInfo.title.default.barcode.order.none" />
+                                <Checkbox
+                                  id="orderPatientDobCheck"
+                                  checked={values.orderPatientDobCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderPatientDobCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientDobFull",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="orderPatientIdCheck"
+                                  checked={values.orderPatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="orderPatientNameCheck"
+                                  checked={values.orderPatientNameCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderPatientNameCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientName",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="orderSiteIdCheck"
+                                  checked={values.orderSiteIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      orderSiteIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.siteId",
+                                  })}
+                                />
                               </div>
                             </Column>
                             <Column lg={8} md={8} sm={4}>
@@ -418,64 +682,338 @@ function BarcodeConfiguration() {
                                 <FormattedMessage id="siteInfo.title.default.barcode.specimen" />
                                 <br />
                                 <Checkbox
-                                  id="collectionDateCheck"
-                                  checked={values.collectionDateCheck}
+                                  id="specimenPatientDobCheck"
+                                  checked={values.specimenPatientDobCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      collectionDateCheck: isChecked,
+                                      specimenPatientDobCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.collectiondatetime" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientDobFull",
+                                  })}
                                 />
                                 <Checkbox
-                                  id="collectedBy"
-                                  checked={values.collectedByCheck}
+                                  id="specimenPatientIdCheck"
+                                  checked={values.specimenPatientIdCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      collectedByCheck: isChecked,
+                                      specimenPatientIdCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.collectedBy" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
                                 />
                                 <Checkbox
-                                  id="tests"
-                                  checked={values.testsCheck}
+                                  id="specimenPatientNameCheck"
+                                  checked={values.specimenPatientNameCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      testsCheck: isChecked,
+                                      specimenPatientNameCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.tests" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientName",
+                                  })}
                                 />
                                 <Checkbox
-                                  id="patientsexfull"
-                                  checked={values.patientSexCheck}
+                                  id="specimenCollectionDateCheck"
+                                  checked={values.specimenCollectionDateCheck}
                                   onChange={(e) => {
                                     const isChecked = e.target.checked;
                                     setBarcodeFormValues({
                                       ...barcodeFromValues,
-                                      patientSexCheck: isChecked,
+                                      specimenCollectionDateCheck: isChecked,
                                     });
                                     setSaveButton(false);
                                   }}
-                                  labelText={
-                                    <FormattedMessage id="barcode.label.info.patientsexfull" />
-                                  }
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectionDateTime",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="specimenCollectedBy"
+                                  checked={values.specimenCollectedByCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      specimenCollectedByCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectedBy",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="specimenTests"
+                                  checked={values.specimenTestsCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      specimenTestsCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.tests",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="specimenPatientSexFull"
+                                  checked={values.specimenPatientSexCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      specimenPatientSexCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientSexFull",
+                                  })}
+                                />
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.slide" />
+                                <br />
+                                <Checkbox
+                                  id="slidePatientIdCheck"
+                                  checked={values.slidePatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slidePatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideSlideIdCheck"
+                                  checked={values.slideSlideIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideSlideIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.slideId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideStainTypeCheck"
+                                  checked={values.slideStainTypeCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideStainTypeCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.stainType",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideBlockIdCheck"
+                                  checked={values.slideBlockIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideBlockIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.blockId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="slideCaseNumberCheck"
+                                  checked={values.slideCaseNumberCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      slideCaseNumberCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.caseNumber",
+                                  })}
+                                />
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.block" />
+                                <br />
+
+                                <Checkbox
+                                  id="blockPatientIdCheck"
+                                  checked={values.blockPatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="blockBlockIdCheck"
+                                  checked={values.blockBlockIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockBlockIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.blockId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="blockSpecimenTypeCheck"
+                                  checked={values.blockSpecimenTypeCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockSpecimenTypeCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.specimenType",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="blockCaseNumberCheck"
+                                  checked={values.blockCaseNumberCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      blockCaseNumberCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.blockCaseNumber",
+                                  })}
+                                />
+                              </div>
+                            </Column>
+                            <Column lg={8} md={8} sm={4}>
+                              <div>
+                                <FormattedMessage id="siteInfo.title.default.barcode.freezer" />
+                                <br />
+                                <Checkbox
+                                  id="freezerPatientIdCheck"
+                                  checked={values.freezerPatientIdCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerPatientIdCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.patientId",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerStorageLocationCheck"
+                                  checked={values.freezerStorageLocationCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerStorageLocationCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.storageLocation",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerSpecimenTypeCheck"
+                                  checked={values.freezerSpecimenTypeCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerSpecimenTypeCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.specimenType",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerCollectionDateCheck"
+                                  checked={values.freezerCollectionDateCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerCollectionDateCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.collectionDate",
+                                  })}
+                                />
+                                <Checkbox
+                                  id="freezerExpiryDateCheck"
+                                  checked={values.freezerExpiryDateCheck}
+                                  onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setBarcodeFormValues({
+                                      ...barcodeFromValues,
+                                      freezerExpiryDateCheck: isChecked,
+                                    });
+                                    setSaveButton(false);
+                                  }}
+                                  labelText={intl.formatMessage({
+                                    id: "barcode.label.info.expiryDate",
+                                  })}
                                 />
                               </div>
                             </Column>
@@ -501,9 +1039,9 @@ function BarcodeConfiguration() {
                           });
                           setSaveButton(false);
                         }}
-                        labelText={
-                          <FormattedMessage id="labno.alt.prefix.use" />
-                        }
+                        labelText={intl.formatMessage({
+                          id: "labno.alt.prefix.use",
+                        })}
                       />
                       <br />
                       <Grid fullWidth={true}>
@@ -515,7 +1053,7 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 // name="lable-prefix"
-                                className="defalut"
+                                className="default"
                                 type="text"
                                 id={field.name}
                                 labelText=""
@@ -536,8 +1074,9 @@ function BarcodeConfiguration() {
                                       title: intl.formatMessage({
                                         id: "notification.title",
                                       }),
-                                      message:
-                                        "Input should be alphanumeric and have a maximum length of 4 characters.",
+                                      message: intl.formatMessage({
+                                        id: "barcode.validation.altPrefix",
+                                      }),
                                     });
                                   }
                                   if (value.length < 4) {
@@ -573,14 +1112,14 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightOrderLabels}
                                 onChange={(e) =>
                                   handleHeightOrderLabelsValue(e)
@@ -595,14 +1134,14 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthOrderLabels}
                                 onChange={(e) => handleWidthOrderLabelsValue(e)}
                                 min={0}
@@ -618,17 +1157,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightSpecimenLabels}
                                 onChange={(e) =>
-                                  handleHeightSpecimenLablesValue(e)
+                                  handleHeightSpecimenLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -640,17 +1179,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthSpecimenLabels}
                                 onChange={(e) =>
-                                  handleWidthSpecimenLablesValue(e)
+                                  handleWidthSpecimenLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -668,17 +1207,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightBlockLabels}
                                 onChange={(e) =>
-                                  handleHeightBlockLablesValue(e)
+                                  handleHeightBlockLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -689,16 +1228,16 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthBlockLabels}
-                                onChange={(e) => handleWidthBlockLablesValue(e)}
+                                onChange={(e) => handleWidthBlockLabelsValue(e)}
                                 min={0}
                               />
                             )}
@@ -712,17 +1251,17 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.height" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.heightSlideLabels}
                                 onChange={(e) =>
-                                  handleHeightSlideLablesValue(e)
+                                  handleHeightSlideLabelsValue(e)
                                 }
                                 min={0}
                               />
@@ -734,16 +1273,63 @@ function BarcodeConfiguration() {
                             {({ field }) => (
                               <TextInput
                                 id={field.name}
-                                className="defalut"
+                                className="default"
                                 type="number"
-                                labelText={
-                                  <FormattedMessage id="siteInfo.title.default.barcode.width" />
-                                }
-                                helperText={
-                                  <FormattedMessage id="barcode.label.helper.text" />
-                                }
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
                                 value={values.widthSlideLabels}
-                                onChange={(e) => handleWidthSlideLablesValue(e)}
+                                onChange={(e) => handleWidthSlideLabelsValue(e)}
+                                min={0}
+                              />
+                            )}
+                          </Field>
+                        </Column>
+                        <Column lg={8} md={4} sm={2}>
+                          <FormattedMessage id="siteInfo.title.default.barcode.freezer" />
+                          <br />
+                          <br />
+                          <Field name="height-freezer">
+                            {({ field }) => (
+                              <TextInput
+                                id={field.name}
+                                className="default"
+                                type="number"
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.height",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
+                                value={values.heightFreezerLabels}
+                                onChange={(e) =>
+                                  handleHeightFreezerLabelsValue(e)
+                                }
+                                min={0}
+                              />
+                            )}
+                          </Field>
+
+                          <br />
+                          <Field name="width-freezer">
+                            {({ field }) => (
+                              <TextInput
+                                id={field.name}
+                                className="default"
+                                type="number"
+                                labelText={intl.formatMessage({
+                                  id: "siteInfo.title.default.barcode.width",
+                                })}
+                                helperText={intl.formatMessage({
+                                  id: "barcode.label.helper.text",
+                                })}
+                                value={values.widthFreezerLabels}
+                                onChange={(e) =>
+                                  handleWidthFreezerLabelsValue(e)
+                                }
                                 min={0}
                               />
                             )}

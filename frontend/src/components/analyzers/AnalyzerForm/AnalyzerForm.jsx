@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   ComposedModal,
   ModalHeader,
@@ -9,6 +9,7 @@ import {
   Dropdown,
   InlineNotification,
   FormGroup,
+  Tile,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
@@ -23,6 +24,9 @@ import {
   PROTOCOL_VERSIONS,
   PLUGIN_PROTOCOL_DEFAULTS,
   DEFAULT_PROTOCOL_VERSION,
+  COMMUNICATION_MODES,
+  DEFAULT_COMMUNICATION_MODE,
+  resolveAnalyzerApiMessage,
 } from "../constants";
 import "./AnalyzerForm.css";
 
@@ -37,6 +41,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     ipAddress: "",
     port: "",
     protocolVersion: DEFAULT_PROTOCOL_VERSION,
+    communicationMode: DEFAULT_COMMUNICATION_MODE,
     testUnitIds: [],
     status: "SETUP",
     identifierPattern: "",
@@ -54,21 +59,6 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
 
   const [pluginTypes, setPluginTypes] = useState([]);
   const [loadingPluginTypes, setLoadingPluginTypes] = useState(false);
-
-  const FALLBACK_PLUGIN_TYPES = [
-    {
-      id: "generic-astm",
-      name: "Generic ASTM",
-      protocol: "ASTM",
-      isGenericPlugin: true,
-    },
-    {
-      id: "generic-hl7",
-      name: "Generic HL7",
-      protocol: "HL7",
-      isGenericPlugin: true,
-    },
-  ];
 
   // Analyzer type options (must match DB analyzer_type column values)
   const analyzerTypeOptions = [
@@ -106,6 +96,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         ipAddress: analyzer.ipAddress || "",
         port: analyzer.port ? String(analyzer.port) : "",
         protocolVersion: analyzer.protocolVersion || DEFAULT_PROTOCOL_VERSION,
+        communicationMode:
+          analyzer.communicationMode || DEFAULT_COMMUNICATION_MODE,
         testUnitIds: analyzer.testUnitIds || [],
         status: analyzer.status || "SETUP",
         identifierPattern: analyzer.identifierPattern || "",
@@ -118,6 +110,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         ipAddress: "",
         port: "",
         protocolVersion: DEFAULT_PROTOCOL_VERSION,
+        communicationMode: DEFAULT_COMMUNICATION_MODE,
         testUnitIds: [],
         status: "SETUP",
         identifierPattern: "",
@@ -152,18 +145,12 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       getAnalyzerTypes({ active: true }, (data) => {
         setLoadingPluginTypes(false);
         if (Array.isArray(data) && data.length > 0) {
-          // In create mode, prefer showing only loaded types.
-          // In edit mode, show all types so the current type is always available,
-          // even if its plugin JAR is not currently loaded.
-          let typesToUse = data;
-          if (!analyzer) {
-            const loadedTypes = data.filter((t) => t.pluginLoaded !== false);
-            typesToUse = loadedTypes.length > 0 ? loadedTypes : data;
-          }
-          setPluginTypes(typesToUse);
+          // Show all active types — pluginLoaded is informational only.
+          // Admins may configure analyzers before plugin JARs are deployed.
+          setPluginTypes(data);
         } else {
-          // Fallback to hardcoded list if API returns empty
-          setPluginTypes(FALLBACK_PLUGIN_TYPES);
+          // No plugin types loaded — plugin system may not be initialized yet
+          setPluginTypes([]);
         }
       });
     }
@@ -173,9 +160,39 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     (t) => t.id === formData.pluginTypeId,
   );
   const isGenericPlugin = selectedPluginType?.isGenericPlugin === true;
+  const isFileProtocol = selectedPluginType?.protocol?.toUpperCase() === "FILE";
+
+  const sortedPluginTypes = useMemo(() => {
+    const protocolOrder = { ASTM: 0, HL7: 1, FILE: 2 };
+    return [...pluginTypes].sort((a, b) => {
+      if (a.isGenericPlugin !== b.isGenericPlugin)
+        return b.isGenericPlugin ? 1 : -1;
+      if (a.isGenericPlugin && b.isGenericPlugin) {
+        return (
+          (protocolOrder[a.protocol] ?? 99) - (protocolOrder[b.protocol] ?? 99)
+        );
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [pluginTypes]);
+
+  const communicationModeItems = useMemo(
+    () =>
+      COMMUNICATION_MODES.map((m) => ({
+        ...m,
+        label: intl.formatMessage({ id: m.labelId }),
+      })),
+    [intl],
+  );
+
+  const filteredDefaultConfigs = useMemo(() => {
+    if (!selectedPluginType?.protocol) return defaultConfigs;
+    const proto = selectedPluginType.protocol.toUpperCase();
+    return defaultConfigs.filter((c) => c.protocol === proto);
+  }, [defaultConfigs, selectedPluginType]);
 
   useEffect(() => {
-    if (!isEditMode && open) {
+    if (open) {
       setLoadingDefaults(true);
       getDefaultConfigs((data) => {
         setLoadingDefaults(false);
@@ -186,7 +203,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         }
       });
     }
-  }, [isEditMode, open]);
+  }, [open]);
 
   const validateIPAddress = (ip) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -230,16 +247,29 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
 
     getDefaultConfig(protocol, name, (configData) => {
       if (configData && !configData.error) {
+        // Set plugin/protocol-level fields only — NOT instance-level (name, port, IP)
+        const protocolUpper = protocol.toUpperCase();
+        // Auto-resolve pluginTypeId from config protocol
+        const matchingPluginType = pluginTypes.find(
+          (t) =>
+            t.isGenericPlugin && t.protocol?.toUpperCase() === protocolUpper,
+        );
+
         setFormData((prev) => ({
           ...prev,
-          name: configData.analyzer_name || prev.name,
-          analyzerType: configData.category || prev.analyzerType,
+          identifierPattern:
+            configData.identifier_pattern || prev.identifierPattern,
+          analyzerType:
+            configData.category ||
+            configData.profileMeta?.category ||
+            prev.analyzerType,
           protocolVersion:
-            PLUGIN_PROTOCOL_DEFAULTS[protocol.toUpperCase()] ||
-            prev.protocolVersion,
-          port: configData.default_port
-            ? String(configData.default_port)
-            : prev.port,
+            PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || prev.protocolVersion,
+          communicationMode:
+            configData.communication_mode ||
+            configData.communication?.mode ||
+            prev.communicationMode,
+          pluginTypeId: matchingPluginType?.id || prev.pluginTypeId,
         }));
 
         setNotification({
@@ -247,7 +277,10 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           title: intl.formatMessage({ id: "analyzer.form.defaults.loaded" }),
           subtitle: intl.formatMessage(
             { id: "analyzer.form.defaults.loaded.subtitle" },
-            { name: configData.analyzer_name },
+            {
+              name:
+                configData.analyzer_name || configData.profileMeta?.displayName,
+            },
           ),
         });
       } else {
@@ -277,14 +310,14 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       });
     }
 
-    if (formData.ipAddress) {
+    if (!isFileProtocol && formData.ipAddress) {
       const ipError = validateIPAddress(formData.ipAddress);
       if (ipError) {
         newErrors.ipAddress = ipError;
       }
     }
 
-    if (formData.port) {
+    if (!isFileProtocol && formData.port) {
       const portNum = parseInt(formData.port, 10);
       if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
         newErrors.port = intl.formatMessage({
@@ -308,6 +341,13 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     const submitData = {
       ...formData,
       port: formData.port ? parseInt(formData.port, 10) : null,
+      defaultConfigId: selectedDefault?.id || null,
+      // Clear network/protocol fields for FILE protocol — not applicable
+      ...(isFileProtocol && {
+        ipAddress: null,
+        port: null,
+        protocolVersion: null,
+      }),
     };
 
     const callback = (response, extraParams) => {
@@ -316,10 +356,11 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         setNotification({
           kind: "error",
           title: intl.formatMessage({ id: "analyzer.form.error.save" }),
-          subtitle:
-            response.error ||
-            response.message ||
-            intl.formatMessage({ id: "analyzer.form.error.unknown" }),
+          subtitle: resolveAnalyzerApiMessage(
+            intl,
+            response,
+            "analyzer.form.error.unknown",
+          ),
         });
       } else {
         setNotification({
@@ -371,6 +412,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             />
           )}
 
+          {/* Section 1 — Instance Identity */}
           <FormGroup legendText="">
             <TextInput
               id="analyzer-name"
@@ -387,27 +429,33 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             />
 
             <Dropdown
-              id="analyzer-type"
-              data-testid="analyzer-form-type-dropdown"
-              titleText={intl.formatMessage({ id: "analyzer.form.type" })}
-              label={intl.formatMessage({
-                id: "analyzer.form.type.placeholder",
+              id="analyzer-status"
+              data-testid="analyzer-form-status-dropdown"
+              titleText={intl.formatMessage({
+                id: "analyzer.form.status",
               })}
-              items={analyzerTypeOptions}
-              selectedItem={
-                analyzerTypeOptions.find(
-                  (opt) => opt.id === formData.analyzerType,
-                ) || null
-              }
+              label={intl.formatMessage({
+                id: "analyzer.form.status",
+              })}
+              items={statusOptions}
               itemToString={(item) => (item ? item.text : "")}
-              onChange={({ selectedItem }) =>
-                handleFieldChange("analyzerType", selectedItem?.id || "")
+              selectedItem={
+                statusOptions.find((opt) => opt.id === formData.status) ||
+                statusOptions[1] // Default to SETUP
               }
-              invalid={!!errors.analyzerType}
-              invalidText={errors.analyzerType}
-              required
+              onChange={({ selectedItem }) => {
+                if (selectedItem) {
+                  handleFieldChange("status", selectedItem.id);
+                }
+              }}
+              helperText={intl.formatMessage({
+                id: "analyzer.form.status.helperText",
+              })}
             />
+          </FormGroup>
 
+          {/* Section 2 — Plugin Configuration */}
+          <FormGroup legendText="">
             <Dropdown
               id="analyzer-plugin-type"
               data-testid="analyzer-form-plugin-type-dropdown"
@@ -419,16 +467,19 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 id: "analyzer.form.pluginType.placeholder",
                 defaultMessage: "Select plugin type...",
               })}
-              items={pluginTypes}
+              items={sortedPluginTypes}
               selectedItem={
-                pluginTypes.find((opt) => opt.id === formData.pluginTypeId) ||
-                null
+                sortedPluginTypes.find(
+                  (opt) => opt.id === formData.pluginTypeId,
+                ) || null
               }
               itemToString={(item) =>
                 item ? `${item.name} (${item.protocol})` : ""
               }
               onChange={({ selectedItem }) => {
                 handleFieldChange("pluginTypeId", selectedItem?.id || "");
+                // Reset profile selection when plugin type changes
+                setSelectedDefault(null);
                 // Auto-set protocol version based on plugin type
                 if (selectedItem?.protocol) {
                   handleFieldChange(
@@ -446,7 +497,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               })}
             />
 
-            {!isEditMode && isGenericPlugin && (
+            {isGenericPlugin && (
               <Dropdown
                 id="analyzer-default-config"
                 data-testid="analyzer-form-default-config-dropdown"
@@ -456,10 +507,12 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
                 label={intl.formatMessage({
                   id: "analyzer.form.loadDefaultConfig.placeholder",
                 })}
-                items={defaultConfigs}
+                items={filteredDefaultConfigs}
                 selectedItem={selectedDefault}
                 itemToString={(item) =>
-                  item ? `${item.analyzerName} (${item.protocol})` : ""
+                  item
+                    ? `${item.analyzerName || item.id?.split("/")[1] || item.id} (${item.protocol})`
+                    : ""
                 }
                 onChange={({ selectedItem }) =>
                   handleDefaultConfigSelect(selectedItem)
@@ -496,92 +549,143 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             )}
 
             <Dropdown
-              id="analyzer-protocol-version"
-              data-testid="analyzer-form-protocol-version-dropdown"
-              titleText={intl.formatMessage({
-                id: "analyzer.form.protocolVersion",
-                defaultMessage: "Message Protocol",
-              })}
-              items={PROTOCOL_VERSIONS}
-              selectedItem={
-                PROTOCOL_VERSIONS.find(
-                  (opt) => opt.value === formData.protocolVersion,
-                ) || PROTOCOL_VERSIONS[0]
-              }
-              itemToString={(item) => (item ? item.label : "")}
-              onChange={({ selectedItem }) => {
-                if (selectedItem) {
-                  handleFieldChange("protocolVersion", selectedItem.value);
-                }
-              }}
-            />
-
-            <div
-              className="connection-fields"
-              data-testid="analyzer-form-connection-fields"
-            >
-              <TextInput
-                id="analyzer-ip"
-                data-testid="analyzer-form-ip-input"
-                labelText={intl.formatMessage({
-                  id: "analyzer.form.ipAddress",
-                })}
-                placeholder={intl.formatMessage({
-                  id: "analyzer.form.ipAddress.placeholder",
-                })}
-                value={formData.ipAddress}
-                onChange={(e) => handleFieldChange("ipAddress", e.target.value)}
-                invalid={!!errors.ipAddress}
-                invalidText={errors.ipAddress}
-              />
-
-              <TextInput
-                id="analyzer-port"
-                data-testid="analyzer-form-port-input"
-                labelText={intl.formatMessage({ id: "analyzer.form.port" })}
-                placeholder={intl.formatMessage({
-                  id: "analyzer.form.port.placeholder",
-                })}
-                value={formData.port}
-                onChange={(e) => handleFieldChange("port", e.target.value)}
-                invalid={!!errors.port}
-                invalidText={errors.port}
-              />
-
-              <Button
-                kind="tertiary"
-                onClick={() => setTestConnectionModalOpen(true)}
-                data-testid="analyzer-form-test-connection-button"
-              >
-                {intl.formatMessage({ id: "analyzer.form.testConnection" })}
-              </Button>
-            </div>
-
-            <Dropdown
-              id="analyzer-status"
-              data-testid="analyzer-form-status-dropdown"
-              titleText={intl.formatMessage({
-                id: "analyzer.form.status",
-              })}
+              id="analyzer-type"
+              data-testid="analyzer-form-type-dropdown"
+              titleText={intl.formatMessage({ id: "analyzer.form.type" })}
               label={intl.formatMessage({
-                id: "analyzer.form.status",
+                id: "analyzer.form.type.placeholder",
               })}
-              items={statusOptions}
-              itemToString={(item) => (item ? item.text : "")}
+              items={analyzerTypeOptions}
               selectedItem={
-                statusOptions.find((opt) => opt.id === formData.status) ||
-                statusOptions[1] // Default to SETUP
+                analyzerTypeOptions.find(
+                  (opt) => opt.id === formData.analyzerType,
+                ) || null
               }
-              onChange={({ selectedItem }) => {
-                if (selectedItem) {
-                  handleFieldChange("status", selectedItem.id);
-                }
-              }}
-              helperText={intl.formatMessage({
-                id: "analyzer.form.status.helperText",
-              })}
+              itemToString={(item) => (item ? item.text : "")}
+              onChange={({ selectedItem }) =>
+                handleFieldChange("analyzerType", selectedItem?.id || "")
+              }
+              invalid={!!errors.analyzerType}
+              invalidText={errors.analyzerType}
+              required
             />
+
+            {!isFileProtocol && (
+              <Dropdown
+                id="analyzer-protocol-version"
+                data-testid="analyzer-form-protocol-version-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.protocolVersion",
+                  defaultMessage: "Message Protocol",
+                })}
+                items={PROTOCOL_VERSIONS}
+                selectedItem={
+                  PROTOCOL_VERSIONS.find(
+                    (opt) => opt.value === formData.protocolVersion,
+                  ) || PROTOCOL_VERSIONS[0]
+                }
+                itemToString={(item) => (item ? item.label : "")}
+                onChange={({ selectedItem }) => {
+                  if (selectedItem) {
+                    handleFieldChange("protocolVersion", selectedItem.value);
+                  }
+                }}
+              />
+            )}
           </FormGroup>
+
+          {/* Section 3 — Connection (hidden for FILE protocol) */}
+          {!isFileProtocol && (
+            <FormGroup legendText="">
+              <Dropdown
+                id="analyzer-communication-mode"
+                data-testid="analyzer-form-communication-mode-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.communicationMode",
+                })}
+                items={communicationModeItems}
+                selectedItem={
+                  communicationModeItems.find(
+                    (opt) => opt.value === formData.communicationMode,
+                  ) || null
+                }
+                itemToString={(item) => (item ? item.label : "")}
+                onChange={({ selectedItem }) => {
+                  if (selectedItem) {
+                    handleFieldChange("communicationMode", selectedItem.value);
+                  }
+                }}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.communicationMode.help",
+                })}
+              />
+              <div
+                className="connection-fields"
+                data-testid="analyzer-form-connection-fields"
+              >
+                <TextInput
+                  id="analyzer-ip"
+                  data-testid="analyzer-form-ip-input"
+                  labelText={intl.formatMessage({
+                    id: "analyzer.form.ipAddress",
+                  })}
+                  placeholder={intl.formatMessage({
+                    id: "analyzer.form.ipAddress.placeholder",
+                  })}
+                  value={formData.ipAddress}
+                  onChange={(e) =>
+                    handleFieldChange("ipAddress", e.target.value)
+                  }
+                  invalid={!!errors.ipAddress}
+                  invalidText={errors.ipAddress}
+                />
+
+                <TextInput
+                  id="analyzer-port"
+                  data-testid="analyzer-form-port-input"
+                  labelText={intl.formatMessage({ id: "analyzer.form.port" })}
+                  placeholder={intl.formatMessage({
+                    id: "analyzer.form.port.placeholder",
+                  })}
+                  value={formData.port}
+                  onChange={(e) => handleFieldChange("port", e.target.value)}
+                  invalid={!!errors.port}
+                  invalidText={errors.port}
+                />
+
+                <Button
+                  kind="tertiary"
+                  onClick={() => setTestConnectionModalOpen(true)}
+                  data-testid="analyzer-form-test-connection-button"
+                >
+                  {intl.formatMessage({ id: "analyzer.form.testConnection" })}
+                </Button>
+              </div>
+            </FormGroup>
+          )}
+
+          {/* Section 3b — FILE protocol info */}
+          {isFileProtocol && (
+            <FormGroup legendText="">
+              <Tile data-testid="analyzer-form-file-protocol-info">
+                <p>
+                  <strong>
+                    {intl.formatMessage({
+                      id: "analyzer.form.fileProtocol.title",
+                      defaultMessage: "File Import Protocol",
+                    })}
+                  </strong>
+                </p>
+                <p>
+                  {intl.formatMessage({
+                    id: "analyzer.form.fileProtocol.description",
+                    defaultMessage:
+                      "This analyzer imports results from files. File import settings will be configured after saving.",
+                  })}
+                </p>
+              </Tile>
+            </FormGroup>
+          )}
         </ModalBody>
         <ModalFooter>
           <Button
