@@ -142,6 +142,7 @@ check_dependencies() {
     local STATUS_COUNT
     local ROOM_COUNT
     local STORAGE_ROOM_TABLE_EXISTS
+    local ANALYZER_TYPE_TABLE_EXISTS
     local PROVIDER_FHIR_UUID_EXISTS
     local PROVIDER_ACTIVE_EXISTS
     local ORGANIZATION_FHIR_UUID_EXISTS
@@ -155,6 +156,7 @@ check_dependencies() {
             # Some environments may not seed analysis statuses ('Not Tested', 'Finalized') consistently.
             STATUS_COUNT=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STORAGE_ROOM_TABLE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT to_regclass('clinlims.storage_room') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
+            ANALYZER_TYPE_TABLE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT to_regclass('clinlims.analyzer_type') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
             PROVIDER_FHIR_UUID_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             PROVIDER_ACTIVE_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'active';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             ORGANIZATION_FHIR_UUID_EXISTS=$(docker exec "${DB_CONTAINER:-openelisglobal-database}" psql -U clinlims -d clinlims -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
@@ -164,6 +166,7 @@ check_dependencies() {
             TYPE_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM type_of_sample;" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STATUS_COUNT=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM status_of_sample WHERE name = 'Entered';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             STORAGE_ROOM_TABLE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT to_regclass('clinlims.storage_room') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
+            ANALYZER_TYPE_TABLE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT to_regclass('clinlims.analyzer_type') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || echo "f")
             PROVIDER_FHIR_UUID_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             PROVIDER_ACTIVE_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'provider' AND column_name = 'active';" 2>/dev/null | tr -d '[:space:]' || echo "0")
             ORGANIZATION_FHIR_UUID_EXISTS=$(psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -t -c "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'clinlims' AND table_name = 'organization' AND column_name = 'fhir_uuid';" 2>/dev/null | tr -d '[:space:]' || echo "0")
@@ -174,10 +177,11 @@ check_dependencies() {
         # Foundational fixtures require current-schema columns and storage tables.
         if [ "$TYPE_COUNT" -ge 3 ] && [ "$STATUS_COUNT" -ge 1 ] \
             && [ "$STORAGE_ROOM_TABLE_EXISTS" = "t" ] \
+            && [ "$ANALYZER_TYPE_TABLE_EXISTS" = "t" ] \
             && [ "$PROVIDER_FHIR_UUID_EXISTS" -ge 1 ] \
             && [ "$PROVIDER_ACTIVE_EXISTS" -ge 1 ] \
             && [ "$ORGANIZATION_FHIR_UUID_EXISTS" -ge 1 ]; then
-            echo "Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, provider/organization FHIR columns present, storage_room table present)"
+            echo "Dependencies verified (type_of_sample: $TYPE_COUNT rows, status_of_sample: required statuses present, provider/organization FHIR columns present, storage_room and analyzer_type tables present)"
             if [ "$ROOM_COUNT" -lt 3 ]; then
                 echo "   Note: storage_room table is ready; DBUnit loader will populate fixture rows"
             fi
@@ -195,6 +199,7 @@ check_dependencies() {
             echo "   provider.active column present: $PROVIDER_ACTIVE_EXISTS"
             echo "   organization.fhir_uuid column present: $ORGANIZATION_FHIR_UUID_EXISTS"
             echo "   storage_room table present: $STORAGE_ROOM_TABLE_EXISTS"
+            echo "   analyzer_type table present: $ANALYZER_TYPE_TABLE_EXISTS"
             echo "   storage hierarchy rows: $ROOM_COUNT"
             echo "   Waiting ${RETRY_DELAY}s for Liquibase to complete..."
             sleep $RETRY_DELAY
@@ -231,6 +236,13 @@ check_dependencies() {
     if [ "$STORAGE_ROOM_TABLE_EXISTS" != "t" ]; then
         echo "ERROR: storage schema is not ready for DBUnit fixtures."
         echo "Required table missing: storage_room."
+        echo "Please ensure Liquibase has finished before loading fixtures."
+        exit 1
+    fi
+
+    if [ "$ANALYZER_TYPE_TABLE_EXISTS" != "t" ]; then
+        echo "ERROR: analyzer schema is not ready for analyzer fixtures."
+        echo "Required table missing: analyzer_type."
         echo "Please ensure Liquibase has finished before loading fixtures."
         exit 1
     fi
