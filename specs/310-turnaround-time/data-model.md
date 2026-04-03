@@ -67,16 +67,20 @@ Use `getReceivedTimestamp()` (not `getReceivedDate()` which converts to Date).
 
 ### Analysis (timestamps used)
 
-| Field                              | Java Type       | Precision | Used For Segment                      |
-| ---------------------------------- | --------------- | --------- | ------------------------------------- |
-| startedDate (DB: STARTED_DATE)     | `java.sql.Date` | Date only | Testing Started (segment 3)           |
-| completedDate (DB: COMPLETED_DATE) | `java.sql.Date` | Date only | Result Entered (segments 4, 6)        |
-| releasedDate (DB: RELEASED_DATE)   | `java.sql.Date` | Date only | Validated/Released (segments 5, 6, 7) |
+| Field                              | Java Type (before M0) | Java Type (after M0) | DB Column Type                | Used For Segment                      |
+| ---------------------------------- | --------------------- | -------------------- | ----------------------------- | ------------------------------------- |
+| startedDate (DB: STARTED_DATE)     | `java.sql.Date` (bug) | `java.sql.Timestamp` | `TIMESTAMP WITHOUT TIME ZONE` | Testing Started (segment 3)           |
+| completedDate (DB: COMPLETED_DATE) | `java.sql.Date` (bug) | `java.sql.Timestamp` | `TIMESTAMP WITHOUT TIME ZONE` | Result Entered (segments 4, 6)        |
+| releasedDate (DB: RELEASED_DATE)   | `java.sql.Date` (bug) | `java.sql.Timestamp` | `TIMESTAMP WITHOUT TIME ZONE` | Validated/Released (segments 5, 6, 7) |
 
-**WARNING**: Analysis fields are date-only. Segments 3-7 will have day-level
-precision, not hour-level. Use `Analysis.releasedDate` (not
-`Sample.releasedDate`) for validation timestamp — both entities have this field
-but they represent different things.
+**M0 fixes the Hibernate HBM mapping** from `type="java.sql.Date"` to
+`type="java.sql.Timestamp"` in `Analysis.hbm.xml`. The DB columns are already
+TIMESTAMP — no schema migration needed. After M0, all segments have hour-level
+precision.
+
+**IMPORTANT**: Use `Analysis.releasedDate` (not `Sample.releasedDate`) for the
+validation timestamp — both entities have a `releasedDate` field but they
+represent different things.
 
 ---
 

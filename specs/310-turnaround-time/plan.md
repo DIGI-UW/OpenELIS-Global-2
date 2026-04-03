@@ -58,8 +58,8 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
       `weekend_config` tables + seed data + permission modules
 - [x] **Internationalization**: React Intl for all UI strings. New keys in
       `en.json` only (Transifex for fr+others).
-- [x] **Security & Compliance**: Module-based RBAC (calendar-management,
-      tat-report modules), audit fields on holiday records (sys_user_id +
+- [x] **Security & Compliance**: Module-based RBAC (`CalendarManagement`,
+      `TATReport` modules), audit fields on holiday records (sys_user_id +
       lastupdated), input validation on all API endpoints.
 
 ## Milestone Plan
@@ -69,31 +69,35 @@ IX._
 
 ### Milestone Table
 
-| ID     | Branch Suffix            | Scope                                                                                                                                                                                        | User Stories             | Verification                                                                                                                                                                                | Depends On |
-| ------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| M1     | m1-calendar-backend      | Liquibase schema, Valueholders, DAOs, Services, Controllers for holidays + weekends. Permission modules.                                                                                     | US1 (backend)            | Unit tests: holiday CRUD, weekend config, recurring logic. Integration tests: REST API endpoints. ORM validation.                                                                           | -          |
-| M2     | m2-calendar-frontend-e2e | Calendar Management admin page (Carbon), i18n, CSV import/export, read-only mode. Playwright E2E with video.                                                                                 | US1 (complete)           | Jest component tests. **Playwright video: US1 full workflow** (add/edit/delete holiday, weekend toggle, CSV import/export, read-only mode).                                                 | M1         |
-| [P] M3 | m3-tat-backend           | TAT calculation service (all 7 segments, Calendar + Working Time modes), Summary/Detail/Trend/Export API endpoints.                                                                          | US2-5 (backend)          | Unit tests: TAT calculation for all 7 segments in both modes with known test data. Integration tests: all API endpoints with pagination, sorting, filtering.                                | M1         |
-| M4     | m4-tat-summary-e2e       | TAT Report page shell, filter bar, Summary tab (stat cards, histogram, breakdown table), Working Time toggle + info/warning bars. i18n. Playwright E2E with video.                           | US2 (complete)           | Jest component tests. **Playwright video: US2 full workflow** (navigate, apply filters, view stats/histogram/breakdown, toggle Working Time, drill-down to detail).                         | M3         |
-| M5     | m5-tat-detail-trends-e2e | Detail List tab (pagination, sorting, column config, STAT styling, lab number links). Trends tab (time series, multi-series, volume overlay). Export (CSV + PDF). Playwright E2E with video. | US3, US4, US5 (complete) | Jest component tests. **Playwright videos: US3** (detail list pagination, sorting, columns, STAT rows), **US4** (trend chart, aggregation, comparison, volume), **US5** (CSV + PDF export). | M4         |
+| ID     | Branch Suffix            | Scope                                                                                                                                                                                                                                                                                                  | User Stories             | Verification                                                                                                                                                                                | Depends On |
+| ------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| M0     | m0-timestamp-precision   | Fix Analysis.hbm.xml to map `startedDate`, `completedDate`, `releasedDate` as `java.sql.Timestamp` instead of `java.sql.Date`. Update `Analysis.java` field types. Fix `PatientDashBoardProvider` TAT calculation. Update caller sites. DB columns are already TIMESTAMP — no schema migration needed. | Prerequisite for all TAT | Existing tests still pass. New unit test verifies hour-level precision round-trip for all three fields. Integration test: write analysis with time, read back, confirm time preserved.      | -          |
+| M1     | m1-calendar-backend      | Liquibase schema, Valueholders, DAOs, Services, Controllers for holidays + weekends. Permission modules (`CalendarManagement`, `TATReport` in `system_module` + `system_module_url` + `system_role_module`).                                                                                           | US1 (backend)            | Unit tests: holiday CRUD, weekend config, recurring logic. Integration tests: REST API endpoints. ORM validation.                                                                           | M0         |
+| M2     | m2-calendar-frontend-e2e | Calendar Management admin page (Carbon), i18n, CSV import/export, read-only mode. Playwright E2E with video.                                                                                                                                                                                           | US1 (complete)           | Jest component tests. **Playwright video: US1 full workflow** (add/edit/delete holiday, weekend toggle, CSV import/export, read-only mode).                                                 | M1         |
+| [P] M3 | m3-tat-backend           | TAT calculation service (all 7 segments, Calendar + Working Time modes), Summary/Detail/Trend/Export API endpoints.                                                                                                                                                                                    | US2-5 (backend)          | Unit tests: TAT calculation for all 7 segments in both modes with known test data (hour-level precision). Integration tests: all API endpoints with pagination, sorting, filtering.         | M1         |
+| M4     | m4-tat-summary-e2e       | TAT Report page shell, filter bar, Summary tab (stat cards, histogram, breakdown table), Working Time toggle + info/warning bars. i18n. Playwright E2E with video.                                                                                                                                     | US2 (complete)           | Jest component tests. **Playwright video: US2 full workflow** (navigate, apply filters, view stats/histogram/breakdown, toggle Working Time, drill-down to detail).                         | M3         |
+| M5     | m5-tat-detail-trends-e2e | Detail List tab (pagination, sorting, column config, STAT styling, lab number links). Trends tab (time series, multi-series, volume overlay). Export (CSV + PDF). Playwright E2E with video.                                                                                                           | US3, US4, US5 (complete) | Jest component tests. **Playwright videos: US3** (detail list pagination, sorting, columns, STAT rows), **US4** (trend chart, aggregation, comparison, volume), **US5** (CSV + PDF export). | M4         |
 
 ### Milestone Dependency Graph
 
 ```mermaid
 graph LR
-    M1[M1: Calendar Backend] --> M2[M2: Calendar Frontend + E2E]
+    M0[M0: Timestamp Precision Fix] --> M1[M1: Calendar Backend]
+    M1 --> M2[M2: Calendar Frontend + E2E]
     M1 --> M3["[P] M3: TAT Backend"]
     M3 --> M4[M4: TAT Summary + E2E]
     M4 --> M5[M5: TAT Detail/Trends/Export + E2E]
 ```
 
 **Parallelism**: M2 (Calendar Frontend) and M3 (TAT Backend) can be developed
-simultaneously after M1 completes. Both only depend on M1.
+simultaneously after M1 completes. Both only depend on M1. M0 is a small
+prerequisite that unblocks everything.
 
 ### PR Strategy
 
 - **Spec PR**: `spec/310-OGC-310-turnaround-time` > `develop` (this spec + plan,
   no code)
+- **M0**: `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` > `develop`
 - **M1**: `feat/310-OGC-306-turnaround-time-m1-calendar-backend` > `develop`
 - **M2**: `feat/310-OGC-306-turnaround-time-m2-calendar-frontend-e2e` >
   `develop`

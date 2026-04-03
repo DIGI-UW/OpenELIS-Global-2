@@ -4,7 +4,7 @@
 **Prerequisites**: plan.md, spec.md, data-model.md, contracts/api-contracts.md,
 research.md **Tests**: MANDATORY per Constitution Principle V — tests appear
 before implementation (TDD) **Organization**: By **Milestone** per Constitution
-Principle IX (5 milestones, 1 PR each)
+Principle IX (6 milestones: M0 prerequisite + 5 feature milestones, 1 PR each)
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -16,11 +16,126 @@ Principle IX (5 milestones, 1 PR each)
 
 ```mermaid
 graph LR
-    M1[M1: Calendar Backend] --> M2[M2: Calendar Frontend + E2E]
+    M0[M0: Timestamp Precision Fix] --> M1[M1: Calendar Backend]
+    M1 --> M2[M2: Calendar Frontend + E2E]
     M1 --> M3["[P] M3: TAT Backend"]
     M3 --> M4[M4: TAT Summary + E2E]
     M4 --> M5[M5: TAT Detail/Trends/Export + E2E]
 ```
+
+---
+
+## Milestone 0: Analysis Timestamp Precision Fix (Prerequisite)
+
+**Branch**: `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` **Scope**:
+Fix Hibernate HBM mapping for `Analysis.startedDate`, `completedDate`,
+`releasedDate` from `java.sql.Date` to `java.sql.Timestamp`. Update Java field
+types. Fix existing TAT calculation in `PatientDashBoardProvider`. No schema
+migration — DB columns are already `TIMESTAMP WITHOUT TIME ZONE`.
+**Verification**: All existing tests still pass. New tests verify hour-level
+precision round-trip. **Evidence**: `Analysis.hbm.xml:56-64` maps as
+`java.sql.Date`; `OpenELIS-Global.sql:311-313` declares columns as
+`TIMESTAMP WITHOUT TIME ZONE`; `PatientDashBoardProvider.java:157-168` uses
+`.toLocalDate().atStartOfDay()` losing all time info.
+
+### Branch Setup
+
+- [ ] T000a Create milestone branch
+      `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` from `develop`
+
+### TDD: Tests First
+
+- [ ] T000b Write unit test verifying hour-level precision for Analysis
+      timestamp fields in
+      `src/test/java/org/openelisglobal/analysis/AnalysisTimestampPrecisionTest.java`
+      — create Analysis, set `startedDate` to a `Timestamp` with time 14:30:00,
+      persist via DAO, read back, assert time component is preserved (not
+      midnight). Do same for `completedDate` and `releasedDate`. This test MUST
+      FAIL before the HBM fix is applied. JUnit 4, extend
+      `BaseWebContextSensitiveTest`.
+- [ ] T000c Write unit test for fixed TAT hour calculation in
+      `src/test/java/org/openelisglobal/common/rest/provider/PatientDashBoardProviderTATTest.java`
+      — given startedDate = Monday 09:00 and releasedDate = Monday 15:00, assert
+      TAT = 6 hours (not 0 or 24). This test MUST FAIL before the provider fix.
+
+### HBM Mapping Fix
+
+- [ ] T000d Change `Analysis.hbm.xml` at
+      `src/main/resources/hibernate/hbm/Analysis.hbm.xml` lines 56-64 — change
+      `type="java.sql.Date"` to `type="java.sql.Timestamp"` for `startedDate`
+      (line 56), `completedDate` (line 59), `releasedDate` (line 62). Keep
+      `printedDate` as `java.sql.Date` (not used for TAT).
+
+### Java Field Type Fix
+
+- [ ] T000e Update `Analysis.java` at
+      `src/main/java/org/openelisglobal/analysis/valueholder/Analysis.java` —
+      change field types: `private Date startedDate` (line 53) to
+      `private Timestamp startedDate`, `private Date completedDate` (line 55) to
+      `private Timestamp completedDate`, `private Date releasedDate` (line 58)
+      to `private Timestamp releasedDate`. Update getter return types and setter
+      parameter types to `Timestamp`. Add `import java.sql.Timestamp;` if not
+      present.
+
+### Caller Site Updates
+
+- [ ] T000f Update setter call sites that create `java.sql.Date` values for
+      these fields — change to `java.sql.Timestamp`:
+  - `ResultValidationController.java:391` —
+    `new java.sql.Date(Calendar.getInstance().getTimeInMillis())` to
+    `new java.sql.Timestamp(System.currentTimeMillis())`
+  - `AccessionValidationRestController.java:398` — same change
+  - `AccessionValidationRangeController.java:386` — same change
+  - `FhirReferralServiceImpl.java:294` — `DateUtil.getNowAsSqlDate()` to
+    `new java.sql.Timestamp(System.currentTimeMillis())`
+  - `CytologySampleServiceImpl.java:229` — same pattern
+  - `PathologySampleServiceImpl.java` — same pattern for `setReleasedDate` calls
+  - `ImmunohistochemistrySampleServiceImpl.java` — same pattern
+  - `AnalysisServiceImpl.java:314` — `DateUtil.getNowAsSqlDate()` to
+    `new java.sql.Timestamp(System.currentTimeMillis())` for `setStartedDate`
+  - `SamplePatientEntryServiceImpl.java:536` — update `setStartedDate` call
+  - `SampleEditServiceImpl.java:384,457` — update `setStartedDate` calls
+  - `TbSampleServiceImpl.java:379` — update `setStartedDate` call
+  - `TestCalculatedUtil.java:434` — update `setStartedDate` call
+  - `ReflexAction.java:90` — update `setStartedDate` call
+  - `ResultUtil.java:514,523` — `setCompletedDate` calls (these use
+    `convertStringDateToSqlDate` — update to use
+    `convertStringDateTimeToSqlDate` or `new Timestamp`)
+  - `AnalyzerResultsAcceptServiceImpl.java:693` — `setCompletedDateForDisplay`
+    (string path — verify it now parses time)
+  - Test files: `AnalysisServiceTest.java:392-394`,
+    `AnalyzerResultsServiceTest.java:143` — update `Date.valueOf` to
+    `Timestamp.valueOf`
+- [ ] T000g Update `DateUtil.java` — add `getNowAsTimestamp()` method:
+      `return new java.sql.Timestamp(System.currentTimeMillis())` for use in the
+      setter calls above. Keep `getNowAsSqlDate()` for non-Analysis uses.
+
+### Fix Existing TAT Calculation
+
+- [ ] T000h Fix `PatientDashBoardProvider.java` at
+      `src/main/java/org/openelisglobal/common/rest/provider/PatientDashBoardProvider.java`
+      lines 157-168 — replace `.toLocalDate().atStartOfDay()` pattern with
+      direct `Timestamp`-aware calculation: convert `getStartedDate()` and
+      `getReleasedDate()` to `LocalDateTime` via `.toLocalDateTime()` (now
+      possible since they're Timestamps), then use
+      `Duration.between(startDateTime, endDateTime).toHours()`. Same fix for
+      average calculation methods at lines 88-91, 113-116, 136-139.
+
+### Verification & PR
+
+- [ ] T000i Run full Maven test suite: `mvn test -DskipTests=false` — ALL
+      existing tests must still pass. Run the new precision tests from T000b and
+      T000c — they must now PASS.
+- [ ] T000j Run `mvn spotless:apply` to ensure formatting compliance.
+- [ ] T000k Create PR `fix/310-OGC-310-turnaround-time-m0-timestamp-precision` >
+      `develop`. Title:
+      `fix(analysis): restore hour-level precision for Analysis timestamp fields`.
+      Description: HBM mapping incorrectly used java.sql.Date for TIMESTAMP
+      columns, causing time truncation to midnight. Fixes TAT calculation
+      accuracy for the OGC-310 TAT reporting feature.
+
+**Checkpoint**: All existing tests pass. New precision tests pass. The 96-hour
+TAT widget now correctly measures hours, not just day multiples.
 
 ---
 
@@ -38,6 +153,7 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
 
 - [ ] T001 [US1] Create milestone branch
       `feat/310-OGC-306-turnaround-time-m1-calendar-backend` from `develop`
+      (after M0 merged)
 
 ### Schema (Liquibase)
 
@@ -45,7 +161,7 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
       `src/main/resources/liquibase/3.5.x.x/public_holiday.xml` — columns: id
       (SERIAL PK via sequence), holiday_date (DATE NOT NULL), holiday_name
       (VARCHAR(100) NOT NULL), is_recurring (BOOLEAN DEFAULT FALSE), is_active
-      (BOOLEAN DEFAULT TRUE), lastupdated (TIMESTAMP), sys_user_id (INTEGER FK
+      (BOOLEAN DEFAULT TRUE), lastupdated (TIMESTAMP), sys_user_id (VARCHAR(36)
       system_user). Use `clinlims` schema. Follow pattern from
       `src/main/resources/liquibase/2.8.x.x/reflex_rule.xml` (preConditions with
       `onFail="MARK_RAN"`, createSequence, createTable).
@@ -53,13 +169,14 @@ contracts/api-contracts.md (Calendar Management Endpoints), research.md
       `src/main/resources/liquibase/3.5.x.x/weekend_config.xml` — columns: id
       (SERIAL PK via sequence), day_of_week (INTEGER NOT NULL UNIQUE),
       is_weekend (BOOLEAN DEFAULT FALSE), lastupdated (TIMESTAMP), sys_user_id
-      (INTEGER FK system_user). Include seed data: 7 rows (0-6),
-      Saturday(6)=true, Sunday(0)=true, others=false.
+      NOT NULL). Include seed data: 7 rows (0-6), Saturday(6)=true,
+      Sunday(0)=true, others=false.
 - [ ] T004 [P] [US1] Create Liquibase changeset for permission modules in
       `src/main/resources/liquibase/3.5.x.x/tat_permissions.xml` — insert
-      `calendar-management` and `tat-report` modules into `system_module` table,
-      assign to admin and reports roles in `system_role_module`. Follow existing
-      permission module patterns.
+      `CalendarManagement` and `TATReport` modules into `system_module` table
+      (PascalCase per codebase convention), plus `system_module_url` entries for
+      all REST and frontend paths, assign to admin and reports roles in
+      `system_role_module`. Follow existing permission module patterns.
 - [ ] T005 [US1] Register all new changesets in
       `src/main/resources/liquibase/base-changelog.xml`
 
@@ -245,7 +362,7 @@ DataTable pattern
 - [ ] T028 [US1] Verify route protection: Admin route in `frontend/src/App.js`
       already requires `role={Roles.GLOBAL_ADMIN}` — no change needed. Calendar
       Management inherits admin protection. Read-only mode logic: check if user
-      has write access to `calendar-management` module, conditionally hide
+      has write access to `CalendarManagement` module, conditionally hide
       Add/Edit/Delete/Import/Export buttons.
 
 ### Playwright E2E with Video (US1)
@@ -337,7 +454,7 @@ TATSummary computed entities, Sample/Analysis timestamp fields), research.md
       summary (with various filter combinations), GET detail (with pagination
       0-based, sorting, breakdownFilter), GET trend (with interval and
       compareBy), GET export (CSV + PDF format param). Test permission
-      enforcement (401 without `tat-report` module). Test patient name omission
+      enforcement (401 without `TATReport` module). Test patient name omission
       without patient-data permission.
 
 ### Beans (Response DTOs)
@@ -704,11 +821,12 @@ endpoints)
 ### Milestone Dependencies
 
 ```
-M1 (Calendar Backend) ──────→ M2 (Calendar Frontend + E2E)
-                        └───→ [P] M3 (TAT Backend) ──→ M4 (TAT Summary + E2E) ──→ M5 (Detail/Trends/Export + E2E)
+M0 (Timestamp Fix) → M1 (Calendar Backend) ──────→ M2 (Calendar Frontend + E2E)
+                                             └───→ [P] M3 (TAT Backend) ──→ M4 (TAT Summary + E2E) ──→ M5 (Detail/Trends/Export + E2E)
 ```
 
-- **M1**: No dependencies — start immediately
+- **M0**: No dependencies — start immediately (small prerequisite fix)
+- **M1**: Depends on M0 merged
 - **M2**: Depends on M1 merged
 - **M3**: Depends on M1 merged — **can run in parallel with M2**
 - **M4**: Depends on M3 merged

@@ -28,18 +28,18 @@ TAT values will be calculated as full-day differences (0h, 24h, 48h, etc.)
 rather than "3h 42m". Only segments 1-2 (using Sample timestamps) will have true
 hour-level precision.
 
-**Resolution options**:
+**Resolution**: **Option B (revised — low risk)**. The DB columns are already
+`TIMESTAMP WITHOUT TIME ZONE` — no schema migration needed. The fix is purely at
+the Hibernate mapping layer:
 
-- **A (Recommended)**: Accept date-level precision for segments 3-7 and document
-  it clearly in the UI ("TAT shown in days for this segment"). Display as "1
-  day" not "24h 0m".
-- **B**: Migrate `started_date`, `completed_date`, `released_date` to TIMESTAMP
-  via Liquibase (high-risk schema change, affects existing data).
-- **C**: Check if `Analysis.enteredDate` (which IS a `Timestamp`, DB column
-  `ENTRY_DATE`) can substitute for some fields.
+1. Change `Analysis.hbm.xml` type from `java.sql.Date` to `java.sql.Timestamp`
+2. Change `Analysis.java` field types to `java.sql.Timestamp`
+3. Update ~20 caller sites to use `Timestamp` instead of `Date`
+4. Fix `PatientDashBoardProvider` TAT calculation to use actual time
 
-**Action**: Added to spec as assumption. Implementation must handle mixed
-precision gracefully.
+This is now **Milestone M0** — a prerequisite for all other milestones. After
+M0, all 7 TAT segments have hour-level precision. Historical data shows midnight
+(accurate for how it was stored); future data has full time.
 
 ### CF-2: BaseObject.sysUserId is @Transient — NOT persisted by JPA
 

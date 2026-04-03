@@ -311,7 +311,7 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
   and show a preview before applying.
 - **FR-CM-015**: System MUST support CSV export of the current year's holidays
   with columns: date, name, recurring, active.
-- **FR-CM-016**: System MUST enforce write access via the `calendar-management`
+- **FR-CM-016**: System MUST enforce write access via the `CalendarManagement`
   permission module for add, edit, delete, import, and export operations. Users
   without write access to this module see the page in read-only mode.
 
@@ -428,17 +428,18 @@ CSV or Export > PDF, then verifying the downloaded file contains correct data.
 
 ### Assumptions
 
-1. **Existing timestamps have mixed precision**: Codebase analysis confirms that
-   `sample.collectionDate` and `sample.receivedTimestamp` are
-   `java.sql.Timestamp` (with time-of-day), but `analysis.startedDate`,
-   `analysis.completedDate`, and `analysis.releasedDate` are `java.sql.Date`
-   (date-only, no time). `sample.enteredDate` is also date-only. This means
-   segments 1-2 (using Sample timestamps) have hour-level precision, while
-   segments 3-7 (using Analysis fields) have day-level precision only. The UI
-   MUST clearly indicate precision level per segment (e.g., "3h 42m" for
-   segments with time, "~2 days" for date-only segments). The `started_date`
-   field may also have incomplete coverage — the UI will show a data
-   completeness indicator if coverage is low.
+1. **Timestamp precision requires M0 fix**: The PostgreSQL columns for
+   `analysis.started_date`, `completed_date`, and `released_date` are
+   `TIMESTAMP WITHOUT TIME ZONE` (with time support), but the Hibernate HBM
+   mapping (`Analysis.hbm.xml`) incorrectly maps them as `java.sql.Date`,
+   causing time truncation to midnight on read/write. **Milestone M0 fixes
+   this** by changing the HBM type to `java.sql.Timestamp` and updating
+   `Analysis.java` field types. No schema migration needed — DB columns are
+   already TIMESTAMP. After M0, all 7 TAT segments will have hour-level
+   precision. Historical data will show midnight (accurate for how it was
+   stored); future data will have full time. The `started_date` field may also
+   have incomplete coverage — the UI will show a data completeness indicator if
+   coverage is low.
 2. **Working Time uses 24-hour days**: On non-excluded days, all 24 hours count
    as working time. Partial days count only actual elapsed hours on that day.
    Example: Friday 4:00 PM to Monday 9:00 AM with Sat/Sun excluded = Friday 8h +

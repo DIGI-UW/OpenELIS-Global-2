@@ -15,12 +15,30 @@ Backend)
 ## Development Order
 
 ```
-M1 (Calendar Backend) → M2 (Calendar Frontend + E2E)
-                       ↘
-                        M3 (TAT Backend) → M4 (TAT Summary Frontend + E2E) → M5 (TAT Detail/Trends/Export + E2E)
+M0 (Timestamp Fix) → M1 (Calendar Backend) → M2 (Calendar Frontend + E2E)
+                                            ↘
+                                             M3 (TAT Backend) → M4 (TAT Summary Frontend + E2E) → M5 (TAT Detail/Trends/Export + E2E)
 ```
 
+M0 is a small prerequisite (fix Analysis HBM mapping for timestamp precision).
 M2 and M3 can be developed in parallel after M1.
+
+## Starting M0
+
+1. Create milestone branch:
+
+   ```bash
+   git checkout develop
+   git checkout -b fix/310-OGC-310-turnaround-time-m0-timestamp-precision
+   ```
+
+2. Fix HBM mapping: `src/main/resources/hibernate/hbm/Analysis.hbm.xml` (change
+   `type="java.sql.Date"` to `type="java.sql.Timestamp"` for `startedDate`,
+   `completedDate`, `releasedDate`)
+
+3. Update `Analysis.java` field types to `java.sql.Timestamp`
+
+4. See tasks.md M0 section for full list of caller site updates
 
 ## Starting M1
 
