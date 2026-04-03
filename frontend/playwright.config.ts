@@ -8,33 +8,32 @@ require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 /**
  * OpenELIS Global Playwright Configuration
  *
- * Projects are organized by environment requirement:
+ * Tests are classified along three axes:
  *
- *   core-app            — CI build stack (no plugins, bridge, or import dirs)
- *   core-demo           — UI workflow demos provable on build stack + fixtures
- *   core-demo-video     — core-demo with slowMo + video (local recording)
- *   harness-demo        — Analyzer-stack UI tests requiring full harness
- *   harness-demo-video  — harness-demo with slowMo + video (local recording)
+ * 1) Runtime: core vs harness
+ * 2) Intent: demo (story proof) vs foundational (functional verification)
+ * 3) Execution policy: ci-safe vs manual-only
  *
- * New test files must be explicitly added to a project's testMatch.
- * Unmatched files won't run — this is intentional (allowlist, not blocklist).
+ * New test files must be explicitly added to exactly one bucket.
  *
  * @see https://playwright.dev/docs/test-configuration
  */
 
-// Demos that must run on the minimal build stack only (see e2e-playwright.yml)
-const CORE_DEMO_TESTS = ["**/ogc-284-barcode-workflow.spec.ts"];
+// Demo story proof on the build stack (video-ready).
+const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
 
-// Analyzer-stack UI tests that require harness overlay + seeded analyzers
-const HARNESS_DEMO_TESTS = [
-  "**/analyzer-test-connection.spec.ts",
-  "**/analyzer-plugin-config.spec.ts",
-  "**/analyzer-simulator.spec.ts",
-  "**/demo-quantstudio*.spec.ts",
-  "**/file-import-ui.spec.ts",
-  "**/file-import-results.spec.ts",
-  "**/astm-genexpert-results.spec.ts",
-  "**/analyzer-demo-flow.spec.ts",
+// Core foundational verification (ci-safe).
+const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
+
+// Harness demo story proof (video-ready).
+const HARNESS_DEMO_TESTS = ["**/demo/harness/**/*.spec.ts"];
+
+// Harness foundational verification (ci-safe).
+const HARNESS_FOUNDATIONAL_TESTS = ["**/foundational/harness/**/*.spec.ts"];
+
+// Manual-only harness coverage (real hardware or operator-managed infra).
+const HARNESS_MANUAL_ONLY_TESTS = [
+  "**/manual-only/harness/analyzer-test-connection-manual-only.spec.ts",
 ];
 
 export default defineConfig({
@@ -47,7 +46,8 @@ export default defineConfig({
 
   // CI safeguards
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // CI must not mask failures through reruns.
+  retries: 0,
 
   // Timeouts
   timeout: 30_000,
@@ -74,17 +74,10 @@ export default defineConfig({
       testMatch: /.*\.setup\.ts/,
     },
 
-    // Core app — runs on CI build stack (no plugins, bridge, or import dirs)
+    // Core foundational verification — runs on CI build stack.
     {
       name: "core-app",
-      testMatch: [
-        "**/analyzer-form.spec.ts",
-        "**/analyzer-list.spec.ts",
-        "**/analyzer-navigation.spec.ts",
-        "**/error-dashboard.spec.ts",
-        "**/navbar.spec.ts",
-        "**/sidenav.spec.ts",
-      ],
+      testMatch: CORE_FOUNDATIONAL_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
@@ -118,7 +111,7 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Analyzer-stack UI tests (CI: reusable harness workflow only)
+    // Analyzer-stack demo story proof (CI: reusable harness workflow only).
     {
       name: "harness-demo",
       testMatch: HARNESS_DEMO_TESTS,
@@ -138,6 +131,28 @@ export default defineConfig({
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
+      },
+      dependencies: ["setup"],
+    },
+
+    // Analyzer-stack foundational verification (non-demo, ci-safe).
+    {
+      name: "harness-foundational",
+      testMatch: HARNESS_FOUNDATIONAL_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
+      dependencies: ["setup"],
+    },
+
+    // Real-hardware / manual-only coverage (excluded from standard CI jobs).
+    {
+      name: "harness-manual-only",
+      testMatch: HARNESS_MANUAL_ONLY_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
       },
       dependencies: ["setup"],
     },

@@ -158,7 +158,7 @@ fi
 if [ -f "$HARNESS_VOLUME/properties/common.properties" ] && ! grep -q "analyzer.bridge.url" "$HARNESS_VOLUME/properties/common.properties"; then
   echo "" >> "$HARNESS_VOLUME/properties/common.properties"
   echo "# Analyzer bridge URL for registration sync" >> "$HARNESS_VOLUME/properties/common.properties"
-  echo "analyzer.bridge.url=https://openelis-analyzer-bridge:8443" >> "$HARNESS_VOLUME/properties/common.properties"
+  echo "analyzer.bridge.url=https://bridge.openelis.org:8443" >> "$HARNESS_VOLUME/properties/common.properties"
   echo "  added analyzer.bridge.url to common.properties"
 fi
 
@@ -180,10 +180,11 @@ if [ -d "$ROOT_VOLUME/database/dbInit" ]; then
   done
 fi
 
-# nginx.conf: always regenerate from root so hostnames match harness network (frontend, oe)
+# nginx.conf: copy from the root volume so proxy upstreams match the canonical
+# harness/CI service identities (`frontend.openelis.org`, `oe.openelis.org`).
 if [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
-  sed -e 's/frontend\.openelis\.org/frontend/g' -e 's/oe\.openelis\.org/oe/g' "$ROOT_VOLUME/nginx/nginx.conf" > "$HARNESS_VOLUME/nginx/nginx.conf"
-  echo "  generated volume/nginx/nginx.conf (hostnames -> frontend, oe)"
+  cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  copied volume/nginx/nginx.conf"
 fi
 
 # Placeholders so bind mounts exist

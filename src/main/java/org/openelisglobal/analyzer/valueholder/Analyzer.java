@@ -118,6 +118,13 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "file_format", length = 30)
     private String fileFormat;
 
+    /**
+     * Raw source identifier from bridge discovery (IPv4, IPv6, hostname, file path,
+     * etc.).
+     */
+    @Column(name = "discovered_source_id", length = 500)
+    private String discoveredSourceId;
+
     @Column(name = "test_unit_ids", columnDefinition = "TEXT")
     @Convert(converter = StringListConverter.class)
     private List<String> testUnitIds = new ArrayList<>();
@@ -360,12 +367,20 @@ public class Analyzer extends BaseObject<String> {
         this.lastActivatedDate = lastActivatedDate;
     }
 
+    public String getDiscoveredSourceId() {
+        return discoveredSourceId;
+    }
+
+    public void setDiscoveredSourceId(String discoveredSourceId) {
+        this.discoveredSourceId = discoveredSourceId;
+    }
+
     /**
      * Enum for analyzer unified status field. Values must match database
      * constraint: INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE,
-     * DELETED
+     * DELETED, PENDING_REGISTRATION
      */
     public enum AnalyzerStatus {
-        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED
+        INACTIVE, SETUP, VALIDATION, ACTIVE, ERROR_PENDING, OFFLINE, DELETED, PENDING_REGISTRATION
     }
 }

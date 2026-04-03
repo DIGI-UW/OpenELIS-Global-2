@@ -22,4 +22,7 @@
 
   <!-- Fix analyzer_test_map FK to CASCADE on delete (was NO ACTION) -->
   <include relativeToChangelogFile="true" file="008-analyzer-test-map-cascade-delete.xml"/>
+
+  <!-- OGC-526: Add discovered_source_id for bridge-discovered analyzer stubs -->
+  <include relativeToChangelogFile="true" file="009-analyzer-discovered-source-id.xml"/>
 </databaseChangeLog>
