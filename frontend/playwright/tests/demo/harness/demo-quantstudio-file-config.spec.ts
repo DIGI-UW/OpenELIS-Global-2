@@ -72,10 +72,11 @@ test.describe("Demo: QuantStudio 7 Generic File Config", () => {
     await presentation.pause(500);
 
     // Step 4: Verify FILE-specific form behavior
-    // Protocol version dropdown should NOT be visible
+    // Wait for the positive signal first (React re-render completed),
+    // then assert the negatives.
+    await expect(form.fileProtocolInfo).toBeVisible();
     await expect(form.protocolVersionDropdown).not.toBeVisible();
     await expect(form.connectionFields).not.toBeVisible();
-    await expect(form.fileProtocolInfo).toBeVisible();
     await presentation.pause(500);
 
     // Step 5: Select "QuantStudio QS5/QS7" default profile

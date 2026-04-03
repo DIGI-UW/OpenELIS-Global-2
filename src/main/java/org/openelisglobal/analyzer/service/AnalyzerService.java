@@ -61,4 +61,6 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
      * @param analyzer The analyzer entity to delete
      */
     void deleteWithDependents(Analyzer analyzer);
+
+    Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId);
 }

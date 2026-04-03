@@ -589,4 +589,59 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
     }
+
+    // === OGC-526: Discovered sources endpoint tests ===
+
+    @Test
+    public void testDiscoveredSources_CreatesStubAnalyzer() throws Exception {
+        String body = "{\"sourceId\":\"10.0.0.50\",\"protocol\":\"ASTM\",\"transport\":\"TCP\",\"protocolHint\":\"GENEXPERT\"}";
+
+        MvcResult result = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> response = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertNotNull("Should return analyzerId", response.get("analyzerId"));
+        assertEquals("PENDING_REGISTRATION", response.get("status"));
+        assertEquals(false, response.get("alreadyExists"));
+    }
+
+    @Test
+    public void testDiscoveredSources_IdempotentOnDuplicateSourceId() throws Exception {
+        String body = "{\"sourceId\":\"10.0.0.51\",\"protocol\":\"HL7\",\"transport\":\"MLLP\"}";
+
+        // First call — creates stub
+        MvcResult first = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> firstResponse = objectMapper.readValue(first.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        String firstId = String.valueOf(firstResponse.get("analyzerId"));
+
+        // Second call — returns existing stub
+        MvcResult second = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+
+        Map<String, Object> secondResponse = objectMapper.readValue(second.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertEquals("Same analyzer ID on duplicate", firstId, String.valueOf(secondResponse.get("analyzerId")));
+        assertEquals(true, secondResponse.get("alreadyExists"));
+    }
+
+    @Test
+    public void testDiscoveredSources_MissingSourceId_Returns400() throws Exception {
+        String body = "{\"protocol\":\"ASTM\",\"transport\":\"TCP\"}";
+
+        mockMvc.perform(post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
+    }
 }
