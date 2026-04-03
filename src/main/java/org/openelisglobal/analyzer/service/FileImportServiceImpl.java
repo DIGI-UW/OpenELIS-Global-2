@@ -73,6 +73,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Autowired
     private AnalyzerRunDAO analyzerRunDAO;
 
+    @Autowired(required = false)
+    private BridgeRegistrationService bridgeRegistrationService;
+
     /** Optional: set in tests to avoid SpringContext. */
     private PluginAnalyzerService pluginAnalyzerService;
 
@@ -90,6 +93,46 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Override
     protected FileImportConfigurationDAO getBaseObjectDAO() {
         return fileImportConfigurationDAO;
+    }
+
+    @Override
+    @Transactional
+    public String insert(FileImportConfiguration config) {
+        String id = super.insert(config);
+        syncToAnalyzerAndBridge(config);
+        return id;
+    }
+
+    @Override
+    @Transactional
+    public FileImportConfiguration update(FileImportConfiguration config) {
+        FileImportConfiguration result = super.update(config);
+        syncToAnalyzerAndBridge(config);
+        return result;
+    }
+
+    private void syncToAnalyzerAndBridge(FileImportConfiguration config) {
+        try {
+            Analyzer analyzer = analyzerService.get(String.valueOf(config.getAnalyzerId()));
+            if (analyzer == null) {
+                return;
+            }
+            analyzer.setImportDirectory(config.getImportDirectory());
+            analyzer.setFilePattern(config.getFilePattern());
+            analyzer.setColumnMappings(config.getColumnMappings());
+            analyzer.setFileFormat(config.getFileFormat());
+            analyzer.setSysUserId(config.getSysUserId());
+            analyzerService.update(analyzer);
+
+            if (bridgeRegistrationService != null) {
+                bridgeRegistrationService.registerFile(analyzer.getId(), analyzer.getName(),
+                        config.getImportDirectory(), config.getFilePattern(), config.getColumnMappings());
+            }
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncToAnalyzerAndBridge",
+                    "Failed to sync FILE config to Analyzer/bridge: " + e.getMessage());
+        }
     }
 
     @Override
