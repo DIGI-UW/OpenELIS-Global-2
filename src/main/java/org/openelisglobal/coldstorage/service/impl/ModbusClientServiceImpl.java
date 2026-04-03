@@ -57,6 +57,9 @@ public class ModbusClientServiceImpl implements ModbusClientService {
     }
 
     private ReadingResult readTcp(Freezer freezer) throws Exception {
+        // NOTE: TOCTOU risk — hostname is resolved here for validation but resolved
+        // again at connect time by Netty. In a LAN-only lab environment this is
+        // acceptable; for internet-facing use, resolve to IP first and connect by IP.
         if (NetworkValidationUtil.isBlockedAddress(freezer.getHost())) {
             throw new IllegalArgumentException("Connection to this address is not permitted: " + freezer.getHost());
         }
