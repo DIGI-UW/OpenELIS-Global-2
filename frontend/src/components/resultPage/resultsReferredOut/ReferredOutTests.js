@@ -303,7 +303,9 @@ function ReferredOutTests(props) {
     } else if (cell.info.header === "notes") {
       return (
         <TableCell key={cell.id}>
-          <div dangerouslySetInnerHTML={{ __html: cell.value }} />
+          <div style={{ whiteSpace: "pre-wrap" }}>
+            {cell.value?.replace(/<br\s*\/?>/gi, "\n")}
+          </div>
         </TableCell>
       );
     } else {
