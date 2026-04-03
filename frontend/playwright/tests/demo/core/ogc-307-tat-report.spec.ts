@@ -18,7 +18,9 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US2.1 — Navigate to TAT Report page", async () => {
       await page.goto("/TATReport");
-      await expect(page.getByText("Turn Around Time Report")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Turn Around Time Report" }),
+      ).toBeVisible();
       await videoPause(page, 2000, testInfo);
     });
 

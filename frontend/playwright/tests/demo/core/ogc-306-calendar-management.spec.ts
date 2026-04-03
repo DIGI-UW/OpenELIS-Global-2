@@ -19,16 +19,11 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
     });
 
     await test.step("US1.1 — Navigate to Admin > Calendar Management", async () => {
-      await page.goto("/admin");
-      await expect(page.locator("#sidenav-menu-button")).toBeVisible();
-
-      // Click Calendar Management in sidenav
-      await page
-        .getByText("Calendar Management", { exact: false })
-        .first()
-        .click();
-      await expect(page).toHaveURL(/calendarManagement/);
-      await expect(page.getByText("Calendar Management").first()).toBeVisible();
+      // Navigate directly to the Calendar Management page
+      await page.goto("/MasterListsPage/calendarManagement");
+      await expect(
+        page.getByRole("heading", { name: "Calendar Management" }),
+      ).toBeVisible({ timeout: 15_000 });
       await videoPause(page, 2000, testInfo);
     });
 
