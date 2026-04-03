@@ -200,6 +200,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - **React Intl 5.20.12** - ALL user-facing strings MUST use this
 - Message files: `frontend/src/languages/{locale}.json`
 - Usage: `intl.formatMessage({ id: 'key' })`
+- **Add new keys to `en.json` ONLY** — non-English translations are managed on
+  [Transifex](https://explore.transifex.com/openmrs/openelis-1/) (see Section
+  VII)
 
 **Styling:**
 
@@ -440,9 +443,22 @@ hardcoded English text.
 - Message files: `frontend/src/languages/{locale}.json`
 - Use `intl.formatMessage({ id: 'storage.location.label' })`
 - Supported locales: en, fr, ar, es, hi, pt, sw
-- New features MUST provide translations for at least en + fr
+- New keys go in `en.json` ONLY — do NOT edit other locale files
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
+
+**Translation Workflow (Transifex):**
+
+[Transifex](https://explore.transifex.com/openmrs/openelis-1/) is the source of
+truth for non-English translations. Developers only edit `en.json`:
+
+1. Developer adds i18n key to `en.json` in their PR
+2. `tx-push.yml` uploads `en.json` to Transifex on merge to `develop`
+3. Translators work on Transifex
+4. `tx-pull.yml` pulls translations daily and auto-merges to `develop`
+
+A CI check ("Translation source-of-truth check") blocks PRs that modify
+non-English locale files. The `chore/update-transifex` bot branch is exempt.
 
 **Example:**
 
@@ -1719,7 +1735,7 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-foundational
 npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
@@ -1727,7 +1743,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui

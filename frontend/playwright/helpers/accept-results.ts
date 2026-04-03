@@ -109,7 +109,9 @@ export async function acceptAndVerifyResults(
   });
 
   // Success path issues full page reload (AnalyserResults.js).
-  await page.waitForURL(/AnalyzerResults[?]type=/, { timeout: NAV_TIMEOUT });
+  await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
+    timeout: NAV_TIMEOUT,
+  });
 
   if (stagedCountBeforeSave > 0) {
     await expect
