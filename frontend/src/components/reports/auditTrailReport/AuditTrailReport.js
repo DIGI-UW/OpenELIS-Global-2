@@ -58,7 +58,7 @@ const AuditTrailReport = ({ id }) => {
           // Add unique id and format timestamp for each item
           const updatedAuditTrailItems = data.log.map((item, index) => {
             const formattedTimeStamp = new Date(item.timeStamp).toLocaleString(
-              "en-GB",
+              navigator.language,
               {
                 day: "2-digit",
                 month: "2-digit",
@@ -74,7 +74,6 @@ const AuditTrailReport = ({ id }) => {
           setIsLabNoError(null);
           setAuditTrailItems(updatedAuditTrailItems);
           setData(data);
-          console.log("site name", data.sampleOrderItems.referringSiteName);
         }
         setIsLoading(false);
         setShowNotification(true);
@@ -178,7 +177,7 @@ const AuditTrailReport = ({ id }) => {
         </Grid>
       )}
       <br />
-      {auditTrailItems && data && (
+      {auditTrailItems.length > 0 && data && (
         <div
           style={{ display: "flex", justifyContent: "center", margin: "20px" }}
         >
@@ -281,6 +280,7 @@ const AuditTrailReport = ({ id }) => {
           </Grid>
         </div>
       )}
+      <Grid fullWidth={true}>
       <Column lg={16}>
         <DataTable
           rows={auditTrailItems ?? []}
@@ -288,7 +288,7 @@ const AuditTrailReport = ({ id }) => {
           isSortable
         >
           {({ rows, headers, getHeaderProps, getTableProps }) => (
-            <TableContainer title="Patient Results">
+            <TableContainer title={intl.formatMessage({ id: "audittrail.table.title.patientResults" })}>
               <Table {...getTableProps()}>
                 <TableHead>
                   <TableRow>
@@ -316,6 +316,7 @@ const AuditTrailReport = ({ id }) => {
           )}
         </DataTable>
       </Column>
+      </Grid>
     </>
   );
 };

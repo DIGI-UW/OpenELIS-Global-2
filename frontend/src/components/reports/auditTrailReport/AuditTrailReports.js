@@ -1,6 +1,6 @@
 import React from "react";
 import GlobalSideBar from "../../common/GlobalSideBar";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 import { IbmWatsonNaturalLanguageUnderstanding } from "@carbon/icons-react";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -40,4 +40,4 @@ const AuditTrailReports = () => {
   );
 };
 
-export default injectIntl(AuditTrailReports);
+export default AuditTrailReports;

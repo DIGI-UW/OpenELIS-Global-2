@@ -46,6 +46,10 @@ const headers = [
     key: "user",
     header: <FormattedMessage id="systemAudit.table.heading.user" />,
   },
+  {
+    key: "changes",
+    header: <FormattedMessage id="systemAudit.table.heading.changes" />,
+  },
 ];
 
 const SystemAuditEvents = () => {
@@ -127,20 +131,29 @@ const SystemAuditEvents = () => {
         "/rest/systemAuditEvents?" + params.toString(),
         (data) => {
           if (data && data.events) {
-            const formatted = data.events.map((e, idx) => ({
-              ...e,
-              id: String((p - 1) * ps + idx + 1),
-              timestamp: e.timestamp
-                ? new Date(e.timestamp).toLocaleString("en-GB", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })
-                : "",
-            }));
+            const formatted = data.events.map((e, idx) => {
+              const changesObj = e.changes || {};
+              const changesStr = Object.keys(changesObj).length > 0
+                ? Object.entries(changesObj)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(", ")
+                : "";
+              return {
+                ...e,
+                id: String((p - 1) * ps + idx + 1),
+                timestamp: e.timestamp
+                  ? new Date(e.timestamp).toLocaleString(navigator.language, {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
+                    })
+                  : "",
+                changes: changesStr,
+              };
+            });
             setEvents(formatted);
             setTotalItems(data.totalItems);
           } else {
@@ -324,6 +337,7 @@ const SystemAuditEvents = () => {
         </Grid>
       )}
       {events.length > 0 && (
+        <Grid fullWidth={true}>
         <Column lg={16}>
           <DataTable rows={events} headers={headers} isSortable>
             {({ rows, headers, getHeaderProps, getTableProps }) => (
@@ -388,6 +402,7 @@ const SystemAuditEvents = () => {
             }
           />
         </Column>
+        </Grid>
       )}
     </>
   );

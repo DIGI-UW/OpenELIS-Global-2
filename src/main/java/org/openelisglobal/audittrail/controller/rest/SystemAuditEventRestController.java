@@ -10,16 +10,16 @@ import com.itextpdf.text.Phrase;
 import com.itextpdf.text.pdf.PdfPCell;
 import com.itextpdf.text.pdf.PdfPTable;
 import com.itextpdf.text.pdf.PdfWriter;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import jakarta.annotation.PostConstruct;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -262,9 +262,11 @@ public class SystemAuditEventRestController {
             int pos = 0;
             while (pos < xml.length()) {
                 int openStart = xml.indexOf('<', pos);
-                if (openStart < 0) break;
+                if (openStart < 0)
+                    break;
                 int openEnd = xml.indexOf('>', openStart);
-                if (openEnd < 0) break;
+                if (openEnd < 0)
+                    break;
                 String tag = xml.substring(openStart + 1, openEnd);
                 if (tag.startsWith("/")) {
                     pos = openEnd + 1;
@@ -282,7 +284,8 @@ public class SystemAuditEventRestController {
             }
             return changes;
         } catch (Exception e) {
-            LogEvent.logWarn("SystemAuditEventRestController", "Failed to parse changes for history " + history.getId());
+            LogEvent.logWarn("SystemAuditEventRestController",
+                    "Failed to parse changes for history " + history.getId());
             return Collections.emptyMap();
         }
     }

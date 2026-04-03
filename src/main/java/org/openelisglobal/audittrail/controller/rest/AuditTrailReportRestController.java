@@ -67,7 +67,8 @@ public class AuditTrailReportRestController {
 
         String safeFilename = accessionNumber.replaceAll("[^a-zA-Z0-9\\-]", "");
         response.setContentType("text/csv");
-        response.setHeader("Content-Disposition", "attachment; filename=\"order-audit-trail-" + safeFilename + ".csv\"");
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"order-audit-trail-" + safeFilename + ".csv\"");
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         PrintWriter writer = response.getWriter();

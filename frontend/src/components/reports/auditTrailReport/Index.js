@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
-import { injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import { Loading } from "@carbon/react";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -9,7 +8,6 @@ import AuditTrailReport from "./AuditTrailReport.js";
 import SystemAuditEvents from "./SystemAuditEvents.js";
 
 const AuditTrailReportIndex = () => {
-  const intl = useIntl();
   const { notificationVisible } = useContext(NotificationContext);
   const location = useLocation();
 
@@ -51,4 +49,4 @@ const AuditTrailReportIndex = () => {
   );
 };
 
-export default injectIntl(AuditTrailReportIndex);
+export default AuditTrailReportIndex;
