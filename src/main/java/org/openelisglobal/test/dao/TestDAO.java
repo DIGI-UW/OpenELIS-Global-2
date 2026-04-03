@@ -15,6 +15,8 @@ package org.openelisglobal.test.dao;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.method.valueholder.Method;
@@ -131,4 +133,6 @@ public interface TestDAO extends BaseDAO<Test, String> {
     List<Test> getTbTest() throws LIMSRuntimeException;
 
     List<Panel> getTbPanelsByMethod(String method) throws LIMSRuntimeException;
+
+    List<Test> getTestsByIds(Set<String> ids) throws LIMSRuntimeException;
 }

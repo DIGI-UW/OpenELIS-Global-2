@@ -18,8 +18,10 @@ package org.openelisglobal.test.daoimpl;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.Vector;
 import java.util.stream.Collectors;
 import org.apache.commons.beanutils.PropertyUtils;
@@ -371,6 +373,29 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
         }
 
         return returnTest;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByIds(Set<String> ids) throws LIMSRuntimeException {
+        try {
+            if (ids == null || ids.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            String hql = "from Test t where t.id in (:ids)";
+            Query<Test> query = entityManager
+                    .unwrap(Session.class)
+                    .createQuery(hql, Test.class);
+
+            query.setParameter("ids", ids);
+
+            return query.list();
+
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in getTestsByIds()", e);
+        }
     }
 
     // this is for selectdropdown
