@@ -278,9 +278,87 @@
     </changeSet>
 
     <!-- ================================================================== -->
+    <!-- Backfill localization for existing nce_category records            -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-016-backfill-category-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_category"/>
+            <columnExists schemaName="clinlims" tableName="nce_category" columnName="name_localization_id"/>
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.nce_category WHERE name_localization_id IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Create localization records for existing nce_category rows without localization</comment>
+
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                cat_record RECORD;
+                new_loc_id INTEGER;
+            BEGIN
+                FOR cat_record IN
+                    SELECT id, name FROM clinlims.nce_category WHERE name_localization_id IS NULL AND name IS NOT NULL
+                LOOP
+                    -- Insert into localization table
+                    INSERT INTO clinlims.localization (id, description, lastupdated)
+                    VALUES (nextval('clinlims.localization_seq'), 'NCE Category: ' || cat_record.name, NOW())
+                    RETURNING id INTO new_loc_id;
+
+                    -- Insert English value
+                    INSERT INTO clinlims.localization_value (id, locale, localized_value, localization_id, lastupdated)
+                    VALUES (nextval('clinlims.localization_value_seq'), 'en', cat_record.name, new_loc_id, NOW());
+
+                    -- Update nce_category with localization reference
+                    UPDATE clinlims.nce_category SET name_localization_id = new_loc_id WHERE id = cat_record.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Backfill localization for existing nce_type records                -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-017-backfill-type-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_type"/>
+            <columnExists schemaName="clinlims" tableName="nce_type" columnName="name_localization_id"/>
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.nce_type WHERE name_localization_id IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Create localization records for existing nce_type rows without localization</comment>
+
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                type_record RECORD;
+                new_loc_id INTEGER;
+            BEGIN
+                FOR type_record IN
+                    SELECT id, name FROM clinlims.nce_type WHERE name_localization_id IS NULL AND name IS NOT NULL
+                LOOP
+                    -- Insert into localization table
+                    INSERT INTO clinlims.localization (id, description, lastupdated)
+                    VALUES (nextval('clinlims.localization_seq'), 'NCE Type: ' || type_record.name, NOW())
+                    RETURNING id INTO new_loc_id;
+
+                    -- Insert English value
+                    INSERT INTO clinlims.localization_value (id, locale, localized_value, localization_id, lastupdated)
+                    VALUES (nextval('clinlims.localization_value_seq'), 'en', type_record.name, new_loc_id, NOW());
+
+                    -- Update nce_type with localization reference
+                    UPDATE clinlims.nce_type SET name_localization_id = new_loc_id WHERE id = type_record.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
     <!-- Add unique constraint on nc_event.nce_number                       -->
     <!-- ================================================================== -->
-    <changeSet author="reagan-meant" id="nce-016-unique-nce-number">
+    <changeSet author="reagan-meant" id="nce-018-unique-nce-number">
         <preConditions onFail="MARK_RAN">
             <tableExists schemaName="clinlims" tableName="nc_event"/>
             <columnExists schemaName="clinlims" tableName="nc_event" columnName="nce_number"/>
