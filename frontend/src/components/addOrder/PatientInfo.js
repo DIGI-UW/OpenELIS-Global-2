@@ -30,8 +30,11 @@ const PatientInfo = (props) => {
     if (orderFormValues) {
       setOrderFormValues({
         ...orderFormValues,
-        patientUpdateStatus: "UPDATE",
-        patientProperties: patient,
+        patientUpdateStatus: "NO_ACTION",
+        patientProperties: {
+          ...patient,
+          patientUpdateStatus: "NO_ACTION",
+        },
       });
     }
     handleNewPatientTab();

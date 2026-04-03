@@ -26,25 +26,34 @@ function patternsFromConfig(varName) {
   return [...blockMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 }
 
+function matchesPattern(specPath, rawPattern) {
+  const pattern = rawPattern.replace(/^\*\*\//, "");
+  if (pattern.endsWith("/**/*.spec.ts")) {
+    const prefix = pattern.replace("/**/*.spec.ts", "/");
+    return specPath.startsWith(prefix) && specPath.endsWith(".spec.ts");
+  }
+  if (pattern.includes("*")) {
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+    const regexBody = escaped.replace(/\*\*/g, ".*").replace(/\*/g, "[^/]*");
+    return new RegExp(`^${regexBody}$`).test(specPath);
+  }
+  return specPath === pattern;
+}
+
 const allowedDemoPatterns = [
   ...patternsFromConfig("CORE_DEMO_TESTS"),
   ...patternsFromConfig("HARNESS_DEMO_TESTS"),
 ];
-
 const allSpecFiles = collectAllTestFiles(path.resolve(root, "tests"));
 const demoSpecFiles = allSpecFiles.filter((file) =>
-  allowedDemoPatterns.some((pattern) => {
-    const specName = pattern.replace("**/", "");
-    if (specName.includes("*")) {
-      const re = new RegExp(
-        "^" +
-          specName.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*") +
-          "$",
-      );
-      return re.test(path.basename(file));
-    }
-    return path.basename(file) === specName;
-  }),
+  allowedDemoPatterns.some((pattern) =>
+    matchesPattern(
+      path
+        .relative(path.resolve(root, "tests"), file)
+        .replaceAll(path.sep, "/"),
+      pattern,
+    ),
+  ),
 );
 
 const bannedPatterns = [

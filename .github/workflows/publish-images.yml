@@ -1,5 +1,6 @@
 # Publishes tested images after merge/release only.
-# Triggered by 03 - E2E completion and gated on downstream E2E checkpoint status.
+# Triggered by 03 - E2E build completion and gated on the wrapper-reported
+# `03 Checkpoint - E2E` contract.
 name: Publish Images
 
 on:
@@ -26,38 +27,17 @@ jobs:
       image_transfer: ${{ steps.context.outputs.image_transfer }}
       build_run_id: ${{ github.event.workflow_run.id }}
     steps:
-      - name: Download build context artifact
-        id: download
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-build-context
-          path: /tmp/e2e-build-context
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Parse build context
+      - name: Capture publish context from triggering workflow
         id: context
         run: |
-          if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
-            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
-              echo "::error::Expected build context artifact from successful 03 - E2E run, but it was not available."
-              exit 1
-            fi
-            echo "event_name=unknown" >> "$GITHUB_OUTPUT"
-            echo "image_transfer=none" >> "$GITHUB_OUTPUT"
-            echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          EVENT_NAME="$(cat /tmp/e2e-build-context/event_name 2>/dev/null || echo 'unknown')"
-          IMAGE_TRANSFER="$(cat /tmp/e2e-build-context/image_transfer 2>/dev/null || echo 'none')"
-          HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
-          if [ -z "$HEAD_SHA" ]; then
-            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
-          fi
-
+          EVENT_NAME="${{ github.event.workflow_run.event }}"
+          IMAGE_TRANSFER="none"
+          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
           HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+
+          if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            IMAGE_TRANSFER="ghcr"
+          fi
 
           echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
           echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
@@ -72,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      checks: read
+      statuses: read
     steps:
       - name: Wait for E2E checkpoint success
         uses: actions/github-script@v7
@@ -81,37 +61,36 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const sha = '${{ needs.setup.outputs.head_sha }}';
-            const checkName = '03 Checkpoint - E2E';
+            const contextName = '03 Checkpoint - E2E';
             const timeoutMs = 45 * 60 * 1000;
             const pollMs = 30 * 1000;
             const started = Date.now();
 
             while (Date.now() - started < timeoutMs) {
-              const { data: { check_runs } } = await github.rest.checks.listForRef({
+              const res = await github.rest.repos.listCommitStatusesForRef({
                 owner,
                 repo,
                 ref: sha,
-                check_name: checkName,
-                filter: 'latest'
+                per_page: 100,
               });
+              const status = res.data.find((entry) => entry.context === contextName);
 
-              const check = check_runs[0];
-              if (!check) {
-                core.info(`No '${checkName}' check run yet for ${sha}; waiting...`);
-              } else if (check.status === 'completed' && check.conclusion === 'success') {
-                core.info(`Found successful '${checkName}' check run.`);
+              if (!status) {
+                core.info(`No '${contextName}' status yet for ${sha}; waiting...`);
+              } else if (status.state === 'success') {
+                core.info(`Found successful '${contextName}' status.`);
                 return;
-              } else if (check.status === 'completed') {
-                core.setFailed(`Checkpoint concluded '${check.conclusion}': ${check.output?.title || 'no details'}`);
+              } else if (status.state === 'failure' || status.state === 'error') {
+                core.setFailed(`Checkpoint status is ${status.state}: ${status.description || 'no description'}`);
                 return;
               } else {
-                core.info(`Checkpoint status '${check.status}'; waiting...`);
+                core.info(`Checkpoint currently '${status.state}'; waiting...`);
               }
 
               await new Promise((resolve) => setTimeout(resolve, pollMs));
             }
 
-            core.setFailed(`Timed out waiting for '${checkName}' on ${sha}`);
+            core.setFailed(`Timed out waiting for '${contextName}' on ${sha}`);
 
   publish-images:
     name: Publish ${{ matrix.dockerhub_suffix || 'backend' }}

@@ -1735,7 +1735,7 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-foundational
 npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
@@ -1743,7 +1743,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
