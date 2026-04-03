@@ -1,7 +1,7 @@
 # Test Fixtures Implementation - Generated SQL Approach
 
 **Status**: ✅ Implemented (2025-12-16)  
-**Issue**: Storage E2E tests require Maven in CI (frontend-qa.yml)  
+**Issue**: Storage E2E tests require Maven in CI (e2e-cypress-deprecated.yml)  
 **Solution**: Generate SQL on-demand from authoritative DBUnit XML
 
 ---
@@ -23,7 +23,7 @@ requiring Maven in E2E CI:
   `executeDataSetWithStateManagement("storage-e2e.xml")` (Java/DBUnit)
 - ❌ **E2E tests**: `cy.loadStorageFixtures()` → `load-test-fixtures.sh` →
   `mvn exec:java DbUnitFixtureLoader` (required Maven + dataexport submodule in
-  `frontend-qa.yml`)
+  `e2e-cypress-deprecated.yml`)
 
 ---
 
@@ -171,7 +171,7 @@ git status src/test/resources/testdata/storage-e2e.generated.sql
 
 ### CI Test
 
-The `frontend-qa.yml` workflow no longer needs:
+The `e2e-cypress-deprecated.yml` workflow no longer needs:
 
 - ❌ Java 21 setup
 - ❌ Maven installation
@@ -248,8 +248,8 @@ run)
 
 ## Next Steps
 
-1. **Remove Maven from `frontend-qa.yml`** - No longer needed for fixture
-   loading
+1. **Remove Maven from `e2e-cypress-deprecated.yml`** - No longer needed for
+   fixture loading
 2. **Test E2E suite in CI** - Verify fixtures load correctly via generated SQL
 3. **Clean up `DbUnitFixtureLoader.java`** - Optional: can be removed if no
    longer used elsewhere
