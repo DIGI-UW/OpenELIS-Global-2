@@ -33,23 +33,23 @@ function formatTimestamp(ts) {
   }
 }
 
-const ALL_HEADERS = [
-  { key: "labNumber", header: "Lab Number", alwaysVisible: true },
-  { key: "testName", header: "Test", alwaysVisible: true },
-  { key: "labUnit", header: "Lab Unit", alwaysVisible: true },
-  { key: "priority", header: "Priority", alwaysVisible: true },
-  { key: "orderCreated", header: "Ordered", alwaysVisible: true },
-  { key: "collected", header: "Collected", alwaysVisible: true },
-  { key: "received", header: "Received", alwaysVisible: true },
-  { key: "testingStarted", header: "Started", alwaysVisible: false },
-  { key: "resultEntered", header: "Resulted", alwaysVisible: false },
-  { key: "validated", header: "Validated", alwaysVisible: true },
-  { key: "selectedSegmentTat", header: "Selected TAT", alwaysVisible: true },
-  { key: "overallTat", header: "Overall TAT", alwaysVisible: true },
-];
-
 function TATDetailListTab({ filters, buildQueryString }) {
   const intl = useIntl();
+
+  const ALL_HEADERS = [
+    { key: "labNumber", header: intl.formatMessage({ id: "reports.tat.column.labNumber" }), alwaysVisible: true },
+    { key: "testName", header: intl.formatMessage({ id: "reports.tat.column.test" }), alwaysVisible: true },
+    { key: "labUnit", header: intl.formatMessage({ id: "reports.tat.column.labUnit" }), alwaysVisible: true },
+    { key: "priority", header: intl.formatMessage({ id: "reports.tat.column.priority" }), alwaysVisible: true },
+    { key: "orderCreated", header: intl.formatMessage({ id: "reports.tat.column.ordered" }), alwaysVisible: true },
+    { key: "collected", header: intl.formatMessage({ id: "reports.tat.column.collected" }), alwaysVisible: true },
+    { key: "received", header: intl.formatMessage({ id: "reports.tat.column.received" }), alwaysVisible: true },
+    { key: "testingStarted", header: intl.formatMessage({ id: "reports.tat.column.started" }), alwaysVisible: false },
+    { key: "resultEntered", header: intl.formatMessage({ id: "reports.tat.column.resulted" }), alwaysVisible: false },
+    { key: "validated", header: intl.formatMessage({ id: "reports.tat.column.validated" }), alwaysVisible: true },
+    { key: "selectedSegmentTat", header: intl.formatMessage({ id: "reports.tat.column.selectedTat" }), alwaysVisible: true },
+    { key: "overallTat", header: intl.formatMessage({ id: "reports.tat.column.overallTat" }), alwaysVisible: true },
+  ];
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);

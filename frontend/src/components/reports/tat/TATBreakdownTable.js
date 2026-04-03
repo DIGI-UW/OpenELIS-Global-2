@@ -9,7 +9,7 @@ import {
   TableCell,
   TableContainer,
 } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 function formatTat(hours) {
   if (hours == null) return "—";
@@ -21,16 +21,17 @@ function formatTat(hours) {
   return `${h}h ${m}m`;
 }
 
-const headers = [
-  { key: "dimensionValue", header: "Name" },
-  { key: "count", header: "Count" },
-  { key: "mean", header: "Mean" },
-  { key: "median", header: "Median" },
-  { key: "percentile90", header: "90th %ile" },
-  { key: "max", header: "Max" },
-];
-
 function TATBreakdownTable({ breakdown, onDrillDown }) {
+  const intl = useIntl();
+
+  const headers = [
+    { key: "dimensionValue", header: intl.formatMessage({ id: "reports.tat.column.name" }) },
+    { key: "count", header: intl.formatMessage({ id: "reports.tat.column.count" }) },
+    { key: "mean", header: intl.formatMessage({ id: "reports.tat.column.mean" }) },
+    { key: "median", header: intl.formatMessage({ id: "reports.tat.column.median" }) },
+    { key: "percentile90", header: intl.formatMessage({ id: "reports.tat.column.p90" }) },
+    { key: "max", header: intl.formatMessage({ id: "reports.tat.column.max" }) },
+  ];
   const rows = breakdown.map((row, i) => ({
     id: String(i),
     dimensionValue: row.dimensionValue,

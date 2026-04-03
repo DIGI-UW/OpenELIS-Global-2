@@ -95,6 +95,10 @@ public class TATReportRestController extends BaseRestController {
 
         requireAuthenticatedUser(request);
 
+        if (page < 0)
+            page = 0;
+        if (pageSize < 1)
+            pageSize = 25;
         if (pageSize > MAX_PAGE_SIZE) {
             pageSize = MAX_PAGE_SIZE;
         }
@@ -192,17 +196,20 @@ public class TATReportRestController extends BaseRestController {
 
         LocalDate from;
         LocalDate to;
+        TATSegment seg;
+        TATCalculationMode mode;
         try {
             from = LocalDate.parse(fromDate);
             to = LocalDate.parse(toDate);
-        } catch (DateTimeParseException e) {
-            httpResponse.sendError(400, "Invalid date format");
+            seg = TATSegment.valueOf(segment);
+            mode = TATCalculationMode.valueOf(calculationMode);
+        } catch (DateTimeParseException | IllegalArgumentException e) {
+            httpResponse.sendError(400, "Invalid parameter: " + e.getMessage());
             return;
         }
 
-        List<TATResult> results = tatReportService.getAllResults(from, to, TATSegment.valueOf(segment),
-                TATCalculationMode.valueOf(calculationMode), labUnitIds, testIds, panelIds, priority, sampleTypeId,
-                orderingSiteId, includeCancelled);
+        List<TATResult> results = tatReportService.getAllResults(from, to, seg, mode, labUnitIds, testIds, panelIds,
+                priority, sampleTypeId, orderingSiteId, includeCancelled);
 
         // Use parsed dates for safe filename (no injection risk)
         httpResponse.setContentType("text/csv");

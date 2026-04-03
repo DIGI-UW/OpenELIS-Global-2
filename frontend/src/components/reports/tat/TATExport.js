@@ -1,5 +1,6 @@
 import React from "react";
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
+import { Download } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
 
 function TATExport({ filters, buildQueryString }) {
@@ -12,7 +13,8 @@ function TATExport({ filters, buildQueryString }) {
 
   return (
     <OverflowMenu
-      renderIcon={() => intl.formatMessage({ id: "reports.tat.export" })}
+      renderIcon={Download}
+      menuButtonLabel={intl.formatMessage({ id: "reports.tat.export" })}
       flipped
     >
       <OverflowMenuItem

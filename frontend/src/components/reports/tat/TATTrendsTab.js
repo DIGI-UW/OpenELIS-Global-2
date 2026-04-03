@@ -10,9 +10,9 @@ const INTERVALS = [
 ];
 
 const COMPARE_OPTIONS = [
-  { id: "", labelKey: "reports.tat.priority.all" },
+  { id: "", labelKey: "reports.tat.compareNone" },
   { id: "LAB_UNIT", labelKey: "reports.tat.labUnit" },
-  { id: "PRIORITY", labelKey: "reports.tat.priority.all" },
+  { id: "PRIORITY", labelKey: "reports.tat.comparePriority" },
   { id: "SAMPLE_TYPE", labelKey: "reports.tat.sampleType" },
   { id: "ORDERING_SITE", labelKey: "reports.tat.orderingSite" },
 ];
@@ -80,14 +80,19 @@ function TATTrendsTab({ filters, buildQueryString }) {
           titleText={intl.formatMessage({ id: "reports.tat.compareBy" })}
           items={COMPARE_OPTIONS.map((o) => ({
             id: o.id,
-            text: o.id || "None",
+            text: intl.formatMessage({ id: o.labelKey }),
           }))}
-          selectedItem={{ id: compareBy, text: compareBy || "None" }}
+          selectedItem={{
+            id: compareBy,
+            text: intl.formatMessage({
+              id: COMPARE_OPTIONS.find((o) => o.id === compareBy)?.labelKey || "reports.tat.compareNone",
+            }),
+          }}
           onChange={({ selectedItem }) => setCompareBy(selectedItem.id)}
           size="sm"
         />
         <div>
-          <label style={{ fontSize: "12px", fontWeight: 600, display: "block" }}>Metrics</label>
+          <label style={{ fontSize: "12px", fontWeight: 600, display: "block" }}>{intl.formatMessage({ id: "reports.tat.metrics" })}</label>
           <div style={{ display: "flex", gap: "1rem" }}>
             <Checkbox
               id="show-median"
@@ -134,11 +139,14 @@ function TATTrendsTab({ filters, buildQueryString }) {
             <div key={si} style={{ marginBottom: "1rem" }}>
               <strong>{series.label}</strong>
               <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "150px" }}>
-                {series.dataPoints.map((dp, di) => {
+                {(() => {
+                  const getMetricValue = (dp) =>
+                    showMedian ? (dp.median || 0) : showMean ? (dp.mean || 0) : showP90 ? (dp.percentile90 || 0) : 0;
                   const maxVal = Math.max(
-                    ...series.dataPoints.map((d) => d.median || 0),
+                    ...series.dataPoints.map((d) => getMetricValue(d)),
                   );
-                  const height = maxVal > 0 ? ((dp.median || 0) / maxVal) * 130 : 0;
+                  return series.dataPoints.map((dp, di) => {
+                  const height = maxVal > 0 ? (getMetricValue(dp) / maxVal) * 130 : 0;
                   return (
                     <div
                       key={di}
@@ -165,7 +173,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
                       </div>
                     </div>
                   );
-                })}
+                }); })()}
               </div>
             </div>
           ))}

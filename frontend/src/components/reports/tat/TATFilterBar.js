@@ -89,7 +89,7 @@ function TATFilterBar({ onGenerate }) {
         >
           <DatePickerInput
             id="tat-from-date"
-            labelText={intl.formatMessage({ id: "reports.tat.dateRange" }) + " (From)"}
+            labelText={intl.formatMessage({ id: "reports.tat.dateRangeFrom" })}
             placeholder="yyyy-mm-dd"
             size="sm"
           />
@@ -104,7 +104,7 @@ function TATFilterBar({ onGenerate }) {
         >
           <DatePickerInput
             id="tat-to-date"
-            labelText={intl.formatMessage({ id: "reports.tat.dateRange" }) + " (To)"}
+            labelText={intl.formatMessage({ id: "reports.tat.dateRangeTo" })}
             placeholder="yyyy-mm-dd"
             size="sm"
           />
@@ -112,7 +112,7 @@ function TATFilterBar({ onGenerate }) {
 
         <Dropdown
           id="tat-segment"
-          titleText="TAT Segment"
+          titleText={intl.formatMessage({ id: "reports.tat.tatSegment" })}
           items={SEGMENTS.map((s) => ({
             id: s.id,
             text: intl.formatMessage({ id: s.labelKey }),

@@ -4,14 +4,14 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 
-const DAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
+const DAY_KEYS = [
+  "calendar.management.day.sun",
+  "calendar.management.day.mon",
+  "calendar.management.day.tue",
+  "calendar.management.day.wed",
+  "calendar.management.day.thu",
+  "calendar.management.day.fri",
+  "calendar.management.day.sat",
 ];
 
 function WeekendConfig() {
@@ -38,6 +38,7 @@ function WeekendConfig() {
 
     fetch("/rest/calendar/weekends", {
       method: "PUT",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ weekendDays: newDays }),
     })
@@ -77,12 +78,12 @@ function WeekendConfig() {
         <FormattedMessage id="calendar.management.weekendDays" />
       </label>
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        {DAY_NAMES.map((name, idx) => (
+        {DAY_KEYS.map((key, idx) => (
           <Checkbox
             key={idx}
             id={`weekend-checkbox-${idx}`}
             data-testid={`weekend-checkbox-${idx}`}
-            labelText={name.substring(0, 3)}
+            labelText={intl.formatMessage({ id: key })}
             checked={weekendDays.includes(idx)}
             onChange={(_, { checked }) => handleToggle(idx, checked)}
           />

@@ -139,7 +139,7 @@
     </insert>
     <insert tableName="system_module_url" schemaName="clinlims">
       <column name="id" valueSequenceNext="system_module_url_seq"/>
-      <column name="url_path" value="/rest/calendar"/>
+      <column name="url_path" value="/calendar"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
     </insert>
   </changeSet>
@@ -158,7 +158,7 @@
     </insert>
     <insert tableName="system_module_url" schemaName="clinlims">
       <column name="id" valueSequenceNext="system_module_url_seq"/>
-      <column name="url_path" value="/rest/reports/tat"/>
+      <column name="url_path" value="/reports/tat"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
     </insert>
   </changeSet>

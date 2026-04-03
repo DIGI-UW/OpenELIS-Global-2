@@ -43,7 +43,7 @@ function TATReport() {
   );
 
   const breadcrumb = [
-    { label: "Home", link: "/" },
+    { label: intl.formatMessage({ id: "reports.tat.home" }), link: "/" },
     {
       label: intl.formatMessage({ id: "reports.tat.title" }),
       link: "/TATReport",
@@ -87,7 +87,9 @@ function TATReport() {
           >
             <Tag type="blue">{filters.segment.replace(/_/g, " ")}</Tag>
             <Tag type={filters.calculationMode === "WORKING_TIME" ? "purple" : "gray"}>
-              {filters.calculationMode === "WORKING_TIME" ? "Working Time" : "Calendar Time"}
+              {filters.calculationMode === "WORKING_TIME"
+                ? intl.formatMessage({ id: "reports.tat.workingTime" })
+                : intl.formatMessage({ id: "reports.tat.calendarTime" })}
             </Tag>
             <Tag type="gray">
               {filters.fromDate} to {filters.toDate}

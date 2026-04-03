@@ -216,7 +216,7 @@ public class CalendarManagementRestController extends BaseRestController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format, expected yyyy-MM-dd");
         }
         holiday.setHolidayName(name.trim());
-        holiday.setIsRecurring(body.get("isRecurring") != null && (Boolean) body.get("isRecurring"));
+        holiday.setIsRecurring(Boolean.TRUE.equals(body.get("isRecurring")));
         return holiday;
     }
 
@@ -250,20 +250,34 @@ public class CalendarManagementRestController extends BaseRestController {
                 if (line.isEmpty())
                     continue;
 
-                String[] parts = line.split(",", -1);
-                if (parts.length < 2)
+                // Handle quoted CSV fields (commas inside quotes)
+                List<String> parts = new ArrayList<>();
+                boolean inQuotes = false;
+                StringBuilder field = new StringBuilder();
+                for (char c : line.toCharArray()) {
+                    if (c == '"') {
+                        inQuotes = !inQuotes;
+                    } else if (c == ',' && !inQuotes) {
+                        parts.add(field.toString());
+                        field.setLength(0);
+                    } else {
+                        field.append(c);
+                    }
+                }
+                parts.add(field.toString());
+                if (parts.size() < 2)
                     continue;
 
                 PublicHoliday holiday = new PublicHoliday();
                 try {
-                    holiday.setHolidayDate(Date.valueOf(parts[0].trim()));
+                    holiday.setHolidayDate(Date.valueOf(parts.get(0).trim()));
                 } catch (DateTimeParseException | IllegalArgumentException e) {
                     // Will be caught by import validation
                     continue;
                 }
-                holiday.setHolidayName(parts[1].trim().replaceAll("^\"|\"$", ""));
-                if (parts.length > 2) {
-                    holiday.setIsRecurring(Boolean.parseBoolean(parts[2].trim()));
+                holiday.setHolidayName(parts.get(1).trim());
+                if (parts.size() > 2) {
+                    holiday.setIsRecurring(Boolean.parseBoolean(parts.get(2).trim()));
                 }
                 holidays.add(holiday);
             }

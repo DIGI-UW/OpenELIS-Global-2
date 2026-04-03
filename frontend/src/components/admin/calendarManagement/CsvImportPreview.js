@@ -62,6 +62,7 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
         `/rest/calendar/holidays/import?year=${year}`,
         {
           method: "POST",
+          credentials: "include",
           body: formData,
         },
       );
@@ -89,9 +90,20 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
   };
 
   const headers = [
-    { key: "date", header: "Date" },
-    { key: "name", header: "Name" },
-    { key: "recurring", header: "Recurring" },
+    {
+      key: "date",
+      header: intl.formatMessage({ id: "calendar.management.column.csvDate" }),
+    },
+    {
+      key: "name",
+      header: intl.formatMessage({ id: "calendar.management.column.csvName" }),
+    },
+    {
+      key: "recurring",
+      header: intl.formatMessage({
+        id: "calendar.management.column.csvRecurring",
+      }),
+    },
   ];
 
   return (
@@ -102,7 +114,7 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
       })}
       primaryButtonText={
         importing
-          ? "Importing..."
+          ? intl.formatMessage({ id: "calendar.management.importing" })
           : intl.formatMessage({ id: "calendar.management.importCsv" })
       }
       secondaryButtonText={intl.formatMessage({
@@ -116,9 +128,13 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
       {!file && (
         <FileUploader
           accept={[".csv"]}
-          buttonLabel="Choose CSV file"
+          buttonLabel={intl.formatMessage({
+            id: "calendar.management.chooseFile",
+          })}
           filenameStatus="edit"
-          labelDescription="Columns: date, name, recurring (true/false)"
+          labelDescription={intl.formatMessage({
+            id: "calendar.management.csvColumns",
+          })}
           onChange={handleFileChange}
         />
       )}
@@ -126,7 +142,10 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
       {parsedRows.length > 0 && (
         <>
           <p style={{ marginBottom: "0.5rem" }}>
-            {parsedRows.length} rows found
+            {intl.formatMessage(
+              { id: "calendar.management.rowsFound" },
+              { count: parsedRows.length },
+            )}
           </p>
           <DataTable rows={parsedRows} headers={headers}>
             {({ rows, headers: hdrs, getTableProps }) => (

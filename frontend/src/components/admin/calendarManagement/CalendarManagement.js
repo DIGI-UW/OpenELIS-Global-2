@@ -36,16 +36,35 @@ const yearOptions = Array.from({ length: 5 }, (_, i) => ({
   text: String(currentYear - 1 + i),
 }));
 
-const headers = [
-  { key: "date", header: "Date" },
-  { key: "name", header: "Holiday Name" },
-  { key: "recurring", header: "Recurring" },
-  { key: "status", header: "Status" },
-  { key: "actions", header: "Actions" },
-];
-
 function CalendarManagement() {
   const intl = useIntl();
+
+  const headers = [
+    {
+      key: "date",
+      header: intl.formatMessage({ id: "calendar.management.column.date" }),
+    },
+    {
+      key: "name",
+      header: intl.formatMessage({
+        id: "calendar.management.column.holidayName",
+      }),
+    },
+    {
+      key: "recurring",
+      header: intl.formatMessage({
+        id: "calendar.management.column.recurring",
+      }),
+    },
+    {
+      key: "status",
+      header: intl.formatMessage({ id: "calendar.management.column.status" }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({ id: "calendar.management.column.actions" }),
+    },
+  ];
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -130,6 +149,7 @@ function CalendarManagement() {
     } else {
       fetch(`/rest/calendar/holidays/${editingId}`, {
         method: "PUT",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
@@ -150,7 +170,10 @@ function CalendarManagement() {
   };
 
   const handleDelete = (id) => {
-    fetch(`/rest/calendar/holidays/${id}`, { method: "DELETE" })
+    fetch(`/rest/calendar/holidays/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    })
       .then(() => {
         fetchHolidays();
         setShowDeleteModal(null);
