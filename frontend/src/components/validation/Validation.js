@@ -298,10 +298,9 @@ const Validation = (props) => {
       case "pastNotes":
         return (
           <>
-            <div
-              className="note"
-              dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-            />
+            <div className="note" style={{ whiteSpace: "pre-wrap" }}>
+              {row.pastNotes?.replace(/<br\s*\/?>/gi, "\n")}
+            </div>
           </>
         );
 
