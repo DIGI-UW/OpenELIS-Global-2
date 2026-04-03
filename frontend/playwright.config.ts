@@ -66,6 +66,15 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
+
+    // CI stability: prevent Chromium renderer crashes ("Target page closed")
+    // --disable-dev-shm-usage: use /tmp instead of /dev/shm (avoids shared memory exhaustion)
+    // --disable-gpu: skip GPU compositing in headless CI (no GPU available)
+    ...(process.env.CI && {
+      launchOptions: {
+        args: ["--disable-dev-shm-usage", "--disable-gpu"],
+      },
+    }),
   },
 
   projects: [
