@@ -1,5 +1,7 @@
 package org.openelisglobal.analyzer.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -7,12 +9,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.analyzer.service.OpenELISFieldService;
+import org.openelisglobal.login.dao.UserModuleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -37,6 +43,9 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
     @Autowired
     private DataSource dataSource;
 
+    @Mock
+    private UserModuleService userModuleService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
     private JdbcTemplate jdbcTemplate;
@@ -44,9 +53,16 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        MockitoAnnotations.initMocks(this);
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
         objectMapper = new ObjectMapper();
         jdbcTemplate = new JdbcTemplate(dataSource);
+
+        // Mock admin check to allow test requests through
+        when(userModuleService.isUserAdmin(any())).thenReturn(true);
+        OpenELISFieldRestController controller = webApplicationContext.getBean(OpenELISFieldRestController.class);
+        ReflectionTestUtils.setField(controller, "userModuleService", userModuleService);
+
         cleanTestData();
     }
 
@@ -172,4 +188,5 @@ public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest
         mockMvc.perform(get("/rest/analyzer/openelis-fields/INVALID-ID").param("entityType", "TEST"))
                 .andExpect(status().isNotFound());
     }
+
 }

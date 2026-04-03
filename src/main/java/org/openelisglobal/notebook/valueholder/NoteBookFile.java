@@ -11,7 +11,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.validation.annotations.SafeHtml;
 
@@ -25,7 +24,6 @@ public class NoteBookFile extends BaseObject<Integer> {
     @SequenceGenerator(name = "notebook_file_generator", sequenceName = "notebook_file_seq", allocationSize = 1)
     private Integer id;
 
-    @Type(type = "org.hibernate.type.BinaryType")
     @Column(name = "file_data")
     private byte[] fileData;
 
