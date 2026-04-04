@@ -13,9 +13,3 @@ services:
       resources:
         limits:
           memory: 256M
-
-  virtual-serial:
-    deploy:
-      resources:
-        limits:
-          memory: 64M
