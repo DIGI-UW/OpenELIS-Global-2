@@ -50,6 +50,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US2.3 — Generate report", async () => {
       await page.locator('[data-testid="generate-report-button"]').click();
+      // Wait for results to load
       await expect(
         page.getByText(/Total Results|No results found/).first(),
       ).toBeVisible({ timeout: 15_000 });
@@ -62,6 +63,17 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(page.locator('[data-testid="tab-detail"]')).toBeVisible();
       await expect(page.locator('[data-testid="tab-trends"]')).toBeVisible();
       await evidence(page, testInfo, "US2.4-tabs-visible");
+      await videoPause(page, 1000, testInfo);
+    });
+
+    await test.step("US2.5 — Verify filter summary badges", async () => {
+      await expect(
+        page.locator('[data-testid="filter-summary-badges"]'),
+      ).toBeVisible();
+      await expect(
+        page.locator('[data-testid="filter-summary-badges"]'),
+      ).toContainText("RECEIPT TO VALIDATION");
+      await evidence(page, testInfo, "US2.5-filter-badges");
       await videoPause(page, 1000, testInfo);
     });
   });

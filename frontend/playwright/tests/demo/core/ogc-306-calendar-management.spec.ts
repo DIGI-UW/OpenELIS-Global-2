@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { showTitleCard } from "../../../helpers/title-card";
-import { videoPause } from "../../../helpers/video-pause";
-import { isVideoProject } from "../../../helpers/video-pause";
+import { videoPause, isVideoProject } from "../../../helpers/video-pause";
 
 /** Capture a named screenshot — only in video projects (not CI) */
 async function evidence(
@@ -42,7 +41,7 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await videoPause(page, 2000, testInfo);
     });
 
-    await test.step("US1.2 — Verify holiday table and controls render", async () => {
+    await test.step("US1.2 — Verify table controls and UI elements", async () => {
       await expect(
         page.locator('[data-testid="holiday-count-footer"]'),
       ).toBeVisible({ timeout: 10_000 });
@@ -60,25 +59,37 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await videoPause(page, 2000, testInfo);
     });
 
-    await test.step("US1.3 — Verify inline add form opens", async () => {
+    await test.step("US1.3 — Open inline add form and verify validation", async () => {
+      // Click Add Holiday — inline row appears
       await page.locator('[data-testid="add-holiday-button"]').click();
       await expect(
         page.locator('[data-testid="holiday-inline-row"]'),
       ).toBeVisible();
+
+      // Save disabled when form is empty (validation works)
       await expect(
         page.locator('[data-testid="save-holiday-button"]'),
       ).toBeDisabled();
-      await evidence(page, testInfo, "US1.3-inline-add-form-open");
+      await evidence(page, testInfo, "US1.3a-form-open-save-disabled");
 
+      // Fill name only — save still disabled (date required)
+      await page.locator("#new-holiday-name").fill("Test Holiday");
+      await expect(
+        page.locator('[data-testid="save-holiday-button"]'),
+      ).toBeDisabled();
+      await evidence(page, testInfo, "US1.3b-name-only-save-disabled");
+
+      // Cancel closes the form
       await page.locator('[data-testid="cancel-holiday-button"]').click();
       await expect(
         page.locator('[data-testid="holiday-inline-row"]'),
       ).not.toBeVisible();
-      await evidence(page, testInfo, "US1.3-inline-add-cancelled");
+      await evidence(page, testInfo, "US1.3c-form-cancelled");
       await videoPause(page, 1500, testInfo);
     });
 
     await test.step("US1.4 — Verify weekend checkboxes", async () => {
+      // Saturday and Sunday checked by default
       const satCheckbox = page.locator('[data-testid="weekend-checkbox-6"]');
       const sunCheckbox = page.locator('[data-testid="weekend-checkbox-0"]');
       await expect(satCheckbox).toBeVisible();
