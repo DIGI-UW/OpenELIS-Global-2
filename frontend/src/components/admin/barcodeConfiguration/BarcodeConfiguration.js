@@ -22,7 +22,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification.js";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Field, Formik } from "formik";
 import * as Yup from "yup";
 import BarcodeConfigurationFormValues from "../../formModel/innitialValues/BarcodeConfigurationFormValues.js";
