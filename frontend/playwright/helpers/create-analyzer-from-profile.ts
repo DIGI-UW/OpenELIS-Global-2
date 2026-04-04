@@ -97,26 +97,25 @@ async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
 }
 
 async function waitForAnalyzerApiReady(page: Page): Promise<void> {
-  const deadline = Date.now() + API_READY_TIMEOUT_MS;
-  let lastStatus: number | null = null;
   const analyzerApiUrl = getAnalyzerApiUrl();
 
-  while (Date.now() < deadline) {
-    try {
-      const response = await page.request.get(analyzerApiUrl);
-      lastStatus = response.status();
-      if (response.ok()) {
-        return;
-      }
-    } catch {
-      // Keep polling until timeout. Network can flap while docker networks settle.
-    }
-    await page.waitForTimeout(API_RETRY_DELAY_MS);
-  }
-
-  throw new Error(
-    `Analyzer API did not become ready within ${API_READY_TIMEOUT_MS}ms (last status: ${lastStatus ?? "request failed"})`,
-  );
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await page.request.get(analyzerApiUrl);
+          return response.status();
+        } catch {
+          return 0; // Network can flap while docker networks settle
+        }
+      },
+      {
+        message: `Analyzer API at ${analyzerApiUrl} did not become ready`,
+        timeout: API_READY_TIMEOUT_MS,
+        intervals: [API_RETRY_DELAY_MS],
+      },
+    )
+    .toBe(200);
 }
 
 export async function createAnalyzerFromProfile(
