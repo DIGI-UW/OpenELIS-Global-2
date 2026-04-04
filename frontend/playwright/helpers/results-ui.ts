@@ -73,6 +73,13 @@ export function locatorForAccessionNumber(
 type NavigateUntilVisibleOptions = {
   timeoutMs?: number;
   perAttemptTimeoutMs?: number;
+  /** Optional API URL to poll before navigating. When provided, the helper
+   *  waits for the API to return matching content before loading the page,
+   *  eliminating the reload loop entirely. */
+  apiPollUrl?: string;
+  /** Text to match in resultList accessionNumber fields. Required with
+   *  apiPollUrl to avoid false positives from stale results. */
+  apiPollMatch?: string;
 };
 
 async function navigateUntilVisible(
@@ -83,15 +90,56 @@ async function navigateUntilVisible(
 ) {
   const timeoutMs = options?.timeoutMs ?? LONG_TIMEOUT;
   const perAttemptTimeoutMs = options?.perAttemptTimeoutMs ?? UI_TIMEOUT;
-  const attempts = Math.max(1, Math.ceil(timeoutMs / perAttemptTimeoutMs));
 
+  // When an API poll URL is provided, wait for results via lightweight JSON
+  // request before navigating. This avoids reload-loop flakiness: the page
+  // is only loaded once results are guaranteed to exist.
+  if (options?.apiPollUrl) {
+    await expect
+      .poll(
+        async () => {
+          try {
+            const resp = await page.request.get(options.apiPollUrl!, {
+              timeout: SHORT_TIMEOUT,
+            });
+            if (!resp.ok()) return false;
+            const data = await resp.json();
+            const results = data?.resultList ?? [];
+            if (results.length === 0) return false;
+            if (!options?.apiPollMatch) return true;
+            // Check that a result with the expected accession exists
+            return results.some(
+              (r: { accessionNumber?: string }) =>
+                r.accessionNumber?.includes(options.apiPollMatch!) ?? false,
+            );
+          } catch {
+            return false;
+          }
+        },
+        {
+          message: `Waiting for results matching "${options?.apiPollMatch}" at ${options.apiPollUrl}`,
+          timeout: timeoutMs,
+          intervals: [2_000],
+        },
+      )
+      .toBeTruthy();
+
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: perAttemptTimeoutMs,
+    });
+    await expect(visibleLocator()).toBeVisible({
+      timeout: perAttemptTimeoutMs,
+    });
+    return;
+  }
+
+  // Fallback: reload loop for pages without a known API endpoint.
+  const attempts = Math.max(1, Math.ceil(timeoutMs / perAttemptTimeoutMs));
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      // Retry in the same frame and wait on visible content instead of a full
-      // load event. That avoids dispatcher churn on results pages that keep
-      // fetching data after navigation starts.
       if (attempt === 1) {
         await page.goto(url, {
           waitUntil: "domcontentloaded",
@@ -132,11 +180,12 @@ export async function openAnalyzerResultsAndWaitForText(
   visibleText: string,
   options?: NavigateUntilVisibleOptions,
 ) {
+  const apiUrl = `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`;
   await navigateUntilVisible(
     page,
     analyzerResultsUrl(analyzerName),
     () => locatorForAccessionNumber(page, visibleText),
-    options,
+    { ...options, apiPollUrl: apiUrl, apiPollMatch: visibleText },
   );
 }
 
