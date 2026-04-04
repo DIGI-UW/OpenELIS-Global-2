@@ -166,9 +166,134 @@ Mitigations in this design:
 - Terminal status must reflect real gate outcome and avoid misclassifying fork
   failures as non-fork transfer failures.
 
+### 8.1 Two Identities Exist in `workflow_run`
+
+This architecture intentionally separates:
+
+- **Run/orchestration identity**
+  - The GitHub Actions run record shown in the Actions UI/API.
+  - For `workflow_run`, this is labeled from the triggering workflow metadata
+    (`head_branch`, `head_sha`).
+  - This label is operational metadata, not the authoritative answer to "which
+    code did we validate for PR status purposes?"
+- **Validation identity**
+  - The code ref actually executed by the downstream wrapper and reusable
+    executor.
+  - In this design, that is determined by artifact-derived context plus
+    `checkout_ref`.
+  - The commit that receives the PR-facing checkpoint is determined by
+    `status_sha`, not by the run record label shown in the Actions list.
+
+### 8.2 Audit-Surface Rule
+
+- The Actions run list is useful for orchestration troubleshooting.
+- The commit/PR status surface is the authoritative place to answer whether a
+  given PR/head commit is currently green.
+- A single run can appear in the Actions UI as a `develop`/`workflow_run` object
+  while still validating PR-derived code and posting `03 Checkpoint - E2E` to
+  the PR head commit.
+- Conversely, multiple `workflow_run` executions can share similar displayed run
+  metadata while only one status attachment is visible on the commit/PR surface.
+
+### 8.3 Consequence
+
+When investigating parity, do **not** assume:
+
+- displayed run `head_sha` in Actions history == authoritative tested commit,
+- or "the commit page only shows one attached run" == "only one downstream run
+  existed."
+
+The authoritative tested commit for E2E checkpoint purposes is the one named by
+`status_sha`.
+
 ---
 
-## 9. Known GitHub Actions Semantics That Shape Design
+## 9. Why Parity Still Breaks
+
+The current fork/non-fork topology revamp removed one major source of
+non-parity: duplicate privileged fork rebuilds as the steady-state model.
+However, parity can still fail for reasons outside the image-transfer design.
+
+### 9.1 What Is **Not** Preventing Parity
+
+- The current intended architecture is no longer "old fork path vs new develop
+  path" for this remediation target.
+- For the unified model, both PR and post-merge validation are supposed to feed
+  the same downstream executor contract.
+- The presence of a `workflow_run` label on `develop` is not itself proof that
+  different code was executed.
+
+### 9.2 What **Actually** Prevents Parity
+
+- **Non-deterministic E2E suites**
+  - Playwright jobs still show timing-sensitive failures:
+    - transient fetch/save failures in analyzer flows,
+    - stale page/context polling after navigation,
+    - browser/response binding races on reload/navigation-heavy tests.
+  - This means "same effective code under test" can still produce different red
+    or green outcomes across runs.
+- **Runtime-environment sensitivity**
+  - E2E depends on Docker container startup timing, database readiness, plugin
+    seeding, browser startup, and bridge/harness availability.
+  - Small timing shifts between runs can change the observed result without any
+    code difference.
+- **Audit-surface mismatch**
+  - Operators can compare the wrong things:
+    - the Actions run label,
+    - the attached checkpoint status,
+    - the checked-out ref inside the executor.
+  - This creates an apparent parity failure even when the real problem is
+    unstable test/runtime behavior.
+
+### 9.3 Accurate Summary
+
+The main remaining parity blocker is **not** the existence of `workflow_run`
+itself. It is that the downstream E2E executor is still not deterministic enough
+for "green before merge" to reliably predict "green after merge" when the same
+logical code path is exercised.
+
+### 9.4 Remediation Landed For Determinism
+
+The following targeted test/runtime hardening changes were implemented to remove
+the repeated flake signatures seen in harness shard `1/2` and core shard `2/2`:
+
+- **Post-save reload settling in analyzer results flow**
+
+  - File: `frontend/playwright/helpers/accept-results.ts`
+  - Added `page.waitForLoadState("load")` plus a stable post-navigation element
+    assertion before row-count polling.
+  - Intent: avoid touching response objects while Playwright is still rebinding
+    connection state after full-page reload.
+
+- **Deterministic analyzer API readiness before Save**
+
+  - File: `frontend/playwright/helpers/create-analyzer-from-profile.ts`
+  - Added bounded readiness polling of
+    `/api/OpenELIS-Global/rest/analyzer/analyzers` after mock network creation
+    and immediately before form save.
+  - Intent: prevent transient `Failed to fetch` notification failures caused by
+    temporary connectivity instability during mock network setup.
+
+- **Navigation settle hardening for sidenav refresh persistence**
+
+  - File: `frontend/playwright/tests/foundational/core/sidenav.spec.ts`
+  - Changed refresh navigation wait mode from `domcontentloaded` to `load`.
+  - Intent: ensure response binding and resource load are complete before
+    asserting persisted collapsed state.
+
+- **Mock analyzer cleanup race reduction**
+  - File: `frontend/playwright/helpers/create-analyzer-from-profile.ts`
+  - Added existence check (`GET /analyzers`) before `DELETE` in mock-network
+    cleanup path.
+  - Intent: reduce noisy 404 teardown races and lower setup/teardown timing
+    variance.
+
+Operational decision: CI `retries` remains `0`; stability is enforced through
+test/helper determinism rather than retry masking.
+
+---
+
+## 10. Known GitHub Actions Semantics That Shape Design
 
 Validated platform constraints:
 
@@ -176,6 +301,9 @@ Validated platform constraints:
   read-only unless special settings apply.
 - `workflow_run` provides privileged follow-up execution with access to write
   tokens/secrets.
+- `workflow_run` run records are labeled from the triggering workflow metadata;
+  those labels are not sufficient by themselves to identify the authoritative
+  commit receiving PR-facing status.
 - GitHub explicitly warns `workflow_run` on untrusted code paths can introduce
   cache-poisoning and write-privilege risks.
 - `workflow_run` branch filters apply to the triggering workflow run branch.
@@ -187,7 +315,7 @@ Docker/BuildKit constraints:
 
 ---
 
-## 10. Decision Log (Accepted / Rejected / Deferred)
+## 11. Decision Log (Accepted / Rejected / Deferred)
 
 ### Accepted
 
@@ -211,7 +339,7 @@ Docker/BuildKit constraints:
 
 ---
 
-## 11. Pitfalls From Parallel CI Remediation and Feature Delivery
+## 12. Pitfalls From Parallel CI Remediation and Feature Delivery
 
 - CI architecture can drift faster than docs when fixes land in rapid small PRs.
 - Parallel feature work causes real pressure: CI behavior changes while active
@@ -222,12 +350,14 @@ Docker/BuildKit constraints:
   orchestration.
 - UI/check surfaces may suggest one root cause while workflow code points to
   another.
+- GitHub can present a run under one displayed branch/SHA identity while the E2E
+  checkpoint is intentionally attached to another commit identity.
 - Branch protection and operator-model docs can become stale immediately after
   checkpoint contract changes.
 
 ---
 
-## 12. Reality-Check Gate for No-Rebuild Handoff
+## 13. Reality-Check Gate for No-Rebuild Handoff
 
 Before broadening implementation, validate:
 
@@ -240,7 +370,7 @@ If these checks fail, stop and review before expanding scope.
 
 ---
 
-## 13. GitHub Evidence Appendix
+## 14. GitHub Evidence Appendix
 
 ### Repository Workflows
 
@@ -257,6 +387,16 @@ If these checks fail, stop and review before expanding scope.
 - [#3301](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3301)
 - [#3146](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3146)
 - [#3257](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3257)
+
+### Evidence Patterns To Validate During Triage
+
+- Compare:
+  - triggering build-run metadata,
+  - downstream `checkout_ref`,
+  - downstream `status_sha`,
+  - and the commit surface that shows `03 Checkpoint - E2E`.
+- Do not treat the Actions list label alone as the source of truth for which
+  commit was validated for PR gating.
 
 ### Platform Docs
 

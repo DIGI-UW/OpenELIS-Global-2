@@ -22,6 +22,9 @@ import { LONG_TIMEOUT } from "./timeouts";
 import { resolveDbContainer } from "./db-container";
 
 const SIMULATOR_URL = "http://localhost:8085";
+const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
+const API_READY_TIMEOUT_MS = 15_000;
+const API_RETRY_DELAY_MS = 500;
 
 /**
  * Create a mock analyzer network and return the assigned IP.
@@ -65,10 +68,46 @@ async function createMockNetwork(
  */
 async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
   try {
+    const existing = await page.request.get(`${SIMULATOR_URL}/analyzers`);
+    if (!existing.ok()) {
+      return;
+    }
+
+    const body = await existing.json();
+    const exists = Array.isArray(body?.analyzers)
+      ? body.analyzers.some((a: { name?: string }) => a?.name === mockName)
+      : false;
+
+    if (!exists) {
+      return;
+    }
+
     await page.request.delete(`${SIMULATOR_URL}/analyzers/${mockName}`);
   } catch {
     // Best-effort cleanup
   }
+}
+
+async function waitForAnalyzerApiReady(page: Page): Promise<void> {
+  const deadline = Date.now() + API_READY_TIMEOUT_MS;
+  let lastStatus: number | null = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await page.request.get(ANALYZER_API_PATH);
+      lastStatus = response.status();
+      if (response.ok()) {
+        return;
+      }
+    } catch {
+      // Keep polling until timeout. Network can flap while docker networks settle.
+    }
+    await page.waitForTimeout(API_RETRY_DELAY_MS);
+  }
+
+  throw new Error(
+    `Analyzer API did not become ready within ${API_READY_TIMEOUT_MS}ms (last status: ${lastStatus ?? "request failed"})`,
+  );
 }
 
 export async function createAnalyzerFromProfile(
@@ -98,6 +137,9 @@ export async function createAnalyzerFromProfile(
       template,
       port,
     );
+
+    // Creating/attaching docker networks can briefly destabilize connectivity.
+    await waitForAnalyzerApiReady(page);
   }
 
   await list.goto();
@@ -137,6 +179,7 @@ export async function createAnalyzerFromProfile(
   }
 
   // Save
+  await waitForAnalyzerApiReady(page);
   await form.save();
   await form.expectSuccessNotification();
 
