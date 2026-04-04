@@ -77,9 +77,10 @@ type NavigateUntilVisibleOptions = {
    *  waits for the API to return matching content before loading the page,
    *  eliminating the reload loop entirely. */
   apiPollUrl?: string;
-  /** Text to match in resultList accessionNumber fields. Required with
-   *  apiPollUrl to avoid false positives from stale results. */
-  apiPollMatch?: string;
+  /** Text(s) to match in resultList accessionNumber fields. When an array,
+   *  ALL must be present before navigating (handles multi-sample file imports
+   *  where the bridge posts results one accession at a time). */
+  apiPollMatch?: string | string[];
 };
 
 async function navigateUntilVisible(
@@ -107,10 +108,15 @@ async function navigateUntilVisible(
             const results = data?.resultList ?? [];
             if (results.length === 0) return false;
             if (!options?.apiPollMatch) return true;
-            // Check that a result with the expected accession exists
-            return results.some(
-              (r: { accessionNumber?: string }) =>
-                r.accessionNumber?.includes(options.apiPollMatch!) ?? false,
+            // Check that ALL expected accessions are present in results
+            const matches = Array.isArray(options.apiPollMatch)
+              ? options.apiPollMatch
+              : [options.apiPollMatch];
+            const accessions = results.map(
+              (r: { accessionNumber?: string }) => r.accessionNumber ?? "",
+            );
+            return matches.every((m) =>
+              accessions.some((a: string) => a.includes(m)),
             );
           } catch {
             return false;
@@ -178,14 +184,18 @@ export async function openAnalyzerResultsAndWaitForText(
   page: Page,
   analyzerName: string,
   visibleText: string,
-  options?: NavigateUntilVisibleOptions,
+  options?: NavigateUntilVisibleOptions & {
+    /** All expected accession numbers — poll waits for ALL before navigating. */
+    allExpectedAccessions?: string[];
+  },
 ) {
   const apiUrl = `/api/OpenELIS-Global/rest/AnalyzerResults?type=${encodeURIComponent(analyzerName)}`;
+  const pollMatch = options?.allExpectedAccessions ?? visibleText;
   await navigateUntilVisible(
     page,
     analyzerResultsUrl(analyzerName),
     () => locatorForAccessionNumber(page, visibleText),
-    { ...options, apiPollUrl: apiUrl, apiPollMatch: visibleText },
+    { ...options, apiPollUrl: apiUrl, apiPollMatch: pollMatch },
   );
 }
 
@@ -218,10 +228,15 @@ export async function openAccessionResultsAndWaitForText(
   visibleText = accessionNumber,
   options?: NavigateUntilVisibleOptions,
 ) {
-  await navigateUntilVisible(
-    page,
-    accessionResultsUrl(accessionNumber),
-    () => locatorForAccessionNumber(page, visibleText),
-    options,
-  );
+  // AccessionResults is called after results are saved — data already exists
+  // in the DB. Navigate once with a generous assertion timeout instead of the
+  // reload loop, which wastes memory and can trigger OOM browser crashes on CI.
+  const timeout = options?.timeoutMs ?? LONG_TIMEOUT;
+  await page.goto(accessionResultsUrl(accessionNumber), {
+    waitUntil: "domcontentloaded",
+    timeout,
+  });
+  await expect(locatorForAccessionNumber(page, visibleText)).toBeVisible({
+    timeout,
+  });
 }
