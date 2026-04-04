@@ -26,6 +26,14 @@ const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
 const API_READY_TIMEOUT_MS = 15_000;
 const API_RETRY_DELAY_MS = 500;
 
+function getAnalyzerApiUrl(): string {
+  const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
+    /\/$/,
+    "",
+  );
+  return `${baseUrl}${ANALYZER_API_PATH}`;
+}
+
 /**
  * Create a mock analyzer network and return the assigned IP.
  * The mock server creates a Docker network with a unique subnet per analyzer,
@@ -91,10 +99,11 @@ async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
 async function waitForAnalyzerApiReady(page: Page): Promise<void> {
   const deadline = Date.now() + API_READY_TIMEOUT_MS;
   let lastStatus: number | null = null;
+  const analyzerApiUrl = getAnalyzerApiUrl();
 
   while (Date.now() < deadline) {
     try {
-      const response = await page.request.get(ANALYZER_API_PATH);
+      const response = await page.request.get(analyzerApiUrl);
       lastStatus = response.status();
       if (response.ok()) {
         return;
