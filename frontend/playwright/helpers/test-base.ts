@@ -1,31 +1,91 @@
 /**
- * Shared test base with auto-fixtures for memory monitoring and page error
- * capture. Import { test, expect } from this file instead of @playwright/test
- * to get both fixtures automatically.
+ * Shared test base with auto-fixtures for crash diagnostics, memory
+ * monitoring, and page error capture.
+ *
+ * Import { test, expect } from this file instead of @playwright/test.
+ *
+ * Crash diagnostics:
+ *   Captures page.on('crash'), page.on('close'), console errors, and
+ *   network failures. Logs everything to stderr so CI preserves it even
+ *   when the browser dies before trace/screenshot capture.
  *
  * Memory monitoring:
- *   Logs JS heap usage per test to stderr. CDP-based, Chromium-only.
- *   Opt-in budget assertions via test.use({ memoryBudgetMB: 200 }).
- *
- * Page error capture:
- *   Logs unhandled page errors to stderr. Useful for diagnosing crashes
- *   where the trace/screenshot may not survive.
+ *   Logs JS heap usage per test via CDP. Opt-in budget via memoryBudgetMB.
  */
 
 import { test as base, expect } from "@playwright/test";
 
 export const test = base.extend<{
-  capturePageErrors: void;
+  crashDiagnostics: void;
   memoryMonitor: void;
   memoryBudgetMB: number | undefined;
 }>({
   memoryBudgetMB: [undefined, { option: true }],
 
-  capturePageErrors: [
-    async ({ page }, use) => {
+  crashDiagnostics: [
+    async ({ page, browser }, use, testInfo) => {
+      const recentConsole: string[] = [];
+      const MAX_CONSOLE = 20;
+
+      // Capture console messages — keep a rolling buffer of the last N
+      page.on("console", (msg) => {
+        if (msg.type() === "error" || msg.type() === "warning") {
+          recentConsole.push(`[${msg.type()}] ${msg.text()}`);
+          if (recentConsole.length > MAX_CONSOLE) recentConsole.shift();
+        }
+      });
+
+      // Capture unhandled page errors (replaces old capturePageErrors fixture)
       page.on("pageerror", (error) => {
         console.error(`[pageerror] ${error.message}\n${error.stack ?? ""}`);
       });
+
+      // Capture renderer crashes — this is the key diagnostic
+      page.on("crash", () => {
+        console.error(
+          `[CRASH] Page renderer crashed during: ${testInfo.title}`,
+        );
+        console.error(`[CRASH] URL at crash: ${page.url()}`);
+        console.error(
+          `[CRASH] Recent console (last ${recentConsole.length} messages):`,
+        );
+        for (const msg of recentConsole) {
+          console.error(`  ${msg}`);
+        }
+      });
+
+      // Capture unexpected page close (different from crash)
+      page.on("close", () => {
+        if (testInfo.status === undefined) {
+          // Test still running — page closed unexpectedly
+          console.error(
+            `[CLOSE] Page closed unexpectedly during: ${testInfo.title}`,
+          );
+          console.error(`[CLOSE] URL at close: ${page.url()}`);
+        }
+      });
+
+      // Capture browser disconnect (entire process died)
+      browser.on("disconnected", () => {
+        console.error(
+          `[DISCONNECT] Browser process died during: ${testInfo.title}`,
+        );
+        console.error(
+          `[DISCONNECT] Recent console (last ${recentConsole.length} messages):`,
+        );
+        for (const msg of recentConsole) {
+          console.error(`  ${msg}`);
+        }
+      });
+
+      // Capture failed network requests (backend health signal)
+      page.on("requestfailed", (request) => {
+        const failure = request.failure();
+        console.error(
+          `[NET-FAIL] ${request.method()} ${request.url()} → ${failure?.errorText ?? "unknown"}`,
+        );
+      });
+
       await use();
     },
     { auto: true },
@@ -45,14 +105,12 @@ export const test = base.extend<{
         cdp = await page.context().newCDPSession(page);
         await cdp.send("Performance.enable");
       } catch {
-        // CDP unavailable — skip monitoring
         await use();
         return;
       }
 
       await use();
 
-      // Post-test: capture heap metrics
       try {
         const { metrics } = await cdp.send("Performance.getMetrics");
         const heapUsed = metrics.find(
@@ -76,7 +134,9 @@ export const test = base.extend<{
           }
         }
       } catch {
-        // CDP session dead — browser crashed. The crash itself is the signal.
+        console.error(
+          `[memory] ${testInfo.title}: CDP unavailable (browser likely crashed)`,
+        );
       }
 
       await cdp.detach().catch(() => {});
