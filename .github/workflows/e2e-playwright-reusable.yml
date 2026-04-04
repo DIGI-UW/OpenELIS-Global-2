@@ -79,6 +79,13 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      - name: Configure swap for OOM resilience
+        run: |
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -191,6 +198,7 @@ jobs:
               COMPOSE_CMD+=(-f "$f")
             fi
           done
+          COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits.yml")
           "${COMPOSE_CMD[@]}" up -d --no-build --wait --wait-timeout 900
 
       - name: Validate cert material in shared volume mounts
