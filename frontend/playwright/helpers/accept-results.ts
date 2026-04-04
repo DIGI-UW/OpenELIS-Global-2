@@ -109,20 +109,30 @@ export async function acceptAndVerifyResults(
   });
 
   // Success path issues full page reload (AnalyserResults.js).
+  // After save, either more results remain (Save visible) or all were consumed
+  // (empty state). Use locator.or() — NOT Promise.race, which leaves the losing
+  // assertion retrying in the background.
   await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
     timeout: NAV_TIMEOUT,
   });
+  const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
+  await expect(saveButton.or(emptyState).first()).toBeVisible({
+    timeout: UI_TIMEOUT,
+  });
 
-  if (stagedCountBeforeSave > 0) {
-    await expect
-      .poll(async () => stagedRows().count(), {
-        timeout: LONG_TIMEOUT,
-      })
-      .toBe(0);
+  const saveStillVisible = await saveButton.isVisible();
+  if (saveStillVisible) {
+    if (stagedCountBeforeSave > 0) {
+      await expect
+        .poll(async () => stagedRows().count(), {
+          timeout: LONG_TIMEOUT,
+        })
+        .toBe(0);
+    }
+
+    await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
+    await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
   }
-
-  await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
-  await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
