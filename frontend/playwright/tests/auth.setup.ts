@@ -136,7 +136,16 @@ setup("authenticate", async ({ page, request, context }, testInfo) => {
   ]);
 
   // ── Step 4: Verify authenticated state ────────────────────────
-  await page.goto("analyzers", { waitUntil: "domcontentloaded" });
+  // Navigate to the home page — lightest authenticated route.
+  // Wait for the session API call that SecureRoute uses to resolve auth,
+  // then assert we weren't redirected to /login. Without this, the
+  // not.toHaveURL assertion would pass instantly before React hydrates.
+  const sessionResponse = page.waitForResponse(
+    (resp) => resp.url().includes("/api/OpenELIS-Global/session") && resp.ok(),
+    { timeout: LONG_TIMEOUT },
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await sessionResponse;
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/, {
     timeout: LONG_TIMEOUT,
   });
