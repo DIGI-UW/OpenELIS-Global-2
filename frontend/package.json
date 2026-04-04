@@ -68,7 +68,7 @@
     "cy:single": "cypress run --browser electron --config video=false,defaultCommandTimeout=10000 --spec",
     "cy:debug": "ELECTRON_ENABLE_LOGGING=1 cypress run --browser electron --config video=false,defaultCommandTimeout=10000",
     "ci:deps": "node -e \"console.log('npm ci (~2–8 min): Cypress postinstall is large; use this script for progress + logs.\\n')\" && npm ci --progress=true --loglevel=info",
-    "pw:install": "playwright install chromium",
+    "pw:install": "playwright install --only-shell chromium",
     "pw:test": "playwright test",
     "pw:guard": "npm run pw:guard:no-timeout && npm run pw:guard:buckets && npm run pw:guard:demo-ui-only",
     "pw:guard:no-timeout": "node scripts/pw-no-timeout-guard.mjs",
