@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { ErrorDashboardPage } from "../../../fixtures/error-dashboard";
 
 test.describe("Error Dashboard Page", () => {
