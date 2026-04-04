@@ -53,7 +53,12 @@ const PostSavePrintDialog = ({
         {printableLabels.map((printableLabel) => (
           <div key={printableLabel.labelType}>
             <p>{printableLabel.labelType}</p>
-            <p>{`Qty: ${printableLabel.quantity}`}</p>
+            <p>
+              {intl.formatMessage(
+                { id: "barcode.print.qty" },
+                { quantity: printableLabel.quantity },
+              )}
+            </p>
             {printableLabel.dimensionsMm && (
               <p>{printableLabel.dimensionsMm}</p>
             )}

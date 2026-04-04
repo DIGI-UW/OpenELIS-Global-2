@@ -2606,6 +2606,7 @@
   "barcode.print.button": "Imprimer",
   "barcode.print.done": "Terminer",
   "barcode.print.skip": "Passer",
+  "barcode.print.qty": "Qté : {quantity}",
   "barcode.print.reprint.dialog": "Réimprimer les étiquettes",
   "process.testAdd.pressNext.ageRangeSelectiong": "Appuyez sur le bouton Suivant. L'étape de sélection de la tranche d'âge n'est pas requise !",
   "process.testAdd.pressNext.selectGroupDictionary": "Appuyez sur le bouton Suivant. L'étape de sélection de la liste de dictionnaires de groupe n'est pas requise !",

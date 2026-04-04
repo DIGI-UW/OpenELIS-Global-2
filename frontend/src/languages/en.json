@@ -2680,6 +2680,7 @@
   "barcode.print.button": "Print",
   "barcode.print.done": "Done",
   "barcode.print.skip": "Skip",
+  "barcode.print.qty": "Qty: {quantity}",
   "barcode.print.reprint.dialog": "Reprint labels",
   "process.testAdd.pressNext.ageRangeSelectiong": "Press Next button Age Range Selection step is not required !",
   "process.testAdd.pressNext.selectGroupDictionary": "Press Next button Selecting Group Dictionary List step is not required !",
