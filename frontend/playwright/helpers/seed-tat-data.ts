@@ -52,42 +52,115 @@ export async function createSampleOrder(
   const { labNo, receivedDate, receivedTime, priority } = config;
   const headers = await authHeaders(page);
 
-  const sampleXML = `<samples><sample sampleID="${labNo}" date="${receivedDate}" time="${receivedTime}" collector="" tests=""><sampletype><id>1</id></sampletype><tests><test><id>1</id></test></tests></sample></samples>`;
+  // Step 1: GET the preform — same approach as the React Add Order page.
+  // This returns the full form shape with default values, display lists, etc.
+  const preformRes = await page.request.get(
+    `${API_PREFIX}/rest/SamplePatientEntry`,
+    { headers },
+  );
+  if (!preformRes.ok()) {
+    console.warn(
+      `createSampleOrder ${labNo}: GET preform failed ${preformRes.status()}`,
+    );
+    return labNo;
+  }
 
+  const form = await preformRes.json();
+
+  // Step 2: Find a valid sample type ID from the preform's sampleTypes list
+  const sampleTypeId = form.sampleTypes?.[0]?.id || "1";
+
+  // Step 3: Modify the form — same fields the React UI sets
+  form.warning = true;
+  form.currentDate = form.currentDate; // keep today's date from preform
+
+  // Patient info (minimal — new patient)
+  form.patientProperties = form.patientProperties || {};
+  form.patientProperties.firstName = "TAT-E2E";
+  form.patientProperties.lastName = `Patient-${labNo}`;
+  form.patientProperties.birthDateForDisplay = "01/01/1990";
+  form.patientProperties.gender = "M";
+  form.patientUpdateStatus = "ADD";
+
+  // Sample order items
+  form.sampleOrderItems = form.sampleOrderItems || {};
+  // Accession number format is YYYYNNNNNN (e.g., 2026000001).
+  // Generate a unique one based on timestamp to avoid collisions.
+  const seq = String(Date.now()).slice(-6);
+  const actualLabNo = `${new Date().getFullYear()}${seq}`;
+  form.sampleOrderItems.labNo = actualLabNo;
+  form.sampleOrderItems.receivedDateForDisplay =
+    form.sampleOrderItems.receivedDateForDisplay || form.currentDate;
+  form.sampleOrderItems.receivedTime = receivedTime || "09:00";
+  form.sampleOrderItems.modified = true;
+  if (priority) {
+    form.sampleOrderItems.priority = priority.toUpperCase();
+  }
+
+  // Sample XML — must match the exact format from Index.js:710.
+  // sampleID = sampleTypeId, tests = comma-separated test IDs,
+  // testSectionMap and testSampleTypeMap must be present (even if empty).
+  const dateStr = form.sampleOrderItems.receivedDateForDisplay;
+  form.sampleXML =
+    `<samples>` +
+    `<sample sampleID='${sampleTypeId}' date='${dateStr}' time='${receivedTime || "09:00"}' ` +
+    `collector='' quantity='' uom='' tests='1' testSectionMap='' testSampleTypeMap='' ` +
+    `panels='' rejected='false' rejectReasonId='' initialConditionIds='' ` +
+    `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
+    `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
+    `numOrderLabels='1' numSpecimenLabels='1'/>` +
+    `</samples>`;
+
+  // Clear display-only lists (same as React UI does in Index.js:624-631).
+  // These contain complex objects with extra fields like "displayValue" that
+  // the POST endpoint's Jackson deserializer can't handle (Dictionary class
+  // doesn't have @JsonIgnoreProperties).
+  form.sampleOrderItems.priorityList = [];
+  form.sampleOrderItems.programList = [];
+  form.sampleOrderItems.referringSiteList = [];
+  form.sampleOrderItems.providersList = [];
+  form.sampleOrderItems.paymentOptions = [];
+  form.sampleOrderItems.testLocationCodeList = [];
+  form.initialSampleConditionList = [];
+  form.testSectionList = [];
+  form.sampleTypes = [];
+  form.referralOrganizations = [];
+  form.referralReasons = [];
+  form.rejectReasonList = [];
+  form.sampleNatureList = [];
+  // Patient display lists
+  if (form.patientProperties) {
+    form.patientProperties.genders = [];
+    form.patientProperties.patientTypes = [];
+    form.patientProperties.addressDepartments = [];
+    form.patientProperties.healthDistricts = [];
+    form.patientProperties.healthRegions = [];
+    form.patientProperties.educationList = [];
+    form.patientProperties.maritialList = [];
+    form.patientProperties.nationalityList = [];
+    delete form.patientProperties.readOnly;
+  }
+  // Remove display-only objects
+  delete form.patientSearch;
+  delete form.patientEnhancedSearch;
+  delete form.projects;
+
+  // Step 4: POST the modified form back
   const response = await page.request.post(
     `${API_PREFIX}/rest/SamplePatientEntry`,
-    {
-      headers,
-      data: {
-        currentDate: receivedDate,
-        warning: true,
-        patientProperties: {
-          currentDate: receivedDate,
-          firstName: "TAT-E2E",
-          lastName: `Patient-${labNo}`,
-          birthDateForDisplay: "01/01/1990",
-          gender: "M",
-        },
-        sampleOrderItems: {
-          labNo: labNo,
-          receivedDateForDisplay: receivedDate,
-          receivedTime: receivedTime,
-          priority: priority || "routine",
-          modified: true,
-        },
-        sampleXML: sampleXML,
-        rememberSiteAndRequester: false,
-      },
-    },
+    { headers, data: form },
   );
 
   if (!response.ok()) {
+    const text = await response.text().catch(() => "");
     console.warn(
-      `createSampleOrder ${labNo}: HTTP ${response.status()} — ${await response.text()}`,
+      `createSampleOrder ${actualLabNo}: HTTP ${response.status()} — ${text.slice(0, 200)}`,
     );
+  } else {
+    console.log(`createSampleOrder: created sample ${actualLabNo}`);
   }
 
-  return labNo;
+  return actualLabNo;
 }
 
 /**
