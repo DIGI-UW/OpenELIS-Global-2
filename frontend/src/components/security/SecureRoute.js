@@ -33,9 +33,7 @@ function SecureRoute(props) {
   useEffect(() => {
     setLoading(!errorLoadingSessionDetails && isCheckingLogin());
     if (userSessionDetails.authenticated) {
-      console.info("Authenticated");
       if (hasPermission(userSessionDetails)) {
-        console.info("Access Allowed");
         if (
           configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN === "true" &&
           !userSessionDetails.loginLabUnit &&

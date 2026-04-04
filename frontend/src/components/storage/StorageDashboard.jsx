@@ -155,31 +155,6 @@ const StorageDashboard = () => {
   const [pageSize, setPageSize] = useState(25); // Default page size per OGC-150
   const [totalItems, setTotalItems] = useState(0);
 
-  // Debug logging for pagination responses
-  const logPaginationResponse = (url, response, parsedPage, parsedSize) => {
-    // eslint-disable-next-line no-console
-    console.info("[OGC-150] pagination fetch", {
-      url,
-      page: parsedPage,
-      size: parsedSize,
-      type: Array.isArray(response) ? "array" : typeof response,
-      keys:
-        response && typeof response === "object" ? Object.keys(response) : null,
-      itemsLength:
-        response &&
-        typeof response === "object" &&
-        Array.isArray(response.items)
-          ? response.items.length
-          : Array.isArray(response)
-            ? response.length
-            : null,
-      totalItems: response?.totalItems ?? response?.totalElements ?? null,
-      totalPages: response?.totalPages ?? null,
-      pageSize: response?.pageSize ?? null,
-      currentPage: response?.currentPage ?? null,
-    });
-  };
-
   // Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [locationFilter, setLocationFilter] = useState(null); // { id, type, name} for single location dropdown (Samples tab)
@@ -1465,7 +1440,6 @@ const StorageDashboard = () => {
 
       getFromOpenElisServer(url, (response) => {
         if (componentMounted.current) {
-          logPaginationResponse(url, response, page - 1, pageSize);
           // OGC-150: Handle paginated response with metadata
           if (response && typeof response === "object") {
             if (Array.isArray(response)) {
@@ -3352,12 +3326,6 @@ const StorageDashboard = () => {
                       pageSizes={[5, 25, 50, 100]}
                       totalItems={totalItems}
                       onChange={({ page, pageSize }) => {
-                        // eslint-disable-next-line no-console
-                        console.info("[OGC-150] pagination change", {
-                          page,
-                          pageSize,
-                          totalItems,
-                        });
                         setPage(page);
                         setPageSize(pageSize);
                       }}
