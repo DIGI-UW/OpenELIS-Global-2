@@ -21,7 +21,7 @@ import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
-import { set as _set } from "lodash-es";
+import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
 
 export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
@@ -172,24 +172,24 @@ const AnalyserResults = (props) => {
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
-    _set(form, name, value);
+    jpSet(form, name, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
     console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
-    _set(form, "resultList[" + rowId + "].sentDate_", d);
+    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
   const handleCheckBox = (e, rowId) => {
     const { name, id, checked } = e.target;
     let form = props.results;
-    _set(form, name, checked);
+    jpSet(form, name, checked);
   };
 
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
-    _set(form, name, checked);
+    jpSet(form, name, checked);
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);

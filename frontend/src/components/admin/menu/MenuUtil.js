@@ -1,6 +1,6 @@
 import React from "react";
 import { Checkbox } from "@carbon/react";
-import { set as _set } from "lodash-es";
+import { jpSet } from "../../utils/JsonPath";
 import { useIntl } from "react-intl";
 
 export const updateMenuWithElementId = (newMenus, field, value) => {};
@@ -62,7 +62,7 @@ export const MenuCheckBox = (props) => {
                 }
               } else {
                 let newMenuItem = { ...menuItem };
-                _set(
+                jpSet(
                   newMenuItem,
                   path,
                   setMenuIsActiveToValueIncludeChildren(checked, curMenuItem),

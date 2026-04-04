@@ -25,7 +25,7 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
-import { set as _set } from "lodash-es";
+import { jpSet } from "../../utils/JsonPath";
 import EditAdditionalOrderEntryQuestions from "./EditAdditionalOrderEntryQuestions.js";
 
 let breadcrumbs = [
@@ -95,7 +95,7 @@ function ProgramManagement() {
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
     const updatedValues = { ...programValues };
-    _set(updatedValues, name, value);
+    jpSet(updatedValues, name, value);
     setProgramValues(updatedValues);
   };
 

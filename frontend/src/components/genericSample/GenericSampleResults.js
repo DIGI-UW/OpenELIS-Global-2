@@ -27,7 +27,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
-import { set as _set } from "lodash-es";
+import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
 
 /**
@@ -203,14 +203,14 @@ function GenericSampleResults({
   const handleResultChange = (e, rowId) => {
     const { name, value } = e.target;
     const form = { ...results };
-    _set(form, name, value);
+    jpSet(form, name, value);
     // Also update pastNotes when note changes for display
     if (name.includes(".note")) {
       const pastNotesPath = "testResult[" + rowId + "].pastNotes";
-      _set(form, pastNotesPath, value);
+      jpSet(form, pastNotesPath, value);
     }
     const isModified = "testResult[" + rowId + "].isModified";
-    _set(form, isModified, "true");
+    jpSet(form, isModified, "true");
     setResults(form);
   };
 
