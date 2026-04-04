@@ -126,15 +126,21 @@ function AutoComplete(props) {
       );
     } else {
       suggestionsListComponent = (
-        <div className="no-suggestions">
-          <em>No suggestions available.</em>
+        <div className="suggestions-container">
+          <div className="no-suggestions">
+            <em>No suggestions available.</em>
+          </div>
         </div>
       );
     }
   }
 
   return (
-    <>
+    <div
+      style={{
+        position: "relative",
+      }}
+    >
       <TextInput
         type="text"
         id={props.id}
@@ -149,7 +155,7 @@ function AutoComplete(props) {
         invalidText={props.invalidText}
       />
       {suggestionsListComponent}
-    </>
+    </div>
   );
 }
 

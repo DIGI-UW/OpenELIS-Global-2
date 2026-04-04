@@ -112,6 +112,8 @@ export async function acceptAndVerifyResults(
   await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
     timeout: NAV_TIMEOUT,
   });
+  await page.waitForLoadState("load");
+  await expect(saveButton).toBeVisible({ timeout: UI_TIMEOUT });
 
   if (stagedCountBeforeSave > 0) {
     await expect

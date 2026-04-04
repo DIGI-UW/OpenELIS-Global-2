@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 const GENEXPERT_HOST = process.env.GENEXPERT_HOST;
 const GENEXPERT_PORT = process.env.GENEXPERT_PORT || "1200";
@@ -47,10 +47,7 @@ test.describe("Real GeneXpert Test Connection (Manual Only)", () => {
 
     await form.fillName(analyzerName);
 
-    await form.pluginTypeDropdown.click();
-    const pluginOption = page.getByRole("option", { name: /Generic ASTM/ });
-    await expect(pluginOption.first()).toBeVisible({ timeout: UI_TIMEOUT });
-    await pluginOption.first().click();
+    await form.selectPluginType("Generic ASTM");
 
     await form.selectType("Molecular");
     await form.fillIpAddress(GENEXPERT_HOST!);
