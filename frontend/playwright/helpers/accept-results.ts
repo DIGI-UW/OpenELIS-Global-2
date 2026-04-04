@@ -123,15 +123,11 @@ export async function acceptAndVerifyResults(
   const saveStillVisible = await saveButton.isVisible();
   if (saveStillVisible) {
     if (stagedCountBeforeSave > 0) {
-      // Verify accepted results were consumed. We check "fewer than before"
-      // rather than "exactly zero" because the bridge may import new results
-      // for the same accession from accumulated fixture drops between save
-      // and this assertion.
       await expect
         .poll(async () => stagedRows().count(), {
           timeout: LONG_TIMEOUT,
         })
-        .toBeLessThan(stagedCountBeforeSave);
+        .toBe(0);
     }
 
     await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
