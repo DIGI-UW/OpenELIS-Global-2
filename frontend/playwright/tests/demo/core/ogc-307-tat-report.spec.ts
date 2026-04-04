@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { showTitleCard } from "../../../helpers/title-card";
 import { videoPause, isVideoProject } from "../../../helpers/video-pause";
+import { createCompleteSample } from "../../../helpers/seed-tat-data";
+import { seedHolidays } from "../../../helpers/seed-calendar-data";
+import type { SampleConfig } from "../../../helpers/seed-tat-data";
 
 /** Capture a named screenshot — only in video projects (not CI) */
 async function evidence(
@@ -16,7 +19,45 @@ async function evidence(
   });
 }
 
+const TEST_SAMPLES: SampleConfig[] = [
+  {
+    labNo: "TAT-E2E-001",
+    receivedDate: "2026-03-01",
+    receivedTime: "08:00",
+    priority: "routine",
+  },
+  {
+    labNo: "TAT-E2E-002",
+    receivedDate: "2026-03-05",
+    receivedTime: "14:30",
+    priority: "stat",
+  },
+  {
+    labNo: "TAT-E2E-003",
+    receivedDate: "2026-03-10",
+    receivedTime: "10:00",
+    priority: "routine",
+  },
+];
+
 test.describe("OGC-307: TAT Report (US2-US5)", () => {
+  // API-based setup: create 3 complete samples + seed holidays
+  // beforeAll creates data once for all tests in this describe block
+  test.beforeAll(async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: "playwright/.auth/user.json",
+    });
+    const page = await context.newPage();
+
+    for (const sample of TEST_SAMPLES) {
+      await createCompleteSample(page, sample);
+    }
+    await seedHolidays(page, 2026);
+
+    await page.close();
+    await context.close();
+  });
+
   test("US2 — TAT Summary report workflow", async ({ page }, testInfo) => {
     test.setTimeout(120_000);
 
@@ -34,7 +75,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await page.goto("/TATReport");
       await expect(
         page.getByRole("heading", { name: "Turn Around Time Report" }),
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 15_000 });
       await evidence(page, testInfo, "US2.1-tat-report-page");
       await videoPause(page, 2000, testInfo);
     });
@@ -50,7 +91,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US2.3 — Generate report", async () => {
       await page.locator('[data-testid="generate-report-button"]').click();
-      // Wait for results to load
+      // Wait for results — either data or empty state
       await expect(
         page.getByText(/Total Results|No results found/).first(),
       ).toBeVisible({ timeout: 15_000 });
@@ -147,7 +188,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await showTitleCard(
         page,
         "User Story 5: TAT Export",
-        "Export report data as CSV or PDF",
+        "Export report data as CSV",
         3000,
         testInfo,
       );
