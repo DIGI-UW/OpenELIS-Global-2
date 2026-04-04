@@ -98,8 +98,7 @@ export async function acceptAndVerifyResults(
 
   const reloadAfterSave = page.waitForEvent("framenavigated", {
     predicate: (frame) =>
-      frame === page.mainFrame() &&
-      /AnalyzerResults[?]type=/.test(frame.url()),
+      frame === page.mainFrame() && /AnalyzerResults[?]type=/.test(frame.url()),
     timeout: NAV_TIMEOUT,
   });
 
