@@ -1,113 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- DBUnit Flat-XML fixture for WorkplanByPanelRestControllerTest. PURPOSE:
-    Test data for WorkplanByPanel REST endpoint querying analyses grouped by
-    panel. FIXTURE ID RANGES (avoid collisions with other fixtures): - 30001–30999:
-    Core domain objects (person, patient, test_section, panel, type_of_sample)
-    - 40001–40999: Test definitions - 50001–50999: Sample and analysis data TABLE
-    DEPENDENCY ORDER (parents before children): 1. clinlims_user (sys_user references)
-    2. person (required by patient FK chain) 3. patient (required by sample_human)
-    4. test_section, test (required by analysis) 5. panel, panel_item (test grouping)
-    6. type_of_sample (required by sample_item) 7. sample, sample_item (lab samples
-    and items) 8. sample_human (patient-sample join) 9. analysis (the core test
-    data) AUDIT FIELDS: All rows have explicit last_updated timestamps and sys_user_id
-    for proper audit trail compliance (OpenELIS Principle II). -->
 <dataset>
 
-    <!-- ============================================================================
-        SYSTEM USER - referenced by all audit fields ============================================================================ -->
-    <clinlims_user id="1" login_name="admin"
-        passwd="$2a$10$fakehashedpassword000000000000000000000000000000000000"
-        is_active="Y" last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
 
-    <!-- ============================================================================
-        PERSON + PATIENT - required for sample_human join ============================================================================ -->
-    <person id="30001" last_name="TestPatient" first_name="Alpha"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+    <localization id="30001" description="Chemistry Panel" />
+    <localization id="30002" description="Empty Panel" />
+    <localization id="30003" description="Chemistry Section" />
+    <localization id="30004" description="Glucose Test" />
 
-    <patient id="30001" person_id="30001" gender="M"
-        birth_date="1990-01-01" national_id="TEST-NAT-001"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+    <localization_value id="30001"
+        localization_id="30001" locale="en" value="Chemistry Panel" />
+    <localization_value id="30002"
+        localization_id="30002" locale="en" value="Empty Panel" />
+    <localization_value id="30003"
+        localization_id="30003" locale="en" value="Chemistry" />
+    <localization_value id="30004"
+        localization_id="30004" locale="en" value="Glucose" />
 
-    <!-- ============================================================================
-        TEST SECTION - required FK on analysis ============================================================================ -->
+    <!-- status ids 1-4: match the static statusList built at app startup. WorkplanRestController.statusList
+        is static/PostConstruct, populated with ids from DB at boot. Analyses must
+        use these same ids. -->
+    <status_of_sample id="1"
+        description="Analysis not started" code="1" status_type="ANALYSIS"
+        lastupdated="2024-01-01 00:00:00" name="Not Tested"
+        display_key="status.analysis.notStarted" is_active="Y" />
+
+    <status_of_sample id="2"
+        description="Biologist Rejection" code="2" status_type="ANALYSIS"
+        lastupdated="2024-01-01 00:00:00" name="Biologist Rejection"
+        display_key="status.analysis.biologistRejection" is_active="Y" />
+
+    <status_of_sample id="3"
+        description="Technical Rejected" code="3" status_type="ANALYSIS"
+        lastupdated="2024-01-01 00:00:00" name="Technical Rejected"
+        display_key="status.analysis.technicalRejected" is_active="Y" />
+
+    <status_of_sample id="4" description="NonConforming"
+        code="4" status_type="ANALYSIS" lastupdated="2024-01-01 00:00:00"
+        name="NonConforming" display_key="status.analysis.nonConforming"
+        is_active="Y" />
+
+    <system_user id="1" login_name="testuser" last_name="Test"
+        first_name="User" is_active="Y" is_employee="Y"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <type_of_sample id="30001" description="Blood"
+        domain="H" name_localization_id="30003"
+        lastupdated="2024-01-01 00:00:00" />
+
     <test_section id="40001" name="Chemistry"
-        name_key="testSection.Chemistry" is_active="Y"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+        description="Chemistry Section" is_external="N"
+        lastupdated="2024-01-01 00:00:00.0" sort_order="1"
+        name_localization_id="30003" display_key="Chemistry" />
 
-    <!-- ============================================================================
-        TEST DEFINITIONS - individual tests referenced by panel_items and analyses
-        ============================================================================ -->
-    <test id="40001" description="Glucose" name="Glucose"
-        reporting_name="Glucose" is_active="Y" is_reportable="Y"
-        test_section_id="40001" last_updated="2024-01-01 00:00:00"
-        sys_user_id="1" />
+    <test id="40001" description="Glucose" loinc="111111"
+        reporting_description="Glucose Test"
+        active_begin="2024-01-01 00:00:00" active_end="2099-12-31 00:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120" label_qty="1"
+        lastupdated="2024-01-01 00:00:00" test_section_id="40001"
+        local_code="GLU" sort_order="1" name="Glucose" orderable="true"
+        guid="aaa-40001" name_localization_id="30004"
+        antimicrobial_resistance="false" />
 
-    <!-- ============================================================================
-        PANELS - Chemistry Panel with pending analyses, Empty Panel for edge case
-        testing ============================================================================ -->
     <panel id="30001" name="Chemistry Panel"
         description="Panel for chemistry workplan tests" is_active="Y"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+        name_localization_id="30001" loinc="99001" />
 
     <panel id="30002" name="Empty Panel"
-        description="Panel with no pending analyses (edge case)" is_active="Y"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+        description="Panel with no pending analyses" is_active="Y"
+        name_localization_id="30002" loinc="99002" />
 
-    <!-- ============================================================================
-        PANEL ITEMS - link Chemistry Panel (30001) -> test (40001) ============================================================================ -->
     <panel_item id="50001" panel_id="30001" test_id="40001"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+        lastupdated="2024-01-01 00:00:00" />
 
-    <!-- ============================================================================
-        TYPE OF SAMPLE - required by sample_item ============================================================================ -->
-    <type_of_sample id="30001" description="Blood"
-        domain="H" is_active="Y" last_updated="2024-01-01 00:00:00"
-        sys_user_id="1" />
-
-    <!-- ============================================================================
-        SAMPLES - deterministic accession numbers for ordered assertion testing Fixture
-        creates two samples with Different received dates to test sorting. ============================================================================ -->
     <sample id="50001" accession_number="22000000001" status_id="1"
-        received_date="2024-06-01" entered_date="2024-06-01" domain="H"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+        received_date="2024-06-01 00:00:00.0"
+        entered_date="2024-06-01 00:00:00.0"
+        collection_date="2024-06-01 00:00:00.0"
+        lastupdated="2024-01-01 00:00:00" />
 
     <sample id="50002" accession_number="22000000002" status_id="1"
-        received_date="2024-06-02" entered_date="2024-06-02" domain="H"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+        received_date="2024-06-02 00:00:00.0"
+        entered_date="2024-06-02 00:00:00.0"
+        collection_date="2024-06-02 00:00:00.0"
+        lastupdated="2024-01-01 00:00:00" />
 
-    <!-- ============================================================================
-        SAMPLE ITEMS - child records of samples, links to type_of_sample ============================================================================ -->
-    <sample_item id="50001" sample_id="50001"
-        type_of_sample_id="30001" sort_order="1"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+    <sample_item id="50001" sort_order="1" status_id="1"
+        samp_id="50001" typeosamp_id="30001"
+        collection_date="2024-06-01 00:00:00"
+        lastupdated="2024-01-01 00:00:00" />
 
-    <sample_item id="50002" sample_id="50002"
-        type_of_sample_id="30001" sort_order="1"
-        last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+    <sample_item id="50002" sort_order="1" status_id="1"
+        samp_id="50002" typeosamp_id="30001"
+        collection_date="2024-06-02 00:00:00"
+        lastupdated="2024-01-01 00:00:00" />
 
-    <!-- ============================================================================
-        SAMPLE_HUMAN - ties samples to the patient ============================================================================ -->
-    <sample_human id="50001" samp_id="50001"
-        patient_id="30001" last_updated="2024-01-01 00:00:00" sys_user_id="1" />
+    <analysis id="50001" sampitem_id="50001" test_sect_id="40001"
+        test_id="40001" revision="0" status="1" status_id="1"
+        analysis_type="ROUTINE" started_date="2024-06-01 00:00:00"
+        entry_date="2024-06-01 00:00:00" lastupdated="2024-01-01 00:00:00"
+        reflex_trigger="false" referred_out="false" corrected="false"
+        result_calculated="false"
+        fhir_uuid="a0000001-0000-0000-0000-000000050001" panel_id="30001" />
 
-    <sample_human id="50002" samp_id="50002"
-        patient_id="30001" last_updated="2024-01-01 00:00:00" sys_user_id="1" />
-
-    <!-- ============================================================================
-        ANALYSES - the core test data STATUS MAPPING (per OpenELIS-Global.sql line
-        16239): - status_id="4" → "Not Tested" → AnalysisStatus.NotStarted This is
-        exactly what WorkplanByPanelRestController queries. REVISION: Always "0"
-        for initial analysis (prevents accidental reanalysis). REPORTABLE: "Y" indicates
-        result should appear on final report. STARTED_DATE: Set to sample received_date
-        to simulate workflow progression. ============================================================================ -->
-    <analysis id="50001" sample_item_id="50001" test_id="40001"
-        test_section_id="40001" status_id="4" is_reportable="Y" revision="0"
-        started_date="2024-06-01" last_updated="2024-01-01 00:00:00"
-        sys_user_id="1" />
-
-    <analysis id="50002" sample_item_id="50002" test_id="40001"
-        test_section_id="40001" status_id="4" is_reportable="Y" revision="0"
-        started_date="2024-06-02" last_updated="2024-01-01 00:00:00"
-        sys_user_id="1" />
+    <analysis id="50002" sampitem_id="50002" test_sect_id="40001"
+        test_id="40001" revision="0" status="1" status_id="1"
+        analysis_type="ROUTINE" started_date="2024-06-02 00:00:00"
+        entry_date="2024-06-02 00:00:00" lastupdated="2024-01-01 00:00:00"
+        reflex_trigger="false" referred_out="false" corrected="false"
+        result_calculated="false"
+        fhir_uuid="a0000002-0000-0000-0000-000000050002" panel_id="30001" />
 
 </dataset>
