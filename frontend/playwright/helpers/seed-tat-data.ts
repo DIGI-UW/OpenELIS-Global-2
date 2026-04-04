@@ -82,28 +82,33 @@ export async function createSampleOrder(
   form.patientProperties.gender = "M";
   form.patientUpdateStatus = "ADD";
 
-  // Sample order items
-  form.sampleOrderItems = form.sampleOrderItems || {};
-  // Accession number format is YYYYNNNNNN (e.g., 2026000001).
-  // Generate a unique one based on timestamp to avoid collisions.
+  // Build sampleOrderItems from scratch — the preform's version has display-only
+  // fields (referringSiteList, isEQASample, readOnly) that don't exist on the
+  // SampleOrderItem Java bean. Jackson rejects unknown fields → null object
+  // → null labNo → crash. Only include fields that exist on SampleOrderItem.java.
   const seq = String(Date.now()).slice(-6);
   const actualLabNo = `${new Date().getFullYear()}${seq}`;
-  form.sampleOrderItems.labNo = actualLabNo;
-  form.sampleOrderItems.receivedDateForDisplay =
-    form.sampleOrderItems.receivedDateForDisplay || form.currentDate;
-  form.sampleOrderItems.receivedTime = receivedTime || "09:00";
-  form.sampleOrderItems.modified = true;
-  if (priority) {
-    form.sampleOrderItems.priority = priority.toUpperCase();
-  }
+  form.sampleOrderItems = {
+    labNo: actualLabNo,
+    receivedDateForDisplay: form.currentDate,
+    receivedTime: receivedTime || "09:00",
+    modified: true,
+    priority: priority ? priority.toUpperCase() : "ROUTINE",
+  };
 
-  // Sample XML — must match the exact format from Index.js:710.
-  // sampleID = sampleTypeId, tests = comma-separated test IDs,
-  // testSectionMap and testSampleTypeMap must be present (even if empty).
-  const dateStr = form.sampleOrderItems.receivedDateForDisplay;
+  // Build patientProperties from scratch — same reason (display lists like
+  // genders, addressDepartments contain Dictionary objects with extra fields).
+  form.patientProperties = {
+    firstName: "TAT-E2E",
+    lastName: `Patient-${actualLabNo}`,
+    birthDateForDisplay: "01/01/1990",
+    gender: "M",
+  };
+
+  // Sample XML — format from Index.js:710.
   form.sampleXML =
     `<samples>` +
-    `<sample sampleID='${sampleTypeId}' date='${dateStr}' time='${receivedTime || "09:00"}' ` +
+    `<sample sampleID='${sampleTypeId}' date='${form.currentDate}' time='${receivedTime || "09:00"}' ` +
     `collector='' quantity='' uom='' tests='1' testSectionMap='' testSampleTypeMap='' ` +
     `panels='' rejected='false' rejectReasonId='' initialConditionIds='' ` +
     `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
@@ -111,36 +116,14 @@ export async function createSampleOrder(
     `numOrderLabels='1' numSpecimenLabels='1'/>` +
     `</samples>`;
 
-  // Clear display-only lists (same as React UI does in Index.js:624-631).
-  // These contain complex objects with extra fields like "displayValue" that
-  // the POST endpoint's Jackson deserializer can't handle (Dictionary class
-  // doesn't have @JsonIgnoreProperties).
-  form.sampleOrderItems.priorityList = [];
-  form.sampleOrderItems.programList = [];
-  form.sampleOrderItems.referringSiteList = [];
-  form.sampleOrderItems.providersList = [];
-  form.sampleOrderItems.paymentOptions = [];
-  form.sampleOrderItems.testLocationCodeList = [];
-  form.initialSampleConditionList = [];
-  form.testSectionList = [];
-  form.sampleTypes = [];
-  form.referralOrganizations = [];
-  form.referralReasons = [];
-  form.rejectReasonList = [];
-  form.sampleNatureList = [];
-  // Patient display lists
-  if (form.patientProperties) {
-    form.patientProperties.genders = [];
-    form.patientProperties.patientTypes = [];
-    form.patientProperties.addressDepartments = [];
-    form.patientProperties.healthDistricts = [];
-    form.patientProperties.healthRegions = [];
-    form.patientProperties.educationList = [];
-    form.patientProperties.maritialList = [];
-    form.patientProperties.nationalityList = [];
-    delete form.patientProperties.readOnly;
-  }
-  // Remove display-only objects
+  // Remove display-only top-level lists that have nested objects Jackson can't handle
+  delete form.sampleTypes;
+  delete form.referralOrganizations;
+  delete form.referralReasons;
+  delete form.rejectReasonList;
+  delete form.sampleNatureList;
+  delete form.initialSampleConditionList;
+  delete form.testSectionList;
   delete form.patientSearch;
   delete form.patientEnhancedSearch;
   delete form.projects;
