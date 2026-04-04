@@ -25,60 +25,57 @@ export const test = base.extend<{
   crashDiagnostics: [
     async ({ page, browser }, use, testInfo) => {
       const recentConsole: string[] = [];
-      const MAX_CONSOLE = 20;
+      const recentNav: string[] = [];
+      const MAX_BUFFER = 20;
+      let lastUrl = "";
 
-      // Capture console messages — keep a rolling buffer of the last N
-      page.on("console", (msg) => {
-        if (msg.type() === "error" || msg.type() === "warning") {
-          recentConsole.push(`[${msg.type()}] ${msg.text()}`);
-          if (recentConsole.length > MAX_CONSOLE) recentConsole.shift();
+      function safeUrl(): string {
+        try {
+          return page.url();
+        } catch {
+          return lastUrl || "(unknown — page dead)";
+        }
+      }
+
+      function dumpContext(tag: string) {
+        console.error(`[${tag}] Test: ${testInfo.title}`);
+        console.error(`[${tag}] URL: ${safeUrl()}`);
+        if (recentNav.length) {
+          console.error(`[${tag}] Recent navigations:`);
+          for (const n of recentNav) console.error(`  ${n}`);
+        }
+        if (recentConsole.length) {
+          console.error(`[${tag}] Recent console:`);
+          for (const c of recentConsole) console.error(`  ${c}`);
+        }
+      }
+
+      // Track navigations — the key to knowing what happened before a crash
+      page.on("framenavigated", (frame) => {
+        if (frame === page.mainFrame()) {
+          lastUrl = frame.url();
+          recentNav.push(`${new Date().toISOString()} → ${lastUrl}`);
+          if (recentNav.length > MAX_BUFFER) recentNav.shift();
         }
       });
 
-      // Capture unhandled page errors (replaces old capturePageErrors fixture)
+      page.on("console", (msg) => {
+        if (msg.type() === "error" || msg.type() === "warning") {
+          recentConsole.push(`[${msg.type()}] ${msg.text()}`);
+          if (recentConsole.length > MAX_BUFFER) recentConsole.shift();
+        }
+      });
+
       page.on("pageerror", (error) => {
         console.error(`[pageerror] ${error.message}\n${error.stack ?? ""}`);
       });
 
-      // Capture renderer crashes — this is the key diagnostic
-      page.on("crash", () => {
-        console.error(
-          `[CRASH] Page renderer crashed during: ${testInfo.title}`,
-        );
-        console.error(`[CRASH] URL at crash: ${page.url()}`);
-        console.error(
-          `[CRASH] Recent console (last ${recentConsole.length} messages):`,
-        );
-        for (const msg of recentConsole) {
-          console.error(`  ${msg}`);
-        }
-      });
-
-      // Capture unexpected page close (different from crash)
+      page.on("crash", () => dumpContext("CRASH"));
       page.on("close", () => {
-        if (testInfo.status === undefined) {
-          // Test still running — page closed unexpectedly
-          console.error(
-            `[CLOSE] Page closed unexpectedly during: ${testInfo.title}`,
-          );
-          console.error(`[CLOSE] URL at close: ${page.url()}`);
-        }
+        if (testInfo.status === undefined) dumpContext("CLOSE");
       });
+      browser.on("disconnected", () => dumpContext("DISCONNECT"));
 
-      // Capture browser disconnect (entire process died)
-      browser.on("disconnected", () => {
-        console.error(
-          `[DISCONNECT] Browser process died during: ${testInfo.title}`,
-        );
-        console.error(
-          `[DISCONNECT] Recent console (last ${recentConsole.length} messages):`,
-        );
-        for (const msg of recentConsole) {
-          console.error(`  ${msg}`);
-        }
-      });
-
-      // Capture failed network requests (backend health signal)
       page.on("requestfailed", (request) => {
         const failure = request.failure();
         console.error(
