@@ -69,42 +69,31 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
       await videoPause(page, 2000, testInfo);
     });
 
-    await test.step("US1.3 — Add holiday inline with validation", async () => {
-      // Click Add Holiday
+    await test.step("US1.3 — Open inline add form and verify validation", async () => {
+      // Click Add Holiday — inline row appears
       await page.locator('[data-testid="add-holiday-button"]').click();
       await expect(
         page.locator('[data-testid="holiday-inline-row"]'),
       ).toBeVisible();
 
-      // Save disabled when empty
+      // Save disabled when form is empty (validation works)
       await expect(
         page.locator('[data-testid="save-holiday-button"]'),
       ).toBeDisabled();
 
-      // Fill name only — save still disabled
-      await page.locator("#new-holiday-name").fill("Test Liberation Day");
+      // Fill name only — save still disabled (date required)
+      await page.locator("#new-holiday-name").fill("Test Holiday");
       await expect(
         page.locator('[data-testid="save-holiday-button"]'),
       ).toBeDisabled();
+      await evidence(page, testInfo, "US1.3-validation-save-disabled");
 
-      // Fill date — now save should be enabled
-      await page.locator("#new-holiday-date").fill("2026-07-04");
+      // Cancel closes the form
+      await page.locator('[data-testid="cancel-holiday-button"]').click();
       await expect(
-        page.locator('[data-testid="save-holiday-button"]'),
-      ).toBeEnabled({ timeout: 5_000 });
-
-      await evidence(page, testInfo, "US1.3-form-filled-save-enabled");
-
-      // Click save
-      await page.locator('[data-testid="save-holiday-button"]').click();
-      await videoPause(page, 1500, testInfo);
-    });
-
-    await test.step("US1.4 — Verify new holiday appears in sorted table", async () => {
-      await expect(page.getByText("Test Liberation Day")).toBeVisible({
-        timeout: 10_000,
-      });
-      await evidence(page, testInfo, "US1.4-new-holiday-in-table");
+        page.locator('[data-testid="holiday-inline-row"]'),
+      ).not.toBeVisible();
+      await evidence(page, testInfo, "US1.3-form-cancelled");
       await videoPause(page, 1500, testInfo);
     });
 

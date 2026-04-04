@@ -1,6 +1,24 @@
 import { Page, expect } from "@playwright/test";
 
-const BASE_URL = process.env.BASE_URL || "https://localhost";
+/** API context path — must use /api/OpenELIS-Global prefix so the
+ *  JSESSIONID (scoped to that webapp context) is recognized by Tomcat. */
+const API_PREFIX = "/api/OpenELIS-Global";
+
+/**
+ * Extract CSRF token from the page context's storageState.
+ * The auth.setup saves it in localStorage under key "CSRF".
+ * page.request doesn't auto-include localStorage values, so we read the
+ * storageState origin data to get the token without needing page navigation.
+ */
+async function getCsrfToken(page: Page): Promise<string> {
+  const state = await page.context().storageState();
+  for (const origin of state.origins) {
+    for (const item of origin.localStorage) {
+      if (item.name === "CSRF") return item.value;
+    }
+  }
+  return "";
+}
 
 interface Holiday {
   id?: number;
@@ -26,12 +44,14 @@ export async function seedHolidays(
   year: number = 2026,
 ): Promise<Holiday[]> {
   const created: Holiday[] = [];
+  const csrfToken = await getCsrfToken(page);
 
   for (const h of SAMPLE_HOLIDAYS) {
     const response = await page.request.post(
-      `${BASE_URL}/rest/calendar/holidays`,
+      `${API_PREFIX}/rest/calendar/holidays`,
       {
         data: { date: h.date, name: h.name, isRecurring: h.isRecurring },
+        headers: { "X-CSRF-Token": csrfToken },
       },
     );
 
@@ -41,6 +61,12 @@ export async function seedHolidays(
         const body = await response.json();
         created.push({ id: body.id, ...h });
       }
+    } else if (response.status() !== 409) {
+      // Log unexpected failures (not duplicates)
+      const text = await response.text().catch(() => "");
+      console.warn(
+        `seedHolidays: POST ${h.name} → HTTP ${response.status()} ${text.slice(0, 200)}`,
+      );
     }
     // 409 = duplicate — skip silently (idempotent)
   }
@@ -56,8 +82,10 @@ export async function cleanupHolidays(
   page: Page,
   year: number = 2026,
 ): Promise<void> {
+  const csrfToken = await getCsrfToken(page);
   const response = await page.request.get(
-    `${BASE_URL}/rest/calendar/holidays?year=${year}&includeInactive=true`,
+    `${API_PREFIX}/rest/calendar/holidays?year=${year}&includeInactive=true`,
+    { headers: { "X-CSRF-Token": csrfToken } },
   );
 
   if (!response.ok()) return;
@@ -70,6 +98,8 @@ export async function cleanupHolidays(
   const holidays = body.holidays || [];
 
   for (const h of holidays) {
-    await page.request.delete(`${BASE_URL}/rest/calendar/holidays/${h.id}`);
+    await page.request.delete(`${API_PREFIX}/rest/calendar/holidays/${h.id}`, {
+      headers: { "X-CSRF-Token": csrfToken },
+    });
   }
 }

@@ -1,6 +1,24 @@
 import { Page, expect } from "@playwright/test";
 
-const BASE_URL = process.env.BASE_URL || "https://localhost";
+/** API context path — must use /api/OpenELIS-Global prefix so the
+ *  JSESSIONID (scoped to that webapp context) is recognized by Tomcat. */
+const API_PREFIX = "/api/OpenELIS-Global";
+
+/** Extract CSRF token from the page context's storageState. */
+async function getCsrfToken(page: Page): Promise<string> {
+  const state = await page.context().storageState();
+  for (const origin of state.origins) {
+    for (const item of origin.localStorage) {
+      if (item.name === "CSRF") return item.value;
+    }
+  }
+  return "";
+}
+
+/** Build headers with CSRF token for authenticated API calls. */
+async function authHeaders(page: Page): Promise<Record<string, string>> {
+  return { "X-CSRF-Token": await getCsrfToken(page) };
+}
 
 /**
  * TAT E2E test data seeding helpers.
@@ -32,14 +50,14 @@ export async function createSampleOrder(
   config: SampleConfig,
 ): Promise<string> {
   const { labNo, receivedDate, receivedTime, priority } = config;
+  const headers = await authHeaders(page);
 
-  // Build minimal sample XML with a common test
-  // Test ID and Sample Type ID come from the seeded test catalog
   const sampleXML = `<samples><sample sampleID="${labNo}" date="${receivedDate}" time="${receivedTime}" collector="" tests=""><sampletype><id>1</id></sampletype><tests><test><id>1</id></test></tests></sample></samples>`;
 
   const response = await page.request.post(
-    `${BASE_URL}/rest/SamplePatientEntry`,
+    `${API_PREFIX}/rest/SamplePatientEntry`,
     {
+      headers,
       data: {
         currentDate: receivedDate,
         warning: true,
@@ -63,8 +81,6 @@ export async function createSampleOrder(
     },
   );
 
-  // The endpoint may return 200 even with validation errors in the body
-  // so we check for the response but don't hard-fail if the format is unexpected
   if (!response.ok()) {
     console.warn(
       `createSampleOrder ${labNo}: HTTP ${response.status()} — ${await response.text()}`,
@@ -84,9 +100,11 @@ export async function enterResults(
   page: Page,
   accessionNumber: string,
 ): Promise<void> {
-  // Step 1: Fetch analyses for this sample
+  const headers = await authHeaders(page);
+
   const getResponse = await page.request.get(
-    `${BASE_URL}/rest/LogbookResults?labNumber=${accessionNumber}`,
+    `${API_PREFIX}/rest/LogbookResults?labNumber=${accessionNumber}`,
+    { headers },
   );
 
   if (!getResponse.ok()) {
@@ -106,7 +124,6 @@ export async function enterResults(
     return;
   }
 
-  // Step 2: Submit results for each analysis
   const resultPayload = testResults.map(
     (item: {
       accessionNumber: string;
@@ -124,8 +141,9 @@ export async function enterResults(
   );
 
   const postResponse = await page.request.post(
-    `${BASE_URL}/rest/LogbookResults`,
+    `${API_PREFIX}/rest/LogbookResults`,
     {
+      headers,
       data: {
         currentDate: new Date().toISOString().split("T")[0],
         accessionNumber: accessionNumber,
@@ -151,9 +169,11 @@ export async function validateResults(
   page: Page,
   accessionNumber: string,
 ): Promise<void> {
-  // Fetch current validation state
+  const headers = await authHeaders(page);
+
   const getResponse = await page.request.get(
-    `${BASE_URL}/rest/AccessionValidation?accessionNumber=${accessionNumber}`,
+    `${API_PREFIX}/rest/AccessionValidation?accessionNumber=${accessionNumber}`,
+    { headers },
   );
 
   if (!getResponse.ok()) {
@@ -171,7 +191,6 @@ export async function validateResults(
     return;
   }
 
-  // Accept all results
   const acceptPayload = resultList.map(
     (item: {
       accessionNumber: string;
@@ -190,8 +209,9 @@ export async function validateResults(
   );
 
   const postResponse = await page.request.post(
-    `${BASE_URL}/rest/AccessionValidation`,
+    `${API_PREFIX}/rest/AccessionValidation`,
     {
+      headers,
       data: {
         currentDate: new Date().toISOString().split("T")[0],
         accessionNumber: accessionNumber,
