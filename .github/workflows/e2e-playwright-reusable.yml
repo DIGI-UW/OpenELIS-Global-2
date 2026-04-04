@@ -199,6 +199,9 @@ jobs:
             fi
           done
           COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits.yml")
+          if [ "${{ inputs.setup_analyzer_harness }}" = "true" ]; then
+            COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits-harness.yml")
+          fi
           "${COMPOSE_CMD[@]}" up -d --no-build --wait --wait-timeout 900
 
       - name: Validate cert material in shared volume mounts
