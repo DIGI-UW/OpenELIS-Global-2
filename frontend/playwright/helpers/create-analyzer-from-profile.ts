@@ -22,6 +22,17 @@ import { LONG_TIMEOUT } from "./timeouts";
 import { resolveDbContainer } from "./db-container";
 
 const SIMULATOR_URL = "http://localhost:8085";
+const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
+const API_READY_TIMEOUT_MS = 15_000;
+const API_RETRY_DELAY_MS = 500;
+
+function getAnalyzerApiUrl(): string {
+  const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
+    /\/$/,
+    "",
+  );
+  return `${baseUrl}${ANALYZER_API_PATH}`;
+}
 
 /**
  * Create a mock analyzer network and return the assigned IP.
@@ -65,10 +76,46 @@ async function createMockNetwork(
  */
 async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
   try {
+    const existing = await page.request.get(`${SIMULATOR_URL}/analyzers`);
+    if (!existing.ok()) {
+      return;
+    }
+
+    const body = await existing.json();
+    const exists = Array.isArray(body?.analyzers)
+      ? body.analyzers.some((a: { name?: string }) => a?.name === mockName)
+      : false;
+
+    if (!exists) {
+      return;
+    }
+
     await page.request.delete(`${SIMULATOR_URL}/analyzers/${mockName}`);
   } catch {
     // Best-effort cleanup
   }
+}
+
+async function waitForAnalyzerApiReady(page: Page): Promise<void> {
+  const analyzerApiUrl = getAnalyzerApiUrl();
+
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await page.request.get(analyzerApiUrl);
+          return response.status();
+        } catch {
+          return 0; // Network can flap while docker networks settle
+        }
+      },
+      {
+        message: `Analyzer API at ${analyzerApiUrl} did not become ready`,
+        timeout: API_READY_TIMEOUT_MS,
+        intervals: [API_RETRY_DELAY_MS],
+      },
+    )
+    .toBe(200);
 }
 
 export async function createAnalyzerFromProfile(
@@ -98,6 +145,9 @@ export async function createAnalyzerFromProfile(
       template,
       port,
     );
+
+    // Creating/attaching docker networks can briefly destabilize connectivity.
+    await waitForAnalyzerApiReady(page);
   }
 
   await list.goto();
@@ -114,7 +164,7 @@ export async function createAnalyzerFromProfile(
   // Select profile (auto-fills fields)
   if (config.profileName) {
     await form.selectDefaultConfig(config.profileName);
-    await presentation.pause(1_000);
+    await presentation.pause(500);
   }
 
   // Select analyzer type (may already be set by profile)
@@ -137,6 +187,7 @@ export async function createAnalyzerFromProfile(
   }
 
   // Save
+  await waitForAnalyzerApiReady(page);
   await form.save();
   await form.expectSuccessNotification();
 
