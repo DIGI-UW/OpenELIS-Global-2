@@ -138,17 +138,17 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    fileSampleId: "HARN-QS7-2026-00001",
+    fileSampleId: "DEMO-QS7-2026-00001",
     push: {
       protocol: "FILE",
-      fixtureFile: "quantstudio-e2e-results.xlsx",
+      fixtureFile: "quantstudio-e2e-results-demo.xlsx",
       importDir: path.join(HOST_IMPORTS_BASE, "demo--quantstudio-7/incoming"),
       filePrefix: "qs7-e2e-",
     },
     expectedResults: [
-      { sampleId: "HARN-QS7-2026-00001", result: "1520.5" },
-      { sampleId: "HARN-QS7-2026-00002", result: "45200" },
-      { sampleId: "HARN-QS7-2026-00005", result: "3200.8" },
+      { sampleId: "DEMO-QS7-2026-00001", result: "1520.5" },
+      { sampleId: "DEMO-QS7-2026-00002", result: "45200" },
+      { sampleId: "DEMO-QS7-2026-00005", result: "3200.8" },
     ],
   },
   {
@@ -158,17 +158,17 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    fileSampleId: "HARN-QS5-2026-00001",
+    fileSampleId: "DEMO-QS5-2026-00001",
     push: {
       protocol: "FILE",
-      fixtureFile: "quantstudio-e2e-results-qs5.xls",
+      fixtureFile: "quantstudio-e2e-results-qs5-demo.xls",
       importDir: path.join(HOST_IMPORTS_BASE, "demo--quantstudio-5/incoming"),
       filePrefix: "qs5-e2e-",
     },
     expectedResults: [
-      { sampleId: "HARN-QS5-2026-00001", result: "1520.5" },
-      { sampleId: "HARN-QS5-2026-00002", result: "45200" },
-      { sampleId: "HARN-QS5-2026-00005", result: "3200.8" },
+      { sampleId: "DEMO-QS5-2026-00001", result: "1520.5" },
+      { sampleId: "DEMO-QS5-2026-00002", result: "45200" },
+      { sampleId: "DEMO-QS5-2026-00005", result: "3200.8" },
     ],
   },
   {
@@ -178,17 +178,17 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Bruker FluoroCycler XT",
     protocol: "FILE",
-    fileSampleId: "HARN-FC-2026-00001",
+    fileSampleId: "DEMO-FC-2026-00001",
     push: {
       protocol: "FILE",
-      fixtureFile: "fluorocycler-e2e-results.xlsx",
+      fixtureFile: "fluorocycler-e2e-results-demo.xlsx",
       importDir: path.join(HOST_IMPORTS_BASE, "demo--fluorocycler-xt/incoming"),
       filePrefix: "fc-e2e-",
     },
     expectedResults: [
-      { sampleId: "HARN-FC-2026-00001", result: "28.5" },
-      { sampleId: "HARN-FC-2026-00002", result: "31.2" },
-      { sampleId: "HARN-FC-2026-00003", result: "Negative" },
+      { sampleId: "DEMO-FC-2026-00001", result: "28.5" },
+      { sampleId: "DEMO-FC-2026-00002", result: "31.2" },
+      { sampleId: "DEMO-FC-2026-00003", result: "Negative" },
     ],
   },
 ];
@@ -201,9 +201,16 @@ async function verifyResults(
   sampleId: string,
   presentation: import("../helpers/demo-presentation").DemoPresentation,
 ) {
+  // Collect all expected accession numbers so the API poll waits for ALL of
+  // them before navigating (the bridge posts results one accession at a time).
+  const allAccessions = config.expectedResults
+    .map((r) => r.sampleId || sampleId)
+    .filter((v, i, a) => a.indexOf(v) === i);
+
   await openAnalyzerResultsAndWaitForText(page, config.name, sampleId, {
     timeoutMs: RESULTS_TIMEOUT,
     perAttemptTimeoutMs: LONG_TIMEOUT,
+    allExpectedAccessions: allAccessions,
   });
 
   const resultsRegion = page.locator(".orderLegendBody, table").first();
