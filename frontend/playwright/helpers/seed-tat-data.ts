@@ -50,100 +50,173 @@ export async function createSampleOrder(
   config: SampleConfig,
 ): Promise<string> {
   const { labNo, receivedDate, receivedTime, priority } = config;
-  const headers = await authHeaders(page);
 
-  // Step 1: GET the preform — same approach as the React Add Order page.
-  // This returns the full form shape with default values, display lists, etc.
-  const preformRes = await page.request.get(
-    `${API_PREFIX}/rest/SamplePatientEntry`,
-    { headers },
-  );
-  if (!preformRes.ok()) {
-    console.warn(
-      `createSampleOrder ${labNo}: GET preform failed ${preformRes.status()}`,
+  // Navigate to Add Order page so browser has the right session context.
+  // The fetch() below runs inside the browser, same as the React UI.
+  await page.goto("/SamplePatientEntry", {
+    waitUntil: "domcontentloaded",
+    timeout: 15_000,
+  });
+
+  // Exact payload structure captured from Chrome Network tab during successful
+  // browser order creation. Only dynamic values are parameterized.
+  const now = new Date();
+  const today = `${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}/${now.getFullYear()}`;
+  const time =
+    receivedTime ||
+    `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const uniqueId = String(Date.now());
+
+  // Step 1: Generate accession number via the same endpoint the UI uses
+  const genResult = await page.evaluate(async () => {
+    const csrf = localStorage.getItem("CSRF") || "";
+    const r = await fetch(
+      "/api/OpenELIS-Global/rest/SampleEntryGenerateScanProvider",
+      {
+        credentials: "include",
+        headers: { "X-CSRF-Token": csrf },
+      },
     );
-    return labNo;
+    return r.text();
+  });
+  const generatedLabNo = JSON.parse(genResult).body || "";
+  if (!generatedLabNo) {
+    console.warn("createSampleOrder: failed to generate accession number");
+    return "";
   }
 
-  const form = await preformRes.json();
-
-  // Step 2: Find a valid sample type ID from the preform's sampleTypes list
-  const sampleTypeId = form.sampleTypes?.[0]?.id || "1";
-
-  // Step 3: Modify the form — same fields the React UI sets
-  form.warning = true;
-  form.currentDate = form.currentDate; // keep today's date from preform
-
-  // Patient info (minimal — new patient)
-  form.patientProperties = form.patientProperties || {};
-  form.patientProperties.firstName = "TAT-E2E";
-  form.patientProperties.lastName = `Patient-${labNo}`;
-  form.patientProperties.birthDateForDisplay = "01/01/1990";
-  form.patientProperties.gender = "M";
-  form.patientUpdateStatus = "ADD";
-
-  // Build sampleOrderItems from scratch — the preform's version has display-only
-  // fields (referringSiteList, isEQASample, readOnly) that don't exist on the
-  // SampleOrderItem Java bean. Jackson rejects unknown fields → null object
-  // → null labNo → crash. Only include fields that exist on SampleOrderItem.java.
-  const seq = String(Date.now()).slice(-6);
-  const actualLabNo = `${new Date().getFullYear()}${seq}`;
-  form.sampleOrderItems = {
-    labNo: actualLabNo,
-    receivedDateForDisplay: form.currentDate,
-    receivedTime: receivedTime || "09:00",
-    modified: true,
-    priority: priority ? priority.toUpperCase() : "ROUTINE",
+  // Step 2: POST — mirrors the exact browser payload shape
+  const form = {
+    rememberSiteAndRequester: false,
+    currentDate: null,
+    projects: null,
+    customNotificationLogic: false,
+    patientEmailNotificationTestIds: [],
+    patientSMSNotificationTestIds: [],
+    providerEmailNotificationTestIds: [],
+    providerSMSNotificationTestIds: [],
+    patientUpdateStatus: "NO_ACTION",
+    referralItems: [],
+    referralOrganizations: null,
+    referralReasons: null,
+    sampleTypes: null,
+    sampleXML:
+      `<?xml version="1.0" encoding="utf-8"?>` +
+      `<samples><sample sampleID='2' date='' time='' ` +
+      `collector='' quantity='' uom='' tests='13' testSectionMap='' testSampleTypeMap='' ` +
+      `panels='' rejected='false' rejectReasonId='' initialConditionIds='' ` +
+      `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
+      `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
+      `numOrderLabels='1' numSpecimenLabels='1'/></samples>`,
+    patientProperties: {
+      patientPK: "2",
+      patientUpdateStatus: "NO_ACTION",
+      firstName: "",
+      lastName: "UNKNOWN",
+      gender: "M",
+      birthDateForDisplay: "",
+      nationalId: uniqueId,
+      subjectNumber: uniqueId,
+    },
+    patientSearch: null,
+    patientEnhancedSearch: null,
+    patientClinicalProperties: null,
+    sampleOrderItems: {
+      newRequesterName: "",
+      orderTypes: [],
+      orderType: "",
+      externalOrderNumber: "",
+      labNo: generatedLabNo,
+      requestDate: today,
+      receivedDateForDisplay: today,
+      receivedTime: time,
+      nextVisitDate: today,
+      requesterSampleID: "",
+      referringPatientNumber: "",
+      referringSiteId: "9000100",
+      referringSiteDepartmentId: "",
+      referringSiteCode: "",
+      referringSiteName: "",
+      referringSiteDepartmentName: "",
+      referringSiteList: [],
+      referringSiteDepartmentList: [],
+      providersList: [],
+      providerId: "9000002",
+      providerPersonId: "9000002",
+      providerFirstName: "Jim",
+      providerLastName: "Jam",
+      facilityAddressStreet: "",
+      facilityAddressCommune: "",
+      facilityPhone: "",
+      facilityFax: "",
+      paymentOptionSelection: "",
+      paymentOptions: [],
+      modified: true,
+      sampleId: "",
+      readOnly: false,
+      billingReferenceNumber: "",
+      testLocationCode: "",
+      otherLocationCode: "",
+      testLocationCodeList: [],
+      program: "",
+      programList: [],
+      contactTracingIndexName: "",
+      contactTracingIndexRecordNumber: "",
+      priorityList: [],
+      priority: priority ? priority.toUpperCase() : "ROUTINE",
+      programId: "2",
+      additionalQuestions: null,
+      isEQASample: false,
+      eqaProgramId: "",
+      eqaProviderOrganizationId: "",
+      eqaProviderSampleId: "",
+      eqaParticipantId: "",
+      eqaDeadline: "",
+      eqaPriority: "STANDARD",
+    },
+    initialSampleConditionList: [],
+    sampleNatureList: null,
+    testSectionList: [],
+    warning: false,
+    useReferral: false,
+    rejectReasonList: null,
   };
 
-  // Build patientProperties from scratch — same reason (display lists like
-  // genders, addressDepartments contain Dictionary objects with extra fields).
-  form.patientProperties = {
-    firstName: "TAT-E2E",
-    lastName: `Patient-${actualLabNo}`,
-    birthDateForDisplay: "01/01/1990",
-    gender: "M",
-  };
+  // POST via page.evaluate(fetch) — same path as the React UI:
+  // config.serverBaseUrl ("/api/OpenELIS-Global") + "/rest/SamplePatientEntry"
+  const result = await page.evaluate(async (formData) => {
+    const csrf = localStorage.getItem("CSRF") || "";
+    const res = await fetch("/api/OpenELIS-Global/rest/SamplePatientEntry", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrf,
+      },
+      credentials: "include",
+      body: JSON.stringify(formData),
+    });
+    const text = await res.text().catch(() => "");
+    return { status: res.status, ok: res.ok, text };
+  }, form);
 
-  // Sample XML — format from Index.js:710.
-  form.sampleXML =
-    `<samples>` +
-    `<sample sampleID='${sampleTypeId}' date='${form.currentDate}' time='${receivedTime || "09:00"}' ` +
-    `collector='' quantity='' uom='' tests='1' testSectionMap='' testSampleTypeMap='' ` +
-    `panels='' rejected='false' rejectReasonId='' initialConditionIds='' ` +
-    `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
-    `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
-    `numOrderLabels='1' numSpecimenLabels='1'/>` +
-    `</samples>`;
-
-  // Remove display-only top-level lists that have nested objects Jackson can't handle
-  delete form.sampleTypes;
-  delete form.referralOrganizations;
-  delete form.referralReasons;
-  delete form.rejectReasonList;
-  delete form.sampleNatureList;
-  delete form.initialSampleConditionList;
-  delete form.testSectionList;
-  delete form.patientSearch;
-  delete form.patientEnhancedSearch;
-  delete form.projects;
-
-  // Step 4: POST the modified form back
-  const response = await page.request.post(
-    `${API_PREFIX}/rest/SamplePatientEntry`,
-    { headers, data: form },
-  );
-
-  if (!response.ok()) {
-    const text = await response.text().catch(() => "");
+  // Extract the auto-generated accession number from the response JSON.
+  try {
+    const responseForm = JSON.parse(result.text);
+    const generatedLabNo = responseForm?.sampleOrderItems?.labNo || "";
+    if (generatedLabNo) {
+      console.log(`createSampleOrder: ${generatedLabNo}`);
+      return generatedLabNo;
+    }
     console.warn(
-      `createSampleOrder ${actualLabNo}: HTTP ${response.status()} — ${text.slice(0, 200)}`,
+      `createSampleOrder: no labNo in response (HTTP ${result.status})`,
     );
-  } else {
-    console.log(`createSampleOrder: created sample ${actualLabNo}`);
+    return "";
+  } catch {
+    console.warn(
+      `createSampleOrder: non-JSON response (HTTP ${result.status})`,
+    );
+    return "";
   }
-
-  return actualLabNo;
 }
 
 /**
