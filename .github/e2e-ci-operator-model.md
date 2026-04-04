@@ -5,13 +5,13 @@ repo/operator settings required for the unified E2E workflow model.
 
 ## Workflow Boundary Model
 
-- `03 - E2E` is build-only. It produces transient `e2e-cache` images for
-  non-forks and emits build-context artifacts for downstream orchestrators.
+- `03 - E2E` is build-only. It produces GHCR image maps for non-forks and emits
+  early context + transfer-state artifacts for downstream orchestrators.
 - `E2E / Tests` is the unified `workflow_run` wrapper for both fork and non-fork
   PRs. It owns the stable `03 Checkpoint - E2E` status context and keeps the
-  detailed job graph behind that single PR-facing contract. Fork PRs trigger an
-  inline `fork-rebuild` job that builds and pushes images to GHCR using the
-  repo's write token.
+  detailed job graph behind that single PR-facing contract. Fork PRs publish
+  handed-off prebuilt images to GHCR in an inline privileged job (no second
+  Maven/Docker image rebuild).
 - `Publish Images` is post-merge only (`push`/`release`) and gated on the
   successful `03 Checkpoint - E2E` status.
 
@@ -39,14 +39,15 @@ Requires default-branch merge (controls `workflow_run` orchestration):
 
 ## Fork vs Non-Fork Safety Model
 
-- Non-fork PRs: `03 - E2E` publishes GHCR cache directly, then `E2E / Tests`
-  consumes those artifacts (`cross_run` mode) and reports `03 Checkpoint - E2E`.
-- Fork PRs: `03 - E2E` records `fork-fallback` (read-only token cannot push to
-  GHCR), then `E2E / Tests` detects the fork via the build-context artifact,
-  runs `fork-rebuild` within the `workflow_run` context (which has the repo's
-  write token), pushes images to GHCR, and passes them to the executor via
-  `same_run` artifact mode. This follows the GitHub Security Lab recommended
-  `workflow_run` two-stage pattern for privilege escalation.
+- Non-fork PRs: `03 - E2E` publishes GHCR image maps directly, then
+  `E2E / Tests` consumes those artifacts (`cross_run` mode) and reports
+  `03 Checkpoint - E2E`.
+- Fork PRs: `03 - E2E` records `fork-handoff` and uploads handed-off prebuilt
+  images, then `E2E / Tests` detects the fork via early context artifact,
+  publishes those handed-off images to GHCR in `workflow_run` context (repo
+  write token), and passes same-run image map artifacts to the executor. This
+  keeps one image build per path while preserving the GitHub Security Lab style
+  two-stage privilege model.
 - Synthetic checkpoint reporting uses commit statuses, not checks, so the PR
   rows can link directly to the authoritative workflow graphs.
 - Do not publish a check and a status with the same checkpoint name; GitHub can
