@@ -96,24 +96,22 @@ export async function acceptAndVerifyResults(
   await expect(saveButton).toBeVisible({ timeout: SHORT_TIMEOUT });
   await expect(saveButton).toBeEnabled({ timeout: SHORT_TIMEOUT });
 
-  await saveButton.click();
+  const reloadAfterSave = page.waitForEvent("framenavigated", {
+    predicate: (frame) =>
+      frame === page.mainFrame() &&
+      /AnalyzerResults[?]type=/.test(frame.url()),
+    timeout: NAV_TIMEOUT,
+  });
+
+  await Promise.all([reloadAfterSave, saveButton.click()]);
 
   const saveInProgress = page.locator(
     '[data-testid="analyzer-results-save-in-progress"]',
   );
-  await Promise.any([
-    expect(saveButton).toBeDisabled({ timeout: SHORT_TIMEOUT }),
-    saveInProgress.waitFor({ state: "attached", timeout: SHORT_TIMEOUT }),
-  ]).catch(() => {
-    // Some runs complete quickly and can skip observable transition states.
-  });
 
-  // Success path issues full page reload (AnalyserResults.js).
-  await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
-    timeout: NAV_TIMEOUT,
-  });
-  await page.waitForLoadState("load");
-  await expect(saveButton).toBeVisible({ timeout: UI_TIMEOUT });
+  // Success path issues a delayed same-URL reload (AnalyserResults.js).
+  // Wait for the next real navigation to complete before touching the page again.
+  await page.waitForLoadState("load", { timeout: NAV_TIMEOUT });
 
   if (stagedCountBeforeSave > 0) {
     await expect
