@@ -22,6 +22,7 @@ import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
@@ -36,21 +37,18 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 @RequestMapping(value = "/rest/")
 public class PatientManagementRestController extends BaseRestController {
-    @Autowired
-    SearchResultsService searchService;
-    @Autowired
-    PatientIdentityService patientIdentityService;
-    @Autowired
-    PatientService patientService;
-    @Autowired
-    FhirTransformService fhirTransformService;
-    @Autowired
-    PatientPhotoService photoService;
+
+    @Autowired SearchResultsService searchService;
+    @Autowired PatientIdentityService patientIdentityService;
+    @Autowired PatientService patientService;
+    @Autowired FhirTransformService fhirTransformService;
+    @Autowired PatientPhotoService photoService;
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public void savepatient(HttpServletRequest request,
-            @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
+            @Validated(SamplePatientEntryForm.SamplePatientEntry.class) 
+            @RequestBody PatientManagementInfo patientInfo,
             BindingResult bindingResult) throws Exception {
 
         if (StringUtils.isNotBlank(patientInfo.getPatientPK())) {
@@ -61,13 +59,13 @@ public class PatientManagementRestController extends BaseRestController {
         Patient patient = new Patient();
 
         if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION) {
-
             PatientUtil.preparePatientData(bindingResult, request, patientInfo, patient);
             if (bindingResult.hasErrors()) {
                 try {
                     throw new BindException(bindingResult);
                 } catch (BindException e) {
                     LogEvent.logError(e);
+                    return;
                 }
             }
             try {
@@ -76,25 +74,34 @@ public class PatientManagementRestController extends BaseRestController {
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
                 photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
             } catch (LIMSRuntimeException e) {
-
                 if (e.getCause() instanceof StaleObjectStateException) {
-
+                    LogEvent.logError(e);
                 } else {
                     LogEvent.logDebug(e);
                 }
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
-
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
             }
         }
     }
 
+    @PreAuthorize("hasRole('PATIENT_VIEW')")
     @GetMapping("patient-photos/{id}/{isThumbnail}")
-    public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail)
-            throws LIMSRuntimeException {
+    public ResponseEntity<Map<String, String>> getPhoto(
+            @PathVariable String id,
+            @PathVariable boolean isThumbnail) {
+
+        if (!StringUtils.isNumeric(id)) {
+            return ResponseEntity.badRequest().build();
+        }
+
         String photo = photoService.getPhotoByPatientId(id, isThumbnail);
+
+        if (photo == null) {
+            return ResponseEntity.notFound().build();
+        }
+
         return ResponseEntity.ok(Map.of("data", photo));
     }
-
 }
