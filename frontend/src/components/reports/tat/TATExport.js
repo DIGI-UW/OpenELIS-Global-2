@@ -21,10 +21,6 @@ function TATExport({ filters, buildQueryString }) {
         itemText={intl.formatMessage({ id: "reports.tat.exportCsv" })}
         onClick={() => handleExport("CSV")}
       />
-      <OverflowMenuItem
-        itemText={intl.formatMessage({ id: "reports.tat.exportPdf" })}
-        onClick={() => handleExport("PDF")}
-      />
     </OverflowMenu>
   );
 }

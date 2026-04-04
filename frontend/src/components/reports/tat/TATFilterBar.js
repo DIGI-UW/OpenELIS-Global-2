@@ -157,6 +157,25 @@ function TATFilterBar({ onGenerate }) {
           </ContentSwitcher>
         </div>
 
+        <Dropdown
+          id="tat-priority"
+          titleText={intl.formatMessage({ id: "reports.tat.priority" })}
+          size="sm"
+          items={[
+            { id: "", text: intl.formatMessage({ id: "reports.tat.priority.all" }) },
+            { id: "ROUTINE", text: intl.formatMessage({ id: "reports.tat.priority.routine" }) },
+            { id: "STAT", text: intl.formatMessage({ id: "reports.tat.priority.stat" }) },
+            { id: "ASAP", text: intl.formatMessage({ id: "reports.tat.priority.asap" }) },
+          ]}
+          selectedItem={{
+            id: priority,
+            text: priority
+              ? intl.formatMessage({ id: `reports.tat.priority.${priority.toLowerCase()}` })
+              : intl.formatMessage({ id: "reports.tat.priority.all" }),
+          }}
+          onChange={({ selectedItem }) => setPriority(selectedItem.id)}
+        />
+
         <Checkbox
           id="tat-include-cancelled"
           labelText={intl.formatMessage({
