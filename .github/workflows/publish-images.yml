@@ -7,9 +7,10 @@ on:
   workflow_run:
     workflows: ["03 - E2E"]
     types: [completed]
+    branches: [develop, "v*"]
 
 concurrency:
-  group: publish-images-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  group: publish-images-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:

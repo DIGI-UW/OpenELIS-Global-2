@@ -38,7 +38,7 @@ test.describe("Sidenav", () => {
     await sidenav.toggle();
     await sidenav.expectCollapsed();
 
-    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
+    await page.goto("/Storage/samples", { waitUntil: "load" });
     await expect(sidenav.menuButton).toBeVisible();
 
     // Should still be collapsed (preference persisted)
