@@ -823,6 +823,7 @@
   "reports.tat.workingTime": "Working Time",
   "reports.tat.workingTimeInfo": "Working Time mode: Excluding {weekendDays} and {holidayCount} public holidays in the selected date range",
   "reports.tat.noHolidaysWarning": "No public holidays configured. Configure holidays in Admin > Calendar Management.",
+  "reports.tat.manageCalendar": "Manage Calendar",
   "reports.tat.totalResults": "Total Results",
   "reports.tat.meanTat": "Mean TAT",
   "reports.tat.medianTat": "Median TAT",

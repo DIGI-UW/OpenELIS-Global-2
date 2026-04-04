@@ -47,29 +47,43 @@ function TATSummaryTab({ data, loading, filters }) {
   return (
     <div>
       {isWorkingTime && data.excludedDaysCount > 0 && (
-        <InlineNotification
-          kind="info"
-          title={intl.formatMessage(
-            { id: "reports.tat.workingTimeInfo" },
-            {
-              weekendDays: "configured weekends",
-              holidayCount: data.excludedDaysCount,
-            },
-          )}
-          lowContrast
-          hideCloseButton
-          style={{ marginBottom: "1rem" }}
-        />
+        <div style={{ marginBottom: "1rem" }}>
+          <InlineNotification
+            kind="info"
+            title={intl.formatMessage(
+              { id: "reports.tat.workingTimeInfo" },
+              {
+                weekendDays: "configured weekends",
+                holidayCount: data.excludedDaysCount,
+              },
+            )}
+            lowContrast
+            hideCloseButton
+          />
+          <a
+            href="/MasterListsPage/calendarManagement"
+            style={{ fontSize: "12px", marginTop: "0.25rem", display: "inline-block" }}
+          >
+            <FormattedMessage id="reports.tat.manageCalendar" />
+          </a>
+        </div>
       )}
 
       {isWorkingTime && data.excludedDaysCount === 0 && (
-        <InlineNotification
-          kind="warning"
-          title={intl.formatMessage({ id: "reports.tat.noHolidaysWarning" })}
-          lowContrast
-          hideCloseButton
-          style={{ marginBottom: "1rem" }}
-        />
+        <div style={{ marginBottom: "1rem" }}>
+          <InlineNotification
+            kind="warning"
+            title={intl.formatMessage({ id: "reports.tat.noHolidaysWarning" })}
+            lowContrast
+            hideCloseButton
+          />
+          <a
+            href="/MasterListsPage/calendarManagement"
+            style={{ fontSize: "12px", marginTop: "0.25rem", display: "inline-block" }}
+          >
+            <FormattedMessage id="reports.tat.manageCalendar" />
+          </a>
+        </div>
       )}
 
       {/* Stat Cards - 4+3 layout, Median highlighted */}

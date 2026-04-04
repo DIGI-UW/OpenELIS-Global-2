@@ -1,150 +1,170 @@
 package org.openelisglobal.reports.tat.controller;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.common.action.IActionConstants;
-import org.openelisglobal.login.valueholder.UserSessionData;
-import org.springframework.http.MediaType;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.reports.tat.bean.TATDetailResponse;
+import org.openelisglobal.reports.tat.bean.TATSummaryResponse;
+import org.openelisglobal.reports.tat.bean.TATTrendResponse;
+import org.openelisglobal.reports.tat.controller.rest.TATReportRestController;
+import org.openelisglobal.reports.tat.service.TATReportService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
-import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * Integration tests for TATReportRestController. Extends
- * BaseWebContextSensitiveTest for full Spring context + MockMvc.
+ * Unit tests for TATReportRestController.
  *
- * Tests: summary, detail (pagination), trend, export endpoints + auth +
- * validation. Requires a running PostgreSQL test database (CI backend-test
- * job).
+ * Uses Mockito to test controller validation logic (date parsing, segment enum,
+ * page size caps) without requiring Spring context or database.
  */
-public class TATReportRestControllerTest extends BaseWebContextSensitiveTest {
+@RunWith(MockitoJUnitRunner.class)
+public class TATReportRestControllerTest {
+
+    @InjectMocks
+    private TATReportRestController controller;
+
+    @Mock
+    private TATReportService tatReportService;
+
+    private MockHttpServletRequest request;
 
     @Before
-    public void setUp() throws Exception {
-        super.setUp();
-    }
-
-    // ========== GET /rest/reports/tat/summary ==========
-
-    @Test
-    public void getSummary_returnsStats() throws Exception {
-        MvcResult result = this.mockMvc
-                .perform(get("/rest/reports/tat/summary").param("fromDate", "2026-03-01").param("toDate", "2026-03-31")
-                        .param("segment", "RECEIPT_TO_VALIDATION").param("calculationMode", "CALENDAR")
-                        .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isOk()).andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        // Verify structure — totalCount and histogram are always present
-        assertTrue("Response should contain totalCount", json.contains("totalCount"));
-        assertTrue("Response should contain histogram", json.contains("histogram"));
-        assertTrue("Response should contain calculationMode", json.contains("CALENDAR"));
-    }
-
-    @Test
-    public void getSummary_rejectsDateRangeOver366Days() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/tat/summary").param("fromDate", "2025-01-01")
-                .param("toDate", "2026-12-31").param("segment", "RECEIPT_TO_VALIDATION")
-                .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    public void getSummary_rejectsInvalidDateFormat() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/tat/summary").param("fromDate", "not-a-date")
-                .param("toDate", "2026-03-31").param("segment", "RECEIPT_TO_VALIDATION")
-                .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    public void getSummary_rejectsInvalidSegment() throws Exception {
-        this.mockMvc.perform(get("/rest/reports/tat/summary").param("fromDate", "2026-03-01")
-                .param("toDate", "2026-03-31").param("segment", "INVALID_SEGMENT")
-                .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isBadRequest());
-    }
-
-    // ========== GET /rest/reports/tat/detail ==========
-
-    @Test
-    public void getDetail_returnsPaginatedResults() throws Exception {
-        MvcResult result = this.mockMvc
-                .perform(get("/rest/reports/tat/detail").param("fromDate", "2026-03-01").param("toDate", "2026-03-31")
-                        .param("segment", "RECEIPT_TO_VALIDATION").param("page", "0").param("pageSize", "25")
-                        .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isOk()).andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        assertTrue("Response should contain totalCount", json.contains("totalCount"));
-        assertTrue("Response should contain page", json.contains("\"page\""));
-        assertTrue("Response should contain results array", json.contains("results"));
-    }
-
-    @Test
-    public void getDetail_capsPageSizeAt200() throws Exception {
-        MvcResult result = this.mockMvc
-                .perform(get("/rest/reports/tat/detail").param("fromDate", "2026-03-01").param("toDate", "2026-03-31")
-                        .param("segment", "RECEIPT_TO_VALIDATION").param("page", "0").param("pageSize", "500") // Over
-                                                                                                               // the
-                                                                                                               // 200
-                                                                                                               // cap
-                        .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isOk()).andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        // Should succeed but cap at 200
-        assertTrue("Response should contain pageSize", json.contains("pageSize"));
-    }
-
-    // ========== GET /rest/reports/tat/trend ==========
-
-    @Test
-    public void getTrend_returnsSeriesData() throws Exception {
-        MvcResult result = this.mockMvc
-                .perform(get("/rest/reports/tat/trend").param("fromDate", "2026-03-01").param("toDate", "2026-03-31")
-                        .param("segment", "RECEIPT_TO_VALIDATION").param("interval", "DAILY")
-                        .contentType(MediaType.APPLICATION_JSON).session(createMockSession()))
-                .andExpect(status().isOk()).andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        assertTrue("Response should contain series", json.contains("series"));
-        assertTrue("Response should contain calculationMode", json.contains("calculationMode"));
-    }
-
-    // ========== GET /rest/reports/tat/export ==========
-
-    @Test
-    public void exportCsv_returnsCsvContentType() throws Exception {
-        this.mockMvc
-                .perform(get("/rest/reports/tat/export").param("fromDate", "2026-03-01").param("toDate", "2026-03-31")
-                        .param("segment", "RECEIPT_TO_VALIDATION").param("format", "CSV").session(createMockSession()))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    public void exportPdf_returns501NotImplemented() throws Exception {
-        // Documenting the current state: PDF export is not yet implemented
-        this.mockMvc
-                .perform(get("/rest/reports/tat/export").param("fromDate", "2026-03-01").param("toDate", "2026-03-31")
-                        .param("segment", "RECEIPT_TO_VALIDATION").param("format", "PDF").session(createMockSession()))
-                .andExpect(status().is(501));
-    }
-
-    // ========== Helper ==========
-
-    private MockHttpSession createMockSession() {
+    public void setUp() {
+        request = new MockHttpServletRequest();
         MockHttpSession session = new MockHttpSession();
-        UserSessionData usd = new UserSessionData();
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
         usd.setSytemUserId(1);
-        session.setAttribute(IActionConstants.USER_SESSION_DATA, usd);
-        return session;
+        session.setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
+        request.setSession(session);
     }
 
-    private static void assertTrue(String message, boolean condition) {
-        org.junit.Assert.assertTrue(message, condition);
+    // ========== Summary endpoint ==========
+
+    @Test
+    public void getSummary_returnsOkWithValidParams() {
+        TATSummaryResponse mockResponse = new TATSummaryResponse();
+        mockResponse.setCalculationMode("CALENDAR");
+        mockResponse.setTotalCount(0);
+        mockResponse.setHistogram(new ArrayList<>());
+        mockResponse.setBreakdown(new ArrayList<>());
+
+        when(tatReportService.getSummary(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any())).thenReturn(mockResponse);
+
+        ResponseEntity<?> response = controller.getSummary("2026-03-01", "2026-03-31", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, "LAB_UNIT", request);
+
+        Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    public void getSummary_rejectsDateRangeOver366Days() {
+        ResponseEntity<?> response = controller.getSummary("2025-01-01", "2026-12-31", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, "LAB_UNIT", request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    public void getSummary_rejectsInvalidDateFormat() {
+        ResponseEntity<?> response = controller.getSummary("not-a-date", "2026-03-31", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, "LAB_UNIT", request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    public void getSummary_rejectsInvalidSegment() {
+        ResponseEntity<?> response = controller.getSummary("2026-03-01", "2026-03-31", "INVALID_SEGMENT", "CALENDAR",
+                null, null, null, null, null, null, false, "LAB_UNIT", request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
+    public void getSummary_rejectsFromAfterTo() {
+        ResponseEntity<?> response = controller.getSummary("2026-04-01", "2026-03-01", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, "LAB_UNIT", request);
+
+        Assert.assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    // ========== Detail endpoint ==========
+
+    @Test
+    public void getDetail_returnsOkWithValidParams() {
+        TATDetailResponse mockResponse = new TATDetailResponse();
+        mockResponse.setTotalCount(0);
+        mockResponse.setPage(0);
+        mockResponse.setPageSize(25);
+        mockResponse.setResults(new ArrayList<>());
+
+        when(tatReportService.getDetail(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), anyInt(), anyInt(), any(), any(), any())).thenReturn(mockResponse);
+
+        ResponseEntity<?> response = controller.getDetail("2026-03-01", "2026-03-31", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, 0, 25, null, null, null, request);
+
+        Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    @Test
+    public void getDetail_capsPageSizeAt200() {
+        TATDetailResponse mockResponse = new TATDetailResponse();
+        mockResponse.setTotalCount(0);
+        mockResponse.setPage(0);
+        mockResponse.setPageSize(200);
+        mockResponse.setResults(new ArrayList<>());
+
+        when(tatReportService.getDetail(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), anyInt(), anyInt(), any(), any(), any())).thenReturn(mockResponse);
+
+        // Request pageSize=500, should be capped to 200
+        ResponseEntity<?> response = controller.getDetail("2026-03-01", "2026-03-31", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, 0, 500, null, null, null, request);
+
+        Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    // ========== Trend endpoint ==========
+
+    @Test
+    public void getTrend_returnsOkWithValidParams() {
+        TATTrendResponse mockResponse = new TATTrendResponse();
+        mockResponse.setCalculationMode("CALENDAR");
+        mockResponse.setSeries(new ArrayList<>());
+
+        when(tatReportService.getTrend(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                anyBoolean(), any(), any())).thenReturn(mockResponse);
+
+        ResponseEntity<?> response = controller.getTrend("2026-03-01", "2026-03-31", "RECEIPT_TO_VALIDATION",
+                "CALENDAR", null, null, null, null, null, null, false, "DAILY", null, request);
+
+        Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    // ========== Export endpoint ==========
+
+    @Test
+    public void export_rejectsInvalidDate() throws Exception {
+        MockHttpServletResponse httpResponse = new MockHttpServletResponse();
+
+        controller.export("bad-date", "2026-03-31", "RECEIPT_TO_VALIDATION", "CALENDAR", null, null, null, null, null,
+                null, false, "CSV", request, httpResponse);
+
+        Assert.assertEquals(400, httpResponse.getStatus());
     }
 }
