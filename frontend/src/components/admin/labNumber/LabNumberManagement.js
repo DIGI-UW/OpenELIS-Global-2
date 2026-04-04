@@ -26,6 +26,7 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../../layout/Layout";
+import { set as _set } from "lodash-es";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 
 let breadcrumbs = [
@@ -78,8 +79,7 @@ function LabNumberManagement() {
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
     const updatedValues = { ...labNumberValues };
-    var jp = require("jsonpath");
-    jp.value(updatedValues, name, value);
+    _set(updatedValues, name, value);
     setLabNumberValues(updatedValues);
   };
 

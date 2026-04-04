@@ -27,6 +27,7 @@ import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
+import { get as _get, set as _set } from "lodash-es";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -1754,50 +1755,40 @@ export function SearchResults(props) {
     // setState({value: e.target.value})
     console.debug("State updated to ", e.target.value);
     var form = { ...props.results };
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
-    var refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
-    var testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
+    _set(form, name, value);
+    var refer = _get(form, "testResult[" + rowId + "].refer");
+    var testId = _get(form, "testResult[" + rowId + "].testId");
     var referList = { ...referTest };
     referList[rowId] = refer === "true" ? true : false;
     setReferTest(referList);
     if (refer == "true") {
-      jp.value(
+      _set(
         form,
         "testResult[" + rowId + "].referralItem.referredTestId",
         testId,
       );
-      jp.value(
+      _set(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         configurationProperties.currentDateAsText,
       );
     } else {
-      jp.value(
-        form,
-        "testResult[" + rowId + "].referralItem.referredTestId",
-        "",
-      );
-      jp.value(
-        form,
-        "testResult[" + rowId + "].referralItem.referredSendDate",
-        "",
-      );
+      _set(form, "testResult[" + rowId + "].referralItem.referredTestId", "");
+      _set(form, "testResult[" + rowId + "].referralItem.referredSendDate", "");
     }
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    _set(form, isModified, "true");
     props.setResultForm(form);
   };
 
   const handleRejectCheckBoxChange = (e, rowId) => {
     const { name, checked } = e.target;
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    _set(form, name, checked);
     var shadowRejected = "testResult[" + rowId + "].shadowRejected";
-    jp.value(form, shadowRejected, checked);
+    _set(form, shadowRejected, checked);
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    _set(form, isModified, "true");
 
     var allrejectedItems = { ...rejectedItems };
     allrejectedItems[rowId] = checked;
@@ -1818,14 +1809,13 @@ export function SearchResults(props) {
     if (form.testResult[rowId].referralItem) {
       if (form.testResult[rowId].referralItem.referredSendDate != date) {
         console.debug("handleDatePickerChange:" + date);
-        var jp = require("jsonpath");
-        jp.value(
+        _set(
           form,
           "testResult[" + rowId + "].referralItem.referredSendDate",
           date,
         );
         var isModified = "testResult[" + rowId + "].isModified";
-        jp.value(form, isModified, "true");
+        _set(form, isModified, "true");
         props.setResultForm(form);
       }
     }

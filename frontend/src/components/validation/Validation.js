@@ -22,6 +22,7 @@ import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
+import { set as _set } from "lodash-es";
 import config from "../../config.json";
 
 const Validation = (props) => {
@@ -154,28 +155,24 @@ const Validation = (props) => {
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
+    _set(form, name, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
     console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, "resultList[" + rowId + "].sentDate_", d);
+    _set(form, "resultList[" + rowId + "].sentDate_", d);
   };
   const handleCheckBox = (e, rowId) => {
     const { name, id, checked } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    _set(form, name, checked);
   };
 
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    _set(form, name, checked);
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
