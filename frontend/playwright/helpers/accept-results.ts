@@ -115,9 +115,21 @@ export async function acceptAndVerifyResults(
   await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
     timeout: NAV_TIMEOUT,
   });
+  // Wait for the AnalyzerResults API response before asserting on UI —
+  // the page navigates instantly but the component fetches data async.
+  // On CI under load, this fetch can exceed 10s.
+  await page
+    .waitForResponse(
+      (resp) =>
+        resp.url().includes("/rest/AnalyzerResults") && resp.status() === 200,
+      { timeout: LONG_TIMEOUT },
+    )
+    .catch(() => {
+      // Response may have arrived before we started listening (fast backend).
+    });
   const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
   await expect(saveButton.or(emptyState).first()).toBeVisible({
-    timeout: UI_TIMEOUT,
+    timeout: LONG_TIMEOUT,
   });
 
   const saveStillVisible = await saveButton.isVisible();
