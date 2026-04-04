@@ -79,6 +79,7 @@ import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
 import ShipmentReport from "./components/shipment/ShipmentReport";
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
+import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
 
 export default function App() {
   const defaultLocale =
@@ -264,6 +265,26 @@ export default function App() {
 
   const isCheckingLogin = () => {
     return !("authenticated" in userSessionDetails);
+  };
+
+  const routeErrorStorage = {
+    titleKey: "errorBoundary.route.storage.title",
+    messageKey: "errorBoundary.route.storage.message",
+  };
+
+  const routeErrorPatientResultsViewer = {
+    titleKey: "errorBoundary.route.patientResultsViewer.title",
+    messageKey: "errorBoundary.route.patientResultsViewer.message",
+  };
+
+  const routeErrorResultsSearch = {
+    titleKey: "errorBoundary.route.resultsSearch.title",
+    messageKey: "errorBoundary.route.resultsSearch.message",
+  };
+
+  const routeErrorSamplePatientEntry = {
+    titleKey: "errorBoundary.route.samplePatientEntry.title",
+    messageKey: "errorBoundary.route.samplePatientEntry.message",
   };
 
   return (
@@ -454,7 +475,11 @@ export default function App() {
                 <SecureRoute
                   path="/SamplePatientEntry"
                   exact
-                  component={() => <AddOrder />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorSamplePatientEntry}>
+                      <AddOrder />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
@@ -571,12 +596,20 @@ export default function App() {
                 <SecureRoute
                   path="/Storage"
                   exact
-                  component={() => <StorageDashboard />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <StorageDashboard />
+                    </RouteErrorBoundary>
+                  )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/Storage/:tab"
-                  component={() => <StorageDashboard />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <StorageDashboard />
+                    </RouteErrorBoundary>
+                  )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
@@ -712,7 +745,11 @@ export default function App() {
                 <SecureRoute
                   path="/PatientResults/:patientId"
                   exact
-                  component={() => <RoutedResultsViewer />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorPatientResultsViewer}>
+                      <RoutedResultsViewer />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RECEPTION}
                 />
 
@@ -743,37 +780,61 @@ export default function App() {
                 <SecureRoute
                   path="/result"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/LogbookResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/PatientResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/AccessionResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/StatusResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/RangeResults"
                   exact
-                  component={() => <ResultSearch />}
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorResultsSearch}>
+                      <ResultSearch />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
