@@ -92,10 +92,17 @@ async function navigateUntilVisible(
   const timeoutMs = options?.timeoutMs ?? LONG_TIMEOUT;
   const perAttemptTimeoutMs = options?.perAttemptTimeoutMs ?? UI_TIMEOUT;
 
-  // When an API poll URL is provided, wait for results via lightweight JSON
-  // request before navigating. This avoids reload-loop flakiness: the page
-  // is only loaded once results are guaranteed to exist.
+  // When an API poll URL is provided, poll the REST API before navigating.
+  // Uses page.request.get() but disposes each response immediately to avoid
+  // stale protocol bindings that cause "guid response@... was not bound"
+  // on the subsequent page.goto().
   if (options?.apiPollUrl) {
+    const matchList = !options?.apiPollMatch
+      ? []
+      : Array.isArray(options.apiPollMatch)
+        ? options.apiPollMatch
+        : [options.apiPollMatch];
+
     await expect
       .poll(
         async () => {
@@ -103,19 +110,17 @@ async function navigateUntilVisible(
             const resp = await page.request.get(options.apiPollUrl!, {
               timeout: SHORT_TIMEOUT,
             });
-            if (!resp.ok()) return false;
-            const data = await resp.json();
+            const ok = resp.ok();
+            const data = ok ? await resp.json() : null;
+            await resp.dispose();
+            if (!ok || !data) return false;
             const results = data?.resultList ?? [];
             if (results.length === 0) return false;
-            if (!options?.apiPollMatch) return true;
-            // Check that ALL expected accessions are present in results
-            const matches = Array.isArray(options.apiPollMatch)
-              ? options.apiPollMatch
-              : [options.apiPollMatch];
+            if (matchList.length === 0) return true;
             const accessions = results.map(
               (r: { accessionNumber?: string }) => r.accessionNumber ?? "",
             );
-            return matches.every((m) =>
+            return matchList.every((m) =>
               accessions.some((a: string) => a.includes(m)),
             );
           } catch {
