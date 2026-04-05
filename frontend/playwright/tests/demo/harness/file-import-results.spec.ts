@@ -1,4 +1,4 @@
-import { expect, Page, test } from "@playwright/test";
+import { expect, Page, test } from "../../../helpers/test-base";
 import * as fs from "fs";
 import * as path from "path";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";

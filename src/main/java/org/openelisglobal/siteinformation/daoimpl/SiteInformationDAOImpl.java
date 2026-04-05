@@ -159,7 +159,7 @@ public class SiteInformationDAOImpl extends BaseDAOImpl<SiteInformation, String>
     @Override
     @Transactional(readOnly = true)
     public List<SiteInformation> getSiteInformationByDomainName(String domainName) {
-        String sql = "From SiteInformation si where si.domain.name = :domainName";
+        String sql = "From SiteInformation si where si.domain.name = :domainName order by si.name";
         try {
             Query<SiteInformation> query = entityManager.unwrap(Session.class).createQuery(sql, SiteInformation.class);
             query.setParameter("domainName", domainName);

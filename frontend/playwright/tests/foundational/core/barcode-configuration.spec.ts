@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 
 type BarcodeConfigState = Record<string, string | number | boolean>;
 
