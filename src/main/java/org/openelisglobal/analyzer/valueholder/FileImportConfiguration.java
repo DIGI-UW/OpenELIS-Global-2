@@ -74,7 +74,7 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "has_header", nullable = false)
     private Boolean hasHeader = true;
 
-    @Column(name = "skip_rows")
+    @Column(name = "skip_rows", nullable = false)
     private Integer skipRows = 0;
 
     @Column(name = "active", nullable = false)

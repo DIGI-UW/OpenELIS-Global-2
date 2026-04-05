@@ -6,11 +6,25 @@
 
     <changeSet id="010-add-skip-rows-to-file-import-config" author="pmanko">
         <comment>Add skip_rows column for instruments with metadata lines before headers (e.g. Wondfo Finecare)</comment>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="file_import_configuration"/>
+            <not>
+                <columnExists tableName="file_import_configuration" columnName="skip_rows"/>
+            </not>
+        </preConditions>
         <addColumn tableName="file_import_configuration">
-            <column name="skip_rows" type="INTEGER" defaultValueNumeric="0">
-                <constraints nullable="true"/>
-            </column>
+            <column name="skip_rows" type="INTEGER" defaultValueNumeric="0"/>
         </addColumn>
+        <update tableName="file_import_configuration">
+            <column name="skip_rows" valueNumeric="0"/>
+            <where>skip_rows IS NULL</where>
+        </update>
+        <addNotNullConstraint tableName="file_import_configuration"
+                              columnName="skip_rows"
+                              columnDataType="INTEGER"/>
+        <rollback>
+            <dropColumn tableName="file_import_configuration" columnName="skip_rows"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

@@ -117,7 +117,7 @@ public final class PlateGridNormalizer {
         Map<String, String> sampleIds = new HashMap<>();
         int secondGridStart = findGridStart(lines, gridStart + 9);
         if (secondGridStart >= 0 && secondGridStart + 9 <= lines.size()) {
-            sampleIds = extractGridValues(lines, secondGridStart, delim, false);
+            sampleIds = extractGridValues(lines, secondGridStart, delim, false, null);
         }
 
         result.add("WellPosition\tSampleID\t" + colName);
@@ -141,7 +141,7 @@ public final class PlateGridNormalizer {
      * @return Normalized well-per-row lines, or null if not plate grid
      */
     public static List<String> normalizeIfPlateGrid(InputStream stream, String delimiter) throws IOException {
-        List<String> lines = readAllLines(stream);
+        List<String> lines = stripBom(readAllLines(stream));
         if (!isPlateGridFormat(lines)) {
             return null;
         }
@@ -166,6 +166,11 @@ public final class PlateGridNormalizer {
 
     private static Map<String, String> extractGridValues(List<String> lines, int gridStart, String delim,
             boolean commaDecimal) {
+        return extractGridValues(lines, gridStart, delim, commaDecimal, "0");
+    }
+
+    private static Map<String, String> extractGridValues(List<String> lines, int gridStart, String delim,
+            boolean commaDecimal, String emptyDefault) {
         Map<String, String> values = new HashMap<>();
         for (int r = 0; r < 8; r++) {
             int lineIndex = gridStart + 1 + r;
@@ -175,14 +180,17 @@ public final class PlateGridNormalizer {
             String rowLine = lines.get(lineIndex);
             String[] cells = rowLine.split(escapeDelim(delim), -1);
             String rowLabel = cells.length > 0 ? cells[0].trim() : ROW_LETTERS[r];
-            // Normalize row label to uppercase single letter
             if (rowLabel.length() == 1 && Character.isLetter(rowLabel.charAt(0))) {
                 rowLabel = rowLabel.toUpperCase();
             }
             for (int c = 1; c <= 12 && c < cells.length; c++) {
                 String value = cells[c].trim();
                 if (value.isEmpty()) {
-                    value = "0";
+                    if (emptyDefault != null) {
+                        value = emptyDefault;
+                    } else {
+                        continue; // Skip empty cells (e.g., unassigned wells in sample ID grid)
+                    }
                 } else if (commaDecimal) {
                     value = normalizeCommaDecimal(value);
                 }

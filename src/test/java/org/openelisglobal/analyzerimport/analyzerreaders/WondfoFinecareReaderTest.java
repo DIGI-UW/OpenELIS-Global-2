@@ -2,10 +2,9 @@ package org.openelisglobal.analyzerimport.analyzerreaders;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,18 +55,15 @@ public class WondfoFinecareReaderTest {
     }
 
     @Test
-    public void testSkipRows_MetadataRowSkipped() throws Exception {
-        String csv = "Finecare FIA,FS-205,SN001\n" + "Serial Number,Sample Number,Test Name,Result,Unit\n"
-                + "SN001,10H,TSH,3.45,mIU/L\n";
-
-        FileAnalyzerReader reader = new FileAnalyzerReader(config);
-        // skipRows=1 should skip "Finecare FIA,FS-205,SN001" and treat next line as
-        // header
-        InputStream stream = new ByteArrayInputStream(csv.getBytes(StandardCharsets.UTF_8));
-
-        // We can't call readStream directly without plugin infrastructure, but we can
-        // verify the config is set correctly
+    public void testSkipRows_ConfigValueSet() {
         assertEquals(Integer.valueOf(1), config.getSkipRows());
+    }
+
+    @Test
+    public void testSkipRows_DefaultIsZeroNotNull() {
+        FileImportConfiguration defaultConfig = new FileImportConfiguration();
+        assertNotNull("skipRows should never be null", defaultConfig.getSkipRows());
+        assertEquals(Integer.valueOf(0), defaultConfig.getSkipRows());
     }
 
     @Test

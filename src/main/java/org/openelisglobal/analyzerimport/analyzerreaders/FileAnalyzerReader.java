@@ -93,7 +93,9 @@ public class FileAnalyzerReader extends AnalyzerReader {
                 parseStream = new ByteArrayInputStream(normalizedContent.getBytes(StandardCharsets.UTF_8));
                 delimiterChar = '\t';
             } else {
-                parseStream = new ByteArrayInputStream(bytes);
+                // Rebuild from processed rawLines (BOM stripped, metadata rows skipped)
+                String processedContent = String.join("\n", rawLines);
+                parseStream = new ByteArrayInputStream(processedContent.getBytes(StandardCharsets.UTF_8));
             }
 
             CSVFormat csvFormat = CSVFormat.DEFAULT.withDelimiter(delimiterChar);
@@ -239,12 +241,17 @@ public class FileAnalyzerReader extends AnalyzerReader {
         if (configuration == null || configuration.getColumnMappings() == null) {
             return "OD_450";
         }
+        // Collect all columns mapped to "result" and select deterministically
+        // (alphabetically first) to avoid HashMap iteration order nondeterminism.
+        String selected = null;
         for (Map.Entry<String, String> entry : configuration.getColumnMappings().entrySet()) {
             if ("result".equals(entry.getValue())) {
-                return entry.getKey();
+                if (selected == null || entry.getKey().compareTo(selected) < 0) {
+                    selected = entry.getKey();
+                }
             }
         }
-        return "OD_450";
+        return selected != null ? selected : "OD_450";
     }
 
     private void buildLineFromRecord(CSVRecord record, Map<String, String> columnMappings, StringBuilder lineBuilder) {
