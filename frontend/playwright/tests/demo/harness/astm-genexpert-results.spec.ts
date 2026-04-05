@@ -1,4 +1,4 @@
-import { expect, Locator, Page, test } from "@playwright/test";
+import { expect, Locator, Page, test } from "../../../helpers/test-base";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";

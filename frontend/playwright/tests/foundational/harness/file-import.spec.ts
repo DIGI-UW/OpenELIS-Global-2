@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+
 /**
  * FILE protocol E2E tests.
  *
@@ -11,20 +12,40 @@ import { test, expect } from "@playwright/test";
  * (`projects/analyzer-harness/seed-analyzers.sh`) after SQL cleanup fixtures
  * are loaded. This spec validates the resulting FILE analyzers in the
  * `harness` Playwright project.
+ *
+ * Auth note: PUT/POST requests to OE REST API require either a valid CSRF
+ * token (session auth) or Basic Auth (which bypasses CSRF). We use Basic Auth
+ * headers for API mutation calls to avoid CSRF complexity.
  */
 
-/** All FILE analyzers seeded by projects/analyzer-harness/seed-analyzers.sh */
+/** Build Basic Auth header from env credentials. */
+function basicAuthHeaders(): Record<string, string> {
+  const user = process.env.TEST_USER || "admin";
+  const pass = process.env.TEST_PASS || "adminADMIN!";
+  return {
+    Authorization: `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`,
+  };
+}
+
+/**
+ * All FILE analyzers seeded by projects/analyzer-harness/seed-analyzers.sh.
+ *
+ * filePattern reflects deriveFilePattern() output:
+ *   - QuantStudio profile has supported_extensions: [".xls", ".xlsx"] → "*{.xls,.xlsx}"
+ *   - FluoroCycler XT profile has supported_extensions: [".xlsx", ".xls"] → "*{.xlsx,.xls}"
+ *   Order matches the JSON array order in each profile.
+ */
 const FILE_ANALYZERS = [
-  { name: "QuantStudio 5", fileFormat: "EXCEL", filePattern: "*.xls" },
+  { name: "QuantStudio 5", fileFormat: "EXCEL", filePattern: "*{.xls,.xlsx}" },
   {
     name: "QuantStudio 7",
     fileFormat: "EXCEL",
-    filePattern: "*.xlsx",
+    filePattern: "*{.xls,.xlsx}",
   },
   {
     name: "FluoroCycler XT",
     fileFormat: "EXCEL",
-    filePattern: "*.xlsx",
+    filePattern: "*{.xlsx,.xls}",
   },
 ];
 
@@ -95,10 +116,11 @@ test.describe("FILE config persistence", () => {
     const cfg = await cfgRes.json();
     expect(cfg.fileFormat).toBe("EXCEL");
 
-    // Update to TSV
+    // Update to TSV — use Basic Auth to bypass CSRF on PUT
     const putRes = await page.request.put(
       `${api}/file-import/configurations/${cfg.id}`,
       {
+        headers: basicAuthHeaders(),
         data: {
           importDirectory: cfg.importDirectory,
           archiveDirectory: cfg.archiveDirectory,
@@ -118,7 +140,7 @@ test.describe("FILE config persistence", () => {
     );
     expect(putRes.ok()).toBeTruthy();
 
-    // Re-read and verify
+    // Re-read and verify file config
     const verifyRes = await page.request.get(
       `${api}/file-import/configurations/analyzer/${found!.id}`,
     );
@@ -127,10 +149,18 @@ test.describe("FILE config persistence", () => {
     expect(updated.fileFormat).toBe("TSV");
     expect(updated.filePattern).toBe("*.tsv");
 
+    // OGC-526: Verify unified fields propagated to the Analyzer entity
+    const analyzerRes = await page.request.get(`${api}/analyzers/${found!.id}`);
+    expect(analyzerRes.ok()).toBeTruthy();
+    const analyzerEntity = await analyzerRes.json();
+    expect(analyzerEntity.fileFormat).toBe("TSV");
+    expect(analyzerEntity.filePattern).toBe("*.tsv");
+
     // Revert to original so other tests see the seeded state
     const revertRes = await page.request.put(
       `${api}/file-import/configurations/${cfg.id}`,
       {
+        headers: basicAuthHeaders(),
         data: {
           ...cfg,
           fileFormat: cfg.fileFormat,
@@ -166,7 +196,7 @@ test.describe("QuantStudio EXCEL config", () => {
     const cfg = await cfgRes.json();
 
     expect(cfg.fileFormat).toBe("EXCEL");
-    expect(cfg.filePattern).toBe("*.xls");
+    expect(cfg.filePattern).toBe("*{.xls,.xlsx}");
     expect(cfg.hasHeader).toBe(true);
 
     // Verify QuantStudio column mappings from profile
