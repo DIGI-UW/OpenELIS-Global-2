@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import {
@@ -8,7 +8,6 @@ import {
 import {
   QUICK_TIMEOUT,
   SHORT_TIMEOUT,
-  UI_TIMEOUT,
   LONG_TIMEOUT,
 } from "../../../helpers/timeouts";
 
@@ -46,33 +45,11 @@ test.describe("Analyzer Plugin Config", () => {
         continue;
       }
 
-      for (let sel = 1; sel <= 4; sel++) {
-        // Carbon places data-testid on wrapper div; click inner trigger button
-        const trigger = form.pluginTypeDropdown.locator(
-          'button[role="combobox"], .cds--list-box__field',
-        );
-        await trigger.click();
-        const genericAstmOption = page
-          .getByRole("option", { name: /Generic ASTM/i })
-          .first();
-        let optionVisible = false;
-        try {
-          await expect(genericAstmOption).toBeVisible({
-            timeout: QUICK_TIMEOUT,
-          });
-          optionVisible = true;
-        } catch {
-          // Option not rendered in this attempt — retry
-        }
-        if (optionVisible) {
-          await genericAstmOption.click();
-          selectedPlugin = true;
-          break;
-        }
-        await page.keyboard.press("Escape");
-        await expect(genericAstmOption).not.toBeVisible({
-          timeout: QUICK_TIMEOUT,
-        });
+      try {
+        await form.selectPluginType("Generic ASTM");
+        selectedPlugin = true;
+      } catch {
+        // Selection failed (e.g. options not rendered) — retry
       }
       if (selectedPlugin) break;
 
@@ -89,16 +66,7 @@ test.describe("Analyzer Plugin Config", () => {
     ).toBeTruthy();
 
     await expect(form.defaultConfigDropdown).toBeVisible();
-    // Carbon: click inner trigger, not wrapper div
-    const configTrigger = form.defaultConfigDropdown.locator(
-      'button[role="combobox"], .cds--list-box__field',
-    );
-    await configTrigger.click();
-    const geneXpertProfile = page
-      .getByRole("option", { name: /GeneXpert.*ASTM/i })
-      .first();
-    await expect(geneXpertProfile).toBeVisible({ timeout: UI_TIMEOUT });
-    await geneXpertProfile.click();
+    await form.selectDefaultConfig("GeneXpert");
 
     // Selecting the profile should prefill key analyzer fields.
     await expect(form.identifierPatternInput).toHaveValue(/GENEXPERT/i);

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 
 type BarcodeConfigState = Record<string, string | number | boolean>;
 
@@ -44,7 +44,9 @@ test.describe("Barcode configuration", () => {
       });
     });
 
-    await page.goto("/MasterListsPage/barcodeConfiguration");
+    await page.goto("/MasterListsPage/barcodeConfiguration", {
+      waitUntil: "domcontentloaded",
+    });
 
     const maxOrderInput = page.getByRole("spinbutton", {
       name: "Order",
