@@ -46,7 +46,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
 
   if (!filters) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "#6f6f6f" }}>
+      <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
         <FormattedMessage id="reports.tat.noResults" />
       </div>
     );
@@ -126,7 +126,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
       {data && data.series && data.series.length > 0 ? (
         <div
           style={{
-            border: "1px solid #e0e0e0",
+            border: "1px solid var(--cds-border-subtle)",
             borderRadius: "4px",
             padding: "1rem",
             minHeight: "300px",
@@ -156,7 +156,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
                       <div
                         style={{
                           height: `${height}px`,
-                          backgroundColor: "#0E6B5E",
+                          backgroundColor: "var(--cds-support-success)",
                           borderRadius: "2px 2px 0 0",
                         }}
                       />
@@ -164,11 +164,11 @@ function TATTrendsTab({ filters, buildQueryString }) {
                         <div
                           style={{
                             height: "2px",
-                            backgroundColor: "#C6C6C6",
+                            backgroundColor: "var(--cds-border-subtle)",
                           }}
                         />
                       )}
-                      <div style={{ fontSize: "9px", color: "#525252" }}>
+                      <div style={{ fontSize: "9px", color: "var(--cds-text-secondary)" }}>
                         {dp.period.length > 7 ? dp.period.slice(5) : dp.period}
                       </div>
                     </div>
@@ -179,7 +179,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
           ))}
         </div>
       ) : (
-        <div style={{ padding: "2rem", textAlign: "center", color: "#6f6f6f" }}>
+        <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
           <FormattedMessage id="reports.tat.noResults" />
         </div>
       )}

@@ -179,7 +179,7 @@ describe("TATDetailListTab", () => {
         r.textContent.includes("LAB-002"),
       );
       expect(statRow).toBeTruthy();
-      expect(statRow.style.borderLeft).toBe("3px solid #DA1E28");
+      expect(statRow.style.borderLeft).toBe("3px solid #da1e28");
     });
   });
 

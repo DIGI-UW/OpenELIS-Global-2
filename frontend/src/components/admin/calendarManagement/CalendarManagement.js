@@ -234,7 +234,7 @@ function CalendarManagement() {
             <h2>
               <FormattedMessage id="calendar.management.title" />
             </h2>
-            <p style={{ color: "#525252", fontSize: "14px" }}>
+            <p style={{ color: "var(--cds-text-secondary)", fontSize: "14px" }}>
               <FormattedMessage id="calendar.management.description" />
             </p>
           </div>
@@ -513,8 +513,8 @@ function CalendarManagement() {
                                 style={{
                                   fontSize: "12px",
                                   color: holiday.isWeekendDay
-                                    ? "#FF832B"
-                                    : "#6f6f6f",
+                                    ? "var(--cds-support-warning)"
+                                    : "var(--cds-text-helper)",
                                 }}
                               >
                                 {holiday.dayOfWeek}
@@ -600,7 +600,7 @@ function CalendarManagement() {
           style={{
             padding: "0.75rem 1rem",
             fontSize: "12px",
-            color: "#6f6f6f",
+            color: "var(--cds-text-helper)",
           }}
           data-testid="holiday-count-footer"
         >

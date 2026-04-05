@@ -61,7 +61,7 @@ function TATBreakdownTable({ breakdown, onDrillDown }) {
                           key={cell.id}
                           style={
                             cell.info.header === "max" && original.max > 24
-                              ? { color: "#DA1E28", fontWeight: 600 }
+                              ? { color: "var(--cds-support-error)", fontWeight: 600 }
                               : undefined
                           }
                         >
@@ -76,7 +76,7 @@ function TATBreakdownTable({ breakdown, onDrillDown }) {
           </TableContainer>
         )}
       </DataTable>
-      <p style={{ fontSize: "12px", color: "#6f6f6f", marginTop: "0.5rem" }}>
+      <p style={{ fontSize: "12px", color: "var(--cds-text-helper)", marginTop: "0.5rem" }}>
         <FormattedMessage id="reports.tat.clickRowHint" />
       </p>
     </div>

@@ -70,7 +70,7 @@ function TATReport() {
             <h2>
               <FormattedMessage id="reports.tat.title" />
             </h2>
-            <p style={{ color: "#525252", fontSize: "14px" }}>
+            <p style={{ color: "var(--cds-text-secondary)", fontSize: "14px" }}>
               <FormattedMessage id="reports.tat.description" />
             </p>
           </div>
@@ -108,7 +108,7 @@ function TATReport() {
         {error && (
           <div
             style={{
-              color: "#da1e28",
+              color: "var(--cds-support-error)",
               padding: "1rem",
               marginBottom: "1rem",
             }}

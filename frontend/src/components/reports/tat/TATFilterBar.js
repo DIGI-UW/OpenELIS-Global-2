@@ -26,10 +26,26 @@ export const SEGMENTS = [
 ];
 
 const DATE_PRESETS = [
-  { labelKey: "reports.tat.preset.today", days: 0 },
-  { labelKey: "reports.tat.preset.7days", days: 7 },
-  { labelKey: "reports.tat.preset.30days", days: 30 },
-  { labelKey: "reports.tat.preset.90days", days: 90 },
+  { labelKey: "reports.tat.preset.today", compute: () => ({ from: new Date(), to: new Date() }) },
+  { labelKey: "reports.tat.preset.7days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 7); return { from, to }; } },
+  { labelKey: "reports.tat.preset.30days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 30); return { from, to }; } },
+  { labelKey: "reports.tat.preset.90days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 90); return { from, to }; } },
+  { labelKey: "reports.tat.preset.thisMonth", compute: () => {
+    const now = new Date();
+    return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: now };
+  }},
+  { labelKey: "reports.tat.preset.lastMonth", compute: () => {
+    const now = new Date();
+    return {
+      from: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+      to: new Date(now.getFullYear(), now.getMonth(), 0),
+    };
+  }},
+  { labelKey: "reports.tat.preset.thisQuarter", compute: () => {
+    const now = new Date();
+    const q = Math.floor(now.getMonth() / 3);
+    return { from: new Date(now.getFullYear(), q * 3, 1), to: now };
+  }},
 ];
 
 function formatDate(d) {
@@ -130,7 +146,7 @@ function TATFilterBar({ onGenerate }) {
     <div
       style={{
         padding: "1rem",
-        border: "1px solid #e0e0e0",
+        border: "1px solid var(--cds-border-subtle)",
         borderRadius: "4px",
         marginBottom: "1rem",
       }}
@@ -145,13 +161,11 @@ function TATFilterBar({ onGenerate }) {
       >
         {DATE_PRESETS.map((p) => (
           <Tag
-            key={p.days}
+            key={p.labelKey}
             type="cool-gray"
             size="sm"
             onClick={() => {
-              const to = new Date();
-              const from = new Date();
-              from.setDate(from.getDate() - p.days);
+              const { from, to } = p.compute();
               setFromDate(formatDate(from));
               setToDate(formatDate(to));
             }}

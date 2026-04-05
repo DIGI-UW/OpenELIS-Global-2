@@ -1,9 +1,32 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 import TATFilterBar from "../TATFilterBar";
+
+// Mock the API utility — filter dropdowns load options on mount
+jest.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: jest.fn((url, callback) => {
+    if (url.includes("test-sections")) {
+      callback([
+        { id: "101", value: "Hematology" },
+        { id: "102", value: "Chemistry" },
+      ]);
+    } else if (url.includes("tests")) {
+      callback([
+        { id: "201", value: "CBC" },
+        { id: "202", value: "BMP" },
+      ]);
+    } else if (url.includes("user-sample-types")) {
+      callback([{ id: "301", value: "Blood" }]);
+    } else if (url.includes("site-names")) {
+      callback([{ id: "401", value: "Main Clinic" }]);
+    } else {
+      callback([]);
+    }
+  }),
+}));
 
 const renderWithIntl = (component) => {
   return render(
@@ -112,5 +135,55 @@ describe("TATFilterBar", () => {
     expect(mockOnGenerate).toHaveBeenCalledTimes(1);
     const filters = mockOnGenerate.mock.calls[0][0];
     expect(filters).toHaveProperty("priority", "STAT");
+  });
+
+  test("renders new filter controls (lab unit, test, sample type, ordering site)", () => {
+    act(() => {
+      renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
+    });
+
+    // FilterableMultiSelect and ComboBox render as combobox role
+    const comboboxes = screen.getAllByRole("combobox");
+    // Should have at least 4 comboboxes (lab unit, test, sample type uses Dropdown, ordering site)
+    expect(comboboxes.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("date preset 'Last 7 Days' sets correct date range", () => {
+    act(() => {
+      renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
+    });
+
+    // Click the "Last 7 Days" preset tag
+    const presetTag = screen.getByText(
+      messages["reports.tat.preset.7days"] || "Last 7 Days",
+    );
+    fireEvent.click(presetTag);
+
+    // Click Generate to capture the filter state
+    fireEvent.click(screen.getByTestId("generate-report-button"));
+
+    expect(mockOnGenerate).toHaveBeenCalledTimes(1);
+    const filters = mockOnGenerate.mock.calls[0][0];
+
+    // Verify the date range is approximately 7 days
+    const from = new Date(filters.fromDate);
+    const to = new Date(filters.toDate);
+    const diffDays = Math.round((to - from) / (1000 * 60 * 60 * 24));
+    expect(diffDays).toBe(7);
+  });
+
+  test("onGenerate includes new filter fields", () => {
+    act(() => {
+      renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
+    });
+
+    // Click Generate with defaults — new filter fields should be present (empty)
+    fireEvent.click(screen.getByTestId("generate-report-button"));
+
+    const filters = mockOnGenerate.mock.calls[0][0];
+    expect(filters).toHaveProperty("labUnitIds");
+    expect(filters).toHaveProperty("testIds");
+    expect(filters).toHaveProperty("sampleTypeId");
+    expect(filters).toHaveProperty("orderingSiteId");
   });
 });

@@ -67,7 +67,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
 
   if (!filters) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "#6f6f6f" }}>
+      <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
         <FormattedMessage id="reports.tat.noResults" />
       </div>
     );
@@ -79,7 +79,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
 
   if (!data || !data.results || data.results.length === 0) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "#6f6f6f" }}>
+      <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
         <FormattedMessage id="reports.tat.noResults" />
       </div>
     );
@@ -139,7 +139,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
                       key={row.id}
                       style={
                         isStat
-                          ? { borderLeft: "3px solid #DA1E28" }
+                          ? { borderLeft: "3px solid #da1e28" }
                           : { borderLeft: "3px solid transparent" }
                       }
                     >

@@ -27,7 +27,7 @@ function TATSummaryTab({ data, loading, filters }) {
 
   if (!data || !filters) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center", color: "#6f6f6f" }}>
+      <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>
         <FormattedMessage id="reports.tat.noResults" />
       </div>
     );
@@ -90,10 +90,10 @@ function TATSummaryTab({ data, loading, filters }) {
           <Tile
             key={card.key}
             style={{
-              backgroundColor: card.highlight ? "#E6F5F2" : undefined,
+              backgroundColor: card.highlight ? "var(--cds-support-success-inverse)" : undefined,
             }}
           >
-            <p style={{ fontSize: "12px", color: "#525252", marginBottom: "0.25rem" }}>
+            <p style={{ fontSize: "12px", color: "var(--cds-text-secondary)", marginBottom: "0.25rem" }}>
               <FormattedMessage id={card.labelId} />
             </p>
             <p style={{ fontSize: "24px", fontWeight: 600 }}>
@@ -118,7 +118,7 @@ function TATSummaryTab({ data, loading, filters }) {
       >
         {STAT_CARDS.slice(4).map((card) => (
           <Tile key={card.key}>
-            <p style={{ fontSize: "12px", color: "#525252", marginBottom: "0.25rem" }}>
+            <p style={{ fontSize: "12px", color: "var(--cds-text-secondary)", marginBottom: "0.25rem" }}>
               <FormattedMessage id={card.labelId} />
             </p>
             <p style={{ fontSize: "24px", fontWeight: 600 }}>
@@ -132,7 +132,7 @@ function TATSummaryTab({ data, loading, filters }) {
       {data.histogram && data.histogram.length > 0 && (
         <div
           style={{
-            border: "1px solid #e0e0e0",
+            border: "1px solid var(--cds-border-subtle)",
             borderRadius: "4px",
             padding: "1rem",
             marginBottom: "2rem",
@@ -145,8 +145,8 @@ function TATSummaryTab({ data, loading, filters }) {
             {data.histogram.map((bin, i) => {
               const maxCount = Math.max(...data.histogram.map((b) => b.count));
               const height = maxCount > 0 ? (bin.count / maxCount) * 180 : 0;
-              const colors = ["#0E6B5E", "#0E6B5E", "#0E6B5E", "#0E6B5E", "#0E6B5E",
-                "#F1C21B", "#F1C21B", "#FF832B", "#FF832B", "#DA1E28"];
+              const colors = ["var(--cds-support-success)", "var(--cds-support-success)", "var(--cds-support-success)", "var(--cds-support-success)", "var(--cds-support-success)",
+                "var(--cds-support-warning)", "var(--cds-support-warning)", "var(--cds-support-warning)", "var(--cds-support-warning)", "var(--cds-support-error)"];
               return (
                 <div
                   key={i}
@@ -156,11 +156,11 @@ function TATSummaryTab({ data, loading, filters }) {
                   <div
                     style={{
                       height: `${height}px`,
-                      backgroundColor: colors[i] || "#0E6B5E",
+                      backgroundColor: colors[i] || "var(--cds-support-success)",
                       borderRadius: "2px 2px 0 0",
                     }}
                   />
-                  <div style={{ fontSize: "10px", color: "#525252", marginTop: "4px" }}>
+                  <div style={{ fontSize: "10px", color: "var(--cds-text-secondary)", marginTop: "4px" }}>
                     {bin.binLabel}
                   </div>
                 </div>
