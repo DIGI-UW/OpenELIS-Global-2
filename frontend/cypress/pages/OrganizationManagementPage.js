@@ -1,5 +1,6 @@
 const TEST_ORG_NAME = "TEST-ORG-E2E";
 const TEST_LAB_NAME = "TEST-LAB-E2E";
+const TEST_ORG_PREFIX = "E2E-ORG";
 
 class OrganizationManagementPage {
   constructor() {
@@ -21,29 +22,32 @@ class OrganizationManagementPage {
     cy.get(this.selectors.addButton).should("be.visible").click();
   }
 
-  addOrgName() {
+  addOrgName(orgName = TEST_ORG_NAME) {
     cy.get(this.selectors.orgName)
       .should("be.visible")
-      .type(TEST_ORG_NAME)
-      .should("have.value", TEST_ORG_NAME);
+      .clear()
+      .type(orgName)
+      .should("have.value", orgName);
   }
 
-  addInstituteName() {
+  addInstituteName(instituteName = TEST_LAB_NAME) {
     cy.get(this.selectors.orgName)
       .should("be.visible")
-      .type(TEST_LAB_NAME)
-      .should("have.value", TEST_LAB_NAME);
+      .clear()
+      .type(instituteName)
+      .should("have.value", instituteName);
   }
 
   activateOrganization() {
     cy.get(this.selectors.isActive).clear().type("Y").should("have.value", "Y");
   }
 
-  addPrefix() {
+  addPrefix(prefix = TEST_ORG_PREFIX) {
     cy.get(this.selectors.orgPrefix)
       .should("be.visible")
-      .type("279")
-      .should("have.value", "279");
+      .clear()
+      .type(prefix)
+      .should("have.value", prefix);
   }
 
   addInstitutePrefix() {
@@ -62,11 +66,12 @@ class OrganizationManagementPage {
       .should("be.checked");
   }
 
-  addParentOrg() {
+  addParentOrg(parentOrgName = TEST_ORG_NAME) {
     cy.get(this.selectors.parentOrgName)
       .should("be.visible")
-      .type(TEST_ORG_NAME)
-      .should("have.value", TEST_ORG_NAME);
+      .clear()
+      .type(parentOrgName)
+      .should("have.value", parentOrgName);
   }
 
   saveOrganization() {
@@ -74,7 +79,7 @@ class OrganizationManagementPage {
     cy.url().should("include", "/MasterListsPage");
   }
 
-  searchOrganzation() {
+  searchOrganzation(orgName = TEST_ORG_NAME) {
     cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
       .scrollIntoView();
@@ -83,12 +88,12 @@ class OrganizationManagementPage {
       .focus()
       .clear({ force: true });
 
-    cy.get(`input${this.selectors.orgSearchBar}`).type(TEST_ORG_NAME, {
+    cy.get(`input${this.selectors.orgSearchBar}`).type(orgName, {
       force: true,
     });
   }
 
-  searchInstitute() {
+  searchInstitute(instituteName = TEST_LAB_NAME) {
     cy.get(`input${this.selectors.orgSearchBar}`)
       .should("be.visible")
       .scrollIntoView();
@@ -97,20 +102,18 @@ class OrganizationManagementPage {
       .focus()
       .clear({ force: true });
 
-    cy.get(`input${this.selectors.orgSearchBar}`).type(TEST_LAB_NAME, {
+    cy.get(`input${this.selectors.orgSearchBar}`).type(instituteName, {
       force: true,
     });
   }
 
-  confirmOrganization() {
-    cy.get(this.selectors.orgTableRow)
-      .contains(TEST_ORG_NAME)
-      .should("be.visible");
+  confirmOrganization(orgName = TEST_ORG_NAME) {
+    cy.get(this.selectors.orgTableRow).contains(orgName).should("be.visible");
   }
 
-  confirmInstitute() {
+  confirmInstitute(instituteName = TEST_LAB_NAME) {
     cy.get(this.selectors.orgTableRow)
-      .contains(TEST_LAB_NAME)
+      .contains(instituteName)
       .should("be.visible");
   }
 }

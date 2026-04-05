@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -157,6 +158,18 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getHealthRegion(), "HEALTH REGION");
         persistIdentityType(patientInfo.getOtherNationality(), "OTHER NATIONALITY");
         persistIdentityType(patientInfo.getGuid(), "GUID");
+
+        // Persist dynamic address hierarchy values (addressHierarchy_0,
+        // addressHierarchy_1, etc.)
+        if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
+            for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
+                    String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    persistIdentityType(entry.getValue(), identityType);
+                }
+            }
+        }
     }
 
     private void persistExtraPatientAddressInfo(PatientManagementInfo patientInfo) {
@@ -249,10 +262,14 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         Boolean newIdentityNeeded = true;
         String typeID = PatientIdentityTypeMap.getInstance().getIDForType(type);
 
+        if (typeID == null) {
+            return; // Cannot persist without a valid type ID
+        }
+
         if (patientUpdateStatus == PatientUpdateStatus.UPDATE) {
 
             for (PatientIdentity listIdentity : patientIdentities) {
-                if (listIdentity.getIdentityTypeId().equals(typeID)) {
+                if (typeID.equals(listIdentity.getIdentityTypeId())) {
 
                     newIdentityNeeded = false;
 

@@ -1,5 +1,18 @@
 # Generic Analyzer Test Recipe
 
+## 2026-03-18 Addendum: FILE Test Ownership
+
+For FILE analyzers under remediation, treat bridge watcher as the active
+detector.
+
+Updated FILE flow for tests:
+
+1. File is dropped/generated into shared import directory.
+2. Bridge watcher detects and forwards to OpenELIS ingest endpoint.
+3. OpenELIS processes and persists results.
+
+References to OpenELIS file watcher as primary owner are historical.
+
 **Version:** 1.0.0  
 **Date:** 2026-02-02  
 **Feature:** 011-madagascar-analyzer-integration

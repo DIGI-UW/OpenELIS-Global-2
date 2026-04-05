@@ -18,6 +18,26 @@ public class AnalyzerErrorDAOImpl extends BaseDAOImpl<AnalyzerError, String> imp
     }
 
     @Override
+    public int nullifyAnalyzerId(String analyzerId) {
+        try {
+            // Hibernate 5.6-jakarta rejects all HQL/JPQL/CriteriaUpdate for UPDATE
+            // statements ("query must begin with SELECT or FROM"). Load + nullify + flush.
+            List<AnalyzerError> errors = findByAnalyzerId(analyzerId);
+            for (AnalyzerError error : errors) {
+                error.setAnalyzer(null);
+            }
+            if (!errors.isEmpty()) {
+                entityManager.flush();
+            }
+            return errors.size();
+        } catch (LIMSRuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error nullifying analyzer ID on AnalyzerError rows", e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<AnalyzerError> findByAnalyzerId(String analyzerId) {
         try {
