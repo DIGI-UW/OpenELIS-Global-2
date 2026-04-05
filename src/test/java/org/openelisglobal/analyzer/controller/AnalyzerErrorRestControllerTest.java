@@ -6,12 +6,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -19,9 +17,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * Controller tests for AnalyzerErrorRestController
@@ -33,7 +28,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
  * 
  * Test Coverage Goal: >80%
  */
-public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest {
+public class AnalyzerErrorRestControllerTest extends AuthenticatedAnalyzerControllerTest {
 
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
@@ -51,8 +46,6 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
         jdbcTemplate = new JdbcTemplate(dataSource);
         objectMapper = new ObjectMapper();
 
@@ -75,7 +68,6 @@ public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest
     public void tearDown() throws Exception {
         // Clean up test data after each test
         cleanTestData();
-        SecurityContextHolder.clearContext();
     }
 
     /**
