@@ -79,12 +79,13 @@ export const test = base.extend<{
         );
       };
 
-      // Capture HTTP 500+ responses WITH their URL (fills the gap —
-      // requestfailed only catches net::ERR_*, not HTTP error codes)
+      // Capture HTTP 500+ responses with URL path (strip query params to
+      // avoid leaking sensitive data like patient IDs into CI logs)
       const onResponse = (response: import("@playwright/test").Response) => {
         if (response.status() >= 500) {
+          const url = new URL(response.url());
           console.error(
-            `[HTTP-${response.status()}] ${response.request().method()} ${response.url()}`,
+            `[HTTP-${response.status()}] ${response.request().method()} ${url.pathname}`,
           );
         }
       };
