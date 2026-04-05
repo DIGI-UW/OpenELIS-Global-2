@@ -1,9 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { Sidenav } from "../../../fixtures/sidenav";
 
 test.describe("Sidenav", () => {
   test("home page has collapsed nav", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     const sidenav = new Sidenav(page);
     await sidenav.expectCollapsed();
   });
@@ -38,7 +38,7 @@ test.describe("Sidenav", () => {
     await sidenav.toggle();
     await sidenav.expectCollapsed();
 
-    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
+    await page.goto("/Storage/samples", { waitUntil: "load" });
     await expect(sidenav.menuButton).toBeVisible();
 
     // Should still be collapsed (preference persisted)
@@ -130,12 +130,12 @@ test.describe("Sidenav", () => {
     page,
   }) => {
     // Use Dashboard with locked sidenav so the main menu is visible
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await page.evaluate(() => {
       localStorage.setItem("mainSideNavMode", "lock");
     });
     // Use goto instead of reload to avoid Playwright "response not bound" bug
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
 
     const sidenav = new Sidenav(page);
     await sidenav.expectExpanded();
@@ -172,7 +172,7 @@ test.describe("Sidenav", () => {
 
     // Force a stable expanded experience across layout contexts.
     // Layout uses storageKeyPrefix "main" vs "storage".
-    await page.goto("/Dashboard");
+    await page.goto("/Dashboard", { waitUntil: "domcontentloaded" });
     await page.evaluate(() => {
       localStorage.setItem("mainSideNavMode", "lock");
       localStorage.setItem("storageSideNavMode", "lock");
