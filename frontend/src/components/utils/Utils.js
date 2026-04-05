@@ -44,11 +44,10 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       }
     })
     .catch((error) => {
-      // Don't log AbortError - it's expected when component unmounts
-      if (error.name !== "AbortError") {
-        console.error(error);
+      if (error.name === "AbortError") {
+        return; // Component is unmounting — don't call callback
       }
-      // Ensure callback is always called, even on error, to avoid hanging promises
+      console.error(error);
       callback(undefined);
     });
 };
