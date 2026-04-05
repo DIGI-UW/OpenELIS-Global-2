@@ -7,6 +7,8 @@
 
     <!-- Add short_code column to storage_device -->
     <changeSet id="storage-008-add-short-code-to-device" author="sample-storage-feature">
+        <validCheckSum>8:58cde0426b335ffd5f08a5d7e84bc9da</validCheckSum>
+        <validCheckSum>8:c2d001d997084abd56b29034c55bbf50</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="storage_device" columnName="short_code"/>
@@ -50,6 +52,8 @@
 
     <!-- Add short_code column to storage_shelf -->
     <changeSet id="storage-009-add-short-code-to-shelf" author="sample-storage-feature">
+        <validCheckSum>8:cf53b873f8f1f109874147765f15609a</validCheckSum>
+        <validCheckSum>8:e1912e5662fd8d75e245dbc3b0627350</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="storage_shelf" columnName="short_code"/>
@@ -92,6 +96,8 @@
 
     <!-- Add short_code column to storage_rack -->
     <changeSet id="storage-010-add-short-code-to-rack" author="sample-storage-feature">
+        <validCheckSum>8:53b39147e2403d9b178c8906f0b011f3</validCheckSum>
+        <validCheckSum>8:62a09f5b5ac4f608a55423bcf24fa111</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <columnExists tableName="storage_rack" columnName="short_code"/>

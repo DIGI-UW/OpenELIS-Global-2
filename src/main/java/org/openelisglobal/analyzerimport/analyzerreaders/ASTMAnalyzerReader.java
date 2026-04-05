@@ -42,6 +42,7 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     private String responseBody;
     private String clientIpAddress;
     private Integer clientPort;
+    private String registeredAnalyzerId;
 
     @Override
     public boolean readStream(InputStream stream) {
@@ -116,8 +117,32 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
 
     private void setInserterResponder() {
         PluginAnalyzerService pluginService = SpringContext.getBean(PluginAnalyzerService.class);
-        List<AnalyzerImporterPlugin> plugins = choosePluginOrder(pluginService);
-        for (AnalyzerImporterPlugin plugin : plugins) {
+
+        // Database-configured analyzers are authoritative. If the database
+        // identifies this message (via IP+port, name, or identifier_pattern),
+        // use GenericASTM directly — no plugin loop, no ambiguity.
+        Optional<Analyzer> dbAnalyzer = identifyAnalyzerFromMessage();
+        if (dbAnalyzer.isPresent()) {
+            for (AnalyzerImporterPlugin p : pluginService.getAnalyzerPlugins()) {
+                if (p.isGenericPlugin() && p.isTargetAnalyzer(lines)) {
+                    this.plugin = p;
+                    inserter = p.getAnalyzerLineInserter();
+                    responder = p.getAnalyzerResponder();
+                    LogEvent.logInfo(getClass().getSimpleName(), "setInserterResponder", "Database analyzer matched: "
+                            + dbAnalyzer.get().getName() + " — routed to plugin: " + p.getClass().getSimpleName());
+                    return;
+                }
+            }
+            // DB identified the analyzer but no generic plugin could handle it.
+            // Do NOT fall through to legacy — the DB match is authoritative.
+            LogEvent.logError(getClass().getSimpleName(), "setInserterResponder",
+                    "Database identified analyzer '" + dbAnalyzer.get().getName()
+                            + "' but no GenericASTM plugin matched. Check plugin JARs are loaded.");
+            return;
+        }
+
+        // Fallback: legacy plugin loop (for analyzers not yet configured in DB)
+        for (AnalyzerImporterPlugin plugin : pluginService.getAnalyzerPlugins()) {
             if (plugin.isTargetAnalyzer(lines)) {
                 try {
                     this.plugin = plugin;
@@ -129,14 +154,6 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 }
             }
         }
-    }
-
-    /**
-     * Return the plugin list in default order. (preferGenericPlugin flag has been
-     * removed.)
-     */
-    private List<AnalyzerImporterPlugin> choosePluginOrder(PluginAnalyzerService pluginService) {
-        return pluginService.getAnalyzerPlugins();
     }
 
     /**
@@ -230,8 +247,17 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
     }
 
     /**
+     * Set registered analyzer ID from bridge X-Analyzer-Id header. When set, this
+     * takes highest priority in identification — direct DB lookup, no pattern
+     * matching.
+     */
+    public void setRegisteredAnalyzerId(String analyzerId) {
+        this.registeredAnalyzerId = analyzerId;
+    }
+
+    /**
      * Set client IP address for analyzer identification
-     * 
+     *
      * @param ip The client IP address
      */
     public void setClientIpAddress(String ip) {
@@ -266,6 +292,20 @@ public class ASTMAnalyzerReader extends AnalyzerReader {
                 LogEvent.logDebug(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
                         "AnalyzerService not available for analyzer identification");
                 return Optional.empty();
+            }
+
+            // Strategy -1: Bridge-registered analyzer ID (highest priority, deterministic)
+            // Set from X-Analyzer-Id header — the bridge looked up the source in its
+            // registry and resolved the OE analyzer ID before forwarding.
+            if (registeredAnalyzerId != null && !registeredAnalyzerId.trim().isEmpty()) {
+                Analyzer analyzer = analyzerService.get(registeredAnalyzerId.trim());
+                if (analyzer != null) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage",
+                            "Identified analyzer from bridge registration (X-Analyzer-Id): " + analyzer.getName());
+                    return Optional.of(analyzer);
+                }
+                LogEvent.logWarn(this.getClass().getSimpleName(), "identifyAnalyzerFromMessage", "X-Analyzer-Id '"
+                        + registeredAnalyzerId + "' not found in database — falling back to other strategies");
             }
 
             // Strategy 0: Exact IP+port lookup from bridge headers (deterministic)

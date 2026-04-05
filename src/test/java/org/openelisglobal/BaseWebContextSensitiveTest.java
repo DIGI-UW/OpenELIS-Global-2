@@ -17,7 +17,9 @@ import org.dbunit.dataset.IDataSet;
 import org.dbunit.dataset.xml.FlatXmlDataSet;
 import org.dbunit.ext.postgresql.PostgresqlDataTypeFactory;
 import org.dbunit.operation.DatabaseOperation;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,6 +78,11 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
         request.setRequestURI("/fhir" + pathInfo);
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
+
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(1);
+
+        request.getSession().setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
         return request;
     }
 

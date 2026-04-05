@@ -12,6 +12,10 @@ appear before implementation tasks in each milestone.
 Additional requirements:
 
 - Use `.specify/guides/testing-roadmap.md` for test requirements and patterns.
+- For Playwright-related tasks, include explicit `/plan-record-playwright`
+  (planning/orchestration), `/write-playwright-test` (authoring),
+  `/audit-playwright` (quality pass), and `/debug-playwright` (failure
+  remediation) steps.
 - Each milestone must include a branch creation task first and a PR creation
   task last.
 - Mark parallel milestones with `[P]` and include a milestone dependency graph.

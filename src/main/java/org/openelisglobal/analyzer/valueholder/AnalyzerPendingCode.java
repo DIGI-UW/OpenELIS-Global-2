@@ -1,7 +1,6 @@
 package org.openelisglobal.analyzer.valueholder;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -10,8 +9,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
 import java.util.UUID;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "analyzer_pending_code")
@@ -28,7 +27,7 @@ public class AnalyzerPendingCode extends BaseObject<String> {
     private String id;
 
     @Column(name = "analyzer_id", nullable = false)
-    @Convert(converter = StringToIntegerConverter.class)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String analyzerId;
 
     @Column(name = "analyzer_test_name", nullable = false, length = 120)

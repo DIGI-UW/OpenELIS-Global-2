@@ -112,26 +112,37 @@ describe("User Management", function () {
     it("Apply Roles and Permissions", function () {
       userManagement.globalAdministrator();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("All Lab Units");
       userManagement.allPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Biochemistry");
       userManagement.allBioPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Hematology");
       userManagement.allHemaPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Serology-Immunology");
       userManagement.allSeroPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Immunology");
       userManagement.allImmunoPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Molecular Biology");
       userManagement.allMolecularPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Cytology");
       userManagement.allCytoPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Serology");
       userManagement.allSerologyPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Virology");
       userManagement.allViroPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Pathology");
       userManagement.allPathoPermissions();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("Immunohistochemistry");
       userManagement.allImmunoHistoPermissions();
     });
 

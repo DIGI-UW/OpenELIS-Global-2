@@ -1,0 +1,91 @@
+name: 02 - Frontend
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+  workflow_call:
+
+env:
+  DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
+
+jobs:
+  build-prod-frontend-image:
+    name: Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_NAME }}
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
+          push: false
+
+  static-checks:
+    name: Static
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Check Format
+        run: npx prettier ./ --check
+        working-directory: frontend
+
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
+        working-directory: frontend
+
+      - name: Run Frontend Unit Tests (Jest)
+        run: npm test -- --watchAll=false --coverage=false
+        working-directory: frontend
+        env:
+          CI: true
+
+  frontend-gate:
+    name: 02 Checkpoint - Frontend
+    if: always()
+    needs: [static-checks, build-prod-frontend-image]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check sub-job results
+        run: |
+          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
+             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]]; then
+            echo "One or more sub-jobs failed:"
+            echo "  static-checks: ${{ needs.static-checks.result }}"
+            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
+            exit 1
+          fi
+          echo "All frontend sub-jobs passed."
