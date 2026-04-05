@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   DatePicker,
   DatePickerInput,
@@ -7,9 +7,13 @@ import {
   Button,
   ContentSwitcher,
   Switch,
+  FilterableMultiSelect,
+  ComboBox,
+  Tag,
 } from "@carbon/react";
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
 export const SEGMENTS = [
   { id: "RECEIPT_TO_VALIDATION", labelKey: "reports.tat.segment.receiptToValidation" },
@@ -20,6 +24,17 @@ export const SEGMENTS = [
   { id: "RESULT_TO_VALIDATION", labelKey: "reports.tat.segment.resultToValidation" },
   { id: "OVERALL", labelKey: "reports.tat.segment.overall" },
 ];
+
+const DATE_PRESETS = [
+  { labelKey: "reports.tat.preset.today", days: 0 },
+  { labelKey: "reports.tat.preset.7days", days: 7 },
+  { labelKey: "reports.tat.preset.30days", days: 30 },
+  { labelKey: "reports.tat.preset.90days", days: 90 },
+];
+
+function formatDate(d) {
+  return d.toISOString().split("T")[0];
+}
 
 function getDefaultDates() {
   const to = new Date();
@@ -42,6 +57,46 @@ function TATFilterBar({ onGenerate }) {
   const [priority, setPriority] = useState("");
   const [includeCancelled, setIncludeCancelled] = useState(false);
 
+  const [labUnitIds, setLabUnitIds] = useState([]);
+  const [testIds, setTestIds] = useState([]);
+  const [sampleTypeId, setSampleTypeId] = useState("");
+  const [orderingSiteId, setOrderingSiteId] = useState("");
+
+  const [labUnitOptions, setLabUnitOptions] = useState([]);
+  const [testOptions, setTestOptions] = useState([]);
+  const [sampleTypeOptions, setSampleTypeOptions] = useState([]);
+  const [siteOptions, setSiteOptions] = useState([]);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/test-sections", (res) => {
+      if (res)
+        setLabUnitOptions(
+          res.map((item) => ({ id: item.id, text: item.value })),
+        );
+    });
+    getFromOpenElisServer("/rest/tests", (res) => {
+      if (res)
+        setTestOptions(
+          res.map((item) => ({ id: item.id, text: item.value })),
+        );
+    });
+    getFromOpenElisServer("/rest/user-sample-types", (res) => {
+      if (res)
+        setSampleTypeOptions(
+          res.map((item) => ({ id: item.id, text: item.value })),
+        );
+    });
+    getFromOpenElisServer("/rest/site-names", (res) => {
+      if (res)
+        setSiteOptions(
+          res.map((item) => ({
+            id: item.id || item.value,
+            text: item.value,
+          })),
+        );
+    });
+  }, []);
+
   const handleGenerate = () => {
     onGenerate({
       fromDate,
@@ -50,6 +105,10 @@ function TATFilterBar({ onGenerate }) {
       calculationMode,
       priority,
       includeCancelled,
+      labUnitIds,
+      testIds,
+      sampleTypeId,
+      orderingSiteId,
     });
   };
 
@@ -61,6 +120,10 @@ function TATFilterBar({ onGenerate }) {
     setCalculationMode("CALENDAR");
     setPriority("");
     setIncludeCancelled(false);
+    setLabUnitIds([]);
+    setTestIds([]);
+    setSampleTypeId("");
+    setOrderingSiteId("");
   };
 
   return (
@@ -72,6 +135,33 @@ function TATFilterBar({ onGenerate }) {
         marginBottom: "1rem",
       }}
     >
+      <div
+        style={{
+          display: "flex",
+          gap: "0.25rem",
+          marginBottom: "0.5rem",
+          flexWrap: "wrap",
+        }}
+      >
+        {DATE_PRESETS.map((p) => (
+          <Tag
+            key={p.days}
+            type="cool-gray"
+            size="sm"
+            onClick={() => {
+              const to = new Date();
+              const from = new Date();
+              from.setDate(from.getDate() - p.days);
+              setFromDate(formatDate(from));
+              setToDate(formatDate(to));
+            }}
+            style={{ cursor: "pointer" }}
+          >
+            {intl.formatMessage({ id: p.labelKey })}
+          </Tag>
+        ))}
+      </div>
+
       <div
         style={{
           display: "grid",
@@ -124,6 +214,72 @@ function TATFilterBar({ onGenerate }) {
             }),
           }}
           onChange={({ selectedItem }) => setSegment(selectedItem.id)}
+        />
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "1rem",
+          marginBottom: "1rem",
+        }}
+      >
+        <FilterableMultiSelect
+          id="tat-lab-unit"
+          titleText={intl.formatMessage({ id: "reports.tat.labUnit" })}
+          items={labUnitOptions}
+          itemToString={(item) => item?.text || ""}
+          onChange={({ selectedItems }) =>
+            setLabUnitIds(selectedItems.map((i) => i.id))
+          }
+          size="sm"
+        />
+
+        <FilterableMultiSelect
+          id="tat-test"
+          titleText={intl.formatMessage({ id: "reports.tat.testPanel" })}
+          items={testOptions}
+          itemToString={(item) => item?.text || ""}
+          onChange={({ selectedItems }) =>
+            setTestIds(selectedItems.map((i) => i.id))
+          }
+          size="sm"
+        />
+
+        <Dropdown
+          id="tat-sample-type"
+          titleText={intl.formatMessage({ id: "reports.tat.sampleType" })}
+          items={[
+            {
+              id: "",
+              text: intl.formatMessage({ id: "reports.tat.all" }),
+            },
+            ...sampleTypeOptions,
+          ]}
+          itemToString={(item) => item?.text || ""}
+          selectedItem={{
+            id: sampleTypeId,
+            text:
+              sampleTypeOptions.find((o) => o.id === sampleTypeId)?.text ||
+              intl.formatMessage({ id: "reports.tat.all" }),
+          }}
+          onChange={({ selectedItem }) =>
+            setSampleTypeId(selectedItem?.id || "")
+          }
+          size="sm"
+        />
+
+        <ComboBox
+          id="tat-ordering-site"
+          titleText={intl.formatMessage({ id: "reports.tat.orderingSite" })}
+          items={siteOptions}
+          itemToString={(item) => item?.text || ""}
+          onChange={({ selectedItem }) =>
+            setOrderingSiteId(selectedItem?.id || "")
+          }
+          size="sm"
+          placeholder={intl.formatMessage({ id: "reports.tat.all" })}
         />
       </div>
 

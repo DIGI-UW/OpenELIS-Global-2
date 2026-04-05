@@ -21,6 +21,10 @@ function TATReport() {
     let qs = `fromDate=${f.fromDate}&toDate=${f.toDate}&segment=${f.segment}&calculationMode=${f.calculationMode}`;
     if (f.priority) qs += `&priority=${f.priority}`;
     if (f.includeCancelled) qs += "&includeCancelled=true";
+    if (f.labUnitIds?.length) qs += `&labUnitIds=${f.labUnitIds.join(",")}`;
+    if (f.testIds?.length) qs += `&testIds=${f.testIds.join(",")}`;
+    if (f.sampleTypeId) qs += `&sampleTypeId=${f.sampleTypeId}`;
+    if (f.orderingSiteId) qs += `&orderingSiteId=${f.orderingSiteId}`;
     return qs + extra;
   }, []);
 
