@@ -88,7 +88,8 @@
         received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
-        lastupdated="2023-11-01 12:00:00" />
+        lastupdated="2023-11-01 12:00:00"
+        fhir_uuid="bbbbbbbb-0000-0000-0000-000000000001" />
     <sample id="2" accession_number="13333" status_id="3"
         received_date="2024-06-04 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
@@ -256,4 +257,29 @@
         entry_date="2024-01-01 08:00:00" panel_id="1" is_reportable="Y"
         method_id="1" lastupdated="2024-01-01 13:00:00"
         fhir_uuid="a1b2c3d4-1234-5678-abcd-ef0123456789" />
+
+    <!-- SampleItem id=653 and Analysis id=51 reserved exclusively for createObservation_shouldReturn201 -->
+    <sample_item id="653" sort_order="3" status_id="1"
+        samp_id="50" typeosamp_id="3" collection_date="2024-01-01 07:00:00"
+        lastupdated="2024-01-01 00:00:00" />
+    <analysis id="51" sampitem_id="653" test_id="1"
+        test_sect_id="1" revision="1" status_id="4" analysis_type="ROUTINE"
+        started_date="2024-01-01 09:00:00"
+        completed_date="2024-01-01 11:00:00"
+        released_date="2024-01-01 12:00:00" printed_date="2024-01-01 13:00:00"
+        entry_date="2024-01-01 08:00:00" panel_id="1" is_reportable="Y"
+        method_id="1" lastupdated="2024-01-01 13:00:00"
+        fhir_uuid="dddddddd-1111-1111-1111-000000000051" />
+    <!-- Analysis id=52 — reserved for duplicate rejection test (second POST) -->
+    <sample_item id="652" sort_order="2" status_id="1"
+        samp_id="50" typeosamp_id="3" collection_date="2024-01-01 07:00:00"
+        lastupdated="2024-01-01 00:00:00" />
+    <analysis id="52" sampitem_id="652" test_id="1"
+        test_sect_id="1" revision="1" status_id="4" analysis_type="ROUTINE"
+        started_date="2024-01-01 09:00:00"
+        completed_date="2024-01-01 11:00:00"
+        released_date="2024-01-01 12:00:00" printed_date="2024-01-01 13:00:00"
+        entry_date="2024-01-01 08:00:00" panel_id="1" is_reportable="Y"
+        method_id="1" lastupdated="2024-01-01 13:00:00"
+        fhir_uuid="c3d4e5f6-3456-7890-cdef-012345678901" />
 </dataset>

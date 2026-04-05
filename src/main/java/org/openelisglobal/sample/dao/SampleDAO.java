@@ -49,6 +49,8 @@ public interface SampleDAO extends BaseDAO<Sample, String> {
 
     Sample getSampleByReferringId(String referringId) throws LIMSRuntimeException;
 
+    Sample getSampleByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
+
     /** Find a range of samples INCLUSIVE of the given dates. */
     List<Sample> getSamplesReceivedInDateRange(String receivedDateStart, String receivedDateEnd)
             throws LIMSRuntimeException;

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.validator.GenericValidator;
@@ -622,7 +623,18 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
     }
 
     @Override
-    @Transactional(readOnly = true)
+    public Sample getSampleByFhirUuid(String fhirUuid) throws LIMSRuntimeException {
+        try {
+            String sql = "FROM Sample s WHERE s.fhirUuid = :fhirUuid";
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
+            query.setParameter("fhirUuid", UUID.fromString(fhirUuid));
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            handleException(e, "getSampleByFhirUuid");
+            return null;
+        }
+    }
+
     public Sample getSampleByReferringId(String referringId) throws LIMSRuntimeException {
 
         String sql = "from Sample s where s.referringId = :referringId";

@@ -89,4 +89,6 @@ public interface FhirTransformService {
     org.hl7.fhir.r4.model.Observation transformResultToObservation(org.openelisglobal.result.valueholder.Result result)
             throws FhirTransformationException;
 
+    org.hl7.fhir.r4.model.Task transformToTask(String sampleId);
+
 }

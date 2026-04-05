@@ -641,7 +641,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return contactPoints;
     }
 
-    private Task transformToTask(String sampleId) {
+    @Override
+    public Task transformToTask(String sampleId) {
         return this.transformToTask(sampleService.get(sampleId));
     }
 

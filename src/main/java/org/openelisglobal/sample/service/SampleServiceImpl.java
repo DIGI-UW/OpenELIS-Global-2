@@ -483,7 +483,10 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     }
 
     @Override
-    @Transactional(readOnly = true)
+    public Sample getSampleByFhirUuid(String fhirUuid) {
+        return getBaseObjectDAO().getSampleByFhirUuid(fhirUuid);
+    }
+
     public Sample getSampleByReferringId(String referringId) {
         return getBaseObjectDAO().getSampleByReferringId(referringId);
     }
