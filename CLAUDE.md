@@ -174,7 +174,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+**Last Updated:** 2026-04-05 **Constitution Version:** 1.9.1
 
 ## Recent Changes
 

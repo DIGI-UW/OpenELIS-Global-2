@@ -1,6 +1,35 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - V.6 Refactor: Move tool details to Testing Roadmap
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.0 → 1.9.1
+Change Type: PATCH - Restructure V.6 content placement (no rule changes)
+Date: 2026-04-05
+
+Modified Sections:
+  - Principle V > Section V.6: Test Quality Invariants
+    * MOVED: Full J1-J7, F1-F5, E1-E4, U1-U3 rules with code examples
+      to Testing Roadmap § "Test Quality Invariants (Constitution V.6)"
+    * KEPT: Principle-level summaries in constitution (no code examples)
+    * REMOVED: "Exception" note that contradicted the document's own style rule
+    * ADDED: Cross-reference link to Testing Roadmap for full rules
+
+Rationale:
+  Constitution's own note states "Technical implementation details belong in
+  the Testing Roadmap." V.6 violated this with tool-specific code examples
+  (Mockito patterns, RTL imports, Playwright locators). Copilot flagged the
+  contradiction on PR #3335. Fix: keep constitution at principle level, move
+  full rules to Testing Roadmap where they belong.
+
+Templates Requiring Updates:
+  ✅ .specify/guides/testing-roadmap.md - Full J1-U3 rules added
+  ✅ .specify/memory/constitution.md - Slimmed to principle summaries
+
+Follow-up TODOs: None
+-->
+
+<!--
 SYNC IMPACT REPORT - E2E Testing: Pre-Push Validation + Playwright Support (V.5)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.8.1 → 1.9.0
@@ -968,71 +997,32 @@ The Testing Roadmap provides comprehensive technical guidance on:
 
 **Note**: Technical implementation details (code examples, configuration syntax)
 belong in the Testing Roadmap and plan.md, not in the constitution. This section
-focuses on functional requirements and principles. **Exception**: V.6 below
-includes brief tool-specific examples to make invariants unambiguous — the full
-rationale and extended guidance lives in the
-[Testing Roadmap](../../.specify/guides/testing-roadmap.md).
+focuses on functional requirements and principles.
 
 ### V.6 Test Quality Invariants (MANDATORY)
 
-Every test must satisfy the **Inversion Test**: if the function under test is
+Every test MUST satisfy the **Inversion Test**: if the function under test is
 replaced with a hardcoded return value, the test MUST fail. Tests that pass
 regardless of implementation are scaffolding, not tests.
 
-#### Backend (Java/JUnit/Mockito)
+The following invariants are grouped by layer. For full rules with code examples
+and rationale, see the
+[Testing Roadmap § Test Quality Invariants](../../.specify/guides/testing-roadmap.md#test-quality-invariants-constitution-v6).
 
-- **J1. No assert-on-mock-return.** `when(x).thenReturn(Y)` then
-  `assertEquals(Y, result)` with no intervening logic tests Mockito, not code.
-  Assertions must verify a transformation of the mock's output.
-- **J2. Verify mock args, not just calls.** `verify(service).save(any())` tests
-  nothing. Use `argThat(h -> h.getName().equals("X"))`.
-- **J3. Auth before business logic.** Every controller test suite must include a
-  test verifying unauthenticated requests receive 401 BEFORE any service method
-  is called. Use `verifyZeroInteractions(service)`.
-- **J4. Filter pass-through.** If a service method accepts filter parameters, at
-  least one test must verify the filter changes the result set. Passing null for
-  all filters is not sufficient.
-- **J5. Negative tests required.** Every service/controller test class must
-  include at least: 1 null/empty input test, 1 invalid input test, 1 boundary
-  test.
-- **J6. No catch-and-continue in @Transactional.** Catching exceptions inside a
-  transactional method corrupts the JPA session. Validate first, then persist.
-- **J7. HQL/SQL tests.** If a service builds a query with named params, at least
-  one test must verify the query produces different results for different
-  parameter values.
+**Backend (J1–J7):** No assert-on-mock-return. Verify mock arguments with
+specific matchers. Auth before business logic in every controller suite. Filter
+pass-through tests required. Negative/boundary tests required. No
+catch-and-continue in @Transactional. HQL/SQL param tests required.
 
-#### Frontend (Jest/React Testing Library)
+**Frontend (F1–F5):** No render-only tests. Verify API request shape. No raw
+fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
+user-visible text.
 
-- **F1. No render-only tests.** Every test must simulate a user interaction or
-  verify data flow (API URL/headers/params, callback updates state).
-- **F2. Verify API request shape.** Assert the URL contains
-  `config.serverBaseUrl`, query parameters, and CSRF headers.
-- **F3. No raw fetch() in components.** Use project utilities
-  (`getFromOpenElisServer`, `postToOpenElisServer*`, `putToOpenElisServer`,
-  `deleteFromOpenElisServer`). If a utility doesn't exist, add one to Utils.js.
-- **F4. waitFor, not wait.** Import `waitFor` from `@testing-library/dom`. The
-  `wait` export is deprecated.
-- **F5. i18n assertions.** Tests for components with user-visible text must
-  verify `intl.formatMessage` renders correctly.
+**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
 
-#### E2E (Playwright)
-
-- **E1. Every test.step must have an assertion.** Steps without `expect()`
-  provide zero regression protection.
-- **E2. No `isVisible({timeout})`.** Use `expect(el).toBeVisible({timeout})`.
-- **E3. No `.catch(() => false)` on locator methods.** Handle conditional
-  elements with explicit guards.
-- **E4. API-first data setup.** Test data via API in beforeAll/beforeEach, not
-  UI interactions.
-
-#### Universal
-
-- **U1. Inversion Test.** Replace the function under test with
-  `return hardcodedValue`. If the test still passes, it's broken.
-- **U2. One bug, one test.** Every bug found in review MUST get a regression
-  test.
-- **U3. No `any()` without justification.** Mockito `any()` in verify/when calls
-  must have a comment explaining why.
+**Universal (U1–U3):** Inversion Test mandatory. One bug = one regression test.
+No any() without justification.
 
 ---
 
@@ -1570,7 +1560,7 @@ sync.
 
 ---
 
-**Version**: 1.9.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-01-27
+**Version**: 1.9.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-04-05
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
