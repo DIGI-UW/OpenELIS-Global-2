@@ -164,8 +164,9 @@ frontend formatting.
       (analyzer name `'E2E-FILE-CSV-Analyzer'`, expected directory paths, format
       values) referenced by E2E tests
 - [x] T019a [M1B] Playwright coverage exists for current branch FILE config
-      flows in `frontend/playwright/tests/file-import-ui.spec.ts` and
-      `frontend/playwright/tests/demo-quantstudio-file-config.spec.ts`:
+      flows in `frontend/playwright/tests/demo/harness/file-import-ui.spec.ts`
+      and
+      `frontend/playwright/tests/demo/harness/demo-quantstudio-file-config.spec.ts`:
   1. Create/configure a FILE analyzer and verify visible file-import settings
   2. Verify QuantStudio profile defaults are visible in the file-import form
   3. Verify FILE-specific UI behavior and connection workflow on current branch
