@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import * as fs from "fs";
 import * as path from "path";
 import { videoPause } from "../../../helpers/video-pause";

@@ -63,6 +63,10 @@ jobs:
         run: npx prettier ./ --check
         working-directory: frontend
 
+      - name: Enforce Playwright guards
+        run: npm run pw:guard
+        working-directory: frontend
+
       - name: Run Frontend Unit Tests (Jest)
         run: npm test -- --watchAll=false --coverage=false
         working-directory: frontend
