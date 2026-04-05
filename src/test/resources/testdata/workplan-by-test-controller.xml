@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DBUnit Flat-XML fixture for WorkPlanByTestControllerTest. PURPOSE: Test
+    data for WorkPlanByTest endpoint querying analyses by test ID. FIXTURE ID
+    RANGES (avoid collisions with other fixtures): - 60001-60999: Core domain
+    objects - 70001-70999: Test definitions - 80001-80999: Sample and analysis
+    data TABLE DEPENDENCY ORDER (parents before children): 1. localization 2.
+    supported_locale, localization_value 3. status_of_sample (NotStarted = "Not
+    Tested") 4. test_section 5. test 6. type_of_sample 7. sample, sample_item
+    8. analysis -->
+<dataset>
+
+    <!-- LOCALIZATION -->
+    <localization id="60001" description="Glucose Test" />
+    <localization id="60002" description="Chemistry Section" />
+
+    <!-- SUPPORTED LOCALE -->
+    <supported_locale id="60001" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <!-- LOCALIZATION VALUES -->
+    <localization_value id="60001"
+        localization_id="60001" locale="en" value="Glucose" />
+    <localization_value id="60002"
+        localization_id="60002" locale="en" value="Chemistry" />
+
+    <!-- STATUS OF SAMPLE - "Not Tested" maps to AnalysisStatus.NotStarted -->
+    <status_of_sample id="1"
+        description="Analysis not started" code="1" status_type="ANALYSIS"
+        lastupdated="2024-01-01 00:00:00" name="Not Tested"
+        display_key="status.analysis.notStarted" is_active="Y" />
+
+    <status_of_sample id="2"
+        description="Biologist Rejection" code="2" status_type="ANALYSIS"
+        lastupdated="2024-01-01 00:00:00" name="Biologist Rejection"
+        display_key="status.analysis.biologistRejection" is_active="Y" />
+
+    <status_of_sample id="3"
+        description="Technical Rejected" code="3" status_type="ANALYSIS"
+        lastupdated="2024-01-01 00:00:00" name="Technical Rejected"
+        display_key="status.analysis.technicalRejected" is_active="Y" />
+
+    <status_of_sample id="4" description="NonConforming"
+        code="4" status_type="ANALYSIS" lastupdated="2024-01-01 00:00:00"
+        name="NonConforming" display_key="status.analysis.nonConforming"
+        is_active="Y" />
+
+    <!-- TEST SECTION -->
+    <test_section id="70001" name="Chemistry"
+        description="Chemistry Section" is_external="N"
+        lastupdated="2024-01-01 00:00:00.0" sort_order="1"
+        name_localization_id="60002" display_key="Chemistry" />
+
+    <!-- TEST DEFINITIONS -->
+    <test id="70001" description="Glucose" loinc="222111"
+        reporting_description="Glucose Test"
+        active_begin="2024-01-01 00:00:00" active_end="2099-12-31 00:00:00"
+        time_holding="30" time_wait="15" time_ta_average="60"
+        time_ta_warning="90" time_ta_max="120" label_qty="1"
+        lastupdated="2024-01-01 00:00:00" test_section_id="70001"
+        local_code="GLU2" sort_order="1" name="Glucose" orderable="true"
+        guid="bbb-70001" name_localization_id="60001"
+        antimicrobial_resistance="false" />
+
+    <!-- TYPE OF SAMPLE -->
+    <type_of_sample id="60001" description="Blood"
+        domain="H" name_localization_id="60002"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- SAMPLES -->
+    <sample id="80001" accession_number="33000000001" status_id="1"
+        received_date="2024-07-01 00:00:00.0"
+        entered_date="2024-07-01 00:00:00.0"
+        collection_date="2024-07-01 00:00:00.0"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <sample id="80002" accession_number="33000000002" status_id="1"
+        received_date="2024-07-02 00:00:00.0"
+        entered_date="2024-07-02 00:00:00.0"
+        collection_date="2024-07-02 00:00:00.0"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- SAMPLE ITEMS -->
+    <sample_item id="80001" sort_order="1" status_id="1"
+        samp_id="80001" typeosamp_id="60001"
+        collection_date="2024-07-01 00:00:00"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <sample_item id="80002" sort_order="1" status_id="1"
+        samp_id="80002" typeosamp_id="60001"
+        collection_date="2024-07-02 00:00:00"
+        lastupdated="2024-01-01 00:00:00" />
+
+    <!-- ANALYSES - status_id=1 = "Not Tested" = NotStarted -->
+    <analysis id="80001" sampitem_id="80001" test_sect_id="70001"
+        test_id="70001" revision="0" status="1" status_id="1"
+        analysis_type="ROUTINE" started_date="2024-07-01 00:00:00"
+        entry_date="2024-07-01 00:00:00" lastupdated="2024-01-01 00:00:00"
+        reflex_trigger="false" referred_out="false" corrected="false"
+        result_calculated="false"
+        fhir_uuid="b0000001-0000-0000-0000-000000080001" />
+
+    <analysis id="80002" sampitem_id="80002" test_sect_id="70001"
+        test_id="70001" revision="0" status="1" status_id="1"
+        analysis_type="ROUTINE" started_date="2024-07-02 00:00:00"
+        entry_date="2024-07-02 00:00:00" lastupdated="2024-01-01 00:00:00"
+        reflex_trigger="false" referred_out="false" corrected="false"
+        result_calculated="false"
+        fhir_uuid="b0000002-0000-0000-0000-000000080002" />
+
+</dataset>
