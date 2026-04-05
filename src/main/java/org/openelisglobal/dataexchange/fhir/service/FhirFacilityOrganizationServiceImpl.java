@@ -7,7 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.Address;
-import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Organization;
 import org.hl7.fhir.r4.model.Reference;
@@ -18,6 +17,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -28,6 +28,13 @@ import org.springframework.stereotype.Service;
 /**
  * Implementation of FhirFacilityOrganizationService that creates and manages
  * the FHIR Organization resource representing this OpenELIS facility.
+ *
+ * <p>
+ * The local OpenELIS DB is the source of truth for whether a facility
+ * Organization already exists. The DB record is identified by the constant
+ * short name {@code FACILITY_ORG}, which is stable across facility ID changes.
+ * The FHIR UUID stored on that DB record is used for all FHIR PUT operations,
+ * ensuring no duplicate FHIR resources are ever created.
  */
 @Service
 public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganizationService {
@@ -40,6 +47,9 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @Value("${org.openelisglobal.facility.country:}")
     private String facilityCountry;
@@ -59,11 +69,13 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
     @Value("${org.openelisglobal.facility.id:}")
     private String configuredFacilityId;
 
+    /** Constant short name used to identify the facility org row in the DB. */
+    private static final String SHORT_NAME = "FACILITY_ORG";
+
     private Organization facilityOrganization;
     private String facilityUuid;
     private String facilityId;
     private Reference facilityReference;
-    private boolean initialized = false;
 
     @Override
     public String getFacilityIdentifierSystem() {
@@ -72,10 +84,56 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
 
     @Override
     public String getFacilityId() {
-        if (!initialized) {
+        if (facilityOrganization == null) {
             initialize();
         }
         return facilityId;
+    }
+
+    @Override
+    public String getFacilityUuid() {
+        if (facilityOrganization == null) {
+            initialize();
+        }
+        return facilityUuid;
+    }
+
+    @Override
+    public Reference getFacilityOrganizationReference() {
+        if (facilityOrganization == null) {
+            initialize();
+        }
+        if (facilityReference == null && facilityUuid != null) {
+            facilityReference = new Reference();
+            facilityReference.setReference(ResourceType.Organization + "/" + facilityUuid);
+            if (facilityOrganization != null) {
+                facilityReference.setDisplay(facilityOrganization.getName());
+            }
+        }
+        return facilityReference;
+    }
+
+    @Override
+    public Optional<Organization> getFacilityOrganization() {
+        if (facilityOrganization == null) {
+            initialize();
+        }
+        return Optional.ofNullable(facilityOrganization);
+    }
+
+    /**
+     * Resolves the facility display name from the BANNER_TEXT configuration
+     * property, falling back to "OpenELIS Global" if not set.
+     */
+    private String resolveFacilityName() {
+        String bannerTextId = ConfigurationProperties.getInstance().getPropertyValue(Property.BANNER_TEXT);
+        if (StringUtils.isNotBlank(bannerTextId)) {
+            String localizedName = localizationService.getLocalizedValueById(bannerTextId);
+            if (StringUtils.isNotBlank(localizedName)) {
+                return localizedName;
+            }
+        }
+        return "OpenELIS Global";
     }
 
     /**
@@ -103,7 +161,6 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
             address.setCountry(facilityCountry);
         }
 
-        // Return null if no address fields are populated
         if (!address.hasCity() && !address.hasDistrict() && !address.hasState() && !address.hasPostalCode()
                 && !address.hasCountry()) {
             return null;
@@ -113,175 +170,45 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
     }
 
     /**
-     * Searches for an existing facility Organization in the local FHIR server by
-     * identifier system.
+     * Builds a FHIR Organization resource for the facility using the given UUID.
      *
-     * @return Optional containing the existing Organization if found
+     * @param uuid         the FHIR resource ID to assign
+     * @param identifierId the value for the facility identifier
+     * @param name         the facility display name
+     * @return the constructed Organization
      */
-    private Optional<Organization> findExistingFacilityOrganization() {
-        String localFhirPath = fhirConfig.getLocalFhirStorePath();
-        if (StringUtils.isBlank(localFhirPath)) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findExistingFacilityOrganization",
-                    "Local FHIR server not configured, cannot search for existing facility Organization");
-            return Optional.empty();
-        }
-
-        try {
-            IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirPath);
-            Bundle bundle;
-            if (StringUtils.isNotBlank(configuredFacilityId)) {
-                bundle = localFhirClient.search().forResource(Organization.class).returnBundle(Bundle.class)
-                        .where(Organization.IDENTIFIER.exactly().systemAndCode(getFacilityIdentifierSystem(),
-                                configuredFacilityId))
-                        .execute();
-            } else {
-                bundle = localFhirClient.search().forResource(Organization.class).returnBundle(Bundle.class)
-                        .where(Organization.IDENTIFIER.hasSystemWithAnyCode(getFacilityIdentifierSystem())).execute();
-            }
-
-            if (bundle.hasEntry() && !bundle.getEntry().isEmpty()) {
-                Organization existingOrg = (Organization) bundle.getEntryFirstRep().getResource();
-                LogEvent.logInfo(this.getClass().getSimpleName(), "findExistingFacilityOrganization",
-                        "Found existing facility Organization with ID: " + existingOrg.getIdElement().getIdPart());
-                return Optional.of(existingOrg);
-            }
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "findExistingFacilityOrganization",
-                    "Error searching for existing facility Organization: " + e.getMessage());
-            LogEvent.logError(e);
-        }
-
-        return Optional.empty();
-    }
-
-    @Override
-    public Organization generateFacilityOrganization() {
-        LogEvent.logTrace(this.getClass().getSimpleName(), "generateFacilityOrganization",
-                "Generating facility Organization resource");
-
+    private Organization buildFhirOrganization(String uuid, String identifierId, String name) {
         Organization organization = new Organization();
+        organization.setId(uuid);
+        organization.setName(name);
+        organization.setActive(true);
 
-        // Use existing UUID if already set, otherwise generate new one
-        if (facilityUuid == null) {
-            facilityUuid = UUID.randomUUID().toString();
-        }
-        organization.setId(facilityUuid);
-
-        // Set facility ID: use configured value if provided, otherwise fall back to
-        // UUID
-        if (StringUtils.isNotBlank(configuredFacilityId)) {
-            facilityId = configuredFacilityId;
-        } else {
-            facilityId = facilityUuid;
-        }
-
-        // Set the name from BANNER_TEXT configuration
-        String bannerTextId = ConfigurationProperties.getInstance().getPropertyValue(Property.BANNER_TEXT);
-        String facilityName = "OpenELIS Global";
-        if (StringUtils.isNotBlank(bannerTextId)) {
-            String localizedName = localizationService.getLocalizedValueById(bannerTextId);
-            if (StringUtils.isNotBlank(localizedName)) {
-                facilityName = localizedName;
-            }
-        }
-        organization.setName(facilityName);
-
-        // Add identifier with system and value
         Identifier identifier = new Identifier();
         identifier.setSystem(getFacilityIdentifierSystem());
-        identifier.setValue(facilityId);
+        identifier.setValue(identifierId);
         identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
         organization.addIdentifier(identifier);
 
-        // Build and add address from facility properties
         Address address = buildFacilityAddress();
         if (address != null) {
             organization.addAddress(address);
         }
 
-        // Mark as active
-        organization.setActive(true);
-
         return organization;
     }
 
     /**
-     * Updates an existing Organization with current facility configuration.
-     * Preserves the original ID and identifier value.
-     *
-     * @param existingOrg the existing Organization to update
-     * @return the updated Organization
+     * Public method that generates a fresh facility Organization resource with a
+     * new random UUID. This does NOT consult the DB; callers who need the
+     * persisted/canonical resource should use {@link #getFacilityOrganization()}.
      */
-    private Organization updateExistingOrganization(Organization existingOrg) {
-        LogEvent.logTrace(this.getClass().getSimpleName(), "updateExistingOrganization",
-                "Updating existing facility Organization");
-
-        // Preserve the existing ID as the UUID
-        facilityUuid = existingOrg.getIdElement().getIdPart();
-
-        // Get existing facility ID from identifier if present
-        String existingFacilityId = null;
-        for (Identifier id : existingOrg.getIdentifier()) {
-            if (getFacilityIdentifierSystem().equals(id.getSystem())) {
-                existingFacilityId = id.getValue();
-                break;
-            }
-        }
-
-        // Set facility ID: use configured value if provided, otherwise use existing or
-        // fall back to UUID
-        if (StringUtils.isNotBlank(configuredFacilityId)) {
-            facilityId = configuredFacilityId;
-        } else if (existingFacilityId != null) {
-            facilityId = existingFacilityId;
-        } else {
-            facilityId = facilityUuid;
-        }
-
-        // Update the name from current BANNER_TEXT configuration
-        String bannerTextId = ConfigurationProperties.getInstance().getPropertyValue(Property.BANNER_TEXT);
-        String facilityName = "OpenELIS Global";
-        if (StringUtils.isNotBlank(bannerTextId)) {
-            String localizedName = localizationService.getLocalizedValueById(bannerTextId);
-            if (StringUtils.isNotBlank(localizedName)) {
-                facilityName = localizedName;
-            }
-        }
-        existingOrg.setName(facilityName);
-
-        // Clear and rebuild address from current facility properties
-        existingOrg.getAddress().clear();
-        Address address = buildFacilityAddress();
-        if (address != null) {
-            existingOrg.addAddress(address);
-        }
-
-        existingOrg.setActive(true);
-
-        return existingOrg;
-    }
-
     @Override
-    public String getFacilityUuid() {
-        if (!initialized) {
-            initialize();
-        }
-        return facilityUuid;
-    }
-
-    @Override
-    public Reference getFacilityOrganizationReference() {
-        if (!initialized) {
-            initialize();
-        }
-        if (facilityReference == null && facilityUuid != null) {
-            facilityReference = new Reference();
-            facilityReference.setReference(ResourceType.Organization + "/" + facilityUuid);
-            if (facilityOrganization != null) {
-                facilityReference.setDisplay(facilityOrganization.getName());
-            }
-        }
-        return facilityReference;
+    public Organization generateFacilityOrganization() {
+        String facilityName = resolveFacilityName();
+        facilityId = StringUtils.isNotBlank(configuredFacilityId) ? configuredFacilityId : facilityName;
+        facilityUuid = UUID.randomUUID().toString();
+        facilityOrganization = buildFhirOrganization(facilityUuid, facilityId, facilityName);
+        return facilityOrganization;
     }
 
     @Override
@@ -334,7 +261,6 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
             try {
                 IGenericClient remoteFhirClient = fhirUtil.getFhirClient(remotePath);
 
-                // Add authentication if configured and not the local server
                 String localPath = fhirConfig.getLocalFhirStorePath();
                 if (StringUtils.isNotBlank(fhirConfig.getUsername()) && !remotePath.equals(localPath)) {
                     IClientInterceptor authInterceptor = new BasicAuthInterceptor(fhirConfig.getUsername(),
@@ -354,54 +280,110 @@ public class FhirFacilityOrganizationServiceImpl implements FhirFacilityOrganiza
         }
     }
 
-    @Override
-    public Optional<Organization> getFacilityOrganization() {
-        if (!initialized) {
-            initialize();
+    /**
+     * Applies the configured facility address fields to an OpenELIS Organization.
+     * Only non-blank values are set so existing data is not cleared by empty
+     * config.
+     */
+    private void applyAddressToOeOrg(org.openelisglobal.organization.valueholder.Organization oeOrg) {
+        if (StringUtils.isNotBlank(facilityCity)) {
+            oeOrg.setCity(facilityCity);
         }
-        return Optional.ofNullable(facilityOrganization);
+        if (StringUtils.isNotBlank(facilityState)) {
+            oeOrg.setState(facilityState);
+        }
+        if (StringUtils.isNotBlank(facilityPostalCode)) {
+            oeOrg.setZipCode(facilityPostalCode);
+        }
+        if (StringUtils.isNotBlank(facilityDistrict)) {
+            oeOrg.setStreetAddress(facilityDistrict);
+        }
+    }
+
+    /**
+     * Creates or updates the facility row in the OpenELIS DB using the constant
+     * short name {@code FACILITY_ORG} as the stable identifier.
+     */
+    private void syncToOpenElisDb() {
+        if (facilityOrganization == null || facilityUuid == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncToOpenElisDb",
+                    "Facility Organization not initialized, skipping OpenELIS DB sync");
+            return;
+        }
+
+        try {
+            org.openelisglobal.organization.valueholder.Organization oeOrg = organizationService
+                    .getOrganizationByShortName(SHORT_NAME, false);
+
+            if (oeOrg == null) {
+                oeOrg = new org.openelisglobal.organization.valueholder.Organization();
+                oeOrg.setShortName(SHORT_NAME);
+                oeOrg.setMlsLabFlag("N");
+                oeOrg.setMlsSentinelLabFlag("N");
+            }
+
+            oeOrg.setOrganizationName(facilityOrganization.getName());
+            oeOrg.setIsActive("Y");
+            oeOrg.setFhirUuid(UUID.fromString(facilityUuid));
+            applyAddressToOeOrg(oeOrg);
+
+            organizationService.save(oeOrg);
+            LogEvent.logInfo(this.getClass().getSimpleName(), "syncToOpenElisDb",
+                    "Synced OpenELIS Organization for facility: " + oeOrg.getId());
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "syncToOpenElisDb",
+                    "Failed to sync facility Organization to OpenELIS database: " + e.getMessage());
+            LogEvent.logError(e);
+        }
     }
 
     @Override
     @EventListener(ContextRefreshedEvent.class)
-    @Order(100) // Run after other initialization services
+    @Order(100)
     public void initialize() {
-        if (initialized) {
-            return;
-        }
-
         LogEvent.logInfo(this.getClass().getSimpleName(), "initialize", "Initializing facility Organization resource");
 
         try {
-            // First, check if a facility Organization already exists in the local FHIR
-            // server
-            Optional<Organization> existingOrg = findExistingFacilityOrganization();
+            // Resolve current facility name and ID from configuration
+            String facilityName = resolveFacilityName();
+            facilityId = StringUtils.isNotBlank(configuredFacilityId) ? configuredFacilityId : facilityName;
 
-            if (existingOrg.isPresent()) {
-                // Update existing Organization with current configuration
+            // Look up the facility org in the local DB by the constant short name.
+            // This is the source of truth and is stable even when the facility ID changes.
+            org.openelisglobal.organization.valueholder.Organization dbOrg = organizationService
+                    .getOrganizationByShortName(SHORT_NAME, false);
+
+            if (dbOrg != null && dbOrg.getFhirUuid() != null) {
+                // Reuse the FHIR UUID from the DB record so we always PUT to the same resource
+                facilityUuid = dbOrg.getFhirUuid().toString();
                 LogEvent.logInfo(this.getClass().getSimpleName(), "initialize",
-                        "Found existing facility Organization, updating with current configuration");
-                facilityOrganization = updateExistingOrganization(existingOrg.get());
+                        "Found existing facility org in DB, reusing FHIR UUID: " + facilityUuid);
             } else {
-                // Generate new Organization resource
+                // First time: generate a new UUID and it will be persisted to DB below
+                facilityUuid = UUID.randomUUID().toString();
                 LogEvent.logInfo(this.getClass().getSimpleName(), "initialize",
-                        "No existing facility Organization found, creating new one");
-                facilityOrganization = generateFacilityOrganization();
+                        "No existing facility org in DB, creating new one with UUID: " + facilityUuid);
             }
 
-            // Create the reference
+            // Build the FHIR Organization from current configuration, using the resolved
+            // UUID
+            facilityOrganization = buildFhirOrganization(facilityUuid, facilityId, facilityName);
+
+            // Rebuild the reference
             facilityReference = new Reference();
             facilityReference.setReference(ResourceType.Organization + "/" + facilityUuid);
-            facilityReference.setDisplay(facilityOrganization.getName());
+            facilityReference.setDisplay(facilityName);
 
-            // Sync to FHIR servers (update/create)
+            // PUT to FHIR servers — idempotent upsert, no duplicates since UUID is stable
             syncToLocalFhirServer();
             syncToRemoteFhirServers();
 
-            initialized = true;
+            // Persist / update the facility row in the OpenELIS DB
+            syncToOpenElisDb();
+
             LogEvent.logInfo(this.getClass().getSimpleName(), "initialize",
                     "Facility Organization initialized successfully with UUID: " + facilityUuid + ", Name: "
-                            + facilityOrganization.getName());
+                            + facilityName);
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "initialize",
                     "Failed to initialize facility Organization: " + e.getMessage());

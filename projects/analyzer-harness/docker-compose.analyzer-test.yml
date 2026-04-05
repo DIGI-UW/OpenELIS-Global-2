@@ -1,14 +1,45 @@
+# Analyzer Testing Services
+#
+# Multi-protocol mock server (ASTM + HL7), bridge, and virtual serial ports for E2E testing.
+# The mock supports all templates via its HTTP API — trigger any analyzer:
+#   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
+#   GET/POST http://localhost:8085/simulate/hl7/mindray_bs200
+#
+# ASTM_TEMPLATE env var sets the default template for the ASTM listen port
+# (what the bridge gets when it connects). All other templates available via API.
+
 services:
+  # Multi-protocol mock server — serves all ASTM and HL7 analyzer templates.
+  # Default ASTM template: genexpert_astm (GeneXpert ASTM, fixture ID 2013)
+  # HL7 templates available via /simulate/hl7/{template} API.
   astm-simulator:
+    container_name: openelis-astm-simulator
     build:
       context: ../../tools/analyzer-mock-server
       dockerfile: Dockerfile
+    image: openelis-astm-simulator.harness
+    volumes:
+      - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - /var/run/docker.sock:/var/run/docker.sock  # TEST/HARNESS ONLY — dynamic analyzer network management
     ports:
-      - "5000:5000"
+      - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
+      - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
+      - "5380:5380" # HL7 listen (Mindray BC-5380)
+      - "6001:6001" # HL7 listen (Mindray BS-200)
+      - "6002:6002" # HL7 listen (Mindray BS-300)
     environment:
-      - ASTM_PORT=5000
-      - ANALYZER_TYPE=HEMATOLOGY
-      - RESPONSE_DELAY_MS=100
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
+      - RESPONSE_DELAY_MS=0
+      - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
+      - MOCK_CONTAINER_NAME=openelis-astm-simulator
+    command: >
+      python -u server.py
+      --port 9600
+      --simulate-api-port 8080
+      --verbose
+    networks:
+      analyzer-net:
+        ipv4_address: 172.21.1.100
     restart: unless-stopped
     healthcheck:
       test:
@@ -16,33 +47,55 @@ services:
           "CMD",
           "python",
           "-c",
-          "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 5000)); s.close()",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')",
         ]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
 
+  # ASTM-HTTP Bridge — always running, handles all analyzers.
+  # Inbound: ASTM 12001, MLLP 2575 (HL7); forwards to OE via HTTP.
+  # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
+  #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
+    container_name: openelis-analyzer-bridge
     build:
       context: ../../tools/openelis-analyzer-bridge
       dockerfile: Dockerfile
-    image: itechuw/openelis-analyzer-bridge:latest
+    image: openelis-analyzer-bridge.harness
     ports:
       - "8442:8443" # HTTPS API port
-      - "12000:12001" # ASTM listen port
+      - "12000:12001" # ASTM listen port (inbound from analyzers)
+      - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
+      - ./volume/analyzer-imports:/data/analyzer-imports
+      - key_trust-store-volume:/etc/openelis-global:ro
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     environment:
       - SPRING_PROFILES_ACTIVE=dev
+      - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
+      - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe:8443/api/OpenELIS-Global/analyzer/astm
+      # Bridge connects directly to OE (not through proxy), so no /api/ prefix
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=admin
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=adminADMIN!
+      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
+      # TEST-ONLY: disables TLS hostname verification for self-signed certs in harness
+      - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
-      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=5000
-    depends_on:
-      astm-simulator:
-        condition: service_healthy
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
+      - ORG_ITECH_AHB_MLLP_ENABLED=true
+      - ORG_ITECH_AHB_MLLP_PORT=2575
+    networks:
+      analyzer-net:
+        aliases:
+          - bridge.openelis.org
     restart: unless-stopped
 
   virtual-serial:
@@ -58,13 +111,39 @@ services:
         wait
     volumes:
       - serial-vol:/serial
+    networks:
+      - analyzer-net
     restart: unless-stopped
 
-  oe:
+  # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
+  oe.openelis.org:
+    environment:
+      - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
+    networks:
+      default:
+      analyzer-net:
+        aliases:
+          - oe.openelis.org
     volumes:
       - serial-vol:/dev/serial
+      - ./volume/analyzer-imports:/data/analyzer-imports
+
+  # Proxy needs both networks to reach OE.
+  proxy:
+    networks:
+      default:
+      analyzer-net:
+
+  # Seed service — creates mock networks + analyzer records on startup.
+  # Runs once after OE and mock-server are healthy. Idempotent.
+  # Default: cleans stale data before seeding (--no-clean to skip).
+networks:
+  analyzer-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.1.0/24
 
 volumes:
   serial-vol:
     driver: local
-

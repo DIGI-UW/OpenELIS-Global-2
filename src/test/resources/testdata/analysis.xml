@@ -1,12 +1,27 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
     <!-- localization -->
-    <localization id="1" description="Test Description 1"
-        english="Test Localization 1" french="TB" />
-    <localization id="2" description="Test Description 2"
-        english="Test Localization 2" french="Urinalysis" />
-    <localization id="3" description="Test Description 3"
-        english="Test Localization 3" french="Merci" />
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization id="3" description="Test Description 3" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Test Localization 1" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Test Localization 2" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Test Localization 3" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Merci" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <!-- unit_of_measure -->
     <unit_of_measure id="1" name="mg/dL"

@@ -26,7 +26,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
-import { languages } from "../../languages";
+import { languages as defaultLanguages } from "../../languages";
 
 import {
   Header,
@@ -57,8 +57,11 @@ function OEHeader({
   defaultMode = "close",
   storageKeyPrefix = "main",
 }) {
-  const { configurationProperties } = useContext(ConfigurationContext);
+  const { configurationProperties, enabledLanguages } =
+    useContext(ConfigurationContext);
   const { userSessionDetails, logout } = useContext(UserSessionDetailsContext);
+  // Use enabled languages from config, fall back to default if not loaded yet
+  const languages = enabledLanguages || defaultLanguages;
   const [headerLogoUrl, setHeaderLogoUrl] = useState(null);
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
 
@@ -92,6 +95,7 @@ function OEHeader({
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -139,6 +143,16 @@ function OEHeader({
     return () => {
       window.removeEventListener("branding-updated", handleBrandingUpdate);
     };
+  }, [userSessionDetails.authenticated]);
+
+  useEffect(() => {
+    if (userSessionDetails.authenticated) {
+      getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
+        if (response) {
+          setIsTrainingInstallation(response.trainingInstallation);
+        }
+      });
+    }
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -639,6 +653,11 @@ function OEHeader({
                 <p>
                   <FormattedMessage id="header.label.version" /> &nbsp;{" "}
                   {configurationProperties?.releaseNumber}
+                  {isTrainingInstallation && (
+                    <span className="training-installation-badge">
+                      <FormattedMessage id="training.installation.message" />
+                    </span>
+                  )}
                 </p>
               </div>
             </HeaderName>
