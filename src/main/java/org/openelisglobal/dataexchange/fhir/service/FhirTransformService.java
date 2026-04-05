@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.Future;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.ContactPoint;
+import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Practitioner;
@@ -93,5 +94,7 @@ public interface FhirTransformService {
     TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation);
 
     <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service);
+
+    DiagnosticReport transformAnalysisToDiagnosticReport(Analysis analysis);
 
 }
