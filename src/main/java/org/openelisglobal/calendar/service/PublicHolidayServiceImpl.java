@@ -2,7 +2,6 @@ package org.openelisglobal.calendar.service;
 
 import java.sql.Date;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 import org.openelisglobal.calendar.dao.PublicHolidayDAO;
 import org.openelisglobal.calendar.valueholder.PublicHoliday;
@@ -36,7 +35,7 @@ public class PublicHolidayServiceImpl implements PublicHolidayService {
 
     @Override
     public PublicHoliday create(PublicHoliday holiday, Integer sysUserId) {
-        validateNoDuplicate(holiday.getHolidayDate(), getYear(holiday.getHolidayDate()), null);
+        validateNoDuplicate(holiday.getHolidayDate(), null);
         holiday.setSystemUserId(sysUserId);
         Integer id = publicHolidayDAO.insert(holiday);
         return publicHolidayDAO.get(id).orElse(holiday);
@@ -44,7 +43,7 @@ public class PublicHolidayServiceImpl implements PublicHolidayService {
 
     @Override
     public PublicHoliday update(PublicHoliday holiday, Integer sysUserId) {
-        validateNoDuplicate(holiday.getHolidayDate(), getYear(holiday.getHolidayDate()), holiday.getId());
+        validateNoDuplicate(holiday.getHolidayDate(), holiday.getId());
         holiday.setSystemUserId(sysUserId);
         return publicHolidayDAO.update(holiday);
     }
@@ -64,48 +63,45 @@ public class PublicHolidayServiceImpl implements PublicHolidayService {
         int skipped = 0;
         List<ImportError> errors = new ArrayList<>();
 
+        // Phase 1: Validate all rows first (no DB mutations)
+        List<PublicHoliday> validHolidays = new ArrayList<>();
         for (int i = 0; i < holidays.size(); i++) {
             PublicHoliday holiday = holidays.get(i);
             int row = i + 1; // 1-based for user display
-            try {
-                if (holiday.getHolidayDate() == null || holiday.getHolidayName() == null
-                        || holiday.getHolidayName().isBlank()) {
-                    errors.add(new ImportError(row, "Missing required fields (date and name)"));
-                    skipped++;
-                    continue;
-                }
-                if (publicHolidayDAO.existsByDateInYear(holiday.getHolidayDate(), targetYear, null)) {
-                    errors.add(new ImportError(row, "Duplicate date: " + holiday.getHolidayDate().toString()));
-                    skipped++;
-                    continue;
-                }
-                holiday.setSystemUserId(sysUserId);
-                if (holiday.getIsActive() == null) {
-                    holiday.setIsActive(true);
-                }
-                if (holiday.getIsRecurring() == null) {
-                    holiday.setIsRecurring(false);
-                }
-                publicHolidayDAO.insert(holiday);
-                imported++;
-            } catch (Exception e) {
-                logger.warn("Error importing holiday row {}: {}", row, e.getMessage());
-                errors.add(new ImportError(row, "Import error: " + e.getMessage()));
+            if (holiday.getHolidayDate() == null || holiday.getHolidayName() == null
+                    || holiday.getHolidayName().isBlank()) {
+                errors.add(new ImportError(row, "Missing required fields (date and name)"));
                 skipped++;
+                continue;
             }
+            if (publicHolidayDAO.existsByDateInYear(holiday.getHolidayDate(), null)) {
+                errors.add(new ImportError(row, "Duplicate date: " + holiday.getHolidayDate().toString()));
+                skipped++;
+                continue;
+            }
+            holiday.setSystemUserId(sysUserId);
+            if (holiday.getIsActive() == null) {
+                holiday.setIsActive(true);
+            }
+            if (holiday.getIsRecurring() == null) {
+                holiday.setIsRecurring(false);
+            }
+            validHolidays.add(holiday);
         }
+
+        // Phase 2: Insert all valid rows (no try/catch — let @Transactional handle
+        // failures atomically)
+        for (PublicHoliday holiday : validHolidays) {
+            publicHolidayDAO.insert(holiday);
+            imported++;
+        }
+
         return new ImportResult(imported, skipped, errors);
     }
 
-    private void validateNoDuplicate(Date holidayDate, int year, Integer excludeId) {
-        if (publicHolidayDAO.existsByDateInYear(holidayDate, year, excludeId)) {
+    private void validateNoDuplicate(Date holidayDate, Integer excludeId) {
+        if (publicHolidayDAO.existsByDateInYear(holidayDate, excludeId)) {
             throw new LIMSRuntimeException("A holiday already exists for this date (including recurring holidays)");
         }
-    }
-
-    private int getYear(Date date) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTime(date);
-        return cal.get(Calendar.YEAR);
     }
 }

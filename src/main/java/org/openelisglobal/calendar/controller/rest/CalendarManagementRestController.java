@@ -69,8 +69,8 @@ public class CalendarManagementRestController extends BaseRestController {
     @PostMapping("/holidays")
     public ResponseEntity<Map<String, Object>> createHoliday(@RequestBody Map<String, Object> body,
             HttpServletRequest request) {
-        PublicHoliday holiday = parseHolidayFromBody(body);
         Integer sysUserId = requireAuthenticatedUser(request);
+        PublicHoliday holiday = parseHolidayFromBody(body);
         try {
             PublicHoliday created = publicHolidayService.create(holiday, sysUserId);
             Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());
@@ -86,12 +86,12 @@ public class CalendarManagementRestController extends BaseRestController {
     @PutMapping("/holidays/{id}")
     public ResponseEntity<Map<String, Object>> updateHoliday(@PathVariable Integer id,
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
+        Integer sysUserId = requireAuthenticatedUser(request);
         PublicHoliday existing = publicHolidayService.getById(id);
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
         updateHolidayFromBody(existing, body);
-        Integer sysUserId = requireAuthenticatedUser(request);
         try {
             PublicHoliday updated = publicHolidayService.update(existing, sysUserId);
             Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());

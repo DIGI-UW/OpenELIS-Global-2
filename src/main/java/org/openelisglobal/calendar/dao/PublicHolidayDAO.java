@@ -8,5 +8,5 @@ public interface PublicHolidayDAO extends BaseDAO<PublicHoliday, Integer> {
 
     List<PublicHoliday> getHolidaysForYear(int year, boolean includeInactive);
 
-    boolean existsByDateInYear(java.sql.Date date, int year, Integer excludeId);
+    boolean existsByDateInYear(java.sql.Date date, Integer excludeId);
 }

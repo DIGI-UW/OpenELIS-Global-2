@@ -1,7 +1,6 @@
 package org.openelisglobal.calendar.service;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -75,7 +74,7 @@ public class PublicHolidayServiceTest {
 
     @Test
     public void create_insertsHoliday() {
-        when(publicHolidayDAO.existsByDateInYear(any(), anyInt(), isNull())).thenReturn(false);
+        when(publicHolidayDAO.existsByDateInYear(any(), isNull())).thenReturn(false);
         when(publicHolidayDAO.insert(any())).thenReturn(1);
         when(publicHolidayDAO.get(1)).thenReturn(Optional.of(sampleHoliday));
 
@@ -87,14 +86,14 @@ public class PublicHolidayServiceTest {
 
     @Test(expected = LIMSRuntimeException.class)
     public void create_rejectsDuplicateDate() {
-        when(publicHolidayDAO.existsByDateInYear(any(), anyInt(), isNull())).thenReturn(true);
+        when(publicHolidayDAO.existsByDateInYear(any(), isNull())).thenReturn(true);
 
         publicHolidayService.create(sampleHoliday, 1);
     }
 
     @Test
     public void update_updatesHoliday() {
-        when(publicHolidayDAO.existsByDateInYear(any(), anyInt(), eq(1))).thenReturn(false);
+        when(publicHolidayDAO.existsByDateInYear(any(), eq(1))).thenReturn(false);
         when(publicHolidayDAO.update(any())).thenReturn(sampleHoliday);
 
         PublicHoliday result = publicHolidayService.update(sampleHoliday, 1);
@@ -130,8 +129,8 @@ public class PublicHolidayServiceTest {
         h2.setHolidayName("New Year");
 
         // h1 is new, h2 is duplicate
-        when(publicHolidayDAO.existsByDateInYear(eq(Date.valueOf("2026-05-01")), eq(2026), isNull())).thenReturn(false);
-        when(publicHolidayDAO.existsByDateInYear(eq(Date.valueOf("2026-01-01")), eq(2026), isNull())).thenReturn(true);
+        when(publicHolidayDAO.existsByDateInYear(eq(Date.valueOf("2026-05-01")), isNull())).thenReturn(false);
+        when(publicHolidayDAO.existsByDateInYear(eq(Date.valueOf("2026-01-01")), isNull())).thenReturn(true);
         when(publicHolidayDAO.insert(any())).thenReturn(2);
 
         PublicHolidayService.ImportResult result = publicHolidayService.importHolidays(Arrays.asList(h1, h2), 2026, 1);

@@ -43,7 +43,7 @@ public class PublicHolidayDAOImpl extends BaseDAOImpl<PublicHoliday, Integer> im
     }
 
     @Override
-    public boolean existsByDateInYear(java.sql.Date date, int year, Integer excludeId) {
+    public boolean existsByDateInYear(java.sql.Date date, Integer excludeId) {
         try {
             // Check for exact date match OR recurring holiday on same month/day.
             // Use native SQL for EXTRACT since Hibernate 5.x HQL doesn't support it.

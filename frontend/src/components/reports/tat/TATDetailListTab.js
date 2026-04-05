@@ -54,7 +54,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
-  const [sortField, setSortField] = useState("selectedTat");
+  const [sortField, setSortField] = useState("selectedSegmentTat");
   const [sortOrder, setSortOrder] = useState("desc");
 
   const fetchData = useCallback(() => {

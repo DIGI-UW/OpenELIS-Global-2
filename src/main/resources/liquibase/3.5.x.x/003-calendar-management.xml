@@ -33,6 +33,10 @@
       </column>
       <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
     </createTable>
+    <rollback>
+      <dropTable schemaName="clinlims" tableName="public_holiday"/>
+      <dropSequence schemaName="clinlims" sequenceName="public_holiday_seq"/>
+    </rollback>
   </changeSet>
 
   <!-- ============================================================ -->
@@ -81,6 +85,11 @@
     <insert schemaName="clinlims" tableName="weekend_config">
       <column name="day_of_week" value="6"/><column name="is_weekend" valueBoolean="true"/><column name="sys_user_id" value="1"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="weekend_config"/>
+      <dropTable schemaName="clinlims" tableName="weekend_config"/>
+      <dropSequence schemaName="clinlims" sequenceName="weekend_config_seq"/>
+    </rollback>
   </changeSet>
 
   <!-- ============================================================ -->
@@ -102,6 +111,11 @@
       <column name="has_update_flag" value="Y"/>
       <column name="has_delete_flag" value="Y"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_module">
+        <where>name = 'CalendarManagement'</where>
+      </delete>
+    </rollback>
   </changeSet>
 
   <changeSet id="tat-003-04" author="tat-module">
@@ -120,6 +134,11 @@
       <column name="has_update_flag" value="N"/>
       <column name="has_delete_flag" value="N"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_module">
+        <where>name = 'TATReport'</where>
+      </delete>
+    </rollback>
   </changeSet>
 
   <!-- ============================================================ -->
@@ -142,6 +161,11 @@
       <column name="url_path" value="/calendar"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_module_url">
+        <where>url_path IN ('/CalendarManagement', '/calendar')</where>
+      </delete>
+    </rollback>
   </changeSet>
 
   <changeSet id="tat-003-06" author="tat-module">
@@ -161,6 +185,11 @@
       <column name="url_path" value="/reports/tat"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_module_url">
+        <where>url_path IN ('/TATReport', '/reports/tat')</where>
+      </delete>
+    </rollback>
   </changeSet>
 
   <!-- ============================================================ -->
@@ -185,6 +214,12 @@
       <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_role_module">
+        <where>system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')
+          AND system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')</where>
+      </delete>
+    </rollback>
   </changeSet>
 
   <changeSet id="tat-003-08" author="tat-module">
@@ -206,6 +241,12 @@
       <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_role_module">
+        <where>system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'TATReport')
+          AND system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Global Administrator')</where>
+      </delete>
+    </rollback>
   </changeSet>
 
   <!-- Also assign TATReport to Results role (lab managers typically have this) -->
@@ -228,6 +269,12 @@
       <column name="system_role_id" valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Results')"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
     </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="system_role_module">
+        <where>system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'TATReport')
+          AND system_role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')</where>
+      </delete>
+    </rollback>
   </changeSet>
 
 </databaseChangeLog>

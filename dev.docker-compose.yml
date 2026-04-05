@@ -127,7 +127,6 @@ services:
             - './frontend/package-lock.json:/app/package-lock.json'
         environment:
             - CHOKIDAR_USEPOLLING=true
-        command: sh -c "npm install --prefer-offline && npm start"
         tty: true
 
     proxy:

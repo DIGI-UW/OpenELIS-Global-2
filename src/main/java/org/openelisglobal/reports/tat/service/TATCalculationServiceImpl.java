@@ -42,10 +42,8 @@ public class TATCalculationServiceImpl implements TATCalculationService {
         }
 
         if (mode == TATCalculationMode.CALENDAR) {
-            long hours = elapsed.toHours();
-            long minutes = elapsed.toMinutes() % 60;
-            return BigDecimal.valueOf(hours)
-                    .add(BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP));
+            return BigDecimal.valueOf(elapsed.toMillis()).divide(BigDecimal.valueOf(3_600_000), 2,
+                    RoundingMode.HALF_UP);
         }
 
         // WORKING_TIME: exclude hours falling on weekends and holidays
@@ -92,7 +90,9 @@ public class TATCalculationServiceImpl implements TATCalculationService {
             }
         }
 
-        return new ArrayList<>(excluded);
+        List<LocalDate> sortedExcluded = new ArrayList<>(excluded);
+        sortedExcluded.sort(null);
+        return sortedExcluded;
     }
 
     @Override

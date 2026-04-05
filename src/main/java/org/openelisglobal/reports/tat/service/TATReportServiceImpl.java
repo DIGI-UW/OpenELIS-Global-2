@@ -163,7 +163,7 @@ public class TATReportServiceImpl implements TATReportService {
 
         if (!includeCancelled) {
             hql.append(
-                    "AND a.statusId NOT IN (SELECT st.id FROM StatusOfSample st WHERE st.statusType = 'ANALYSIS' AND st.statusOfSampleName IN ('Canceled')) ");
+                    "AND a.statusId NOT IN (SELECT st.id FROM StatusOfSample st WHERE st.statusType = 'ANALYSIS' AND st.statusOfSampleName = 'Test Canceled') ");
         }
 
         // Note: additional filters (labUnitIds, testIds, etc.) would be added here
