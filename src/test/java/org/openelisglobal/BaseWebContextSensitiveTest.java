@@ -65,7 +65,7 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     @Before
     public void setDefaultTestAuthentication() {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
     }
 
     @After
