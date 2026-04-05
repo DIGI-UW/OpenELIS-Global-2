@@ -113,10 +113,10 @@ public class TATReportRestControllerTest {
         mockResponse.setResults(new ArrayList<>());
 
         when(tatReportService.getDetail(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                anyBoolean(), anyInt(), anyInt(), any(), any(), any())).thenReturn(mockResponse);
+                anyBoolean(), anyInt(), anyInt(), any(), any(), any(), any())).thenReturn(mockResponse);
 
         ResponseEntity<?> response = controller.getDetail("2026-03-01", "2026-03-31", "RECEIPT_TO_VALIDATION",
-                "CALENDAR", null, null, null, null, null, null, false, 0, 25, null, null, null, request);
+                "CALENDAR", null, null, null, null, null, null, false, 0, 25, null, null, null, null, request);
 
         Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -130,11 +130,11 @@ public class TATReportRestControllerTest {
         mockResponse.setResults(new ArrayList<>());
 
         when(tatReportService.getDetail(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
-                anyBoolean(), anyInt(), anyInt(), any(), any(), any())).thenReturn(mockResponse);
+                anyBoolean(), anyInt(), anyInt(), any(), any(), any(), any())).thenReturn(mockResponse);
 
         // Request pageSize=500, should be capped to 200
         ResponseEntity<?> response = controller.getDetail("2026-03-01", "2026-03-31", "RECEIPT_TO_VALIDATION",
-                "CALENDAR", null, null, null, null, null, null, false, 0, 500, null, null, null, request);
+                "CALENDAR", null, null, null, null, null, null, false, 0, 500, null, null, null, null, request);
 
         Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
     }

@@ -42,6 +42,8 @@ public class TATReportRestController extends BaseRestController {
     @GetMapping("/summary")
     public ResponseEntity<?> getSummary(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam String segment, @RequestParam(defaultValue = "CALENDAR") String calculationMode,
+            // TODO: Not yet implemented in queryResults — returns unfiltered data for these
+            // params
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
             @RequestParam(required = false) Integer sampleTypeId,
@@ -83,6 +85,8 @@ public class TATReportRestController extends BaseRestController {
     @GetMapping("/detail")
     public ResponseEntity<?> getDetail(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam String segment, @RequestParam(defaultValue = "CALENDAR") String calculationMode,
+            // TODO: Not yet implemented in queryResults — returns unfiltered data for these
+            // params
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
             @RequestParam(required = false) Integer sampleTypeId,
@@ -91,7 +95,8 @@ public class TATReportRestController extends BaseRestController {
             @RequestParam(defaultValue = "25") int pageSize,
             @RequestParam(defaultValue = "selectedTat") String sortField,
             @RequestParam(defaultValue = "desc") String sortOrder,
-            @RequestParam(required = false) String breakdownFilter, HttpServletRequest request) {
+            @RequestParam(required = false) String breakdownFilter,
+            @RequestParam(required = false) String breakdownDimension, HttpServletRequest request) {
 
         requireAuthenticatedUser(request);
 
@@ -122,7 +127,7 @@ public class TATReportRestController extends BaseRestController {
 
         TATDetailResponse response = tatReportService.getDetail(from, to, seg, mode, labUnitIds, testIds, panelIds,
                 priority, sampleTypeId, orderingSiteId, includeCancelled, page, pageSize, sortField, sortOrder,
-                breakdownFilter);
+                breakdownFilter, breakdownDimension);
 
         logger.info("TAT detail by user {} | range {}-{} segment {} | page {} size {} | {} results",
                 getSysUserId(request), fromDate, toDate, segment, page, pageSize, response.getTotalCount());
@@ -133,6 +138,8 @@ public class TATReportRestController extends BaseRestController {
     @GetMapping("/trend")
     public ResponseEntity<?> getTrend(@RequestParam String fromDate, @RequestParam String toDate,
             @RequestParam String segment, @RequestParam(defaultValue = "CALENDAR") String calculationMode,
+            // TODO: Not yet implemented in queryResults — returns unfiltered data for these
+            // params
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
             @RequestParam(required = false) Integer sampleTypeId,
@@ -172,6 +179,8 @@ public class TATReportRestController extends BaseRestController {
     @GetMapping("/export")
     public void export(@RequestParam String fromDate, @RequestParam String toDate, @RequestParam String segment,
             @RequestParam(defaultValue = "CALENDAR") String calculationMode,
+            // TODO: Not yet implemented in queryResults — returns unfiltered data for these
+            // params
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
             @RequestParam(required = false) Integer sampleTypeId,

@@ -83,18 +83,25 @@ public class TATReportServiceImpl implements TATReportService {
     public TATDetailResponse getDetail(LocalDate fromDate, LocalDate toDate, TATSegment segment,
             TATCalculationMode mode, String labUnitIds, String testIds, String panelIds, String priority,
             Integer sampleTypeId, Integer orderingSiteId, boolean includeCancelled, int page, int pageSize,
-            String sortField, String sortOrder, String breakdownFilter) {
+            String sortField, String sortOrder, String breakdownFilter, String breakdownDimension) {
 
         List<TATResult> allResults = queryResults(fromDate, toDate, segment, mode, labUnitIds, testIds, panelIds,
                 priority, sampleTypeId, orderingSiteId, includeCancelled);
 
-        // Apply breakdown filter if present
+        // Apply breakdown filter scoped to the specified dimension
         if (breakdownFilter != null && !breakdownFilter.isEmpty()) {
-            allResults = allResults.stream()
-                    .filter(r -> breakdownFilter.equals(r.getLabUnit()) || breakdownFilter.equals(r.getTestName())
-                            || breakdownFilter.equals(r.getPriority()) || breakdownFilter.equals(r.getSampleType())
-                            || breakdownFilter.equals(r.getOrderingSite()))
-                    .collect(Collectors.toList());
+            String dimension = breakdownDimension != null ? breakdownDimension.toUpperCase() : "LAB_UNIT";
+            allResults = allResults.stream().filter(r -> {
+                String fieldValue = switch (dimension) {
+                case "LAB_UNIT" -> r.getLabUnit();
+                case "TEST" -> r.getTestName();
+                case "PRIORITY" -> r.getPriority();
+                case "SAMPLE_TYPE" -> r.getSampleType();
+                case "ORDERING_SITE" -> r.getOrderingSite();
+                default -> r.getLabUnit();
+                };
+                return breakdownFilter.equals(fieldValue);
+            }).collect(Collectors.toList());
         }
 
         // Sort
@@ -166,12 +173,17 @@ public class TATReportServiceImpl implements TATReportService {
                     "AND a.statusId NOT IN (SELECT st.id FROM StatusOfSample st WHERE st.statusType = 'ANALYSIS' AND st.statusOfSampleName = 'Test Canceled') ");
         }
 
-        // Note: additional filters (labUnitIds, testIds, etc.) would be added here
-        // For now, we query all matching analyses and filter in Java
+        if (priority != null && !priority.isEmpty()) {
+            hql.append("AND a.priority = :priority ");
+        }
 
         Query query = entityManager.unwrap(Session.class).createQuery(hql.toString());
         query.setParameter("fromDate", Timestamp.valueOf(fromDate.atStartOfDay()));
         query.setParameter("toDate", Timestamp.valueOf(toDate.plusDays(1).atStartOfDay()));
+
+        if (priority != null && !priority.isEmpty()) {
+            query.setParameter("priority", priority);
+        }
 
         List<Object[]> rows = query.list();
         List<TATResult> results = new ArrayList<>();

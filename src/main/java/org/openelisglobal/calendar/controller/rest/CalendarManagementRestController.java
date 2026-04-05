@@ -123,6 +123,10 @@ public class CalendarManagementRestController extends BaseRestController {
         int targetYear = year != null ? year : Calendar.getInstance().get(Calendar.YEAR);
         Integer sysUserId = requireAuthenticatedUser(request);
 
+        if (file.getSize() > 1_000_000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "File too large (max 1MB)"));
+        }
+
         List<PublicHoliday> parsed = parseCsvFile(file);
         PublicHolidayService.ImportResult result = publicHolidayService.importHolidays(parsed, targetYear, sysUserId);
 

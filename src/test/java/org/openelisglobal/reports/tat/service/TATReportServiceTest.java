@@ -325,7 +325,7 @@ public class TATReportServiceTest {
         stubTatCalculation(new BigDecimal("5.00"));
 
         TATDetailResponse response = tatReportService.getDetail(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION,
-                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 0, 25, null, null, null);
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 0, 25, null, null, null, null);
 
         Assert.assertEquals(100, response.getTotalCount());
         Assert.assertEquals(0, response.getPage());
@@ -346,7 +346,8 @@ public class TATReportServiceTest {
         stubTatCalculationSequence(vals);
 
         TATDetailResponse response = tatReportService.getDetail(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION,
-                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 0, 25, null, "desc", null);
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 0, 25, null, "desc", null,
+                null);
 
         List<TATResult> results = response.getResults();
         Assert.assertEquals(5, results.size());
@@ -362,7 +363,7 @@ public class TATReportServiceTest {
         stubTatCalculation(new BigDecimal("3.00"));
 
         TATDetailResponse response = tatReportService.getDetail(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION,
-                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 1, 25, null, null, null);
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 1, 25, null, null, null, null);
 
         Assert.assertEquals(50, response.getTotalCount());
         Assert.assertEquals(1, response.getPage());
@@ -376,7 +377,7 @@ public class TATReportServiceTest {
         stubTatCalculation(new BigDecimal("3.00"));
 
         TATDetailResponse response = tatReportService.getDetail(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION,
-                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 1, 25, null, null, null);
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 1, 25, null, null, null, null);
 
         Assert.assertEquals(30, response.getTotalCount());
         Assert.assertEquals(5, response.getResults().size());
@@ -389,7 +390,7 @@ public class TATReportServiceTest {
         stubTatCalculation(new BigDecimal("3.00"));
 
         TATDetailResponse response = tatReportService.getDetail(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION,
-                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 5, 25, null, null, null);
+                TATCalculationMode.CALENDAR, null, null, null, null, null, null, false, 5, 25, null, null, null, null);
 
         Assert.assertEquals(10, response.getTotalCount());
         Assert.assertTrue(response.getResults().isEmpty());

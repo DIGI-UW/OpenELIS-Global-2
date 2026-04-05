@@ -126,9 +126,8 @@ test.describe("OGC-306: Calendar Management (US1)", () => {
         await deleteButtons.first().click();
         // Expect confirmation modal
         const confirmButton = page.getByRole("button", { name: /Delete/i });
-        if (
-          await confirmButton.isVisible({ timeout: 3_000 }).catch(() => false)
-        ) {
+        const isConfirmVisible = await confirmButton.isVisible();
+        if (isConfirmVisible) {
           await confirmButton.click();
           await videoPause(page, 1500, testInfo);
         }

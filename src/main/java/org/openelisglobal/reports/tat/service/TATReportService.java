@@ -18,7 +18,7 @@ public interface TATReportService {
     TATDetailResponse getDetail(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
             String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,
             Integer orderingSiteId, boolean includeCancelled, int page, int pageSize, String sortField,
-            String sortOrder, String breakdownFilter);
+            String sortOrder, String breakdownFilter, String breakdownDimension);
 
     TATTrendResponse getTrend(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
             String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,

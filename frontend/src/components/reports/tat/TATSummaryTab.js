@@ -2,16 +2,7 @@ import React from "react";
 import { Tile, InlineNotification, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import TATBreakdownTable from "./TATBreakdownTable";
-
-function formatTat(hours) {
-  if (hours == null) return "—";
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (h === 0 && m === 0) return "0h 0m";
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
-}
+import { formatTat } from "./tatUtils";
 
 const STAT_CARDS = [
   { key: "totalCount", labelId: "reports.tat.totalResults", isCount: true },
