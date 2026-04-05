@@ -13,6 +13,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 
 function CsvImportPreview({ year, onClose, onImportComplete }) {
@@ -59,10 +60,11 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
 
     try {
       const response = await fetch(
-        `/rest/calendar/holidays/import?year=${year}`,
+        `${config.serverBaseUrl}/rest/calendar/holidays/import?year=${year}`,
         {
           method: "POST",
           credentials: "include",
+          headers: { "X-CSRF-Token": localStorage.getItem("CSRF") },
           body: formData,
         },
       );

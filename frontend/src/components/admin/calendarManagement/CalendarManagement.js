@@ -24,7 +24,10 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  putToOpenElisServer,
+  deleteFromOpenElisServer,
 } from "../../utils/Utils";
+import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import WeekendConfig from "./WeekendConfig";
 import CsvImportPreview from "./CsvImportPreview";
@@ -147,44 +150,41 @@ function CalendarManagement() {
         },
       );
     } else {
-      fetch(`/rest/calendar/holidays/${editingId}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-        .then((r) => r.json())
-        .then(() => {
-          fetchHolidays();
-          setEditingId(null);
-          setEditForm({ date: "", name: "", recurring: false });
-        })
-        .catch(() => {
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "calendar.management.saveError" }),
-          });
-          setNotificationVisible(true);
-        });
+      putToOpenElisServer(
+        `/rest/calendar/holidays/${editingId}`,
+        JSON.stringify(body),
+        (status) => {
+          if (status === 200) {
+            fetchHolidays();
+            setEditingId(null);
+            setEditForm({ date: "", name: "", recurring: false });
+          } else {
+            addNotification({
+              kind: "error",
+              title: intl.formatMessage({
+                id: "calendar.management.saveError",
+              }),
+            });
+            setNotificationVisible(true);
+          }
+        },
+      );
     }
   };
 
   const handleDelete = (id) => {
-    fetch(`/rest/calendar/holidays/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    })
-      .then(() => {
+    deleteFromOpenElisServer(`/rest/calendar/holidays/${id}`, (status) => {
+      if (status === 204 || status === 200) {
         fetchHolidays();
         setShowDeleteModal(null);
-      })
-      .catch(() => {
+      } else {
         addNotification({
           kind: "error",
           title: intl.formatMessage({ id: "calendar.management.saveError" }),
         });
         setNotificationVisible(true);
-      });
+      }
+    });
   };
 
   const handleCancel = () => {
@@ -207,8 +207,11 @@ function CalendarManagement() {
   }));
 
   const breadcrumb = [
-    { label: "Home", link: "/" },
-    { label: "Admin", link: "/MasterListsPage" },
+    { label: intl.formatMessage({ id: "home.label" }), link: "/" },
+    {
+      label: intl.formatMessage({ id: "breadcrums.admin.managment" }),
+      link: "/MasterListsPage",
+    },
     {
       label: intl.formatMessage({ id: "calendar.management.title" }),
       link: "/MasterListsPage/calendarManagement",
@@ -279,7 +282,7 @@ function CalendarManagement() {
               renderIcon={Download}
               onClick={() =>
                 window.open(
-                  `/rest/calendar/holidays/export?year=${year}`,
+                  `${config.serverBaseUrl}/rest/calendar/holidays/export?year=${year}`,
                   "_blank",
                 )
               }
@@ -555,7 +558,9 @@ function CalendarManagement() {
                               size="sm"
                               hasIconOnly
                               renderIcon={Edit}
-                              iconDescription="Edit"
+                              iconDescription={intl.formatMessage({
+                                id: "calendar.management.editHoliday",
+                              })}
                               onClick={() => handleEdit(holiday)}
                               disabled={isEditing}
                             />
@@ -564,7 +569,9 @@ function CalendarManagement() {
                               size="sm"
                               hasIconOnly
                               renderIcon={TrashCan}
-                              iconDescription="Delete"
+                              iconDescription={intl.formatMessage({
+                                id: "label.delete",
+                              })}
                               onClick={() => setShowDeleteModal(holiday.id)}
                               disabled={isEditing}
                             />
@@ -609,7 +616,7 @@ function CalendarManagement() {
         modalHeading={intl.formatMessage({
           id: "calendar.management.deleteConfirm",
         })}
-        primaryButtonText={intl.formatMessage({ id: "label.button.delete" })}
+        primaryButtonText={intl.formatMessage({ id: "label.delete" })}
         secondaryButtonText={intl.formatMessage({
           id: "calendar.management.cancel",
         })}

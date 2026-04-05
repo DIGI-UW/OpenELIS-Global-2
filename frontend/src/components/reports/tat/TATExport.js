@@ -2,13 +2,14 @@ import React from "react";
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
 import { Download } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
+import config from "../../../config.json";
 
 function TATExport({ filters, buildQueryString }) {
   const intl = useIntl();
 
   const handleExport = (format) => {
     const qs = buildQueryString(filters, `&format=${format}`);
-    window.open(`/rest/reports/tat/export?${qs}`, "_blank");
+    window.open(`${config.serverBaseUrl}/rest/reports/tat/export?${qs}`, "_blank");
   };
 
   return (

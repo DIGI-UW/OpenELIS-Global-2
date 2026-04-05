@@ -35,7 +35,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
     if (compareBy) extra += `&compareBy=${compareBy}`;
     const qs = buildQueryString(filters, extra);
     getFromOpenElisServer(`/rest/reports/tat/trend?${qs}`, (res) => {
-      setData(res);
+      setData(res || null);
       setLoading(false);
     });
   }, [filters, buildQueryString, interval, compareBy]);

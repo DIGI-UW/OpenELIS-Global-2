@@ -65,7 +65,7 @@ function TATDetailListTab({ filters, buildQueryString }) {
       `&page=${page}&pageSize=${pageSize}&sortField=${sortField}&sortOrder=${sortOrder}`,
     );
     getFromOpenElisServer(`/rest/reports/tat/detail?${qs}`, (res) => {
-      setData(res);
+      setData(res || null);
       setLoading(false);
     });
   }, [filters, buildQueryString, page, pageSize, sortField, sortOrder]);

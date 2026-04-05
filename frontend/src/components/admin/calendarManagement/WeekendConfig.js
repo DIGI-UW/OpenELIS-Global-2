@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Checkbox, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 
 const DAY_KEYS = [
@@ -30,37 +30,30 @@ function WeekendConfig() {
   }, []);
 
   const handleToggle = (dayNum, checked) => {
+    const prev = [...weekendDays];
     const newDays = checked
       ? [...weekendDays, dayNum]
       : weekendDays.filter((d) => d !== dayNum);
 
     setWeekendDays(newDays);
 
-    fetch("/rest/calendar/weekends", {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ weekendDays: newDays }),
-    })
-      .then((r) => {
-        if (r.ok) {
+    putToOpenElisServer(
+      "/rest/calendar/weekends",
+      JSON.stringify({ weekendDays: newDays }),
+      (status) => {
+        if (status === 200) {
           setShowSaved(true);
           setTimeout(() => setShowSaved(false), 3000);
         } else {
+          setWeekendDays(prev);
           addNotification({
             kind: "error",
             title: intl.formatMessage({ id: "calendar.management.saveError" }),
           });
           setNotificationVisible(true);
         }
-      })
-      .catch(() => {
-        addNotification({
-          kind: "error",
-          title: intl.formatMessage({ id: "calendar.management.saveError" }),
-        });
-        setNotificationVisible(true);
-      });
+      },
+    );
   };
 
   return (

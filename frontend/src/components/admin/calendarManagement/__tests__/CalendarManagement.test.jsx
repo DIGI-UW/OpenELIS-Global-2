@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, wait } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
@@ -87,7 +88,7 @@ describe("CalendarManagement", () => {
 
   test("renders holiday table with data", async () => {
     renderWithIntl(<CalendarManagement />);
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByText("New Year's Day")).toBeInTheDocument();
       expect(screen.getByText("Genocide Memorial Day")).toBeInTheDocument();
       expect(screen.getByText("Christmas Day")).toBeInTheDocument();
@@ -102,7 +103,7 @@ describe("CalendarManagement", () => {
   test("shows inline add row when Add Holiday clicked", async () => {
     renderWithIntl(<CalendarManagement />);
     fireEvent.click(screen.getByTestId("add-holiday-button"));
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByTestId("holiday-inline-row")).toBeInTheDocument();
     });
   });
@@ -110,14 +111,14 @@ describe("CalendarManagement", () => {
   test("disables save when form is empty", async () => {
     renderWithIntl(<CalendarManagement />);
     fireEvent.click(screen.getByTestId("add-holiday-button"));
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByTestId("save-holiday-button")).toBeDisabled();
     });
   });
 
   test("shows holiday count footer", async () => {
     renderWithIntl(<CalendarManagement />);
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByTestId("holiday-count-footer")).toHaveTextContent(
         "3 holidays configured for 2026",
       );
@@ -137,7 +138,7 @@ describe("CalendarManagement", () => {
 
   test("inactive holidays are visually dimmed (opacity)", async () => {
     renderWithIntl(<CalendarManagement />);
-    await wait(() => {
+    await waitFor(() => {
       // Christmas Day (id: 3) is inactive
       const christmasRow = screen.getByText("Christmas Day").closest("tr");
       expect(christmasRow).toHaveStyle("opacity: 0.5");
@@ -146,7 +147,7 @@ describe("CalendarManagement", () => {
 
   test("shows Annual/One-time tags for recurring status", async () => {
     renderWithIntl(<CalendarManagement />);
-    await wait(() => {
+    await waitFor(() => {
       const annualTags = screen.getAllByText("Annual");
       expect(annualTags.length).toBeGreaterThan(0);
     });
@@ -154,7 +155,7 @@ describe("CalendarManagement", () => {
 
   test("shows Active/Inactive tags for status", async () => {
     renderWithIntl(<CalendarManagement />);
-    await wait(() => {
+    await waitFor(() => {
       const activeTags = screen.getAllByText("Active");
       expect(activeTags.length).toBeGreaterThan(0);
       expect(screen.getByText("Inactive")).toBeInTheDocument();
@@ -170,7 +171,7 @@ describe("CalendarManagement", () => {
       }
     });
     renderWithIntl(<CalendarManagement />);
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByText(/No holidays configured/)).toBeInTheDocument();
     });
   });

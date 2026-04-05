@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { Tabs, TabList, Tab, TabPanels, TabPanel, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import TATFilterBar from "./TATFilterBar";
+import TATFilterBar, { SEGMENTS } from "./TATFilterBar";
 import TATSummaryTab from "./TATSummaryTab";
 import TATDetailListTab from "./TATDetailListTab";
 import TATTrendsTab from "./TATTrendsTab";
@@ -85,14 +85,18 @@ function TATReport() {
             }}
             data-testid="filter-summary-badges"
           >
-            <Tag type="blue">{filters.segment.replace(/_/g, " ")}</Tag>
+            <Tag type="blue">
+              {intl.formatMessage({
+                id: SEGMENTS.find((s) => s.id === filters.segment)?.labelKey || "reports.tat.segment.receiptToValidation",
+              })}
+            </Tag>
             <Tag type={filters.calculationMode === "WORKING_TIME" ? "purple" : "gray"}>
               {filters.calculationMode === "WORKING_TIME"
                 ? intl.formatMessage({ id: "reports.tat.workingTime" })
                 : intl.formatMessage({ id: "reports.tat.calendarTime" })}
             </Tag>
             <Tag type="gray">
-              {filters.fromDate} to {filters.toDate}
+              {filters.fromDate} — {filters.toDate}
             </Tag>
           </div>
         )}

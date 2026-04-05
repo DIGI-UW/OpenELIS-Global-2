@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, wait } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
@@ -105,7 +106,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByText("LAB-001")).toBeInTheDocument();
       expect(screen.getByText("LAB-002")).toBeInTheDocument();
       expect(screen.getByText("LAB-003")).toBeInTheDocument();
@@ -121,7 +122,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // Multiple cells may show same TAT value (selectedTat + overallTat)
       expect(screen.getAllByText("4h").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("7h").length).toBeGreaterThanOrEqual(1);
@@ -138,7 +139,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // LAB-002 has null collected and testingStarted
       const dashes = screen.getAllByText("—");
       expect(dashes.length).toBeGreaterThan(0);
@@ -154,7 +155,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       const link = container.querySelector('a[href*="LAB-001"]');
       expect(link).toBeInTheDocument();
       expect(link.getAttribute("target")).toBe("_blank");
@@ -171,7 +172,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // Find the table row containing LAB-002 (STAT priority)
       const rows = container.querySelectorAll("tr");
       const statRow = Array.from(rows).find((r) =>
@@ -191,7 +192,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // Pagination component renders page size selector
       expect(screen.getByText(/1–3 of 3/i)).toBeInTheDocument();
     });
@@ -206,7 +207,7 @@ describe("TATDetailListTab", () => {
       <TATDetailListTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByText(/No results found/i)).toBeInTheDocument();
     });
   });

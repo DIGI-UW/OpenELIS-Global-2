@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, wait } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
@@ -111,7 +112,7 @@ describe("CsvImportPreview", () => {
       });
       fireEvent.change(fileInput);
 
-      await wait(() => {
+      await waitFor(() => {
         // After parsing, the preview table should show parsed rows
         expect(screen.getByText("New Year")).toBeInTheDocument();
       });

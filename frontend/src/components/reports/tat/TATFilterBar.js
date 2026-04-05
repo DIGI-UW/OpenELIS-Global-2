@@ -11,7 +11,7 @@ import {
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 
-const SEGMENTS = [
+export const SEGMENTS = [
   { id: "RECEIPT_TO_VALIDATION", labelKey: "reports.tat.segment.receiptToValidation" },
   { id: "ORDER_TO_COLLECTION", labelKey: "reports.tat.segment.orderToCollection" },
   { id: "COLLECTION_TO_RECEIPT", labelKey: "reports.tat.segment.collectionToReceipt" },

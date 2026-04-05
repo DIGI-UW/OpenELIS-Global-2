@@ -153,17 +153,17 @@
     <comment>Register Calendar Management URLs</comment>
     <insert tableName="system_module_url" schemaName="clinlims">
       <column name="id" valueSequenceNext="system_module_url_seq"/>
-      <column name="url_path" value="/CalendarManagement"/>
+      <column name="url_path" value="/MasterListsPage/calendarManagement"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
     </insert>
     <insert tableName="system_module_url" schemaName="clinlims">
       <column name="id" valueSequenceNext="system_module_url_seq"/>
-      <column name="url_path" value="/calendar"/>
+      <column name="url_path" value="/rest/calendar"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'CalendarManagement')"/>
     </insert>
     <rollback>
       <delete schemaName="clinlims" tableName="system_module_url">
-        <where>url_path IN ('/CalendarManagement', '/calendar')</where>
+        <where>url_path IN ('/MasterListsPage/calendarManagement', '/rest/calendar')</where>
       </delete>
     </rollback>
   </changeSet>

@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, wait } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
@@ -71,7 +72,7 @@ describe("TATTrendsTab", () => {
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // Carbon Dropdown renders — check for the container element
       const dropdowns = container.querySelectorAll(".cds--dropdown");
       expect(dropdowns.length).toBeGreaterThanOrEqual(1);
@@ -87,7 +88,7 @@ describe("TATTrendsTab", () => {
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       expect(screen.getByLabelText(/Median/)).toBeInTheDocument();
       expect(screen.getByLabelText(/Mean/)).toBeInTheDocument();
     });
@@ -102,7 +103,7 @@ describe("TATTrendsTab", () => {
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // The component renders period labels
       expect(screen.getByText("03-01")).toBeInTheDocument();
       expect(screen.getByText("03-02")).toBeInTheDocument();
@@ -118,7 +119,7 @@ describe("TATTrendsTab", () => {
       <TATTrendsTab filters={mockFilters} buildQueryString={mockBuildQueryString} />,
     );
 
-    await wait(() => {
+    await waitFor(() => {
       // At least 2 dropdowns: interval + compare-by
       const dropdowns = container.querySelectorAll(".cds--dropdown");
       expect(dropdowns.length).toBeGreaterThanOrEqual(2);
