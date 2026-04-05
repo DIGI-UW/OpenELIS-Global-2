@@ -22,7 +22,8 @@ public class FhirRestfulServer extends RestfulServer {
 
         super.initialize();
 
-        setFhirContext(FhirContext.forR4());
+        FhirContext ctx = applicationContext.getBean(FhirContext.class);
+        setFhirContext(ctx);
 
         Map<String, IResourceProvider> providerMap = applicationContext.getBeansOfType(IResourceProvider.class);
 

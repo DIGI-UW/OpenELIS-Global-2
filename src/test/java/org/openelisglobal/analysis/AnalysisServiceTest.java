@@ -427,4 +427,13 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
         return analysis;
     }
+
+    @Test
+    public void getAllMatching_shouldReturnAllMatchingGiveFhirUUID() {
+        List<Analysis> analysises = aService.getAllMatching("fhirUuid",
+                UUID.fromString("f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01"));
+        analysises.forEach(analsis -> {
+            System.out.println(analsis.getId());
+        });
+    }
 }

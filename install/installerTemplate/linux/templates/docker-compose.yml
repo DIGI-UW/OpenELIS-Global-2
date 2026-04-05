@@ -75,7 +75,7 @@ services:
     environment:
       - TZ=[% timezone %]
       # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-      - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://[% db_host %]:[% db_port %]/clinlims -Ddatasource.username=clinlims
+      - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://[% db_host %]:[% db_port %]/clinlims -Ddatasource.username=clinlims
     volumes:
       - [% plugins_dir %]:/var/lib/openelis-global/plugins
       - [% etc_dir %]oe_server.xml:/usr/local/tomcat/conf/server.xml
