@@ -23,7 +23,6 @@ import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
-import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
@@ -96,8 +95,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.alert", "org.openelisglobal.notification", "org.openelisglobal.shipment",
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
-        "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa",
-        "org.openelisglobal.qc" }, excludeFilters = {
+        "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
+        "org.openelisglobal.externalconnections", "org.openelisglobal.security",
+        "org.openelisglobal.notifications" }, excludeFilters = {
 
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
@@ -152,12 +152,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public FhirContext fhirContext() {
         return mock(FhirContext.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ExternalConnectionService externalConnectService() {
-        return mock(ExternalConnectionService.class);
     }
 
     @Bean()

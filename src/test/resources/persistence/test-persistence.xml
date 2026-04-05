@@ -151,6 +151,9 @@
         <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
 
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
+
         <properties>
             <property name="hibernate.ejb.cfgfile"
                 value="hibernate/test-hibernate.cfg.xml" />
