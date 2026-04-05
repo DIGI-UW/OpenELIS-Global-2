@@ -95,6 +95,8 @@ Key principles to verify:
 - [ ] @Transactional in services ONLY (NOT controllers)
 - [ ] Services compile all data within transaction (prevent
       LazyInitializationException)
+- [ ] Test Quality Invariants V.6 (Inversion Test, no assert-on-mock-return,
+      auth ordering tests)
 
 ### TDD Workflow (MANDATORY for SpecKit)
 
