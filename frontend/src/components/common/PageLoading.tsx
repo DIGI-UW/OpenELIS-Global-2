@@ -1,11 +1,17 @@
 import React from "react";
 import { Loading } from "@carbon/react";
+import { useIntl } from "react-intl";
 
 interface PageLoadingProps {
-  message?: string;
+  messageId?: string;
 }
 
-export default function PageLoading({ message }: PageLoadingProps) {
+export default function PageLoading({ messageId }: PageLoadingProps) {
+  const intl = useIntl();
+  const description = intl.formatMessage({
+    id: messageId || "label.loading",
+  });
+
   return (
     <div
       style={{
@@ -16,7 +22,7 @@ export default function PageLoading({ message }: PageLoadingProps) {
         minHeight: "50vh",
       }}
     >
-      <Loading withOverlay={false} description={message || "Loading..."} />
+      <Loading withOverlay={false} description={description} />
     </div>
   );
 }
