@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.web.WebAppConfiguration;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 @WebAppConfiguration
@@ -57,10 +56,7 @@ public class SampleTypeManagementRestControllerSecurityTest extends SecuritySlic
 
         @Bean
         SampleTypeManagementRestController sampleTypeManagementRestController() {
-            SampleTypeManagementRestController controller = new SampleTypeManagementRestController();
-            ReflectionTestUtils.setField(controller, "userModuleService", mock(UserModuleService.class));
-            ReflectionTestUtils.setField(controller, "pageBuilderService", mock(PageBuilderService.class));
-            return controller;
+            return new SampleTypeManagementRestController();
         }
 
         @Bean

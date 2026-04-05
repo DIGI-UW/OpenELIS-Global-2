@@ -34,6 +34,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
 
     @Before
     public void setUp() throws Exception {
+        super.setUp();
         mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).apply(springSecurity()).build();
         MockitoAnnotations.initMocks(this);
         AnalyzerPluginConfigRestController controller = webApplicationContext

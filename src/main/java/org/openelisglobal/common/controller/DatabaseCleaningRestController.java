@@ -30,7 +30,7 @@ public class DatabaseCleaningRestController {
     @Autowired
     private HistoryService historyService;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @GetMapping(value = "/database-cleaning/status", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> getStatus() {
         boolean isTrainingInstallation = "true".equals(ConfigurationProperties.getInstance()

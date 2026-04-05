@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerPendingCodeService;
 import org.openelisglobal.analyzer.service.AnalyzerPluginConfigService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.springframework.context.annotation.Bean;
@@ -50,8 +51,8 @@ public class AnalyzerPluginConfigRestControllerSecurityTest extends SecuritySlic
         userSessionData.setSytemUserId(1);
 
         mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
-                .sessionAttr("userSessionData", userSessionData).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, userSessionData)
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     @Configuration

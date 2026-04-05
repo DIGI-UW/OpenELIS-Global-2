@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping({ "/rest/coldstorage", "/rest/freezer-monitoring" })
-@PreAuthorize("hasRole('ADMIN')")
 public class FreezerConfigController extends BaseRestController {
 
     private final SystemConfigService systemConfigService;
@@ -25,12 +24,14 @@ public class FreezerConfigController extends BaseRestController {
         this.systemConfigService = systemConfigService;
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/system-config")
     public ResponseEntity<SystemConfigDTO> getSystemConfig() {
         SystemConfigDTO config = systemConfigService.getGlobalConfig();
         return ResponseEntity.ok(config);
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/system-config")
     public ResponseEntity<SystemConfigDTO> saveSystemConfig(@RequestBody @Valid SystemConfigDTO config) {
         SystemConfigDTO saved = systemConfigService.saveConfig(config);
