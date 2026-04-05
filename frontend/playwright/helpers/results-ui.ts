@@ -110,9 +110,14 @@ async function navigateUntilVisible(
             const resp = await page.request.get(options.apiPollUrl!, {
               timeout: SHORT_TIMEOUT,
             });
-            const ok = resp.ok();
-            const data = ok ? await resp.json() : null;
-            await resp.dispose();
+            let ok = false;
+            let data = null;
+            try {
+              ok = resp.ok();
+              data = ok ? await resp.json() : null;
+            } finally {
+              await resp.dispose();
+            }
             if (!ok || !data) return false;
             const results = data?.resultList ?? [];
             if (results.length === 0) return false;

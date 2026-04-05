@@ -124,8 +124,12 @@ export async function acceptAndVerifyResults(
         resp.url().includes("/rest/AnalyzerResults") && resp.status() === 200,
       { timeout: LONG_TIMEOUT },
     )
-    .catch(() => {
-      // Response may have arrived before we started listening (fast backend).
+    .catch((e) => {
+      // TimeoutError = response arrived before we started listening (fast backend).
+      // Any other error is unexpected — log it for diagnostics.
+      if (!(e instanceof Error && e.message.includes("Timeout"))) {
+        console.error(`[waitForResponse] unexpected: ${e}`);
+      }
     });
   const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
   await expect(saveButton.or(emptyState).first()).toBeVisible({

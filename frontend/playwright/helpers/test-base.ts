@@ -50,40 +50,53 @@ export const test = base.extend<{
         }
       }
 
-      // Track navigations — the key to knowing what happened before a crash
-      page.on("framenavigated", (frame) => {
+      // Named handlers so we can remove them in teardown
+      const onFrameNavigated = (frame: import("@playwright/test").Frame) => {
         if (frame === page.mainFrame()) {
           lastUrl = frame.url();
           recentNav.push(`${new Date().toISOString()} → ${lastUrl}`);
           if (recentNav.length > MAX_BUFFER) recentNav.shift();
         }
-      });
-
-      page.on("console", (msg) => {
+      };
+      const onConsole = (msg: import("@playwright/test").ConsoleMessage) => {
         if (msg.type() === "error" || msg.type() === "warning") {
           recentConsole.push(`[${msg.type()}] ${msg.text()}`);
           if (recentConsole.length > MAX_BUFFER) recentConsole.shift();
         }
-      });
-
-      page.on("pageerror", (error) => {
+      };
+      const onPageError = (error: Error) => {
         console.error(`[pageerror] ${error.message}\n${error.stack ?? ""}`);
-      });
-
-      page.on("crash", () => dumpContext("CRASH"));
-      page.on("close", () => {
+      };
+      const onCrash = () => dumpContext("CRASH");
+      const onClose = () => {
         if (testInfo.status === undefined) dumpContext("CLOSE");
-      });
-      browser.on("disconnected", () => dumpContext("DISCONNECT"));
-
-      page.on("requestfailed", (request) => {
+      };
+      const onDisconnect = () => dumpContext("DISCONNECT");
+      const onRequestFailed = (request: import("@playwright/test").Request) => {
         const failure = request.failure();
         console.error(
           `[NET-FAIL] ${request.method()} ${request.url()} → ${failure?.errorText ?? "unknown"}`,
         );
-      });
+      };
 
-      await use();
+      page.on("framenavigated", onFrameNavigated);
+      page.on("console", onConsole);
+      page.on("pageerror", onPageError);
+      page.on("crash", onCrash);
+      page.on("close", onClose);
+      browser.once("disconnected", onDisconnect); // once — browser is worker-scoped
+      page.on("requestfailed", onRequestFailed);
+
+      try {
+        await use();
+      } finally {
+        page.off("framenavigated", onFrameNavigated);
+        page.off("console", onConsole);
+        page.off("pageerror", onPageError);
+        page.off("crash", onCrash);
+        page.off("close", onClose);
+        page.off("requestfailed", onRequestFailed);
+      }
     },
     { auto: true },
   ],
