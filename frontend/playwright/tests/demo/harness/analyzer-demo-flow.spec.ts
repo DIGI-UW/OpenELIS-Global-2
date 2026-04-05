@@ -138,7 +138,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    fileSampleId: "DEMO-QS7-2026-00001",
+    fileSampleId: "DEV01262000000000101",
     push: {
       protocol: "FILE",
       fixtureFile: "quantstudio-e2e-results-demo.xlsx",
@@ -146,9 +146,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
       filePrefix: "qs7-e2e-",
     },
     expectedResults: [
-      { sampleId: "DEMO-QS7-2026-00001", result: "1520.5" },
-      { sampleId: "DEMO-QS7-2026-00002", result: "45200" },
-      { sampleId: "DEMO-QS7-2026-00005", result: "3200.8" },
+      { sampleId: "DEV01262000000000101", result: "1520.5" },
+      { sampleId: "DEV01262000000000102", result: "45200" },
+      { sampleId: "DEV01262000000000105", result: "3200.8" },
     ],
   },
   {
@@ -158,7 +158,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    fileSampleId: "DEMO-QS5-2026-00001",
+    fileSampleId: "DEV01262100000000101",
     push: {
       protocol: "FILE",
       fixtureFile: "quantstudio-e2e-results-qs5-demo.xls",
@@ -166,9 +166,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
       filePrefix: "qs5-e2e-",
     },
     expectedResults: [
-      { sampleId: "DEMO-QS5-2026-00001", result: "1520.5" },
-      { sampleId: "DEMO-QS5-2026-00002", result: "45200" },
-      { sampleId: "DEMO-QS5-2026-00005", result: "3200.8" },
+      { sampleId: "DEV01262100000000101", result: "1520.5" },
+      { sampleId: "DEV01262100000000102", result: "45200" },
+      { sampleId: "DEV01262100000000105", result: "3200.8" },
     ],
   },
   {
@@ -178,7 +178,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Bruker FluoroCycler XT",
     protocol: "FILE",
-    fileSampleId: "DEMO-FC-2026-00001",
+    fileSampleId: "DEV01263000000000101",
     push: {
       protocol: "FILE",
       fixtureFile: "fluorocycler-e2e-results-demo.xlsx",
@@ -186,9 +186,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
       filePrefix: "fc-e2e-",
     },
     expectedResults: [
-      { sampleId: "DEMO-FC-2026-00001", result: "28.5" },
-      { sampleId: "DEMO-FC-2026-00002", result: "31.2" },
-      { sampleId: "DEMO-FC-2026-00003", result: "Negative" },
+      { sampleId: "DEV01263000000000101", result: "28.5" },
+      { sampleId: "DEV01263000000000102", result: "31.2" },
+      { sampleId: "DEV01263000000000103", result: "Negative" },
     ],
   },
   // ── Madagascar Sprint: 3 New FILE Analyzers ────────────────────
@@ -199,7 +199,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Wondfo Finecare FS-205 (CSV)",
     protocol: "FILE",
-    fileSampleId: "DEMO-WF-2026-00001",
+    fileSampleId: "DEV01265000000000101",
     push: {
       protocol: "FILE",
       fixtureFile: "wondfo-finecare-e2e-results.csv",
@@ -210,9 +210,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
       filePrefix: "wondfo-e2e-",
     },
     expectedResults: [
-      { sampleId: "DEMO-WF-2026-00001", result: "3.45" },
-      { sampleId: "DEMO-WF-2026-00002", result: "<2" },
-      { sampleId: "DEMO-WF-2026-00003", result: "0.57" },
+      { sampleId: "DEV01265000000000101", result: "3.45" },
+      { sampleId: "DEV01265000000000102", result: "<2" },
+      { sampleId: "DEV01265000000000103", result: "0.57" },
     ],
   },
   {
@@ -222,7 +222,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Tecan Infinite F50",
     protocol: "FILE",
-    fileSampleId: "DEMO-TC-2026-00001",
+    fileSampleId: "DEV01265100000000101",
     push: {
       protocol: "FILE",
       fixtureFile: "tecan-f50-e2e-results.csv",
@@ -233,9 +233,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
       filePrefix: "tecan-e2e-",
     },
     expectedResults: [
-      { sampleId: "DEMO-TC-2026-00001", result: "2.345" },
-      { sampleId: "DEMO-TC-2026-00002", result: "0.048" },
-      { sampleId: "DEMO-TC-2026-00003", result: "1.234" },
+      { sampleId: "DEV01265100000000101", result: "2.345" },
+      { sampleId: "DEV01265100000000102", result: "0.048" },
+      { sampleId: "DEV01265100000000103", result: "1.234" },
     ],
   },
   {
@@ -245,7 +245,7 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Thermo Multiskan FC",
     protocol: "FILE",
-    fileSampleId: "DEMO-MS-2026-00001",
+    fileSampleId: "DEV01265200000000101",
     push: {
       protocol: "FILE",
       fixtureFile: "multiskan-fc-e2e-results.csv",
@@ -256,9 +256,9 @@ const CONFIGS: AnalyzerTestConfig[] = [
       filePrefix: "multiskan-e2e-",
     },
     expectedResults: [
-      { sampleId: "DEMO-MS-2026-00001", result: "2.345" },
-      { sampleId: "DEMO-MS-2026-00002", result: "0.048" },
-      { sampleId: "DEMO-MS-2026-00003", result: "1.567" },
+      { sampleId: "DEV01265200000000101", result: "2.345" },
+      { sampleId: "DEV01265200000000102", result: "0.048" },
+      { sampleId: "DEV01265200000000103", result: "1.567" },
     ],
   },
 ];

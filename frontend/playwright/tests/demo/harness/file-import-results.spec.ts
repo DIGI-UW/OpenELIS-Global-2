@@ -49,7 +49,7 @@ type FileImportHarnessScenario = {
   readonly demoSubtitle: string;
 };
 
-/** Fixtures use `HARN-*` accessions from `analyzer-harness-lane-data.sql`. */
+/** Fixtures use valid SiteYearNum accessions (DEV0126*) from `analyzer-harness-lane-data.sql`. */
 const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
   {
     analyzerName: "QuantStudio 7",
@@ -57,9 +57,9 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     fixture: "quantstudio-e2e-results.xlsx",
     filePrefix: "qs7-results-",
     expectedResults: [
-      { sampleId: "HARN-QS7-2026-00001", result: "1520.5" },
-      { sampleId: "HARN-QS7-2026-00002", result: "45200" },
-      { sampleId: "HARN-QS7-2026-00005", result: "3200.8" },
+      { sampleId: "DEV01262000000000001", result: "1520.5" },
+      { sampleId: "DEV01262000000000002", result: "45200" },
+      { sampleId: "DEV01262000000000005", result: "3200.8" },
     ],
     demoTitle: "QuantStudio 7 File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
@@ -70,9 +70,9 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     fixture: "quantstudio-e2e-results-qs5.xls",
     filePrefix: "qs5-results-",
     expectedResults: [
-      { sampleId: "HARN-QS5-2026-00001", result: "1520.5" },
-      { sampleId: "HARN-QS5-2026-00002", result: "45200" },
-      { sampleId: "HARN-QS5-2026-00005", result: "3200.8" },
+      { sampleId: "DEV01262100000000001", result: "1520.5" },
+      { sampleId: "DEV01262100000000002", result: "45200" },
+      { sampleId: "DEV01262100000000005", result: "3200.8" },
     ],
     demoTitle: "QuantStudio 5 File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
@@ -83,9 +83,9 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     fixture: "fluorocycler-e2e-results.xlsx",
     filePrefix: "fc-results-",
     expectedResults: [
-      { sampleId: "HARN-FC-2026-00001", result: "28.5" },
-      { sampleId: "HARN-FC-2026-00002", result: "31.2" },
-      { sampleId: "HARN-FC-2026-00003", result: "Negative" },
+      { sampleId: "DEV01263000000000001", result: "28.5" },
+      { sampleId: "DEV01263000000000002", result: "31.2" },
+      { sampleId: "DEV01263000000000003", result: "Negative" },
     ],
     demoTitle: "FluoroCycler XT File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
@@ -96,9 +96,9 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     fixture: "wondfo-finecare-e2e-results.csv",
     filePrefix: "wondfo-results-",
     expectedResults: [
-      { sampleId: "HARN-WF-2026-00001", result: "3.45" },
-      { sampleId: "HARN-WF-2026-00002", result: "<2" },
-      { sampleId: "HARN-WF-2026-00003", result: "0.57" },
+      { sampleId: "DEV01265000000000001", result: "3.45" },
+      { sampleId: "DEV01265000000000002", result: "<2" },
+      { sampleId: "DEV01265000000000003", result: "0.57" },
     ],
     demoTitle: "Wondfo Finecare FS-205 File Import",
     demoSubtitle:
@@ -110,9 +110,9 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     fixture: "tecan-f50-e2e-results.csv",
     filePrefix: "tecan-results-",
     expectedResults: [
-      { sampleId: "HARN-TC-2026-00001", result: "2.345" },
-      { sampleId: "HARN-TC-2026-00002", result: "0.048" },
-      { sampleId: "HARN-TC-2026-00003", result: "1.234" },
+      { sampleId: "DEV01265100000000001", result: "2.345" },
+      { sampleId: "DEV01265100000000002", result: "0.048" },
+      { sampleId: "DEV01265100000000003", result: "1.234" },
     ],
     demoTitle: "Tecan Infinite F50 File Import",
     demoSubtitle: "ELISA OD results from well-per-row CSV export.",
@@ -123,9 +123,9 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     fixture: "multiskan-fc-e2e-results.csv",
     filePrefix: "multiskan-results-",
     expectedResults: [
-      { sampleId: "HARN-MS-2026-00001", result: "2.345" },
-      { sampleId: "HARN-MS-2026-00002", result: "0.048" },
-      { sampleId: "HARN-MS-2026-00003", result: "1.567" },
+      { sampleId: "DEV01265200000000001", result: "2.345" },
+      { sampleId: "DEV01265200000000002", result: "0.048" },
+      { sampleId: "DEV01265200000000003", result: "1.567" },
     ],
     demoTitle: "Thermo Multiskan FC File Import",
     demoSubtitle:

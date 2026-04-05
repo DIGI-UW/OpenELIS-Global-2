@@ -137,6 +137,31 @@ export async function pushAnalyzerResult(
       const uniqueSuffix = Buffer.from(`\n<!-- e2e-run-${Date.now()} -->`);
       fs.writeFileSync(destFile, Buffer.concat([fixtureData, uniqueSuffix]));
 
+      // Chmod the file inside the bridge container so the bridge (uid=astm)
+      // can read, archive, and delete it after processing.
+      const normalizedDest = destFile.replace(/\\/g, "/");
+      const markerIdx = normalizedDest.lastIndexOf(HOST_IMPORTS_SEGMENT);
+      if (markerIdx !== -1) {
+        const relativeDest = normalizedDest.slice(
+          markerIdx + HOST_IMPORTS_SEGMENT.length,
+        );
+        const containerDest = path.posix.join(
+          CONTAINER_IMPORTS_BASE,
+          relativeDest.split(path.sep).join("/"),
+        );
+        try {
+          execFileSync("docker", [
+            "exec",
+            BRIDGE_CONTAINER,
+            "sh",
+            "-lc",
+            `chmod a+rw '${containerDest}' 2>/dev/null || true`,
+          ]);
+        } catch {
+          // Best-effort; file may still be readable
+        }
+      }
+
       await presentation.pause(2_000); // Wait for file watcher to pick up
       return null; // FILE protocol doesn't return sample_id from mock
     }
