@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { Sidenav } from "../../../fixtures/sidenav";
 
 test.describe("Sidenav", () => {
@@ -38,7 +38,7 @@ test.describe("Sidenav", () => {
     await sidenav.toggle();
     await sidenav.expectCollapsed();
 
-    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
+    await page.goto("/Storage/samples", { waitUntil: "load" });
     await expect(sidenav.menuButton).toBeVisible();
 
     // Should still be collapsed (preference persisted)

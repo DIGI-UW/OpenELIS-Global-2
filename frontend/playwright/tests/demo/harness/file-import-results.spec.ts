@@ -1,4 +1,4 @@
-import { expect, Page, test } from "@playwright/test";
+import { expect, Page, test } from "../../../helpers/test-base";
 import * as fs from "fs";
 import * as path from "path";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
@@ -156,6 +156,10 @@ async function verifyImportedResults(
   presentation: DemoPresentation,
   scenario: FileImportHarnessScenario,
 ) {
+  const allAccessions = scenario.expectedResults
+    .map((r) => r.sampleId)
+    .filter((v, i, a) => a.indexOf(v) === i);
+
   await openAnalyzerResultsAndWaitForText(
     page,
     scenario.analyzerName,
@@ -163,6 +167,7 @@ async function verifyImportedResults(
     {
       timeoutMs: fileImportTimeoutMs(),
       perAttemptTimeoutMs: 5_000,
+      allExpectedAccessions: allAccessions,
     },
   );
 
