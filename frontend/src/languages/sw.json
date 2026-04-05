@@ -744,7 +744,6 @@
   "label.printHistory.never": "Haijachapishwa kamwe",
   "label.printHistory.unknownUser": "Haijulikani",
   "label.printHistory.viewAll": "Angalia Historia",
-
   "label.printLabel": "Print Label",
   "label.program": "Program",
   "label.qualifiers": "Qualifiers",
@@ -2385,21 +2384,5 @@
   "workplan.title": "Workplan",
   "workplan.unit.title": "Workplan By Unit",
   "workplan.unit.types": "Unit Type",
-  "yes.option": "Yes",
-  "nav.home": "Nyumbani",
-  "nav.registerPatient": "Sajili Mgonjwa",
-  "nav.addOrder": "Ongeza Agizo",
-  "nav.printBarcode": "Chapisha Msimbopau",
-  "nav.modifyOrder": "Hariri Agizo",
-  "nav.results": "Matokeo",
-  "nav.validation": "Uthibitishaji",
-  "nav.reports": "Ripoti",
-  "nav.workplan": "Mpango wa Kazi",
-  "nav.storage": "Uhifadhi",
-  "nav.inventory": "Hesabu ya Vifaa",
-  "nav.admin": "Usimamizi",
-  "nav.batchEntry": "Kuingiza kwa Makundi",
-  "nav.nonConform": "Kutokuwiana",
-  "nav.pathology": "Patholojia",
-  "nav.quickAccess": "Uabiri wa Ufikiaji wa Haraka"
+  "yes.option": "Yes"
 }
