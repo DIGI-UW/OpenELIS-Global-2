@@ -95,9 +95,13 @@ public class SecurityConfig {
 
     // TODO should we move these to the properties files?
     // pages that have special security constraints
+    // Bridge endpoints (/analyzer/fhir, /analyzer/astm, /analyzer/hl7,
+    // /rest/analyzer/analyzers)
+    // are NOT in OPEN_PAGES — the bridge sends Basic auth for all OE calls.
+    // With @Order(1) on httpBasicServletFilterChain, Basic auth is processed first.
     public static final String[] OPEN_PAGES = { "/pluginServlet/**", "/ChangePasswordLogin",
             "/UpdateLoginChangePassword", "/health/**", "/rest/open-configuration-properties", "/docs/UserManual",
-            "/rest/site-branding/**", "/analyzer/astm", "/analyzer/hl7" };
+            "/rest/site-branding/**", "/rest/supportedlocales/active" };
     public static final String[] LOGIN_PAGES = { "/LoginPage", "/ValidateLogin", "/session" };
 
     public static final String[] AUTH_OPEN_PAGES = { "/Home", "/Dashboard", "/Logout", "/MasterListsPage",
@@ -133,28 +137,6 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
-        CharacterEncodingFilter filter = new CharacterEncodingFilter();
-        filter.setEncoding("UTF-8");
-        filter.setForceEncoding(true);
-        http.addFilterBefore(filter, CsrfFilter.class);
-        MultipartFilter multipartFilter = new MultipartFilter();
-        multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
-        http.addFilterBefore(multipartFilter, CsrfFilter.class);
-
-        // for all requests going to open pages, use this security configuration
-        http.securityMatcher(OPEN_PAGES)
-                .authorizeHttpRequests(auth -> auth
-                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
-                        .permitAll().anyRequest().permitAll())
-                // disable csrf as it is not needed for open pages
-                .csrf(csrf -> csrf.disable())
-                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
-        return http.build();
-    }
-
-    @Bean
-    @Order(2)
     @ConditionalOnProperty(property = "org.itech.login.basic", havingValue = "true", matchIfMissing = true)
     public SecurityFilterChain httpBasicServletFilterChain(HttpSecurity http) throws Exception {
         http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED));
@@ -177,6 +159,29 @@ public class SecurityConfig {
 
                 .addFilterAt(SpringContext.getBean(BasicAuthFilter.class), BasicAuthenticationFilter.class)
                 // add security headers
+                .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain openSecurityFilterChain(HttpSecurity http) throws Exception {
+        CharacterEncodingFilter filter = new CharacterEncodingFilter();
+        filter.setEncoding("UTF-8");
+        filter.setForceEncoding(true);
+        http.addFilterBefore(filter, CsrfFilter.class);
+        MultipartFilter multipartFilter = new MultipartFilter();
+        multipartFilter.setServletContext(SpringContext.getBean(ServletContext.class));
+        http.addFilterBefore(multipartFilter, CsrfFilter.class);
+
+        // for all requests going to open pages, use this security configuration
+        http.securityMatcher(OPEN_PAGES)
+                .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.FORWARD, DispatcherType.INCLUDE, DispatcherType.ERROR)
+                        .permitAll().anyRequest().permitAll())
+                // CSRF disabled — open pages allow unauthenticated access (no session to
+                // protect)
+                .csrf(csrf -> csrf.disable())
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();
     }
@@ -392,6 +397,7 @@ public class SecurityConfig {
         http.securityMatcher(new CertificateAuthRequestedMatcher())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
                 .x509(x509 -> x509.subjectPrincipalRegex("CN=(.*?)(?:,|$)"))
+                // CSRF disabled — certificate auth is not cookie-based, not CSRF-vulnerable
                 .userDetailsService(SpringContext.getBean(UserDetailsService.class)).csrf().disable();
         return http.build();
     }
@@ -425,8 +431,22 @@ public class SecurityConfig {
                         .invalidateHttpSession(true))
                 .sessionManagement(sessionManagement -> sessionManagement.invalidSessionUrl("/LoginPage")
                         .sessionFixation().migrateSession())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin", "/rest/**",
-                        "/api/OpenELIS-Global/rest/**"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/ValidateLogin"))
+                .exceptionHandling(ex -> ex.accessDeniedHandler((request, response, accessDeniedException) -> {
+                    String path = request.getRequestURI().substring(request.getContextPath().length());
+                    if (path.startsWith("/rest") || path.startsWith("/Provider")
+                            || path.startsWith("/api/OpenELIS-Global/rest")) {
+                        response.setStatus(403);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        String message = (accessDeniedException instanceof org.springframework.security.web.csrf.CsrfException)
+                                ? "CSRF token missing or invalid"
+                                : "Access denied";
+                        response.getWriter().write("{ \"status\": 403, \"message\": \"" + message + "\" }");
+                    } else {
+                        response.sendRedirect(request.getContextPath() + "/Home?access=denied");
+                    }
+                }))
                 // add security headers
                 .headers(headers -> headers.frameOptions().sameOrigin().contentSecurityPolicy(CONTENT_SECURITY_POLICY));
         return http.build();

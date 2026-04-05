@@ -395,7 +395,7 @@ python3 xml-to-sql.py madagascar-analyzer-test-data.xml analyzer-e2e.generated.s
    `load-test-fixtures.sh` → `analyzer-e2e.generated.sql`
 2. **E2E Tests**: Cypress via `cy.loadStorageFixtures()` →
    `load-test-fixtures.sh` → `analyzer-e2e.generated.sql`
-3. **CI**: `.github/workflows/frontend-qa.yml` → direct psql →
+3. **CI**: `.github/workflows/e2e-cypress-deprecated.yml` → direct psql →
    `analyzer-e2e.generated.sql`
 
 **Database Verification:**

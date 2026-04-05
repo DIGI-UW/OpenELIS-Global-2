@@ -266,6 +266,37 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
         }
         return sample;
     }
+
+    /**
+     * Get unassigned Sample by accession number - only returns sample if it has an
+     * unassigned referral (not assigned to a shipping box, not lost, not canceled)
+     *
+     * @param accessionNumber The accession number of the Sample being sought.
+     * @return Sample The Sample if it has an unassigned referral, or null
+     *         otherwise.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public Sample getUnassignedSampleByAccessionNumber(String accessionNumber) throws LIMSRuntimeException {
+        try {
+            String sql = "SELECT DISTINCT s FROM Sample s " + "JOIN Analysis a ON a.sampleItem.sample.id = s.id "
+                    + "JOIN Referral r ON r.analysis.id = a.id " + "WHERE s.accessionNumber = :accessionNumber "
+                    + "AND r.canceled = false " + "AND (r.lostStatus IS NULL OR r.lostStatus = false) "
+                    + "AND r.assignedBox IS NULL";
+
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
+            query.setParameter("accessionNumber", accessionNumber);
+
+            List<Sample> list = query.list();
+            if ((list != null) && !list.isEmpty()) {
+                return list.get(0);
+            }
+            return null;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Exception occurred in getUnassignedSampleByAccessionNumber", e);
+        }
+    }
     // ==============================================================
 
     @Override

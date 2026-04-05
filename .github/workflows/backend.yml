@@ -1,0 +1,83 @@
+name: 01 - Backend
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend-verify:
+    name: Build + Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Cache local Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v4
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
+      - name: check formatting
+        run: mvn spotless:check
+
+      - name: Initialize and build submodules
+        run: |
+          cd dataexport
+          mvn clean install
+          cd ..
+
+      - name: Build main project (produces classes JAR and test-jar for plugins)
+        run: mvn clean install -Dspotless.check.skip=true
+
+      # - name: Build plugins (compile-only until analyzer stubs are replaced)
+      #   run: cd plugins && mvn clean verify -DskipTests -Dmaven.test.skip=true
+
+      - name: Generate JaCoCo Badge
+        if: github.event_name == 'push'
+        uses: cicirello/jacoco-badge-generator@v2
+        with:
+          jacoco-csv-file: target/site/jacoco/jacoco.csv
+          badges-directory: target/html/badges
+
+      - name: Fix permissions
+        if: github.event_name == 'push'
+        run: |
+              sudo chown -R $(whoami):$(whoami) target/html
+              sudo chmod -R 755 target/html  # Read-write for owner, read for others
+
+      - name: Check coverage report exists
+        if: github.event_name == 'push'
+        run: ls -lah target/html || echo "Coverage report not found!"     
+
+      - name: Publish coverage report to GitHub Pages
+        if: github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: target/html/
+
+  backend-checkpoint:
+    name: 01 Checkpoint - Backend
+    if: always()
+    needs: [backend-verify]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check backend result
+        run: |
+          if [[ "${{ needs.backend-verify.result }}" != "success" ]]; then
+            echo "Backend verification failed: ${{ needs.backend-verify.result }}"
+            exit 1
+          fi
+          echo "Backend checkpoint passed."

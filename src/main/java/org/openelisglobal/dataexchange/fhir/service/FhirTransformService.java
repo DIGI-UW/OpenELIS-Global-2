@@ -13,6 +13,8 @@ import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
+import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
@@ -26,6 +28,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.test.beanItems.TestResultItem;
 
 public interface FhirTransformService {
 
@@ -90,5 +93,8 @@ public interface FhirTransformService {
             throws FhirTransformationException;
 
     org.hl7.fhir.r4.model.Task transformToTask(String sampleId);
+    TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation);
+
+    <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service);
 
 }

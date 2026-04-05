@@ -4,7 +4,6 @@ import org.openelisglobal.common.util.ConfigurationListener;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.spring.util.SpringContext;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -12,9 +11,6 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EmailNotificationSender implements ClientNotificationSender<EmailNotification>, ConfigurationListener {
-
-    @Autowired
-    private JavaMailSender javaMailSender;
 
     @Value("${org.openelisglobal.mail.bcc:safemauritius@govmu.org}")
     private String bcc;
@@ -29,6 +25,8 @@ public class EmailNotificationSender implements ClientNotificationSender<EmailNo
 
     @Override
     public void send(EmailNotification notification) {
+        // Always get a fresh prototype-scoped bean to pick up any config changes
+        JavaMailSender mailSender = SpringContext.getBean(JavaMailSender.class);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(notification.getRecipientEmailAddress());
         if (notification.getBccs() != null && notification.getBccs().size() > 0) {
@@ -43,11 +41,11 @@ public class EmailNotificationSender implements ClientNotificationSender<EmailNo
         }
         message.setSubject(notification.getSubject());
         message.setText(notification.getMessage());
-        javaMailSender.send(message);
+        mailSender.send(message);
     }
 
     @Override
     public void refreshConfiguration() {
-        javaMailSender = SpringContext.getBean(JavaMailSender.class);
+        // No-op: send() always fetches a fresh prototype-scoped JavaMailSender bean
     }
 }

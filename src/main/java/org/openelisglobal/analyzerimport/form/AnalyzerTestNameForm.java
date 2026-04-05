@@ -3,7 +3,7 @@ package org.openelisglobal.analyzerimport.form;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.test.valueholder.Test;
@@ -12,7 +12,7 @@ import org.openelisglobal.validation.annotations.SafeHtml;
 public class AnalyzerTestNameForm extends BaseForm {
 
     // for display
-    private List<Analyzer> analyzerList;
+    private List<AnalyzerType> analyzerList;
 
     // for display
     private List<Test> testList;
@@ -35,11 +35,11 @@ public class AnalyzerTestNameForm extends BaseForm {
         setFormName("analyzerTestNameForm");
     }
 
-    public List<Analyzer> getAnalyzerList() {
+    public List<AnalyzerType> getAnalyzerList() {
         return analyzerList;
     }
 
-    public void setAnalyzerList(List<Analyzer> analyzerList) {
+    public void setAnalyzerList(List<AnalyzerType> analyzerList) {
         this.analyzerList = analyzerList;
     }
 

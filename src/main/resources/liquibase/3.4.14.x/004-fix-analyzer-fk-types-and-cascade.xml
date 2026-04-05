@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!--
+    014-004: Normalize analyzer FK types + tiered delete strategy.
+
+    Problem: analyzer.id is NUMERIC(10,0) but analyzer_file_upload uses INT and
+    notebook_analysers uses INTEGER. Additionally, FK constraints lack proper
+    ON DELETE behavior, making cleanup fragile.
+
+    Tiered FK strategy:
+      CASCADE  - Config tables (analyzer_field, field_mapping, serial_port,
+                 file_import, plugin_config, pending_code, experiment)
+      SET NULL - Audit tables (file_upload, error) — preserve history
+      RESTRICT - Clinical/reference (results, notebook) — explicit handling
+  -->
+
+  <!-- ChangeSet 1: Fix analyzer_file_upload.analyzer_id INT -> NUMERIC(10,0) + SET NULL -->
+  <changeSet id="014-004-01-fix-file-upload-fk-type" author="openelis">
+    <comment>Fix analyzer_file_upload.analyzer_id type (INT->NUMERIC) and set ON DELETE SET NULL for audit trail preservation</comment>
+
+    <dropForeignKeyConstraint baseTableName="analyzer_file_upload"
+        constraintName="fk_analyzer_file_upload_analyzer"/>
+
+    <!-- Make nullable first (SET NULL requires nullable column) -->
+    <dropNotNullConstraint tableName="analyzer_file_upload"
+        columnName="analyzer_id" columnDataType="INT"/>
+
+    <modifyDataType tableName="analyzer_file_upload"
+        columnName="analyzer_id" newDataType="NUMERIC(10,0)"/>
+
+    <addForeignKeyConstraint baseTableName="analyzer_file_upload"
+        baseColumnNames="analyzer_id" referencedTableName="analyzer"
+        referencedColumnNames="id" constraintName="fk_analyzer_file_upload_analyzer"
+        onDelete="SET NULL"/>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="analyzer_file_upload"
+          constraintName="fk_analyzer_file_upload_analyzer"/>
+      <modifyDataType tableName="analyzer_file_upload"
+          columnName="analyzer_id" newDataType="INT"/>
+      <addNotNullConstraint tableName="analyzer_file_upload"
+          columnName="analyzer_id" columnDataType="INT"/>
+      <addForeignKeyConstraint baseTableName="analyzer_file_upload"
+          baseColumnNames="analyzer_id" referencedTableName="analyzer"
+          referencedColumnNames="id" constraintName="fk_analyzer_file_upload_analyzer"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ChangeSet 2: Fix notebook_analysers.analyser_id INTEGER -> NUMERIC(10,0) + RESTRICT -->
+  <changeSet id="014-004-02-fix-notebook-fk-type" author="openelis">
+    <comment>Fix notebook_analysers.analyser_id type (INTEGER->NUMERIC) and set ON DELETE RESTRICT</comment>
+
+    <dropForeignKeyConstraint baseTableName="notebook_analysers"
+        constraintName="fk_analysers_analyser"/>
+
+    <modifyDataType tableName="notebook_analysers"
+        columnName="analyser_id" newDataType="NUMERIC(10,0)"/>
+
+    <addForeignKeyConstraint baseTableName="notebook_analysers"
+        baseColumnNames="analyser_id" referencedTableName="analyzer"
+        referencedColumnNames="id" constraintName="fk_analysers_analyser"
+        onDelete="RESTRICT"/>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="notebook_analysers"
+          constraintName="fk_analysers_analyser"/>
+      <modifyDataType tableName="notebook_analysers"
+          columnName="analyser_id" newDataType="INTEGER"/>
+      <addForeignKeyConstraint baseTableName="notebook_analysers"
+          baseColumnNames="analyser_id" referencedTableName="analyzer"
+          referencedColumnNames="id" constraintName="fk_analysers_analyser"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ChangeSet 3: Tiered delete behavior for config tables (CASCADE) -->
+  <changeSet id="014-004-03-add-cascade-to-config-fks" author="openelis">
+    <comment>Add ON DELETE CASCADE to analyzer config/setup FK tables</comment>
+
+    <sql>
+      -- analyzer_field: config data owned by analyzer
+      ALTER TABLE clinlims.analyzer_field
+        DROP CONSTRAINT IF EXISTS fk_analyzer_field_analyzer;
+      ALTER TABLE clinlims.analyzer_field
+        ADD CONSTRAINT fk_analyzer_field_analyzer
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+
+      -- analyzer_experiment: experiment setup owned by analyzer
+      ALTER TABLE clinlims.analyzer_experiment
+        DROP CONSTRAINT IF EXISTS fk_analyzer_experiment_analyzer;
+      ALTER TABLE clinlims.analyzer_experiment
+        ADD CONSTRAINT fk_analyzer_experiment_analyzer
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+
+      -- analyzer_pending_code: transient queue data
+      ALTER TABLE clinlims.analyzer_pending_code
+        DROP CONSTRAINT IF EXISTS analyzer_pending_code_analyzer_fk;
+      ALTER TABLE clinlims.analyzer_pending_code
+        ADD CONSTRAINT analyzer_pending_code_analyzer_fk
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+
+      -- analyzer_plugin_config: config defaults/overrides
+      ALTER TABLE clinlims.analyzer_plugin_config
+        DROP CONSTRAINT IF EXISTS analyzer_plugin_config_analyzer_fk;
+      ALTER TABLE clinlims.analyzer_plugin_config
+        ADD CONSTRAINT analyzer_plugin_config_analyzer_fk
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+
+      -- Verify/update tables that already have CASCADE (idempotent)
+      -- analyzer_field_mapping: already CASCADE, re-assert
+      ALTER TABLE clinlims.analyzer_field_mapping
+        DROP CONSTRAINT IF EXISTS fk_field_mapping_analyzer;
+      ALTER TABLE clinlims.analyzer_field_mapping
+        ADD CONSTRAINT fk_field_mapping_analyzer
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+
+      -- serial_port_configuration: already CASCADE, re-assert
+      ALTER TABLE clinlims.serial_port_configuration
+        DROP CONSTRAINT IF EXISTS fk_serial_port_analyzer;
+      ALTER TABLE clinlims.serial_port_configuration
+        ADD CONSTRAINT fk_serial_port_analyzer
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+
+      -- file_import_configuration: already CASCADE, re-assert
+      ALTER TABLE clinlims.file_import_configuration
+        DROP CONSTRAINT IF EXISTS fk_file_import_analyzer;
+      ALTER TABLE clinlims.file_import_configuration
+        ADD CONSTRAINT fk_file_import_analyzer
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE CASCADE;
+    </sql>
+
+    <rollback>
+      <sql>
+        -- Revert all to NO ACTION (default PostgreSQL FK behavior)
+        ALTER TABLE clinlims.analyzer_field DROP CONSTRAINT IF EXISTS fk_analyzer_field_analyzer;
+        ALTER TABLE clinlims.analyzer_field ADD CONSTRAINT fk_analyzer_field_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.analyzer_experiment DROP CONSTRAINT IF EXISTS fk_analyzer_experiment_analyzer;
+        ALTER TABLE clinlims.analyzer_experiment ADD CONSTRAINT fk_analyzer_experiment_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.analyzer_pending_code DROP CONSTRAINT IF EXISTS analyzer_pending_code_analyzer_fk;
+        ALTER TABLE clinlims.analyzer_pending_code ADD CONSTRAINT analyzer_pending_code_analyzer_fk FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.analyzer_plugin_config DROP CONSTRAINT IF EXISTS analyzer_plugin_config_analyzer_fk;
+        ALTER TABLE clinlims.analyzer_plugin_config ADD CONSTRAINT analyzer_plugin_config_analyzer_fk FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.analyzer_field_mapping DROP CONSTRAINT IF EXISTS fk_field_mapping_analyzer;
+        ALTER TABLE clinlims.analyzer_field_mapping ADD CONSTRAINT fk_field_mapping_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.serial_port_configuration DROP CONSTRAINT IF EXISTS fk_serial_port_analyzer;
+        ALTER TABLE clinlims.serial_port_configuration ADD CONSTRAINT fk_serial_port_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+        ALTER TABLE clinlims.file_import_configuration DROP CONSTRAINT IF EXISTS fk_file_import_analyzer;
+        ALTER TABLE clinlims.file_import_configuration ADD CONSTRAINT fk_file_import_analyzer FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+      </sql>
+    </rollback>
+  </changeSet>
+
+  <!-- ChangeSet 4: CASCADE for transitive FKs via analyzer_field -->
+  <changeSet id="014-004-04-cascade-analyzer-field-children" author="openelis">
+    <comment>Add ON DELETE CASCADE to tables referencing analyzer_field, enabling full cascade: analyzer -> analyzer_field -> children</comment>
+
+    <sql>
+      ALTER TABLE clinlims.analyzer_field_mapping
+        DROP CONSTRAINT IF EXISTS fk_field_mapping_analyzer_field;
+      ALTER TABLE clinlims.analyzer_field_mapping
+        ADD CONSTRAINT fk_field_mapping_analyzer_field
+        FOREIGN KEY (analyzer_field_id) REFERENCES clinlims.analyzer_field(id) ON DELETE CASCADE;
+
+      ALTER TABLE clinlims.qualitative_result_mapping
+        DROP CONSTRAINT IF EXISTS fk_qualitative_mapping_field;
+      ALTER TABLE clinlims.qualitative_result_mapping
+        ADD CONSTRAINT fk_qualitative_mapping_field
+        FOREIGN KEY (analyzer_field_id) REFERENCES clinlims.analyzer_field(id) ON DELETE CASCADE;
+
+      ALTER TABLE clinlims.unit_mapping
+        DROP CONSTRAINT IF EXISTS fk_unit_mapping_field;
+      ALTER TABLE clinlims.unit_mapping
+        ADD CONSTRAINT fk_unit_mapping_field
+        FOREIGN KEY (analyzer_field_id) REFERENCES clinlims.analyzer_field(id) ON DELETE CASCADE;
+    </sql>
+
+    <rollback>
+      <sql>
+        ALTER TABLE clinlims.analyzer_field_mapping DROP CONSTRAINT IF EXISTS fk_field_mapping_analyzer_field;
+        ALTER TABLE clinlims.analyzer_field_mapping ADD CONSTRAINT fk_field_mapping_analyzer_field FOREIGN KEY (analyzer_field_id) REFERENCES clinlims.analyzer_field(id);
+        ALTER TABLE clinlims.qualitative_result_mapping DROP CONSTRAINT IF EXISTS fk_qualitative_mapping_field;
+        ALTER TABLE clinlims.qualitative_result_mapping ADD CONSTRAINT fk_qualitative_mapping_field FOREIGN KEY (analyzer_field_id) REFERENCES clinlims.analyzer_field(id);
+        ALTER TABLE clinlims.unit_mapping DROP CONSTRAINT IF EXISTS fk_unit_mapping_field;
+        ALTER TABLE clinlims.unit_mapping ADD CONSTRAINT fk_unit_mapping_field FOREIGN KEY (analyzer_field_id) REFERENCES clinlims.analyzer_field(id);
+      </sql>
+    </rollback>
+  </changeSet>
+
+  <!-- ChangeSet 5: SET NULL for analyzer_error (audit/operational logs) -->
+  <changeSet id="014-004-05-set-null-analyzer-error" author="openelis">
+    <comment>Change analyzer_error FK to SET NULL — error logs must survive analyzer deletion for compliance</comment>
+
+    <dropForeignKeyConstraint baseTableName="analyzer_error"
+        constraintName="fk_analyzer_error_analyzer"/>
+
+    <!-- Make nullable (SET NULL requires it) -->
+    <dropNotNullConstraint tableName="analyzer_error"
+        columnName="analyzer_id" columnDataType="NUMERIC(10,0)"/>
+
+    <addForeignKeyConstraint baseTableName="analyzer_error"
+        baseColumnNames="analyzer_id" referencedTableName="analyzer"
+        referencedColumnNames="id" constraintName="fk_analyzer_error_analyzer"
+        onDelete="SET NULL"/>
+
+    <rollback>
+      <dropForeignKeyConstraint baseTableName="analyzer_error"
+          constraintName="fk_analyzer_error_analyzer"/>
+      <addNotNullConstraint tableName="analyzer_error"
+          columnName="analyzer_id" columnDataType="NUMERIC(10,0)"/>
+      <addForeignKeyConstraint baseTableName="analyzer_error"
+          baseColumnNames="analyzer_id" referencedTableName="analyzer"
+          referencedColumnNames="id" constraintName="fk_analyzer_error_analyzer"/>
+    </rollback>
+  </changeSet>
+
+  <!-- ChangeSet 6: RESTRICT for analyzer_results (clinical data) -->
+  <changeSet id="014-004-06-restrict-analyzer-results" author="openelis">
+    <comment>Change analyzer_results FK to RESTRICT — clinical results must be explicitly handled before analyzer deletion</comment>
+
+    <sql>
+      -- Clean up any orphan results (analyzer_id references deleted analyzers)
+      DELETE FROM clinlims.analyzer_results
+      WHERE analyzer_id NOT IN (SELECT id FROM clinlims.analyzer);
+
+      -- Drop existing NO ACTION FK and recreate with RESTRICT
+      ALTER TABLE clinlims.analyzer_results
+        DROP CONSTRAINT IF EXISTS analyzer_fk;
+      ALTER TABLE clinlims.analyzer_results
+        ADD CONSTRAINT analyzer_fk
+        FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id) ON DELETE RESTRICT;
+    </sql>
+
+    <rollback>
+      <sql>
+        ALTER TABLE clinlims.analyzer_results DROP CONSTRAINT IF EXISTS analyzer_fk;
+        ALTER TABLE clinlims.analyzer_results ADD CONSTRAINT analyzer_fk FOREIGN KEY (analyzer_id) REFERENCES clinlims.analyzer(id);
+      </sql>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>
