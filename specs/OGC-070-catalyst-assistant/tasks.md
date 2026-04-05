@@ -1,11 +1,16 @@
 # Tasks: Catalyst - LLM-Powered Lab Data Assistant
 
-**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-21  
+**Branch**: `spec/OGC-070-catalyst-assistant` | **Date**: 2026-01-29  
 **Input**: Design documents from `/specs/OGC-070-catalyst-assistant/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
 
 **Organization**: Tasks are organized by **Milestone** per Constitution
 Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
+
+**Terminology**: MVP operates in **CloudSafe mode** (schema-only context, cloud
+providers allowed). **LocalPHI mode** (patient data via MCP tools, local
+providers only) is Phase 2. See plan.md Terminology section for full
+definitions.
 
 ## Format: `[ID] [P?] [M#] Description`
 
@@ -27,8 +32,9 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 - **M3 (Frontend Chat)**: 19 tasks (reduced - token handling deferred)
 - **M4 (Integration)**: ~20 tasks (wiring, controller, export, basic E2E without
   security)
-- **M5 (Security Features)**: ~17 tasks (RBAC, PHI detection, confirmation
-  tokens, security tests)
+- **M5 (Security Framework)**: ~17 tasks (RBAC interface, PHI detection
+  interface, confirmation token interface, framework tests - placeholder
+  implementations, Phase 2 hardening required)
 - **Total**: 183 tasks (sequentially renumbered, no duplicates)
 
 ---
@@ -50,6 +56,9 @@ Principle IX. Tests are **MANDATORY** per Constitution Principle V (TDD).
 **Verification**: Router → CatalystAgent → MCP → LLM → SQL flow complete  
 **FR Coverage**: FR-020 (A2A multi-agent architecture - partial), FR-003 (MCP
 schema retrieval - skeleton)
+
+**Note**: 24 tasks for 2-3 day estimate reflects granular TDD breakdown. Actual
+time may vary; adjust future milestone estimates based on M0.0 velocity.
 
 ### M0.0.1: Branch Setup & Project Structure (med-agent-hub style)
 
@@ -171,7 +180,7 @@ schema retrieval - skeleton)
 - [x] T018 [M0.0] Run pytest to verify all M0.0 tests pass, verify curl to
       Router returns SQL, create PR
       `feat/OGC-070-catalyst-assistant-m0-foundation-poc` → `develop`
-      **Status**: All M0.0 tests pass (6/6 tests: gateway, mcp, catalyst agent,
+      **Status**: All M0.0 tests pass (6/6 tests: gateway, mcp, CatalystAgent,
       router, integration). Integration tests validate full Gateway →
       RouterAgent → CatalystAgent → MCP flow. Ready for PR creation (manual
       step).
@@ -185,7 +194,7 @@ schema retrieval - skeleton)
 
 ---
 
-## Milestone 0.1: Provider Switching (Estimate: 0.5 days)
+## Milestone 0.1: Provider Switching (Estimate: 1 day)
 
 **Branch**: `feat/OGC-070-catalyst-assistant-m0-provider-switching`  
 **Goal**: Prove same agent works with local AND cloud providers  
@@ -251,19 +260,19 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP
+- [x] T024 [P] [M0.2] Write pytest test for SchemaAgent (calls MCP
       get_query_context) in
       `projects/catalyst/catalyst-agents/tests/test_schema_agent.py`
 
 ### M0.2.2: SchemaAgent Implementation
 
-- [ ] T025 [M0.2] Implement SchemaAgent executor in
+- [x] T025 [M0.2] Implement SchemaAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/schema_executor.py` (calls
       MCP get_query_context, returns schema context)
-- [ ] T026 [M0.2] Implement SchemaAgent server in
+- [x] T026 [M0.2] Implement SchemaAgent server in
       `projects/catalyst/catalyst-agents/src/agents/schema_server.py` with
       FastAPI + A2A SDK
-- [ ] T027 [M0.2] Create SchemaAgent card at
+- [x] T027 [M0.2] Create SchemaAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/schema.json` per A2A
       spec
 
@@ -271,27 +280,27 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T028 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
+- [x] T028 [P] [M0.2] Write pytest test for SQLGenAgent (receives schema
       context) in `projects/catalyst/catalyst-agents/tests/test_sqlgen_agent.py`
 
 ### M0.2.4: SQLGenAgent Implementation
 
-- [ ] T029 [M0.2] Implement SQLGenAgent executor in
+- [x] T029 [M0.2] Implement SQLGenAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_executor.py`
       (receives schema from SchemaAgent, generates SQL via LLM)
-- [ ] T030 [M0.2] Implement SQLGenAgent server in
+- [x] T030 [M0.2] Implement SQLGenAgent server in
       `projects/catalyst/catalyst-agents/src/agents/sqlgen_server.py` with
       FastAPI + A2A SDK
-- [ ] T031 [M0.2] Create SQLGenAgent card at
+- [x] T031 [M0.2] Create SQLGenAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/sqlgen.json` per A2A
       spec
 
 ### M0.2.5: RouterAgent Update
 
-- [ ] T032 [M0.2] Update RouterAgent executor in
+- [x] T032 [M0.2] Update RouterAgent executor in
       `projects/catalyst/catalyst-agents/src/agents/router_executor.py` to
       orchestrate: query → SchemaAgent → SQLGenAgent → response
-- [ ] T033 [M0.2] Update RouterAgent card at
+- [x] T033 [M0.2] Update RouterAgent card at
       `projects/catalyst/catalyst-agents/src/agent_cards/router.json` to
       reference SchemaAgent + SQLGenAgent
 
@@ -299,64 +308,77 @@ fallback works
 
 > **NOTE: Write this test FIRST, ensure it FAILS before implementation**
 
-- [ ] T034 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
+- [x] T034 [P] [M0.2] Write pytest integration test for Router → SchemaAgent →
       SQLGenAgent flow in
       `projects/catalyst/catalyst-agents/tests/test_multi_agent_flow.py`
 
 ### M0.2.7: Single-Agent Fallback
 
-- [ ] T035 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
+- [x] T035 [M0.2] Add single-agent fallback mode to RouterAgent (direct to
       CatalystAgent when `mode=single`)
-- [ ] T036 [P] [M0.2] Write pytest test for single-agent fallback in
+- [x] T036 [P] [M0.2] Write pytest test for single-agent fallback in
       `projects/catalyst/catalyst-agents/tests/test_fallback_mode.py`
 
 ### M0.2.8: Verification & PR
 
-- [ ] T037 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
+- [x] T037 [M0.2] Run pytest to verify all M0.2 tests pass, verify multi-agent
       flow works, verify fallback mode works, create PR
       `feat/OGC-070-catalyst-assistant-m0-agent-specialization` → `develop`
+      **Status**: All 14 agent tests pass. Multi-agent flow (Router →
+      SchemaAgent → SQLGenAgent) verified. Single-agent fallback mode verified.
+      Ready for PR creation (manual step).
 
 ### M0.2.9: Model Evaluation (FR-022, NFR-001)
 
-- [ ] T037a [P] [M0.2] Create golden query dataset in
+- [x] T037a [P] [M0.2] Create golden query dataset in
       `projects/catalyst/tests/fixtures/golden_queries.json` with 26 OpenELIS
       natural language queries (research.md Section 13). This dataset is used by
-      M0.2.9 tasks T037b-T037f for model evaluation.
+      M0.2.9 tasks T037b-T037f for model evaluation. **Status**: 26 queries with
+      full metadata (query_text, expected_tables, validation_criteria,
+      expected_sql_patterns, ambiguous/phi_like) created.
 - [ ] T037b [M0.2] Run balanced scorecard evaluation on Tier A Orchestrator
-      candidates (Llama 3.1 8B, Gemma 2 9B) — document results in
-      `projects/catalyst/docs/model-evaluation-m0.2.md`
+      candidates (Gemma 2 9B and Llama 3.1 8B) — document results in
+      `projects/catalyst/docs/model-evaluation-m0.2.md`. **Note**: Model
+      selection is deferred until evaluation results; both candidates are equal.
+      External research suggests Gemma 2 9B may excel at RAG tasks, but final
+      selection MUST be based on empirical evaluation harness results (per
+      spec.md clarification 2026-01-27). **Status**: Doc template and procedure
+      in place; run requires Tier A GPU/LM Studio.
 - [ ] T037c [M0.2] Run balanced scorecard evaluation on Tier A SQLGen candidates
-      (CodeLlama 13B, Llama 3.1 8B fallback) — document results
-- [ ] T037d [M0.2] Write trajectory validation tests per research.md Section
+      (CodeLlama 13B, Llama 3.1 8B fallback) — document results. **Status**: Doc
+      template in model-evaluation-m0.2.md; run requires Tier A GPU/LM Studio.
+- [x] T037d [M0.2] Write trajectory validation tests per research.md Section
       14.2 in
       `projects/catalyst/catalyst-agents/tests/test_trajectory_validation.py`
-- [ ] T037e [M0.2] Run balanced scorecard evaluation on Tier B SQLGen candidates
-      (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available — document results
-      in `projects/catalyst/docs/model-evaluation-m0.2.md` (Tier B section)
-- [ ] T037f [M0.2] Document Tier B evaluation procedure in
-      `projects/catalyst/docs/model-evaluation-m0.2.md` (when Tier B hardware
-      unavailable, document skip rationale; NFR-001 satisfied by Tier A + Tier B
-      task presence)
-- [ ] T037g [P] [M0.2] Create comprehensive golden query dataset file
-      `projects/catalyst/tests/fixtures/golden_queries.json` with 26+ robust
-      queries including metadata fields for LLM validation toolkit compatibility
-      (ragas, promptfoo, langfuse). Each query MUST include: natural_language,
-      expected_sql, context, difficulty, tables_involved, expected_row_count,
-      explanation (FR-022). File format must be JSON array of query objects.
+      **Status**: Four trajectory tests added (order, task completion, fallback,
+      query passed); all pass.
+- [ ] T037e [POST-MVP] Run balanced scorecard evaluation on Tier B SQLGen
+      candidates (CodeLlama 34B, Llama 3.1 70B) when 40GB+ GPU available —
+      document results in `projects/catalyst/docs/model-evaluation-post-mvp.md`
+      (Tier B section). **Note**: Tier B evaluation deferred to post-MVP per
+      spec.md clarification 2026-01-27; M0.2 sign-off does not require 40GB+ GPU
+      hardware.
+- [ ] T037f [POST-MVP] Document Tier B evaluation procedure in
+      `projects/catalyst/docs/model-evaluation-post-mvp.md`. **Note**: Tier B
+      evaluation is post-MVP scope; NFR-001 satisfied by Tier A evaluation for
+      MVP.
 
 ### M0.2 Sign-off Checklist
 
-- [ ] All pytest unit tests pass
+- [x] All pytest unit tests pass (31 catalyst-agents tests, including 4
+      trajectory validation)
 - [ ] Multi-agent flow E2E: Query routed through SchemaAgent → SQLGenAgent
 - [ ] Single-agent fallback: CatalystAgent works when SchemaAgent/SQLGenAgent
       unavailable
 - [ ] Both LLM providers work with multi-agent flow
-- [ ] **Trajectory validation**: Router → SchemaAgent → SQLGenAgent order
-      verified
-- [ ] **Golden query dataset**: 26+ comprehensive OpenELIS natural language
+- [x] **Trajectory validation**: Router → SchemaAgent → SQLGenAgent order
+      verified (`test_trajectory_validation.py`)
+- [x] **Golden query dataset**: 26+ comprehensive OpenELIS natural language
       queries created in `projects/catalyst/tests/fixtures/golden_queries.json`
       with full metadata (FR-022)
 - [ ] **Model evaluation**: At least one Tier A config evaluated using scorecard
+      (template in `projects/catalyst/docs/model-evaluation-m0.2.md`; run
+      requires GPU)
 - [ ] **Tier B evaluation**: Tier B SQLGen scorecard run when 40GB+ GPU
       available; otherwise procedure/skip documented (NFR-001)
 - [ ] **Deterministic guards**: 100% pass rate on non-ambiguous queries (18/18)
@@ -397,14 +419,14 @@ support via accurate schema metadata)
 - [ ] T039 [P] [M1] Write pytest test for RAG retriever in
       `projects/catalyst/catalyst-agents/tests/test_rag_retrieval.py`
 - [ ] T040 [P] [M1] Write pytest test for PostgreSQL schema extraction in
-      `projects/catalyst/catalyst-agents/tests/test_schema_extraction.py`
+      `projects/catalyst/catalyst-mcp/tests/test_schema_extraction.py`
 - [ ] T041 [P] [M1] Write pytest test for `get_relevant_tables` with RAG in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py` (update
-      existing test)
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py` (update existing
+      test)
 - [ ] T042 [P] [M1] Write pytest test for `get_table_ddl` in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 - [ ] T043 [P] [M1] Write pytest test for `get_relationships` in
-      `projects/catalyst/catalyst-agents/tests/test_mcp_tools.py`
+      `projects/catalyst/catalyst-mcp/tests/test_mcp_tools.py`
 
 ### M1.3: PostgreSQL Schema Extraction
 
@@ -598,12 +620,8 @@ use GenericDAO pattern consistent with existing OpenELIS codebase.
       with @Service and @Transactional
 - [ ] T067a [M2] Implement row estimation using EXPLAIN in
       `src/main/java/org/openelisglobal/catalyst/service/CatalystQueryServiceImpl.java`
-      (FR-009)
-- [ ] T067b [M2] **FR-009 Row Estimation (Deferred from M0-M1)**: Implement row
-      estimation functionality using EXPLAIN queries when read-only database
-      access is available (configured in T070-T071). This task DEPENDS ON
-      successful read-only connection setup. Verify EXPLAIN output parsing
-      returns accurate row counts.
+      (FR-009). **Note**: This mirrors M1's MCP `validate_sql` estimation for
+      defense-in-depth. Depends on M1 for EXPLAIN pattern reference.
 - [ ] T068 [M2] Implement SQL guardrails in
       `src/main/java/org/openelisglobal/catalyst/guardrails/SQLGuardrails.java`
       (blocked tables, SQL validation - NO PHI detection, deferred to M5)
@@ -746,10 +764,13 @@ translations
       `frontend/src/components/catalyst/SQLPreview.jsx` with Carbon CodeSnippet
 - [ ] T093a [M3] Implement example prompts display in
       `frontend/src/components/catalyst/CatalystSidebar.jsx` with Carbon
-      components (FR-014)
+      components (FR-014). Examples are hardcoded in frontend; no backend
+      endpoint needed.
 - [ ] T093b [M3] Add example prompts i18n keys to
       `frontend/src/languages/en.json` and `frontend/src/languages/fr.json`
       (FR-014)
+- [ ] T087a [M3] Add query reformulation suggestions to error messages when SQL
+      generation fails (SC-007 requirement)
 - [ ] T093c [POST-MVP] Polish example prompts with user-tested, domain-expert
       validated queries. MVP uses basic placeholder examples from research.md
       for functional testing only. Polished, production-ready examples deferred
@@ -846,6 +867,9 @@ to M5 to allow independent testing
 - [ ] T108 [M4] Add Agent Card discovery endpoint proxy at
       `/.well-known/agent.json` in
       `src/main/java/org/openelisglobal/catalyst/controller/CatalystRestController.java`
+- [ ] T098a [M4] Implement RouterAgent clarification flow when query is
+      ambiguous (e.g., "samples" without specifying sample/patient/date) per US1
+      scenario 3
 
 ### M4.4: Response Formatting & Export
 
@@ -883,39 +907,49 @@ to M5 to allow independent testing
 
 ---
 
-## Milestone 5: Security Features (Estimate: 2-3 days) [SEQUENTIAL - depends on M4]
+## Milestone 5: Security Framework (Estimate: 2-3 days) [SEQUENTIAL - depends on M4]
 
-**Branch**: `feat/OGC-070-catalyst-assistant-m5-security`  
-**Goal**: Implement and thoroughly test security features with independent unit
-tests before integration  
-**Verification**: Security unit tests pass, security integration tests pass,
-full E2E test with security features passes  
-**FR Coverage**: FR-016 (confirmation token workflow), FR-018 (PHI detection +
-provider routing), FR-019 (audit metadata capture - security fields), FR-021
-(role-based endpoint access control)
+**Branch**: `feat/OGC-070-catalyst-assistant-m5-security-framework`  
+**Goal**: Establish security architecture with placeholder implementations. Full
+hardening deferred to Phase 2 (before patient data use).  
+**Verification**: Framework components in place, basic tests pass (verify
+interfaces work, not security strength)  
+**FR Coverage**: FR-016 (confirmation token workflow - interface), FR-018 (PHI
+detection + provider routing - basic patterns), FR-019 (audit metadata capture -
+security fields), FR-021 (role-based endpoint access control - permissive
+placeholder)
+
+**CRITICAL**: M5 implements **architectural components** (interfaces, extension
+points, configuration flags) with **placeholder/rudimentary implementations**.
+Full hardened implementation MUST be completed in Phase 2 Security Hardening
+milestone BEFORE ANY patient data use.
 
 ### M5.1: Branch Setup
 
 - [ ] T118 [M5] Create milestone branch
-      `feat/OGC-070-catalyst-assistant-m5-security` from `develop` (after M4
-      merged)
+      `feat/OGC-070-catalyst-assistant-m5-security-framework` from `develop`
+      (after M4 merged)
 
-### M5.2: Security Unit Tests (TDD - MANDATORY)
+### M5.2: Security Framework Unit Tests (TDD - MANDATORY)
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation** >
+> **NOTE: Tests verify interfaces work, NOT security strength (placeholder
+> implementations)**
 
 - [ ] T111a [P] [M5] Write integration test for role-based access control in
       `src/test/java/org/openelisglobal/catalyst/controller/CatalystRestControllerSecurityTest.java`:
       (1) user with `Global Administrator` → 200 OK; (2) user with `Reports` →
       200 OK; (3) user with non-privileged role (e.g. Lab Technician) → 403
       Forbidden; (4) unauthenticated request → 401 or 403 per app behavior
-      (FR-021).
+      (FR-021). **Note**: RBAC check exists but may be permissive in MVP.
 - [ ] T102i [P] [M5] Write pytest test for RouterAgent PHI detection and
       provider routing in
-      `projects/catalyst/catalyst-agents/tests/test_router_agent.py` (FR-018)
+      `projects/catalyst/catalyst-agents/tests/test_router_agent.py` (FR-018).
+      **Note**: PHI patterns are basic regex in MVP; comprehensive patterns in
+      Phase 2.
 - [ ] T102j [P] [M5] Write unit test for confirmation token validation in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceSecurityTest.java`
-      (test token mismatch rejection)
+      (test token mismatch rejection). **Note**: Minimal validation in MVP.
 - [ ] T102k [P] [M5] Write unit test for PHI gating in
       `src/test/java/org/openelisglobal/catalyst/service/CatalystQueryServiceSecurityTest.java`
 
@@ -983,29 +1017,36 @@ provider routing), FR-019 (audit metadata capture - security fields), FR-021
 
 ### M5.8: Verification & PR
 
-- [ ] T120 [M5] Run security unit tests (MUST pass independently)
-- [ ] T121 [M5] Run security integration tests (MUST pass)
+- [ ] T120 [M5] Run security framework unit tests (MUST pass independently -
+      verify interfaces work)
+- [ ] T121 [M5] Run security framework integration tests (MUST pass - verify
+      components connect)
 - [ ] T122 [M5] Run Cypress E2E test with security features individually with
       `npm run cy:run -- --spec "cypress/e2e/catalyst-security.cy.js"`
       (Constitution V.5)
-- [ ] T123 [M5] Verify role-based access control works (privileged users can
-      access, non-privileged users get 403)
-- [ ] T124 [M5] Verify PHI detection routes to local provider or blocks
-      appropriately
-- [ ] T125 [M5] Verify confirmation token workflow (generation, validation,
-      execution)
-- [ ] T126 [M5] Create PR `feat/OGC-070-catalyst-assistant-m5-security` →
-      `develop`
+- [ ] T123 [M5] Verify role-based access control interface works (privileged
+      users can access, non-privileged users get 403)
+- [ ] T124 [M5] Verify PHI detection interface routes to local provider or
+      blocks appropriately (basic patterns only)
+- [ ] T125 [M5] Verify confirmation token workflow interface (generation,
+      validation, execution)
+- [ ] T126 [M5] Create PR
+      `feat/OGC-070-catalyst-assistant-m5-security-framework` → `develop`
 
 ### M5 Sign-off Checklist
 
-- [ ] All security unit tests pass
+**Note**: M5 verifies framework/interfaces work, NOT security strength. Full
+hardened implementation required in Phase 2 before patient data use.
+
+- [ ] All security framework unit tests pass (interface tests)
 - [ ] Cypress E2E: Admin user can query → 200 OK
 - [ ] Cypress E2E: Reports user can query → 200 OK
 - [ ] Cypress E2E: Lab Technician blocked → 403 Forbidden
 - [ ] Cypress E2E: Unauthenticated request → 401/403
-- [ ] PHI detection test: Query with PHI keywords routes to local LLM
-- [ ] Confirmation token: Query requires ACCEPTED state before execution
+- [ ] PHI detection interface: Basic patterns detect MRN/DOB formats
+- [ ] Confirmation token interface: Token generation/validation flow works
+- [ ] **CRITICAL**: Document which security components are placeholder vs
+      implemented (for Phase 2 hardening tracking)
 
 ---
 
@@ -1021,7 +1062,7 @@ graph TD
     M02 --> M2["M2: Backend Core"]
     M02 --> M3["M3: Frontend Chat"]
     M1 --> M4["M4: Integration"]
-    M4 --> M5["M5: Security Features"]
+    M4 --> M5["M5: Security Framework"]
     M2 --> M4
     M3 --> M4
 
@@ -1078,9 +1119,9 @@ graph TD
    Specialization)
 2. **Week 2**: M1 (RAG-based Schema) + M2 (Backend Core) + M3 (Frontend Chat) in
    parallel
-3. **Week 3**: M4 (Integration) + M5 (Security Features) + Testing + Bug fixes
+3. **Week 3**: M4 (Integration) + M5 (Security Framework) + Testing + Bug fixes
 4. **Deploy MVP**: Full chat→agents→SQL→results flow validated with security
-   features
+   framework (placeholder implementations; full hardening in Phase 2)
 
 ### Constitution Checkpoints (MANDATORY)
 
@@ -1093,8 +1134,9 @@ graph TD
 - **After M2**: ORM test + unit tests MUST pass (>80% coverage)
 - **After M3**: Jest tests MUST pass (>70% coverage)
 - **After M4**: Basic E2E test MUST pass (without security features)
-- **After M5**: Security unit tests + security integration tests + full E2E test
-  with security features MUST pass (Constitution V.5)
+- **After M5**: Security framework unit tests + integration tests MUST pass
+  (verify interfaces work, not security strength). Full hardened implementation
+  in Phase 2 (Constitution V.5)
 
 ### Pre-Commit Checklist (MANDATORY)
 

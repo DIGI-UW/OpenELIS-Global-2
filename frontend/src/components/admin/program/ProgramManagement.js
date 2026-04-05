@@ -25,6 +25,7 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import { jpSet } from "../../utils/JsonPath";
 import EditAdditionalOrderEntryQuestions from "./EditAdditionalOrderEntryQuestions.js";
 
 let breadcrumbs = [
@@ -94,8 +95,7 @@ function ProgramManagement() {
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
     const updatedValues = { ...programValues };
-    var jp = require("jsonpath");
-    jp.value(updatedValues, name, value);
+    jpSet(updatedValues, name, value);
     setProgramValues(updatedValues);
   };
 
@@ -178,7 +178,7 @@ function ProgramManagement() {
             <Column lg={8} md={4} sm={2}>
               <Select
                 id="additionalQuestionsSelect"
-                labelText="Program"
+                labelText={intl.formatMessage({ id: "program.name.program" })}
                 onChange={handleProgramSelection}
               >
                 <SelectItem
@@ -236,7 +236,7 @@ function ProgramManagement() {
                 type="text"
                 name="program.code"
                 id="program.code"
-                labelText="Code"
+                labelText={intl.formatMessage({ id: "program.name.code" })}
                 maxLength="10"
                 value={programValues.program.code}
                 onChange={handleFieldChange}

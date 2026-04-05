@@ -1,0 +1,58 @@
+.error-details-modal .cds--grid {
+  margin: 0;
+}
+
+.error-details-modal .cds--col {
+  padding: 0 1rem;
+  margin-bottom: 1rem;
+}
+
+.error-details-modal h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--cds-text-primary);
+}
+
+.error-details-modal p {
+  margin: 0;
+  color: var(--cds-text-secondary);
+}
+
+.error-details-modal ul {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.error-details-modal li {
+  margin-bottom: 0.5rem;
+  color: var(--cds-text-secondary);
+}
+
+.analyzer-logs {
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.875rem;
+}
+
+.log-entry {
+  display: flex;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--cds-border-subtle);
+}
+
+.log-timestamp {
+  color: var(--cds-text-secondary);
+  min-width: 120px;
+}
+
+.log-level {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.log-message {
+  flex: 1;
+}

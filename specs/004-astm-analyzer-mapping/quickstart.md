@@ -25,7 +25,7 @@ starts automatically with the dev Docker Compose setup.
 
 ```bash
 # Check bridge service in docker-compose
-grep -A 20 "astm-http-bridge" dev.docker-compose.yml
+grep -A 20 "openelis-analyzer-bridge" dev.docker-compose.yml
 
 # Verify bridge configuration file exists
 cat volume/astm-bridge/configuration.yml

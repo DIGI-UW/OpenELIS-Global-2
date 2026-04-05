@@ -199,7 +199,7 @@ source-of-truth fragmentation.
 
 **Why generated SQL?**
 
-- E2E CI (`frontend-qa.yml`) doesn't have Maven/Java dependencies
+- E2E CI (`e2e-cypress-deprecated.yml`) doesn't have Maven/Java dependencies
 - Keeps E2E tests fast (no Maven compilation)
 - Maintains single source of truth (XML is authoritative)
 - Prevents accidental divergence (SQL regenerated every run)

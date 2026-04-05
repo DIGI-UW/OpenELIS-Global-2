@@ -605,15 +605,27 @@ need additional headroom for larger context windows.
 
 #### Orchestrator candidates (fast, native tool calling support)
 
-1. **Meta-Llama-3.1-8B-Instruct (GGUF)**
+**Primary: Gemma 2 9B** (Fallback: Llama 3.1 8B) - Updated 2026-01-29 per
+MedGemma analysis
 
-   - Source: `lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF`
-   - Typical `Q4_K_M` size is ~4.9GB per the HF repo’s estimator.
+1. **Gemma 2 9B IT (GGUF)** - **PRIMARY**
 
-2. **Gemma 2 9B IT (GGUF)**
    - Source: `lmstudio-community/gemma-2-9b-it-GGUF`
    - Deployment note: use the Gemma preset in LM Studio for correct chat
      formatting.
+   - **Rationale**: Elevated to primary based on MedGemma/Gemini analysis
+     showing superior RAG/reading comprehension performance for healthcare
+     navigation tasks. "Often outperforms Llama 3 (8B) in complex reasoning
+     benchmarks" and is "famously good at reading comprehension" - ideal for
+     schema retrieval workflows. See `plans/medgemma-methodology-alignment.md`
+     Section 5.
+
+2. **Meta-Llama-3.1-8B-Instruct (GGUF)** - **FALLBACK**
+
+   - Source: `lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF`
+   - Typical `Q4_K_M` size is ~4.9GB per the HF repo’s estimator.
+   - Use as fallback if Gemma 2 9B unavailable or deployment constraints favor
+     smaller model.
 
 #### SQLGen candidates (text-to-SQL + code strength)
 

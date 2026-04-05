@@ -1,8 +1,8 @@
 #!/bin/bash
 # E2E test: verify LLM provider returns SQL via Catalyst Gateway.
 # Requires: Gateway, Router, Catalyst Agent, MCP services running (e.g. via Procfile.dev or run_tests.sh).
-# For full M0.1 sign-off: run once with LLM_PROVIDER=lmstudio (LM Studio on localhost:1234),
-# then again with LLM_PROVIDER=gemini and GEMINI_API_KEY set.
+# For full M0.1 sign-off: run once with CATALYST_LLM_PROVIDER=lmstudio (LM Studio on localhost:1234),
+# then again with CATALYST_LLM_PROVIDER=gemini and GEMINI_API_KEY set.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -49,5 +49,5 @@ if ! grep -qE '(SELECT|choices|content)' "${RESP_FILE}"; then
 fi
 
 rm -f "${RESP_FILE}"
-echo "PASS: Provider E2E (current LLM_PROVIDER=${LLM_PROVIDER:-<unset>})"
+echo "PASS: Provider E2E (current CATALYST_LLM_PROVIDER=${CATALYST_LLM_PROVIDER:-<unset>})"
 exit 0

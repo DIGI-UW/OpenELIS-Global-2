@@ -42,12 +42,13 @@ async def test_router_to_catalyst_to_mcp_flow(monkeypatch):
     ), f"Expected 'SELECT COUNT(*) FROM sample', got '{sql_result}'"
 
     executor = RouterAgentExecutor()
+    executor.mode = "single"  # Use single-agent mode for this test
 
-    async def _fake_create_client():
+    async def _fake_create_client(agent_url: str):
         return _FakeClient(sql_result)
 
     monkeypatch.setattr(executor, "_create_client", _fake_create_client)
-    parts = await executor.delegate_query("count samples")
+    parts = await executor.delegate_query_single_agent("count samples")
     # Verify the parts contain the expected SQL
     assert len(parts) > 0, "Should have at least one part"
     assert (

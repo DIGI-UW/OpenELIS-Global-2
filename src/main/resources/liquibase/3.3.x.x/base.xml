@@ -6,9 +6,9 @@
 
   <!-- Sample Storage Management POC (001-sample-storage) -->
   <!-- Clean consolidated migrations - assumes no storage management data exists -->
-  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml"/>
-  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml"/>
-  <include relativeToChangelogFile="true" file="003-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="001-create-storage-hierarchy-tables.xml" />
+  <include relativeToChangelogFile="true" file="002-create-assignment-tables.xml" />
+  <include relativeToChangelogFile="true" file="003-create-indexes.xml" />
   <!-- NOTE: Storage test fixtures are loaded via DBUnit datasets in tests.
        Keep Liquibase focused on schema migrations; do not seed storage hierarchy
        test data here to avoid dual sources of truth. -->
@@ -18,6 +18,7 @@
   <include relativeToChangelogFile="true" file="008-add-short-code-columns.xml"/>
   <include relativeToChangelogFile="true" file="009-create-print-history-table.xml"/>
   <include relativeToChangelogFile="true" file="010-remove-odoo-site-information.xml"/>
+  <include relativeToChangelogFile="true" file="011-optimize-test-normalized-description.xml"/>
   <include relativeToChangelogFile="true" file="011-make-short-code-optional.xml"/>
   <include relativeToChangelogFile="true" file="012-update-code-column-length.xml"/>
   <include relativeToChangelogFile="true" file="013-remove-short-code-columns.xml"/>
@@ -30,14 +31,68 @@
   <include relativeToChangelogFile="true" file="020-storage-box-use-code-not-short-code.xml"/>
   <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
+
+  <!-- Generic Reporting Framework (reporting-framework) -->
+  <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
+
   <!-- Add device connectivity fields for network-connected storage equipment -->
   <include relativeToChangelogFile="true" file="023-storage-device-connectivity.xml"/>
-  <!-- Freezer monitoring - formerly 011 (renumbered to avoid duplicate sequence) -->
+  <!-- Freezer monitoring: creates menu_storage_management and cold storage under menu_storage -->
   <include relativeToChangelogFile="true" file="024-freezer-monitoring-schema.xml"/>
+  <!-- Add storage subnav items (Samples, Rooms, Devices, etc.) under menu_storage_management -->
+  <include relativeToChangelogFile="true" file="029-add-storage-subnav-items.xml"/>
   <include relativeToChangelogFile="true" file="generic-program-menu.xml"/>
   <!-- Freezer audit trail - formerly 012 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="025-register-freezer-audit-trail.xml"/>
   <!-- Patient Merge (008-patient-merge) - formerly 019/020 (renumbered to avoid duplicate sequence) -->
   <include relativeToChangelogFile="true" file="026-patient-merge-create-audit-table.xml"/>
   <include relativeToChangelogFile="true" file="027-patient-merge-alter-patient-table.xml"/>
+  <!-- Site Branding / White Labeling (001-site-branding) -->
+  <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
+
+  <!-- External Quality Assurance (005-eqa-module) -->
+  <include relativeToChangelogFile="true" file="eqa-001-create-eqa-program-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-002-create-eqa-distribution-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-003-create-sample-eqa-table.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-004-create-eqa-result-table.xml"/>
+
+  <!-- EQA Result audit trail columns (T116) -->
+  <include relativeToChangelogFile="true" file="eqa-006-add-result-audit-columns.xml"/>
+
+  <!-- EQA/QC Menu Items, System Module, and Role Assignments -->
+  <include relativeToChangelogFile="true" file="eqa-007-add-eqa-menu-items.xml"/>
+
+  <!-- EQA Program Administration columns (provider, category, frequency) -->
+  <include relativeToChangelogFile="true" file="eqa-008-add-program-admin-columns.xml"/>
+
+  <!-- EQA Enrollment tables (provider-side + self-enrollment + mappings) -->
+  <include relativeToChangelogFile="true" file="eqa-009-create-enrollment-tables.xml"/>
+
+  <!-- EQA Navigation restructure (EQA Tests + EQA Management + standalone Alerts) -->
+  <include relativeToChangelogFile="true" file="eqa-010-restructure-menu.xml"/>
+
+  <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
+  <!-- Address Hierarchy Configuration -->
+  <include relativeToChangelogFile="true" file="030-add-address-hierarchy-config.xml"/>
+  <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
+  <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
+  <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
+  <!-- Sample shipping management -->
+  <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
+  <!-- shipment-004 removed: unassigned samples now use referral table directly -->
+  <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-008-add-capacity-column.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-009-add-referral-shipment-columns.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-010-add-actual-sample-count.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-011-add-sample-shipment-referral-type.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-012-migrate-to-sample-item.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-013-add-box-label-prefix-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+
 </databaseChangeLog>

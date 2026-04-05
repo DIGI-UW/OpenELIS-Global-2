@@ -7,6 +7,8 @@
 
     <!-- Hierarchy Traversal Indexes -->
     <changeSet id="storage-008-create-hierarchy-indexes" author="sample-storage-feature">
+        <validCheckSum>8:ea888ef36d9a15e0aa6e39ee84c6cf88</validCheckSum>
+        <validCheckSum>8:a9b1fd3e988cbc45a0c4b76378cb6b7c</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_device_parent_room" tableName="storage_device"/>
@@ -34,6 +36,8 @@
 
     <!-- FHIR UUID Lookup Indexes -->
     <changeSet id="storage-009-create-fhir-uuid-indexes" author="sample-storage-feature">
+        <validCheckSum>8:ac10ea20503b1b7a56cfe384da4f303e</validCheckSum>
+        <validCheckSum>8:0330bdff2ea541cf8ea541b7849c3451</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <not>
                 <indexExists indexName="idx_room_fhir_uuid" tableName="storage_room"/>

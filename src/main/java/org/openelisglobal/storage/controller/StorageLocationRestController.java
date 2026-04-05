@@ -95,7 +95,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Room Endpoints ==========
 
     @PostMapping("/rooms")
-    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form) {
+    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form, HttpServletRequest request) {
         try {
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -114,8 +114,11 @@ public class StorageLocationRestController extends BaseRestController {
             room.setDescription(form.getDescription());
             room.setActive(form.getActive() != null ? form.getActive() : true);
             room.setFhirUuid(UUID.randomUUID());
-            room.setSysUserId("1"); // Default system user for REST API (should come from security context in
-                                    // production)
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            }
+            room.setSysUserId(sysUserId);
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
 
@@ -319,8 +322,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Device Endpoints ==========
 
     @PostMapping("/devices")
-    public ResponseEntity<?> createDevice(@Valid @RequestBody StorageDeviceForm form,
-            jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<?> createDevice(@Valid @RequestBody StorageDeviceForm form, HttpServletRequest request) {
         try {
             // Set parent room first (needed for code generation)
             Integer parentRoomId = form.getParentRoomId() != null ? Integer.parseInt(form.getParentRoomId()) : null;
@@ -353,7 +355,11 @@ public class StorageLocationRestController extends BaseRestController {
             device.setPort(form.getPort());
             device.setCommunicationProtocol(form.getCommunicationProtocol());
             device.setFhirUuid(UUID.randomUUID());
-            device.setSysUserId("1"); // Default system user for REST API
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            }
+            device.setSysUserId(sysUserId);
             device.setParentRoom(parentRoom);
 
             Integer id = storageLocationService.insert(device);
@@ -361,10 +367,6 @@ public class StorageLocationRestController extends BaseRestController {
 
             if (shouldEnableMonitoring(device)) {
                 try {
-                    String sysUserId = getSysUserId(request);
-                    if (sysUserId == null) {
-                        sysUserId = "1"; // Default system user for tests/REST API without session
-                    }
                     createFreezerMonitoringStub(device, sysUserId);
                 } catch (Exception e) {
                     logger.warn("Failed to auto-create freezer monitoring stub for device {}: {}", device.getName(),
@@ -630,14 +632,18 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Shelf Endpoints ==========
 
     @PostMapping("/shelves")
-    public ResponseEntity<?> createShelf(@Valid @RequestBody StorageShelfForm form) {
+    public ResponseEntity<?> createShelf(@Valid @RequestBody StorageShelfForm form, HttpServletRequest request) {
         try {
             StorageShelf shelf = new StorageShelf();
             shelf.setLabel(form.getLabel());
             shelf.setCapacityLimit(form.getCapacityLimit());
             shelf.setActive(form.getActive() != null ? form.getActive() : true);
             shelf.setFhirUuid(UUID.randomUUID());
-            shelf.setSysUserId("1"); // Default system user for REST API
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            }
+            shelf.setSysUserId(sysUserId);
 
             Integer parentDeviceId = form.getParentDeviceId() != null ? Integer.parseInt(form.getParentDeviceId())
                     : null;
@@ -893,14 +899,18 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Rack Endpoints ==========
 
     @PostMapping("/racks")
-    public ResponseEntity<?> createRack(@Valid @RequestBody StorageRackForm form) {
+    public ResponseEntity<?> createRack(@Valid @RequestBody StorageRackForm form, HttpServletRequest request) {
         try {
             StorageRack rack = new StorageRack();
             rack.setLabel(form.getLabel());
             rack.setCode(form.getCode());
             rack.setActive(form.getActive() != null ? form.getActive() : true);
             rack.setFhirUuid(UUID.randomUUID());
-            rack.setSysUserId("1"); // Default system user for REST API
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            }
+            rack.setSysUserId(sysUserId);
 
             Integer parentShelfId = form.getParentShelfId() != null ? Integer.parseInt(form.getParentShelfId()) : null;
             StorageShelf parentShelf = (StorageShelf) storageLocationService.get(parentShelfId, StorageShelf.class);
@@ -1160,7 +1170,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Box Endpoints ==========
 
     @PostMapping("/boxes")
-    public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form) {
+    public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form, HttpServletRequest request) {
         try {
             StorageBox box = new StorageBox();
             box.setLabel(form.getLabel());
@@ -1171,7 +1181,11 @@ public class StorageLocationRestController extends BaseRestController {
             box.setCode(form.getCode());
             box.setActive(form.getActive() != null ? form.getActive() : true);
             box.setFhirUuid(UUID.randomUUID());
-            box.setSysUserId("1"); // Default system user for REST API
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+            }
+            box.setSysUserId(sysUserId);
 
             Integer parentRackId = form.getParentRackId() != null ? Integer.parseInt(form.getParentRackId()) : null;
             StorageRack parentRack = (StorageRack) storageLocationService.get(parentRackId, StorageRack.class);

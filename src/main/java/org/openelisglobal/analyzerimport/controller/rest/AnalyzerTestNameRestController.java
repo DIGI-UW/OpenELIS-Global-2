@@ -4,8 +4,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
-import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.service.AnalyzerTypeService;
+import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzerimport.form.AnalyzerTestNameForm;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
@@ -15,8 +15,6 @@ import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.validator.BaseErrors;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -47,9 +45,7 @@ public class AnalyzerTestNameRestController extends BaseController {
     @Autowired
     private AnalyzerTestMappingService analyzerTestMappingService;
     @Autowired
-    private AnalyzerService analyzerService;
-    @Autowired
-    private TestService testService;
+    private AnalyzerTypeService analyzerTypeService;
 
     @ModelAttribute("form")
     public AnalyzerTestNameForm initForm() {
@@ -72,7 +68,7 @@ public class AnalyzerTestNameRestController extends BaseController {
         request.setAttribute(PREVIOUS_DISABLED, "true");
         request.setAttribute(NEXT_DISABLED, "true");
 
-        List<Analyzer> analyzerList = getAllAnalyzers();
+        List<AnalyzerType> analyzerList = getAllAnalyzers();
 
         newForm.setAnalyzerList(analyzerList);
 
@@ -95,12 +91,8 @@ public class AnalyzerTestNameRestController extends BaseController {
         return ID.matches("^[0-9]+#[^#/\\<>?]*#[0-9]+");
     }
 
-    private List<Analyzer> getAllAnalyzers() {
-        return analyzerService.getAll();
-    }
-
-    private List<Test> getAllTests() {
-        return testService.getAllActiveTests(false);
+    private List<AnalyzerType> getAllAnalyzers() {
+        return analyzerTypeService.getAll();
     }
 
     @PostMapping(value = "/AnalyzerTestName", consumes = MediaType.APPLICATION_JSON_VALUE)

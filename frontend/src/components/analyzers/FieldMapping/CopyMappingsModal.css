@@ -1,0 +1,72 @@
+.copy-mappings-modal-body {
+  padding: 1rem;
+}
+
+.copy-mappings-source-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.copy-mappings-source-section h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.copy-mappings-info-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.copy-mappings-info-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  min-width: 100px;
+}
+
+.copy-mappings-target-section {
+  margin-bottom: 1.5rem;
+}
+
+.copy-mappings-summary-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.copy-mappings-summary-section h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.copy-mappings-warning-section {
+  margin-bottom: 1.5rem;
+}
+
+.copy-mappings-loading {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.copy-mappings-warnings {
+  margin-top: 1rem;
+}
+
+.copy-mappings-warnings h4 {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.copy-mappings-warnings ul {
+  margin-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.copy-mappings-warnings li {
+  margin-bottom: 0.5rem;
+}
