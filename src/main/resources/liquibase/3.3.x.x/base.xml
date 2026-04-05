@@ -95,4 +95,6 @@
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
 
+  <!-- Training Installation Configuration -->
+  <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
 </databaseChangeLog>
