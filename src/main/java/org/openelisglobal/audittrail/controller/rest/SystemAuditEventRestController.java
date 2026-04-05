@@ -353,8 +353,7 @@ public class SystemAuditEventRestController {
             LocalDate date = LocalDate.parse(dateStr);
             return Timestamp.from(date.atTime(LocalTime.MAX).atZone(ZoneId.of("UTC")).toInstant());
         } catch (java.time.format.DateTimeParseException e) {
-            LogEvent.logWarn("SystemAuditEventRestController", "parseEndDate",
-                    "Invalid endDate format: " + dateStr);
+            LogEvent.logWarn("SystemAuditEventRestController", "parseEndDate", "Invalid endDate format: " + dateStr);
             return null;
         }
     }

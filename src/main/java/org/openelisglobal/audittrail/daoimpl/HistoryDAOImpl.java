@@ -122,8 +122,7 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
             try {
                 query.setParameter("sysUserId", Integer.parseInt(sysUserId));
             } catch (NumberFormatException e) {
-                LogEvent.logWarn("HistoryDAOImpl", "bindParameters",
-                        "Invalid sysUserId (non-numeric): " + sysUserId);
+                LogEvent.logWarn("HistoryDAOImpl", "bindParameters", "Invalid sysUserId (non-numeric): " + sysUserId);
                 query.setParameter("sysUserId", -1);
             }
         }
@@ -132,8 +131,7 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
                 query.setParameterList("referenceTableIds",
                         referenceTableIds.stream().map(Integer::parseInt).collect(Collectors.toList()));
             } catch (NumberFormatException e) {
-                LogEvent.logWarn("HistoryDAOImpl", "bindParameters",
-                        "Invalid referenceTableId (non-numeric) in list");
+                LogEvent.logWarn("HistoryDAOImpl", "bindParameters", "Invalid referenceTableId (non-numeric) in list");
                 query.setParameterList("referenceTableIds", List.of(-1));
             }
         }
