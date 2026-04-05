@@ -82,4 +82,20 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
+
+    @Test
+    public void readDiagnosticReport_withInvalidUuid_shouldReturn400() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/not-a-uuid");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(400, response.getStatus());
+
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
 }

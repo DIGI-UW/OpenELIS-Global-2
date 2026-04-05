@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.IdType;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -46,6 +47,11 @@ public class DiagnosticReportProvider implements IResourceProvider {
             if (matches == null || matches.isEmpty()) {
                 throw new ResourceNotFoundException("DiagnosticReport/" + theId.getIdPart());
             }
+            if (matches.size() > 1) {
+                LogEvent.logError(this.getClass().getSimpleName(), method,
+                        "Duplicate Analysis records found for fhirUuid=" + theId.getIdPart());
+                throw new InternalErrorException("Multiple Analysis records found for DiagnosticReport UUID");
+            }
 
             Analysis analysis = matches.get(0);
             DiagnosticReport report = fhirTransformService.transformResultToDiagnosticReport(analysis);
@@ -59,6 +65,10 @@ public class DiagnosticReportProvider implements IResourceProvider {
             throw e;
         } catch (IllegalArgumentException e) {
             throw new InvalidRequestException("DiagnosticReport ID must be a valid UUID");
+        } catch (FhirTransformationException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "FHIR transformation error while reading DiagnosticReport: " + e.getMessage());
+            throw new InternalErrorException("FHIR transformation failed for DiagnosticReport", e);
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while reading DiagnosticReport: " + e.getMessage());
