@@ -53,8 +53,9 @@ export const copyMappings = (
  * Get all analyzers with optional filters
  * @param {Object} filters - Optional filters { status, search }
  * @param {Function} callback - Callback function (data) => void
+ * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
-export const getAnalyzers = (filters, callback) => {
+export const getAnalyzers = (filters, callback, signal = null) => {
   let endpoint = "/rest/analyzer/analyzers";
   const params = new URLSearchParams();
 
@@ -71,7 +72,7 @@ export const getAnalyzers = (filters, callback) => {
     endpoint += "?" + params.toString();
   }
 
-  getFromOpenElisServer(endpoint, callback);
+  getFromOpenElisServer(endpoint, callback, signal);
 };
 
 /**
