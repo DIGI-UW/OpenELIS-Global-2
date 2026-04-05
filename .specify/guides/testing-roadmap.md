@@ -101,6 +101,42 @@ mocked-backend UI test).
   - Stubbing success responses for the mutation you are validating in a Cypress
     E2E test.
 
+## LLM-Generated Test Anti-Patterns (MANDATORY — Constitution V.6)
+
+LLMs consistently produce these test anti-patterns. All are prohibited:
+
+1. **Mock-everything** — stub query results, assert the stub returned what you
+   told it to
+2. **`any()` matcher everywhere** — `verify(mock).save(any())` tests nothing
+3. **Assert-on-mock-return** — `when(x).thenReturn(Y)` then
+   `assertEquals(Y, result)` is a tautology
+4. **Happy-path only** — zero negative/edge/error cases
+5. **Render-only frontend tests** — render component, check it exists, no
+   interactions
+6. **Raw fetch bypasses mocks** — utility is mocked but component uses direct
+   `fetch()`
+
+### Test Review Checklist
+
+Before approving any test:
+
+1. Does each test fail if the core logic is deleted? (Inversion Test)
+2. Are mock return values transformed before assertion?
+3. Do verify() calls use specific matchers, not any()?
+4. Is auth tested before happy-path?
+5. Are filter parameters tested with non-null values?
+6. Is there at least one negative/error test per method?
+7. Do frontend tests verify API URLs include serverBaseUrl?
+8. Do frontend tests verify CSRF token in headers?
+9. Are there render-only tests with no interactions?
+10. Do E2E test steps all have assertions?
+11. Is raw fetch() used instead of project utilities?
+12. Are deprecated APIs used (wait vs waitFor)?
+13. Could any test pass with a hardcoded return value?
+14. Are edge cases tested (null, empty, boundary, negative)?
+15. Do tests cover the same categories as known bugs? (status names, precision,
+    auth ordering, filter pass-through)
+
 ### For AI Agents
 
 This roadmap provides explicit rules, patterns, and code examples. Follow the

@@ -970,6 +970,67 @@ The Testing Roadmap provides comprehensive technical guidance on:
 belong in the Testing Roadmap and plan.md, not in the constitution. This section
 focuses on functional requirements and principles.
 
+### V.6 Test Quality Invariants (MANDATORY)
+
+Every test must satisfy the **Inversion Test**: if the function under test is
+replaced with a hardcoded return value, the test MUST fail. Tests that pass
+regardless of implementation are scaffolding, not tests.
+
+#### Backend (Java/JUnit/Mockito)
+
+- **J1. No assert-on-mock-return.** `when(x).thenReturn(Y)` then
+  `assertEquals(Y, result)` with no intervening logic tests Mockito, not code.
+  Assertions must verify a transformation of the mock's output.
+- **J2. Verify mock args, not just calls.** `verify(service).save(any())` tests
+  nothing. Use `argThat(h -> h.getName().equals("X"))`.
+- **J3. Auth before business logic.** Every controller test suite must include a
+  test verifying unauthenticated requests receive 401 BEFORE any service method
+  is called. Use `verifyZeroInteractions(service)`.
+- **J4. Filter pass-through.** If a service method accepts filter parameters, at
+  least one test must verify the filter changes the result set. Passing null for
+  all filters is not sufficient.
+- **J5. Negative tests required.** Every service/controller test class must
+  include at least: 1 null/empty input test, 1 invalid input test, 1 boundary
+  test.
+- **J6. No catch-and-continue in @Transactional.** Catching exceptions inside a
+  transactional method corrupts the JPA session. Validate first, then persist.
+- **J7. HQL/SQL tests.** If a service builds a query with named params, at least
+  one test must verify the query produces different results for different
+  parameter values.
+
+#### Frontend (Jest/React Testing Library)
+
+- **F1. No render-only tests.** Every test must simulate a user interaction or
+  verify data flow (API URL/headers/params, callback updates state).
+- **F2. Verify API request shape.** Assert the URL contains
+  `config.serverBaseUrl`, query parameters, and CSRF headers.
+- **F3. No raw fetch() in components.** Use project utilities
+  (`getFromOpenElisServer`, `postToOpenElisServer*`, `putToOpenElisServer`,
+  `deleteFromOpenElisServer`). If a utility doesn't exist, add one to Utils.js.
+- **F4. waitFor, not wait.** Import `waitFor` from `@testing-library/dom`. The
+  `wait` export is deprecated.
+- **F5. i18n assertions.** Tests for components with user-visible text must
+  verify `intl.formatMessage` renders correctly.
+
+#### E2E (Playwright)
+
+- **E1. Every test.step must have an assertion.** Steps without `expect()`
+  provide zero regression protection.
+- **E2. No `isVisible({timeout})`.** Use `expect(el).toBeVisible({timeout})`.
+- **E3. No `.catch(() => false)` on locator methods.** Handle conditional
+  elements with explicit guards.
+- **E4. API-first data setup.** Test data via API in beforeAll/beforeEach, not
+  UI interactions.
+
+#### Universal
+
+- **U1. Inversion Test.** Replace the function under test with
+  `return hardcodedValue`. If the test still passes, it's broken.
+- **U2. One bug, one test.** Every bug found in review MUST get a regression
+  test.
+- **U3. No `any()` without justification.** Mockito `any()` in verify/when calls
+  must have a comment explaining why.
+
 ---
 
 ### VI. Database Schema Management

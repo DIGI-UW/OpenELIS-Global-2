@@ -123,6 +123,8 @@ services:
         volumes:
             - './frontend/src:/app/src'
             - './frontend/public:/app/public'
+            - './frontend/package.json:/app/package.json'
+            - './frontend/package-lock.json:/app/package-lock.json'
         environment:
             - CHOKIDAR_USEPOLLING=true
         tty: true
