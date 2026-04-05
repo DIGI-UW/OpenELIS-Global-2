@@ -79,6 +79,16 @@ export const test = base.extend<{
         );
       };
 
+      // Capture HTTP 500+ responses WITH their URL (fills the gap —
+      // requestfailed only catches net::ERR_*, not HTTP error codes)
+      const onResponse = (response: import("@playwright/test").Response) => {
+        if (response.status() >= 500) {
+          console.error(
+            `[HTTP-${response.status()}] ${response.request().method()} ${response.url()}`,
+          );
+        }
+      };
+
       page.on("framenavigated", onFrameNavigated);
       page.on("console", onConsole);
       page.on("pageerror", onPageError);
@@ -86,6 +96,7 @@ export const test = base.extend<{
       page.on("close", onClose);
       browser.once("disconnected", onDisconnect); // once — browser is worker-scoped
       page.on("requestfailed", onRequestFailed);
+      page.on("response", onResponse);
 
       try {
         await use();
@@ -96,6 +107,7 @@ export const test = base.extend<{
         page.off("crash", onCrash);
         page.off("close", onClose);
         page.off("requestfailed", onRequestFailed);
+        page.off("response", onResponse);
       }
     },
     { auto: true },

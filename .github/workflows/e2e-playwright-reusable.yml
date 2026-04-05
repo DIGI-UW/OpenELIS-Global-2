@@ -424,6 +424,10 @@ jobs:
           find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
           echo "=== Tomcat Errors ==="
           find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== FHIR Server Errors (docker logs) ==="
+          docker logs external-fhir-api 2>&1 | grep -iE 'ERROR|Exception|SEVERE' | grep -v 'ConstraintViolationException.*already exists' | tail -30 || echo "(none)"
+          echo "=== OE Webapp Errors (docker logs) ==="
+          docker logs openelisglobal-webapp 2>&1 | grep -E ' -- ERROR -- | -- WARN -- ' | tail -30 || echo "(none)"
 
       - name: Dump docker logs on failure
         if: failure()
