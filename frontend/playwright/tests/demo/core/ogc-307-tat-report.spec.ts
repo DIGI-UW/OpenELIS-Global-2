@@ -113,7 +113,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       ).toBeVisible();
       await expect(
         page.locator('[data-testid="filter-summary-badges"]'),
-      ).toContainText("RECEIPT TO VALIDATION");
+      ).toContainText("Receipt to Validation");
       await evidence(page, testInfo, "US2.5-filter-badges");
       await videoPause(page, 1000, testInfo);
     });
