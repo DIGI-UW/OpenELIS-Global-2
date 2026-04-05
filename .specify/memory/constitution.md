@@ -968,7 +968,10 @@ The Testing Roadmap provides comprehensive technical guidance on:
 
 **Note**: Technical implementation details (code examples, configuration syntax)
 belong in the Testing Roadmap and plan.md, not in the constitution. This section
-focuses on functional requirements and principles.
+focuses on functional requirements and principles. **Exception**: V.6 below
+includes brief tool-specific examples to make invariants unambiguous — the full
+rationale and extended guidance lives in the
+[Testing Roadmap](../../.specify/guides/testing-roadmap.md).
 
 ### V.6 Test Quality Invariants (MANDATORY)
 
