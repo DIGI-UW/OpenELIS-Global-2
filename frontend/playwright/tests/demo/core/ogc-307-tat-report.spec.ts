@@ -142,14 +142,12 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US3.1 — Switch to Detail List tab", async () => {
       await page.locator('[data-testid="tab-detail"]').click();
-      await page.waitForTimeout(1000); // Wait for tab panel transition
-      await videoPause(page, 2000, testInfo);
-      // Verify either data table or empty state is visible
       await expect(page.locator('[data-testid="tab-detail"]')).toHaveAttribute(
         "aria-selected",
         "true",
         { timeout: 5_000 },
       );
+      await videoPause(page, 2000, testInfo);
       await evidence(page, testInfo, "US3.1-detail-list-tab");
     });
   });
