@@ -28,6 +28,7 @@ export const test = base.extend<{
       const recentNav: string[] = [];
       const MAX_BUFFER = 20;
       let lastUrl = "";
+      let navCount = 0;
 
       function safeUrl(): string {
         try {
@@ -39,7 +40,7 @@ export const test = base.extend<{
 
       function dumpContext(tag: string) {
         console.error(`[${tag}] Test: ${testInfo.title}`);
-        console.error(`[${tag}] URL: ${safeUrl()}`);
+        console.error(`[${tag}] URL: ${safeUrl()} (nav #${navCount})`);
         if (recentNav.length) {
           console.error(`[${tag}] Recent navigations:`);
           for (const n of recentNav) console.error(`  ${n}`);
@@ -53,8 +54,11 @@ export const test = base.extend<{
       // Named handlers so we can remove them in teardown
       const onFrameNavigated = (frame: import("@playwright/test").Frame) => {
         if (frame === page.mainFrame()) {
+          navCount++;
           lastUrl = frame.url();
-          recentNav.push(`${new Date().toISOString()} → ${lastUrl}`);
+          recentNav.push(
+            `#${navCount} ${new Date().toISOString()} → ${lastUrl}`,
+          );
           if (recentNav.length > MAX_BUFFER) recentNav.shift();
         }
       };
@@ -79,6 +83,17 @@ export const test = base.extend<{
         );
       };
 
+      // Capture HTTP 500+ responses with URL path (strip query params to
+      // avoid leaking sensitive data like patient IDs into CI logs)
+      const onResponse = (response: import("@playwright/test").Response) => {
+        if (response.status() >= 500) {
+          const url = new URL(response.url());
+          console.error(
+            `[HTTP-${response.status()}] ${response.request().method()} ${url.pathname}`,
+          );
+        }
+      };
+
       page.on("framenavigated", onFrameNavigated);
       page.on("console", onConsole);
       page.on("pageerror", onPageError);
@@ -86,6 +101,7 @@ export const test = base.extend<{
       page.on("close", onClose);
       browser.once("disconnected", onDisconnect); // once — browser is worker-scoped
       page.on("requestfailed", onRequestFailed);
+      page.on("response", onResponse);
 
       try {
         await use();
@@ -96,6 +112,7 @@ export const test = base.extend<{
         page.off("crash", onCrash);
         page.off("close", onClose);
         page.off("requestfailed", onRequestFailed);
+        page.off("response", onResponse);
       }
     },
     { auto: true },
