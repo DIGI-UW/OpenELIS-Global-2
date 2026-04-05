@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 
 test.describe("Barcode printing", () => {
   test("Print Barcode page loads with pre-print and existing order sections", async ({
