@@ -30,6 +30,7 @@ import org.openelisglobal.analyzer.dao.FileImportConfigurationDAO;
 import org.openelisglobal.analyzer.form.AnalyzerRunPreviewForm;
 import org.openelisglobal.analyzer.form.PreviewRecordForm;
 import org.openelisglobal.analyzer.form.SubmitRequestForm;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFileUpload;
 import org.openelisglobal.analyzer.valueholder.AnalyzerRun;
 import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
@@ -58,6 +59,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     private String baseImportDir;
 
     @Autowired
+    private AnalyzerService analyzerService;
+
+    @Autowired
     private FileImportConfigurationDAO fileImportConfigurationDAO;
 
     @Autowired
@@ -68,6 +72,9 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
 
     @Autowired
     private AnalyzerRunDAO analyzerRunDAO;
+
+    @Autowired(required = false)
+    private BridgeRegistrationService bridgeRegistrationService;
 
     /** Optional: set in tests to avoid SpringContext. */
     private PluginAnalyzerService pluginAnalyzerService;
@@ -86,6 +93,46 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
     @Override
     protected FileImportConfigurationDAO getBaseObjectDAO() {
         return fileImportConfigurationDAO;
+    }
+
+    @Override
+    @Transactional
+    public String insert(FileImportConfiguration config) {
+        String id = super.insert(config);
+        syncToAnalyzerAndBridge(config);
+        return id;
+    }
+
+    @Override
+    @Transactional
+    public FileImportConfiguration update(FileImportConfiguration config) {
+        FileImportConfiguration result = super.update(config);
+        syncToAnalyzerAndBridge(config);
+        return result;
+    }
+
+    private void syncToAnalyzerAndBridge(FileImportConfiguration config) {
+        try {
+            Analyzer analyzer = analyzerService.get(String.valueOf(config.getAnalyzerId()));
+            if (analyzer == null) {
+                return;
+            }
+            analyzer.setImportDirectory(config.getImportDirectory());
+            analyzer.setFilePattern(config.getFilePattern());
+            analyzer.setColumnMappings(config.getColumnMappings());
+            analyzer.setFileFormat(config.getFileFormat());
+            analyzer.setSysUserId(config.getSysUserId());
+            analyzerService.update(analyzer);
+
+            if (bridgeRegistrationService != null) {
+                bridgeRegistrationService.registerFile(analyzer.getId(), analyzer.getName(),
+                        config.getImportDirectory(), config.getFilePattern(), config.getColumnMappings());
+            }
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncToAnalyzerAndBridge",
+                    "Failed to sync FILE config to Analyzer/bridge: " + e.getMessage());
+        }
     }
 
     @Override
@@ -673,6 +720,26 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         config.setSysUserId(sysUserId);
 
         fileImportConfigurationDAO.insert(config);
+
+        // Also set FILE fields directly on the Analyzer entity (unified transport
+        // config).
+        // This ensures the bridge bootstrap pull includes FILE config in the REST
+        // response.
+        try {
+            Analyzer analyzer = analyzerService.get(analyzerId);
+            if (analyzer != null) {
+                analyzer.setImportDirectory(importDir);
+                analyzer.setFilePattern(filePattern);
+                analyzer.setColumnMappings(columnMappings);
+                analyzer.setFileFormat(fileFormat);
+                analyzer.setSysUserId(sysUserId);
+                analyzerService.update(analyzer);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateFromProfile",
+                    "Failed to set FILE fields on Analyzer entity (bridge bootstrap may not see FILE config): "
+                            + e.getMessage());
+        }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
                 "Auto-created FileImportConfiguration for analyzer " + analyzerId + " (format=" + fileFormat

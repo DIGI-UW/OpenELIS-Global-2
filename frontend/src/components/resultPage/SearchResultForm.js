@@ -27,6 +27,7 @@ import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
+import { jpGet, jpSet } from "../utils/JsonPath";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -1154,10 +1155,9 @@ export function SearchResults(props) {
                 rows={1}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
+              <div className="note" style={{ whiteSpace: "pre-wrap" }}>
+                {row.pastNotes?.replace(/<br\s*\/?>/gi, "\n")}
+              </div>
             </div>
           </>
         );
@@ -1755,50 +1755,44 @@ export function SearchResults(props) {
     // setState({value: e.target.value})
     console.debug("State updated to ", e.target.value);
     var form = { ...props.results };
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
-    var refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
-    var testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
+    jpSet(form, name, value);
+    var refer = jpGet(form, "testResult[" + rowId + "].refer");
+    var testId = jpGet(form, "testResult[" + rowId + "].testId");
     var referList = { ...referTest };
     referList[rowId] = refer === "true" ? true : false;
     setReferTest(referList);
     if (refer == "true") {
-      jp.value(
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredTestId",
         testId,
       );
-      jp.value(
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         configurationProperties.currentDateAsText,
       );
     } else {
-      jp.value(
-        form,
-        "testResult[" + rowId + "].referralItem.referredTestId",
-        "",
-      );
-      jp.value(
+      jpSet(form, "testResult[" + rowId + "].referralItem.referredTestId", "");
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         "",
       );
     }
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    jpSet(form, isModified, "true");
     props.setResultForm(form);
   };
 
   const handleRejectCheckBoxChange = (e, rowId) => {
     const { name, checked } = e.target;
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
     var shadowRejected = "testResult[" + rowId + "].shadowRejected";
-    jp.value(form, shadowRejected, checked);
+    jpSet(form, shadowRejected, checked);
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    jpSet(form, isModified, "true");
 
     var allrejectedItems = { ...rejectedItems };
     allrejectedItems[rowId] = checked;
@@ -1819,14 +1813,13 @@ export function SearchResults(props) {
     if (form.testResult[rowId].referralItem) {
       if (form.testResult[rowId].referralItem.referredSendDate != date) {
         console.debug("handleDatePickerChange:" + date);
-        var jp = require("jsonpath");
-        jp.value(
+        jpSet(
           form,
           "testResult[" + rowId + "].referralItem.referredSendDate",
           date,
         );
         var isModified = "testResult[" + rowId + "].isModified";
-        jp.value(form, isModified, "true");
+        jpSet(form, isModified, "true");
         props.setResultForm(form);
       }
     }

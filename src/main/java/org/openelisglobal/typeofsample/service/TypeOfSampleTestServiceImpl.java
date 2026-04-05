@@ -32,7 +32,7 @@ public class TypeOfSampleTestServiceImpl extends AuditableBaseObjectServiceImpl<
     @Override
     @Transactional(readOnly = true)
     public List<TypeOfSampleTest> getTypeOfSampleTestsForTest(String id) {
-        return baseObjectDAO.getAllMatching("testId", id);
+        return baseObjectDAO.getTypeOfSampleTestsForTest(id);
     }
 
     @Override
