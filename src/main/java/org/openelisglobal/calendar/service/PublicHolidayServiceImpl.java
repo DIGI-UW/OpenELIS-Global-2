@@ -2,7 +2,9 @@ package org.openelisglobal.calendar.service;
 
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.calendar.dao.PublicHolidayDAO;
 import org.openelisglobal.calendar.valueholder.PublicHoliday;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -65,12 +67,25 @@ public class PublicHolidayServiceImpl implements PublicHolidayService {
 
         // Phase 1: Validate all rows first (no DB mutations)
         List<PublicHoliday> validHolidays = new ArrayList<>();
+        Set<String> seenDates = new HashSet<>();
         for (int i = 0; i < holidays.size(); i++) {
             PublicHoliday holiday = holidays.get(i);
             int row = i + 1; // 1-based for user display
             if (holiday.getHolidayDate() == null || holiday.getHolidayName() == null
                     || holiday.getHolidayName().isBlank()) {
                 errors.add(new ImportError(row, "Missing required fields (date and name)"));
+                skipped++;
+                continue;
+            }
+            if (targetYear > 0 && holiday.getHolidayDate().toLocalDate().getYear() != targetYear) {
+                errors.add(new ImportError(row,
+                        "Date " + holiday.getHolidayDate() + " is not in target year " + targetYear));
+                skipped++;
+                continue;
+            }
+            String dateKey = holiday.getHolidayDate().toString();
+            if (!seenDates.add(dateKey)) {
+                errors.add(new ImportError(row, "Duplicate date within batch: " + dateKey));
                 skipped++;
                 continue;
             }

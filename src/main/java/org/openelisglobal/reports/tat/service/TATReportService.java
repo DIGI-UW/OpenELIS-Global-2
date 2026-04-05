@@ -12,19 +12,19 @@ import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 public interface TATReportService {
 
     TATSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
-            String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,
+            String labUnitIds, String testIds, String panelIds, String priority, String sampleTypeId,
             String orderingSiteId, boolean includeCancelled, String breakdownBy);
 
     TATDetailResponse getDetail(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
-            String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,
+            String labUnitIds, String testIds, String panelIds, String priority, String sampleTypeId,
             String orderingSiteId, boolean includeCancelled, int page, int pageSize, String sortField, String sortOrder,
             String breakdownFilter, String breakdownDimension);
 
     TATTrendResponse getTrend(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
-            String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,
+            String labUnitIds, String testIds, String panelIds, String priority, String sampleTypeId,
             String orderingSiteId, boolean includeCancelled, String interval, String compareBy);
 
     List<TATResult> getAllResults(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
-            String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,
+            String labUnitIds, String testIds, String panelIds, String priority, String sampleTypeId,
             String orderingSiteId, boolean includeCancelled);
 }

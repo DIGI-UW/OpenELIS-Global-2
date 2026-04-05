@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.openelisglobal.calendar.service.PublicHolidayService;
 import org.openelisglobal.calendar.service.WeekendConfigService;
 import org.openelisglobal.calendar.valueholder.PublicHoliday;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -77,7 +78,7 @@ public class CalendarManagementRestController extends BaseRestController {
             PublicHoliday created = publicHolidayService.create(holiday, sysUserId);
             Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());
             return ResponseEntity.status(HttpStatus.CREATED).body(toHolidayResponse(created, weekendDays));
-        } catch (Exception e) {
+        } catch (LIMSRuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("already exists")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
             }
@@ -99,7 +100,7 @@ public class CalendarManagementRestController extends BaseRestController {
             PublicHoliday updated = publicHolidayService.update(existing, sysUserId);
             Set<Integer> weekendDays = weekendConfigService.getWeekendDayNumbers().stream().collect(Collectors.toSet());
             return ResponseEntity.ok(toHolidayResponse(updated, weekendDays));
-        } catch (Exception e) {
+        } catch (LIMSRuntimeException e) {
             if (e.getMessage() != null && e.getMessage().contains("already exists")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
             }
@@ -132,14 +133,21 @@ public class CalendarManagementRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("error", "File too large (max 1MB)"));
         }
 
-        List<PublicHoliday> parsed = parseCsvFile(file);
-        PublicHolidayService.ImportResult result = publicHolidayService.importHolidays(parsed, targetYear, sysUserId);
+        CsvParseResult parsed = parseCsvFile(file);
+        PublicHolidayService.ImportResult result = publicHolidayService.importHolidays(parsed.holidays(), targetYear,
+                sysUserId);
+
+        // Merge parse errors with import errors for complete reporting
+        List<Map<String, Object>> allErrors = new ArrayList<>();
+        parsed.parseErrors().stream().map(e -> Map.<String, Object>of("row", e.row(), "reason", e.reason()))
+                .forEach(allErrors::add);
+        result.errors().stream().map(e -> Map.<String, Object>of("row", e.row(), "reason", e.reason()))
+                .forEach(allErrors::add);
 
         Map<String, Object> response = new HashMap<>();
         response.put("imported", result.imported());
-        response.put("skipped", result.skipped());
-        response.put("errors", result.errors().stream().map(e -> Map.of("row", e.row(), "reason", e.reason()))
-                .collect(Collectors.toList()));
+        response.put("skipped", result.skipped() + parsed.parseErrors().size());
+        response.put("errors", allErrors);
         return ResponseEntity.ok(response);
     }
 
@@ -257,13 +265,19 @@ public class CalendarManagementRestController extends BaseRestController {
         }
     }
 
-    private List<PublicHoliday> parseCsvFile(MultipartFile file) throws IOException {
+    private record CsvParseResult(List<PublicHoliday> holidays, List<PublicHolidayService.ImportError> parseErrors) {
+    }
+
+    private CsvParseResult parseCsvFile(MultipartFile file) throws IOException {
         List<PublicHoliday> holidays = new ArrayList<>();
+        List<PublicHolidayService.ImportError> parseErrors = new ArrayList<>();
         try (var reader = new java.io.BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String line;
             boolean header = true;
+            int rowNum = 0;
             while ((line = reader.readLine()) != null) {
+                rowNum++;
                 if (header) {
                     header = false;
                     continue; // skip header row
@@ -287,14 +301,17 @@ public class CalendarManagementRestController extends BaseRestController {
                     }
                 }
                 parts.add(field.toString());
-                if (parts.size() < 2)
+                if (parts.size() < 2) {
+                    parseErrors.add(new PublicHolidayService.ImportError(rowNum, "Too few columns (need date,name)"));
                     continue;
+                }
 
                 PublicHoliday holiday = new PublicHoliday();
                 try {
                     holiday.setHolidayDate(Date.valueOf(parts.get(0).trim()));
                 } catch (DateTimeParseException | IllegalArgumentException e) {
-                    // Will be caught by import validation
+                    parseErrors.add(new PublicHolidayService.ImportError(rowNum,
+                            "Invalid date format: " + parts.get(0).trim()));
                     continue;
                 }
                 holiday.setHolidayName(parts.get(1).trim());
@@ -304,7 +321,7 @@ public class CalendarManagementRestController extends BaseRestController {
                 holidays.add(holiday);
             }
         }
-        return holidays;
+        return new CsvParseResult(holidays, parseErrors);
     }
 
     /** CSV formula injection protection + quoting */

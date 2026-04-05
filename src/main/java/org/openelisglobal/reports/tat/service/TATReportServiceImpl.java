@@ -59,7 +59,7 @@ public class TATReportServiceImpl implements TATReportService {
     @Override
     public TATSummaryResponse getSummary(LocalDate fromDate, LocalDate toDate, TATSegment segment,
             TATCalculationMode mode, String labUnitIds, String testIds, String panelIds, String priority,
-            Integer sampleTypeId, String orderingSiteId, boolean includeCancelled, String breakdownBy) {
+            String sampleTypeId, String orderingSiteId, boolean includeCancelled, String breakdownBy) {
 
         List<TATResult> results = queryResults(fromDate, toDate, segment, mode, labUnitIds, testIds, panelIds, priority,
                 sampleTypeId, orderingSiteId, includeCancelled);
@@ -92,7 +92,7 @@ public class TATReportServiceImpl implements TATReportService {
     @Override
     public TATDetailResponse getDetail(LocalDate fromDate, LocalDate toDate, TATSegment segment,
             TATCalculationMode mode, String labUnitIds, String testIds, String panelIds, String priority,
-            Integer sampleTypeId, String orderingSiteId, boolean includeCancelled, int page, int pageSize,
+            String sampleTypeId, String orderingSiteId, boolean includeCancelled, int page, int pageSize,
             String sortField, String sortOrder, String breakdownFilter, String breakdownDimension) {
 
         List<TATResult> allResults = queryResults(fromDate, toDate, segment, mode, labUnitIds, testIds, panelIds,
@@ -134,7 +134,7 @@ public class TATReportServiceImpl implements TATReportService {
 
     @Override
     public TATTrendResponse getTrend(LocalDate fromDate, LocalDate toDate, TATSegment segment, TATCalculationMode mode,
-            String labUnitIds, String testIds, String panelIds, String priority, Integer sampleTypeId,
+            String labUnitIds, String testIds, String panelIds, String priority, String sampleTypeId,
             String orderingSiteId, boolean includeCancelled, String interval, String compareBy) {
 
         List<TATResult> results = queryResults(fromDate, toDate, segment, mode, labUnitIds, testIds, panelIds, priority,
@@ -160,7 +160,7 @@ public class TATReportServiceImpl implements TATReportService {
     @Override
     public List<TATResult> getAllResults(LocalDate fromDate, LocalDate toDate, TATSegment segment,
             TATCalculationMode mode, String labUnitIds, String testIds, String panelIds, String priority,
-            Integer sampleTypeId, String orderingSiteId, boolean includeCancelled) {
+            String sampleTypeId, String orderingSiteId, boolean includeCancelled) {
         return queryResults(fromDate, toDate, segment, mode, labUnitIds, testIds, panelIds, priority, sampleTypeId,
                 orderingSiteId, includeCancelled);
     }
@@ -170,7 +170,7 @@ public class TATReportServiceImpl implements TATReportService {
     @SuppressWarnings("unchecked")
     private List<TATResult> queryResults(LocalDate fromDate, LocalDate toDate, TATSegment segment,
             TATCalculationMode mode, String labUnitIds, String testIds, String panelIds, String priority,
-            Integer sampleTypeId, String orderingSiteId, boolean includeCancelled) {
+            String sampleTypeId, String orderingSiteId, boolean includeCancelled) {
 
         StringBuilder hql = new StringBuilder();
         hql.append("SELECT a, s, si FROM Analysis a ");
@@ -196,7 +196,7 @@ public class TATReportServiceImpl implements TATReportService {
         if (panelIds != null && !panelIds.isEmpty()) {
             hql.append("AND a.panel.id IN (:panelIds) ");
         }
-        if (sampleTypeId != null) {
+        if (sampleTypeId != null && !sampleTypeId.isBlank()) {
             hql.append("AND si.typeOfSample.id = :sampleTypeId ");
         }
         if (orderingSiteId != null && !orderingSiteId.isBlank()) {
@@ -220,8 +220,8 @@ public class TATReportServiceImpl implements TATReportService {
         if (panelIds != null && !panelIds.isEmpty()) {
             query.setParameterList("panelIds", parseIds(panelIds));
         }
-        if (sampleTypeId != null) {
-            query.setParameter("sampleTypeId", String.valueOf(sampleTypeId));
+        if (sampleTypeId != null && !sampleTypeId.isBlank()) {
+            query.setParameter("sampleTypeId", sampleTypeId);
         }
         if (orderingSiteId != null && !orderingSiteId.isBlank()) {
             query.setParameter("orderingSiteId", orderingSiteId);

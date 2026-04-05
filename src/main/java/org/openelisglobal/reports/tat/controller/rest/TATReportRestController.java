@@ -45,7 +45,7 @@ public class TATReportRestController extends BaseRestController {
 
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
-            @RequestParam(required = false) Integer sampleTypeId, @RequestParam(required = false) String orderingSiteId,
+            @RequestParam(required = false) String sampleTypeId, @RequestParam(required = false) String orderingSiteId,
             @RequestParam(defaultValue = "false") boolean includeCancelled,
             @RequestParam(defaultValue = "LAB_UNIT") String breakdownBy, HttpServletRequest request) {
 
@@ -86,7 +86,7 @@ public class TATReportRestController extends BaseRestController {
 
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
-            @RequestParam(required = false) Integer sampleTypeId, @RequestParam(required = false) String orderingSiteId,
+            @RequestParam(required = false) String sampleTypeId, @RequestParam(required = false) String orderingSiteId,
             @RequestParam(defaultValue = "false") boolean includeCancelled, @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int pageSize,
             @RequestParam(defaultValue = "selectedTat") String sortField,
@@ -137,7 +137,7 @@ public class TATReportRestController extends BaseRestController {
 
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
-            @RequestParam(required = false) Integer sampleTypeId, @RequestParam(required = false) String orderingSiteId,
+            @RequestParam(required = false) String sampleTypeId, @RequestParam(required = false) String orderingSiteId,
             @RequestParam(defaultValue = "false") boolean includeCancelled,
             @RequestParam(defaultValue = "DAILY") String interval, @RequestParam(required = false) String compareBy,
             HttpServletRequest request) {
@@ -176,7 +176,7 @@ public class TATReportRestController extends BaseRestController {
 
             @RequestParam(required = false) String labUnitIds, @RequestParam(required = false) String testIds,
             @RequestParam(required = false) String panelIds, @RequestParam(required = false) String priority,
-            @RequestParam(required = false) Integer sampleTypeId, @RequestParam(required = false) String orderingSiteId,
+            @RequestParam(required = false) String sampleTypeId, @RequestParam(required = false) String orderingSiteId,
             @RequestParam(defaultValue = "false") boolean includeCancelled, @RequestParam String format,
             HttpServletRequest request, HttpServletResponse response) throws IOException {
 
@@ -193,7 +193,7 @@ public class TATReportRestController extends BaseRestController {
     }
 
     private void exportCsv(String fromDate, String toDate, String segment, String calculationMode, String labUnitIds,
-            String testIds, String panelIds, String priority, Integer sampleTypeId, String orderingSiteId,
+            String testIds, String panelIds, String priority, String sampleTypeId, String orderingSiteId,
             boolean includeCancelled, HttpServletRequest request, HttpServletResponse httpResponse) throws IOException {
 
         LocalDate from;

@@ -182,12 +182,12 @@
     </insert>
     <insert tableName="system_module_url" schemaName="clinlims">
       <column name="id" valueSequenceNext="system_module_url_seq"/>
-      <column name="url_path" value="/reports/tat"/>
+      <column name="url_path" value="/rest/reports/tat"/>
       <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'TATReport')"/>
     </insert>
     <rollback>
       <delete schemaName="clinlims" tableName="system_module_url">
-        <where>url_path IN ('/TATReport', '/reports/tat')</where>
+        <where>url_path IN ('/TATReport', '/rest/reports/tat')</where>
       </delete>
     </rollback>
   </changeSet>

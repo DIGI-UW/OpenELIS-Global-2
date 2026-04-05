@@ -555,7 +555,7 @@ public class TATReportServiceTest {
         stubQueryResults(Collections.emptyList());
 
         tatReportService.getSummary(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, null,
-                null, null, 3, null, false, null);
+                null, null, "3", null, false, null);
 
         ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
         org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
