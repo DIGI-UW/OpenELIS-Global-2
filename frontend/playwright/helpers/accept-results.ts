@@ -109,22 +109,46 @@ export async function acceptAndVerifyResults(
   });
 
   // Success path issues full page reload (AnalyserResults.js).
+  // After save, either more results remain (Save visible) or all were consumed
+  // (empty state). Use locator.or() — NOT Promise.race, which leaves the losing
+  // assertion retrying in the background.
   await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
     timeout: NAV_TIMEOUT,
   });
-  await page.waitForLoadState("load");
-  await expect(saveButton).toBeVisible({ timeout: UI_TIMEOUT });
+  // Wait for the AnalyzerResults API response before asserting on UI —
+  // the page navigates instantly but the component fetches data async.
+  // On CI under load, this fetch can exceed 10s.
+  await page
+    .waitForResponse(
+      (resp) =>
+        resp.url().includes("/rest/AnalyzerResults") && resp.status() === 200,
+      { timeout: LONG_TIMEOUT },
+    )
+    .catch((e) => {
+      // TimeoutError = response arrived before we started listening (fast backend).
+      // Any other error is unexpected — log it for diagnostics.
+      if (!(e instanceof Error && e.message.includes("Timeout"))) {
+        console.error(`[waitForResponse] unexpected: ${e}`);
+      }
+    });
+  const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
+  await expect(saveButton.or(emptyState).first()).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
 
-  if (stagedCountBeforeSave > 0) {
-    await expect
-      .poll(async () => stagedRows().count(), {
-        timeout: LONG_TIMEOUT,
-      })
-      .toBe(0);
+  const saveStillVisible = await saveButton.isVisible();
+  if (saveStillVisible) {
+    if (stagedCountBeforeSave > 0) {
+      await expect
+        .poll(async () => stagedRows().count(), {
+          timeout: LONG_TIMEOUT,
+        })
+        .toBe(0);
+    }
+
+    await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
+    await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
   }
-
-  await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
-  await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
