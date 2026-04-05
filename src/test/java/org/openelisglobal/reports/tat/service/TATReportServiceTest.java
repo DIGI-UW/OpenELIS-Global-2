@@ -18,6 +18,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -503,5 +504,36 @@ public class TATReportServiceTest {
 
         Assert.assertEquals(0, new BigDecimal("1.00").compareTo(response.getMin()));
         Assert.assertEquals(0, new BigDecimal("10.00").compareTo(response.getMax()));
+    }
+
+    // ========== Filter and Cancelled Tests ==========
+
+    @Test
+    public void testGetSummary_withPriorityFilter_filterIsPassedToQuery() {
+        stubQueryResults(Collections.emptyList());
+
+        tatReportService.getSummary(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, null,
+                null, "STAT", null, null, false, null);
+
+        ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
+        String hql = hqlCaptor.getValue();
+        Assert.assertTrue("HQL should contain priority filter when priority is non-null",
+                hql.contains("a.priority = :priority"));
+    }
+
+    @Test
+    public void testIncludeCancelled_statusNameIsTestCanceled() {
+        stubQueryResults(Collections.emptyList());
+
+        // includeCancelled = false should add a filter excluding "Test Canceled"
+        tatReportService.getSummary(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, null,
+                null, null, null, null, false, null);
+
+        ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
+        String hql = hqlCaptor.getValue();
+        Assert.assertTrue("HQL should filter out 'Test Canceled' status when includeCancelled=false",
+                hql.contains("Test Canceled"));
     }
 }

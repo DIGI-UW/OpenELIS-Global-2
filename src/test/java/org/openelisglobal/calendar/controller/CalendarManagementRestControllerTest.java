@@ -3,6 +3,7 @@ package org.openelisglobal.calendar.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import java.sql.Date;
@@ -191,5 +192,48 @@ public class CalendarManagementRestControllerTest {
 
         Assert.assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(weekendConfigService).updateWeekendDays(Arrays.asList(5, 6), 1);
+    }
+
+    // ========== Auth Ordering Tests ==========
+
+    @Test
+    public void testCreateHoliday_unauthenticated_returns401_noServiceInteraction() {
+        MockHttpServletRequest unauthRequest = new MockHttpServletRequest();
+        // No session or user data set — getSysUserId should return null
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("date", "2026-07-04");
+        body.put("name", "Independence Day");
+        body.put("isRecurring", false);
+
+        try {
+            controller.createHoliday(body, unauthRequest);
+            Assert.fail("Expected ResponseStatusException for unauthenticated request");
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            Assert.assertEquals(HttpStatus.UNAUTHORIZED, e.getStatusCode());
+        }
+
+        // Auth check must happen BEFORE any service interaction
+        verifyZeroInteractions(publicHolidayService);
+    }
+
+    @Test
+    public void testUpdateHoliday_unauthenticated_returns401_noServiceInteraction() {
+        MockHttpServletRequest unauthRequest = new MockHttpServletRequest();
+        // No session or user data set — getSysUserId should return null
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("date", "2026-07-04");
+        body.put("name", "Updated Holiday");
+
+        try {
+            controller.updateHoliday(1, body, unauthRequest);
+            Assert.fail("Expected ResponseStatusException for unauthenticated request");
+        } catch (org.springframework.web.server.ResponseStatusException e) {
+            Assert.assertEquals(HttpStatus.UNAUTHORIZED, e.getStatusCode());
+        }
+
+        // Auth check must happen BEFORE any service interaction (including getById)
+        verifyZeroInteractions(publicHolidayService);
     }
 }

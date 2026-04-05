@@ -153,4 +153,34 @@ public class PublicHolidayServiceTest {
         Assert.assertEquals(1, result.skipped());
         Assert.assertTrue(result.errors().get(0).reason().contains("Missing"));
     }
+
+    @Test
+    public void testImportHolidays_validRowsImported_invalidRowsReported() {
+        // 3 holidays: first valid, second with null date (invalid), third valid
+        PublicHoliday h1 = new PublicHoliday();
+        h1.setHolidayDate(Date.valueOf("2026-06-01"));
+        h1.setHolidayName("Labour Day");
+
+        PublicHoliday h2 = new PublicHoliday();
+        h2.setHolidayDate(null); // null date → should be skipped
+        h2.setHolidayName("Invalid Holiday");
+
+        PublicHoliday h3 = new PublicHoliday();
+        h3.setHolidayDate(Date.valueOf("2026-12-25"));
+        h3.setHolidayName("Christmas");
+
+        // Both valid dates are not duplicates
+        when(publicHolidayDAO.existsByDateInYear(eq(Date.valueOf("2026-06-01")), isNull())).thenReturn(false);
+        when(publicHolidayDAO.existsByDateInYear(eq(Date.valueOf("2026-12-25")), isNull())).thenReturn(false);
+        when(publicHolidayDAO.insert(any())).thenReturn(10);
+
+        PublicHolidayService.ImportResult result = publicHolidayService.importHolidays(Arrays.asList(h1, h2, h3), 2026,
+                1);
+
+        Assert.assertEquals(2, result.imported());
+        Assert.assertEquals(1, result.skipped());
+        Assert.assertEquals(1, result.errors().size());
+        Assert.assertTrue("Error should mention missing required fields",
+                result.errors().get(0).reason().contains("Missing required fields"));
+    }
 }

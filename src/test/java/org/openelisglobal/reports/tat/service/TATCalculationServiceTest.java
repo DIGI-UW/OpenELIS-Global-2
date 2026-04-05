@@ -158,4 +158,41 @@ public class TATCalculationServiceTest {
 
         Assert.assertEquals(0, count);
     }
+
+    // ========== Precision Edge Cases ==========
+
+    @Test
+    public void testCalendarMode_subMinuteDuration_59seconds() {
+        // 59 seconds apart: 59/3600 = 0.01638... rounds to 0.02
+        Timestamp start = Timestamp.valueOf("2026-03-01 08:00:00");
+        Timestamp end = Timestamp.valueOf("2026-03-01 08:00:59");
+
+        BigDecimal hours = tatCalculationService.calculateTatHours(start, end, TATCalculationMode.CALENDAR);
+
+        Assert.assertNotNull(hours);
+        Assert.assertEquals(0, new BigDecimal("0.02").compareTo(hours));
+    }
+
+    @Test
+    public void testCalendarMode_precisionIncludesSeconds() {
+        // 1h 30m 45s = 5445 seconds = 90.75 minutes = 1.5125 hours → rounds to 1.51
+        Timestamp start = Timestamp.valueOf("2026-03-01 08:00:00");
+        Timestamp end = Timestamp.valueOf("2026-03-01 09:30:45");
+
+        BigDecimal hours = tatCalculationService.calculateTatHours(start, end, TATCalculationMode.CALENDAR);
+
+        Assert.assertNotNull(hours);
+        Assert.assertEquals(0, new BigDecimal("1.51").compareTo(hours));
+    }
+
+    @Test
+    public void testCalendarMode_zeroDuration() {
+        // Same start and end timestamp → 0.00 hours
+        Timestamp ts = Timestamp.valueOf("2026-03-01 08:00:00");
+
+        BigDecimal hours = tatCalculationService.calculateTatHours(ts, ts, TATCalculationMode.CALENDAR);
+
+        Assert.assertNotNull(hours);
+        Assert.assertEquals(0, new BigDecimal("0.00").compareTo(hours));
+    }
 }

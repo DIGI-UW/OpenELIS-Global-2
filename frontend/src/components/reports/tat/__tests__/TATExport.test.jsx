@@ -64,4 +64,23 @@ describe("TATExport", () => {
     fireEvent.click(button);
     // No error means the menu opened successfully
   });
+
+  test("CSV export opens URL with serverBaseUrl prefix", () => {
+    renderWithIntl(
+      <TATExport filters={mockFilters} buildQueryString={mockBuildQueryString} />,
+    );
+
+    // Open the overflow menu
+    fireEvent.click(screen.getByRole("button"));
+
+    // Click the CSV menu item
+    const csvItem = screen.getByText("Export CSV");
+    fireEvent.click(csvItem);
+
+    expect(window.open).toHaveBeenCalledTimes(1);
+    const url = windowOpenSpy.mock.calls[0][0];
+    expect(url).toMatch(
+      /^\/api\/OpenELIS-Global\/rest\/reports\/tat\/export/,
+    );
+  });
 });

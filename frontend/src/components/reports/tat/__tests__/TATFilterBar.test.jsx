@@ -88,4 +88,29 @@ describe("TATFilterBar", () => {
     const checkbox = screen.getByLabelText(/Include cancelled/);
     expect(checkbox).not.toBeChecked();
   });
+
+  test("onGenerate callback includes priority when selected", () => {
+    renderWithIntl(<TATFilterBar onGenerate={mockOnGenerate} />);
+
+    // Open the priority dropdown — Carbon Dropdown uses Downshift
+    const priorityWrapper = document.getElementById("tat-priority");
+    const trigger = priorityWrapper.querySelector(
+      "button.cds--list-box__field",
+    );
+    fireEvent.click(trigger);
+
+    // Select the STAT option (index 2: All=0, Routine=1, STAT=2, ASAP=3)
+    // Carbon renders items as role="option" but without visible text in JSDOM
+    // because itemToString defaults to String(item) for object items
+    const options = priorityWrapper.querySelectorAll('[role="option"]');
+    expect(options.length).toBe(4);
+    fireEvent.click(options[2]); // STAT
+
+    // Click Generate and verify the priority is passed through
+    fireEvent.click(screen.getByTestId("generate-report-button"));
+
+    expect(mockOnGenerate).toHaveBeenCalledTimes(1);
+    const filters = mockOnGenerate.mock.calls[0][0];
+    expect(filters).toHaveProperty("priority", "STAT");
+  });
 });

@@ -184,4 +184,24 @@ describe("CalendarManagement", () => {
     // DataTableSkeleton should render
     expect(document.querySelector(".cds--skeleton")).toBeTruthy();
   });
+
+  test("export button constructs URL with config.serverBaseUrl prefix", async () => {
+    const originalOpen = window.open;
+    window.open = jest.fn();
+
+    renderWithIntl(<CalendarManagement />);
+    await waitFor(() => {
+      expect(screen.getByText("New Year's Day")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("export-csv-button"));
+
+    expect(window.open).toHaveBeenCalledTimes(1);
+    const url = window.open.mock.calls[0][0];
+    expect(url).toMatch(
+      /^\/api\/OpenELIS-Global\/rest\/calendar\/holidays\/export/,
+    );
+
+    window.open = originalOpen;
+  });
 });
