@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa")
-@PreAuthorize("hasAnyRole('GLOBAL_ADMIN', 'EQA_COORDINATOR')")
+@PreAuthorize("hasRole('ADMIN')")
 public class EQAEnrollmentRestController extends ControllerUtills {
 
     @Autowired
