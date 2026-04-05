@@ -53,7 +53,6 @@ services:
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - SERVER_SSL_ENABLED=false
       - LOGGING_LEVEL_ORG_ITECH=INFO
       - BRIDGE_FILE_ENABLED=true
       # Fast polling for CI — files are written atomically by Playwright tests.
@@ -74,12 +73,14 @@ services:
       - ORG_ITECH_AHB_MLLP_ENABLED=true
       - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
-      - analyzer-net
+      analyzer-net:
+        aliases:
+          - bridge.openelis.org
     restart: unless-stopped
 
   oe.openelis.org:
     environment:
-      - ANALYZER_BRIDGE_URL=http://openelis-analyzer-bridge:8443
+      - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
       # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}

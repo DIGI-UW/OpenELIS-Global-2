@@ -997,7 +997,7 @@ bypasses these safeguards.
 **Example Changeset**:
 
 ```xml
-<changeSet id="storage-001-create-storage-room-table" author="dev-team">
+<changeSet id="storage-001-create-storage-room-table" author="pkomena">
   <createTable tableName="storage_room">
     <column name="id" type="VARCHAR(36)"><constraints primaryKey="true"/></column>
     <column name="fhir_uuid" type="UUID"><constraints nullable="false" unique="true"/></column>
@@ -1497,6 +1497,9 @@ updates, training, refactoring).
 - Backend: `src/main/java/org/openelisglobal/{module}/` existing code examples
 - Frontend: `frontend/src/components/` Carbon component usage
 - FHIR: `org.openelisglobal.fhir.FhirTransformServiceImpl` transform examples
+- CI/E2E validation architecture:
+  [`../reports/ci-e2e-architecture-spec.md`](../reports/ci-e2e-architecture-spec.md)
+  for workflow topology, artifact contracts, and checkpoint/status semantics
 
 **Questions/Clarifications**: Post in GitHub Discussions or weekly developer
 sync.

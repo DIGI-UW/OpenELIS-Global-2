@@ -1735,7 +1735,7 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-foundational
 npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
@@ -1743,7 +1743,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -2194,6 +2194,11 @@ Before creating PR, verify ALL items:
 - **Pull Request Tips:** `PULL_REQUEST_TIPS.md` (15-point checklist)
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
+- **E2E CI Architecture:** `.specify/reports/ci-e2e-architecture-spec.md` -
+  concise source of truth for fork/non-fork E2E workflow topology, artifact
+  contracts, and checkpoint/status semantics
+- **E2E CI Operator Model:** `.github/e2e-ci-operator-model.md` - operational
+  troubleshooting guide for CI maintainers
 
 ### Testing Documentation
 
