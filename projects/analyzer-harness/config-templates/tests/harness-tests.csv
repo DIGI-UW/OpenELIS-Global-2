@@ -25,3 +25,5 @@ Blood Urea Nitrogen,Biochemistry,Serum|Plasma,3094-0,Y,Y,27,mg/dL,BUN,Urée
 # Immunoassay — Wondfo Finecare FS-205 (2 tests)
 Thyroid Stimulating Hormone,Immunology,Serum,11580-8,Y,Y,30,mIU/L,TSH,TSH
 Beta-Human Chorionic Gonadotropin,Immunology,Serum|Plasma,21198-7,Y,Y,31,mIU/mL,β-hCG,β-hCG
+# Immunoassay — ELISA plate readers (Tecan F50, Multiskan FC)
+HIV ELISA,Immunology,Serum|Plasma,68961-2,Y,Y,32,S/CO,HIV ELISA,ELISA VIH
