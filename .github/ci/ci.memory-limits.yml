@@ -2,9 +2,9 @@
 # Prevents uncapped containers from starving the Chromium browser during E2E tests.
 # ubuntu-latest public runners have 16 GB RAM.
 #
-# Budget (core):  2560 + 1024 + 1536 + 256 + 128 + 128 = 5632M
-# Budget (harness): +512 + 256 + 64 = 832M (ci.memory-limits-harness.yml)
-# Total max: 6464M → leaves ~9.5 GB for Chromium + OS + swap
+# Budget (core):  2560 + 2048 + 1536 + 256 + 128 + 128 = 6656M
+# Budget (harness): +512 + 256 = 768M (ci.memory-limits-harness.yml)
+# Total max: 7424M → leaves ~8.5 GB for Chromium + OS + swap
 #
 # NOTE: We only set container memory limits here — NOT JVM heap flags.
 # The base compose sets CATALINA_OPTS and JAVA_OPTS with SSL/datasource props;
@@ -21,7 +21,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1024M
+          memory: 2048M
 
   db.openelis.org:
     deploy:
