@@ -519,7 +519,7 @@ public class TATReportServiceTest {
         org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
         String hql = hqlCaptor.getValue();
         Assert.assertTrue("HQL should contain priority filter when priority is non-null",
-                hql.contains("a.priority = :priority"));
+                hql.contains("s.priority = :priority"));
     }
 
     @Test

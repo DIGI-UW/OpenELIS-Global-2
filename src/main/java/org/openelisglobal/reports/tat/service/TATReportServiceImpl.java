@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.temporal.IsoFields;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +26,8 @@ import org.openelisglobal.reports.tat.bean.TATSummaryResponse.HistogramBin;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendDataPoint;
 import org.openelisglobal.reports.tat.bean.TATTrendResponse.TrendSeries;
+import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
+import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,9 @@ public class TATReportServiceImpl implements TATReportService {
 
     @Autowired
     private TATCalculationService tatCalculationService;
+
+    @Autowired
+    private SampleOrganizationService sampleOrganizationService;
 
     // Fixed non-uniform histogram bins per requirements doc
     private static final double[][] HISTOGRAM_BINS = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 6 }, { 6, 8 },
@@ -174,7 +180,19 @@ public class TATReportServiceImpl implements TATReportService {
         }
 
         if (priority != null && !priority.isEmpty()) {
-            hql.append("AND a.priority = :priority ");
+            hql.append("AND s.priority = :priority ");
+        }
+        if (labUnitIds != null && !labUnitIds.isEmpty()) {
+            hql.append("AND a.testSection.id IN (:labUnitIds) ");
+        }
+        if (testIds != null && !testIds.isEmpty()) {
+            hql.append("AND a.test.id IN (:testIds) ");
+        }
+        if (panelIds != null && !panelIds.isEmpty()) {
+            hql.append("AND a.panel.id IN (:panelIds) ");
+        }
+        if (sampleTypeId != null) {
+            hql.append("AND si.typeOfSample.id = :sampleTypeId ");
         }
 
         Query query = entityManager.unwrap(Session.class).createQuery(hql.toString());
@@ -183,6 +201,18 @@ public class TATReportServiceImpl implements TATReportService {
 
         if (priority != null && !priority.isEmpty()) {
             query.setParameter("priority", priority);
+        }
+        if (labUnitIds != null && !labUnitIds.isEmpty()) {
+            query.setParameterList("labUnitIds", parseIds(labUnitIds));
+        }
+        if (testIds != null && !testIds.isEmpty()) {
+            query.setParameterList("testIds", parseIds(testIds));
+        }
+        if (panelIds != null && !panelIds.isEmpty()) {
+            query.setParameterList("panelIds", parseIds(panelIds));
+        }
+        if (sampleTypeId != null) {
+            query.setParameter("sampleTypeId", String.valueOf(sampleTypeId));
         }
 
         List<Object[]> rows = query.list();
@@ -200,6 +230,16 @@ public class TATReportServiceImpl implements TATReportService {
             result.setSampleType(analysis.getSampleItem() != null && analysis.getSampleItem().getTypeOfSample() != null
                     ? analysis.getSampleItem().getTypeOfSample().getLocalizedName()
                     : "");
+
+            // Ordering site via SampleOrganization lookup
+            try {
+                SampleOrganization sampleOrg = sampleOrganizationService.getDataBySample(sample);
+                if (sampleOrg != null && sampleOrg.getOrganization() != null) {
+                    result.setOrderingSite(sampleOrg.getOrganization().getOrganizationName());
+                }
+            } catch (Exception e) {
+                // Sample may not have an associated organization
+            }
 
             // Timestamps
             result.setOrderCreated(
@@ -358,5 +398,10 @@ public class TATReportServiceImpl implements TATReportService {
         if ("asc".equalsIgnoreCase(order))
             return comp;
         return comp.reversed();
+    }
+
+    private List<String> parseIds(String commaSeparated) {
+        return Arrays.stream(commaSeparated.split(",")).map(String::trim).filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
     }
 }

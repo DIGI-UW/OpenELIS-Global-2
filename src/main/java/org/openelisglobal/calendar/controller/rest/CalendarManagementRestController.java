@@ -168,6 +168,7 @@ public class CalendarManagementRestController extends BaseRestController {
     @PutMapping("/weekends")
     public ResponseEntity<Map<String, Object>> updateWeekends(@RequestBody Map<String, Object> body,
             HttpServletRequest request) {
+        Integer sysUserId = requireAuthenticatedUser(request);
         @SuppressWarnings("unchecked")
         List<Integer> weekendDays = (List<Integer>) body.get("weekendDays");
         if (weekendDays == null) {
@@ -179,7 +180,6 @@ public class CalendarManagementRestController extends BaseRestController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Day of week must be 0-6, got: " + day));
             }
         }
-        Integer sysUserId = requireAuthenticatedUser(request);
         weekendConfigService.updateWeekendDays(weekendDays, sysUserId);
         return ResponseEntity.ok(Map.of("weekendDays", weekendDays));
     }
