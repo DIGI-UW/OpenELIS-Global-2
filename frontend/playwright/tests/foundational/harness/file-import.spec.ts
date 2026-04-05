@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 
 /**
  * FILE protocol E2E tests.
