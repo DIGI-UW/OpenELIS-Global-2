@@ -98,6 +98,8 @@ public interface TestDAO extends BaseDAO<Test, String> {
 
     Test getTestByDescription(String description) throws LIMSRuntimeException;
 
+    Test getTestByNormalizedDescription(String description) throws LIMSRuntimeException;
+
     List<Test> getTestsByTestSectionId(String id) throws LIMSRuntimeException;
 
     List<Test> getTestsByTestSectionIds(List<Integer> ids) throws LIMSRuntimeException;

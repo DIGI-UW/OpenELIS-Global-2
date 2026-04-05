@@ -19,9 +19,7 @@ import ca.uhn.hl7v2.DefaultHapiContext;
 import ca.uhn.hl7v2.HL7Exception;
 import ca.uhn.hl7v2.HapiContext;
 import ca.uhn.hl7v2.model.Message;
-import ca.uhn.hl7v2.model.v251.datatype.CE;
 import ca.uhn.hl7v2.model.v251.message.ORM_O01;
-import ca.uhn.hl7v2.model.v251.message.ORU_R01;
 import ca.uhn.hl7v2.model.v251.segment.OBR;
 import ca.uhn.hl7v2.model.v251.segment.ORC;
 import ca.uhn.hl7v2.parser.PipeParser;
@@ -58,12 +56,12 @@ public class HL7MessageServiceImpl implements HL7MessageService {
             throw new HL7ParseException("Raw ORU^R01 message is null or empty");
         }
         try {
-            Message msg = parser.parse(normalizeSegmentTerminators(rawMessage));
-            if (!(msg instanceof ORU_R01)) {
+            String normalized = normalizeSegmentTerminators(rawMessage);
+            Message msg = parser.parse(normalized);
+            if (!isOruR01(normalized)) {
                 throw new HL7ParseException("Message is not ORU^R01: " + msg.getClass().getSimpleName());
             }
-            ORU_R01 oru = (ORU_R01) msg;
-            return extractOruResult(oru);
+            return extractOruResult(normalized);
         } catch (HL7Exception e) {
             throw new HL7ParseException("Failed to parse ORU^R01: " + e.getMessage(), e);
         }
@@ -176,72 +174,118 @@ public class HL7MessageServiceImpl implements HL7MessageService {
         return new java.text.SimpleDateFormat("yyyyMMddHHmmss.SSS").format(new java.util.Date(ms));
     }
 
-    private OruR01ParseResult extractOruResult(ORU_R01 oru) throws HL7Exception {
+    private boolean isOruR01(String normalizedMessage) {
+        for (String line : toSegmentLines(normalizedMessage)) {
+            if (line.startsWith("MSH" + FIELD_SEP)) {
+                String[] fields = line.split("\\|", -1);
+                if (fields.length > 8) {
+                    return StringUtils.defaultString(fields[8]).trim().startsWith("ORU^R01");
+                }
+            }
+        }
+        return false;
+    }
+
+    private OruR01ParseResult extractOruResult(String normalizedMessage) {
+        List<String> lines = toSegmentLines(normalizedMessage);
         String patientId = "";
         String placer = "";
         String filler = "";
         String serviceId = "";
         List<HL7MessageService.ObxResult> results = new ArrayList<>();
 
-        if (oru.getPATIENT_RESULTReps() > 0) {
-            var pr = oru.getPATIENT_RESULT(0);
-            var pid = pr.getPATIENT().getPID();
-            patientId = getCXId(pid.getPid3_PatientIdentifierList(0));
-
-            if (pr.getORDER_OBSERVATIONReps() > 0) {
-                var oo = pr.getORDER_OBSERVATION(0);
-                var orc = oo.getORC();
-                placer = orc.getOrc2_PlacerOrderNumber().getEi1_EntityIdentifier().getValue();
-                filler = orc.getOrc3_FillerOrderNumber().getEi1_EntityIdentifier().getValue();
-                var obr = oo.getOBR();
-                serviceId = obr.getObr4_UniversalServiceIdentifier().getCe1_Identifier().getValue();
+        for (String line : lines) {
+            String[] fields = line.split("\\|", -1);
+            if (line.startsWith("PID|") && StringUtils.isBlank(patientId)) {
+                patientId = firstComponent(fields, 3);
+            } else if (line.startsWith("ORC|")) {
+                if (StringUtils.isBlank(placer)) {
+                    placer = firstComponent(fields, 2);
+                }
+                if (StringUtils.isBlank(filler)) {
+                    filler = firstComponent(fields, 3);
+                }
+            } else if (line.startsWith("OBR|")) {
+                if (StringUtils.isBlank(placer)) {
+                    placer = firstComponent(fields, 2);
+                }
+                if (StringUtils.isBlank(filler)) {
+                    filler = firstComponent(fields, 3);
+                }
                 if (StringUtils.isBlank(serviceId)) {
-                    serviceId = obr.getObr4_UniversalServiceIdentifier().getCe2_Text().getValue();
+                    serviceId = extractServiceIdentifier(fields);
                 }
-
-                int n = oo.getOBSERVATIONReps();
-                for (int i = 0; i < n; i++) {
-                    var obx = oo.getOBSERVATION(i).getOBX();
-                    String vt = obx.getObx2_ValueType().getValue();
-                    CE ce = obx.getObx3_ObservationIdentifier();
-                    String code = ce.getCe1_Identifier().getValue();
-                    String name = ce.getCe2_Text().getValue();
-                    if (StringUtils.isBlank(code)) {
-                        String enc = ce.encode();
-                        String[] comp = enc.split("\\^", -1);
-                        if (comp.length >= 4 && StringUtils.isNotBlank(comp[3])) {
-                            code = comp[3].trim();
-                        }
-                        if (comp.length >= 5 && StringUtils.isBlank(name) && StringUtils.isNotBlank(comp[4])) {
-                            name = comp[4].trim();
-                        }
-                    }
-                    String val = "";
-                    if (obx.getObx5_ObservationValueReps() > 0) {
-                        val = obx.getObx5_ObservationValue(0).getData().encode();
-                    }
-                    String units = "";
-                    try {
-                        if (obx.getObx6_Units() != null) {
-                            units = obx.getObx6_Units().getCe1_Identifier().getValue();
-                        }
-                    } catch (Exception ignored) {
-                        // optional
-                    }
-                    results.add(new ObxResultImpl(code, name, val, units, vt));
-                }
+            } else if (line.startsWith("OBX|")) {
+                String vt = valueAt(fields, 2);
+                String[] observation = splitComponents(valueAt(fields, 3));
+                String code = extractObservationCode(observation);
+                String name = extractObservationName(observation);
+                String val = valueAt(fields, 5);
+                String units = firstComponent(fields, 6);
+                results.add(new ObxResultImpl(code, name, val, units, vt));
             }
         }
 
         return new OruR01ParseResultImpl(patientId, placer, filler, serviceId, results);
     }
 
-    private static String getCXId(ca.uhn.hl7v2.model.v251.datatype.CX cx) {
-        try {
-            return cx.getCx1_IDNumber().getValue();
-        } catch (Exception e) {
+    private static String firstComponent(String[] fields, int fieldIndex) {
+        return firstComponent(valueAt(fields, fieldIndex));
+    }
+
+    private static String firstComponent(String value) {
+        if (StringUtils.isBlank(value)) {
             return "";
         }
+        String[] components = splitComponents(value);
+        return components.length > 0 ? StringUtils.defaultString(components[0]).trim() : "";
+    }
+
+    private static String valueAt(String[] fields, int fieldIndex) {
+        return fields.length > fieldIndex ? StringUtils.defaultString(fields[fieldIndex]).trim() : "";
+    }
+
+    private static String[] splitComponents(String value) {
+        return StringUtils.defaultString(value).split("\\^", -1);
+    }
+
+    private static String extractServiceIdentifier(String[] fields) {
+        String serviceId = valueAt(fields, 4);
+        if (StringUtils.isBlank(serviceId)) {
+            serviceId = valueAt(fields, 5);
+        }
+        String[] components = splitComponents(serviceId);
+        for (String component : components) {
+            if (StringUtils.isNotBlank(component)) {
+                return component.trim();
+            }
+        }
+        return "";
+    }
+
+    private static String extractObservationCode(String[] components) {
+        if (components.length > 0 && StringUtils.isNotBlank(components[0])) {
+            return components[0].trim();
+        }
+        if (components.length >= 4 && StringUtils.isNotBlank(components[3])) {
+            return components[3].trim();
+        }
+        for (int i = components.length - 1; i >= 0; i--) {
+            if (StringUtils.isNotBlank(components[i])) {
+                return components[i].trim();
+            }
+        }
+        return "";
+    }
+
+    private static String extractObservationName(String[] components) {
+        if (components.length > 1 && StringUtils.isNotBlank(components[1])) {
+            return components[1].trim();
+        }
+        if (components.length >= 5 && StringUtils.isNotBlank(components[4])) {
+            return components[4].trim();
+        }
+        return "";
     }
 
     // --- DTO implementations ---
