@@ -15,11 +15,19 @@
  */
 package org.openelisglobal.patient.util;
 
+import jakarta.servlet.http.HttpServletRequest;
+import java.lang.reflect.InvocationTargetException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.beanutils.PropertyUtils;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.gender.service.GenderService;
 import org.openelisglobal.gender.valueholder.Gender;
+import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
@@ -30,6 +38,7 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.springframework.validation.Errors;
 
 public class PatientUtil {
 
@@ -37,6 +46,7 @@ public class PatientUtil {
     private static Person UNKNOWN_PERSON;
     private static Provider UNKNOWN_PROVIDER;
     private static PatientService patientService = SpringContext.getBean(PatientService.class);
+    private static PatientIdentityService patientIdentityService = SpringContext.getBean(PatientIdentityService.class);
 
     private static void initializeUnknowns() {
         PersonService personService = SpringContext.getBean(PersonService.class);
@@ -135,5 +145,68 @@ public class PatientUtil {
 
     public static Patient getPatientForSample(Sample sample) {
         return SpringContext.getBean(SampleHumanService.class).getPatientForSample(sample);
+    }
+
+    public static void preparePatientData(Errors errors, HttpServletRequest request, PatientManagementInfo patientInfo,
+            Patient patient) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+
+        ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
+        if (errors.hasErrors()) {
+            return;
+        }
+
+        initMembers(patient);
+        patientInfo.setPatientIdentities(new ArrayList<PatientIdentity>());
+
+        if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE) {
+            Patient dbPatient = loadForUpdate(patientInfo);
+            PropertyUtils.copyProperties(patient, dbPatient);
+        }
+
+        copyFormBeanToValueHolders(patientInfo, patient);
+
+        setSystemUserID(patientInfo, patient, request);
+
+        setLastUpdatedTimeStamps(patientInfo, patient);
+    }
+
+    public static void copyFormBeanToValueHolders(PatientManagementInfo patientInfo, Patient patient)
+            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        PropertyUtils.copyProperties(patient, patientInfo);
+        PropertyUtils.copyProperties(patient.getPerson(), patientInfo);
+    }
+
+    public static void setSystemUserID(PatientManagementInfo patientInfo, Patient patient, HttpServletRequest request) {
+        patient.setSysUserId(ControllerUtills.getSysUserId(request));
+        patient.getPerson().setSysUserId(ControllerUtills.getSysUserId(request));
+
+        for (PatientIdentity identity : patientInfo.getPatientIdentities()) {
+            identity.setSysUserId(ControllerUtills.getSysUserId(request));
+        }
+        patientInfo.getPatientContact().setSysUserId(ControllerUtills.getSysUserId(request));
+    }
+
+    public static void initMembers(Patient patient) {
+        patient.setPerson(new Person());
+    }
+
+    public static void setLastUpdatedTimeStamps(PatientManagementInfo patientInfo, Patient patient) {
+        String patientUpdate = patientInfo.getPatientLastUpdated();
+        if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(patientUpdate)) {
+            Timestamp timeStamp = Timestamp.valueOf(patientUpdate);
+            patient.setLastupdated(timeStamp);
+        }
+
+        String personUpdate = patientInfo.getPersonLastUpdated();
+        if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(personUpdate)) {
+            Timestamp timeStamp = Timestamp.valueOf(personUpdate);
+            patient.getPerson().setLastupdated(timeStamp);
+        }
+    }
+
+    public static Patient loadForUpdate(PatientManagementInfo patientInfo) {
+        Patient patient = patientService.get(patientInfo.getPatientPK());
+        patientInfo.setPatientIdentities(patientIdentityService.getPatientIdentitiesForPatient(patient.getId()));
+        return patient;
     }
 }

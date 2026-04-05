@@ -39,6 +39,19 @@ public interface DomainConfigurationHandler {
     }
 
     /**
+     * Returns an Ant-style glob pattern that determines which files this handler
+     * processes. When multiple handlers share the same domain, more-specific
+     * patterns (from handlers with lower load order) claim files first; broader
+     * patterns only see unclaimed files.
+     *
+     * @return Ant-style glob pattern (e.g., {@code "*.csv"},
+     *         {@code "*-levels.csv"})
+     */
+    default String getFileMatcher() {
+        return "*." + getFileExtension();
+    }
+
+    /**
      * Processes a configuration file from the given input stream.
      *
      * @param inputStream the input stream containing the configuration data

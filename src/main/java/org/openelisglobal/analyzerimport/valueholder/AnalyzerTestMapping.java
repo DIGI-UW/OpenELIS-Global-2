@@ -16,29 +16,34 @@
 package org.openelisglobal.analyzerimport.valueholder;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import org.apache.commons.validator.GenericValidator;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Maps analyzer-specific test names to OpenELIS test IDs. Uses composite
  * primary key (@EmbeddedId) combining analyzerId and analyzerTestName.
+ *
+ * <p>
+ * Test mappings are per-analyzer — each physical instrument owns its own set of
+ * test code → OE test mappings, loaded from its profile.
  */
 @Entity
 @Table(name = "analyzer_test_map")
 public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 3L;
 
     @EmbeddedId
     private AnalyzerTestMappingPK compoundId = new AnalyzerTestMappingPK();
 
     @Column(name = "test_id")
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
     @Transient

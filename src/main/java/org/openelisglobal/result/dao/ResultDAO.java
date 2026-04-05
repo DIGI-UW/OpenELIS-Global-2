@@ -71,10 +71,14 @@ public interface ResultDAO extends BaseDAO<Result, String> {
 
     List<Result> getChildResults(String resultId) throws LIMSRuntimeException;
 
+    Result getResultByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
+
     List<Result> getResultsForTestInDateRange(String testId, Date startDate, Date endDate) throws LIMSRuntimeException;
 
     List<Result> getResultsForPanelInDateRange(String panelId, Date lowDate, Date highDate) throws LIMSRuntimeException;
 
     List<Result> getResultsForTestSectionInDateRange(String testSectionId, Date lowDate, Date highDate)
             throws LIMSRuntimeException;
+
+    List<Result> getResultsByPatientUuid(String patientUuid) throws LIMSRuntimeException;
 }

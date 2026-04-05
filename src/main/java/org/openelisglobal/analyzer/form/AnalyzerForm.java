@@ -34,6 +34,11 @@ public class AnalyzerForm {
 
     private String pluginTypeId; // FK to analyzer_type table (the plugin that handles messages)
 
+    private String defaultConfigId; // Transient: e.g. "astm/genexpert-astm" — hints controller to auto-create test
+                                    // mappings
+
+    private String communicationMode; // ANALYZER_INITIATED, LIS_INITIATED, BOTH (nullable = infer from protocol)
+
     // Getters and Setters
 
     public String getId() {
@@ -114,5 +119,21 @@ public class AnalyzerForm {
 
     public void setPluginTypeId(String pluginTypeId) {
         this.pluginTypeId = pluginTypeId;
+    }
+
+    public String getDefaultConfigId() {
+        return defaultConfigId;
+    }
+
+    public void setDefaultConfigId(String defaultConfigId) {
+        this.defaultConfigId = defaultConfigId;
+    }
+
+    public String getCommunicationMode() {
+        return communicationMode;
+    }
+
+    public void setCommunicationMode(String communicationMode) {
+        this.communicationMode = communicationMode;
     }
 }

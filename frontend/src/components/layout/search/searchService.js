@@ -154,6 +154,7 @@ export const useAutocomplete = (props) => {
 
   return {
     textValue,
+    setTextValue,
     activeSuggestion,
     filteredSuggestions,
     showSuggestions,
