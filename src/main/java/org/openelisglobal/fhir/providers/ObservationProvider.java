@@ -1,7 +1,6 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
-import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.Delete;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
@@ -24,9 +23,8 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+<<<<<<< HEAD
 import java.util.List;
 import java.util.UUID;
 import java.text.SimpleDateFormat;
@@ -34,6 +32,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+=======
+>>>>>>> 7c7e02dac (changes)
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.Encounter;
@@ -41,9 +41,8 @@ import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Patient;
-import org.openelisglobal.analysis.service.AnalysisService;
-import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+<<<<<<< HEAD
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ResultSaveService;
 import org.openelisglobal.common.services.StatusService;
@@ -58,8 +57,11 @@ import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+=======
+>>>>>>> 7c7e02dac (changes)
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+<<<<<<< HEAD
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.provider.service.ProviderService;
@@ -75,6 +77,10 @@ import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.samplehuman.valueholder.SampleHuman;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.test.beanItems.TestResultItem;
+=======
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
+>>>>>>> 7c7e02dac (changes)
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
@@ -89,10 +95,14 @@ import org.springframework.validation.ObjectError;
  * source of truth. Search forwards to the HAPI FHIR store to support the full
  * FHIR search parameter set.
  *
+ * <p>
+ * Note: {@code @Create} is not yet supported because creating an Observation
+ * requires a full Result chain (Analysis → SampleItem → Sample → Patient).
+ * TODO: implement in a follow-up PR via Bundle transaction endpoint.
+ *
+ * <p>
  * Supported operations:
  * <ul>
- * <li>CREATE: POST /fhir/Observation (requires basedOn ServiceRequest
- * reference; rejects Finalized/Canceled analyses and duplicate results)</li>
  * <li>READ: GET /fhir/Observation/{uuid}</li>
  * <li>SEARCH: GET /fhir/Observation?patient={uuid}&amp;...</li>
  * <li>UPDATE: PUT /fhir/Observation/{uuid}</li>
@@ -127,17 +137,6 @@ public class ObservationProvider implements IResourceProvider {
 
     @Autowired
     private FhirUtil util;
-    @Autowired
-    private AnalysisService analysisService;
-
-    @Autowired
-    private SampleHumanService sampleHumanService;
-
-    @Autowired
-    private LogbookResultsPersistService logbookResultsPersistService;
-
-    @Autowired
-    private IStatusService statusService;
 
     @Override
     public Class<Observation> getResourceType() {
@@ -174,6 +173,7 @@ public class ObservationProvider implements IResourceProvider {
         }
     }
 
+<<<<<<< HEAD
     @Create
     public MethodOutcome create(@ResourceParam Observation fhirObservation, HttpServletRequest request) {
         String method = "create";
@@ -330,6 +330,8 @@ public class ObservationProvider implements IResourceProvider {
         }
     }
 
+=======
+>>>>>>> 7c7e02dac (changes)
     @Update
     public MethodOutcome update(@IdParam IdType theId, @ResourceParam Observation fhirObservation,
             HttpServletRequest request) {
@@ -370,9 +372,14 @@ public class ObservationProvider implements IResourceProvider {
 
             Observation resultObservation = fhirTransformService.transformResultToObservation(updatedResult);
             resultObservation.setId(theId);
+<<<<<<< HEAD
             fhirTransformService.transformPersistResult(updatedResult);
             ResultsUpdateDataSet actionDataSet = handleObservationPersistence(item, fhirObservation, existingResult,
                     request, method);
+=======
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, resultObservation,
+                    this.getClass().getSimpleName(), method);
+>>>>>>> 7c7e02dac (changes)
 
             List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
 
