@@ -78,6 +78,7 @@ export default defineConfig({
           "--js-flags=--max-old-space-size=1024", // cap V8 heap (Carbon doesn't tree-shake)
         ],
       },
+      serviceWorkers: "block", // block SW registration — self-signed certs cause constant SSL errors
     }),
   },
 

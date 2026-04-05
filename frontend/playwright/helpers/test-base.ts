@@ -28,6 +28,7 @@ export const test = base.extend<{
       const recentNav: string[] = [];
       const MAX_BUFFER = 20;
       let lastUrl = "";
+      let navCount = 0;
 
       function safeUrl(): string {
         try {
@@ -39,7 +40,7 @@ export const test = base.extend<{
 
       function dumpContext(tag: string) {
         console.error(`[${tag}] Test: ${testInfo.title}`);
-        console.error(`[${tag}] URL: ${safeUrl()}`);
+        console.error(`[${tag}] URL: ${safeUrl()} (nav #${navCount})`);
         if (recentNav.length) {
           console.error(`[${tag}] Recent navigations:`);
           for (const n of recentNav) console.error(`  ${n}`);
@@ -53,8 +54,11 @@ export const test = base.extend<{
       // Named handlers so we can remove them in teardown
       const onFrameNavigated = (frame: import("@playwright/test").Frame) => {
         if (frame === page.mainFrame()) {
+          navCount++;
           lastUrl = frame.url();
-          recentNav.push(`${new Date().toISOString()} → ${lastUrl}`);
+          recentNav.push(
+            `#${navCount} ${new Date().toISOString()} → ${lastUrl}`,
+          );
           if (recentNav.length > MAX_BUFFER) recentNav.shift();
         }
       };
