@@ -523,6 +523,48 @@ public class TATReportServiceTest {
     }
 
     @Test
+    public void testQueryResults_withLabUnitFilter_hqlContainsTestSectionFilter() {
+        stubQueryResults(Collections.emptyList());
+
+        tatReportService.getSummary(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, "1,2",
+                null, null, null, null, null, false, null);
+
+        ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
+        String hql = hqlCaptor.getValue();
+        Assert.assertTrue("HQL should contain testSection filter when labUnitIds is non-null",
+                hql.contains("a.testSection.id IN (:labUnitIds)"));
+    }
+
+    @Test
+    public void testQueryResults_withTestFilter_hqlContainsTestFilter() {
+        stubQueryResults(Collections.emptyList());
+
+        tatReportService.getSummary(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, "5",
+                null, null, null, null, false, null);
+
+        ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
+        String hql = hqlCaptor.getValue();
+        Assert.assertTrue("HQL should contain test filter when testIds is non-null",
+                hql.contains("a.test.id IN (:testIds)"));
+    }
+
+    @Test
+    public void testQueryResults_withSampleTypeFilter_hqlContainsSampleTypeFilter() {
+        stubQueryResults(Collections.emptyList());
+
+        tatReportService.getSummary(FROM, TO, TATSegment.RECEIPT_TO_VALIDATION, TATCalculationMode.CALENDAR, null, null,
+                null, null, 3, null, false, null);
+
+        ArgumentCaptor<String> hqlCaptor = ArgumentCaptor.forClass(String.class);
+        org.mockito.Mockito.verify(session).createQuery(hqlCaptor.capture());
+        String hql = hqlCaptor.getValue();
+        Assert.assertTrue("HQL should contain sampleType filter when sampleTypeId is non-null",
+                hql.contains("si.typeOfSample.id = :sampleTypeId"));
+    }
+
+    @Test
     public void testIncludeCancelled_statusNameIsTestCanceled() {
         stubQueryResults(Collections.emptyList());
 
