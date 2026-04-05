@@ -80,14 +80,16 @@ export async function pushAnalyzerResult(
         },
       );
       expect(response.ok()).toBeTruthy();
-      await presentation.pause(1_000);
-      // Extract sample_id from response if available
+      let sampleId: string | null = null;
       try {
         const body = await response.json();
-        return body?.results?.[0]?.sample_id ?? null;
+        sampleId = body?.results?.[0]?.sample_id ?? null;
       } catch {
-        return null;
+        // no body
       }
+      await response.dispose();
+      await presentation.pause(1_000);
+      return sampleId;
     }
 
     case "HL7": {
@@ -102,14 +104,16 @@ export async function pushAnalyzerResult(
         },
       );
       expect(response.ok()).toBeTruthy();
-      await presentation.pause(1_000);
-      // Extract sample_id from response
+      let sampleId: string | null = null;
       try {
         const body = await response.json();
-        return body?.results?.[0]?.sample_id ?? null;
+        sampleId = body?.results?.[0]?.sample_id ?? null;
       } catch {
-        return null;
+        // no body
       }
+      await response.dispose();
+      await presentation.pause(1_000);
+      return sampleId;
     }
 
     case "FILE": {
