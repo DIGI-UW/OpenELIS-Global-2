@@ -23,7 +23,7 @@ import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -298,11 +298,14 @@ const ShipmentReport = () => {
   };
 
   // Export as true Excel (.xlsx)
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      const wsData = [
-        headers.map((h) => h.header),
-        ...boxes.map((box) => [
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Shipment Report");
+
+      ws.addRow(headers.map((h) => h.header));
+      boxes.forEach((box) => {
+        ws.addRow([
           box.boxId || "-",
           box.contents || "-",
           formatDateTime(box.sentDate),
@@ -311,13 +314,19 @@ const ShipmentReport = () => {
           box.state === "RECEIVED" || box.state === "RECONCILED"
             ? box.createdByName || "-"
             : "-",
-        ]),
-      ];
+        ]);
+      });
 
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Shipment Report");
-      XLSX.writeFile(wb, "shipment-report.xlsx");
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "shipment-report.xlsx";
+      a.click();
+      URL.revokeObjectURL(url);
 
       addNotification({
         kind: "success",
