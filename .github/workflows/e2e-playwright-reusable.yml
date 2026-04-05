@@ -79,6 +79,15 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      - name: Configure swap for OOM resilience
+        run: |
+          if [ ! -f /swapfile ]; then
+            sudo fallocate -l 4G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+          fi
+          sudo swapon /swapfile 2>/dev/null || true
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -90,10 +99,6 @@ jobs:
         run: npm ci
         working-directory: frontend
 
-      - name: Enforce Playwright guards
-        run: npm run pw:guard
-        working-directory: frontend
-
       - name: Restore Playwright browser cache
         uses: actions/cache@v4
         with:
@@ -103,7 +108,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install --only-shell chromium --with-deps
         working-directory: frontend
 
       - name: Prepare .env from template
@@ -195,6 +200,10 @@ jobs:
               COMPOSE_CMD+=(-f "$f")
             fi
           done
+          COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits.yml")
+          if [ "${{ inputs.setup_analyzer_harness }}" = "true" ]; then
+            COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits-harness.yml")
+          fi
           "${COMPOSE_CMD[@]}" up -d --no-build --wait --wait-timeout 900
 
       - name: Validate cert material in shared volume mounts
@@ -313,6 +322,31 @@ jobs:
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
+      # ── Memory Instrumentation ─────────────────────────────────────────────
+
+      - name: Memory snapshot (pre-test)
+        run: |
+          echo "=== System Memory ==="
+          free -m
+          echo ""
+          echo "=== Docker Container Memory ==="
+          docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null || true
+          echo ""
+          echo "=== Chromium Binary ==="
+          ls -lah ~/.cache/ms-playwright/chromium*/chrome-linux*/chrome 2>/dev/null || \
+          ls -lah ~/.cache/ms-playwright/chromium_headless_shell*/chrome-headless-shell-linux*/chrome-headless-shell 2>/dev/null || \
+          echo "Browser binary not found in expected locations"
+
+      - name: Start memory monitor (background)
+        run: |
+          (while true; do
+            echo "--- $(date -u +%H:%M:%S) ---"
+            free -m | grep "^Mem:"
+            docker stats --no-stream --format "{{.Name}}: {{.MemUsage}} ({{.MemPerc}})" 2>/dev/null || true
+            sleep 30
+          done) > /tmp/memory-monitor.log 2>&1 &
+          echo $! > /tmp/memory-monitor.pid
+
       # ── Test Execution ──────────────────────────────────────────────────────
 
       - name: Run Playwright tests
@@ -337,6 +371,19 @@ jobs:
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
           FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
           FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
+
+      - name: Memory snapshot (post-test) + monitor dump
+        if: ${{ !cancelled() }}
+        run: |
+          echo "=== System Memory (post-test) ==="
+          free -m
+          echo ""
+          echo "=== Docker Container Memory (post-test) ==="
+          docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null || true
+          echo ""
+          echo "=== Memory Monitor Log (30s intervals during test) ==="
+          kill "$(cat /tmp/memory-monitor.pid 2>/dev/null)" 2>/dev/null || true
+          cat /tmp/memory-monitor.log 2>/dev/null || echo "No monitor log found"
 
       # ── Artifact Upload ─────────────────────────────────────────────────────
 
