@@ -76,15 +76,21 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
                 List<AnalyzerResults> previousResults = baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
                 AnalyzerResults previousResult = null;
 
-                // This next block may seem more complicated then it need be but it covers the
-                // case where there may be a third duplicate
-                // and it covers rereading the same file
+                // Duplicate detection: skip insert if an existing staging entry matches.
+                // Match on timestamp (instrument date) OR result value (re-import of same
+                // data).
+                // This makes re-importing the same file idempotent while still staging
+                // genuinely new results (corrections with different values) for user review.
                 if (previousResults != null) {
                     duplicateByAccessionAndTestOnly = true;
                     for (AnalyzerResults foundResult : previousResults) {
                         previousResult = foundResult;
                         if (foundResult.getCompleteDate() != null
                                 && foundResult.getCompleteDate().equals(result.getCompleteDate())) {
+                            duplicateByAccessionAndTestOnly = false;
+                            break;
+                        }
+                        if (foundResult.getResult() != null && foundResult.getResult().equals(result.getResult())) {
                             duplicateByAccessionAndTestOnly = false;
                             break;
                         }
