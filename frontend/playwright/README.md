@@ -28,55 +28,42 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 Tests are organized into projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project                | Purpose                                         | CI Workflow                       | Infra Required          |
-| ---------------------- | ----------------------------------------------- | --------------------------------- | ----------------------- |
-| `core-app`             | Core foundational UI verification               | `e2e-playwright.yml`              | Build stack             |
-| `core-demo`            | UI workflow demos on build stack + SQL fixtures | `e2e-playwright.yml`              | Build stack             |
-| `core-demo-video`      | `core-demo` + slowMo + video                    | Local only                        | Build stack             |
-| `harness-foundational` | Analyzer-stack foundational verification        | Local/manual targeted             | Full harness            |
-| `harness-demo`         | Analyzer-stack story-proof demos (serial run)   | `e2e-playwright-analyzer-harness` | Full harness            |
-| `harness-demo-video`   | `harness-demo` + slowMo + video (serial run)    | Manual harness workflow + local   | Full harness            |
-| `harness-manual-only`  | Real-device / operator-managed hardware checks  | Manual only                       | Full harness + hardware |
+| Project                | Purpose                                         | CI                  | Infra Required          |
+| ---------------------- | ----------------------------------------------- | ------------------- | ----------------------- |
+| `core-app`             | Core foundational UI verification               | Every PR (2 shards) | Build stack             |
+| `core-demo`            | UI workflow demos on build stack + SQL fixtures | Every PR (2 shards) | Build stack             |
+| `core-demo-video`      | `core-demo` + slowMo + video                    | Local only          | Build stack             |
+| `harness-foundational` | Analyzer-stack foundational verification        | Every PR (2 shards) | Full harness            |
+| `harness-demo`         | Analyzer-stack story-proof demos (serial run)   | Every PR (2 shards) | Full harness            |
+| `harness-demo-video`   | `harness-demo` + slowMo + video (serial run)    | Local only          | Full harness            |
+| `harness-manual-only`  | Real-device / operator-managed hardware checks  | Local only          | Full harness + hardware |
 
 ## CI Workflows
 
-| Workflow                                 | Compose Files                                          | Projects                 | Fixtures                                             |
-| ---------------------------------------- | ------------------------------------------------------ | ------------------------ | ---------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo` | `file-import-e2e.sql`                                |
-| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness-demo`           | `load-test-fixtures.sh --analyzers=full` (see below) |
+All Playwright tests run through a single parameterized reusable workflow
+(`e2e-playwright-reusable.yml`), called twice by the orchestrator
+(`e2e-authoritative-reusable.yml`):
 
-`e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
+| Call               | Compose Files                                 | Projects                                | Fixtures                                 |
+| ------------------ | --------------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | 3 SQL files (see below)                  |
+| Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --analyzers=full` |
 
-### PR Evidence Artifacts (CI)
+Both follow the same pattern: **test-shards → merge-reports → gate**. Each
+produces a merged HTML report artifact:
 
-The reusable analyzer harness workflow publishes PR-review evidence directly from
-the CI run:
+- `core-playwright-report-html-attempt-*`
+- `harness-playwright-report-html-attempt-*`
 
-- merged HTML report artifact: `analyzer-playwright-report-html-attempt-*`
-- job summary with run/artifact links
-- sticky PR comment (`Analyzer Playwright Evidence`) updated each run attempt
+### Execution Policy
 
-Normal PR validation runs publish HTML evidence for `harness-demo`.
+| Policy    | Where       | Video    | Projects                                                |
+| --------- | ----------- | -------- | ------------------------------------------------------- |
+| **CI**    | Every PR    | Off      | core-app, core-demo, harness-foundational, harness-demo |
+| **Local** | Dev machine | Optional | Any project including `-video` variants with slowMo     |
 
-Video-bearing demo evidence is opt-in and runs outside required checkpoint
-graphs via manual workflows:
-
-- zipped video evidence bundle: `analyzer-playwright-video-evidence-attempt-*`
-  (contains `playwright-report` + `test-results` with videos)
-- `playwright-core-demo-video-evidence-attempt-*` (core demo workflow)
-
-This keeps required checkpoint graphs focused on authoritative suites while
-preserving manual evidence collection when needed.
-
-To generate CI-hosted video evidence for a PR, run the manual workflow
-`E2E / Playwright / Analyzer Harness (Manual)` with:
-
-- `playwright_project: harness-demo-video`
-- optional `test_file` if you want a single demo spec only
-- optional `pr_number` if you want the workflow to update the PR evidence comment
-
-For core demo videos, run `E2E / Playwright / Demo Video Evidence (Manual)` and
-enable `run_core_demo_video`.
+No `workflow_dispatch` manual workflows exist for Playwright. Video recording
+is local-only via the `-video` project variants.
 
 ## Fixtures
 
