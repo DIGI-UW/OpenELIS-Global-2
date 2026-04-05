@@ -51,14 +51,18 @@ async function createMockNetwork(
     });
     if (response.ok()) {
       const body = await response.json();
+      await response.dispose();
       return body.ip || null;
     }
+    const status = response.status();
+    await response.dispose();
     // 409 = already exists, which is fine (idempotent)
-    if (response.status() === 409) {
+    if (status === 409) {
       // Fetch existing
       const listResp = await page.request.get(`${SIMULATOR_URL}/analyzers`);
-      if (listResp.ok()) {
-        const list = await listResp.json();
+      const list = listResp.ok() ? await listResp.json() : null;
+      await listResp.dispose();
+      if (list) {
         const existing = list.analyzers?.find(
           (a: { name: string }) => a.name === mockName,
         );
@@ -77,46 +81,47 @@ async function createMockNetwork(
 async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
   try {
     const existing = await page.request.get(`${SIMULATOR_URL}/analyzers`);
-    if (!existing.ok()) {
-      return;
-    }
+    const body = existing.ok() ? await existing.json() : null;
+    await existing.dispose();
+    if (!body) return;
 
-    const body = await existing.json();
     const exists = Array.isArray(body?.analyzers)
       ? body.analyzers.some((a: { name?: string }) => a?.name === mockName)
       : false;
 
-    if (!exists) {
-      return;
-    }
+    if (!exists) return;
 
-    await page.request.delete(`${SIMULATOR_URL}/analyzers/${mockName}`);
+    const delResp = await page.request.delete(
+      `${SIMULATOR_URL}/analyzers/${mockName}`,
+    );
+    await delResp.dispose();
   } catch {
     // Best-effort cleanup
   }
 }
 
 async function waitForAnalyzerApiReady(page: Page): Promise<void> {
-  const deadline = Date.now() + API_READY_TIMEOUT_MS;
-  let lastStatus: number | null = null;
   const analyzerApiUrl = getAnalyzerApiUrl();
 
-  while (Date.now() < deadline) {
-    try {
-      const response = await page.request.get(analyzerApiUrl);
-      lastStatus = response.status();
-      if (response.ok()) {
-        return;
-      }
-    } catch {
-      // Keep polling until timeout. Network can flap while docker networks settle.
-    }
-    await page.waitForTimeout(API_RETRY_DELAY_MS);
-  }
-
-  throw new Error(
-    `Analyzer API did not become ready within ${API_READY_TIMEOUT_MS}ms (last status: ${lastStatus ?? "request failed"})`,
-  );
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await page.request.get(analyzerApiUrl);
+          const status = response.status();
+          await response.dispose();
+          return status;
+        } catch {
+          return 0; // Network can flap while docker networks settle
+        }
+      },
+      {
+        message: `Analyzer API at ${analyzerApiUrl} did not become ready`,
+        timeout: API_READY_TIMEOUT_MS,
+        intervals: [API_RETRY_DELAY_MS],
+      },
+    )
+    .toBe(200);
 }
 
 export async function createAnalyzerFromProfile(
