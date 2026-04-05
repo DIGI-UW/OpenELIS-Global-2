@@ -19,8 +19,20 @@ import { cleanupAnalyzerByName } from "./cleanup-analyzer";
 import type { DemoPresentation } from "./demo-presentation";
 import type { AnalyzerTestConfig } from "./analyzer-test-config";
 import { LONG_TIMEOUT } from "./timeouts";
+import { resolveDbContainer } from "./db-container";
 
 const SIMULATOR_URL = "http://localhost:8085";
+const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
+const API_READY_TIMEOUT_MS = 15_000;
+const API_RETRY_DELAY_MS = 500;
+
+function getAnalyzerApiUrl(): string {
+  const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
+    /\/$/,
+    "",
+  );
+  return `${baseUrl}${ANALYZER_API_PATH}`;
+}
 
 /**
  * Create a mock analyzer network and return the assigned IP.
@@ -39,14 +51,18 @@ async function createMockNetwork(
     });
     if (response.ok()) {
       const body = await response.json();
+      await response.dispose();
       return body.ip || null;
     }
+    const status = response.status();
+    await response.dispose();
     // 409 = already exists, which is fine (idempotent)
-    if (response.status() === 409) {
+    if (status === 409) {
       // Fetch existing
       const listResp = await page.request.get(`${SIMULATOR_URL}/analyzers`);
-      if (listResp.ok()) {
-        const list = await listResp.json();
+      const list = listResp.ok() ? await listResp.json() : null;
+      await listResp.dispose();
+      if (list) {
         const existing = list.analyzers?.find(
           (a: { name: string }) => a.name === mockName,
         );
@@ -64,10 +80,48 @@ async function createMockNetwork(
  */
 async function removeMockNetwork(page: Page, mockName: string): Promise<void> {
   try {
-    await page.request.delete(`${SIMULATOR_URL}/analyzers/${mockName}`);
+    const existing = await page.request.get(`${SIMULATOR_URL}/analyzers`);
+    const body = existing.ok() ? await existing.json() : null;
+    await existing.dispose();
+    if (!body) return;
+
+    const exists = Array.isArray(body?.analyzers)
+      ? body.analyzers.some((a: { name?: string }) => a?.name === mockName)
+      : false;
+
+    if (!exists) return;
+
+    const delResp = await page.request.delete(
+      `${SIMULATOR_URL}/analyzers/${mockName}`,
+    );
+    await delResp.dispose();
   } catch {
     // Best-effort cleanup
   }
+}
+
+async function waitForAnalyzerApiReady(page: Page): Promise<void> {
+  const analyzerApiUrl = getAnalyzerApiUrl();
+
+  await expect
+    .poll(
+      async () => {
+        try {
+          const response = await page.request.get(analyzerApiUrl);
+          const status = response.status();
+          await response.dispose();
+          return status;
+        } catch {
+          return 0; // Network can flap while docker networks settle
+        }
+      },
+      {
+        message: `Analyzer API at ${analyzerApiUrl} did not become ready`,
+        timeout: API_READY_TIMEOUT_MS,
+        intervals: [API_RETRY_DELAY_MS],
+      },
+    )
+    .toBe(200);
 }
 
 export async function createAnalyzerFromProfile(
@@ -97,6 +151,9 @@ export async function createAnalyzerFromProfile(
       template,
       port,
     );
+
+    // Creating/attaching docker networks can briefly destabilize connectivity.
+    await waitForAnalyzerApiReady(page);
   }
 
   await list.goto();
@@ -113,7 +170,7 @@ export async function createAnalyzerFromProfile(
   // Select profile (auto-fills fields)
   if (config.profileName) {
     await form.selectDefaultConfig(config.profileName);
-    await presentation.pause(1_000);
+    await presentation.pause(500);
   }
 
   // Select analyzer type (may already be set by profile)
@@ -136,6 +193,7 @@ export async function createAnalyzerFromProfile(
   }
 
   // Save
+  await waitForAnalyzerApiReady(page);
   await form.save();
   await form.expectSuccessNotification();
 
@@ -176,17 +234,19 @@ export async function teardownAnalyzer(
   }
 }
 
+/** Escape a value for use inside a PostgreSQL single-quoted literal. */
+function escapePgStringLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 /**
- * Remove a soft-deleted analyzer from the DB so tests leave zero trace.
- * Follows the execFileSync + docker psql pattern from file-import-setup.ts.
+ * Hard-delete analyzer rows after UI soft-delete (test isolation).
  * CASCADE FK on analyzer_test_map handles test mapping cleanup automatically.
  */
 function hardDeleteAnalyzerFromDb(analyzerName: string): void {
-  const container =
-    process.env.DATABASE_CONTAINER ||
-    process.env.DB_CONTAINER ||
-    "openelisglobal-database";
-  const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = '${analyzerName}'); DELETE FROM clinlims.analyzer WHERE name = '${analyzerName}';`;
+  const container = resolveDbContainer();
+  const nameLiteral = escapePgStringLiteral(analyzerName);
+  const sql = `DELETE FROM clinlims.analyzer_results WHERE analyzer_id IN (SELECT id FROM clinlims.analyzer WHERE name = ${nameLiteral}); DELETE FROM clinlims.analyzer WHERE name = ${nameLiteral};`;
   try {
     execFileSync("docker", [
       "exec",
