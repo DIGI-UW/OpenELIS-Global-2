@@ -2,6 +2,10 @@
 
 > **Purpose:** Guide for writing efficient, maintainable Playwright E2E tests
 > for OpenELIS Global 2's React + Carbon Design System frontend.
+>
+> **Single source of truth:** This file is the canonical Playwright guidance for
+> both human and AI contributors. Other docs should reference this file rather
+> than duplicating rules.
 
 ## Quick Reference
 
@@ -19,11 +23,24 @@ npm run pw:test:ui
 npm run pw:test:headed
 
 # Run specific file
-npx playwright test sidenav.spec.ts
+npm run pw:test -- sidenav.spec.ts
 
 # Run specific test
-npx playwright test -g "home page has collapsed nav"
+npm run pw:test -- -g "home page has collapsed nav"
 ```
+
+## Command-First Entry Points
+
+For AI-assisted Playwright work, use packaged commands first:
+
+- `/plan-record-playwright` - plan PR/feature scope, flow inventory, and
+  project-aware recording stages
+- `/write-playwright-test` - source-first authoring from requirements with
+  config registration checks
+- `/debug-playwright` - source-first + runtime-evidence-first failure diagnosis
+- `/audit-playwright` - selector quality and anti-pattern audits
+
+Packaged command source: `.ai/skills/playwright/commands/`
 
 ---
 
@@ -70,6 +87,29 @@ await expect(element).toBeVisible();
 // ✅ GOOD: Auto-retrying assertion
 await expect(element).toBeVisible(); // Retries until visible or timeout
 ```
+
+### 4. Keep Demo Specs UI-Only
+
+`demo` and `demo-video` should prove the user story through visible DOM
+evidence. They should not prove backend behavior directly.
+
+Use `demo` and `demo-video` for:
+
+- user-triggered actions
+- visible page transitions
+- stable, user-visible success evidence
+- video-only pacing and overlays
+
+Do not put these in demo specs or demo-facing helpers:
+
+- `page.on("console")` or `page.on("pageerror")`
+- `captureDebugContext`
+- `waitForResponse()` or `expect.poll()` as proof
+- `page.request.get()`, `page.request.put()`, or `page.request.delete()`
+- filesystem or server-state polling to decide pass/fail
+
+If a test needs backend persistence checks, bridge/simulator proof, seeded-data
+validation, or file-processing contracts, move that test to `harness`.
 
 ---
 
@@ -161,7 +201,7 @@ export class Sidenav {
   constructor(page: Page) {
     this.page = page;
     this.nav = page.locator(".cds--side-nav");
-    this.menuButton = page.locator('[data-cy="menuButton"]');
+    this.menuButton = page.locator('[data-testid="menu-button"]');
   }
 
   async expectExpanded() {
@@ -216,7 +256,7 @@ test("storage page has expanded nav", async ({ page }) => {
 | -------- | ------------- | ----------------------------------------- | -------------------------------------- |
 | 1        | Role + Name   | `getByRole('button', { name: 'Submit' })` | Always prefer for interactive elements |
 | 2        | Label         | `getByLabel('Username')`                  | Form inputs                            |
-| 3        | Test ID       | `locator('[data-cy="menuButton"]')`       | When semantic selectors don't work     |
+| 3        | Test ID       | `locator('[data-testid="menu-button"]')`  | When semantic selectors don't work     |
 | 4        | Text          | `getByText('Dashboard')`                  | Static text content                    |
 | 5        | CSS Class     | `locator('.cds--side-nav')`               | Carbon structural elements only        |
 
@@ -399,6 +439,13 @@ Auto-captured on failure in `test-results/`. Review to understand failure state.
 npm run pw:test 2>&1 | tee /tmp/playwright.log
 ```
 
+### Mandatory Failure Triage Order
+
+1. Read failing spec + helper/page-object code first
+2. Inspect screenshot/trace/runtime DOM evidence
+3. State root cause hypothesis before changing selectors
+4. Apply minimal fix and run narrowest project/spec
+
 ---
 
 ## Adding New Tests
@@ -438,22 +485,137 @@ test("can select sample", async ({ page }) => {
 ### 3. Run
 
 ```bash
-npx playwright test storage.spec.ts
+npm run pw:test -- storage.spec.ts
+```
+
+### 4. Validate Project Registration
+
+```bash
+python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/storage.spec.ts
 ```
 
 ---
 
 ## Anti-Patterns
 
-| ❌ Avoid                        | ✅ Instead                          |
-| ------------------------------- | ----------------------------------- |
-| `page.waitForTimeout(ms)`       | Auto-retrying `expect()` assertions |
-| `.first()` / `.nth(0)`          | More specific selectors             |
-| Hardcoded credentials in tests  | Environment variables               |
-| Testing CSS classes for state   | Role/ARIA attributes                |
-| Long tests with many assertions | Focused single-concern tests        |
-| Repeated login in each test     | Setup project with storageState     |
-| Raw CSS selectors               | Semantic `getByRole`, `getByLabel`  |
+### Critical Anti-Patterns (Hard Rules)
+
+These patterns MUST NOT appear in Playwright tests. Apply as DO/DO NOT rules
+during code review.
+
+| DO NOT                                        | WHY                                                                         | DO INSTEAD                                                       |
+| --------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state | `waitForResponse` for sync only, then `expect(ui).toBeVisible()` |
+| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability    | Click the `<label>`: `page.locator('label[for="id"]').click()`   |
+| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors       | Call `isVisible()` directly                                      |
+| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                     | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry      |
+| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                          | Click the `<label>` element                                      |
+| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                | `(await el.count()) > 0 && (await el.isChecked())`               |
+| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                    | Wait for suggestion, click it; Tab only as fallback              |
+| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                           | At least one `expect()` per test                                 |
+
+### Structural Anti-Patterns
+
+| DO NOT                           | DO INSTEAD                                    |
+| -------------------------------- | --------------------------------------------- |
+| `page.waitForTimeout(ms)`        | Auto-retrying `expect()` assertions           |
+| `.first()` / `.nth(0)` blindly   | More specific selectors                       |
+| Hardcoded credentials in tests   | `TEST_USER`/`TEST_PASS` environment variables |
+| CSS classes for state assertions | Role/ARIA attribute assertions                |
+| Long tests with many concerns    | Focused tests with `test.step()` sections     |
+| Repeated login in each test      | Setup project with `storageState`             |
+| Raw CSS selectors                | Semantic `getByRole`, `getByLabel`            |
+
+### Correct `waitForResponse` Pattern
+
+```typescript
+// Synchronize on network, then assert on UI
+const responsePromise = page.waitForResponse("**/api/save");
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+
+// This is the real assertion
+await expect(page.getByText("Saved successfully")).toBeVisible();
+```
+
+### Correct Carbon Checkbox/Radio Pattern
+
+```typescript
+// DO: Click the label — the visible, clickable element
+await page.locator('label[for="saveallresults"]').click();
+
+// DO: For dynamic IDs, navigate to the parent wrapper
+await radioInput.locator("xpath=..").locator("label").click();
+
+// DO NOT: page.getByLabel("text").check() — targets hidden input
+// DO NOT: checkbox.check({ force: true }) — bypasses actionability
+```
+
+### Correct Autocomplete Pattern
+
+```typescript
+// Wait for suggestion dropdown, click the first match
+const suggestion = page.locator('[data-cy="auto-suggestion"]').first();
+try {
+  await expect(suggestion).toBeVisible({ timeout: 5_000 });
+  await suggestion.click();
+} catch {
+  // No suggestions (empty DB, no match) — accept free text via Tab
+  await page.keyboard.press("Tab");
+}
+```
+
+### Correct Optional Element Check
+
+```typescript
+// isVisible() returns boolean directly — no catch needed
+if (await element.isVisible()) {
+  await element.click();
+}
+
+// For isChecked() on optional elements — guard with count()
+const isChecked = (await element.count()) > 0 && (await element.isChecked());
+```
+
+## Multi-Step Workflow Pattern
+
+Use `test.step()` to organize long workflows. Each step should have at least one
+assertion.
+
+```typescript
+test("complete sample order workflow", async ({ page }) => {
+  await test.step("Search and select patient", async () => {
+    await page.goto("/SamplePatientEntry");
+    await page.locator("input#lastName").fill("TEST-Smith");
+    await page.locator("button#local_search").click();
+    await expect(page.locator('[data-cy="radioButton"]').first()).toBeVisible();
+  });
+
+  await test.step("Fill sample details", async () => {
+    // ... fill sample type, tests, etc.
+    await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+  });
+
+  await test.step("Submit and verify success", async () => {
+    await page.getByRole("button", { name: "Submit" }).click();
+    await expect(page.locator(".orderEntrySuccessMsg")).toBeVisible();
+  });
+});
+```
+
+## Soft Assertions for Transient Notifications
+
+Toasts and notifications may disappear before assertions run. Use soft
+assertions with descriptive messages:
+
+```typescript
+await expect
+  .soft(
+    page.getByRole("alert"),
+    "Success notification should appear after save"
+  )
+  .toBeVisible({ timeout: 10_000 });
+```
 
 ---
 
@@ -468,5 +630,4 @@ npx playwright test storage.spec.ts
 
 ---
 
-**Last Updated:** 2025-12-22  
-**Applies To:** `frontend/playwright/`
+**Last Updated:** 2026-03-20 **Applies To:** `frontend/playwright/`

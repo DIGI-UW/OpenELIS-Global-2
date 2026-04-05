@@ -30,7 +30,7 @@ public class AnalyzerError extends BaseObject<String> {
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "analyzer_id", nullable = false, referencedColumnName = "id")
+    @JoinColumn(name = "analyzer_id", referencedColumnName = "id")
     private Analyzer analyzer;
 
     @Column(name = "error_type", nullable = false, length = 20)
@@ -154,7 +154,8 @@ public class AnalyzerError extends BaseObject<String> {
     }
 
     public enum ErrorType {
-        MAPPING, VALIDATION, TIMEOUT, PROTOCOL, CONNECTION, QC_MAPPING_INCOMPLETE, QC_SERVICE_UNAVAILABLE
+        MAPPING, VALIDATION, TIMEOUT, PROTOCOL, CONNECTION, QC_MAPPING_INCOMPLETE, QC_SERVICE_UNAVAILABLE,
+        UNREGISTERED_SOURCE
     }
 
     public enum Severity {
