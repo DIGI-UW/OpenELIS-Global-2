@@ -19,7 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * FHIR provider for DiagnosticReport resources backed by OpenELIS Analysis data.
+ * FHIR provider for DiagnosticReport resources backed by OpenELIS Analysis
+ * data.
  */
 @Component
 public class DiagnosticReportProvider implements IResourceProvider {
