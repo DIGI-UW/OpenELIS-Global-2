@@ -63,7 +63,17 @@ public class FileAnalyzerReader extends AnalyzerReader {
 
         try {
             byte[] bytes = stream.readAllBytes();
-            List<String> rawLines = Arrays.asList(new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n"));
+            List<String> rawLines = new ArrayList<>(
+                    Arrays.asList(new String(bytes, StandardCharsets.UTF_8).split("\\r?\\n")));
+
+            // Strip UTF-8 BOM if present (Tecan Magellan exports may include BOM)
+            rawLines = PlateGridNormalizer.stripBom(rawLines);
+
+            // Skip leading metadata rows (e.g. Wondfo Finecare Row 0 instrument serial)
+            if (configuration.getSkipRows() != null && configuration.getSkipRows() > 0
+                    && rawLines.size() > configuration.getSkipRows()) {
+                rawLines = rawLines.subList(configuration.getSkipRows(), rawLines.size());
+            }
 
             InputStream parseStream;
             char delimiterChar = configuration.getDelimiter() != null && !configuration.getDelimiter().isEmpty()
@@ -71,8 +81,10 @@ public class FileAnalyzerReader extends AnalyzerReader {
                     : ',';
 
             if (PlateGridNormalizer.isPlateGridFormat(rawLines)) {
+                // Resolve result column name from column mappings (default OD_450)
+                String resultColumnName = resolveResultColumnName();
                 List<String> normalized = PlateGridNormalizer.normalizeToWellPerRow(rawLines,
-                        String.valueOf(delimiterChar));
+                        String.valueOf(delimiterChar), resultColumnName);
                 if (normalized.isEmpty()) {
                     error = "Plate grid format detected but normalization failed";
                     return false;
@@ -216,6 +228,23 @@ public class FileAnalyzerReader extends AnalyzerReader {
                     "Unable to resolve plugin by analyzer type: " + e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * Resolve the result column name for plate-grid normalization. Looks for a
+     * column mapping value of "result" and returns the corresponding CSV column
+     * name. Falls back to "OD_450".
+     */
+    private String resolveResultColumnName() {
+        if (configuration == null || configuration.getColumnMappings() == null) {
+            return "OD_450";
+        }
+        for (Map.Entry<String, String> entry : configuration.getColumnMappings().entrySet()) {
+            if ("result".equals(entry.getValue())) {
+                return entry.getKey();
+            }
+        }
+        return "OD_450";
     }
 
     private void buildLineFromRecord(CSVRecord record, Map<String, String> columnMappings, StringBuilder lineBuilder) {

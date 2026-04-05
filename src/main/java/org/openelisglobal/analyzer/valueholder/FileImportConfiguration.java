@@ -67,6 +67,9 @@ public class FileImportConfiguration extends BaseObject<String> {
     @Column(name = "has_header", nullable = false)
     private Boolean hasHeader = true;
 
+    @Column(name = "skip_rows")
+    private Integer skipRows = 0;
+
     @Column(name = "active", nullable = false)
     private Boolean active = true;
 
@@ -217,6 +220,14 @@ public class FileImportConfiguration extends BaseObject<String> {
 
     public void setHasHeader(Boolean hasHeader) {
         this.hasHeader = hasHeader;
+    }
+
+    public Integer getSkipRows() {
+        return skipRows;
+    }
+
+    public void setSkipRows(Integer skipRows) {
+        this.skipRows = skipRows;
     }
 
     public Boolean getActive() {

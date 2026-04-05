@@ -20,7 +20,8 @@ import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
  * Analyzer harness: FILE drop → staged results → accept (one story per FILE
  * analyzer seeded by `projects/analyzer-harness/seed-analyzers.sh`).
  *
- * Coverage: QuantStudio 5, QuantStudio 7, FluoroCycler XT (Generic File).
+ * Coverage: QuantStudio 5, QuantStudio 7, FluoroCycler XT (Generic File),
+ * Wondfo Finecare FS-205 (CSV), Tecan Infinite F50 (CSV), Thermo Multiskan FC (CSV).
  * Cepheid GeneXpert (ASTM) uses TCP + ASTM framing — see
  * `astm-genexpert-results.spec.ts`, not this file.
  *
@@ -88,6 +89,47 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     ],
     demoTitle: "FluoroCycler XT File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
+  },
+  {
+    analyzerName: "Wondfo Finecare FS-205",
+    importDirSafeName: "wondfo-finecare-fs-205",
+    fixture: "wondfo-finecare-e2e-results.csv",
+    filePrefix: "wondfo-results-",
+    expectedResults: [
+      { sampleId: "HARN-WF-2026-00001", result: "3.45" },
+      { sampleId: "HARN-WF-2026-00002", result: "<2" },
+      { sampleId: "HARN-WF-2026-00003", result: "0.57" },
+    ],
+    demoTitle: "Wondfo Finecare FS-205 File Import",
+    demoSubtitle:
+      "CSV import from POCT immunoassay — comparison operators preserved.",
+  },
+  {
+    analyzerName: "Tecan Infinite F50",
+    importDirSafeName: "tecan-infinite-f50",
+    fixture: "tecan-f50-e2e-results.csv",
+    filePrefix: "tecan-results-",
+    expectedResults: [
+      { sampleId: "HARN-TC-2026-00001", result: "2.345" },
+      { sampleId: "HARN-TC-2026-00002", result: "0.048" },
+      { sampleId: "HARN-TC-2026-00003", result: "1.234" },
+    ],
+    demoTitle: "Tecan Infinite F50 File Import",
+    demoSubtitle: "ELISA OD results from well-per-row CSV export.",
+  },
+  {
+    analyzerName: "Thermo Multiskan FC",
+    importDirSafeName: "thermo-multiskan-fc",
+    fixture: "multiskan-fc-e2e-results.csv",
+    filePrefix: "multiskan-results-",
+    expectedResults: [
+      { sampleId: "HARN-MS-2026-00001", result: "2.345" },
+      { sampleId: "HARN-MS-2026-00002", result: "0.048" },
+      { sampleId: "HARN-MS-2026-00003", result: "1.567" },
+    ],
+    demoTitle: "Thermo Multiskan FC File Import",
+    demoSubtitle:
+      "ELISA OD results from well-per-row CSV export — French locale support.",
   },
 ];
 

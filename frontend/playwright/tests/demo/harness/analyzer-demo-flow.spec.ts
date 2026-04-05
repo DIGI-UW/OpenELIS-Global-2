@@ -191,6 +191,76 @@ const CONFIGS: AnalyzerTestConfig[] = [
       { sampleId: "DEMO-FC-2026-00003", result: "Negative" },
     ],
   },
+  // ── Madagascar Sprint: 3 New FILE Analyzers ────────────────────
+  {
+    name: "Demo: Wondfo Finecare FS-205",
+    displayName: "Wondfo Finecare FS-205 (FILE/CSV — POCT)",
+    analyzerType: "IMMUNOLOGY",
+    pluginType: "Generic File",
+    profileName: "Wondfo Finecare FS-205 (CSV)",
+    protocol: "FILE",
+    fileSampleId: "DEMO-WF-2026-00001",
+    push: {
+      protocol: "FILE",
+      fixtureFile: "wondfo-finecare-e2e-results.csv",
+      importDir: path.join(
+        HOST_IMPORTS_BASE,
+        "demo--wondfo-finecare-fs-205/incoming",
+      ),
+      filePrefix: "wondfo-e2e-",
+    },
+    expectedResults: [
+      { sampleId: "DEMO-WF-2026-00001", result: "3.45" },
+      { sampleId: "DEMO-WF-2026-00002", result: "<2" },
+      { sampleId: "DEMO-WF-2026-00003", result: "0.57" },
+    ],
+  },
+  {
+    name: "Demo: Tecan Infinite F50",
+    displayName: "Tecan Infinite F50 (FILE/CSV — ELISA)",
+    analyzerType: "IMMUNOLOGY",
+    pluginType: "Generic File",
+    profileName: "Tecan Infinite F50",
+    protocol: "FILE",
+    fileSampleId: "DEMO-TC-2026-00001",
+    push: {
+      protocol: "FILE",
+      fixtureFile: "tecan-f50-e2e-results.csv",
+      importDir: path.join(
+        HOST_IMPORTS_BASE,
+        "demo--tecan-infinite-f50/incoming",
+      ),
+      filePrefix: "tecan-e2e-",
+    },
+    expectedResults: [
+      { sampleId: "DEMO-TC-2026-00001", result: "2.345" },
+      { sampleId: "DEMO-TC-2026-00002", result: "0.048" },
+      { sampleId: "DEMO-TC-2026-00003", result: "1.234" },
+    ],
+  },
+  {
+    name: "Demo: Thermo Multiskan FC",
+    displayName: "Thermo Multiskan FC (FILE/CSV — ELISA)",
+    analyzerType: "IMMUNOLOGY",
+    pluginType: "Generic File",
+    profileName: "Thermo Multiskan FC",
+    protocol: "FILE",
+    fileSampleId: "DEMO-MS-2026-00001",
+    push: {
+      protocol: "FILE",
+      fixtureFile: "multiskan-fc-e2e-results.csv",
+      importDir: path.join(
+        HOST_IMPORTS_BASE,
+        "demo--thermo-multiskan-fc/incoming",
+      ),
+      filePrefix: "multiskan-e2e-",
+    },
+    expectedResults: [
+      { sampleId: "DEMO-MS-2026-00001", result: "2.345" },
+      { sampleId: "DEMO-MS-2026-00002", result: "0.048" },
+      { sampleId: "DEMO-MS-2026-00003", result: "1.567" },
+    ],
+  },
 ];
 
 // ── Unified Test Flow ────────────────────────────────────────────

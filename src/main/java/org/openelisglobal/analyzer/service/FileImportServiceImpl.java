@@ -676,6 +676,16 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             }
         }
 
+        // Extract skipRows from configDefaults (e.g. Wondfo has a metadata row before
+        // headers)
+        int skipRows = 0;
+        if (configDefaults instanceof Map) {
+            Object sr = ((Map<String, Object>) configDefaults).get("skipRows");
+            if (sr instanceof Number) {
+                skipRows = ((Number) sr).intValue();
+            }
+        }
+
         // Extract column mappings
         Map<String, String> columnMappings = new HashMap<>();
         Object colMapping = configData.get("column_mapping");
@@ -715,7 +725,17 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         config.setImportDirectory(importDir);
         config.setArchiveDirectory(archiveDir);
         config.setErrorDirectory(errorDir);
-        config.setDelimiter(fileFormat.equals("TSV") ? "\t" : ",");
+        // Read delimiter from profile's configDefaults if available; fall back to
+        // format-based default (tab for TSV, comma for everything else).
+        String delimiter = fileFormat.equals("TSV") ? "\t" : ",";
+        if (configDefaults instanceof Map) {
+            Object delim = ((Map<String, Object>) configDefaults).get("delimiter");
+            if (delim instanceof String && !((String) delim).isEmpty()) {
+                delimiter = (String) delim;
+            }
+        }
+        config.setDelimiter(delimiter);
+        config.setSkipRows(skipRows);
         config.setActive(true);
         config.setSysUserId(sysUserId);
 

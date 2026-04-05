@@ -25,4 +25,7 @@
 
   <!-- OGC-526: Add discovered_source_id for bridge-discovered analyzer stubs -->
   <include relativeToChangelogFile="true" file="009-analyzer-discovered-source-id.xml"/>
+
+  <!-- OGC-344: Add skip_rows for instruments with metadata lines before headers -->
+  <include relativeToChangelogFile="true" file="010-add-skip-rows-to-file-import-config.xml"/>
 </databaseChangeLog>
