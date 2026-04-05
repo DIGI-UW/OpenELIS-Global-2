@@ -24,7 +24,14 @@ import org.openelisglobal.common.valueholder.BaseObject;
  * import (directory watching, CSV/TXT parsing).
  * 
  * One-to-one relationship with legacy Analyzer entity (via analyzer_id).
+ *
+ * @deprecated FILE config fields have been unified onto the Analyzer entity
+ *             (migration 007 + 011). New code should read/write FILE config
+ *             directly on Analyzer. This entity is kept for backward
+ *             compatibility during migration and will be removed in a future
+ *             release.
  */
+@Deprecated
 @Entity
 @Table(name = "file_import_configuration")
 public class FileImportConfiguration extends BaseObject<String> {

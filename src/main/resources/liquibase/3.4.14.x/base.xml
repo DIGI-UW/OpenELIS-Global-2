@@ -28,4 +28,7 @@
 
   <!-- OGC-344: Add skip_rows for instruments with metadata lines before headers -->
   <include relativeToChangelogFile="true" file="010-add-skip-rows-to-file-import-config.xml"/>
+
+  <!-- Complete FILE config unification: add remaining FIC fields to analyzer table -->
+  <include relativeToChangelogFile="true" file="011-complete-file-config-unification.xml"/>
 </databaseChangeLog>

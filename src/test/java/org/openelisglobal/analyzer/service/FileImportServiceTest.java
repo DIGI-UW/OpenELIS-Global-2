@@ -528,7 +528,7 @@ public class FileImportServiceTest {
         fileImportService.update(testConfig);
 
         verify(bridgeRegistrationService).registerFile(eq("42"), eq("TestAnalyzer"), eq("/data/import"), eq("*.csv"),
-                any());
+                any(), any(), any(), any());
     }
 
     @Test
@@ -539,7 +539,7 @@ public class FileImportServiceTest {
         when(analyzerService.get("1")).thenReturn(analyzer);
         when(fileImportConfigurationDAO.update(any(FileImportConfiguration.class))).thenReturn(testConfig);
         doThrow(new RuntimeException("bridge unreachable")).when(bridgeRegistrationService).registerFile(anyString(),
-                anyString(), anyString(), anyString(), any());
+                anyString(), anyString(), anyString(), any(), any(), any(), any());
 
         // Should not throw — bridge failure is warn-and-continue
         FileImportConfiguration result = fileImportService.update(testConfig);
@@ -558,6 +558,6 @@ public class FileImportServiceTest {
         verify(fileImportConfigurationDAO).update(testConfig);
         verify(analyzerService, never()).update(any(Analyzer.class));
         verify(bridgeRegistrationService, never()).registerFile(
-                anyString(), anyString(), anyString(), anyString(), any());
+                anyString(), anyString(), anyString(), anyString(), any(), any(), any(), any());
     }
 }

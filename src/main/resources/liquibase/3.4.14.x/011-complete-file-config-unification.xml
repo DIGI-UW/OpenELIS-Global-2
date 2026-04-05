@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="011-complete-file-config-unification" author="pmanko">
+        <comment>Complete FILE config unification on analyzer table. Adds remaining fields
+        from file_import_configuration (delimiter, has_header, skip_rows, archive_directory,
+        error_directory) so FIC can be fully deprecated. Migrates existing data.</comment>
+
+        <addColumn tableName="analyzer">
+            <column name="delimiter" type="VARCHAR(10)" defaultValue=",">
+                <constraints nullable="true"/>
+            </column>
+            <column name="has_header" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="true"/>
+            </column>
+            <column name="skip_rows" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="true"/>
+            </column>
+            <column name="archive_directory" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="error_directory" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Migrate data from file_import_configuration to analyzer for any rows
+             that haven't been synced yet -->
+        <sql>
+            UPDATE clinlims.analyzer a
+            SET delimiter = fic.delimiter,
+                has_header = fic.has_header,
+                skip_rows = fic.skip_rows,
+                archive_directory = fic.archive_directory,
+                error_directory = fic.error_directory
+            FROM clinlims.file_import_configuration fic
+            WHERE fic.analyzer_id = a.id::int
+              AND a.delimiter IS NULL;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

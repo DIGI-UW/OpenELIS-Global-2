@@ -117,16 +117,23 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
             if (analyzer == null) {
                 return;
             }
+            // Sync all FILE fields to the unified Analyzer entity
             analyzer.setImportDirectory(config.getImportDirectory());
             analyzer.setFilePattern(config.getFilePattern());
             analyzer.setColumnMappings(config.getColumnMappings());
             analyzer.setFileFormat(config.getFileFormat());
+            analyzer.setDelimiter(config.getDelimiter());
+            analyzer.setHasHeader(config.getHasHeader());
+            analyzer.setSkipRows(config.getSkipRows());
+            analyzer.setArchiveDirectory(config.getArchiveDirectory());
+            analyzer.setErrorDirectory(config.getErrorDirectory());
             analyzer.setSysUserId(config.getSysUserId());
             analyzerService.update(analyzer);
 
             if (bridgeRegistrationService != null) {
                 bridgeRegistrationService.registerFile(analyzer.getId(), analyzer.getName(),
-                        config.getImportDirectory(), config.getFilePattern(), config.getColumnMappings());
+                        analyzer.getImportDirectory(), analyzer.getFilePattern(), analyzer.getColumnMappings(),
+                        analyzer.getFileFormat(), analyzer.getDelimiter(), analyzer.getSkipRows());
             }
         } catch (Exception e) {
             LogEvent.logError(e);
@@ -745,6 +752,7 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
         // config).
         // This ensures the bridge bootstrap pull includes FILE config in the REST
         // response.
+        // Write all FILE config to the unified Analyzer entity (authoritative).
         try {
             Analyzer analyzer = analyzerService.get(analyzerId);
             if (analyzer != null) {
@@ -752,18 +760,23 @@ public class FileImportServiceImpl extends BaseObjectServiceImpl<FileImportConfi
                 analyzer.setFilePattern(filePattern);
                 analyzer.setColumnMappings(columnMappings);
                 analyzer.setFileFormat(fileFormat);
+                analyzer.setDelimiter(delimiter);
+                analyzer.setHasHeader(hasHeader);
+                analyzer.setSkipRows(skipRows);
+                analyzer.setArchiveDirectory(archiveDir);
+                analyzer.setErrorDirectory(errorDir);
                 analyzer.setSysUserId(sysUserId);
                 analyzerService.update(analyzer);
             }
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateFromProfile",
-                    "Failed to set FILE fields on Analyzer entity (bridge bootstrap may not see FILE config): "
-                            + e.getMessage());
+                    "Failed to set FILE fields on Analyzer entity: " + e.getMessage());
         }
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateFromProfile",
-                "Auto-created FileImportConfiguration for analyzer " + analyzerId + " (format=" + fileFormat
-                        + ", pattern=" + filePattern + ", importDir=" + importDir + ")");
+                "Auto-created FILE config for analyzer " + analyzerId + " (format=" + fileFormat + ", delimiter="
+                        + delimiter + ", skipRows=" + skipRows + ", pattern=" + filePattern + ", importDir=" + importDir
+                        + ")");
     }
 
     @SuppressWarnings("unchecked")

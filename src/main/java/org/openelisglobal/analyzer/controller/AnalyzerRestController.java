@@ -1030,24 +1030,11 @@ public class AnalyzerRestController extends BaseRestController {
                         analyzer.getPort(), protocol);
             }
 
-            // FILE analyzers: register by watch directory (use unified fields on Analyzer)
+            // FILE analyzers: register by watch directory (unified fields on Analyzer)
             if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
                 registered = bridgeRegistrationService.registerFile(id, name, analyzer.getImportDirectory(),
-                        analyzer.getFilePattern(), analyzer.getColumnMappings());
-            } else {
-                // Fallback: check legacy FileImportConfiguration table
-                try {
-                    Integer analyzerIdInt = Integer.valueOf(id);
-                    var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
-                    if (fileConfig.isPresent()) {
-                        var fc = fileConfig.get();
-                        registered = bridgeRegistrationService.registerFile(id, name, fc.getImportDirectory(),
-                                fc.getFilePattern(), fc.getColumnMappings());
-                    }
-                } catch (NumberFormatException e) {
-                    logger.debug("Analyzer id '{}' is not numeric; skipping legacy FileImportConfiguration fallback",
-                            id);
-                }
+                        analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
+                        analyzer.getDelimiter(), analyzer.getSkipRows());
             }
 
             if (registered) {
