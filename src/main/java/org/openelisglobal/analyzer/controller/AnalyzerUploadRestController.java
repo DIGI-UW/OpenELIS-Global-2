@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -32,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @org.springframework.web.bind.annotation.RestController
 @RequestMapping("/rest/analyzers")
+@PreAuthorize("hasRole('ADMIN')")
 public class AnalyzerUploadRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(AnalyzerUploadRestController.class);

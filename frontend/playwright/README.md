@@ -28,22 +28,42 @@ Packaged source for these commands lives in `.ai/skills/playwright/`.
 Tests are organized into projects via allowlist-based `testMatch` in
 `playwright.config.ts`. New test files must be explicitly added to a project.
 
-| Project              | Purpose                                              | CI Workflow                       | Infra Required |
-| -------------------- | ---------------------------------------------------- | --------------------------------- | -------------- |
-| `core-app`           | Core UI tests (no plugins/bridge)                    | `e2e-playwright.yml`              | Build stack    |
-| `core-demo`          | UI workflow demos on build stack + SQL fixtures      | `e2e-playwright.yml`              | Build stack    |
-| `core-demo-video`    | `core-demo` + slowMo + video                         | Local only                        | Build stack    |
-| `harness-demo`       | Analyzer-stack UI tests on full harness (serial run) | `e2e-playwright-analyzer-harness` | Full harness   |
-| `harness-demo-video` | `harness-demo` + slowMo + video (serial run)         | Local only                        | Full harness   |
+| Project                | Purpose                                         | CI                  | Infra Required          |
+| ---------------------- | ----------------------------------------------- | ------------------- | ----------------------- |
+| `core-app`             | Core foundational UI verification               | Every PR (2 shards) | Build stack             |
+| `core-demo`            | UI workflow demos on build stack + SQL fixtures | Every PR (2 shards) | Build stack             |
+| `core-demo-video`      | `core-demo` + slowMo + video                    | Local only          | Build stack             |
+| `harness-foundational` | Analyzer-stack foundational verification        | Every PR (2 shards) | Full harness            |
+| `harness-demo`         | Analyzer-stack story-proof demos (serial run)   | Every PR (2 shards) | Full harness            |
+| `harness-demo-video`   | `harness-demo` + slowMo + video (serial run)    | Local only          | Full harness            |
+| `harness-manual-only`  | Real-device / operator-managed hardware checks  | Local only          | Full harness + hardware |
 
 ## CI Workflows
 
-| Workflow                                 | Compose Files                                          | Projects                 | Fixtures                                             |
-| ---------------------------------------- | ------------------------------------------------------ | ------------------------ | ---------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`) | `build.docker-compose.yml`                             | `core-app` + `core-demo` | `file-import-e2e.sql`                                |
-| `e2e-playwright-analyzer-harness`        | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness-demo`           | `load-test-fixtures.sh --analyzers=full` (see below) |
+All Playwright tests run through a single parameterized reusable workflow
+(`e2e-playwright-reusable.yml`), called twice by the orchestrator
+(`e2e-authoritative-reusable.yml`):
 
-`e2e-playwright-analyzer-harness-manual.yml` remains available for manual (`workflow_dispatch`) harness-only runs and delegates to the same reusable analyzer harness workflow used by `e2e-playwright.yml`.
+| Call               | Compose Files                                 | Projects                                | Fixtures                                 |
+| ------------------ | --------------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | 3 SQL files (see below)                  |
+| Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --analyzers=full` |
+
+Both follow the same pattern: **test-shards → merge-reports → gate**. Each
+produces a merged HTML report artifact:
+
+- `core-playwright-report-html-attempt-*`
+- `harness-playwright-report-html-attempt-*`
+
+### Execution Policy
+
+| Policy    | Where       | Video    | Projects                                                |
+| --------- | ----------- | -------- | ------------------------------------------------------- |
+| **CI**    | Every PR    | Off      | core-app, core-demo, harness-foundational, harness-demo |
+| **Local** | Dev machine | Optional | Any project including `-video` variants with slowMo     |
+
+No `workflow_dispatch` manual workflows exist for Playwright. Video recording
+is local-only via the `-video` project variants.
 
 ## Fixtures
 
@@ -63,6 +83,19 @@ Analyzer rows used by harness tests are created via REST API seeding:
 - **`projects/analyzer-harness/seed-analyzers.sh`** — Creates
   `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`, and
   `FluoroCycler XT` using profile-based `defaultConfigId`
+
+### Harness environment contract
+
+- **Database container**: `openelisglobal-database` (service `db.openelis.org` in
+  `build.docker-compose.yml` / `projects/analyzer-harness/docker-compose.base.yml`).
+  Playwright helpers honor `HARNESS_DB_CONTAINER`, `DATABASE_CONTAINER`, or
+  `DB_CONTAINER` (first match).
+- **Host import directory**: `projects/analyzer-harness/volume/analyzer-imports`
+  (bind-mounted for bridge file drops). Override with `HARNESS_ANALYZER_IMPORTS_DIR`
+  if the workspace layout is non-standard.
+- **CI readiness**: `scripts/e2e/wait-for-openelis-login.sh` (core E2E) and
+  `scripts/e2e/wait-for-analyzer-harness-readiness.sh` (full harness) — prefer
+  these over curling `/` so tests start only after `ValidateLogin` succeeds.
 
 ## Demo Contract
 
@@ -90,6 +123,25 @@ Banned in demo specs and demo-facing helpers:
 If a behavior needs backend consistency checks, config persistence checks, or
 bridge/file-watcher proof, move it to backend integration tests or CI health
 checks rather than demo specs.
+
+## Bucket Taxonomy
+
+Playwright specs are classified on three axes:
+
+- runtime: `core` or `harness`
+- intent: `demo` (story proof, video-ready) or `foundational` (functional verification)
+- execution policy: `ci` or `manual-only`
+
+Canonical directories:
+
+- `playwright/tests/demo/core/`
+- `playwright/tests/demo/harness/`
+- `playwright/tests/foundational/core/`
+- `playwright/tests/foundational/harness/`
+- `playwright/tests/manual-only/harness/`
+
+Only `demo/**` specs participate in auto-video CI evidence policy. `manual-only/**`
+specs never run in ordinary PR CI.
 
 ### File import wait tuning (`file-import-results.spec.ts`)
 
@@ -122,14 +174,19 @@ npm run pw:test
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
 npm run pw:test -- --project=harness-demo
+npm run pw:test -- --project=harness-foundational
+npm run pw:test -- --project=harness-manual-only
 
 # Convenience aliases
 npm run pw:test:core-demo
 npm run pw:test:harness-demo
+npm run pw:test:core-foundational
+npm run pw:test:harness-foundational
+npm run pw:test:harness-manual-only
 npm run pw:test:demo # alias → harness-demo (analyzer story tests)
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -156,6 +213,21 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo
 ```bash
 cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
+```
+
+**Harness foundational checks** (non-demo harness verification):
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-foundational
+```
+
+**Harness manual-only checks** (real hardware / operator-managed):
+
+```bash
+cd frontend
+GENEXPERT_HOST='<ip-or-dns>' GENEXPERT_PORT='1200' TEST_USER=admin TEST_PASS='adminADMIN!' \
+  npm run pw:test:harness-manual-only
 ```
 
 ### Analyzer Harness Remediation Loop
@@ -198,12 +270,29 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo
 cd frontend
 # Core stack (e.g. OGC-284 barcode stories)
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:core-demo-video
-# Full harness (QuantStudio / file import / GeneXpert demos)
+# Full harness (QuantStudio / file import / GeneXpert demos) via parity bootstrap
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo-video
+# Analyzer demo flow only (7 Madagascar-scoped flows) via parity bootstrap
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:analyzer-demo-flow-video
 # Videos saved to frontend/test-results/<test-name>/video.webm
 ```
 
+Both commands above execute `../projects/analyzer-harness/ci-parity-test.sh --mode video`
+under the hood, so video recordings use the same fixture/seed/readiness gates as CI parity.
+
 Customize slowMo: `PLAYWRIGHT_SLOWMO=300 npm run pw:test:harness-demo-video`
+
+Build a distributable report bundle from the latest run:
+
+```bash
+cd frontend
+npm run pw:bundle-report
+```
+
+`pw:bundle-report` merges `blob-report` into `playwright-report` when needed, then zips
+`playwright-report` + `test-results` into a timestamped
+`analyzer-harness-demo-video-playwright-report-*.zip`.
+Use `PW_BUNDLE_REPORT_PREFIX=<custom-prefix>` to override the filename prefix.
 
 ### `videoPause` Pattern
 
@@ -230,13 +319,15 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Adding New Tests
 
-1. Create `frontend/playwright/tests/{feature}.spec.ts`
-2. Add the glob pattern to the appropriate project's `testMatch` in
-   `playwright.config.ts`
-3. For demo workflow tests, add the glob to `CORE_DEMO_TESTS` (build stack) or
-   `HARNESS_DEMO_TESTS` (full analyzer harness); the `*-demo-video` project uses
-   the same glob list
-4. Use `videoPause()` for any video pacing (not `page.waitForTimeout()`)
+1. Create the spec under the correct taxonomy bucket directory.
+2. Add its glob to exactly one bucket list in `playwright.config.ts`:
+   - `CORE_DEMO_TESTS`
+   - `CORE_FOUNDATIONAL_TESTS`
+   - `HARNESS_DEMO_TESTS`
+   - `HARNESS_FOUNDATIONAL_TESTS`
+   - `HARNESS_MANUAL_ONLY_TESTS`
+3. Run bucket and demo guards: `npm run pw:guard`
+4. Use `videoPause()` for any video pacing in demo specs (not `page.waitForTimeout()`)
 5. Validate project registration with:
    `python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/{feature}.spec.ts`
 6. For AI-assisted workflows, run:
@@ -245,11 +336,11 @@ test("my demo test", async ({ page }, testInfo) => {
 
 ## Environment Variables
 
-| Variable            | Default             | Description                                            |
-| ------------------- | ------------------- | ------------------------------------------------------ |
-| `BASE_URL`          | `https://localhost` | App URL                                                |
-| `TEST_USER`         | —                   | Login username (required)                              |
-| `TEST_PASS`         | —                   | Login password (required)                              |
-| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects     |
-| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects) |
-| `CI`                | —                   | Set by GitHub Actions; enables single worker + retries |
+| Variable            | Default             | Description                                                          |
+| ------------------- | ------------------- | -------------------------------------------------------------------- |
+| `BASE_URL`          | `https://localhost` | App URL                                                              |
+| `TEST_USER`         | —                   | Login username (required)                                            |
+| `TEST_PASS`         | —                   | Login password (required)                                            |
+| `PLAYWRIGHT_SLOWMO` | `500`               | Milliseconds of slowMo for `*-demo-video` projects                   |
+| `PLAYWRIGHT_VIDEO`  | `off`               | Global video override (prefer `*-demo-video` projects)               |
+| `CI`                | —                   | Set by GitHub Actions; enables CI mode settings in Playwright config |

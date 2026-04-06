@@ -95,6 +95,7 @@ function OEHeader({
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -142,6 +143,16 @@ function OEHeader({
     return () => {
       window.removeEventListener("branding-updated", handleBrandingUpdate);
     };
+  }, [userSessionDetails.authenticated]);
+
+  useEffect(() => {
+    if (userSessionDetails.authenticated) {
+      getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
+        if (response) {
+          setIsTrainingInstallation(response.trainingInstallation);
+        }
+      });
+    }
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -642,6 +653,11 @@ function OEHeader({
                 <p>
                   <FormattedMessage id="header.label.version" /> &nbsp;{" "}
                   {configurationProperties?.releaseNumber}
+                  {isTrainingInstallation && (
+                    <span className="training-installation-badge">
+                      <FormattedMessage id="training.installation.message" />
+                    </span>
+                  )}
                 </p>
               </div>
             </HeaderName>
