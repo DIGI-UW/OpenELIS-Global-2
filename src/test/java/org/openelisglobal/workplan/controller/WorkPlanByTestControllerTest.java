@@ -35,11 +35,16 @@ import org.springframework.test.web.servlet.MvcResult;
  * ModelAndView. Tests use MockMvc to call /WorkPlanByTest and verify the model
  * attributes.
  */
+import org.springframework.test.annotation.DirtiesContext;
+
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class WorkPlanByTestControllerTest extends BaseWebContextSensitiveTest {
 
     private static final String TEST_DATA_FILE = "testdata/workplan-by-test-controller.xml";
     private static final String VALID_TEST_ID = "70001";
     private static final String INVALID_TEST_ID = "-1";
+
+
 
     @Autowired
     private UserService realUserService;
@@ -81,6 +86,10 @@ public class WorkPlanByTestControllerTest extends BaseWebContextSensitiveTest {
         Field statusListField = BaseWorkplanController.class.getDeclaredField("statusList");
         statusListField.setAccessible(true);
         statusListField.set(null, null);
+
+        Field nfsTestIdListField = BaseWorkplanController.class.getDeclaredField("nfsTestIdList");
+        nfsTestIdListField.setAccessible(true);
+        nfsTestIdListField.set(null, null);
     }
 
     private void injectField(Object target, Class<?> declaringClass, String fieldName, Object value) throws Exception {
