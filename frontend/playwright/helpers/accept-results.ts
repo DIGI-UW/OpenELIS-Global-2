@@ -104,10 +104,10 @@ export async function acceptAndVerifyResults(
 
   await Promise.all([reloadAfterSave, saveButton.click()]);
 
-// Wait for reload to settle (DO NOT touch DOM before this)
-await page.waitForLoadState("domcontentloaded", {
-  timeout: NAV_TIMEOUT,
-});
+  // Wait for reload to settle (DO NOT touch DOM before this)
+  await page.waitForLoadState("domcontentloaded", {
+    timeout: NAV_TIMEOUT,
+  });
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
