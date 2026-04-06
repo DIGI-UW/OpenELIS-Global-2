@@ -11,7 +11,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.analyzer.service.OpenELISFieldService;
 import org.openelisglobal.login.dao.UserModuleService;
@@ -32,7 +31,7 @@ import org.springframework.web.context.WebApplicationContext;
  * dependencies not available. @WebMvcTest would be preferred for unit-level
  * controller testing.
  */
-public class OpenELISFieldRestControllerTest extends BaseWebContextSensitiveTest {
+public class OpenELISFieldRestControllerTest extends AuthenticatedAnalyzerControllerTest {
 
     @Autowired
     private WebApplicationContext webApplicationContext;
