@@ -29,9 +29,9 @@ You can find more information on how to set up OpenELIS at our
 
 [![02 Checkpoint - Frontend](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/frontend.yml)
 
-[![03 Checkpoint - E2E](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml/badge.svg?branch=develop)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/e2e-tests.yml?query=branch%3Adevelop)
+[![03 Checkpoint - E2E](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/badge-e2e-develop.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/badge-e2e-develop.yml)
 
-[![Publish Images](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-images.yml/badge.svg?branch=develop)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/publish-images.yml?query=branch%3Adevelop)
+[![04 Checkpoint - Publish](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/badge-publish-develop.yml/badge.svg?branch=develop&event=push)](https://github.com/DIGI-UW/OpenELIS-Global-2/actions/workflows/badge-publish-develop.yml)
 
 ### CI Architecture
 

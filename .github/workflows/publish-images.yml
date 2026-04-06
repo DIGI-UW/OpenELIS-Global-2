@@ -93,9 +93,33 @@ jobs:
 
             core.setFailed(`Timed out waiting for '${contextName}' on ${sha}`);
 
+  set-publish-pending:
+    name: Set Pending Publish Status
+    needs: [setup, wait-for-e2e-checkpoint]
+    if: needs.wait-for-e2e-checkpoint.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Post pending publish checkpoint
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.setup.outputs.head_sha }}';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state: 'pending',
+              context: '04 Checkpoint - Publish',
+              description: 'Publishing Docker images...',
+              target_url: runUrl,
+            });
+
   publish-images:
     name: Publish ${{ matrix.dockerhub_suffix || 'backend' }}
-    needs: [setup, wait-for-e2e-checkpoint]
+    needs: [setup, wait-for-e2e-checkpoint, set-publish-pending]
     if: needs.wait-for-e2e-checkpoint.result == 'success'
     runs-on: ubuntu-latest
     environment: publish
@@ -195,3 +219,65 @@ jobs:
             docker tag "${{ steps.source.outputs.ghcr_source }}" "$target_tag"
             docker push "$target_tag"
           done <<< "${{ steps.tags.outputs.tags }}"
+
+  report-publish-status:
+    name: Report Publish Status
+    needs: [setup, wait-for-e2e-checkpoint, set-publish-pending, publish-images]
+    if: >-
+      always()
+      && needs.setup.outputs.head_sha != ''
+      && (
+        needs.setup.outputs.event_name == 'release'
+        || (
+          needs.setup.outputs.event_name == 'push'
+          && needs.setup.outputs.head_branch == 'develop'
+        )
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Update publish checkpoint status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = '${{ needs.setup.outputs.head_sha }}';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const waitResult = '${{ needs.wait-for-e2e-checkpoint.result }}';
+            const publishResult = '${{ needs.publish-images.result }}';
+
+            let state;
+            let description;
+
+            if (waitResult === 'success' && publishResult === 'success') {
+              state = 'success';
+              description = 'Docker images published to DockerHub';
+            } else if (waitResult === 'skipped' || waitResult === 'failure') {
+              state = 'failure';
+              description =
+                waitResult === 'failure'
+                  ? 'Timed out or failed waiting for E2E checkpoint'
+                  : 'Publish did not run (prerequisites not met)';
+            } else if (publishResult === 'failure' || publishResult === 'cancelled') {
+              state = 'failure';
+              description =
+                publishResult === 'cancelled'
+                  ? 'Publish was cancelled'
+                  : 'One or more image publishes failed';
+            } else if (publishResult === 'skipped') {
+              state = 'failure';
+              description = 'Publish did not complete';
+            } else {
+              state = 'failure';
+              description = 'Publish status could not be determined';
+            }
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state,
+              context: '04 Checkpoint - Publish',
+              description,
+              target_url: runUrl,
+            });
