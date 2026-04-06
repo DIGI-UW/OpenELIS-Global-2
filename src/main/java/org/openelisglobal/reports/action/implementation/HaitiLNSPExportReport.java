@@ -164,7 +164,7 @@ public class HaitiLNSPExportReport extends CSVExportReport {
 
         if (SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)
                 .equals(analysis.getStatusId())) {
-            ts.setResultDate(DateUtil.convertSqlDateToStringDate(analysis.getCompletedDate()));
+            ts.setResultDate(DateUtil.convertTimestampToStringDate(analysis.getCompletedDate()));
 
             List<Result> resultList = resultService.getResultsByAnalysis(analysis);
             if (!resultList.isEmpty()) {
