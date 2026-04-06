@@ -107,6 +107,33 @@ describe("RouteErrorBoundary", () => {
     expect(screen.getByText("Recovered content")).toBeInTheDocument();
   });
 
+  it("renders generic fallback title and message for uncovered routes", () => {
+    const genericMessages = {
+      ...messages,
+      "errorBoundary.route.generic.title": "This page could not be loaded",
+      "errorBoundary.route.generic.message":
+        "Something went wrong loading this page. Please reload to try again, or use the menu to navigate elsewhere.",
+    };
+    render(
+      <IntlProvider locale="en" messages={genericMessages}>
+        <RouteErrorBoundary
+          titleKey="errorBoundary.route.generic.title"
+          messageKey="errorBoundary.route.generic.message"
+          resetKey="1"
+        >
+          <ThrowingChild />
+        </RouteErrorBoundary>
+      </IntlProvider>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /This page could not be loaded/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/use the menu to navigate elsewhere/i),
+    ).toBeInTheDocument();
+  });
+
   it("default export wires resetKey from the current location", () => {
     render(
       <MemoryRouter initialEntries={["/PatientResults/123"]}>

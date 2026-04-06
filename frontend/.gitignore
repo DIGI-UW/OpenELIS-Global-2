@@ -31,3 +31,6 @@ cypress/screenshots/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# bundle analysis
+analyze-results.json
