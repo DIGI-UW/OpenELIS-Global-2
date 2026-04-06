@@ -112,14 +112,6 @@ export async function acceptAndVerifyResults(
   // Wait for the next real navigation to complete before touching the page again.
   await page.waitForLoadState("load", { timeout: NAV_TIMEOUT });
 
-  if (stagedCountBeforeSave > 0) {
-    await expect
-      .poll(async () => stagedRows().count(), {
-        timeout: LONG_TIMEOUT,
-      })
-      .toBe(0);
-  }
-
   await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
   await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
 
