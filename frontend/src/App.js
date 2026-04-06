@@ -208,6 +208,7 @@ const GenericSampleOrderImport = lazyWithRetry(
 const GenericSampleResults = lazyWithRetry(
   () => import("./components/genericSample/GenericSampleResults"),
 );
+const TATReport = lazyWithRetry(() => import("./components/reports/tat"));
 
 export default function App() {
   const defaultLocale =
@@ -1105,6 +1106,12 @@ export default function App() {
                       role={Roles.REPORTS}
                     />
                     <SecureRoute
+                      path="/TATReport"
+                      exact
+                      component={() => <TATReport />}
+                      role={Roles.REPORTS}
+                    />
+                    <SecureRoute
                       path="/validation"
                       exact
                       component={() => <StudyValidation />}
@@ -1147,7 +1154,7 @@ export default function App() {
                     <Route path="*" component={() => <RedirectOldUI />} />
                   </Switch>
                 </RouteErrorBoundary>
-              </Suspense>
+              </Suspense>    
             </Layout>
           </Router>
         </>

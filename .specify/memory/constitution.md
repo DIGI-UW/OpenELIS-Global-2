@@ -1,6 +1,35 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - V.6 Refactor: Move tool details to Testing Roadmap
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.0 → 1.9.1
+Change Type: PATCH - Restructure V.6 content placement (no rule changes)
+Date: 2026-04-05
+
+Modified Sections:
+  - Principle V > Section V.6: Test Quality Invariants
+    * MOVED: Full J1-J7, F1-F5, E1-E4, U1-U3 rules with code examples
+      to Testing Roadmap § "Test Quality Invariants (Constitution V.6)"
+    * KEPT: Principle-level summaries in constitution (no code examples)
+    * REMOVED: "Exception" note that contradicted the document's own style rule
+    * ADDED: Cross-reference link to Testing Roadmap for full rules
+
+Rationale:
+  Constitution's own note states "Technical implementation details belong in
+  the Testing Roadmap." V.6 violated this with tool-specific code examples
+  (Mockito patterns, RTL imports, Playwright locators). Copilot flagged the
+  contradiction on PR #3335. Fix: keep constitution at principle level, move
+  full rules to Testing Roadmap where they belong.
+
+Templates Requiring Updates:
+  ✅ .specify/guides/testing-roadmap.md - Full J1-U3 rules added
+  ✅ .specify/memory/constitution.md - Slimmed to principle summaries
+
+Follow-up TODOs: None
+-->
+
+<!--
 SYNC IMPACT REPORT - E2E Testing: Pre-Push Validation + Playwright Support (V.5)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.8.1 → 1.9.0
@@ -970,6 +999,31 @@ The Testing Roadmap provides comprehensive technical guidance on:
 belong in the Testing Roadmap and plan.md, not in the constitution. This section
 focuses on functional requirements and principles.
 
+### V.6 Test Quality Invariants (MANDATORY)
+
+Every test MUST satisfy the **Inversion Test**: if the function under test is
+replaced with a hardcoded return value, the test MUST fail. Tests that pass
+regardless of implementation are scaffolding, not tests.
+
+The following invariants are grouped by layer. For full rules with code examples
+and rationale, see the
+[Testing Roadmap § Test Quality Invariants](../../.specify/guides/testing-roadmap.md#test-quality-invariants-constitution-v6).
+
+**Backend (J1–J7):** No assert-on-mock-return. Verify mock arguments with
+specific matchers. Auth before business logic in every controller suite. Filter
+pass-through tests required. Negative/boundary tests required. No
+catch-and-continue in @Transactional. HQL/SQL param tests required.
+
+**Frontend (F1–F5):** No render-only tests. Verify API request shape. No raw
+fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
+user-visible text.
+
+**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
+
+**Universal (U1–U3):** Inversion Test mandatory. One bug = one regression test.
+No any() without justification.
+
 ---
 
 ### VI. Database Schema Management
@@ -1506,7 +1560,7 @@ sync.
 
 ---
 
-**Version**: 1.9.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-01-27
+**Version**: 1.9.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-04-05
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
