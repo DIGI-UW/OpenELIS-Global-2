@@ -4,8 +4,6 @@ import {
   Grid,
   Column,
   Loading,
-  DatePicker,
-  DatePickerInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
@@ -504,24 +502,15 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                       {usageRows.map((row) => (
                         <tr key={row.id}>
                           <td>
-                            <DatePicker
-                              datePickerType="single"
-                              dateFormat="mm/dd/yyyy"
-                            >
-                              <DatePickerInput
-                                id={`date-picker-${row.id}`}
-                                labelText="Date"
-                                placeholder="mm/dd/yyyy"
-                                value={row.date}
-                                onChange={(e) =>
-                                  handleRowChange(
-                                    row.id,
-                                    "date",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </DatePicker>
+                            <input
+                              id={`date-picker-${row.id}`}
+                              type="date"
+                              value={row.date}
+                              onChange={(e) =>
+                                handleRowChange(row.id, "date", e.target.value)
+                              }
+                              className="tableInput"
+                            />
                           </td>
                           <td>
                             <input
@@ -617,24 +606,19 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                             />
                           </td>
                           <td>
-                            <DatePicker
-                              datePickerType="single"
-                              dateFormat="mm/dd/yyyy"
-                            >
-                              <DatePickerInput
-                                id={`approval-date-picker-${row.id}`}
-                                labelText="Approval Date"
-                                placeholder="mm/dd/yyyy"
-                                value={row.approvalDate}
-                                onChange={(e) =>
-                                  handleRowChange(
-                                    row.id,
-                                    "approvalDate",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </DatePicker>
+                            <input
+                              id={`approval-date-picker-${row.id}`}
+                              type="date"
+                              value={row.approvalDate}
+                              onChange={(e) =>
+                                handleRowChange(
+                                  row.id,
+                                  "approvalDate",
+                                  e.target.value,
+                                )
+                              }
+                              className="tableInput"
+                            />
                           </td>
                           <td>
                             <input
