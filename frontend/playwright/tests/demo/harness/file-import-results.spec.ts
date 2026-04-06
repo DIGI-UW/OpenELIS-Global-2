@@ -147,7 +147,9 @@ function fileImportTimeoutMs(): number {
     "FILE_IMPORT_DROP_BUFFER_MS",
     DEFAULT_FILE_IMPORT_DROP_BUFFER_MS,
   );
-  return 2 * pollMs + bufferMs;
+  // Floor: bridge needs ≥5s poll + 3s stability + parse + FHIR POST.
+  // CI env vars set aggressive low values; ensure at least 30s total.
+  return Math.max(2 * pollMs + bufferMs, 30_000);
 }
 
 function chmodSharedImportPathChain(dir: string) {
