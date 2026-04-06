@@ -29,11 +29,11 @@
     </changeSet>
 
     <changeSet id="011-migrate-fic-data-to-analyzer" author="pmanko">
-        <comment>Migrate existing data from file_import_configuration to analyzer.
-        Skipped if the FIC table was never created.</comment>
         <preConditions onFail="MARK_RAN">
             <tableExists schemaName="clinlims" tableName="file_import_configuration"/>
         </preConditions>
+        <comment>Migrate existing data from file_import_configuration to analyzer.
+        Skipped if the FIC table was never created.</comment>
 
         <!-- FIC is source of truth: overwrite addColumn defaults with actual FIC data -->
         <sql>
