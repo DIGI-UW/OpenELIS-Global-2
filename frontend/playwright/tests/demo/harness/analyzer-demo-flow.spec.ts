@@ -370,15 +370,22 @@ test.describe("Madagascar analyzer demo flows", () => {
 
       const verifyId = sampleId || config.fileSampleId || config.name;
 
-      // Verify results on staging page
+      // Wait for results to arrive from bridge
       step++;
-      await presentation.step(step, "Review staged results");
+      await presentation.step(
+        step,
+        "Waiting for results from analyzer bridge...",
+      );
       await verifyResults(page, config, verifyId, presentation);
+
+      // Show staged results clearly before accepting
+      await presentation.step(step, "Results staged — ready to accept");
+      await presentation.pause(3_000);
 
       // Accept results
       await acceptAndVerifyResults(page, presentation, step, verifyId);
 
-      // Done
+      // Done — title card shown briefly, then teardown
       await presentation.title(
         "Flow Complete",
         `${config.displayName}: ${config.expectedResults.length} results accepted.`,
