@@ -23,19 +23,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.test.web.servlet.MvcResult;
-
-/**
- * Integration tests for WorkPlanByTestController.
- *
- * TEST DATA: testdata/workplan-by-test-controller.xml ID ranges: 60001-60999
- * (domain), 70001-70999 (tests), 80001-80999 (samples)
- *
- * NOTE: WorkPlanByTestController is a regular @Controller (not REST), returning
- * ModelAndView. Tests use MockMvc to call /WorkPlanByTest and verify the model
- * attributes.
- */
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.web.servlet.MvcResult;
 
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class WorkPlanByTestControllerTest extends BaseWebContextSensitiveTest {
@@ -43,8 +32,6 @@ public class WorkPlanByTestControllerTest extends BaseWebContextSensitiveTest {
     private static final String TEST_DATA_FILE = "testdata/workplan-by-test-controller.xml";
     private static final String VALID_TEST_ID = "70001";
     private static final String INVALID_TEST_ID = "-1";
-
-
 
     @Autowired
     private UserService realUserService;
