@@ -431,7 +431,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                     if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
-                        analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
+                        analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
                         analysisIdList.add(analysis.getId());
                         analysisUpdateList.add(analysis);
                     }
