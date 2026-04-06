@@ -60,6 +60,10 @@ services:
   #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
+    # Run as root in CI/test harness to avoid bind-mount permission mismatches
+    # between the CI runner (creates files) and the bridge (archives/deletes them).
+    # Production deployments use the Dockerfile's USER astm:astm (uid 9257).
+    user: "0:0"
     build:
       context: ../../tools/openelis-analyzer-bridge
       dockerfile: Dockerfile
