@@ -98,4 +98,20 @@ public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
+
+    @Test
+    public void searchDiagnosticReport_endpointExists_shouldNotReturn404() throws Exception {
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport");
+        request.setQueryString("subject=Patient/550e8400-e29b-41d4-a716-446655440001&status=final");
+        request.addParameter("subject", "Patient/550e8400-e29b-41d4-a716-446655440001");
+        request.addParameter("status", "final");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertNotNull(response);
+        org.junit.Assert.assertTrue(response.getStatus() != 404);
+    }
 }
