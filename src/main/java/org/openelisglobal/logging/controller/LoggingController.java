@@ -3,11 +3,13 @@ package org.openelisglobal.logging.controller;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.openelisglobal.common.log.LogEvent;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@PreAuthorize("hasRole('ADMIN')")
 public class LoggingController {
 
     @GetMapping(path = "/logging")
