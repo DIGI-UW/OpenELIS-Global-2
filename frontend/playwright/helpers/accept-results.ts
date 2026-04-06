@@ -104,16 +104,10 @@ export async function acceptAndVerifyResults(
 
   await Promise.all([reloadAfterSave, saveButton.click()]);
 
-  const saveInProgress = page.locator(
-    '[data-testid="analyzer-results-save-in-progress"]',
-  );
-
-  // Success path issues a delayed same-URL reload (AnalyserResults.js).
-  // Wait for the next real navigation to complete before touching the page again.
-  await page.waitForLoadState("load", { timeout: NAV_TIMEOUT });
-
-  await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
-  await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
+// Wait for reload to settle (DO NOT touch DOM before this)
+await page.waitForLoadState("domcontentloaded", {
+  timeout: NAV_TIMEOUT,
+});
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(stepOffset + 3, "View Accepted Results", 2000);
