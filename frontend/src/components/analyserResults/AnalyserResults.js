@@ -145,11 +145,12 @@ const AnalyserResults = (props) => {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
       history.push(
-  buildAnalyzerResultsRedirectUrl(
-    props.queryMode,
-    props.queryValue || props.type
-  )
-)};
+        buildAnalyzerResultsRedirectUrl(
+          props.queryMode,
+          props.queryValue || props.type,
+        ),
+      );
+    }
     addNotification({
       kind: kind,
       title: intl.formatMessage({ id: "notification.title" }),
