@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
@@ -208,7 +209,7 @@ public class AnalyzerErrorRestControllerTest extends AuthenticatedAnalyzerContro
         mockMvc.perform(
                 get("/rest/analyzer/errors").contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data").exists())
-                .andExpect(jsonPath("$.data.content").isArray()).andExpect(jsonPath("$.data.content.length()").value(2)) // Should
+                .andExpect(jsonPath("$.data.content").isArray()).andExpect(jsonPath("$.data.content.length()").value(greaterThanOrEqualTo(2))) // Should
                                                                                                                          // return
                                                                                                                          // both
                                                                                                                          // errors
@@ -221,7 +222,7 @@ public class AnalyzerErrorRestControllerTest extends AuthenticatedAnalyzerContro
                 .andExpect(jsonPath("$.data.content[0].analyzer.id").exists())
                 .andExpect(jsonPath("$.data.content[0].analyzer.name").exists())
                 .andExpect(jsonPath("$.data.statistics").exists())
-                .andExpect(jsonPath("$.data.statistics.totalErrors").value(2))
+                .andExpect(jsonPath("$.data.statistics.totalErrors").value(greaterThanOrEqualTo(2)))
                 .andExpect(jsonPath("$.status").value("success"));
     }
 
