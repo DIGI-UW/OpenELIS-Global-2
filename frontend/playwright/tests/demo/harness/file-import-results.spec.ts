@@ -147,9 +147,11 @@ function fileImportTimeoutMs(): number {
     "FILE_IMPORT_DROP_BUFFER_MS",
     DEFAULT_FILE_IMPORT_DROP_BUFFER_MS,
   );
-  // Floor: bridge needs ≥5s poll + 3s stability + parse + FHIR POST.
-  // CI env vars set aggressive low values; ensure at least 30s total.
-  return Math.max(2 * pollMs + bufferMs, 30_000);
+  // Floor: bridge needs ≥5s poll + 3s stability + parse + FHIR POST + OE
+  // processing. CI env vars set aggressive low values. CSV files through the
+  // bridge take longer than Excel (additional parsing step). Ensure enough
+  // time for the slowest path on a CI runner under load.
+  return Math.max(2 * pollMs + bufferMs, 60_000);
 }
 
 function chmodSharedImportPathChain(dir: string) {
