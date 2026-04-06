@@ -10,7 +10,6 @@ import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -29,7 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * 
  * Test Coverage Goal: >80%
  */
-public class AnalyzerErrorRestControllerTest extends BaseWebContextSensitiveTest {
+public class AnalyzerErrorRestControllerTest extends AuthenticatedAnalyzerControllerTest {
 
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
