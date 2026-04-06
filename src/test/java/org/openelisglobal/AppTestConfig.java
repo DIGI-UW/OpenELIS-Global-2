@@ -36,6 +36,7 @@ import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
+import org.openelisglobal.security.certs.service.TruststoreService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
@@ -96,8 +97,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
         "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.externalconnections", "org.openelisglobal.security",
-        "org.openelisglobal.notifications" }, excludeFilters = {
+        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications",
         "org.openelisglobal.calendar" }, excludeFilters = {
 
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
@@ -123,6 +123,12 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public TextEncryptor textEncryptor() {
         return mock(TextEncryptor.class);
+    }
+
+    @Bean
+    @Profile("test")
+    public TruststoreService truststoreService() {
+        return mock(TruststoreService.class);
     }
 
     @Bean()

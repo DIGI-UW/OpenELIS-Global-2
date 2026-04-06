@@ -95,7 +95,7 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void saveAll_shouldSaveAllExternalConectionContacts() throws Exception {
+    public void saveAll_shouldSaveAllExternalConnnectionContacts() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "person" });
 
         Person pat = new Person();
@@ -125,7 +125,7 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void insertAll_shouldInsertAllExternalConectionContacts() throws Exception {
+    public void insertAll_shouldInsertAllExternalConnectionContacts() throws Exception {
         cleanRowsInCurrentConnection(new String[] { "person" });
 
         Person pat = new Person();
@@ -155,7 +155,7 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
     }
 
     @Test
-    public void updateAll_shouldUpdateAllExternalConectionsContacts() {
+    public void updateAll_shouldUpdateAllExternalConnectionsContacts() {
         ExternalConnectionContact contact = contactService.get(1);
         contact.getPerson().setFirstName("Jesca");
         contact.getPerson().setLastName("Winnie");
@@ -462,6 +462,7 @@ public class ExternalConnectionContactServiceTest extends BaseWebContextSensitiv
         List<ExternalConnectionContact> contacts = contactService.getAll();
         assertTrue(contacts.size() > 0);
         assertTrue(contacts.stream().noneMatch(c -> c.getId() == 1));
+        assertTrue(contacts.stream().noneMatch(c -> c.getId() == 3));
     }
 
     @Test
