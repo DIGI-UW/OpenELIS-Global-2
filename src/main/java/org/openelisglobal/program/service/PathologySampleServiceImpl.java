@@ -3,7 +3,6 @@ package org.openelisglobal.program.service;
 import jakarta.transaction.Transactional;
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -340,7 +339,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
                     // }
                 }
                 analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
-                analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
+                analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
             }
         }
 
@@ -393,7 +392,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         analysis.setIsReportable(currentAnalysis.getIsReportable());
         analysis.setAnalysisType(currentAnalysis.getAnalysisType());
         analysis.setRevision(currentAnalysis.getRevision());
-        analysis.setStartedDate(DateUtil.getNowAsSqlDate());
+        analysis.setStartedDate(DateUtil.getNowAsTimestamp());
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
         analysis.setParentAnalysis(currentAnalysis);
         analysis.setSampleItem(currentAnalysis.getSampleItem());
