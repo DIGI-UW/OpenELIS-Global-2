@@ -312,6 +312,18 @@ public class OrganizationRestController extends BaseController {
         return dictionaryService.getDictionaryEntrysByCategoryAbbreviation("description", "haitiDepartment", true);
     }
 
+    @GetMapping("/organization-list")
+    public ResponseEntity<List<Organization>> getAllOrganizations() {
+        try {
+            List<Organization> organizations = organizationService.getAllOrganizations();
+            organizations.forEach(OrganizationRestController::handleSelfReferencingParentOrg);
+            return ResponseEntity.ok(organizations);
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/organization/{id}")
     public ResponseEntity<Organization> getOrganization(@PathVariable("id") String id) {
         Organization organization = organizationService.get(id);

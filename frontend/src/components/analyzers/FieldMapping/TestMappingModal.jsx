@@ -397,6 +397,21 @@ const TestMappingModal = ({
               </div>
             )}
 
+            {/* Plugin Config Snapshot */}
+            {previewResult.pluginConfigSnapshot && (
+              <div
+                className="test-mapping-section"
+                data-testid="test-mapping-plugin-config-snapshot"
+              >
+                <h4>
+                  <FormattedMessage id="analyzer.testMapping.pluginConfigSnapshot" />
+                </h4>
+                <CodeSnippet type="multi" feedback="Copied to clipboard">
+                  {JSON.stringify(previewResult.pluginConfigSnapshot, null, 2)}
+                </CodeSnippet>
+              </div>
+            )}
+
             {/* Warnings Section */}
             {previewResult.warnings && previewResult.warnings.length > 0 && (
               <div

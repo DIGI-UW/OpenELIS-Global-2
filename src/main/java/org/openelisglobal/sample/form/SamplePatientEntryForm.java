@@ -5,6 +5,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
@@ -93,6 +95,8 @@ public class SamplePatientEntryForm extends BaseForm {
 
     // for display
     private List<IdValuePair> rejectReasonList;
+    private LabelsSectionForm labelsSection;
+    private PostSavePrintDialogForm postSavePrintDialog;
 
     public SamplePatientEntryForm() {
         setFormName("samplePatientEntryForm");
@@ -296,5 +300,21 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setRememberSiteAndRequester(Boolean rememberSiteAndRequester) {
         this.rememberSiteAndRequester = rememberSiteAndRequester;
+    }
+
+    public LabelsSectionForm getLabelsSection() {
+        return labelsSection;
+    }
+
+    public void setLabelsSection(LabelsSectionForm labelsSection) {
+        this.labelsSection = labelsSection;
+    }
+
+    public PostSavePrintDialogForm getPostSavePrintDialog() {
+        return postSavePrintDialog;
+    }
+
+    public void setPostSavePrintDialog(PostSavePrintDialogForm postSavePrintDialog) {
+        this.postSavePrintDialog = postSavePrintDialog;
     }
 }

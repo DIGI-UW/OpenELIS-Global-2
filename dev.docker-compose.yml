@@ -52,14 +52,13 @@ services:
             - "8443:8443"
         restart: always
         networks:
-          default:
-              ipv4_address: 172.20.1.121
+            - default
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
             - SPRING_LIQUIBASE_CONTEXTS=test
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
-            - CATALINA_OPTS= -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
+            - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
         volumes:
             -  key_trust-store-volume:/etc/openelis-global
             - ./volume/lucene:/var/lib/lucene_index
@@ -69,7 +68,7 @@ services:
             - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
             - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
             - ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war  # Mount locally built WAR for development
-            - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
+            - ./volume/properties:/var/lib/openelis-global/properties
             - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
             - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
             - ./volume/configuration:/var/lib/openelis-global/configuration
@@ -124,6 +123,8 @@ services:
         volumes:
             - './frontend/src:/app/src'
             - './frontend/public:/app/public'
+            - './frontend/package.json:/app/package.json:ro'
+            - './frontend/package-lock.json:/app/package-lock.json:ro'
         environment:
             - CHOKIDAR_USEPOLLING=true
         tty: true
@@ -161,9 +162,6 @@ secrets:
 networks:
   default:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.1.0/24  
         
 volumes:
   db-data:
