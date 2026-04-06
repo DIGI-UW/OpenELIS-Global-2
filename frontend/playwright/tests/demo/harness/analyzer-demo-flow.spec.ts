@@ -4,17 +4,17 @@
  * Each test exercises the full E2E lifecycle:
  *   1. Create analyzer from profile via dashboard UI
  *   2. Test connection (TCP analyzers only)
- *   3. Push a result (ASTM, HL7 MLLP, or file drop)
+ *   3. Push a result via mock server (ASTM, HL7, or FILE)
  *   4. Verify results appear on the AnalyzerResults page
  *   5. Accept results and verify on AccessionResults page
  *   6. Delete analyzer (teardown)
  *
- * Tests use "Demo:" prefixed names to coexist with pre-seeded analyzers.
- * Same test runs in both harness-demo (fast) and harness-demo-video (slowMo+video).
+ * The mock server is the single source of truth for all analyzer interactions.
+ * It owns the fixture files, delivers results, and returns metadata.
+ * Tests never hardcode expected values — they come from the mock response.
  */
 
 import { expect, test } from "../../../helpers/test-base";
-import * as path from "path";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
   findAnalyzerRow,
@@ -33,18 +33,20 @@ import {
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
-import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
-import type { AnalyzerTestConfig } from "../../../helpers/analyzer-test-config";
+import type {
+  AnalyzerTestConfig,
+  PushResult,
+} from "../../../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = "http://localhost:8085";
 const RESULTS_TIMEOUT = 90_000;
-
-const HOST_IMPORTS_BASE = resolveHarnessImportsDir(__dirname);
 
 // ── Analyzer Configurations ──────────────────────────────────────
 //
 // Every config creates from scratch via UI and tears down after.
 // Names use "Demo:" prefix to coexist with pre-seeded analyzers.
+//
+// No hardcoded expectedResults — the mock server returns them.
 
 const CONFIGS: AnalyzerTestConfig[] = [
   {
@@ -60,9 +62,8 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "ASTM",
       simulatorUrl: SIMULATOR_URL,
       template: "genexpert_astm",
-      destination: "tcp://placeholder:12001", // overridden by dynamic IP
+      destination: "tcp://placeholder:12001",
     },
-    expectedResults: [{ result: "NEGATIVE" }],
   },
   {
     name: "Demo: Mindray BC-5380",
@@ -79,12 +80,6 @@ const CONFIGS: AnalyzerTestConfig[] = [
       template: "mindray_bc5380",
       destination: "mllp://placeholder:2575",
     },
-    expectedResults: [
-      { result: "7.5", testName: "White Blood Cells" },
-      { result: "4.82", testName: "Red Blood Cells" },
-      { result: "14.2", testName: "Hemoglobin" },
-      { result: "42", testName: "Hematocrit" },
-    ],
   },
   {
     name: "Demo: Mindray BS-200",
@@ -101,12 +96,6 @@ const CONFIGS: AnalyzerTestConfig[] = [
       template: "mindray_bs200",
       destination: "mllp://placeholder:2575",
     },
-    expectedResults: [
-      { result: "1.1", testName: "Creatinine" },
-      { result: "32", testName: "ALT" },
-      { result: "28", testName: "AST" },
-      { result: "92", testName: "Glucose" },
-    ],
   },
   {
     name: "Demo: Mindray BS-300",
@@ -123,12 +112,6 @@ const CONFIGS: AnalyzerTestConfig[] = [
       template: "mindray_bs300",
       destination: "mllp://placeholder:2575",
     },
-    expectedResults: [
-      { result: "0.8", testName: "Creatinine" },
-      { result: "19", testName: "ALT" },
-      { result: "24", testName: "AST" },
-      { result: "88", testName: "Glucose" },
-    ],
   },
   // ── FILE Analyzers ─────────────────────────────────────────────
   {
@@ -138,18 +121,12 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    fileSampleId: "DEV01262000000000101",
     push: {
       protocol: "FILE",
-      fixtureFile: "quantstudio-e2e-results-demo.xlsx",
-      importDir: path.join(HOST_IMPORTS_BASE, "demo--quantstudio-7/incoming"),
-      filePrefix: "qs7-e2e-",
+      simulatorUrl: SIMULATOR_URL,
+      template: "quantstudio7",
+      targetDir: "/data/analyzer-imports/demo--quantstudio-7/incoming",
     },
-    expectedResults: [
-      { sampleId: "DEV01262000000000101", result: "1520.5" },
-      { sampleId: "DEV01262000000000102", result: "45200" },
-      { sampleId: "DEV01262000000000105", result: "3200.8" },
-    ],
   },
   {
     name: "Demo: QuantStudio 5",
@@ -158,18 +135,12 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "QuantStudio QS5/QS7",
     protocol: "FILE",
-    fileSampleId: "DEV01262100000000101",
     push: {
       protocol: "FILE",
-      fixtureFile: "quantstudio-e2e-results-qs5-demo.xls",
-      importDir: path.join(HOST_IMPORTS_BASE, "demo--quantstudio-5/incoming"),
-      filePrefix: "qs5-e2e-",
+      simulatorUrl: SIMULATOR_URL,
+      template: "quantstudio5",
+      targetDir: "/data/analyzer-imports/demo--quantstudio-5/incoming",
     },
-    expectedResults: [
-      { sampleId: "DEV01262100000000101", result: "1520.5" },
-      { sampleId: "DEV01262100000000102", result: "45200" },
-      { sampleId: "DEV01262100000000105", result: "3200.8" },
-    ],
   },
   {
     name: "Demo: FluoroCycler XT",
@@ -178,18 +149,12 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Bruker FluoroCycler XT",
     protocol: "FILE",
-    fileSampleId: "DEV01263000000000101",
     push: {
       protocol: "FILE",
-      fixtureFile: "fluorocycler-e2e-results-demo.xlsx",
-      importDir: path.join(HOST_IMPORTS_BASE, "demo--fluorocycler-xt/incoming"),
-      filePrefix: "fc-e2e-",
+      simulatorUrl: SIMULATOR_URL,
+      template: "hain_fluorocycler",
+      targetDir: "/data/analyzer-imports/demo--fluorocycler-xt/incoming",
     },
-    expectedResults: [
-      { sampleId: "DEV01263000000000101", result: "28.5" },
-      { sampleId: "DEV01263000000000102", result: "31.2" },
-      { sampleId: "DEV01263000000000103", result: "Negative" },
-    ],
   },
   // ── Madagascar Sprint: 3 New FILE Analyzers ────────────────────
   {
@@ -199,21 +164,12 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Wondfo Finecare FS-205 (CSV)",
     protocol: "FILE",
-    fileSampleId: "DEV01265000000000101",
     push: {
       protocol: "FILE",
-      fixtureFile: "wondfo-finecare-e2e-results.csv",
-      importDir: path.join(
-        HOST_IMPORTS_BASE,
-        "demo--wondfo-finecare-fs-205/incoming",
-      ),
-      filePrefix: "wondfo-e2e-",
+      simulatorUrl: SIMULATOR_URL,
+      template: "wondfo_finecare",
+      targetDir: "/data/analyzer-imports/demo--wondfo-finecare-fs-205/incoming",
     },
-    expectedResults: [
-      { sampleId: "DEV01265000000000101", result: "3.45" },
-      { sampleId: "DEV01265000000000102", result: "<2" },
-      { sampleId: "DEV01265000000000103", result: "0.57" },
-    ],
   },
   {
     name: "Demo: Tecan Infinite F50",
@@ -222,21 +178,12 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Tecan Infinite F50",
     protocol: "FILE",
-    fileSampleId: "DEV01265100000000101",
     push: {
       protocol: "FILE",
-      fixtureFile: "tecan-f50-e2e-results.csv",
-      importDir: path.join(
-        HOST_IMPORTS_BASE,
-        "demo--tecan-infinite-f50/incoming",
-      ),
-      filePrefix: "tecan-e2e-",
+      simulatorUrl: SIMULATOR_URL,
+      template: "tecan_f50",
+      targetDir: "/data/analyzer-imports/demo--tecan-infinite-f50/incoming",
     },
-    expectedResults: [
-      { sampleId: "DEV01265100000000101", result: "2.345" },
-      { sampleId: "DEV01265100000000102", result: "0.048" },
-      { sampleId: "DEV01265100000000103", result: "1.234" },
-    ],
   },
   {
     name: "Demo: Thermo Multiskan FC",
@@ -245,21 +192,12 @@ const CONFIGS: AnalyzerTestConfig[] = [
     pluginType: "Generic File",
     profileName: "Thermo Multiskan FC",
     protocol: "FILE",
-    fileSampleId: "DEV01265200000000101",
     push: {
       protocol: "FILE",
-      fixtureFile: "multiskan-fc-e2e-results.csv",
-      importDir: path.join(
-        HOST_IMPORTS_BASE,
-        "demo--thermo-multiskan-fc/incoming",
-      ),
-      filePrefix: "multiskan-e2e-",
+      simulatorUrl: SIMULATOR_URL,
+      template: "multiskan_fc",
+      targetDir: "/data/analyzer-imports/demo--thermo-multiskan-fc/incoming",
     },
-    expectedResults: [
-      { sampleId: "DEV01265200000000101", result: "2.345" },
-      { sampleId: "DEV01265200000000102", result: "0.048" },
-      { sampleId: "DEV01265200000000103", result: "1.567" },
-    ],
   },
 ];
 
@@ -268,16 +206,15 @@ const CONFIGS: AnalyzerTestConfig[] = [
 async function verifyResults(
   page: import("@playwright/test").Page,
   config: AnalyzerTestConfig,
-  sampleId: string,
-  presentation: import("../helpers/demo-presentation").DemoPresentation,
+  pushResults: PushResult[],
+  primarySampleId: string,
+  presentation: import("../../../helpers/demo-presentation").DemoPresentation,
 ) {
-  // Collect all expected accession numbers so the API poll waits for ALL of
-  // them before navigating (the bridge posts results one accession at a time).
-  const allAccessions = config.expectedResults
-    .map((r) => r.sampleId || sampleId)
+  const allAccessions = pushResults
+    .map((r) => r.sampleId || primarySampleId)
     .filter((v, i, a) => a.indexOf(v) === i);
 
-  await openAnalyzerResultsAndWaitForText(page, config.name, sampleId, {
+  await openAnalyzerResultsAndWaitForText(page, config.name, primarySampleId, {
     timeoutMs: RESULTS_TIMEOUT,
     perAttemptTimeoutMs: LONG_TIMEOUT,
     allExpectedAccessions: allAccessions,
@@ -286,24 +223,14 @@ async function verifyResults(
   const resultsRegion = page.locator(".orderLegendBody, table").first();
   await expect(resultsRegion).toBeVisible({ timeout: UI_TIMEOUT });
 
-  // Verify each expected result value
-  for (const expected of config.expectedResults) {
-    if (expected.testName) {
-      await expect(
-        page.getByText(expected.testName, { exact: false }).first(),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
-      await expect(
-        page.locator(`input[value*="${expected.result}"]`).first(),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
-      continue;
+  for (const expected of pushResults) {
+    const expectedSampleId = expected.sampleId || primarySampleId;
+    await expect(
+      resultsRegion.getByText(accessionTextRegExp(expectedSampleId)).first(),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    if (expected.result) {
+      await expectResultVisible(resultsRegion, expected.result);
     }
-
-    const expectedSampleId = expected.sampleId || sampleId;
-    const accessionRow = resultsRegion
-      .getByRole("row", { name: accessionTextRegExp(expectedSampleId) })
-      .first();
-    await expect(accessionRow).toBeVisible({ timeout: UI_TIMEOUT });
-    await expectResultVisible(accessionRow, expected.result);
   }
 
   await presentation.pause(2_000);
@@ -318,13 +245,12 @@ test.describe("Madagascar analyzer demo flows", () => {
     test(`${config.displayName}: full E2E flow`, async ({ page }, testInfo) => {
       const presentation = createDemoPresentation(page, testInfo);
 
-      // Step 1: Title
       await presentation.title(
         config.displayName,
         `${config.protocol} → Bridge → OpenELIS → Review → Accept`,
       );
 
-      // Step 2: Create analyzer from profile via dashboard UI
+      // Step 1: Create analyzer from profile via dashboard UI
       await presentation.step(
         1,
         `Create ${config.name} from profile via dashboard`,
@@ -334,18 +260,19 @@ test.describe("Madagascar analyzer demo flows", () => {
         config,
         presentation,
       );
-      const analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
+      await findAnalyzerRow(page, config.name, testInfo);
 
-      // Step 3: Test connection (skip for FILE — no TCP)
+      // Step 2: Test connection (skip for FILE — no TCP)
       if (config.protocol !== "FILE") {
         await presentation.step(2, "Test analyzer connection");
+        const analyzerRow = await findAnalyzerRow(page, config.name, testInfo);
         await testAnalyzerConnection(page, analyzerRow, presentation);
       }
 
       const hasTestConnection = config.protocol !== "FILE";
       let step = hasTestConnection ? 3 : 2;
 
-      // For TCP analyzers, override push destination with dynamic bridge IP
+      // Override push destination with dynamic bridge IP for TCP analyzers
       let pushConfig = config.push;
       if (dynamicIp && config.protocol !== "FILE") {
         const bridgeIp = dynamicIp.replace(/\.\d+$/, ".2");
@@ -354,41 +281,54 @@ test.describe("Madagascar analyzer demo flows", () => {
         pushConfig = {
           ...pushConfig,
           destination: `${scheme}://${bridgeIp}:${port}`,
-        } as typeof pushConfig;
+        };
       }
 
-      // Push result
+      // Step 3: Push result via mock server
       await presentation.step(
         step,
         `Send ${config.protocol} result → Bridge → OpenELIS`,
       );
-      const sampleId = await pushAnalyzerResult(page, pushConfig, presentation);
+      const pushResults = await pushAnalyzerResult(
+        page,
+        pushConfig,
+        presentation,
+      );
 
-      if (config.protocol !== "FILE") {
-        expect(sampleId).toBeTruthy();
-      }
+      expect(
+        pushResults.length,
+        `Mock should return at least 1 result for ${config.name}`,
+      ).toBeGreaterThan(0);
 
-      const verifyId = sampleId || config.fileSampleId || config.name;
+      const primarySampleId = pushResults[0].sampleId;
+      expect(
+        primarySampleId,
+        `Mock should return a sampleId for ${config.name}`,
+      ).toBeTruthy();
 
-      // Wait for results to arrive from bridge
+      // Step 4: Wait for results from bridge
       step++;
       await presentation.step(
         step,
         "Waiting for results from analyzer bridge...",
       );
-      await verifyResults(page, config, verifyId, presentation);
+      await verifyResults(
+        page,
+        config,
+        pushResults,
+        primarySampleId,
+        presentation,
+      );
 
-      // Show staged results clearly before accepting
       await presentation.step(step, "Results staged — ready to accept");
       await presentation.pause(3_000);
 
-      // Accept results
-      await acceptAndVerifyResults(page, presentation, step, verifyId);
+      // Step 5: Accept results
+      await acceptAndVerifyResults(page, presentation, step, primarySampleId);
 
-      // Done — title card shown briefly, then teardown
       await presentation.title(
         "Flow Complete",
-        `${config.displayName}: ${config.expectedResults.length} results accepted.`,
+        `${config.displayName}: ${pushResults.length} results accepted.`,
       );
 
       // Teardown: delete analyzer + remove mock network

@@ -304,11 +304,10 @@ public class AnalyzerRestController extends BaseRestController {
             // directly tests analyzer transports (bridge is mandatory).
             Map<String, Object> response;
             Integer analyzerIdInt = Integer.valueOf(id);
-            var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
             var serialConfig = serialPortService.getByAnalyzerId(analyzerIdInt);
 
-            if (fileConfig.isPresent()) {
-                response = testFileViaBridge(fileConfig.get().getImportDirectory());
+            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                response = testFileViaBridge(analyzer.getImportDirectory());
             } else if (serialConfig.isPresent()) {
                 response = testSerialViaBridge(serialConfig.get().getPortName());
             } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
