@@ -158,7 +158,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             return true;
         }
 
-        Double totalAvailable = inventoryLotService.getTotalCurrentQuantity(itemId);
+        Double totalAvailable = inventoryLotService.getTotalUsableQuantity(itemId);
         return totalAvailable != null && totalAvailable >= quantityNeeded;
     }
 

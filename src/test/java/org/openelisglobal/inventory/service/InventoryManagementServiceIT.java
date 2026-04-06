@@ -2,12 +2,14 @@ package org.openelisglobal.inventory.service;
 
 import static org.junit.Assert.*;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.service.InventoryManagementService.ConsumptionRecord;
 import org.openelisglobal.inventory.service.InventoryManagementService.InventoryAlerts;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -149,5 +151,43 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
     public void isSufficientInventoryAvailable_shouldReturnFalseWhenInsufficient() {
         boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 200.0);
         assertFalse("Should not have sufficient inventory", available);
+    }
+
+    @Test
+    public void isSufficientInventoryAvailable_shouldIgnoreFailedQcLots() {
+        inventoryLotService.updateQCStatus(1L, QCStatus.FAILED, "Exclude failed lot", "1");
+
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 100.0);
+
+        assertFalse("Availability should ignore failed QC lots", available);
+    }
+
+    @Test
+    public void isSufficientInventoryAvailable_shouldIgnoreExpiredLots() {
+        InventoryLot earliestLot = inventoryLotService.get(2L);
+        earliestLot.setExpirationDate(Timestamp.valueOf("2000-01-01 00:00:00"));
+        inventoryLotService.update(earliestLot);
+
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 120.0);
+
+        assertFalse("Availability should ignore expired lots", available);
+    }
+
+    @Test
+    public void isSufficientInventoryAvailable_shouldPreserveFractionalQuantities() {
+        InventoryLot firstLot = inventoryLotService.get(1L);
+        InventoryLot secondLot = inventoryLotService.get(2L);
+
+        firstLot.setCurrentQuantity(0.0);
+        firstLot.setStatus(org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus.CONSUMED);
+        inventoryLotService.update(firstLot);
+
+        secondLot.setCurrentQuantity(0.75);
+        inventoryLotService.update(secondLot);
+
+        assertTrue("Fractional usable stock should be counted", inventoryManagementService
+                .isSufficientInventoryAvailable(1L, 0.5));
+        assertFalse("Availability should still fail when requested quantity exceeds fractional stock",
+                inventoryManagementService.isSufficientInventoryAvailable(1L, 1.0));
     }
 }

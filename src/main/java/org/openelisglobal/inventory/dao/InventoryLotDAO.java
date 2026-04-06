@@ -15,8 +15,9 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
     List<InventoryLot> getByInventoryItemId(Long itemId) throws LIMSRuntimeException;
 
     /**
-     * Get available lots by item ID, sorted by expiration date (FEFO) Only includes
-     * lots with status ACTIVE/IN_USE, QC PASSED, and currentQuantity > 0
+     * Get available lots by item ID, sorted by effective expiration date (FEFO).
+     * Only includes lots with ACTIVE/IN_USE status, QC PASSED, positive quantity,
+     * and no effective expiration in the past.
      */
     List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) throws LIMSRuntimeException;
 
@@ -56,9 +57,14 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
     List<InventoryLot> getByStatus(LotStatus status) throws LIMSRuntimeException;
 
     /**
-     * Get total current quantity for an inventory item across all lots
+     * Get total current quantity for an inventory item across active/in-use lots.
      */
-    Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException;
+    Double getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException;
+
+    /**
+     * Get total usable quantity for an inventory item across FEFO-eligible lots.
+     */
+    Double getTotalUsableQuantity(Long itemId) throws LIMSRuntimeException;
 
     /**
      * Get lot by FHIR UUID
