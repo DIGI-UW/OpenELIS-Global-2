@@ -18,11 +18,11 @@
 ## Unblocked (Implemented)
 
 - QuantStudio 7 Flex / QS5 — XLS mock + profile
-- Tecan Infinite F50 — profile v2.0 + Magellan CSV plate-grid mock +
-  PlateGridNormalizer (BOM, comma delim)
-- Multiskan FC — profile v2.0 + dual plate-grid mock (French locale) +
-  PlateGridNormalizer (dual-grid, semicolons, comma decimals)
+- Tecan Infinite F50 — profile v2.0 + Magellan CSV plate-grid mock (BOM, comma
+  delim, generic CSV reader)
+- Multiskan FC — profile v2.0 + dual plate-grid mock (French locale, dual-grid,
+  semicolons, comma decimals, generic CSV reader)
 - Wondfo Finecare FS-205 — profile v1.0 + 40-col CSV mock from OGC-344 spec +
   skipRows support
 - FluoroCycler XT — profile + mock (12-col Excel)
-- DT-Prime — XmlAnalyzerReader + profile + mock
+- DT-Prime — profile + mock (XML fileFormat via generic reader)

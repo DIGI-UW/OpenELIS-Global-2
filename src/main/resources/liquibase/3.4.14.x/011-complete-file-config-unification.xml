@@ -7,7 +7,7 @@
     <changeSet id="011-complete-file-config-unification" author="pmanko">
         <comment>Complete FILE config unification on analyzer table. Adds remaining fields
         from file_import_configuration (delimiter, has_header, skip_rows, archive_directory,
-        error_directory) so FIC can be fully deprecated. Migrates existing data.</comment>
+        error_directory) so FIC can be fully deprecated.</comment>
 
         <addColumn tableName="analyzer">
             <column name="delimiter" type="VARCHAR(10)" defaultValue=",">
@@ -26,9 +26,16 @@
                 <constraints nullable="true"/>
             </column>
         </addColumn>
+    </changeSet>
 
-        <!-- Migrate data from file_import_configuration to analyzer for any rows
-             that haven't been synced yet -->
+    <changeSet id="011-migrate-fic-data-to-analyzer" author="pmanko">
+        <comment>Migrate existing data from file_import_configuration to analyzer.
+        Skipped if the FIC table was never created.</comment>
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="file_import_configuration"/>
+        </preConditions>
+
+        <!-- FIC is source of truth: overwrite addColumn defaults with actual FIC data -->
         <sql>
             UPDATE clinlims.analyzer a
             SET delimiter = fic.delimiter,
@@ -37,8 +44,7 @@
                 archive_directory = fic.archive_directory,
                 error_directory = fic.error_directory
             FROM clinlims.file_import_configuration fic
-            WHERE fic.analyzer_id = a.id::int
-              AND a.delimiter IS NULL;
+            WHERE fic.analyzer_id = a.id::int;
         </sql>
     </changeSet>
 
