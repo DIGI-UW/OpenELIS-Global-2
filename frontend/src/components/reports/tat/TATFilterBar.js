@@ -9,7 +9,6 @@ import {
   Switch,
   FilterableMultiSelect,
   ComboBox,
-  Tag,
 } from "@carbon/react";
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -160,19 +159,18 @@ function TATFilterBar({ onGenerate }) {
         }}
       >
         {DATE_PRESETS.map((p) => (
-          <Tag
+          <Button
             key={p.labelKey}
-            type="cool-gray"
+            kind="ghost"
             size="sm"
             onClick={() => {
               const { from, to } = p.compute();
               setFromDate(formatDate(from));
               setToDate(formatDate(to));
             }}
-            style={{ cursor: "pointer" }}
           >
             {intl.formatMessage({ id: p.labelKey })}
-          </Tag>
+          </Button>
         ))}
       </div>
 

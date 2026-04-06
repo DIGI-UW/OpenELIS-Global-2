@@ -33,6 +33,7 @@ function TATReport() {
       setFilters(newFilters);
       setLoading(true);
       setError(null);
+      setSummaryData(null);
       const qs = buildQueryString(newFilters);
       getFromOpenElisServer(`/rest/reports/tat/summary?${qs}`, (res) => {
         if (res) {

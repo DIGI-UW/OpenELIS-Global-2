@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { Checkbox, InlineNotification } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
@@ -20,6 +20,13 @@ function WeekendConfig() {
     useContext(NotificationContext);
   const [weekendDays, setWeekendDays] = useState([]);
   const [showSaved, setShowSaved] = useState(false);
+  const savedTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     getFromOpenElisServer("/rest/calendar/weekends", (res) => {
@@ -43,7 +50,7 @@ function WeekendConfig() {
       (status) => {
         if (status === 200) {
           setShowSaved(true);
-          setTimeout(() => setShowSaved(false), 3000);
+          savedTimerRef.current = setTimeout(() => setShowSaved(false), 3000);
         } else {
           setWeekendDays(prev);
           addNotification({

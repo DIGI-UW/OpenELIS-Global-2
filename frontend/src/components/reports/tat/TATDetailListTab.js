@@ -65,6 +65,11 @@ function TATDetailListTab({ filters, buildQueryString }) {
     fetchData();
   }, [fetchData]);
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPage(0);
+  }, [filters]);
+
   if (!filters) {
     return (
       <div style={{ padding: "2rem", textAlign: "center", color: "var(--cds-text-helper)" }}>

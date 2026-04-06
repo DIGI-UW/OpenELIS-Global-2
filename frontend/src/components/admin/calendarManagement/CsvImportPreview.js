@@ -59,6 +59,9 @@ function CsvImportPreview({ year, onClose, onImportComplete }) {
     formData.append("file", file);
 
     try {
+      // Note: postToOpenElisServerFormData only returns status code, not response
+      // body. We need the JSON body (imported/skipped/errors) for user feedback,
+      // so we use fetch directly here with the standard CSRF/credentials pattern.
       const response = await fetch(
         `${config.serverBaseUrl}/rest/calendar/holidays/import?year=${year}`,
         {

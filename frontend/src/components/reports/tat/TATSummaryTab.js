@@ -44,7 +44,7 @@ function TATSummaryTab({ data, loading, filters }) {
             title={intl.formatMessage(
               { id: "reports.tat.workingTimeInfo" },
               {
-                weekendDays: "configured weekends",
+                weekendDays: intl.formatMessage({ id: "reports.tat.configuredWeekends" }),
                 holidayCount: data.excludedDaysCount,
               },
             )}

@@ -150,7 +150,7 @@ function TATTrendsTab({ filters, buildQueryString }) {
                     <div
                       key={di}
                       style={{ flex: 1, textAlign: "center" }}
-                      title={`${dp.period}: median ${dp.median}h, count ${dp.count}`}
+                      title={`${dp.period}: ${showMedian ? "median" : showMean ? "mean" : "p90"} ${getMetricValue(dp)}h, count ${dp.count}`}
                     >
                       <div
                         style={{
