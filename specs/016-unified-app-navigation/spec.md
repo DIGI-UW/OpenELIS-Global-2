@@ -38,6 +38,14 @@ sections with a single global sidebar component.
 
 ### Functional Requirements
 
+#### FR0: Frontend Stack Modernization (Prerequisite)
+
+- Migrate application from React 17 to React 18
+- Upgrade `@carbon/react` and `@carbon/icons-react` to latest v11 releases
+- Remove all legacy `carbon-components` (v10) dependencies
+- Ensure all existing components are compatible with the new stack before
+  implementing the unified navigation
+
 #### FR1: Global Sidebar Component
 
 - Create a unified `GlobalSidebar` React component
@@ -51,6 +59,37 @@ sections with a single global sidebar component.
 - Support hierarchical menu structure with parent/child relationships
 - Enable country-specific menu customizations
 - Include icon mapping for menu items
+- **Config Resolution Strategy:** Follow existing
+  `ConfigurationInitializationService` pattern where filesystem configs (e.g.,
+  Madagascar distribution) completely override classpath defaults. No merging
+  occurs.
+- **Icon Loading Strategy:** Implement an explicit `MenuIconRegistry.js` that
+  maps icon strings to their respective imported `@carbon/icons-react`
+  components. This guarantees zero bundle bloat and type safety while avoiding
+  React 18 async chunking complexity for basic navigation icons.
+
+## Clarifications
+
+### Session 2026-04-06
+
+- Q: How should the new Menu configuration handle the relationship between
+  bundled base menus and distribution-specific overrides? → A: Standard
+  Overwrite: If a distribution provides menus.json, it must define the entire
+  menu structure, completely ignoring the base classpath config. Matches
+  existing DomainConfigurationHandler behavior.
+- Q: How should the string iconName from the JSON configuration be mapped to the
+  actual Carbon React component at runtime? → A: Explicit Icon Registry: Create
+  a central `MenuIconRegistry.js` that explicitly imports only the icons needed
+  by OpenELIS and its distributions.
+- Q: How should the existing POST endpoints for menu mutation be handled in the
+  configuration-driven paradigm? → A: Layered DB with Provenance: Each menu row
+  tracks its origin via a `config_source` column (`distribution` vs `admin`).
+  Config reloads only overwrite `distribution`-sourced rows; `admin` overrides
+  persist across reloads. Admins can reset individual items to distribution
+  defaults by deleting their override.
+- Q: How should the migration from hardcoded JSX SideNavs to config-driven menus
+  be sequenced? → A: Big-bang cutover: Build the new GlobalSidebar + config
+  loading, then replace all three SideNavs (Admin, Reports, Validation) at once.
 
 #### FR3: Role-Based Access Control
 
