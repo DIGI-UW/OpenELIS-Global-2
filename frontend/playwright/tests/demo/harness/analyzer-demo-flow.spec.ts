@@ -13,7 +13,7 @@
  * Same test runs in both harness-demo (fast) and harness-demo-video (slowMo+video).
  */
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../../helpers/test-base";
 import * as path from "path";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
