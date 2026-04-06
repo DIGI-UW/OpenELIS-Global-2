@@ -4,6 +4,7 @@ import { FormattedMessage, useIntl, injectIntl } from "react-intl";
 import { Switch, Route, useRouteMatch, useHistory } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
+import CalendarManagement from "./calendarManagement";
 import ProgramManagement from "./program/ProgramManagement";
 import EQAProgramManagement from "../eqa/EQAProgram/ProgramManagement";
 import LabNumberManagement from "./labNumber/LabNumberManagement";
@@ -35,6 +36,8 @@ import {
   Popup,
   Search,
   DataCheck,
+  ConnectionSignal,
+  Calendar,
 } from "@carbon/icons-react";
 import CalculatedValue from "./calculatedValue/CalculatedValueForm";
 import {
@@ -63,6 +66,7 @@ import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCance
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu.js";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit.js";
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
+import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu.js";
 import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd.js";
 import TestAdd from "./testManagementConfigMenu/TestAdd.js";
@@ -95,12 +99,26 @@ import {
   LanguageManagement,
   TranslationManagement,
 } from "./localizationManagement";
+import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu";
+import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
+import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning.js";
+import { TrashCan } from "@carbon/icons-react";
+import { getFromOpenElisServer } from "../utils/Utils.js";
 
 function Admin() {
   const intl = useIntl();
   const { path } = useRouteMatch();
   const history = useHistory();
   const [isSmallScreen, setIsSmallScreen] = useState(false);
+  const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
+      if (response) {
+        setIsTrainingInstallation(response.trainingInstallation);
+      }
+    });
+  }, []);
 
   // Navigation handler to prevent page reload
   const handleNavigation = (targetPath) => (e) => {
@@ -369,6 +387,20 @@ function Admin() {
           >
             <FormattedMessage id="searchindexmanagement.label" />
           </SideNavLink>
+          <SideNavLink
+            renderIcon={Settings}
+            onClick={handleNavigation(`${path}/loggingManagement`)}
+          >
+            <FormattedMessage id="logging.management.label" />
+          </SideNavLink>
+          {isTrainingInstallation && (
+            <SideNavLink
+              renderIcon={TrashCan}
+              onClick={handleNavigation(`${path}/DatabaseCleaning`)}
+            >
+              <FormattedMessage id="database.clean" />
+            </SideNavLink>
+          )}
           <SideNavMenu
             title={intl.formatMessage({
               id: "sidenav.label.admin.localization",
@@ -396,6 +428,19 @@ function Admin() {
             </SideNavMenuItem>
           </SideNavMenu>
           <SideNavLink
+            renderIcon={ConnectionSignal}
+            onClick={handleNavigation(`${path}/externalConnections`)}
+          >
+            <FormattedMessage id="externalconnections.browse.title" />
+          </SideNavLink>
+          <SideNavLink
+            data-cy="calendarMgmnt"
+            renderIcon={Calendar}
+            onClick={handleNavigation(`${path}/calendarManagement`)}
+          >
+            <FormattedMessage id="calendar.management.title" />
+          </SideNavLink>
+          <SideNavLink
             renderIcon={Catalog}
             target="_blank"
             href={config.serverBaseUrl + "/MasterListsPage"}
@@ -406,6 +451,10 @@ function Admin() {
       </SideNav>
 
       <Switch>
+        <Route
+          path={`${path}/calendarManagement`}
+          component={CalendarManagement}
+        />
         <Route path={`${path}/reflex`} component={ReflexTestManagement} />
         <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
         <Route path={`${path}/TestCatalog`} component={TestCatalog} />
@@ -639,6 +688,19 @@ function Admin() {
           path={`${path}/SearchIndexManagement`}
           component={SearchIndexManagement}
         />
+        <Route
+          path={`${path}/loggingManagement`}
+          component={LoggingManagement}
+        />
+        <Route
+          path={`${path}/externalConnections`}
+          component={ExternalConnectionMenu}
+        />
+        <Route
+          path={`${path}/externalConnectionEdit`}
+          component={ExternalConnectionAddModify}
+        />
+        <Route path={`${path}/DatabaseCleaning`} component={DatabaseCleaning} />
       </Switch>
     </>
   );

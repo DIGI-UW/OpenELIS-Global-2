@@ -6,10 +6,37 @@ name: E2E / Cypress (Deprecated)
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      build_run_id:
+        description: "Run ID of the build workflow (for cross-run artifact download). Empty = same run."
+        required: false
+        type: string
+        default: ""
+      is_fork:
+        description: "Whether this is a fork PR (artifacts in same run from fork-rebuild)"
+        required: false
+        type: string
+        default: "false"
+      head_sha:
+        description: "PR head SHA to checkout (ensures Cypress uses PR's test files, not develop)"
+        required: false
+        type: string
+        default: ""
+      test_user:
+        description: "CI login user for Cypress execution"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password for Cypress execution"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
   packages: read
+  actions: read
 
 jobs:
   e2e-cypress:
@@ -72,8 +99,10 @@ jobs:
       - name: Checkout OpenELIS-Global2
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
           submodules: recursive
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -94,7 +123,17 @@ jobs:
       - name: Prepare .env from template
         run: cp .env.example .env
 
-      - name: Download Docker image map artifact
+      - name: Download image map from build workflow (non-fork)
+        if: inputs.is_fork != 'true' && inputs.build_run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-image-map-base
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map from fork-rebuild (fork)
+        if: inputs.is_fork == 'true' || inputs.build_run_id == ''
         uses: actions/download-artifact@v4
         with:
           name: e2e-image-map-base
@@ -158,8 +197,8 @@ jobs:
           CYPRESS_BASE_URL: https://localhost
           LC_ALL: en_US.UTF-8
           LANG: en_US.UTF-8
-          TEST_USER: ${{ vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ secrets.TEST_PASS || 'adminADMIN!' }}
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
 
       - name: Upload Cypress screenshots (${{ matrix.shard }})
         if: always()

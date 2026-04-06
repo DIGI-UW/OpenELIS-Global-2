@@ -1,0 +1,103 @@
+name: E2E Cache Cleanup
+
+on:
+  schedule:
+    - cron: "15 3 * * 1"
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: Delete e2e-cache package versions older than 7 days
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Delete old GHCR e2e-cache package versions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const cutoffMs = 7 * 24 * 60 * 60 * 1000;
+            const cutoff = Date.now() - cutoffMs;
+            const targetPrefix = 'openelis-global-2/e2e-cache/';
+
+            const listAllOrgPackages = async () => {
+              const all = [];
+              let page = 1;
+              while (true) {
+                const resp = await github.request('GET /orgs/{org}/packages', {
+                  org: owner,
+                  package_type: 'container',
+                  per_page: 100,
+                  page,
+                });
+                if (!resp.data.length) {
+                  break;
+                }
+                all.push(...resp.data);
+                if (resp.data.length < 100) {
+                  break;
+                }
+                page += 1;
+              }
+              return all;
+            };
+
+            const listAllVersions = async (packageName) => {
+              const all = [];
+              let page = 1;
+              while (true) {
+                const resp = await github.request('GET /orgs/{org}/packages/{package_type}/{package_name}/versions', {
+                  org: owner,
+                  package_type: 'container',
+                  package_name: packageName,
+                  per_page: 100,
+                  page,
+                });
+                if (!resp.data.length) {
+                  break;
+                }
+                all.push(...resp.data);
+                if (resp.data.length < 100) {
+                  break;
+                }
+                page += 1;
+              }
+              return all;
+            };
+
+            const packages = await listAllOrgPackages();
+            const targets = packages.filter((pkg) => pkg.name.startsWith(targetPrefix));
+            core.info(`Found ${targets.length} e2e-cache packages in org '${owner}'.`);
+
+            let deleted = 0;
+            let scanned = 0;
+
+            for (const pkg of targets) {
+              const versions = await listAllVersions(pkg.name);
+              core.info(`Package ${pkg.name}: ${versions.length} versions total.`);
+              for (const version of versions) {
+                scanned += 1;
+                const createdAt = new Date(version.created_at).getTime();
+                if (Number.isNaN(createdAt) || createdAt >= cutoff) {
+                  continue;
+                }
+
+                try {
+                  await github.request('DELETE /orgs/{org}/packages/{package_type}/{package_name}/versions/{package_version_id}', {
+                    org: owner,
+                    package_type: 'container',
+                    package_name: pkg.name,
+                    package_version_id: version.id,
+                  });
+                  deleted += 1;
+                  core.info(`Deleted ${pkg.name} version ${version.id} created ${version.created_at}.`);
+                } catch (error) {
+                  core.warning(`Failed deleting ${pkg.name} version ${version.id}: ${error.message}`);
+                }
+              }
+            }
+
+            core.info(`Scanned ${scanned} versions. Deleted ${deleted} versions older than 7 days.`);

@@ -58,6 +58,13 @@ mvn clean install -DskipTests
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
 
+**Exception — CI shared-build root project:** The E2E `shared-build` step in
+both `e2e-playwright.yml` and `e2e-fork-pr.yml` intentionally omits
+`-Dmaven.test.skip=true` on the root project build because the `test-jar`
+artifact must be produced for plugin compilation (GenericASTM, GenericFile,
+GenericHL7 depend on it). The `dataexport` and `plugins` sub-builds still use
+both flags.
+
 ### Pre-Commit Formatting (MANDATORY)
 
 **MUST run BEFORE EVERY commit:**
@@ -81,12 +88,15 @@ Key principles to verify:
       Valueholder→DAO→Service→Controller→Form)
 - [ ] Carbon Design System (NO Bootstrap/Tailwind)
 - [ ] FHIR R4 compliance (for external-facing entities)
-- [ ] React Intl (NO hardcoded strings)
+- [ ] React Intl (NO hardcoded strings, new keys in `en.json` ONLY — Transifex
+      is source of truth for non-English translations)
 - [ ] Test-Driven Development (TDD workflow)
 - [ ] Liquibase for schema changes
 - [ ] @Transactional in services ONLY (NOT controllers)
 - [ ] Services compile all data within transaction (prevent
       LazyInitializationException)
+- [ ] Test Quality Invariants V.6 (Inversion Test, no assert-on-mock-return,
+      auth ordering tests)
 
 ### TDD Workflow (MANDATORY for SpecKit)
 
@@ -95,6 +105,26 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 1. **Red:** Write failing test first
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
+
+### Post-Compaction Context Recovery (MANDATORY)
+
+**After any context compaction or session resume**, run these commands FIRST —
+before reading files, editing code, or starting analysis:
+
+```bash
+# 1. Discover all active worktrees and their branches
+git worktree list
+
+# 2. Check status of each relevant worktree
+git status  # (in each worktree path)
+
+# 3. List open PRs and their branches
+gh pr list --author @me
+```
+
+**Why:** Compaction drops operational state (active worktrees, open PRs, CI
+status). These commands reconstruct the full dev context in seconds. Without
+this, work targets the wrong branch/directory.
 
 ### Cypress E2E — DEPRECATED
 
@@ -144,7 +174,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+**Last Updated:** 2026-04-05 **Constitution Version:** 1.9.1
 
 ## Recent Changes
 

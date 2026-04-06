@@ -10,4 +10,7 @@
   <!-- EQA Enabled configuration for Order Entry -->
   <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
 
+  <!-- Calendar Management + TAT Report permissions (OGC-310) -->
+  <include relativeToChangelogFile="true" file="003-calendar-management.xml"/>
+
 </databaseChangeLog>

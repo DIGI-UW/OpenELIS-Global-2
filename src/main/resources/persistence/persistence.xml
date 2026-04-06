@@ -83,6 +83,15 @@
         <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCSignature</class>
+        <!-- Calendar Management entities (OGC-310 TAT) -->
+        <class>org.openelisglobal.calendar.valueholder.PublicHoliday</class>
+        <class>org.openelisglobal.calendar.valueholder.WeekendConfig</class>
+
+        <!-- Shipment Management entities (OGC-62) -->
+        <class>org.openelisglobal.shipment.valueholder.ShippingBox</class>
+        <class>org.openelisglobal.shipment.valueholder.Shipment</class>
+        <class>org.openelisglobal.shipment.valueholder.BoxSampleItem</class>
+
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- Migrated to JPA annotations (chore/011-analyzer-xml-to-annotations) -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>

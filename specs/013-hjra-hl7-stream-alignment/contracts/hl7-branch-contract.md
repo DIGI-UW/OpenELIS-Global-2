@@ -46,6 +46,9 @@ implementation branches launched from the `013` coordination lane.
 
 - BS-series expansion
 - Any assumption that BC-5380 proves BS-series equivalence
+- Bidirectional HL7 messaging (ORM^O01 worklist download, QBP queries) —
+  explicitly deferred to post-MVP. CommunicationMode field prepares the data
+  model. Bridge outbound MLLP/ASTM client not yet implemented.
 
 **Promotion rule**:
 

@@ -24,7 +24,7 @@ public class AnalyzerTestMappingValidator implements Validator {
     public void validate(Object target, Errors errors) {
         AnalyzerTestMapping analyzerTestMapping = (AnalyzerTestMapping) target;
 
-        ValidationHelper.validateIdField(analyzerTestMapping.getAnalyzerTypeId(), "analyzerTypeId", errors, true);
+        ValidationHelper.validateIdField(analyzerTestMapping.getAnalyzerId(), "analyzerId", errors, true);
 
         ValidationHelper.validateFieldAndCharset(analyzerTestMapping.getAnalyzerTestName(), "analyzerTestName", errors,
                 true, 30, " a-zA-Z0-9�������������������������Ԍ��ܟ�\\\\\\-%#\\(\\)\\^_");
@@ -37,7 +37,7 @@ public class AnalyzerTestMappingValidator implements Validator {
 
         List<AnalyzerTestMapping> testMappingList = analyzerTestMappingService.getAll();
         for (AnalyzerTestMapping testMapping : testMappingList) {
-            if (analyzerTestMapping.getAnalyzerTypeId().equals(testMapping.getAnalyzerTypeId())
+            if (analyzerTestMapping.getAnalyzerId().equals(testMapping.getAnalyzerId())
                     && analyzerTestMapping.getAnalyzerTestName().equals(testMapping.getAnalyzerTestName())) {
                 errors.reject("error.analyzer.test.name.duplicate");
             }

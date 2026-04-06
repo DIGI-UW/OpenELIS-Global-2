@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec/013-hjra-hl7-stream-alignment`  
 **Created**: 2026-03-10  
-**Status**: Draft  
+**Status**: In Progress  
 **Input**: User description: "Create the HL7 coordination artifacts needed
 before coding begins, establish stream boundaries and issue sequencing for
 `OGC-325`, `OGC-326`, `OGC-327`, optional `OGC-336`, preserve the recommended
@@ -192,6 +192,15 @@ names the remaining evidence gaps and does not convert them into settled facts.
 - **FR-016**: The specification MUST exclude implementation on the coordination
   branch, profile library or sharing features, and any invented umbrella Jira
   that does not exist in the validated source material.
+  - **Exception**: The current consolidation branch
+    `fix/013-hl7-test-connection` (PR #3195) intentionally includes shared
+    implementation for CommunicationMode enum, test-connectivity, and Liquibase
+    migration. These are prerequisites shared across M1/M2/M3 milestones.
+- **FR-017**: The HL7 stream MUST ensure test-connection parity between ASTM and
+  HL7 analyzers. HL7 analyzers with IP/port configured MUST receive genuine TCP
+  connectivity testing rather than hardcoded success. The test-connection
+  response MUST be contextualized based on the analyzer's CommunicationMode
+  (ANALYZER_INITIATED, LIS_INITIATED, BOTH).
 
 ### Constitution Compliance Requirements (OpenELIS Global)
 

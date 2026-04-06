@@ -1,5 +1,19 @@
 # AGENTS.md - README for AI Coding Agents
 
+## FILE Ownership Model (014 Remediation)
+
+For FILE-based analyzer workflows in OpenELIS Global 2:
+
+- Bridge is the runtime owner of directory watching/polling and file transport.
+- OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
+  and result processing.
+- No OpenELIS app-side FILE poller is implemented in this branch. If a fallback
+  poller is added later, it must remain disabled by default unless explicitly
+  enabled.
+
+When guidance conflicts, this ownership model takes precedence for remediation
+work in feature 014.
+
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
 > everything an AI agent needs to know to work effectively on OpenELIS Global 2.
@@ -186,6 +200,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - **React Intl 5.20.12** - ALL user-facing strings MUST use this
 - Message files: `frontend/src/languages/{locale}.json`
 - Usage: `intl.formatMessage({ id: 'key' })`
+- **Add new keys to `en.json` ONLY** — non-English translations are managed on
+  [Transifex](https://explore.transifex.com/openmrs/openelis-1/) (see Section
+  VII)
 
 **Styling:**
 
@@ -426,9 +443,22 @@ hardcoded English text.
 - Message files: `frontend/src/languages/{locale}.json`
 - Use `intl.formatMessage({ id: 'storage.location.label' })`
 - Supported locales: en, fr, ar, es, hi, pt, sw
-- New features MUST provide translations for at least en + fr
+- New keys go in `en.json` ONLY — do NOT edit other locale files
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
+
+**Translation Workflow (Transifex):**
+
+[Transifex](https://explore.transifex.com/openmrs/openelis-1/) is the source of
+truth for non-English translations. Developers only edit `en.json`:
+
+1. Developer adds i18n key to `en.json` in their PR
+2. `tx-push.yml` uploads `en.json` to Transifex on merge to `develop`
+3. Translators work on Transifex
+4. `tx-pull.yml` pulls translations daily and auto-merges to `develop`
+
+A CI check ("Translation source-of-truth check") blocks PRs that modify
+non-English locale files. The `chore/update-transifex` bot branch is exempt.
 
 **Example:**
 
@@ -525,6 +555,32 @@ docker compose -f dev.docker-compose.yml up -d
 - React UI: https://localhost/
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
+
+### Context Recovery After Session Resume
+
+When resuming work after a context reset (compaction, new session, or tool
+restart), **immediately reconstruct the development context** before doing any
+work:
+
+```bash
+# 1. Discover all active worktrees and their branches
+git worktree list
+
+# 2. Check status of each relevant worktree
+git status  # (run in each worktree directory)
+
+# 3. List open PRs and their branches/CI status
+gh pr list --author @me
+```
+
+**Why this matters:** This project frequently uses git worktrees for
+multi-branch work (e.g., a feature branch + a CI fix branch). After a context
+reset, the agent loses track of which worktrees exist and which maps to which
+PR. Without this recovery step, edits land in the wrong branch.
+
+**Rule:** When directed to work on a specific branch or PR, always check
+`git worktree list` first. If a worktree exists for that branch, ALL edits go
+there — never in the primary working directory.
 
 ### SpecKit Workflow (Specification-Driven Development)
 
@@ -1679,7 +1735,7 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-foundational
 npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
@@ -1687,7 +1743,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -2138,6 +2194,11 @@ Before creating PR, verify ALL items:
 - **Pull Request Tips:** `PULL_REQUEST_TIPS.md` (15-point checklist)
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
+- **E2E CI Architecture:** `.specify/reports/ci-e2e-architecture-spec.md` -
+  concise source of truth for fork/non-fork E2E workflow topology, artifact
+  contracts, and checkpoint/status semantics
+- **E2E CI Operator Model:** `.github/e2e-ci-operator-model.md` - operational
+  troubleshooting guide for CI maintainers
 
 ### Testing Documentation
 

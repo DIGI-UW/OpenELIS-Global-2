@@ -18,6 +18,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/programs")
+@PreAuthorize("hasRole('ADMIN')")
 public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired
@@ -151,15 +153,10 @@ public class EQAProgramRestController extends ControllerUtills {
 
             if (body.containsKey("isActive")) {
                 Boolean isActive = (Boolean) body.get("isActive");
-                if (Boolean.FALSE.equals(isActive)) {
-                    programService.deactivateProgram(id);
-                } else {
-                    programService.activateProgram(id);
-                }
-                program = programService.get(id);
-            } else {
-                program = programService.update(program);
+                program.setIsActive(Boolean.TRUE.equals(isActive));
             }
+
+            program = programService.update(program);
 
             return ResponseEntity.ok(toProgramDto(program));
         } catch (ObjectNotFoundException e) {

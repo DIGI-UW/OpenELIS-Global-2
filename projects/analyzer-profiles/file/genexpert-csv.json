@@ -1,0 +1,87 @@
+{
+  "profileMeta": {
+    "id": "genexpert-csv",
+    "version": "1.0.0",
+    "displayName": "Cepheid GeneXpert (CSV Export)",
+    "manufacturer": "Cepheid",
+    "validation_status": "DRAFT - GeneXpert XVI at LA2M currently uses ASTM over TCP/IP, but network/IP config issues are blocking that path. CSV flat-file export from Dx software is the fastest fallback. Awaiting real CSV export sample from site."
+  },
+  "category": "MOLECULAR",
+  "protocol": {
+    "name": "FILE",
+    "format": "CSV"
+  },
+  "supported_extensions": [
+    ".csv",
+    ".txt"
+  ],
+  "site_workflow": {
+    "description": "GeneXpert Dx software can export test results to CSV via File > Export Results. This provides a flat-file alternative when the ASTM TCP/IP connection is unavailable due to network configuration issues.",
+    "primary_path": "ASTM over TCP/IP (genexpert-astm profile)",
+    "fallback_path": "CSV file export from Dx software (this profile)"
+  },
+  "column_mapping": {
+    "Sample ID": "sampleId",
+    "Patient ID": "patientId",
+    "Assay": "assayName",
+    "Test Result": "result",
+    "Test Type": "testCode",
+    "Ct": "ctValue",
+    "End Pt": "endPt",
+    "Probe Check Ct": "probeCheckCt",
+    "Error": "errorCode",
+    "Error Status": "errorStatus",
+    "Reagent Lot ID": "reagentLotId",
+    "Start Time": "testDate",
+    "End Time": "testEndTime",
+    "Module Serial Number": "moduleSerial",
+    "Cartridge Serial Number": "cartridgeSerial",
+    "Instrument Serial Number": "instrumentSerial",
+    "Notes": "notes"
+  },
+  "required_columns": [
+    "Sample ID",
+    "Assay",
+    "Test Result"
+  ],
+  "optional_columns": [
+    "Patient ID",
+    "Test Type",
+    "Ct",
+    "End Pt",
+    "Probe Check Ct",
+    "Error",
+    "Error Status",
+    "Reagent Lot ID",
+    "Start Time",
+    "End Time",
+    "Module Serial Number",
+    "Cartridge Serial Number",
+    "Instrument Serial Number",
+    "Notes"
+  ],
+  "result_interpretation": {
+    "qualitative_values": {
+      "MTB DETECTED": "Detected",
+      "MTB NOT DETECTED": "Not Detected",
+      "MTB TRACE DETECTED": "Trace",
+      "RIF Resistance DETECTED": "Detected",
+      "RIF Resistance NOT DETECTED": "Not Detected",
+      "RIF Resistance INDETERMINATE": "Indeterminate",
+      "INVALID": "Invalid",
+      "ERROR": "Error",
+      "NO RESULT": "No Result"
+    }
+  },
+  "default_test_mappings": [
+    { "test_code": "MTB-RIF", "test_name_hint": "Mycobacterium tuberculosis DNA", "loinc": "23826-1", "unit": "" },
+    { "test_code": "RIF", "test_name_hint": "Rifampin Resistance", "loinc": "46244-0", "unit": "" },
+    { "test_code": "MTB-RIF-ULTRA", "test_name_hint": "MTB/RIF Ultra", "loinc": "23826-1", "unit": "" },
+    { "test_code": "HIV-VL", "test_name_hint": "HIV-1 RNA", "loinc": "20447-9", "unit": "copies/mL" }
+  ],
+  "configDefaults": {
+    "fileFormat": "CSV",
+    "delimiter": ",",
+    "hasHeader": true
+  }
+}
