@@ -15,7 +15,7 @@ jest.mock("../../utils/Utils", () => ({
   postToOpenElisServerJsonResponse: jest.fn(),
 }));
 
-jest.mock("../../common/PageBreadCrumb.js", () => () => (
+jest.mock("../../common/PageBreadCrumb", () => () => (
   <div data-testid="barcode-breadcrumb" />
 ));
 

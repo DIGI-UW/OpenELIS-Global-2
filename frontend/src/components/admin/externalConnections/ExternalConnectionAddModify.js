@@ -25,7 +25,7 @@ import {
 } from "../../common/CustomNotification.js";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
-import PageBreadCrumb from "../../common/PageBreadCrumb.js";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
