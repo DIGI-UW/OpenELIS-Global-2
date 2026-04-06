@@ -1,23 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { showTitleCard } from "../../../helpers/title-card";
-import { videoPause, isVideoProject } from "../../../helpers/video-pause";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { createCompleteSample } from "../../../helpers/seed-tat-data";
 import { seedHolidays } from "../../../helpers/seed-calendar-data";
 import type { SampleConfig } from "../../../helpers/seed-tat-data";
-
-/** Capture a named screenshot — only in video projects (not CI) */
-async function evidence(
-  page: import("@playwright/test").Page,
-  testInfo: import("@playwright/test").TestInfo,
-  name: string,
-) {
-  if (!isVideoProject(testInfo)) return;
-  const screenshot = await page.screenshot({ fullPage: true });
-  await testInfo.attach(name, {
-    body: screenshot,
-    contentType: "image/png",
-  });
-}
 
 const TEST_SAMPLES: SampleConfig[] = [
   {
@@ -60,14 +45,12 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
   test("US2 — TAT Summary report workflow", async ({ page }, testInfo) => {
     test.setTimeout(120_000);
+    const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
-      await showTitleCard(
-        page,
+      await demo.title(
         "User Story 2: TAT Summary Report",
         "As a lab manager, generate TAT summary with stats, histogram, breakdown",
-        3000,
-        testInfo,
       );
     });
 
@@ -76,8 +59,8 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(
         page.getByRole("heading", { name: "Turn Around Time Report" }),
       ).toBeVisible({ timeout: 15_000 });
-      await evidence(page, testInfo, "US2.1-tat-report-page");
-      await videoPause(page, 2000, testInfo);
+      await demo.evidence("US2.1-tat-report-page");
+      await demo.pause(2000);
     });
 
     await test.step("US2.2 — Verify default filter state", async () => {
@@ -85,26 +68,25 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(
         page.locator('[data-testid="generate-report-button"]'),
       ).toBeVisible();
-      await evidence(page, testInfo, "US2.2-default-filters");
-      await videoPause(page, 1500, testInfo);
+      await demo.evidence("US2.2-default-filters");
+      await demo.pause(1500);
     });
 
     await test.step("US2.3 — Generate report", async () => {
       await page.locator('[data-testid="generate-report-button"]').click();
-      // Wait for results — either data or empty state
       await expect(
         page.getByText(/Total Results|No results found/).first(),
       ).toBeVisible({ timeout: 15_000 });
-      await evidence(page, testInfo, "US2.3-report-generated");
-      await videoPause(page, 3000, testInfo);
+      await demo.evidence("US2.3-report-generated");
+      await demo.pause(3000);
     });
 
     await test.step("US2.4 — Verify tabs are present", async () => {
       await expect(page.locator('[data-testid="tab-summary"]')).toBeVisible();
       await expect(page.locator('[data-testid="tab-detail"]')).toBeVisible();
       await expect(page.locator('[data-testid="tab-trends"]')).toBeVisible();
-      await evidence(page, testInfo, "US2.4-tabs-visible");
-      await videoPause(page, 1000, testInfo);
+      await demo.evidence("US2.4-tabs-visible");
+      await demo.pause(1000);
     });
 
     await test.step("US2.5 — Verify filter summary badges", async () => {
@@ -114,21 +96,19 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(
         page.locator('[data-testid="filter-summary-badges"]'),
       ).toContainText("Receipt to Validation");
-      await evidence(page, testInfo, "US2.5-filter-badges");
-      await videoPause(page, 1000, testInfo);
+      await demo.evidence("US2.5-filter-badges");
+      await demo.pause(1000);
     });
   });
 
   test("US3 — Detail List tab", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
+    const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
-      await showTitleCard(
-        page,
+      await demo.title(
         "User Story 3: TAT Detail List",
         "Sortable, paginated list with milestone timestamps",
-        3000,
-        testInfo,
       );
     });
 
@@ -147,21 +127,19 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
         "true",
         { timeout: 5_000 },
       );
-      await videoPause(page, 2000, testInfo);
-      await evidence(page, testInfo, "US3.1-detail-list-tab");
+      await demo.pause(2000);
+      await demo.evidence("US3.1-detail-list-tab");
     });
   });
 
   test("US4 — Trends tab", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
+    const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
-      await showTitleCard(
-        page,
+      await demo.title(
         "User Story 4: TAT Trends",
         "Time series with aggregation and multi-series comparison",
-        3000,
-        testInfo,
       );
     });
 
@@ -175,25 +153,20 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
 
     await test.step("US4.1 — Switch to Trends tab", async () => {
       await page.locator('[data-testid="tab-trends"]').click();
-      await videoPause(page, 2000, testInfo);
+      await demo.pause(2000);
       await expect(page.locator("#trend-interval")).toBeVisible({
         timeout: 10_000,
       });
-      await evidence(page, testInfo, "US4.1-trends-tab");
+      await demo.evidence("US4.1-trends-tab");
     });
   });
 
   test("US5 — Export", async ({ page }, testInfo) => {
     test.setTimeout(60_000);
+    const demo = createDemoPresentation(page, testInfo);
 
     await test.step("Title card", async () => {
-      await showTitleCard(
-        page,
-        "User Story 5: TAT Export",
-        "Export report data as CSV",
-        3000,
-        testInfo,
-      );
+      await demo.title("User Story 5: TAT Export", "Export report data as CSV");
     });
 
     await test.step("Navigate and generate report", async () => {
@@ -208,8 +181,8 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await expect(page.locator(".cds--overflow-menu").first()).toBeVisible({
         timeout: 5_000,
       });
-      await evidence(page, testInfo, "US5.1-export-menu");
-      await videoPause(page, 2000, testInfo);
+      await demo.evidence("US5.1-export-menu");
+      await demo.pause(2000);
     });
   });
 });

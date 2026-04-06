@@ -303,7 +303,7 @@ function TATFilterBar({ onGenerate }) {
           flexWrap: "wrap",
         }}
       >
-        <div>
+        <div style={{ minWidth: "260px" }}>
           <label
             style={{
               fontSize: "12px",
