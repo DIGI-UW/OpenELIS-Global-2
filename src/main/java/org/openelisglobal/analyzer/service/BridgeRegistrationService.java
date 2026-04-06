@@ -67,11 +67,11 @@ public class BridgeRegistrationService {
     }
 
     /**
-     * Register a FILE analyzer with the bridge, including column mappings for FHIR
-     * parsing.
+     * Register a FILE analyzer with the bridge, including all config needed for
+     * file parsing (column mappings, format, delimiter, skipRows).
      */
     public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern,
-            java.util.Map<String, String> columnMappings) {
+            java.util.Map<String, String> columnMappings, String fileFormat, String delimiter, Integer skipRows) {
         if (!isBridgeConfigured()) {
             return false;
         }
@@ -85,6 +85,15 @@ public class BridgeRegistrationService {
             payload.put("filePattern", filePattern != null ? filePattern : "");
             if (columnMappings != null && !columnMappings.isEmpty()) {
                 payload.put("columnMappings", columnMappings);
+            }
+            if (fileFormat != null && !fileFormat.isBlank()) {
+                payload.put("fileFormat", fileFormat);
+            }
+            if (delimiter != null && !delimiter.isEmpty()) {
+                payload.put("delimiter", delimiter);
+            }
+            if (skipRows != null && skipRows > 0) {
+                payload.put("skipRows", skipRows);
             }
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);

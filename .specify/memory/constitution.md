@@ -1,6 +1,37 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Principle X: Legacy Code Removal
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.1 → 1.10.0
+Change Type: MINOR - New principle added
+Date: 2026-04-06
+
+Added Sections:
+  - Principle X: Legacy Code Removal
+    * NEW: Mandate to address legacy/deprecated code when touched
+    * NEW: Remove or track (same PR, paired PR, or priority issue)
+    * NEW: No dual-write, no legacy-first development
+    * NEW: Ownership follows architecture (component boundaries)
+
+Rationale:
+  Sprint 014 (Madagascar file analyzers) demonstrated the cost of preserving
+  legacy code: OE-side file readers were extended with features that belong
+  in the bridge, FileImportConfiguration was marked @Deprecated but kept in
+  active use, and HARN-* accession formats persisted because they "worked."
+  Each preserved legacy path became the path of least resistance and caused
+  the same capability to be built twice.
+
+Templates Requiring Updates:
+  ⚠️ AGENTS.md - Add Principle X summary
+  ⚠️ CLAUDE.md - Add Principle X to checklist
+
+Follow-up TODOs:
+  - Create priority issue for FileImportConfiguration removal
+  - Create priority issue for OE-side file reader removal
+-->
+
+<!--
 SYNC IMPACT REPORT - V.6 Refactor: Move tool details to Testing Roadmap
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.9.0 → 1.9.1
@@ -1262,6 +1293,42 @@ delivery enables:
 
 **Reference**:
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
+
+### X. Legacy Code Removal (ADDED 2026-04-06)
+
+**MANDATE**: When a feature touches code that uses a legacy or deprecated
+pattern, the legacy path MUST be addressed — not extended, not worked around,
+not silently preserved.
+
+**Rules**:
+
+- **Never extend legacy code**: If a legacy component (entity, service,
+  controller, reader, handler) is superseded by a new architecture, do NOT add
+  features to the legacy path. Build on the target architecture.
+- **Remove or track**: Legacy code encountered during feature work MUST be
+  either (a) removed in the same PR, (b) removed in a paired PR within the same
+  milestone, or (c) tracked as a priority issue with a clear removal plan.
+  Unmarked `@Deprecated` annotations with no tracked removal are prohibited.
+- **No dual-write**: If data is moved from a legacy table/entity to a new one,
+  stop writing to the old one. Do NOT maintain parallel persistence paths.
+- **Ownership follows architecture**: Respect component boundaries. If the
+  bridge owns file parsing, do NOT add parsing logic to OE. If OE owns config,
+  do NOT store config in the bridge. Building the same capability in two places
+  because legacy code exists in one of them is a violation.
+- **Legacy-first development is prohibited**: When building new features, start
+  from the target architecture. Consult legacy code for reference if needed, but
+  implement in the correct location.
+
+**Rationale**: Legacy code causes **context drift** — developers (and AI agents)
+naturally gravitate toward extending what exists instead of building on the
+target architecture. The legacy path becomes the path of least resistance,
+pulling all future work toward the wrong design. Each preserved legacy path
+doubles maintenance surface, creates confusion about which path is
+authoritative, and results in the same capability built in two places.
+
+**Enforcement**: PRs that extend deprecated/legacy patterns MUST document how
+the legacy path will be removed (same PR, paired PR, or tracked issue). Code
+review should ask: "Why is the legacy path still here?"
 
 ---
 

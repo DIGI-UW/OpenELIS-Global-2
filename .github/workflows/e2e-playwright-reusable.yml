@@ -180,12 +180,21 @@ jobs:
             quantstudio-5 \
             quantstudio-7 \
             fluorocycler-xt \
+            wondfo-finecare-fs-205 \
+            tecan-infinite-f50 \
+            thermo-multiskan-fc \
             demo--quantstudio-5 \
             demo--quantstudio-7 \
+            demo--wondfo-finecare-fs-205 \
+            demo--tecan-infinite-f50 \
+            demo--thermo-multiskan-fc \
             demo--fluorocycler-xt; do
             mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
           done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+          # Restart bridge so it re-bootstraps watch directories for all seeded analyzers
+          docker restart openelis-analyzer-bridge
+          sleep 10
 
       # ── Container Startup ───────────────────────────────────────────────────
 
@@ -269,13 +278,22 @@ jobs:
             quantstudio-5 \
             quantstudio-7 \
             fluorocycler-xt \
+            wondfo-finecare-fs-205 \
+            tecan-infinite-f50 \
+            thermo-multiskan-fc \
             demo--quantstudio-5 \
             demo--quantstudio-7 \
+            demo--wondfo-finecare-fs-205 \
+            demo--tecan-infinite-f50 \
+            demo--thermo-multiskan-fc \
             demo--fluorocycler-xt; do
             timeout 120 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
             echo "Found: $dir/incoming"
           done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+          # Restart bridge so it re-bootstraps watch directories for all seeded analyzers
+          docker restart openelis-analyzer-bridge
+          sleep 10
 
       - name: Verify analyzer test mappings
         if: inputs.setup_analyzer_harness
