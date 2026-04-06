@@ -36,11 +36,12 @@ public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void setUp() throws Exception {
-        // Mock startQuery to prevent real network calls and resolve SocketTimeoutException (Issue #3168)
-        Mockito.when(analyzerQueryService.startQuery(Mockito.anyString()))
-                .thenReturn("mock-job-id");
+        // Mock startQuery to prevent real network calls and resolve
+        // SocketTimeoutException (Issue #3168)
+        Mockito.when(analyzerQueryService.startQuery(Mockito.anyString())).thenReturn("mock-job-id");
 
-        // Mock getStatus to provide a default response consistent with the service contract
+        // Mock getStatus to provide a default response consistent with the service
+        // contract
         Mockito.when(analyzerQueryService.getStatus(Mockito.anyString(), Mockito.anyString()))
                 .thenReturn(Map.of("state", "COMPLETED", "progress", 100));
 
@@ -58,7 +59,8 @@ public class SourceOfSampleServiceTest extends BaseWebContextSensitiveTest {
         Mockito.when(analyzerQueryService.getStatus(Mockito.anyString(), Mockito.anyString()))
                 .thenReturn(Map.of("state", "FAILED", "progress", 0));
 
-        // Verify that even when the analyzer fails, the service still returns data correctly
+        // Verify that even when the analyzer fails, the service still returns data
+        // correctly
         SourceOfSampleList = sourceOfSampleService.getAll();
         assertNotNull(SourceOfSampleList);
         assertFalse(SourceOfSampleList.isEmpty());
