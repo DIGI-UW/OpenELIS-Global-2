@@ -10,7 +10,11 @@ import {
   OEToastNotification,
   OEToastNotificationKinds,
 } from "../common/OEToastNotification";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import EQASampleEntry from "../eqa/EQASampleEntry";
