@@ -144,16 +144,20 @@ def parse_args() -> argparse.Namespace:
         "-y", "--yes", action="store_true", help="Skip confirmation prompt"
     )
     parser.add_argument(
-        "target",
-        nargs="?",
+        "--target",
         default="all",
-        choices=["cursor", "claude", "all"],
+        choices=["cursor", "claude", "windsurf", "all"],
         help="Which agent(s) to install to (default: all)",
     )
     parser.add_argument(
         "--legacy-only",
         action="store_true",
         help="Install only legacy SpecKit/OE commands (no packaged skill sources).",
+    )
+    parser.add_argument(
+        "--skills-only",
+        action="store_true",
+        help="Install only packaged skills (no legacy commands). Recommended for Windsurf.",
     )
     return parser.parse_args()
 
@@ -174,6 +178,14 @@ def build_targets(repo_root: Path, target: str) -> list[InstallTarget]:
                 name="Claude Code",
                 commands_dir=repo_root / ".claude" / "commands",
                 skills_dir=repo_root / ".claude" / "skills",
+            )
+        )
+    if target in ("all", "windsurf"):
+        targets.append(
+            InstallTarget(
+                name="Windsurf",
+                commands_dir=repo_root / ".windsurf" / "commands",
+                skills_dir=repo_root / ".windsurf" / "skills",
             )
         )
     return targets
@@ -224,10 +236,16 @@ def main() -> None:
     for target in targets:
         print(f"-> Installing to {target.name}...")
         clean_generated_outputs(target, args.legacy_only)
-        installed_names = install_legacy_commands(target.commands_dir, core_dir, oe_dir)
+        installed_names: set[str] = set()
+        
+        # Install legacy commands unless skills-only mode
+        if not args.skills_only:
+            installed_names = install_legacy_commands(target.commands_dir, core_dir, oe_dir)
+        
         packaged_commands: set[str] = set()
         packaged_skills: set[str] = set()
 
+        # Install packaged skills unless legacy-only mode
         if not args.legacy_only:
             packaged_commands, _ = install_packaged_skill_commands(
                 target.commands_dir, packaged_skills_root, installed_names

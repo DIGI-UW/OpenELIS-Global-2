@@ -4,6 +4,9 @@ Compatibility wrapper for legacy SpecKit command installation.
 
 This delegates to scripts/install-agent-skills.py with --legacy-only so existing
 automation and docs keep working while the project transitions to packaged skills.
+
+Supports: cursor, claude, windsurf, or 'all' (default)
+Note: Windsurf uses skills format (.windsurf/skills/) with SKILL.md files
 """
 
 from __future__ import annotations
