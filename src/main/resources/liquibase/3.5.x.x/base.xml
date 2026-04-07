@@ -12,7 +12,11 @@
 
   <!-- NCE Enhancement - Phase 1: Foundation -->
   <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
+  <!-- Resync menu_seq after nce-012 used MAX(id)+1 instead of sequence -->
+  <include relativeToChangelogFile="true" file="002a-resync-menu-seq.xml"/>
   <!-- Calendar Management + TAT Report permissions (OGC-310) -->
   <include relativeToChangelogFile="true" file="003-calendar-management.xml"/>
+  <!-- Add Audit Trail menu under Reports, deactivate old entries -->
+  <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
 
 </databaseChangeLog>
