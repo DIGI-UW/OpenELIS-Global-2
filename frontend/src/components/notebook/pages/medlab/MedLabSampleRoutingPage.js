@@ -381,7 +381,7 @@ function MedLabSampleRoutingPage({
         const transferRequest = {
           sourceLab: "MEDICAL_LAB",
           sampleItemIds: selectedSampleIds.map((id) => parseInt(id, 10)),
-          requestNotes: `Transfer from medical lab entry ${entryId}`,
+          requestNotes: `Transfer from CTD entry ${entryId}`,
         };
 
         // Step 1: Create biorepository transfer request
@@ -623,7 +623,7 @@ function MedLabSampleRoutingPage({
               bioSampleIds: bioSampleIds,
               destinationType: "ANALYSIS_RETURN",
               destinationDetails:
-                retrievalDestinationDetails || `Medical Lab - Entry ${entryId}`,
+                retrievalDestinationDetails || `CTD - Entry ${entryId}`,
               priorityLevel: "NORMAL",
             };
 
