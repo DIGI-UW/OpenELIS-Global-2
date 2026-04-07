@@ -11,11 +11,8 @@ services:
     ports:
       - "5000:9600"
       - "8085:8080"
-      - "5380:5380"
-      - "6001:6001"
-      - "6002:6002"
     environment:
-      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm"}'
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-analyzer-mock

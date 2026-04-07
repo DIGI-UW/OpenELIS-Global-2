@@ -7,16 +7,18 @@
 # ├──────────┬──────────┬──────────────────────────────────────────────────────┤
 # │ Host     │ Internal │ Service / Protocol                                   │
 # ├──────────┼──────────┼──────────────────────────────────────────────────────┤
-# │ 5050     │ 9600     │ analyzer-mock — ASTM LIS2-A2 (GeneXpert)             │
+# │ 5050     │ 9600     │ analyzer-mock — ASTM LIS2-A2 listen (bridge → mock)  │
 # │ 8085     │ 8080     │ analyzer-mock — HTTP simulate API (all protocols)     │
-# │ 5380     │ 5380     │ analyzer-mock — HL7/MLLP (Mindray BC-5380)           │
-# │ 6001     │ 6001     │ analyzer-mock — HL7/MLLP (Mindray BS-200)            │
-# │ 6002     │ 6002     │ analyzer-mock — HL7/MLLP (Mindray BS-300)            │
 # │ 8442     │ 8443     │ bridge — HTTPS API (registration, health)            │
 # │ 12000    │ 12001    │ bridge — ASTM inbound (analyzers → bridge)           │
-# │ 2575     │ 2575     │ bridge — HL7/MLLP inbound (analyzers → bridge)       │
+# │ 2575     │ 2575     │ bridge — HL7/MLLP inbound (mock → bridge)            │
 # │ (none)   │ (fs)     │ bridge — FILE watchers (/data/analyzer-imports/*)    │
 # └──────────┴──────────┴──────────────────────────────────────────────────────┘
+#
+# Protocol flows:
+#   ASTM:  test → POST mock API → mock pushes via analyzer-network IP → bridge
+#   HL7:   test → POST mock API → mock pushes MLLP to bridge:2575
+#   FILE:  test → POST mock API → mock copies fixture to shared volume → bridge watches
 #
 # Simulate API examples:
 #   POST http://localhost:8085/simulate/astm/genexpert_astm
@@ -37,11 +39,8 @@ services:
     ports:
       - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
       - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
-      - "5380:5380" # HL7 listen (Mindray BC-5380)
-      - "6001:6001" # HL7 listen (Mindray BS-200)
-      - "6002:6002" # HL7 listen (Mindray BS-300)
     environment:
-      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm"}'
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-analyzer-mock
