@@ -108,7 +108,7 @@ public class ReportNonConformingEventController extends BaseController {
         NcEvent event = nonConformingEventWorker.create(labOrderNumber, Arrays.asList(sampleItemIds.split(",")),
                 systemUser.getId(), form.getNceNumber());
         form.setNceNumber(event.getNceNumber());
-        form.setId(event.getId());
+        form.setId(String.valueOf(event.getId()));
 
         form.setLabOrderNumber(labOrderNumber);
         Sample sample = getSampleForLabNumber(labOrderNumber);
@@ -132,7 +132,7 @@ public class ReportNonConformingEventController extends BaseController {
         form.setSite(requesterService.getReferringSiteName());
         form.setPrescriberName(requesterService.getRequesterLastFirstName());
 
-        form.setNceCategories(nceCategoryService.getAllNceCategories());
+        form.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
 
         Date today = Calendar.getInstance().getTime();
         form.setReportDate(DateUtil.formatDateAsText(today));

@@ -10,7 +10,7 @@
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.7.0, 8 core principles)
+   governance (v1.10.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -174,7 +174,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-04-05 **Constitution Version:** 1.9.1
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.10.0
 
 ## Recent Changes
 
