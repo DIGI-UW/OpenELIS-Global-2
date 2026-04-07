@@ -88,9 +88,6 @@
     "pw:test:headed": "playwright test --headed",
     "pw:test:video": "npm run pw:test:harness-demo-video"
   },
-  "resolutions": {
-    "**/@types/react": "16.14.5"
-  },
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.2",
