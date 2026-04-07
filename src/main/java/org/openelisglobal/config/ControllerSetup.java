@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @ControllerAdvice
@@ -56,6 +57,14 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleLIMSRuntimeException(RuntimeException ex, WebRequest request) {
         LogEvent.logError(ex);
         return new ResponseEntity<>("Check server logs", new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(value = { ResponseStatusException.class })
+    protected ResponseEntity<Object> handleResponseStatusException(ResponseStatusException ex, WebRequest request) {
+        LogEvent.logWarn(this.getClass().getName(), "handleResponseStatusException",
+                ex.getStatusCode() + (ex.getReason() != null ? ": " + ex.getReason() : ""));
+        String body = ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString();
+        return new ResponseEntity<>(body, new HttpHeaders(), ex.getStatusCode());
     }
 
     @Override
