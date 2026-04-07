@@ -306,8 +306,8 @@
                     RETURNING id INTO new_loc_id;
 
                     -- Insert English value
-                    INSERT INTO clinlims.localization_value (id, locale, localized_value, localization_id, lastupdated)
-                    VALUES (nextval('clinlims.localization_value_seq'), 'en', cat_record.name, new_loc_id, NOW());
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'en', cat_record.name, NOW());
 
                     -- Update nce_category with localization reference
                     UPDATE clinlims.nce_category SET name_localization_id = new_loc_id WHERE id = cat_record.id;
@@ -345,8 +345,8 @@
                     RETURNING id INTO new_loc_id;
 
                     -- Insert English value
-                    INSERT INTO clinlims.localization_value (id, locale, localized_value, localization_id, lastupdated)
-                    VALUES (nextval('clinlims.localization_value_seq'), 'en', type_record.name, new_loc_id, NOW());
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'en', type_record.name, NOW());
 
                     -- Update nce_type with localization reference
                     UPDATE clinlims.nce_type SET name_localization_id = new_loc_id WHERE id = type_record.id;
