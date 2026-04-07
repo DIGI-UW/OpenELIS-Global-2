@@ -57,6 +57,9 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
+import org.openelisglobal.spring.util.SpringContext;
 
 @RestController
 public class RestStudyElectronicOrdersController extends BaseController {
@@ -152,7 +155,7 @@ public class RestStudyElectronicOrdersController extends BaseController {
                 if (form.getSearchType() != null) {
                     LogEvent.logInfo(this.getClass().getSimpleName(), "showStudyElectronicOrders",
                             "Searching for electronic orders with searchType: " + form.getSearchType());
-                    electronicOrders = electronicOrderService.searchForElectronicOrders(form);
+                    electronicOrders = electronicOrderService.searchForStudyElectronicOrders(form);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "showStudyElectronicOrders",
                             "Found " + electronicOrders.size() + " electronic orders");
                     eOrderDisplayItems = convertToDisplayItem(electronicOrders);
@@ -357,7 +360,7 @@ public class RestStudyElectronicOrdersController extends BaseController {
             electronicOrder.setQaAuthorizer(qaAuthorizer);
 
             // Set status to Cancelled (status_id = 22 for EXTERNAL_ORDER Cancelled)
-            electronicOrder.setStatusId("22");
+            electronicOrder.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(ExternalOrderStatus.Cancelled));
 
             // Update the electronic order
             electronicOrderService.update(electronicOrder);

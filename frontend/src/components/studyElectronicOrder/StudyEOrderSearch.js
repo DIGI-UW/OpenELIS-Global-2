@@ -26,8 +26,6 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
   const [endDate, setEndDate] = useState("");
   const [statusId, setStatusId] = useState("");
   const [statusOptions, setStatusOptions] = useState([]);
-  const [organizationId, setOrganizationId] = useState("");
-  const [organizationOptions, setOrganizationOptions] = useState([]);
   const [searchCompleted, setSearchCompleted] = useState(false);
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
@@ -40,20 +38,10 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
 
   useEffect(() => {
     getFromOpenElisServer(
-      "/rest/StudyElectronicOrders",
-      handleElectronicOrders,
-    );
-    getFromOpenElisServer(
       "/rest/displayList/ELECTRONIC_ORDER_STATUSES",
       handleOrderStatus,
     );
   }, []);
-
-  const handleElectronicOrders = (response) => {
-    if (response && response.organizationList) {
-      setOrganizationOptions(response.organizationList);
-    }
-  };
 
   const handleOrderStatus = (response) => {
     setStatusOptions(response || []);
@@ -75,13 +63,6 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
     performSearch({
       searchType: "IDENTIFIER",
       searchValue: searchValue,
-    });
-  }
-
-  function searchByFacility() {
-    performSearch({
-      searchType: "FACILITY",
-      organizationId: organizationId,
     });
   }
 
@@ -190,7 +171,7 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
         <hr />
         <FormattedMessage
           id="study.eorder.search.patient_facility.title"
-          defaultMessage="Search by Patient Code or Facility"
+          defaultMessage="Search by Patient Code"
         />
       </Column>
       <Column lg={16} md={8} sm={4}>
