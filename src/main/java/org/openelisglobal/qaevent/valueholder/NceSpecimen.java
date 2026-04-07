@@ -1,18 +1,38 @@
 package org.openelisglobal.qaevent.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 
-public class NceSpecimen extends BaseObject<String> {
-    private String id;
+@Entity
+@Table(name = "nce_specimen", schema = "clinlims")
+public class NceSpecimen extends BaseObject<Integer> {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nce_specimen_seq_gen")
+    @SequenceGenerator(name = "nce_specimen_seq_gen", sequenceName = "nce_specimen_id_seq", schema = "clinlims", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
+
+    @Column(name = "nce_id")
     private Integer nceId;
+
+    @Column(name = "sample_item_id")
     private Integer sampleItemId;
 
-    public String getId() {
+    @Override
+    public Integer getId() {
         return id;
     }
 
-    public void setId(String id) {
+    @Override
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -39,7 +59,8 @@ public class NceSpecimen extends BaseObject<String> {
         if (o == null || getClass() != o.getClass())
             return false;
         NceSpecimen that = (NceSpecimen) o;
-        return id == that.id && Objects.equals(nceId, that.nceId) && Objects.equals(sampleItemId, that.sampleItemId);
+        return Objects.equals(id, that.id) && Objects.equals(nceId, that.nceId)
+                && Objects.equals(sampleItemId, that.sampleItemId);
     }
 
     @Override

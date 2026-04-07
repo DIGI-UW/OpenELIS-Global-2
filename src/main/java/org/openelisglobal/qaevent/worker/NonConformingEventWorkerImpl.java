@@ -41,11 +41,11 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     @Autowired
     private SampleItemService sampleItemService;
     @Autowired
+    private NceActionLogService nceActionLogService;
+    @Autowired
     private NceCategoryService nceCategoryService;
     @Autowired
     private NceTypeService nceTypeService;
-    @Autowired
-    private NceActionLogService nceActionLogService;
 
     @Override
     public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber) {
@@ -53,25 +53,32 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         event.setSysUserId(sysUserId);
         event.setNceNumber(nceNumber);
         event.setLabOrderNumber(labOrderId);
+        event.setReportDate(new java.sql.Date(System.currentTimeMillis()));
         event = ncEventService.save(event);
         for (String specimenId : specimens) {
-            NceSpecimen specimen = new NceSpecimen();
-            specimen.setNceId(Integer.parseInt(event.getId()));
-            specimen.setSampleItemId(Integer.parseInt(specimenId));
-            specimen.setSysUserId(sysUserId);
-            nceSpecimenService.save(specimen);
+            Integer nceId = event.getId();
+            Integer sampleItemId = Integer.parseInt(specimenId);
+
+            // Check if this specimen is already linked to this NCE
+            if (!nceSpecimenService.existsByNceIdAndSampleItemId(nceId, sampleItemId)) {
+                NceSpecimen specimen = new NceSpecimen();
+                specimen.setNceId(nceId);
+                specimen.setSampleItemId(sampleItemId);
+                specimen.setSysUserId(sysUserId);
+                nceSpecimenService.save(specimen);
+            }
         }
         return event;
     }
 
     @Override
     public boolean update(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setSysUserId(form.getCurrentUserId());
-            // date from input field come in this pattern
-            Date dateOfEvent = getDate(form.getDateOfEvent(), "dd/MM/yyyy");
-            Date reportDate = getDate(form.getReportDate(), "dd/MM/yyyy");
+            // date from input field - try multiple formats
+            Date dateOfEvent = parseDate(form.getDateOfEvent());
+            Date reportDate = parseDate(form.getReportDate());
 
             ncEvent.setStatus("Pending");
             ncEvent.setReportDate(reportDate);
@@ -80,10 +87,23 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setNameOfReporter(form.getReporterName());
             ncEvent.setPrescriberName(form.getPrescriberName());
             ncEvent.setSite(form.getSite());
+            ncEvent.setTitle(form.getTitle());
             ncEvent.setDescription(form.getDescription());
+            ncEvent.setImmediateAction(form.getImmediateAction());
             ncEvent.setSuspectedCauses(form.getSuspectedCauses());
             ncEvent.setProposedAction(form.getProposedAction());
             ncEvent.setReportingUnitId(form.getReportingUnit());
+
+            // Save NCE enhancement fields
+            if (form.getSeverity() != null && !form.getSeverity().isEmpty()) {
+                ncEvent.setSeverity(form.getSeverity());
+            }
+            if (form.getNceCategoryId() != null && !form.getNceCategoryId().isEmpty()) {
+                ncEvent.setNceCategoryId(Integer.valueOf(form.getNceCategoryId()));
+            }
+            if (form.getNceTypeId() != null && !form.getNceTypeId().isEmpty()) {
+                ncEvent.setNceTypeId(Integer.valueOf(form.getNceTypeId()));
+            }
 
             if (ncEvent.getNameOfReporter() == null || "".equalsIgnoreCase(ncEvent.getNameOfReporter())) {
                 ncEvent.setNameOfReporter(form.getName());
@@ -96,7 +116,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean updateFollowUp(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setStatus("CAPA");
             ncEvent.setLaboratoryComponent(form.getLaboratoryComponent());
@@ -135,11 +155,32 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         return null;
     }
 
+    /**
+     * Parse date string trying multiple formats (MM/dd/yyyy and dd/MM/yyyy).
+     */
+    private Date parseDate(String value) {
+        if (value == null || value.isEmpty()) {
+            return null;
+        }
+        // Try US format first (MM/dd/yyyy) - used by frontend
+        Date result = getDate(value, "MM/dd/yyyy");
+        if (result != null) {
+            return result;
+        }
+        // Try European format (dd/MM/yyyy)
+        result = getDate(value, "dd/MM/yyyy");
+        if (result != null) {
+            return result;
+        }
+        // Try ISO format (yyyy-MM-dd)
+        return getDate(value, "yyyy-MM-dd");
+    }
+
     @Override
     public void initFormForFollowUp(String nceNumber, NonConformingEventForm form)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        form.setNceCategories(nceCategoryService.getAllNceCategories());
-        form.setNceTypes(nceTypeService.getAllNceTypes());
+        form.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
+        form.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
         form.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         form.setSeverityConsequencesList(
@@ -160,11 +201,13 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             form.setReporterName(event.getNameOfReporter());
             form.setPrescriberName(event.getPrescriberName());
             form.setSite(event.getSite());
+            form.setTitle(event.getTitle());
             form.setDescription(event.getDescription());
+            form.setImmediateAction(event.getImmediateAction());
             form.setSuspectedCauses(event.getSuspectedCauses());
             form.setProposedAction(event.getProposedAction());
             form.setNceNumber(event.getNceNumber());
-            form.setId(event.getId());
+            form.setId(String.valueOf(event.getId()));
             form.setLabOrderNumber(event.getLabOrderNumber());
             form.setReportingUnit(event.getReportingUnitId());
 
@@ -215,7 +258,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 al.setDateCompleted(getDate(actionLog.element("dateCompleted").getText(), "dd/MM/yyyy"));
                 al.setPersonResponsible(actionLog.element("personResponsible").getText());
                 if (actionLog.element("id") != null) {
-                    al.setId(actionLog.element("id").getText());
+                    al.setId(Integer.valueOf(actionLog.element("id").getText()));
                 }
                 nceActionLogList.add(al);
             }
@@ -261,7 +304,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             List<NceActionLog> actionLogs = form.getActionLog();
             if (actionLogs != null) {
                 for (NceActionLog actionLog : actionLogs) {
-                    actionLog.setNcEventId(Integer.parseInt(ncEvent.getId()));
+                    actionLog.setNcEventId(ncEvent.getId());
                     actionLog.setSysUserId(form.getCurrentUserId());
                     nceActionLogService.save(actionLog);
                 }
@@ -271,7 +314,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean updateCorrectiveAction(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy")); // Convert the string to a Date
@@ -286,7 +329,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public boolean resolveNCEvent(NonConformingEventForm form) {
-        NcEvent ncEvent = ncEventService.get(form.getId());
+        NcEvent ncEvent = ncEventService.get(Integer.valueOf(form.getId()));
         if (ncEvent != null) {
             ncEvent.setDiscussionDate(form.getDiscussionDate());
             setActionLogs(form, ncEvent);
