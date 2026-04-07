@@ -21,12 +21,17 @@ import {
 import { getAnalyzers } from "../../../services/analyzerService";
 import "./FileImportConfiguration.css";
 
-const FileImportConfiguration = ({ configuration, open, onClose }) => {
+const FileImportConfiguration = ({
+  configuration,
+  open,
+  onClose,
+  preselectedAnalyzerId,
+}) => {
   const intl = useIntl();
-  const isEditMode = !!configuration;
 
   const [formData, setFormData] = useState({
     analyzerId: null,
+    fileFormat: "CSV",
     importDirectory: "",
     filePattern: "*.csv",
     archiveDirectory: "",
@@ -41,8 +46,13 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState(null);
   const [availableAnalyzers, setAvailableAnalyzers] = useState([]);
+  const [autoLoadedConfig, setAutoLoadedConfig] = useState(null);
 
-  // Load analyzers for dropdown
+  // Use explicit configuration prop, or auto-loaded config from preselectedAnalyzerId
+  const effectiveConfiguration = configuration || autoLoadedConfig;
+  const isEditMode = !!effectiveConfiguration;
+
+  // Load analyzers for dropdown, and auto-load existing config if preselectedAnalyzerId
   useEffect(() => {
     if (open) {
       getAnalyzers({}, (data) => {
@@ -50,32 +60,48 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
           data && Array.isArray(data.analyzers) ? data.analyzers : [];
         setAvailableAnalyzers(list);
       });
+
+      // If we have a preselected analyzer and no explicit configuration,
+      // try to load the existing file import config for this analyzer
+      if (preselectedAnalyzerId && !configuration) {
+        getConfigurationByAnalyzerId(preselectedAnalyzerId, (data) => {
+          if (data && data.id && !data.error) {
+            setAutoLoadedConfig(data);
+          }
+        });
+      }
+    } else {
+      setAutoLoadedConfig(null);
     }
-  }, [open]);
+  }, [open, preselectedAnalyzerId, configuration]);
 
   // Initialize form data when configuration changes
   useEffect(() => {
-    if (configuration) {
+    if (effectiveConfiguration) {
       setFormData({
-        analyzerId: configuration.analyzerId,
-        importDirectory: configuration.importDirectory || "",
-        filePattern: configuration.filePattern || "*.csv",
-        archiveDirectory: configuration.archiveDirectory || "",
-        errorDirectory: configuration.errorDirectory || "",
-        columnMappings: configuration.columnMappings
-          ? JSON.stringify(configuration.columnMappings, null, 2)
+        analyzerId: effectiveConfiguration.analyzerId,
+        fileFormat: effectiveConfiguration.fileFormat || "CSV",
+        importDirectory: effectiveConfiguration.importDirectory || "",
+        filePattern: effectiveConfiguration.filePattern || "*.csv",
+        archiveDirectory: effectiveConfiguration.archiveDirectory || "",
+        errorDirectory: effectiveConfiguration.errorDirectory || "",
+        columnMappings: effectiveConfiguration.columnMappings
+          ? JSON.stringify(effectiveConfiguration.columnMappings, null, 2)
           : "{}",
-        delimiter: configuration.delimiter || ",",
+        delimiter: effectiveConfiguration.delimiter || ",",
         hasHeader:
-          configuration.hasHeader !== undefined
-            ? configuration.hasHeader
+          effectiveConfiguration.hasHeader !== undefined
+            ? effectiveConfiguration.hasHeader
             : true,
         active:
-          configuration.active !== undefined ? configuration.active : true,
+          effectiveConfiguration.active !== undefined
+            ? effectiveConfiguration.active
+            : true,
       });
     } else {
       setFormData({
-        analyzerId: null,
+        analyzerId: preselectedAnalyzerId || null,
+        fileFormat: "CSV",
         importDirectory: "",
         filePattern: "*.csv",
         archiveDirectory: "",
@@ -88,7 +114,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
     }
     setErrors({});
     setNotification(null);
-  }, [configuration, open]);
+  }, [effectiveConfiguration, open, preselectedAnalyzerId]);
 
   // Handle field changes
   const handleFieldChange = (field, value) => {
@@ -163,6 +189,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
 
     const submitData = {
       analyzerId: formData.analyzerId,
+      fileFormat: formData.fileFormat || "CSV",
       importDirectory: formData.importDirectory.trim(),
       filePattern: formData.filePattern || "*.csv",
       archiveDirectory: formData.archiveDirectory.trim() || null,
@@ -205,7 +232,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
     };
 
     if (isEditMode) {
-      updateConfiguration(configuration.id, submitData, callback);
+      updateConfiguration(effectiveConfiguration.id, submitData, callback);
     } else {
       createConfiguration(submitData, callback);
     }
@@ -216,6 +243,23 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
     id: analyzer.id,
     text: analyzer.name || `Analyzer ${analyzer.id}`,
   }));
+
+  const fileFormatOptions = [
+    {
+      id: "CSV",
+      text: intl.formatMessage({ id: "fileImport.format.csv" }),
+    },
+    {
+      id: "TSV",
+      text: intl.formatMessage({ id: "fileImport.format.tsv" }),
+    },
+    {
+      id: "EXCEL",
+      text: intl.formatMessage({ id: "fileImport.format.excel" }),
+    },
+  ];
+
+  const hideDelimitedFileOptions = formData.fileFormat === "EXCEL";
 
   return (
     <ComposedModal
@@ -266,6 +310,37 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
             invalidText={errors.analyzerId}
             required
             disabled={isEditMode} // Don't allow changing analyzer in edit mode
+          />
+          {analyzerOptions.length === 0 && (
+            <p
+              className="file-import-configuration-helper"
+              data-testid="file-import-configuration-empty-plugin-message"
+            >
+              {intl.formatMessage({
+                id: "file.import.configuration.analyzer.emptyState",
+              })}
+            </p>
+          )}
+
+          <Dropdown
+            id="file-import-format"
+            data-testid="file-import-configuration-file-format-dropdown"
+            titleText={intl.formatMessage({
+              id: "file.import.configuration.fileFormat",
+            })}
+            label={intl.formatMessage({
+              id: "file.import.configuration.fileFormat.placeholder",
+            })}
+            items={fileFormatOptions}
+            selectedItem={
+              fileFormatOptions.find((opt) => opt.id === formData.fileFormat) ||
+              fileFormatOptions[0]
+            }
+            itemToString={(item) => (item ? item.text : "")}
+            onChange={({ selectedItem }) =>
+              handleFieldChange("fileFormat", selectedItem?.id || "CSV")
+            }
+            required
           />
 
           <TextInput
@@ -358,29 +433,35 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
             })}
           />
 
-          <TextInput
-            id="file-import-delimiter"
-            data-testid="file-import-configuration-delimiter-input"
-            labelText={intl.formatMessage({
-              id: "file.import.configuration.delimiter",
-            })}
-            placeholder=","
-            value={formData.delimiter}
-            onChange={(e) => handleFieldChange("delimiter", e.target.value)}
-            helperText={intl.formatMessage({
-              id: "file.import.configuration.delimiter.helperText",
-            })}
-          />
+          {!hideDelimitedFileOptions && (
+            <>
+              <TextInput
+                id="file-import-delimiter"
+                data-testid="file-import-configuration-delimiter-input"
+                labelText={intl.formatMessage({
+                  id: "file.import.configuration.delimiter",
+                })}
+                placeholder=","
+                value={formData.delimiter}
+                onChange={(e) => handleFieldChange("delimiter", e.target.value)}
+                helperText={intl.formatMessage({
+                  id: "file.import.configuration.delimiter.helperText",
+                })}
+              />
 
-          <Checkbox
-            id="file-import-has-header"
-            data-testid="file-import-configuration-has-header-checkbox"
-            labelText={intl.formatMessage({
-              id: "file.import.configuration.hasHeader",
-            })}
-            checked={formData.hasHeader}
-            onChange={(checked) => handleFieldChange("hasHeader", checked)}
-          />
+              <Checkbox
+                id="file-import-has-header"
+                data-testid="file-import-configuration-has-header-checkbox"
+                labelText={intl.formatMessage({
+                  id: "file.import.configuration.hasHeader",
+                })}
+                checked={formData.hasHeader}
+                onChange={(_, { checked }) =>
+                  handleFieldChange("hasHeader", checked)
+                }
+              />
+            </>
+          )}
 
           <Checkbox
             id="file-import-active"
@@ -389,7 +470,7 @@ const FileImportConfiguration = ({ configuration, open, onClose }) => {
               id: "file.import.configuration.active",
             })}
             checked={formData.active}
-            onChange={(checked) => handleFieldChange("active", checked)}
+            onChange={(_, { checked }) => handleFieldChange("active", checked)}
           />
         </FormGroup>
       </ModalBody>

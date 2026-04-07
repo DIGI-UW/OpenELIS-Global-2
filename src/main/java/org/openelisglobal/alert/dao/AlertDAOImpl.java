@@ -1,5 +1,6 @@
 package org.openelisglobal.alert.dao;
 
+import java.util.Collections;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -26,12 +27,22 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
     @Override
     @Transactional(readOnly = true)
     public List<Alert> getAlertsByEntity(String entityType, Long entityId) {
+        if (entityType == null) {
+            return Collections.emptyList();
+        }
         try {
-            String hql = "FROM Alert a WHERE a.alertEntityType = :entityType AND a.alertEntityId = :entityId "
-                    + "ORDER BY a.startTime DESC";
+            String hql;
+            if (entityId != null) {
+                hql = "FROM Alert a WHERE a.alertEntityType = :entityType AND a.alertEntityId = :entityId "
+                        + "ORDER BY a.startTime DESC";
+            } else {
+                hql = "FROM Alert a WHERE a.alertEntityType = :entityType ORDER BY a.startTime DESC";
+            }
             Query<Alert> query = entityManager.unwrap(Session.class).createQuery(hql, Alert.class);
             query.setParameter("entityType", entityType);
-            query.setParameter("entityId", entityId);
+            if (entityId != null) {
+                query.setParameter("entityId", entityId);
+            }
             return query.list();
         } catch (Exception e) {
             logger.error("Error retrieving alerts for entity type: {}, ID: {}", entityType, entityId, e);
@@ -70,14 +81,25 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
     @Override
     @Transactional(readOnly = true)
     public Long countActiveAlertsForEntity(String entityType, Long entityId) {
+        if (entityType == null) {
+            return 0L;
+        }
         try {
-            String sql = "SELECT COUNT(*) FROM clinlims.alert a " + "WHERE a.alert_entity_type = :entityType "
-                    + "AND a.alert_entity_id = :entityId " + "AND a.status IN ('OPEN', 'ACKNOWLEDGED')";
+            String sql;
+            if (entityId != null) {
+                sql = "SELECT COUNT(*) FROM clinlims.alert a " + "WHERE a.alert_entity_type = :entityType "
+                        + "AND a.alert_entity_id = :entityId " + "AND a.status IN ('OPEN', 'ACKNOWLEDGED')";
+            } else {
+                sql = "SELECT COUNT(*) FROM clinlims.alert a " + "WHERE a.alert_entity_type = :entityType "
+                        + "AND a.status IN ('OPEN', 'ACKNOWLEDGED')";
+            }
 
             @SuppressWarnings("unchecked")
             Query<Number> query = (Query<Number>) entityManager.unwrap(Session.class).createNativeQuery(sql);
             query.setParameter("entityType", entityType);
-            query.setParameter("entityId", entityId);
+            if (entityId != null) {
+                query.setParameter("entityId", entityId);
+            }
 
             Number count = query.uniqueResult();
             return count != null ? count.longValue() : 0L;

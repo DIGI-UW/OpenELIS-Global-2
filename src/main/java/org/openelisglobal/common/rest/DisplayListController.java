@@ -294,19 +294,19 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_EDUCATION);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
     }
 
     @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_MARITAL_STATUS);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
     }
 
     @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_NATIONALITY);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
     }
 
     @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -449,6 +449,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
+        configs.put(Property.EQA_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.EQA_ENABLED));
         return configs;
     }
 

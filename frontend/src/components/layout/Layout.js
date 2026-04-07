@@ -7,6 +7,10 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { useSideNavPreference } from "./useSideNavPreference";
 import { AlertDialog } from "../common/CustomNotification";
+import {
+  languages as defaultLanguages,
+  buildLanguagesFromConfig,
+} from "../../languages";
 
 export const ConfigurationContext = createContext(null);
 export const NotificationContext = createContext(null);
@@ -23,6 +27,8 @@ export default function Layout(props) {
   const [configurationProperties, setConfigurationProperties] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [supportedLocales, setSupportedLocales] = useState([]);
+  const [enabledLanguages, setEnabledLanguages] = useState(defaultLanguages);
 
   // Determine layout config from props or route-based fallbacks
   const isStorageContext =
@@ -88,6 +94,17 @@ export default function Layout(props) {
     setResetConfig(false);
   }, [userSessionDetails.authenticated, resetConfig]);
 
+  // Fetch supported locales from backend
+  useEffect(() => {
+    getFromOpenElisServer("/rest/supportedlocales/active", (response) => {
+      if (response && Array.isArray(response)) {
+        setSupportedLocales(response);
+        const builtLanguages = buildLanguagesFromConfig(response);
+        setEnabledLanguages(builtLanguages);
+      }
+    });
+  }, []);
+
   return (
     <ConfigurationContext.Provider
       value={{
@@ -95,6 +112,8 @@ export default function Layout(props) {
         reloadConfiguration: () => {
           setResetConfig(true);
         },
+        supportedLocales: supportedLocales,
+        enabledLanguages: enabledLanguages,
       }}
     >
       <NotificationContext.Provider

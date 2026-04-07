@@ -13,7 +13,6 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,7 +101,7 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         Timestamp lastReport = SpringContext.getBean(IReportTrackingService.class)
                 .getTimeOfLastNamedReport(reportSample, ReportTrackingService.ReportType.PATIENT, requestedReport);
         Boolean mayBeDuplicate = lastReport != null;
-        Date maxCompleationDate = null;
+        Timestamp maxCompleationDate = null;
         long maxCompleationTime = 0L;
 
         for (Analysis analysis : analysisList) {
@@ -163,7 +162,7 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         }
 
         if (maxCompleationDate != null) {
-            data.setCompleationdate(DateUtil.convertSqlDateToStringDate(maxCompleationDate));
+            data.setCompleationdate(DateUtil.convertTimestampToStringDate(maxCompleationDate));
         }
         data.setDuplicateReport(mayBeDuplicate);
         data.setStatus(atLeastOneAnalysisNotValidated ? MessageUtil.getMessage("report.status.partial")
