@@ -253,16 +253,10 @@ jobs:
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           DB_CONTAINER: openelisglobal-database
 
-      - name: Post-seed setup (permissions + bridge restart)
+      - name: Fix analyzer-imports permissions after seeding
         if: inputs.setup_analyzer_harness
         run: |
-          # Fix permissions on all directories created by seed script / autoCreateFromProfile
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
-          # Restart bridge so it re-bootstraps watch directories for all seeded analyzers
-          docker restart openelis-analyzer-bridge
-          # Wait for bridge to be healthy again (not a fixed sleep)
-          timeout 60 bash -c 'until curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health > /dev/null 2>&1; do sleep 2; done'
-          echo "Bridge is healthy after restart."
 
       # ── Memory Instrumentation ─────────────────────────────────────────────
 
