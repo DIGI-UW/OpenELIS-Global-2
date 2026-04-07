@@ -192,9 +192,6 @@ jobs:
             mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
           done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
-          # Restart bridge so it re-bootstraps watch directories for all seeded analyzers
-          docker restart openelis-analyzer-bridge
-          sleep 10
 
       # ── Container Startup ───────────────────────────────────────────────────
 
