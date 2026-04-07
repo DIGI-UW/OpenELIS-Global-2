@@ -41,7 +41,7 @@ _Goal: Upgrade React 17 → 18 and Carbon to latest v11. Remove legacy
 carbon-components._
 
 - [ ] T001 [M1] Create branch
-      `feat/016-unified-app-navigation-m1-frontend-modern` from `develop`
+      `feat/016-unified-app-navigation-m1-frontend-modernization` from `develop`
 - [ ] T002 [M1] Update React to ^18.2.0 and Carbon to latest v11 in
       `frontend/package.json`
 - [ ] T003 [M1] Remove `carbon-components` legacy dependency from
@@ -70,8 +70,8 @@ MenuConfigurationHandler._
       `feat/016-unified-app-navigation-m2-backend-config` from `develop` (or M1
       if merged)
 - [ ] T012 [M2] Create Liquibase migration
-      `src/main/resources/db/changelog/2026-04-menu-navigation-enhancements.xml`
-- [ ] T013 [M2] Update `src/main/resources/db/changelog/changelog-master.xml` to
+      `src/main/resources/liquibase/2026-04-menu-navigation-enhancements.xml`
+- [ ] T013 [M2] Update `src/main/resources/liquibase/base-changelog.xml` to
       include new migration
 - [ ] T014 [M2] Write ORM validation test
       `src/test/java/org/openelisglobal/menu/valueholder/MenuValidationTest.java`

@@ -104,14 +104,14 @@ sections with a single global sidebar component.
 
 #### FR3: Role-Based Access Control
 
-- Extend backend menu model with `requiredRole` attribute (single role for
-  simplicity)
-- Support multiple roles per menu item via multiple `requiredRole` entries in
-  JSON config
+- Extend backend menu model with `requiredRoles` attribute as an array of Spring
+  Security role keys
+- Support multiple roles per menu item - show item if user has ANY of the listed
+  roles (OR semantics)
 - Filter menu items based on user roles in `/rest/menu` API using Spring
   Security role keys (e.g., `GLOBAL_ADMIN`)
 - Maintain security by enforcing server-side filtering
-- Treat omitted or empty `requiredRole` as visible to all authenticated users
+- Treat omitted or empty `requiredRoles` as visible to all authenticated users
 
 #### FR4: Backend Enhancements
 
@@ -147,7 +147,7 @@ sections with a single global sidebar component.
   not `MenuValueholder`)
 - DAO: `MenuDAO` with HQL queries only
 - Service: `MenuService` with transaction management
-- Controller: `MenuRestController` with role filtering
+- Controller: `MenuController` with role filtering
 
 #### V. Test-Driven Development
 
@@ -176,7 +176,7 @@ public class Menu extends BaseObject<String> {
     private String displayKey;
     private String actionURL;  // Matches existing entity field name
     private String iconName;
-    private String requiredRole;
+    private List<String> requiredRoles;  // Array of role keys
     private UUID fhirUuid;
     private Integer presentationOrder;  // Matches existing entity field name
 }
@@ -191,7 +191,7 @@ public class Menu extends BaseObject<String> {
       "id": "admin",
       "displayKey": "sidenav.label.admin",
       "iconName": "Settings",
-      "requiredRole": "GLOBAL_ADMIN",
+      "requiredRoles": ["GLOBAL_ADMIN"],
       "children": [...]
     }
   ]

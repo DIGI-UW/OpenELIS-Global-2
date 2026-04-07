@@ -128,7 +128,7 @@ src/main/java/org/openelisglobal/
 
 src/main/resources/
 ├── configuration/menus/menus.json           # NEW: Base menu configuration
-└── db/changelog/                            # Liquibase migrations
+└── liquibase/                              # Liquibase migrations (included via base-changelog.xml)
 
 frontend/src/components/
 ├── navigation/
@@ -191,10 +191,13 @@ React frontend (`frontend/src/`). New files concentrated in `menu/` package
 
 - [x] **Controller Tests**: REST API endpoints (Traditional Spring MVC)
 
-  - Template: `.specify/templates/testing/WebMvcTestController.java.template`
+  - Template:
+    `.specify/templates/testing/BaseWebContextSensitiveTestController.java.template`
   - **Reference**:
     [Testing Roadmap - Backend Testing](../../.specify/guides/testing-roadmap.md#backend-testing)
-  - **Pattern**: Use `BaseWebContextSensitiveTest` + `MockMvc`
+  - **Pattern**: Use `BaseWebContextSensitiveTest` + `MockMvc` with the
+    repository's existing Spring MVC test setup (NOT `@WebMvcTest` /
+    `@MockBean`-driven test slices)
   - **Scope**: `/rest/menu` GET with role filtering, POST with config_source
     tracking
 
@@ -465,21 +468,25 @@ Per Testing Roadmap § "Test Pyramid and Coverage Goals":
 
 Following Testing Roadmap patterns:
 
-- **Backend**: Use `BaseWebContextSensitiveTest` for Spring-context tests
-  - MenuConfigurationHandler loading logic
-  - MenuService role filtering
-  - Menu entity CRUD operations
+- **Backend**: Use isolated Mockito-based tests for service and helper logic
+  - MenuService role filtering logic
+  - Menu config transformation/validation helpers
+  - Permission-mapping utility logic
 - **Frontend**: Jest + React Testing Library
   - GlobalSidebar component rendering
   - MenuIconRegistry icon mapping
   - Role filtering HOC
 
-#### 2. Integration Tests
+#### 2. Integration / Spring-context Tests
 
-- End-to-end menu loading pipeline
-- Configuration reload with provenance tracking
-- API role-based filtering
-- Database migration verification
+- **Backend**: Use `BaseWebContextSensitiveTest` for Spring-context and
+  persistence-backed tests
+  - MenuConfigurationHandler loading logic
+  - Menu entity CRUD operations
+  - API role-based filtering
+  - Configuration reload with provenance tracking
+  - End-to-end menu loading pipeline
+  - Database migration verification
 
 #### 3. E2E Tests (Playwright)
 
@@ -531,8 +538,11 @@ psql -d openelis -c "\d menu"  # Check new columns exist
 # Test config loading
 curl -X GET "http://localhost:8080/openelis-global/rest/menu" | jq .
 
-# Verify role filtering
-curl -X GET "http://localhost:8080/openelis-global/rest/menu" -H "X-OPENELIS-USER-ROLE:REGULAR_USER"
+# Verify role filtering with real authenticated users
+curl -X GET "http://localhost:8080/openelis-global/rest/menu" \
+  -u "$OPENELIS_REGULAR_USERNAME:$OPENELIS_REGULAR_PASSWORD" | jq .
+curl -X GET "http://localhost:8080/openelis-global/rest/menu" \
+  -u "$OPENELIS_ADMIN_USERNAME:$OPENELIS_ADMIN_PASSWORD" | jq .
 
 # Run backend tests
 mvn test -Dtest=MenuServiceTest
