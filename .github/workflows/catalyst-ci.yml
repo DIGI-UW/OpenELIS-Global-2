@@ -1,4 +1,4 @@
-name: Catalyst CI Tests
+name: Projects / Catalyst
 
 on:
   push:
@@ -15,13 +15,17 @@ on:
 
 jobs:
   test-catalyst:
+    name: ${{ matrix.display }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project:
-          - catalyst-gateway
-          - catalyst-agents
-          - catalyst-mcp
+        include:
+          - project: catalyst-gateway
+            display: Gateway
+          - project: catalyst-agents
+            display: Agents
+          - project: catalyst-mcp
+            display: MCP
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,6 +53,21 @@ jobs:
         working-directory: projects/catalyst/${{ matrix.project }}
         run: |
           uv sync --frozen --no-install-project --extra dev
+
+      - name: Check code formatting (Ruff)
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run ruff format --check .
+
+      - name: Lint code (Ruff)
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run ruff check .
+
+      - name: Type check (mypy)
+        working-directory: projects/catalyst/${{ matrix.project }}
+        run: |
+          uv run mypy src/ || true  # Non-blocking for now
 
       - name: Run tests
         working-directory: projects/catalyst/${{ matrix.project }}

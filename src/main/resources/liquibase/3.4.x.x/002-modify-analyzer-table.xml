@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- All modifications to the legacy analyzer table and related legacy tables -->
+
+    <!-- Step 1: Standardize column naming on legacy tables -->
+    <changeSet id="011-002-01-standardize-lastupdated-columns" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <or>
+                <columnExists tableName="analyzer" columnName="lastupdated"/>
+                <columnExists tableName="analyzer_test_map" columnName="lastupdated"/>
+                <columnExists tableName="ANALYZER_RESULTS" columnName="LASTUPDATED"/>
+            </or>
+        </preConditions>
+        <comment>Rename lastupdated to last_updated in legacy analyzer tables to match BaseObject convention</comment>
+        <renameColumn tableName="analyzer"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+        <renameColumn tableName="analyzer_test_map"
+                      oldColumnName="lastupdated"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+        <renameColumn tableName="ANALYZER_RESULTS"
+                      oldColumnName="LASTUPDATED"
+                      newColumnName="last_updated"
+                      columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <!-- Step 2: Add analyzer_type_id FK column -->
+    <changeSet id="011-002-02-widen-name-and-add-structural-columns" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="analyzer_type_id"/>
+            </not>
+        </preConditions>
+        <comment>Add analyzer_type_id FK to analyzer (has_setup_page and name widening already handled by 2.3.x.x)</comment>
+        <addColumn tableName="analyzer">
+            <column name="analyzer_type_id" type="NUMERIC(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="analyzer"
+            baseColumnNames="analyzer_type_id"
+            constraintName="fk_analyzer_analyzer_type"
+            referencedTableName="analyzer_type"
+            referencedColumnNames="id"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="analyzer" constraintName="fk_analyzer_analyzer_type"/>
+            <dropColumn tableName="analyzer" columnName="analyzer_type_id"/>
+        </rollback>
+    </changeSet>
+
+    <!-- Step 3: Add configuration columns directly to analyzer (2-table model) -->
+    <changeSet id="011-002-03-add-config-columns-to-analyzer" author="madagascar-analyzer-integration">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="analyzer" columnName="ip_address"/>
+            </not>
+        </preConditions>
+        <comment>Add operational configuration columns directly to analyzer (no intermediate table)</comment>
+        <addColumn tableName="analyzer">
+            <column name="ip_address" type="VARCHAR(15)"/>
+            <column name="port" type="INTEGER"/>
+            <column name="protocol_version" type="VARCHAR(20)" defaultValue="ASTM LIS2-A2"/>
+            <column name="test_unit_ids" type="TEXT"/>
+            <column name="status" type="VARCHAR(20)" defaultValue="SETUP"/>
+            <column name="identifier_pattern" type="VARCHAR(255)"/>
+            <column name="last_activated_date" type="TIMESTAMP"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="analyzer" columnName="ip_address"/>
+            <dropColumn tableName="analyzer" columnName="port"/>
+            <dropColumn tableName="analyzer" columnName="protocol_version"/>
+            <dropColumn tableName="analyzer" columnName="test_unit_ids"/>
+            <dropColumn tableName="analyzer" columnName="status"/>
+            <dropColumn tableName="analyzer" columnName="identifier_pattern"/>
+            <dropColumn tableName="analyzer" columnName="last_activated_date"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

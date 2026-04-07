@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="011-008-01-normalize-protocol-version-enum" author="madagascar-analyzer-integration">
+    <preConditions onFail="MARK_RAN">
+      <columnExists tableName="analyzer" columnName="protocol_version"/>
+    </preConditions>
+    <comment>
+      Normalize protocol_version column to ProtocolVersion enum constant names.
+      Previously stored human-readable labels (e.g. 'ASTM LIS2-A2') or transport
+      indicators ('FILE', 'RS232'). Transport is now derived from config entities
+      (FileImportConfiguration, SerialPortConfiguration); this column only tracks
+      message format.
+    </comment>
+
+    <!-- ASTM variants (including bare 'LIS2-A2' bug and transport values) -->
+    <update tableName="analyzer">
+      <column name="protocol_version" value="ASTM_LIS2_A2"/>
+      <where>
+        protocol_version IN ('ASTM LIS2-A2', 'LIS2-A2', 'ASTM')
+        OR protocol_version IS NULL
+        OR UPPER(protocol_version) LIKE '%FILE%'
+        OR UPPER(protocol_version) LIKE '%RS232%'
+        OR UPPER(protocol_version) LIKE '%RS-232%'
+        OR UPPER(protocol_version) LIKE '%SERIAL%'
+      </where>
+    </update>
+
+    <!-- HL7 v2.3.x -->
+    <update tableName="analyzer">
+      <column name="protocol_version" value="HL7_V2_3_1"/>
+      <where>protocol_version NOT IN ('ASTM_LIS2_A2') AND UPPER(protocol_version) LIKE '%HL7%2.3%'</where>
+    </update>
+
+    <!-- HL7 v2.5.x -->
+    <update tableName="analyzer">
+      <column name="protocol_version" value="HL7_V2_5"/>
+      <where>protocol_version NOT IN ('ASTM_LIS2_A2', 'HL7_V2_3_1') AND UPPER(protocol_version) LIKE '%HL7%2.5%'</where>
+    </update>
+
+    <!-- Catch-all: any remaining unrecognized values default to ASTM -->
+    <update tableName="analyzer">
+      <column name="protocol_version" value="ASTM_LIS2_A2"/>
+      <where>protocol_version NOT IN ('ASTM_LIS2_A2', 'HL7_V2_3_1', 'HL7_V2_5')</where>
+    </update>
+
+    <!-- Update column default to match enum -->
+    <addDefaultValue tableName="analyzer"
+                     columnName="protocol_version"
+                     defaultValue="ASTM_LIS2_A2"/>
+
+    <rollback>
+      <dropDefaultValue tableName="analyzer" columnName="protocol_version"/>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

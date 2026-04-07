@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Grid,
   Column,
@@ -17,6 +17,8 @@ import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import Questionnaire from "../common/Questionnaire";
 import { getFromOpenElisServer } from "../utils/Utils";
 import config from "../../config.json";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import { NotificationContext } from "../layout/Layout";
 
 /**
  * GenericSampleOrderEdit - Configurable sample order edit component
@@ -66,6 +68,10 @@ export default function GenericSampleOrderEdit({
   renderCustomContent,
 }) {
   const intl = useIntl();
+
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
   // Search state
   const [searchAccessionNumber, setSearchAccessionNumber] = useState("");
   const [searching, setSearching] = useState(false);
@@ -97,6 +103,7 @@ export default function GenericSampleOrderEdit({
   const [sampleTypes, setSampleTypes] = useState([]);
   const [uoms, setUoms] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [notification, setNotification] = useState(null);
 
   // Breadcrumbs
   const defaultBreadcrumbs = [
@@ -267,8 +274,12 @@ export default function GenericSampleOrderEdit({
     e.preventDefault();
 
     if (!orderFound || !searchAccessionNumber) {
-      alert("Please search for an order first");
-      return;
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: "Please search for an order first",
+      });
     }
 
     setSaving(true);
@@ -280,7 +291,6 @@ export default function GenericSampleOrderEdit({
       notebookId: selectedNotebookId,
     };
 
-    // Put to backend - use fetch directly for JSON response
     const options = {
       credentials: "include",
       method: "PUT",
@@ -303,15 +313,12 @@ export default function GenericSampleOrderEdit({
           if (onSaveSuccess) {
             onSaveSuccess(data);
           } else {
-            alert(
-              intl.formatMessage(
-                { id: "genericSample.edit.success" },
-                {
-                  accessionNumber:
-                    data.accessionNumber || searchAccessionNumber,
-                },
-              ),
-            );
+            setNotificationVisible(true);
+            addNotification({
+              kind: NotificationKinds.success,
+              title: intl.formatMessage({ id: "genericSample.edit.success" }),
+              message: `Accession Number: ${data.accessionNumber || searchAccessionNumber}`,
+            });
           }
           // Optionally reload the data
           handleSearch(searchAccessionNumber);
@@ -320,9 +327,12 @@ export default function GenericSampleOrderEdit({
           if (onSaveError) {
             onSaveError(errorMsg);
           } else {
-            alert(
-              intl.formatMessage({ id: "error.save.sample" }) + ": " + errorMsg,
-            );
+            setNotificationVisible(true);
+            addNotification({
+              kind: NotificationKinds.error,
+              title: intl.formatMessage({ id: "error.save.sample" }),
+              message: errorMsg,
+            });
           }
         }
       })
@@ -332,9 +342,12 @@ export default function GenericSampleOrderEdit({
         if (onSaveError) {
           onSaveError(errorMsg);
         } else {
-          alert(
-            intl.formatMessage({ id: "error.save.sample" }) + ": " + errorMsg,
-          );
+          setNotificationVisible(true);
+          addNotification({
+            kind: NotificationKinds.error,
+            title: intl.formatMessage({ id: "error.save.sample" }),
+            message: errorMsg,
+          });
         }
       });
   };
@@ -346,6 +359,8 @@ export default function GenericSampleOrderEdit({
 
   return (
     <>
+      {notificationVisible === true ? <AlertDialog /> : ""}
+
       {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       <Grid fullWidth={true}>
         <Column lg={16} md={8} sm={4}>

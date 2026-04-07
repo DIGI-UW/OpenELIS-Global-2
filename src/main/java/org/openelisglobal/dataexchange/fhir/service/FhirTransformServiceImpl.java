@@ -4,6 +4,7 @@ import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -24,6 +25,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.ContactPoint;
@@ -31,11 +33,14 @@ import org.hl7.fhir.r4.model.ContactPoint.ContactPointSystem;
 import org.hl7.fhir.r4.model.ContactPoint.ContactPointUse;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.DateType;
+import org.hl7.fhir.r4.model.DecimalType;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.DiagnosticReport.DiagnosticReportStatus;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
+import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.HumanName;
 import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Observation.ObservationStatus;
 import org.hl7.fhir.r4.model.Practitioner;
@@ -64,6 +69,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
+import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -73,9 +79,12 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
+import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
+import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType;
@@ -96,6 +105,7 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
@@ -108,12 +118,16 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
@@ -170,6 +184,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private OrganizationService organizationService;
     @Autowired
     private FhirUtil fhirUtil;
+    @Autowired
+    private FhirFacilityOrganizationService facilityOrganizationService;
+    @Autowired
+    private TestResultService testResultService;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -425,6 +443,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Async
     @Override
     public void transformPersistOrganization(Organization organization) throws FhirLocalPersistingException {
+        String method = "transformPersistOrganization";
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistOrganization",
                 "transformPersistOrganization called");
 
@@ -432,7 +451,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOperations fhirOperations = new FhirOperations();
         org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(organization);
         this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        try {
+            Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirLocalPersistingException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Local fhirStore current unavalable");
+        }
     }
 
     @Override
@@ -477,6 +500,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             Practitioner requester = transformProviderToPractitioner(updateData.getProvider().getId());
             this.addToOperations(fhirOperations, tempIdGenerator, requester);
             orderEntryObjects.requester = requester;
+        }
+
+        // new organization created during order entry (free-text site)
+        if (updateData.getNewOrganization() != null) {
+            org.hl7.fhir.r4.model.Organization fhirOrg = transformToFhirOrganization(updateData.getNewOrganization());
+            this.addToOperations(fhirOperations, tempIdGenerator, fhirOrg);
         }
 
         // Specimens and service requests
@@ -573,6 +602,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         practitioner.setId(provider.getFhirUuidAsString());
         practitioner.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/provider_uuid", provider.getFhirUuidAsString()));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            practitioner.addIdentifier(facilityId);
+        }
         practitioner.addName(new HumanName().setFamily(provider.getPerson().getLastName())
                 .addGiven(provider.getPerson().getFirstName()));
         practitioner.setTelecom(transformToTelecom(provider.getPerson()));
@@ -635,7 +668,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             task.setStatus(TaskStatus.NULL);
         }
         task.setAuthoredOn(sample.getEnteredDate());
-        task.setPriority(TaskPriority.ROUTINE);
+        task.setPriority(convertToTaskPriority(sample.getPriority()));
         task.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_uuid", sample.getFhirUuidAsString()));
         task.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_accessionNumber",
@@ -653,6 +686,44 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
 
         return task;
+    }
+
+    private TaskPriority convertToTaskPriority(OrderPriority orderPriority) {
+        if (orderPriority == null) {
+            return TaskPriority.ROUTINE;
+        }
+        switch (orderPriority) {
+        case ROUTINE:
+            return TaskPriority.ROUTINE;
+        case ASAP:
+            return TaskPriority.ASAP;
+        case STAT:
+        case FUTURE_STAT:
+            return TaskPriority.STAT;
+        case TIMED:
+            return TaskPriority.URGENT;
+        default:
+            return TaskPriority.ROUTINE;
+        }
+    }
+
+    private ServiceRequestPriority convertToServiceRequestPriority(OrderPriority orderPriority) {
+        if (orderPriority == null) {
+            return ServiceRequestPriority.ROUTINE;
+        }
+        switch (orderPriority) {
+        case ROUTINE:
+            return ServiceRequestPriority.ROUTINE;
+        case ASAP:
+            return ServiceRequestPriority.ASAP;
+        case STAT:
+        case FUTURE_STAT:
+            return ServiceRequestPriority.STAT;
+        case TIMED:
+            return ServiceRequestPriority.URGENT;
+        default:
+            return ServiceRequestPriority.ROUTINE;
+        }
     }
 
     private DateType transformToDateElement(String strDate) throws ParseException {
@@ -691,6 +762,51 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformToFhirPatient(patientService.get(patientId));
     }
 
+    @Override
+    public PatientManagementInfo createOePatientManagementInfo(org.hl7.fhir.r4.model.Patient fhirPatient) {
+        PatientManagementInfo patient = new PatientManagementInfo();
+        LogEvent.logTrace(this.getClass().getSimpleName(), "setOePatientIdentifiers", "setOePatientIdentifiers called");
+        for (Identifier identifier : fhirPatient.getIdentifier()) {
+            if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_nationalId")) {
+                patient.setNationalId(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_subjectNumber")) {
+                patient.setSubjectNumber(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_stNumber")) {
+                patient.setSTnumber(identifier.getValue());
+            } else if (identifier.getSystem().equals(fhirConfig.getOeFhirSystem() + "/pat_guid")) {
+                patient.setGuid(identifier.getValue());
+            }
+        }
+        PatientSearchResults results = transformToOpenElisPatientSearchResults(fhirPatient);
+        patient.setFirstName(results.getFirstName());
+        patient.setLastName(results.getLastName());
+        patient.setGender(results.getGender());
+        patient.setBirthDateForDisplay(results.getBirthdate());
+        patient.setPatientContact(new PatientContact());
+
+        if (fhirPatient.hasAddress()) {
+            Address address = fhirPatient.getAddressFirstRep();
+            if (address != null) {
+                if (address.hasLine()) {
+                    patient.setStreetAddress(
+                            address.getLine().stream().map(StringType::getValue).collect(Collectors.joining(", ")));
+                }
+                if (address.hasCity()) {
+                    patient.setCity(address.getCity());
+                }
+                if (address.hasDistrict()) {
+                    patient.setCommune(address.getDistrict());
+                }
+                if (address.hasState()) {
+                    patient.setAddressDepartment(address.getState());
+                }
+            }
+        }
+
+        return patient;
+
+    }
+
     private org.hl7.fhir.r4.model.Patient transformToFhirPatient(Patient patient) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToFhirPatient", "transformToFhirPatient called");
 
@@ -707,6 +823,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         fhirPatient.setId(uuid);
         fhirPatient.setIdentifier(createPatientIdentifiers(subjectNumber, nationalId, stNumber, guid, uuid));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirPatient.addIdentifier(facilityId);
+        }
 
         HumanName humanName = new HumanName();
         List<HumanName> humanNameList = new ArrayList<>();
@@ -886,6 +1006,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         serviceRequest.setId(analysis.getFhirUuidAsString());
         serviceRequest.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analysis_uuid", analysis.getFhirUuidAsString()));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            serviceRequest.addIdentifier(facilityId);
+        }
         serviceRequest.setRequisition(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/samp_labNo",
                 analysis.getSampleItem().getSample().getAccessionNumber()));
         if (organization != null) {
@@ -913,13 +1037,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
             serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalRejected))) {
-            serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
+            serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.Finalized))) {
             serviceRequest.setStatus(ServiceRequestStatus.COMPLETED);
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.Canceled))) {
             serviceRequest.setStatus(ServiceRequestStatus.REVOKED);
         } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.SampleRejected))) {
             serviceRequest.setStatus(ServiceRequestStatus.ENTEREDINERROR);
+        } else if (analysis.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
+            serviceRequest.setStatus(ServiceRequestStatus.ACTIVE);
         } else {
             serviceRequest.setStatus(ServiceRequestStatus.UNKNOWN);
         }
@@ -928,7 +1054,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (program != null && !GenericValidator.isBlankOrNull(program.getValue())) {
             serviceRequest.addCategory(transformSampleProgramToCodeableConcept(program));
         }
-        serviceRequest.setPriority(ServiceRequestPriority.ROUTINE);
+        serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
         serviceRequest.setCode(transformTestToCodeableConcept(test.getId()));
         serviceRequest.setAuthoredOn(new Date());
         for (Note note : noteService.getNotes(analysis)) {
@@ -1008,12 +1134,17 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         specimen.setId(sampleItem.getFhirUuidAsString());
         specimen.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/sampleItem_uuid",
                 sampleItem.getFhirUuidAsString()));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            specimen.addIdentifier(facilityId);
+        }
         specimen.setAccessionIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/sampleItem_labNo",
                 sampleItem.getSample().getAccessionNumber() + "-" + sampleItem.getSortOrder()));
         specimen.setStatus(SpecimenStatus.AVAILABLE);
         specimen.setType(transformTypeOfSampleToCodeableConcept(sampleItem.getTypeOfSample()));
         specimen.setReceivedTime(new Date());
-        specimen.setCollection(transformToCollection(sampleItem.getCollectionDate(), sampleItem.getCollector()));
+        specimen.setCollection(transformToCollection(sampleItem.getCollectionDate(), sampleItem.getCollector(),
+                sampleItem.getSample()));
 
         for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
             specimen.addRequest(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
@@ -1051,14 +1182,69 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return condition;
     }
 
-    private SpecimenCollectionComponent transformToCollection(Timestamp collectionDate, String collector) {
+    private SpecimenCollectionComponent transformToCollection(Timestamp collectionDate, String collector,
+            Sample sample) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformToCollection", "transformToCollection called");
 
         SpecimenCollectionComponent specimenCollectionComponent = new SpecimenCollectionComponent();
         specimenCollectionComponent.setCollected(new DateTimeType(collectionDate));
         // TODO create a collector from this info
         // specimenCollectionComponent.setCollector(collector);
+
+        // Add GPS coordinates extension if available
+        if (sample != null && sample.hasGpsCoordinates()) {
+            Extension gpsExtension = createGpsExtension(sample);
+            specimenCollectionComponent.addExtension(gpsExtension);
+        }
+
         return specimenCollectionComponent;
+    }
+
+    /**
+     * Creates a FHIR extension for GPS coordinates according to FHIR R4 standards.
+     * Extension URL:
+     * http://openelis-global.org/fhir/StructureDefinition/collection-location-gps
+     *
+     * @param sample Sample with GPS coordinates
+     * @return Extension containing latitude, longitude, accuracy, method, and
+     *         timestamp
+     */
+    private Extension createGpsExtension(Sample sample) {
+        Extension gpsExtension = new Extension();
+        gpsExtension.setUrl("http://openelis-global.org/fhir/StructureDefinition/collection-location-gps");
+
+        // Latitude sub-extension (required if GPS data exists)
+        if (sample.getGpsLatitude() != null) {
+            Extension latitudeExt = new Extension("latitude", new DecimalType(sample.getGpsLatitude()));
+            gpsExtension.addExtension(latitudeExt);
+        }
+
+        // Longitude sub-extension (required if GPS data exists)
+        if (sample.getGpsLongitude() != null) {
+            Extension longitudeExt = new Extension("longitude", new DecimalType(sample.getGpsLongitude()));
+            gpsExtension.addExtension(longitudeExt);
+        }
+
+        // Accuracy sub-extension (optional)
+        if (sample.getGpsAccuracyMeters() != null) {
+            Extension accuracyExt = new Extension("accuracy", new IntegerType(sample.getGpsAccuracyMeters()));
+            gpsExtension.addExtension(accuracyExt);
+        }
+
+        // Capture method sub-extension (optional)
+        if (sample.getGpsCaptureMethod() != null) {
+            Extension methodExt = new Extension("method", new CodeType(sample.getGpsCaptureMethod()));
+            gpsExtension.addExtension(methodExt);
+        }
+
+        // Capture timestamp sub-extension (optional)
+        if (sample.getGpsCaptureTimestamp() != null) {
+            Extension timestampExt = new Extension("captureTimestamp",
+                    new DateTimeType(sample.getGpsCaptureTimestamp()));
+            gpsExtension.addExtension(timestampExt);
+        }
+
+        return gpsExtension;
     }
 
     private CodeableConcept transformTypeOfSampleToCodeableConcept(String typeOfSampleId) {
@@ -1082,6 +1268,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             throws FhirLocalPersistingException {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistResultsEntryFhirObjects",
                 "transformPersistResultsEntryFhirObjects called");
+        String method = "transformPersistResultsEntryFhirObjects";
 
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
         FhirOperations fhirOperations = new FhirOperations();
@@ -1102,8 +1289,162 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
             }
         }
+        try {
+            Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+        } catch (FhirPersistanceException e) {
+            LogEvent.logError(getClass().getSimpleName(), method, "Fhir store currently un avalable");
+        }
+    }
 
-        Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
+    @Override
+    public TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation) {
+
+        TestResultItem bean = new TestResultItem();
+        Result result = new Result();
+        bean.setResult(result);
+
+        if (observation.hasSpecimen()) {
+            String sampleItemUUID = observation.getSpecimen().getReferenceElement().getIdPart();
+            SampleItem sampleItem = getItemByFhirId(sampleItemUUID, sampleItemService);
+
+            if (sampleItem == null) {
+                throw new UnprocessableEntityException("SampleItem not found: " + sampleItemUUID);
+            }
+
+            Sample sample = sampleItem.getSample();
+            bean.setSampleItemId(sampleItem.getId());
+            bean.setAccessionNumber(sample.getAccessionNumber());
+        }
+
+        if (observation.hasBasedOn()) {
+
+            String analysisUUID = observation.getBasedOnFirstRep().getReferenceElement().getIdPart();
+
+            Analysis analysis = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUUID)).get(0);
+
+            Test test = analysis.getTest();
+
+            bean.setAnalysisId(analysis.getId());
+            bean.setTestId(test.getId());
+        }
+        if (observation.hasSubject()) {
+            String patientUUID = observation.getSubject().getReferenceElement().getIdPart();
+            Patient patient = getItemByFhirId(patientUUID, patientService);
+
+            if (patient == null) {
+                throw new UnprocessableEntityException("Patient not found: " + patientUUID);
+            }
+
+            bean.setPatientId(patient.getId());
+        }
+
+        bean.setIsModified(true);
+        bean.setResultId(null);
+        bean.setReportable(true);
+        String locale = ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.DEFAULT_DATE_LOCALE);
+
+        String pattern = "en-US".equals(locale) ? "MM/dd/yyyy" : "dd/MM/yyyy";
+
+        String formattedDate = new SimpleDateFormat(pattern).format(new Date());
+        bean.setTestDate(formattedDate);
+
+        if (bean.getTechnician() == null) {
+            bean.setTechnician("");
+        }
+
+        if (observation.hasStatus()) {
+            String status = observation.getStatusElement().getValue().toString();
+            if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.FINAL.toString())) {
+                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Finalized));
+            } else if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.CANCELLED.toString())) {
+                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.Canceled));
+            } else if (status.equals(org.hl7.fhir.r4.model.Observation.ObservationStatus.REGISTERED.toString())) {
+                bean.setAnalysisStatusId(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+            }
+        }
+
+        if (observation.hasCode() && observation.getCode().getCodingFirstRep().getSystem().equals("http://loinc.org")) {
+            for (Coding code : observation.getCode().getCoding()) {
+                bean.setTestName(code.getDisplay());
+            }
+        }
+
+        if (observation.hasValueStringType()) {
+
+            String value = observation.getValueStringType().getValueAsString();
+
+            bean.setResultValue(value);
+            bean.setShadowResultValue(value);
+            bean.setResultType("T");
+        }
+
+        else if (observation.hasValueCodeableConcept()) {
+
+            for (Coding code : observation.getValueCodeableConcept().getCoding()) {
+
+                if (code.getSystem().equals(fhirConfig.getOeFhirSystem() + "/dictionary_entry")) {
+
+                    List<Dictionary> dictionaries = dictionaryService.getAllMatching("dictEntry", code.getCode());
+
+                    if (!dictionaries.isEmpty()) {
+
+                        Dictionary dictionary = dictionaries.get(0);
+
+                        bean.setResultValue(dictionary.getId());
+                        bean.setShadowResultValue(dictionary.getId());
+
+                        List<TestResult> testResults = testResultService.getAllMatching("value", dictionary.getId());
+                        TestResult testResult = testResults.get(0);
+                        if (testResult != null) {
+
+                            bean.setResultType(testResult.getTestResultType());
+
+                            result.setTestResult(testResult);
+
+                        }
+
+                    }
+                }
+            }
+        }
+
+        else if (observation.hasValueQuantity()) {
+
+            String value = observation.getValueQuantity().getValueElement().getValueAsString();
+
+            bean.setResultValue(value);
+            bean.setShadowResultValue(value);
+            bean.setResultType("N");
+            bean.setUnitsOfMeasure(observation.getValueQuantity().getUnit());
+
+        }
+
+        if (bean.getResultType() == null) {
+            bean.setResultType("T");
+        }
+
+        bean.setHasQualifiedResult(false);
+
+        if (bean.getAnalysisId() == null || bean.getTestId() == null || bean.getSampleItemId() == null) {
+            throw new UnprocessableEntityException("Missing required fields for result creation");
+        }
+        return bean;
+    }
+
+    public <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service) {
+
+        if (fhirUuid == null) {
+            return null;
+        }
+
+        try {
+            List<T> matches = service.getAllMatching("fhirUuid", UUID.fromString(fhirUuid));
+            return matches.isEmpty() ? null : matches.get(0);
+        } catch (IllegalArgumentException e) {
+            LogEvent.logError(getClass().getSimpleName(), "getItemByFhirId", "Invalid UUID: " + fhirUuid);
+            return null;
+        }
     }
 
     @Async
@@ -1180,18 +1521,20 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private void addToOperations(FhirOperations fhirOperations, TempIdGenerator tempIdGenerator, Resource resource) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "addToOperations", "addToOperations called");
 
+        // Use composite key (resourceType/id) to prevent collisions between different
+        // resource types
+        String compositeKey = resource.getResourceType() + "/" + resource.getIdElement().getIdPart();
+
         if (this.setTempIdIfMissing(resource, tempIdGenerator)) {
-            if (fhirOperations.createResources.containsKey(resource.getIdElement().getIdPart())) {
-                LogEvent.logWarn("", "",
-                        "collision on id: " + resource.getResourceType() + "/" + resource.getIdElement().getIdPart());
+            if (fhirOperations.createResources.containsKey(compositeKey)) {
+                LogEvent.logWarn("", "", "collision on id: " + compositeKey);
             }
-            fhirOperations.createResources.put(resource.getIdElement().getIdPart(), resource);
+            fhirOperations.createResources.put(compositeKey, resource);
         } else {
-            if (fhirOperations.updateResources.containsKey(resource.getIdElement().getIdPart())) {
-                LogEvent.logWarn("", "",
-                        "collision on id: " + resource.getResourceType() + "/" + resource.getIdElement().getIdPart());
+            if (fhirOperations.updateResources.containsKey(compositeKey)) {
+                LogEvent.logWarn("", "", "collision on id: " + compositeKey);
             }
-            fhirOperations.updateResources.put(resource.getIdElement().getIdPart(), resource);
+            fhirOperations.updateResources.put(compositeKey, resource);
         }
     }
 
@@ -1242,6 +1585,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         diagnosticReport.setId(analysis.getFhirUuidAsString());
         diagnosticReport.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analysisResult_uuid",
                 analysis.getFhirUuidAsString()));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            diagnosticReport.addIdentifier(facilityId);
+        }
         return diagnosticReport;
     }
 
@@ -1249,7 +1596,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToObservation(resultService.get(resultId));
     }
 
-    private Observation transformResultToObservation(Result result) {
+    public Observation transformResultToObservation(Result result) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToObservation",
                 "transformResultToObservation called");
 
@@ -1262,6 +1609,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         observation.setId(result.getFhirUuidAsString());
         observation.addIdentifier(
                 this.createIdentifier(fhirConfig.getOeFhirSystem() + "/result_uuid", result.getFhirUuidAsString()));
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            observation.addIdentifier(facilityId);
+        }
 
         // TODO make sure these align with each other.
         // we may need to add detection for when result is changed and add those status
@@ -1374,7 +1725,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         fhirOrganization
                 .setId(organization.getFhirUuid() == null ? organization.getId() : organization.getFhirUuidAsString());
         fhirOrganization.setName(organization.getOrganizationName());
-        fhirOrganization.setActive(organization.getIsActive() == IActionConstants.YES ? true : false);
+        fhirOrganization.setActive(organization.getIsActive().equals(IActionConstants.YES) ? true : false);
         this.setFhirOrganizationIdentifiers(fhirOrganization, organization);
         this.setFhirAddressInfo(fhirOrganization, organization);
         this.setFhirOrganizationTypes(fhirOrganization, organization);
@@ -1440,6 +1791,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (!GenericValidator.isBlankOrNull(organization.getCode())) {
             fhirOrganization.addIdentifier(new Identifier().setSystem(fhirConfig.getOeFhirSystem() + "/org_uuid")
                     .setValue(organization.getFhirUuidAsString()));
+        }
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            fhirOrganization.addIdentifier(facilityId);
         }
     }
 
@@ -1583,6 +1938,34 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return identifier;
     }
 
+    /**
+     * Creates a facility identifier that links a FHIR resource to this OpenELIS
+     * facility. This identifier uses the facility ID and includes the facility
+     * Organization as the assigner.
+     *
+     * @return the facility identifier, or null if facility is not initialized
+     */
+    private Identifier createFacilityIdentifier() {
+        String facilityId = facilityOrganizationService.getFacilityId();
+        String identifierSystem = facilityOrganizationService.getFacilityIdentifierSystem();
+        Reference assignerRef = facilityOrganizationService.getFacilityOrganizationReference();
+
+        if (facilityId == null) {
+            return null;
+        }
+
+        Identifier identifier = new Identifier();
+        identifier.setUse(Identifier.IdentifierUse.OFFICIAL);
+        identifier.setSystem(identifierSystem);
+        identifier.setValue(facilityId);
+
+        if (assignerRef != null) {
+            identifier.setAssigner(assignerRef);
+        }
+
+        return identifier;
+    }
+
     private class FhirOrderEntryObjects {
         @SuppressWarnings("unused")
         public org.hl7.fhir.r4.model.Patient patient;
@@ -1597,12 +1980,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         public List<ServiceRequest> serviceRequests = new ArrayList<>();
     }
 
+    @Override
     public void addHumanNameToPerson(HumanName humanName, Person person) {
         person.setFirstName(
                 humanName.getGivenAsSingleString() == null ? "" : humanName.getGivenAsSingleString().strip());
         person.setLastName(humanName.getFamily() == null ? "" : humanName.getFamily().strip());
     }
 
+    @Override
     public void addTelecomToPerson(List<ContactPoint> telecoms, Person person) {
         for (ContactPoint contact : telecoms) {
             String contactValue = contact.getValue();
@@ -1652,5 +2037,28 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         } else {
             throw e;
         }
+    }
+
+    @Async
+    @Override
+    @Transactional(readOnly = true)
+    public void transformAnalysisByIds(List<String> analysisIds)
+            throws FhirTransformationException, FhirPersistanceException {
+        FhirOperations fhirOperations = new FhirOperations();
+        CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
+
+        for (String analysisId : analysisIds) {
+            Analysis analysis = analysisService.get(analysisId);
+            ServiceRequest serviceRequest = this.transformToServiceRequest(analysis);
+            this.addToOperations(fhirOperations, tempIdGenerator, serviceRequest);
+
+            if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)) {
+                DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
+                this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
+            }
+
+        }
+
+        fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
     }
 }

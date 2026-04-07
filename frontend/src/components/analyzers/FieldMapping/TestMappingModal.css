@@ -1,0 +1,94 @@
+.test-mapping-modal-body {
+  padding: 1rem;
+}
+
+.test-mapping-analyzer-info {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--cds-layer-01);
+  border-radius: 4px;
+}
+
+.test-mapping-analyzer-info h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.test-mapping-info-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.test-mapping-info-label {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  min-width: 150px;
+}
+
+.test-mapping-input-section {
+  margin-bottom: 1.5rem;
+}
+
+.test-mapping-character-counter {
+  margin-top: 0.5rem;
+  text-align: right;
+  font-size: 0.875rem;
+}
+
+.test-mapping-counter-warning {
+  color: var(--cds-support-error);
+  font-weight: 600;
+}
+
+.test-mapping-options-section {
+  margin-bottom: 1.5rem;
+}
+
+.test-mapping-options-section h3 {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.test-mapping-loading {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.test-mapping-results {
+  margin-top: 2rem;
+}
+
+.test-mapping-results h3 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.test-mapping-section {
+  margin-bottom: 1.5rem;
+}
+
+.test-mapping-section h4 {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.test-mapping-section ul {
+  margin-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.test-mapping-section li {
+  margin-bottom: 0.5rem;
+}
+
+.test-mapping-no-results {
+  margin: 2rem 0;
+  padding: 1rem;
+  text-align: center;
+  color: var(--cds-text-secondary);
+  font-style: italic;
+}

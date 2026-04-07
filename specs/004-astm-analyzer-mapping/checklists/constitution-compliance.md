@@ -7,7 +7,7 @@
 
 ## Overview
 
-This document verifies compliance with all 8 OpenELIS Global 3.0 Constitution
+This document verifies compliance with all 9 OpenELIS Global 2.0 Constitution
 principles for the analyzer mapping feature.
 
 ---
@@ -20,16 +20,18 @@ principles for the analyzer mapping feature.
 
 - ✅ No country-specific code branches found in analyzer module
 - ✅ All variations use database configuration:
-  - `SystemConfiguration` for query timeout (`analyzer.query.timeout.minutes`)
-  - `SystemConfiguration` for rate limits
-    (`analyzer.query.rate.limit.per.minute`)
-  - `SystemConfiguration` for max fields (`analyzer.max.fields.per.query`)
+  - SiteInformation (`clinlims.site_information`) for query timeout
+    (`analyzer.query.timeout`)
+  - SiteInformation (`clinlims.site_information`) for rate limits
+    (`analyzer.query.rate.limit`)
+  - SiteInformation (`clinlims.site_information`) for max fields
+    (`analyzer.max.fields`)
 - ✅ Unit preferences and code systems configurable via database (not hardcoded)
 
 **Files Checked**:
 
 - `src/main/java/org/openelisglobal/analyzer/service/AnalyzerQueryServiceImpl.java`
-- `src/main/resources/liquibase/analyzer/004-009-system-configuration-entries.xml`
+- `src/main/resources/liquibase/analyzer/004-010-add-query-timeout-config.xml`
 
 **Conclusion**: Feature fully complies with configuration-driven variation
 principle.
@@ -114,8 +116,9 @@ internal-only configuration).
   - `AnalyzerErrorDAO.getWithAnalyzer()` uses JOIN FETCH
   - `AnalyzerConfigurationDAO` methods use JOIN FETCH where needed
 - ✅ Controllers delegate to services only
-- ✅ All new entities use JPA/Hibernate annotations (NO XML mappings)
 - ✅ Legacy `Analyzer` entity uses XML mappings (exempt per Constitution IV)
+- ✅ This feature may use legacy XML mappings when required for analyzer
+  compatibility, with an explicit migration path (see plan.md constraints)
 
 **Files Checked**:
 
@@ -332,23 +335,22 @@ Test)**:
 
 **Metric Collection Approach**:
 
-- Monitor `analyzer.query.timeout.minutes` SystemConfiguration value
+- Monitor SiteInformation key `analyzer.query.timeout` value
 - Log query execution time in `AnalyzerQueryServiceImpl`
 - Alert if queries exceed timeout threshold
 
 **Post-Deployment Validation**:
 
-1. ✅ Verify SystemConfiguration entry exists: `analyzer.query.timeout.minutes`
-   = "5"
+1. ✅ Verify SiteInformation entry exists: `analyzer.query.timeout` = "5"
 2. ⚠️ Test query analyzer operation with timeout:
    - Start query operation
    - Verify operation completes within 5 minutes OR displays timeout error
    - Verify timeout error message is user-friendly
 3. ⚠️ Test configurable timeout:
-   - Update SystemConfiguration to different value (e.g., 3 minutes)
+   - Update SiteInformation to different value (e.g., 3 minutes)
    - Verify query uses new timeout value
 4. ⚠️ Test default behavior:
-   - Remove SystemConfiguration entry
+   - Remove SiteInformation entry
    - Verify system uses 5 minutes as default
 
 ### Connection Test (30-second timeout)

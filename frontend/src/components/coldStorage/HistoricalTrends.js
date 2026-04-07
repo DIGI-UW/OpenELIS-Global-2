@@ -272,7 +272,7 @@ export default function HistoricalTrends({
             }}
           />
         </Column>
-        <Column lg={4} md={3} sm={4}>
+        <Column lg={4} md={4} sm={4}>
           <Dropdown
             id="time-range-filter"
             titleText="Time Range"
@@ -283,7 +283,7 @@ export default function HistoricalTrends({
           />
         </Column>
 
-        <Column lg={6} md={5} sm={4} className="hist-toolbar">
+        <Column lg={16} md={8} sm={4} className="hist-toolbar">
           <Button
             kind="ghost"
             size="sm"
