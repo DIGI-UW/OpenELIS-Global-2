@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Column, Grid, Select, SelectItem } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 function TestSelectForm(props) {
+  const intl = useIntl();
   const mounted = useRef(false);
   const [tests, setTests] = useState([]);
   const [defaultTestId, setDefaultTestId] = useState("");
@@ -70,4 +71,4 @@ function TestSelectForm(props) {
   );
 }
 
-export default injectIntl(TestSelectForm);
+export default TestSelectForm;

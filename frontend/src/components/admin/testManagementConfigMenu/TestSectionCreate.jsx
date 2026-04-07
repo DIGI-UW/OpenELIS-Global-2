@@ -35,7 +35,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import CustomCheckBox from "../../common/CustomCheckBox";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
@@ -60,6 +60,7 @@ let breadcrumbs = [
 ];
 
 function TestSectionCreate() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -412,4 +413,4 @@ function TestSectionCreate() {
   );
 }
 
-export default injectIntl(TestSectionCreate);
+export default TestSectionCreate;

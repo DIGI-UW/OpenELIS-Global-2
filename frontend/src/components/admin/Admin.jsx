@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import config from "../../config.json";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Switch, Route, useRouteMatch, useHistory } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
@@ -106,6 +106,7 @@ import { TrashCan } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 function Admin() {
+  const intl = useIntl();
   const intl = useIntl();
   const { path } = useRouteMatch();
   const history = useHistory();
@@ -706,4 +707,4 @@ function Admin() {
   );
 }
 
-export default injectIntl(Admin);
+export default Admin;

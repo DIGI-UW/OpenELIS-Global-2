@@ -15,7 +15,7 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   AlertDialog,
   NotificationKinds,
@@ -36,6 +36,7 @@ let breadcrumbs = [
 ];
 
 function ManageMethod() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const intl = useIntl();
@@ -197,4 +198,4 @@ function ManageMethod() {
   );
 }
 
-export default injectIntl(ManageMethod);
+export default ManageMethod;

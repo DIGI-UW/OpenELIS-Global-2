@@ -1,5 +1,5 @@
 import React, { useContext, useState, useRef, useEffect } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../../Style.css";
 import { encodeDate, getFromOpenElisServer, Roles } from "../../utils/Utils";
 import {
@@ -40,6 +40,7 @@ let breadcrumbs = [
 ];
 
 function ReferredOutTests(props) {
+  const intl = useIntl();
   const [referredOutTestsFormValues, setReferredOutTestsFormValues] = useState(
     ReferredOutTestsFormValues,
   );
@@ -908,4 +909,4 @@ function ReferredOutTests(props) {
   );
 }
 
-export default injectIntl(ReferredOutTests);
+export default ReferredOutTests;

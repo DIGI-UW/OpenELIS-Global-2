@@ -1,8 +1,8 @@
 import React from "react";
-import { injectIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import ReflexRule from "./ReflexRuleForm";
 import { Grid, Column, Section, Heading } from "@carbon/react";
-import { FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 const breadcrumbs = [
@@ -15,6 +15,7 @@ const breadcrumbs = [
 ];
 
 function ReflexTestManagement() {
+  const intl = useIntl();
   return (
     <>
       <div className="adminPageContent">
@@ -34,4 +35,4 @@ function ReflexTestManagement() {
   );
 }
 
-export default injectIntl(ReflexTestManagement);
+export default ReflexTestManagement;

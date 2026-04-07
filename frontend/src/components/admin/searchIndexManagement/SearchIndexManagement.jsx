@@ -1,6 +1,6 @@
 import React, { useState, useContext } from "react";
 import { Button, Loading, Grid, Column, Section, Heading } from "@carbon/react";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
@@ -10,6 +10,7 @@ import {
 } from "../../common/CustomNotification";
 
 function SearchIndexManagement() {
+  const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -93,4 +94,4 @@ function SearchIndexManagement() {
   );
 }
 
-export default injectIntl(SearchIndexManagement);
+export default SearchIndexManagement;

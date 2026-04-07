@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import { nationalityList } from "../data/countries";
@@ -40,6 +40,7 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
 
 function CreatePatientForm(props) {
+  const intl = useIntl();
   const componentMounted = useRef(false);
 
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -1598,4 +1599,4 @@ function CreatePatientForm(props) {
   );
 }
 
-export default injectIntl(CreatePatientForm);
+export default CreatePatientForm;

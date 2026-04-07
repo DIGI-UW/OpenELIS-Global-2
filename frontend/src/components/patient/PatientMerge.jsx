@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   ProgressIndicator,
   ProgressStep,
@@ -33,6 +33,7 @@ const STEP_COMPARE = 1;
 const STEP_CONFIRM = 2;
 
 function PatientMerge() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -360,4 +361,4 @@ function PatientMerge() {
   );
 }
 
-export default injectIntl(PatientMerge);
+export default PatientMerge;

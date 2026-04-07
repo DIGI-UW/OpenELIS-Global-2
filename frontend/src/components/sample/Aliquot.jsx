@@ -1,11 +1,12 @@
 import React from "react";
 import "../Style.css";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import AliquotPage from "./AliquotForm";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function Aliquot() {
+  const intl = useIntl();
   return (
     <>
       <PageBreadCrumb breadcrumbs={[{ label: "home.label", link: "/" }]} />
@@ -28,4 +29,4 @@ function Aliquot() {
   );
 }
 
-export default injectIntl(Aliquot);
+export default Aliquot;

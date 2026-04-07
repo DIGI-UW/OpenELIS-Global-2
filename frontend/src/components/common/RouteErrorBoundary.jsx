@@ -1,5 +1,5 @@
 import React from "react";
-import { injectIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import { Button, Layer, Tile } from "@carbon/react";
 
@@ -63,7 +63,10 @@ class RouteErrorBoundaryClass extends React.Component {
   }
 }
 
-const RouteErrorBoundary = injectIntl(RouteErrorBoundaryClass);
+const RouteErrorBoundary = (props) => {
+  const intl = useIntl();
+  return <RouteErrorBoundaryClass {...props} intl={intl} />;
+};
 
 function RouteErrorBoundaryWithLocation(props) {
   const location = useLocation();

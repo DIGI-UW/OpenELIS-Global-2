@@ -1,5 +1,5 @@
 import React from "react";
-import { injectIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import "./Style.css";
 import ResultSearch from "./resultPage/ResultSearch";
 import {
@@ -94,6 +94,7 @@ export const billingSideMenu = {
 };
 
 function Result() {
+  const intl = useIntl();
   var menu = "Results";
   switch (menu) {
     case "Billing":
@@ -117,4 +118,4 @@ function Result() {
   }
 }
 
-export default injectIntl(Result);
+export default Result;

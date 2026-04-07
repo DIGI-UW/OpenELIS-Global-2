@@ -9,7 +9,7 @@ import {
   Heading,
   InlineNotification,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { fetchDevices, updateDeviceThresholds } from "../api";
 import {
   AlertDialog,
@@ -18,6 +18,7 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 
 function TemperatureThresholds() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -282,4 +283,4 @@ function TemperatureThresholds() {
   );
 }
 
-export default injectIntl(TemperatureThresholds);
+export default TemperatureThresholds;

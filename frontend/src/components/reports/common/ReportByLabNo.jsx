@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Form, Grid, Column, Section, Button } from "@carbon/react";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import config from "../../../config.json";
 
 function ReportByLabNo(props) {
+  const intl = useIntl();
   const intl = useIntl();
   const [values, setValues] = useState({ from: "", to: "" });
 
@@ -99,4 +100,4 @@ function ReportByLabNo(props) {
   );
 }
 
-export default injectIntl(ReportByLabNo);
+export default ReportByLabNo;

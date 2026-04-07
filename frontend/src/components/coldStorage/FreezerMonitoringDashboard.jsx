@@ -43,7 +43,7 @@ import HistoricalTrends from "./HistoricalTrends";
 import Reports from "./Reports";
 import Settings from "./Settings";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { injectIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import {
   fetchFreezerStatus,
   fetchOpenAlerts,
@@ -183,7 +183,8 @@ const normalizeAlert = (alert) => {
 const formatTemperatureDisplay = (value) =>
   value == null ? "—" : `${value.toFixed(1)}°C`;
 
-function FreezerMonitoringDashboard({ intl }) {
+function FreezerMonitoringDashboard({}) {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(
@@ -932,4 +933,4 @@ function FreezerMonitoringDashboard({ intl }) {
   );
 }
 
-export default injectIntl(FreezerMonitoringDashboard);
+export default FreezerMonitoringDashboard;

@@ -4,7 +4,7 @@ import Validation from "./Validation";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { Heading, Grid, Column, Section } from "@carbon/react";
-import { injectIntl, FormattedMessage } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];

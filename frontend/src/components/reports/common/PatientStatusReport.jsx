@@ -1,5 +1,5 @@
 import React, { useContext, useState, useRef, useEffect } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import "../../Style.css";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import {
@@ -28,6 +28,7 @@ import SearchPatientForm from "../../patient/SearchPatientForm";
 import { encodeDate } from "../../utils/Utils";
 
 function PatientStatusReport(props) {
+  const intl = useIntl();
   const [reportFormValues, setReportFormValues] = useState(
     PatientStatusReportFormValues,
   );
@@ -463,4 +464,4 @@ function PatientStatusReport(props) {
   );
 }
 
-export default injectIntl(PatientStatusReport);
+export default PatientStatusReport;

@@ -1,5 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   Grid,
   Column,
@@ -85,6 +85,7 @@ function GenericSampleResults({
   transformSearchParams,
   transformSaveData,
 }) {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -658,4 +659,4 @@ function GenericSampleResults({
   );
 }
 
-export default injectIntl(GenericSampleResults);
+export default GenericSampleResults;

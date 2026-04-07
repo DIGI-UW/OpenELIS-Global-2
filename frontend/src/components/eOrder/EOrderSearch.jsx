@@ -12,7 +12,7 @@ import {
 import { React, useEffect, useState, useContext } from "react";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds, AlertDialog } from "../common/CustomNotification";

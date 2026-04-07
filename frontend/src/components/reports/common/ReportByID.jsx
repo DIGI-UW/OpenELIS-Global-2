@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Form, Grid, Column, Section, Button, Loading } from "@carbon/react";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import { AlertDialog } from "../../common/CustomNotification";
 import config from "../../../config.json";
 
 function ReportByID(props) {
+  const intl = useIntl();
   const intl = useIntl();
   const [nationalId, setNationalId] = useState("");
   const [errors, setErrors] = useState({});
@@ -100,4 +101,4 @@ function ReportByID(props) {
   );
 }
 
-export default injectIntl(ReportByID);
+export default ReportByID;

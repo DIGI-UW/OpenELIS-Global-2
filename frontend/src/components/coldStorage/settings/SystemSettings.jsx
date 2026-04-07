@@ -13,7 +13,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { Settings } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { fetchSystemConfig, saveSystemConfig } from "../api";
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ const SESSION_TIMEOUT_OPTIONS = [
 ];
 
 function SystemSettings() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -382,4 +383,4 @@ function SystemSettings() {
   );
 }
 
-export default injectIntl(SystemSettings);
+export default SystemSettings;

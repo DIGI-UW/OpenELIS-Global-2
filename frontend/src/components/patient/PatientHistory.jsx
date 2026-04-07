@@ -1,5 +1,5 @@
 import React from "react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
@@ -11,6 +11,7 @@ let breadcrumbs = [
   { label: "label.page.patientHistory", link: "/PatientHistory" },
 ];
 const PatientHistory = () => {
+  const intl = useIntl();
   const [selectedPatient, setSelectedPatient] = useState({});
   const componentMounted = useRef(false);
 
@@ -60,4 +61,4 @@ const PatientHistory = () => {
     </>
   );
 };
-export default injectIntl(PatientHistory);
+export default PatientHistory;

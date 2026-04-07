@@ -33,7 +33,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Settings } from "@carbon/icons-react";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
@@ -48,6 +48,7 @@ let breadcrumbs = [
 ];
 
 function TestNotificationConfigMenu() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -473,4 +474,4 @@ function TestNotificationConfigMenu() {
   );
 }
 
-export default injectIntl(TestNotificationConfigMenu);
+export default TestNotificationConfigMenu;

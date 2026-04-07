@@ -17,7 +17,7 @@ import {
   Checkbox,
   FormGroup,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import {
@@ -47,6 +47,7 @@ const loginNameRegex = /^[a-zA-Z]+$/;
 const nameRegex = /^(?=.*[a-zA-Z])[a-zA-Z .'_@-]*$/;
 
 function UserAddModify() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -1454,4 +1455,4 @@ function UserAddModify() {
   );
 }
 
-export default injectIntl(UserAddModify);
+export default UserAddModify;

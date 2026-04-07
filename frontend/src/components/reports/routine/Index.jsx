@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from "react";
 import { AlertDialog } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import { Heading, Grid, Column, Section, Loading } from "@carbon/react";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import PatientStatusReport from "../common/PatientStatusReport";
 import StatisticsReport from "./StatisticsReport";
 import ReferredOut from "./ReferredOut";
@@ -89,6 +89,7 @@ export const RoutineReports = (props) => {
 
 const RoutineIndex = () => {
   const intl = useIntl();
+  const intl = useIntl();
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
 
@@ -128,4 +129,4 @@ const RoutineIndex = () => {
   );
 };
 
-export default injectIntl(RoutineIndex);
+export default RoutineIndex;

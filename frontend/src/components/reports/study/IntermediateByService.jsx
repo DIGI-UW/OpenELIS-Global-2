@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext, useEffect } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Form, Grid, Column, Section, Button } from "@carbon/react";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
@@ -9,6 +9,7 @@ import CustomDatePicker from "../../common/CustomDatePicker";
 import { encodeDate } from "../../utils/Utils";
 
 const IntermediateByService = (props) => {
+  const intl = useIntl();
   const intl = useIntl();
   const { configurationProperties } = useContext(ConfigurationContext);
   const componentMounted = useRef(false);
@@ -170,4 +171,4 @@ const IntermediateByService = (props) => {
   );
 };
 
-export default injectIntl(IntermediateByService);
+export default IntermediateByService;

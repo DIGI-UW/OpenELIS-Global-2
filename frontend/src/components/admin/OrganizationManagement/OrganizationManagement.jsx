@@ -26,7 +26,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
 
@@ -40,6 +40,7 @@ let breadcrumbs = [
 ];
 
 function OrganizationManagement() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -468,4 +469,4 @@ function OrganizationManagement() {
   );
 }
 
-export default injectIntl(OrganizationManagement);
+export default OrganizationManagement;

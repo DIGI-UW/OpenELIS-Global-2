@@ -34,7 +34,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { ArrowLeft, ArrowRight, Cost } from "@carbon/icons-react";
@@ -50,6 +50,7 @@ let breadcrumbs = [
 ];
 
 function TestNotificationConfigEdit() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -800,4 +801,4 @@ function TestNotificationConfigEdit() {
   );
 }
 
-export default injectIntl(TestNotificationConfigEdit);
+export default TestNotificationConfigEdit;

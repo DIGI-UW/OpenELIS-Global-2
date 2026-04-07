@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import {
@@ -37,6 +37,7 @@ import CreatePatientFormValues from "../formModel/innitialValues/CreatePatientFo
 import AsyncAvatar from "./photoManagement/photoAvatar/AyncAvatar";
 
 function SearchPatientForm(props) {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -722,4 +723,4 @@ function SearchPatientForm(props) {
   );
 }
 
-export default injectIntl(SearchPatientForm);
+export default SearchPatientForm;

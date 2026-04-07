@@ -1,5 +1,5 @@
 import { React, useState, useEffect, useRef } from "react";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   Checkbox,
   Select,
@@ -16,6 +16,7 @@ import AutoComplete from "../common/AutoComplete";
 import "../Style.css";
 
 const PrePrint = () => {
+  const intl = useIntl();
   const intl = useIntl();
   const componentMounted = useRef(false);
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -387,4 +388,4 @@ const PrePrint = () => {
     </>
   );
 };
-export default injectIntl(PrePrint);
+export default PrePrint;

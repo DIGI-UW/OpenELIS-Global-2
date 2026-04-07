@@ -9,7 +9,7 @@ import {
   SelectItem,
   TextInput,
 } from "@carbon/react";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { NotificationContext } from "../../layout/Layout";
@@ -30,6 +30,7 @@ const LOG_LEVELS = [
 ];
 
 function LoggingManagement() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -130,4 +131,4 @@ function LoggingManagement() {
   );
 }
 
-export default injectIntl(LoggingManagement);
+export default LoggingManagement;

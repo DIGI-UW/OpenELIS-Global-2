@@ -10,7 +10,7 @@ import {
   BreadcrumbItem,
   Loading,
 } from "@carbon/react";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import PatientStatusReport from "../common/PatientStatusReport";
 import ReportByID from "../common/ReportByID";
 import ReportByDate from "../common/ReportByDate";
@@ -161,6 +161,7 @@ export const StudyReports = (props) => {
 
 const StudyIndex = () => {
   const intl = useIntl();
+  const intl = useIntl();
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
 
@@ -252,4 +253,4 @@ const StudyIndex = () => {
   );
 };
 
-export default injectIntl(StudyIndex);
+export default StudyIndex;

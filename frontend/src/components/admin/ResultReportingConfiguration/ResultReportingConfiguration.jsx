@@ -18,7 +18,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 let breadcrumbs = [
@@ -31,6 +31,7 @@ let breadcrumbs = [
 ];
 
 function ResultReportingConfiguration() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -281,4 +282,4 @@ function ResultReportingConfiguration() {
   );
 }
 
-export default injectIntl(ResultReportingConfiguration);
+export default ResultReportingConfiguration;

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { TextInput } from "@carbon/react";
-import { injectIntl, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 
 function SearchTestNames({ testNames, onFilter }) {
+  const intl = useIntl();
   const intl = useIntl();
   const [searchTest, setSearchTest] = useState("");
 
@@ -29,4 +30,4 @@ function SearchTestNames({ testNames, onFilter }) {
   );
 }
 
-export default injectIntl(SearchTestNames);
+export default SearchTestNames;

@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState, createRef } from "react";
 import config from "../config.json";
 import "./Style.css";
 import qs from "qs";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { HardwareSecurityModule } from "@carbon/icons-react";
 import {
   Form,
@@ -23,6 +23,7 @@ import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { getBranding } from "./utils/BrandingUtils";
 
 function Login(props) {
+  const intl = useIntl();
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -362,4 +363,4 @@ function Login(props) {
   );
 }
 
-export default injectIntl(Login);
+export default Login;

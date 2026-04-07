@@ -23,7 +23,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
@@ -37,6 +37,7 @@ let breadcrumbs = [
 ];
 
 function ExternalConnectionAddModify() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -433,4 +434,4 @@ function ExternalConnectionAddModify() {
   );
 }
 
-export default injectIntl(ExternalConnectionAddModify);
+export default ExternalConnectionAddModify;

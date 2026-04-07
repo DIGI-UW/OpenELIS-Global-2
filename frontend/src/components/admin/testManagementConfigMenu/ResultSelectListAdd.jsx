@@ -38,7 +38,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { SortableResultSelectionOptionList } from "./sortableListComponent/SortableList";
 
@@ -56,6 +56,7 @@ let breadcrumbs = [
 ];
 
 function ResultSelectListAdd() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -563,4 +564,4 @@ function ResultSelectListAdd() {
   );
 }
 
-export default injectIntl(ResultSelectListAdd);
+export default ResultSelectListAdd;

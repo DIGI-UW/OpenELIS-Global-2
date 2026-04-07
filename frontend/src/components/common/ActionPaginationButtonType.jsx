@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import { Button, Column, Grid, Section } from "@carbon/react";
 import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 const ActionPaginationButtonType = ({
   selectedRowIds,
@@ -22,6 +22,7 @@ const ActionPaginationButtonType = ({
   id,
   type,
 }) => {
+  const intl = useIntl();
   const intl = useIntl();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
 
@@ -199,4 +200,4 @@ ActionPaginationButtonType.propTypes = {
   type: PropTypes.oneOf(["type1", "type2"]).isRequired,
 };
 
-export default injectIntl(ActionPaginationButtonType);
+export default ActionPaginationButtonType;

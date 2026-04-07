@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { Heading, Grid, Column, Section, Button } from "@carbon/react";
 import SearchPatientForm from "./SearchPatientForm";
@@ -11,6 +11,7 @@ let breadcrumbs = [
 ];
 
 function PatientManagement() {
+  const intl = useIntl();
   const [selectedPatient, setSelectedPatient] = useState({});
   const [searchPatientTab, setSearchPatientTab] = useState({
     kind: "primary",
@@ -102,4 +103,4 @@ function PatientManagement() {
   );
 }
 
-export default injectIntl(PatientManagement);
+export default PatientManagement;

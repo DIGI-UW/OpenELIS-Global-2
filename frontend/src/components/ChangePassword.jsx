@@ -16,13 +16,14 @@ import {
   TextInput,
   UnorderedList,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import { NotificationContext } from "./layout/Layout";
 
 function ChangePassword() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
@@ -299,4 +300,4 @@ function ChangePassword() {
   );
 }
 
-export default injectIntl(ChangePassword);
+export default ChangePassword;

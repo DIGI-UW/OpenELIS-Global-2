@@ -9,7 +9,7 @@ import {
   Modal,
   TextInput,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 
 const RenameModelBox = ({
@@ -31,6 +31,7 @@ const RenameModelBox = ({
   selectedItem,
   hasFrench,
 }) => {
+  const intl = useIntl();
   return (
     <>
       {data ? (
@@ -199,4 +200,4 @@ RenameModelBox.propTypes = {
   selectedItem: PropTypes.object.isRequired,
 };
 
-export default injectIntl(RenameModelBox);
+export default RenameModelBox;

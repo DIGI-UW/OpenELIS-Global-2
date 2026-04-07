@@ -24,7 +24,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { Notification } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { fetchAlertConfig, saveAlertConfig } from "../api";
 import {
   AlertDialog,
@@ -61,6 +61,7 @@ const getAlertTypes = (intl) => [
 ];
 
 function AlertSettings() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -410,4 +411,4 @@ function AlertSettings() {
   );
 }
 
-export default injectIntl(AlertSettings);
+export default AlertSettings;

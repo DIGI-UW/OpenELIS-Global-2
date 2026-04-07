@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import {
   getFromOpenElisServer,
@@ -61,6 +61,7 @@ function labNumberForLogbookSearch(accessionNumber) {
 }
 
 function ResultSearchPage() {
+  const intl = useIntl();
   const [originalResultForm, setOriginalResultForm] = useState({
     testResult: [],
   });
@@ -2026,4 +2027,4 @@ export function SearchResults(props) {
   );
 }
 
-export default injectIntl(ResultSearchPage);
+export default ResultSearchPage;

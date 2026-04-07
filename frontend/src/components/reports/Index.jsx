@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from "react";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { StudyReports } from "./study/index";
@@ -9,6 +9,7 @@ import { RoutineReports } from "./routine/Index";
 import { Loading } from "@carbon/react";
 
 const ReportIndex = () => {
+  const intl = useIntl();
   const intl = useIntl();
   const location = useLocation();
   const { setNotificationVisible, addNotification, notificationVisible } =
@@ -50,4 +51,4 @@ const ReportIndex = () => {
   );
 };
 
-export default injectIntl(ReportIndex);
+export default ReportIndex;

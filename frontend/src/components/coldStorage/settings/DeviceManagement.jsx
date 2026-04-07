@@ -26,7 +26,7 @@ import {
   FormLabel,
 } from "@carbon/react";
 import { Add, Edit, Power, TrashCan } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   fetchDevices,
   fetchLocations,
@@ -94,6 +94,7 @@ const PARITY_OPTIONS = [
 ];
 
 function DeviceManagement() {
+  const intl = useIntl();
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -757,4 +758,4 @@ function DeviceManagement() {
   );
 }
 
-export default injectIntl(DeviceManagement);
+export default DeviceManagement;

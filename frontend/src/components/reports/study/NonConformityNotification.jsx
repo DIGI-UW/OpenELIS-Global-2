@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext, useEffect } from "react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import { Form, Grid, Column, Section, Button } from "@carbon/react";
 import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -8,6 +8,7 @@ import AutoComplete from "../../common/AutoComplete";
 import { ConfigurationContext } from "../../layout/Layout";
 
 const NonConformityNotification = (props) => {
+  const intl = useIntl();
   const { configurationProperties } = useContext(ConfigurationContext);
   const componentMounted = useRef(false);
   const [accessionNumber, setAccessionNumber] = useState("");
@@ -130,4 +131,4 @@ const NonConformityNotification = (props) => {
   );
 };
 
-export default injectIntl(NonConformityNotification);
+export default NonConformityNotification;

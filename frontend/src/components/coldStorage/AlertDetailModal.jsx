@@ -15,17 +15,12 @@ import {
   Button,
   TextArea,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import { fetchAlertDetails, acknowledgeAlert, resolveAlert } from "./api";
 
-const AlertDetailModal = ({
-  intl,
-  alertId,
-  open,
-  onClose,
-  currentUserId = 1,
-}) => {
+const AlertDetailModal = ({ alertId, open, onClose, currentUserId = 1 }) => {
+  const intl = useIntl();
   const [alert, setAlert] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -551,4 +546,4 @@ AlertDetailModal.propTypes = {
   currentUserId: PropTypes.number,
 };
 
-export default injectIntl(AlertDetailModal);
+export default AlertDetailModal;

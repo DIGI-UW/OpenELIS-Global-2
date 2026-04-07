@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import "../Style.css";
-import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import ResultSearchPage from "./SearchResultForm";
 import { Heading, Grid, Column, Section } from "@carbon/react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 
 function ResultSearch() {
+  const intl = useIntl();
   const [source, setSource] = useState("");
   useEffect(() => {
     let sourceFromUrl = new URLSearchParams(window.location.search).get(
@@ -54,4 +55,4 @@ function ResultSearch() {
   );
 }
 
-export default injectIntl(ResultSearch);
+export default ResultSearch;

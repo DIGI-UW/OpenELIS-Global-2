@@ -1,11 +1,12 @@
 import React from "react";
-import { injectIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import HomeDashBoard from "./home/Dashboard.tsx";
 import PageBreadCrumb from "./common/PageBreadCrumb";
 
 let breadcrumbs = [{ label: "home.label", link: "/" }];
 
 function Home() {
+  const intl = useIntl();
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -17,4 +18,4 @@ function Home() {
   );
 }
 
-export default injectIntl(Home);
+export default Home;

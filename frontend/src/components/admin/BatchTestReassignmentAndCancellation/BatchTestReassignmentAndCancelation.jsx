@@ -11,7 +11,7 @@ import {
   Checkbox,
   Tag,
 } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import {
   AlertDialog,
@@ -33,6 +33,7 @@ const breadcrumbs = [
 ];
 
 function BatchTestReassignmentAndCancelation() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -1034,4 +1035,4 @@ function BatchTestReassignmentAndCancelation() {
   );
 }
 
-export default injectIntl(BatchTestReassignmentAndCancelation);
+export default BatchTestReassignmentAndCancelation;

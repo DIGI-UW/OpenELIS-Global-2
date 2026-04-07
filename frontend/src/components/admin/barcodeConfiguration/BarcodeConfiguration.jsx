@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   Form,
   TextInput,
@@ -55,6 +55,7 @@ let breadcrumbs = [
   },
 ];
 function BarcodeConfiguration() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -1393,4 +1394,4 @@ function BarcodeConfiguration() {
   );
 }
 
-export default injectIntl(BarcodeConfiguration);
+export default BarcodeConfiguration;

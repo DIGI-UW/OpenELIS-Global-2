@@ -28,7 +28,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AutoComplete from "../../common/AutoComplete";
@@ -43,6 +43,7 @@ let breadcrumbs = [
 ];
 
 function OrganizationAddModify() {
+  const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -839,4 +840,4 @@ function OrganizationAddModify() {
   );
 }
 
-export default injectIntl(OrganizationAddModify);
+export default OrganizationAddModify;

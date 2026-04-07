@@ -8,7 +8,7 @@ import {
   Heading,
 } from "@carbon/react";
 import { Settings as SettingsIcon } from "@carbon/icons-react";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import DeviceManagement from "./settings/DeviceManagement";
 import TemperatureThresholds from "./settings/TemperatureThresholds";
 import AlertSettings from "./settings/AlertSettings";
@@ -16,7 +16,8 @@ import SystemSettings from "./settings/SystemSettings";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 
-function Settings({ intl }) {
+function Settings({}) {
+  const intl = useIntl();
   const [selectedTab, setSelectedTab] = useState(0);
   const { notificationVisible } = useContext(NotificationContext);
 
@@ -70,4 +71,4 @@ function Settings({ intl }) {
   );
 }
 
-export default injectIntl(Settings);
+export default Settings;

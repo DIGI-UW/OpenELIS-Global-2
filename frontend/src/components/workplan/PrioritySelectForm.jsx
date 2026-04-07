@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Column, Grid, Select, SelectItem } from "@carbon/react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 function PanelSelectForm(props) {
+  const intl = useIntl();
   const mounted = useRef(false);
   const [tests, setTests] = useState([]);
   const [defaultPriorityId, setDefaultPriorityId] = useState("");
@@ -74,4 +75,4 @@ function PanelSelectForm(props) {
   );
 }
 
-export default injectIntl(PanelSelectForm);
+export default PanelSelectForm;

@@ -1,6 +1,6 @@
 import React from "react";
 import GlobalSideBar from "../common/GlobalSideBar";
-import { FormattedMessage, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from 'react-intl';
 import {
   IbmWatsonDiscovery,
   IbmWatsonNaturalLanguageUnderstanding,
@@ -129,6 +129,7 @@ export const RoutineReportsMenu = {
   contentRoutes: [],
 };
 const Routine = () => {
+  const intl = useIntl();
   return (
     <>
       <div style={{ marginLeft: "1%" }}>
@@ -139,4 +140,4 @@ const Routine = () => {
   );
 };
 
-export default injectIntl(Routine);
+export default Routine;

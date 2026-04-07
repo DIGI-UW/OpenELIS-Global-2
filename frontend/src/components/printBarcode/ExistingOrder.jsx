@@ -1,5 +1,5 @@
 import { React, useState, useEffect, useRef, useContext } from "react";
-import { FormattedMessage, useIntl, injectIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   Grid,
   Column,
@@ -22,6 +22,7 @@ import { getFromOpenElisServer } from "../utils/Utils";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 const ExistingOrder = () => {
+  const intl = useIntl();
   const intl = useIntl();
   const componentMounted = useRef(false);
   const [accessionNumber, setAccessionNumber] = useState("");
@@ -320,4 +321,4 @@ const ExistingOrder = () => {
     </>
   );
 };
-export default injectIntl(ExistingOrder);
+export default ExistingOrder;

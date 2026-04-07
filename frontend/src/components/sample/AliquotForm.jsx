@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import "../Style.css";
 import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
 import {
@@ -39,6 +39,7 @@ import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 
 function AliquotPage() {
+  const intl = useIntl();
   const [sampleForm, setSampleForm] = useState({
     sampleItems: [],
     accessionNumber: "",
@@ -1130,4 +1131,4 @@ export function SampleItemsDisplay(props) {
   );
 }
 
-export default injectIntl(AliquotPage);
+export default AliquotPage;
