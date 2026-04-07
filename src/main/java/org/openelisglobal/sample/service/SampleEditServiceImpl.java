@@ -381,7 +381,8 @@ public class SampleEditServiceImpl implements SampleEditService {
         analysis.setSampleItem(sampleTestCollection.item);
         analysis.setSysUserId(sampleTestCollection.item.getSysUserId());
         analysis.setRevision("0");
-        analysis.setStartedDate(collectionDateTime == null ? DateUtil.getNowAsSqlDate() : collectionDateTime);
+        analysis.setStartedDate(collectionDateTime == null ? DateUtil.getNowAsTimestamp()
+                : new java.sql.Timestamp(collectionDateTime.getTime()));
         if (sampleTestCollection.item.isRejected()) {
             analysis.setStatusId(
                     SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.SampleRejected));
@@ -454,7 +455,7 @@ public class SampleEditServiceImpl implements SampleEditService {
                     analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
                     analysis.setIsReportable(test.getIsReportable());
                     analysis.setAnalysisType("MANUAL");
-                    analysis.setStartedDate(DateUtil.getNowAsSqlDate());
+                    analysis.setStartedDate(DateUtil.getNowAsTimestamp());
                 }
 
                 analysis.setStatusId(
