@@ -76,7 +76,7 @@ function OEHeader(props) {
 
   useEffect(() => {
     userSessionDetails.authenticated
-      ? getFromOpenElisServer("/rest/menu", (res) => {
+      ? getFromOpenElisServer("/rest/menu?view=react", (res) => {
           handleMenuItems("menu", res);
         })
       : console.log("User not authenticated, not getting menu");

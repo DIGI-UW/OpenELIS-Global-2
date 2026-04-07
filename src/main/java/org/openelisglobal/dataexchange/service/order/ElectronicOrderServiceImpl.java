@@ -25,6 +25,28 @@ import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Arrays;
+import org.apache.commons.lang3.ObjectUtils;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Encounter;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Period;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.Task;
+import org.hl7.fhir.r4.model.Task.ParameterComponent;
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.test.valueholder.Test;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<ElectronicOrder, String>
@@ -41,6 +63,14 @@ public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<E
     protected FhirUtil fhirUtil;
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private PatientService patientService;
+    @Autowired
+    private SampleService sampleService;
+    @Autowired
+    private StatusOfSampleService statusOfSampleService;
+    @Value("${org.openelisglobal.fhir.subscriber}")
+    private String defaultRemoteServer;
 
     ElectronicOrderServiceImpl() {
         super(ElectronicOrder.class);
@@ -223,5 +253,103 @@ public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<E
     @Override
     public int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds) {
         return getBaseObjectDAO().getCountOfElectronicOrdersByStatusList(statusIds);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public ElectronicOrderDisplayItem buildStudyElectronicOrderDisplayItem(ElectronicOrder electronicOrder) {
+        ElectronicOrderDisplayItem displayItem = new ElectronicOrderDisplayItem();
+        try {
+            displayItem.setStatus(statusOfSampleService.get(electronicOrder.getStatusId()).getDefaultLocalizedName());
+            displayItem.setElectronicOrderId(electronicOrder.getId());
+            displayItem.setExternalOrderId(electronicOrder.getExternalId());
+            displayItem.setPriority(electronicOrder.getPriority());
+            displayItem.setQaEventId(electronicOrder.getRejectReasonId());
+            Patient patient = electronicOrder.getPatient();
+            if (patient != null) {
+                displayItem.setSubjectNumber(patientService.getSubjectNumber(patient));
+                displayItem.setPatientNationalId(patient.getNationalId());
+                displayItem.setBirthDate(patient.getBirthDateForDisplay());
+                displayItem.setGender(patient.getGender());
+                displayItem.setPatientUpid(patient.getUpidCode());
+            } else {
+                displayItem.setWarnings(Arrays.asList("error in data collection - Patient was a null resource"));
+            }
+            Task task = fhirUtil.getFhirParser().parseResource(Task.class, electronicOrder.getData());
+            displayItem.setRequestDateDisplay(DateUtil.formatDateAsText(task.getAuthoredOn()));
+            for (ParameterComponent parameter : task.getInput()) {
+                if (parameter.getType().getCodingFirstRep().getCode().equals("CI0050005AAAAAAAAAAAAAAAAAAAAAAAAAAA")) {
+                    if (ObjectUtils.isNotEmpty(parameter.getValue()) && parameter.getValue() instanceof DateTimeType) {
+                        DateTimeType dateValue = (DateTimeType) parameter.getValue();
+                        if (ObjectUtils.isNotEmpty(dateValue))
+                            displayItem.setRequestDateDisplay(DateUtil.formatDateAsText(dateValue.getValue()));
+                    }
+                }
+            }
+            Organization organization = organizationService.getOrganizationByFhirId(
+                    task.getRestriction().getRecipientFirstRep().getReferenceElement().getIdPart());
+            if (organization != null) {
+                displayItem.setRequestingFacility(organization.getOrganizationName());
+            }
+            Sample sample = sampleService.getSampleByReferringId(electronicOrder.getExternalId());
+            if (sample != null) {
+                displayItem.setLabNumber(sample.getAccessionNumber());
+            }
+            IGenericClient fhirClient = fhirUtil.getFhirClient(fhirConfig.getLocalFhirStorePath());
+            ServiceRequest serviceRequest = fhirClient.read().resource(ServiceRequest.class)
+                    .withId(electronicOrder.getExternalId()).execute();
+            if (serviceRequest.getRequisition() != null) {
+                displayItem.setReferringLabNumber(serviceRequest.getRequisition().getValue());
+            }
+            org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
+                    .resource(org.hl7.fhir.r4.model.Patient.class)
+                    .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()).execute();
+            if (fhirPatient != null) {
+                for (Identifier identifier : fhirPatient.getIdentifier()) {
+                    if ("https://openmrs.org/UPI".equals(identifier.getSystem())) {
+                        displayItem.setPatientUpid(identifier.getValue());
+                        break;
+                    }
+                    if ("http://fhir.openmrs.org/ext/patient/identifier#location"
+                            .equals(identifier.getExtensionFirstRep().getUrl())) {
+                        Extension extension = identifier.getExtensionFirstRep();
+                        Reference locationReference = (Reference) extension.getValue();
+                        displayItem.setRequestingFacility(locationReference.getDisplay());
+                    }
+                }
+            }
+            Encounter encounter = fhirUtil.getFhirClient(defaultRemoteServer).read().resource(Encounter.class)
+                    .withId(serviceRequest.getEncounter().getReferenceElement().getIdPart()).execute();
+            if (ObjectUtils.isNotEmpty(encounter)) {
+                Period period = encounter.getPeriod();
+                if (ObjectUtils.isNotEmpty(period)) {
+                    java.util.Date collectionDate = period.getStart();
+                    if (ObjectUtils.isNotEmpty(collectionDate))
+                        displayItem.setCollectionDateDisplay(DateUtil.formatDateAsText(collectionDate));
+                }
+            }
+            Test test = null;
+            for (Coding coding : serviceRequest.getCode().getCoding()) {
+                if (coding.hasSystem() && coding.getSystem().equalsIgnoreCase("http://loinc.org")) {
+                    List<Test> tests = testService.getActiveTestsByLoinc(coding.getCode());
+                    if (!tests.isEmpty()) {
+                        test = tests.get(0);
+                        break;
+                    }
+                }
+            }
+            if (test != null) {
+                displayItem.setTestName(test.getLocalizedTestName().getLocalizedValue());
+            }
+        } catch (ResourceNotFoundException e) {
+            displayItem.setWarnings(Arrays.asList("error in data collection - FHIR resource not found"));
+            LogEvent.logError(e);
+        } catch (NullPointerException e) {
+            displayItem.setWarnings(Arrays.asList("error in data collection - null data"));
+            LogEvent.logError(e);
+        } catch (RuntimeException e) {
+            displayItem.setWarnings(Arrays.asList("error in data collection - unknown exception"));
+            LogEvent.logError(e);
+        }
+        return displayItem;
     }
 }

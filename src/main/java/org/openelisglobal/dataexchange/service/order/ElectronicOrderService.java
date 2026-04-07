@@ -8,6 +8,7 @@ import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder.SortOrder;
+import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
 
 public interface ElectronicOrderService extends BaseObjectService<ElectronicOrder, String> {
 
@@ -41,4 +42,6 @@ public interface ElectronicOrderService extends BaseObjectService<ElectronicOrde
     List<ElectronicOrder> searchForElectronicOrders(ElectronicOrderViewForm form);
 
     List<ElectronicOrder> searchForStudyElectronicOrders(ElectronicOrderViewForm form);
+
+    ElectronicOrderDisplayItem buildStudyElectronicOrderDisplayItem(ElectronicOrder electronicOrder);
 }
