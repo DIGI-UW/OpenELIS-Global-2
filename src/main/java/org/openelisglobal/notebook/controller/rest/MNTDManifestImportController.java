@@ -1,5 +1,6 @@
 package org.openelisglobal.notebook.controller.rest;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,8 +18,6 @@ import org.openelisglobal.notebook.service.MNTDManifestImportService.ParsedManif
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -246,20 +245,22 @@ public class MNTDManifestImportController extends BaseRestController {
      */
     @GetMapping(value = "/manifest-template", produces = "text/csv")
     @ResponseBody
-    public ResponseEntity<Resource> downloadManifestTemplate() {
-        try {
-            Resource resource = new ClassPathResource("templates/mntd-sample-import-template.csv");
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
+    public void downloadManifestTemplate(HttpServletResponse response) throws IOException {
+        ClassPathResource resource = new ClassPathResource("templates/mntd-sample-import-template.csv");
+        if (!resource.exists()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mntd-sample-import-template.csv");
-            headers.add(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8");
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=mntd-sample-import-template.csv");
 
-            return ResponseEntity.ok().headers(headers).body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+        try (InputStream inputStream = resource.getInputStream()) {
+            inputStream.transferTo(response.getOutputStream());
+            response.flushBuffer();
+        } catch (IOException e) {
+            response.reset();
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to download template");
         }
     }
 
