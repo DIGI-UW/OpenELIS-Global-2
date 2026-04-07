@@ -229,8 +229,7 @@ public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyze
         mappingId = mappingId.substring(0, mappingId.indexOf("\""));
 
         // Update mapping
-        String updateBody = "{\"analyzerFieldId\":\"" + fieldId + "\",\"openelisFieldId\":\"updated-field-456\","
-                + "\"openelisFieldType\":\"TEST\",\"mappingType\":\"TEST_LEVEL\",\"isActive\":true}";
+        String updateBody = "{\"openelisFieldId\":\"updated-field-456\",\"isActive\":true}";
 
         // Act & Assert: PUT endpoint should update mapping
         mockMvc.perform(put("/rest/analyzer/analyzers/" + analyzerId + "/mappings/" + mappingId)
