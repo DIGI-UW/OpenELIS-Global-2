@@ -24,7 +24,7 @@ describe("Layout Full Integration (Smoke Tests)", () => {
           releaseNumber: "3.2.1.0",
           BANNER_TEXT: "Test LIMS",
         });
-      } else if (url === "/rest/menu") {
+      } else if (url === "/rest/menu?view=react") {
         // Realistic menu structure matching database
         callback([
           {
