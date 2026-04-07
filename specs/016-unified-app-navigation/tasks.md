@@ -78,13 +78,13 @@ MenuConfigurationHandler._
       (MUST FAIL)
 - [ ] T015 [M2] Update `Menu` entity in
       `src/main/java/org/openelisglobal/menu/valueholder/Menu.java` with new
-      fields
+      fields (including `fhir_uuid` schema foundation per E1 resolution)
 - [ ] T016 [M2] Verify ORM validation test passes
 - [ ] T017 [M2] Write unit tests
-      `src/test/java/org/openelisglobal/menu/service/MenuConfigurationHandlerTest.java`
+      `src/test/java/org/openelisglobal/configuration/service/MenuConfigurationHandlerTest.java`
       (MUST FAIL)
 - [ ] T018 [M2] Implement `MenuConfigurationHandler.java` in
-      `src/main/java/org/openelisglobal/menu/service/`
+      `src/main/java/org/openelisglobal/configuration/service/`
 - [ ] T019 [M2] Verify `MenuConfigurationHandlerTest` passes
 - [ ] T020 [M2] Write unit tests
       `src/test/java/org/openelisglobal/menu/service/MenuServiceTest.java` for
@@ -120,7 +120,7 @@ _Goal: Create GlobalSidebar React component and MenuIconRegistry._
 - [ ] T033 [P] [M3] Implement `GlobalSidebar.js` using `@carbon/react` and SWR
       for data fetching
 - [ ] T034 [P] [M3] Implement client-side role filtering and navigation state
-      persistence in `GlobalSidebar.js`
+      persistence (using `localStorage` per C1 resolution) in `GlobalSidebar.js`
 - [ ] T035 [M3] Verify `GlobalSidebar.test.js` passes
 - [ ] T036 [M3] Create PR for M3 targeting `develop`
 

@@ -113,17 +113,18 @@ specs/016-unified-app-navigation/
 
 ```text
 # Web application structure
-src/main/java/org/openelisglobal/menu/
-├── valueholder/Menu.java                    # Entity (extend with new fields)
-├── dao/MenuDAO.java                         # DAO interface
-├── dao/MenuDAOImpl.java                     # DAO implementation
-├── service/MenuService.java                 # Service interface
-├── service/MenuServiceImpl.java             # Service (add provenance logic)
-├── service/MenuConfigurationHandler.java    # NEW: DomainConfigurationHandler for JSON
-├── controller/MenuController.java           # Controller (add role filtering)
-└── util/
-    ├── MenuItem.java                        # Menu tree wrapper
-    └── MenuUtil.java                        # Menu tree builder + filtering
+src/main/java/org/openelisglobal/
+├── configuration/service/MenuConfigurationHandler.java    # NEW: DomainConfigurationHandler for JSON
+└── menu/
+    ├── valueholder/Menu.java                    # Entity (extend with new fields)
+    ├── dao/MenuDAO.java                         # DAO interface
+    ├── dao/MenuDAOImpl.java                     # DAO implementation
+    ├── service/MenuService.java                 # Service interface
+    ├── service/MenuServiceImpl.java             # Service (add provenance logic)
+    ├── controller/MenuController.java           # Controller (add role filtering)
+    └── util/
+        ├── MenuItem.java                        # Menu tree wrapper
+        └── MenuUtil.java                        # Menu tree builder + filtering
 
 src/main/resources/
 ├── configuration/menus/menus.json           # NEW: Base menu configuration
@@ -137,9 +138,9 @@ frontend/src/components/
 ├── coldStorage/Reports.js                   # MODIFY: Remove hardcoded SideNav
 └── validation/Validation.js                 # MODIFY: Remove hardcoded SideNav
 
-src/test/java/org/openelisglobal/menu/
-├── service/MenuConfigurationHandlerTest.java # NEW
-└── service/MenuServiceTest.java              # NEW/EXTEND
+src/test/java/org/openelisglobal/
+├── configuration/service/MenuConfigurationHandlerTest.java # NEW
+└── menu/service/MenuServiceTest.java              # NEW/EXTEND
 
 frontend/src/components/navigation/
 └── GlobalSidebar.test.js                     # NEW

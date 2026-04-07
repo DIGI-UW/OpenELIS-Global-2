@@ -52,6 +52,7 @@ sections with a single global sidebar component.
 - Replace all local SideNav implementations (Admin, Reports, Validation)
 - Maintain current Carbon Design System styling
 - Support collapsible/expandable menu sections
+- Persist expanded/collapsed state using `localStorage` to survive page reloads
 
 #### FR2: Configuration-Driven Menus
 
@@ -122,11 +123,14 @@ sections with a single global sidebar component.
 #### III. FHIR/IHE Standards Compliance
 
 - Menu entities include `fhir_uuid` for external integration
-- Sync menu configurations via FHIR if required
+- Note: This feature only adds the database schema foundation (`fhir_uuid`
+  column). Actual FHIR resource mapping and synchronization logic will be
+  handled in a separate interoperability epic.
 
 #### IV. Layered Architecture Pattern
 
-- Valueholder: `MenuValueholder` with new fields
+- Valueholder: `Menu` entity with new fields (note: the entity is named `Menu`,
+  not `MenuValueholder`)
 - DAO: `MenuDAO` with HQL queries only
 - Service: `MenuService` with transaction management
 - Controller: `MenuRestController` with role filtering
@@ -152,7 +156,7 @@ GlobalSidebar
 
 ```java
 @Entity
-public class MenuValueholder extends BaseObject<String> {
+public class Menu extends BaseObject<String> {
     private String id;
     private String parentId;
     private String displayKey;
