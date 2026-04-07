@@ -51,7 +51,7 @@ public class RestStudyElectronicOrdersController extends BaseController {
     }
 
     @RequestMapping(value = "/rest/StudyElectronicOrders", method = RequestMethod.GET)
-    public ElectronicOrderViewForm showStudyElectronicOrders(HttpServletRequest request,
+    public ResponseEntity<?> showStudyElectronicOrders(HttpServletRequest request,
             @ModelAttribute("form") @Valid ElectronicOrderViewForm form, BindingResult result)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         LogEvent.logDebug(this.getClass().getSimpleName(), "showStudyElectronicOrders",
@@ -112,6 +112,9 @@ public class RestStudyElectronicOrdersController extends BaseController {
                     paging.setDatabaseResults(request, form, eOrderDisplayItems);
                 }
             } else {
+                if (!GenericValidator.isInt(requestedPage) || Integer.parseInt(requestedPage) < 1) {
+                    return ResponseEntity.badRequest().body("Invalid page parameter: must be a positive integer");
+                }
                 int requestedPageNumber = Integer.parseInt(requestedPage);
                 // Sets the requested page in the response.
                 paging.page(request, form, requestedPageNumber);
@@ -122,7 +125,7 @@ public class RestStudyElectronicOrdersController extends BaseController {
                     "Successfully returning form with " + (form.geteOrders() != null ? form.geteOrders().size() : 0)
                             + " orders");
 
-            return form;
+            return ResponseEntity.ok(form);
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "showStudyElectronicOrders",
                     "Error processing request: " + e.getMessage());
