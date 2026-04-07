@@ -1,5 +1,13 @@
 import config from "../../config.json";
 
+/**
+ * Get the current locale from localStorage for API requests.
+ * Falls back to browser language or 'en' if not set.
+ */
+const getAcceptLanguageHeader = () => {
+  return localStorage.getItem("locale") || navigator.language || "en";
+};
+
 const handleSessionError = (response) => {
   if (response.status === 403) {
     response
@@ -27,6 +35,9 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       credentials: "include",
       method: "GET",
       signal: signal,
+      headers: {
+        "Accept-Language": getAcceptLanguageHeader(),
+      },
     },
   )
     .then((response) => {
@@ -44,11 +55,10 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       }
     })
     .catch((error) => {
-      // Don't log AbortError - it's expected when component unmounts
-      if (error.name !== "AbortError") {
-        console.error(error);
+      if (error.name === "AbortError") {
+        return; // Component is unmounting — don't call callback
       }
-      // Ensure callback is always called, even on error, to avoid hanging promises
+      console.error(error);
       callback(undefined);
     });
 };
@@ -69,6 +79,7 @@ export const postToOpenElisServer = (
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad,
     },
@@ -80,6 +91,7 @@ export const postToOpenElisServer = (
     })
     .catch((error) => {
       console.error(error);
+      callback(0, extraParams);
     });
 };
 
@@ -99,6 +111,7 @@ export const postToOpenElisServerFullResponse = (
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad,
     },
@@ -107,6 +120,7 @@ export const postToOpenElisServerFullResponse = (
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -124,6 +138,7 @@ export const postToOpenElisServerFormData = (
       method: "POST",
       headers: {
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: formData,
     },
@@ -135,6 +150,7 @@ export const postToOpenElisServerFormData = (
     })
     .catch((error) => {
       console.error(error);
+      callback(0, extraParams);
     });
 };
 
@@ -154,6 +170,7 @@ export const postToOpenElisServerJsonResponse = (
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad,
     },
@@ -198,6 +215,7 @@ export const getFromOpenElisServerSync = (endPoint, callback) => {
   const request = new XMLHttpRequest();
   request.open("GET", config.serverBaseUrl + endPoint, false);
   request.setRequestHeader("credentials", "include");
+  request.setRequestHeader("Accept-Language", getAcceptLanguageHeader());
   request.send();
   // if (request.response.url.includes("LoginPage")) {
   //     throw "No Login Session";
@@ -221,6 +239,7 @@ export const postToOpenElisServerForBlob = (
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad,
     },
@@ -254,6 +273,7 @@ export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad,
     },
@@ -284,6 +304,7 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
   };
 
@@ -300,6 +321,7 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
     })
     .catch((error) => {
       console.error(error);
+      callback(0);
     });
 };
 
@@ -316,6 +338,7 @@ export const putToOpenElisServerFullResponse = (
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
     body: payLoad,
   })
@@ -323,6 +346,7 @@ export const putToOpenElisServerFullResponse = (
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -334,6 +358,7 @@ export const deleteFromOpenElisServer = (endPoint, callback) => {
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
   })
     .then(handleSessionError)
@@ -343,6 +368,7 @@ export const deleteFromOpenElisServer = (endPoint, callback) => {
     })
     .catch((error) => {
       console.error(error);
+      callback(0);
     });
 };
 
@@ -358,12 +384,14 @@ export const deleteFromOpenElisServerFullResponse = (
     headers: {
       "Content-Type": "application/json",
       "X-CSRF-Token": localStorage.getItem("CSRF"),
+      "Accept-Language": getAcceptLanguageHeader(),
     },
   })
     .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -406,6 +434,7 @@ export const patchToOpenElisServerJsonResponse = (
       headers: {
         "Content-Type": "application/json",
         "X-CSRF-Token": localStorage.getItem("CSRF"),
+        "Accept-Language": getAcceptLanguageHeader(),
       },
       body: payLoad,
     },
@@ -422,6 +451,7 @@ export const patchToOpenElisServerJsonResponse = (
     })
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 

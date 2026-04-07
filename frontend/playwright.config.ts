@@ -66,6 +66,20 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: process.env.PLAYWRIGHT_VIDEO === "on" ? "on" : "off",
+
+    // CI stability: prevent Chromium renderer crashes ("Target page closed")
+    ...(process.env.CI && {
+      launchOptions: {
+        args: [
+          "--disable-dev-shm-usage", // use /tmp instead of /dev/shm
+          "--disable-gpu", // skip GPU compositing (no GPU in CI)
+          "--disable-extensions", // no extension overhead
+          "--no-first-run", // skip first-run setup
+          "--js-flags=--max-old-space-size=1024", // cap V8 heap (Carbon doesn't tree-shake)
+        ],
+      },
+      serviceWorkers: "block", // block SW registration — self-signed certs cause constant SSL errors
+    }),
   },
 
   projects: [

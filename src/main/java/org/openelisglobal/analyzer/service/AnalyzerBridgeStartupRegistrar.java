@@ -1,10 +1,8 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -112,19 +110,14 @@ public class AnalyzerBridgeStartupRegistrar {
                     }
                 }
 
-                // FILE analyzers
-                try {
-                    Integer analyzerIdInt = Integer.valueOf(analyzerId);
-                    Optional<FileImportConfiguration> fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
-                    if (fileConfig.isPresent()) {
-                        FileImportConfiguration fc = fileConfig.get();
-                        if (bridgeRegistrationService.registerFile(analyzerId, analyzerName, fc.getImportDirectory(),
-                                fc.getFilePattern(), fc.getColumnMappings())) {
-                            registered++;
-                            bridgeReachable = true;
-                        }
+                // FILE analyzers — read from unified Analyzer entity
+                if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                    if (bridgeRegistrationService.registerFile(analyzerId, analyzerName, analyzer.getImportDirectory(),
+                            analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
+                            analyzer.getDelimiter(), analyzer.getSkipRows())) {
+                        registered++;
+                        bridgeReachable = true;
                     }
-                } catch (NumberFormatException ignored) {
                 }
             }
 
