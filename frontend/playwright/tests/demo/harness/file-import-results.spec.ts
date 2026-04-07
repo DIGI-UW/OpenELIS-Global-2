@@ -194,8 +194,6 @@ async function verifyImportedResults(
 const SKIP_IN_CI = !!process.env.CI;
 
 for (const scenario of FILE_IMPORT_SCENARIOS) {
-  // TODO: Re-enable in PR B — skipped in CI to establish green baseline while
-  // diagnosing CI-specific file-import timeouts (works locally, fails in CI).
   const describeBlock = SKIP_IN_CI ? test.describe.skip : test.describe;
   describeBlock(`${scenario.analyzerName} file import harness`, () => {
     test.setTimeout(180_000);
