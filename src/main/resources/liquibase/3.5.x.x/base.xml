@@ -7,4 +7,12 @@
   <!-- Generic Localization System - Enables unlimited language support -->
   <include relativeToChangelogFile="true" file="001-generic-localization-system.xml"/>
 
+  <!-- EQA Enabled configuration for Order Entry -->
+  <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
+
+  <!-- NCE Enhancement - Phase 1: Foundation -->
+  <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>
+  <!-- Calendar Management + TAT Report permissions (OGC-310) -->
+  <include relativeToChangelogFile="true" file="003-calendar-management.xml"/>
+
 </databaseChangeLog>

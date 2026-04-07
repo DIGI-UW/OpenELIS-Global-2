@@ -69,30 +69,38 @@ const AnalyzersList = () => {
     analyzer: null,
   });
 
-  const loadAnalyzers = useCallback((searchFilters = {}) => {
+  const loadAnalyzers = useCallback((searchFilters = {}, signal = null) => {
     setLoading(true);
-    getAnalyzers(searchFilters, (data) => {
-      const list = data && Array.isArray(data.analyzers) ? data.analyzers : [];
-      setAnalyzers(list);
-      setFilteredAnalyzers(list);
+    getAnalyzers(
+      searchFilters,
+      (data) => {
+        const list =
+          data && Array.isArray(data.analyzers) ? data.analyzers : [];
+        setAnalyzers(list);
+        setFilteredAnalyzers(list);
 
-      // Calculate statistics based on unified status
-      const activeCount = list.filter((a) => a.status === "ACTIVE").length;
-      const inactiveCount = list.filter((a) => a.status === "INACTIVE").length;
-      const pluginWarningCount = list.filter(
-        (a) => a.pluginLoaded === false,
-      ).length;
-      setStats({
-        total: list.length,
-        active: activeCount,
-        inactive: inactiveCount,
-        pluginWarnings: pluginWarningCount,
-      });
-      setLoading(false);
-    });
+        // Calculate statistics based on unified status
+        const activeCount = list.filter((a) => a.status === "ACTIVE").length;
+        const inactiveCount = list.filter(
+          (a) => a.status === "INACTIVE",
+        ).length;
+        const pluginWarningCount = list.filter(
+          (a) => a.pluginLoaded === false,
+        ).length;
+        setStats({
+          total: list.length,
+          active: activeCount,
+          inactive: inactiveCount,
+          pluginWarnings: pluginWarningCount,
+        });
+        setLoading(false);
+      },
+      signal,
+    );
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams(window.location.search);
     const initialSearch = params.get("search") || "";
     const initialStatus = params.get("status") || "";
@@ -105,10 +113,13 @@ const AnalyzersList = () => {
       analyzerType: initialAnalyzerType,
     };
     setFilters(initialFilters);
-    loadAnalyzers({
-      ...initialFilters,
-      ...(initialSearch ? { search: initialSearch } : {}),
-    });
+    loadAnalyzers(
+      {
+        ...initialFilters,
+        ...(initialSearch ? { search: initialSearch } : {}),
+      },
+      controller.signal,
+    );
 
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
     if (storedScrollY) {
@@ -124,6 +135,7 @@ const AnalyzersList = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
+      controller.abort();
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
@@ -505,6 +517,7 @@ const AnalyzersList = () => {
                                   ariaLabel={intl.formatMessage({
                                     id: "analyzer.table.actions",
                                   })}
+                                  data-testid={`analyzer-row-overflow-${row.id}`}
                                 >
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({

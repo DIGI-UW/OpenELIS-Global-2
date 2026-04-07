@@ -86,6 +86,9 @@ import org.springframework.web.servlet.support.RequestContextUtils;
 @RequestMapping(value = "/rest/")
 public class SamplePatientEntryRestController extends BaseSampleEntryController {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
+            .getLogger(SamplePatientEntryRestController.class);
+
     @Value("${org.openelisglobal.requester.identifier:}")
     private String requestFhirUuid;
 
@@ -239,8 +242,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         formValidator.validate(form, result);
         if (result.hasErrors()) {
+            logger.error("Validation failed: {}", result.getAllErrors());
             saveErrors(result);
-            setupForm(form, request, "");
+            return form; // short-circuit — don't proceed with corrupted form data
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
@@ -278,6 +282,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         updateData.setProviderEmailNotificationTestIds(form.getProviderEmailNotificationTestIds());
         updateData.setProviderSMSNotificationTestIds(form.getProviderSMSNotificationTestIds());
         updateData.setCustomNotificationLogic(form.getCustomNotificationLogic());
+        if (sampleOrder.getIsEQASample()) {
+            updateData.setEqaSample(true);
+            updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
+            updateData.setEqaProviderOrganizationId(sampleOrder.getEqaProviderOrganizationId());
+            updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
+            updateData.setEqaParticipantId(sampleOrder.getEqaParticipantId());
+            updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
+            updateData.setEqaPriority(sampleOrder.getEqaPriority());
+        }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
         }
@@ -329,16 +342,16 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
             // patientUpdate, patientInfo, form, request);
         } catch (LIMSRuntimeException e) {
-            // ActionError error;
             if (e.getCause() instanceof StaleObjectStateException) {
-                // error = new ActionError("errors.OptimisticLockException", null, null);
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
-                LogEvent.logDebug(e);
-                // error = new ActionError("errors.UpdateException", null, null);
+                logger.error("Order save failed for labNo={}", sampleOrder.getLabNo(), e);
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "samplePatientEntrySave", result.toString());
+            logger.error("SamplePatientEntry errors: {}", result.toString());
+        } catch (Exception e) {
+            logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
+            result.reject("errors.UpdateException", "errors.UpdateException");
 
             // errors.add(ActionMessages.GLOBAL_MESSAGE, error);
             saveErrors(result);// TODO theses errors are not communicated to the frontend return an error code

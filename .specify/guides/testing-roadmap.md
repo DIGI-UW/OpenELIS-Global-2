@@ -42,6 +42,21 @@ controller/DAO/integration tests.
 - **Clean State**: Tests must be isolated and use builders/factories for data
 - **Checkpoint Validation**: Tests must pass at each SDD phase checkpoint
 
+### CI Enforcement And Migration Guardrails
+
+- **Playwright-first E2E direction**: New end-to-end coverage should be authored
+  in Playwright unless there is a clear blocker.
+- **Cypress is legacy/deprecating**: Existing Cypress coverage is maintained for
+  risk control, but avoid expanding long-term Cypress scope.
+- **Stable required gates only**: Protect `develop` using stable gate checks,
+  not shard-level checks.
+- **Ruleset-managed CI checks**: CI required status checks are managed by
+  repository rulesets; classic branch protection should retain non-CI controls
+  (reviews, conversation resolution, etc.).
+- **Rename safety rule**: Any workflow/job rename that changes required check
+  names must be paired with explicit ruleset/branch-protection update steps in
+  the same change window.
+
 ### Test Type Contracts (What each test MUST prove)
 
 This project uses “E2E” to mean **real browser + real backend + real database**.
@@ -85,6 +100,103 @@ mocked-backend UI test).
   - Calling a test “integration” or “E2E” while stubbing the system under test.
   - Stubbing success responses for the mutation you are validating in a Cypress
     E2E test.
+
+## Test Quality Invariants (Constitution V.6)
+
+Every test MUST satisfy the **Inversion Test**: if the function under test is
+replaced with a hardcoded return value, the test MUST fail. Tests that pass
+regardless of implementation are scaffolding, not tests.
+
+### Backend (Java/JUnit/Mockito)
+
+- **J1. No assert-on-mock-return.** `when(x).thenReturn(Y)` then
+  `assertEquals(Y, result)` with no intervening logic tests Mockito, not code.
+  Assertions must verify a transformation of the mock's output.
+- **J2. Verify mock args, not just calls.** `verify(service).save(any())` tests
+  nothing. Use `argThat(h -> h.getName().equals("X"))`.
+- **J3. Auth before business logic.** Every controller test suite must include a
+  test verifying unauthenticated requests receive 401 BEFORE any service method
+  is called. Use `verifyZeroInteractions(service)`.
+- **J4. Filter pass-through.** If a service method accepts filter parameters, at
+  least one test must verify the filter changes the result set. Passing null for
+  all filters is not sufficient.
+- **J5. Negative tests required.** Every service/controller test class must
+  include at least: 1 null/empty input test, 1 invalid input test, 1 boundary
+  test.
+- **J6. No catch-and-continue in @Transactional.** Catching exceptions inside a
+  transactional method corrupts the JPA session. Validate first, then persist.
+- **J7. HQL/SQL tests.** If a service builds a query with named params, at least
+  one test must verify the query produces different results for different
+  parameter values.
+
+### Frontend (Jest/React Testing Library)
+
+- **F1. No render-only tests.** Every test must simulate a user interaction or
+  verify data flow (API URL/headers/params, callback updates state).
+- **F2. Verify API request shape.** Assert the URL contains
+  `config.serverBaseUrl`, query parameters, and CSRF headers.
+- **F3. No raw fetch() in components.** Use project utilities
+  (`getFromOpenElisServer`, `postToOpenElisServer*`, `putToOpenElisServer`,
+  `deleteFromOpenElisServer`). If a utility doesn't exist, add one to Utils.js.
+- **F4. waitFor, not wait.** Import `waitFor` from `@testing-library/dom`. The
+  `wait` export is deprecated.
+- **F5. i18n assertions.** Tests for components with user-visible text must
+  verify `intl.formatMessage` renders correctly.
+
+### E2E (Playwright)
+
+- **E1. Every test.step must have an assertion.** Steps without `expect()`
+  provide zero regression protection.
+- **E2. No `isVisible({timeout})`.** Use `expect(el).toBeVisible({timeout})`.
+- **E3. No `.catch(() => false)` on locator methods.** Handle conditional
+  elements with explicit guards.
+- **E4. API-first data setup.** Test data via API in beforeAll/beforeEach, not
+  UI interactions.
+
+### Universal
+
+- **U1. Inversion Test.** Replace the function under test with
+  `return hardcodedValue`. If the test still passes, it's broken.
+- **U2. One bug, one test.** Every bug found in review MUST get a regression
+  test.
+- **U3. No `any()` without justification.** Mockito `any()` in verify/when calls
+  must have a comment explaining why.
+
+### LLM-Generated Anti-Patterns
+
+LLMs consistently produce these test anti-patterns. All are prohibited:
+
+1. **Mock-everything** — stub query results, assert the stub returned what you
+   told it to
+2. **`any()` matcher everywhere** — `verify(mock).save(any())` tests nothing
+3. **Assert-on-mock-return** — `when(x).thenReturn(Y)` then
+   `assertEquals(Y, result)` is a tautology
+4. **Happy-path only** — zero negative/edge/error cases
+5. **Render-only frontend tests** — render component, check it exists, no
+   interactions
+6. **Raw fetch bypasses mocks** — utility is mocked but component uses direct
+   `fetch()`
+
+### Test Review Checklist
+
+Before approving any test:
+
+1. Does each test fail if the core logic is deleted? (Inversion Test)
+2. Are mock return values transformed before assertion?
+3. Do verify() calls use specific matchers, not any()?
+4. Is auth tested before happy-path?
+5. Are filter parameters tested with non-null values?
+6. Is there at least one negative/error test per method?
+7. Do frontend tests verify API URLs include serverBaseUrl?
+8. Do frontend tests verify CSRF token in headers?
+9. Are there render-only tests with no interactions?
+10. Do E2E test steps all have assertions?
+11. Is raw fetch() used instead of project utilities?
+12. Are deprecated APIs used (wait vs waitFor)?
+13. Could any test pass with a hardcoded return value?
+14. Are edge cases tested (null, empty, boundary, negative)?
+15. Do tests cover the same categories as known bugs? (status names, precision,
+    auth ordering, filter pass-through)
 
 ### For AI Agents
 
@@ -660,8 +772,8 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
 **Use when**: E2E tests (Cypress) need to load DBUnit XML fixtures **without
 Java/Maven dependencies**.
 
-**Problem**: E2E CI (`frontend-qa.yml`) doesn't have Maven/Java, but needs same
-fixtures as backend tests.
+**Problem**: E2E CI (`e2e-cypress-deprecated.yml`) does not have Maven/Java, but
+needs same fixtures as backend tests.
 
 **Solution**: Generate SQL on-demand from authoritative DBUnit XML:
 
@@ -1624,6 +1736,10 @@ test("testBoundaryValue", () => {
 
 ### Cypress E2E Testing
 
+> **Lifecycle status:** Cypress E2E is now a **legacy/deprecation track** in
+> this repository. Keep existing coverage healthy; prioritize new E2E work in
+> Playwright unless a Cypress-only gap is justified.
+
 **Reference**:
 [Constitution Section V.5](.specify/memory/constitution.md#section-v5-cypress-e2e-testing-best-practices)
 for functional requirements.
@@ -2092,15 +2208,15 @@ for comprehensive patterns and examples.
 - `/debug-playwright` for evidence-first debugging
 - `/audit-playwright` for selector and anti-pattern audits
 
-Playwright is the recommended E2E testing framework for new test development. It
-offers modern async/await patterns, auto-waiting, and better debugging tools.
+Playwright is the primary E2E framework for new test development. It offers
+modern async/await patterns, auto-waiting, and better debugging tools.
 
 #### When to Use Playwright vs Cypress
 
 | Scenario                 | Recommended    | Reason                         |
 | ------------------------ | -------------- | ------------------------------ |
 | New E2E tests            | **Playwright** | Modern API, better debugging   |
-| Existing Cypress tests   | Cypress        | Don't migrate unnecessarily    |
+| Existing Cypress tests   | Cypress        | Maintain while deprecating     |
 | Complex multi-tab/window | **Playwright** | Native support                 |
 | Visual regression        | **Playwright** | Built-in screenshot comparison |
 | API testing alongside UI | **Playwright** | First-class request API        |
@@ -2120,7 +2236,7 @@ npm run pw:test
 npm run pw:test:ui
 
 # Run specific test file
-npx playwright test sidenav.spec.ts
+npm run pw:test -- sidenav.spec.ts
 ```
 
 #### Key Patterns
@@ -2481,18 +2597,18 @@ npm test                    # Run all
 npm test -- --watch         # Watch mode
 npm test -- --coverage      # With coverage report
 
-# Cypress E2E (development: individual files)
+# Cypress E2E legacy (development: individual files)
 npm run cy:run -- --spec "cypress/e2e/feature.cy.js"
 
-# Cypress E2E (CI only: full suite)
+# Cypress E2E legacy (CI only: full suite)
 npm run cy:run
 
-# Playwright E2E (recommended for new tests)
+# Playwright E2E (primary for new tests)
 npm run pw:install          # First time: install browsers
 npm run pw:test             # Run all tests
 npm run pw:test:ui          # Interactive UI debugger
 npm run pw:test:headed      # See browser window
-npx playwright test file.spec.ts  # Run specific file
+npm run pw:test -- file.spec.ts  # Run specific file
 ```
 
 ### Test Template Locations
