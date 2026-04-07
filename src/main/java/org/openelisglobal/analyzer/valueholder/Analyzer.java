@@ -118,6 +118,21 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "file_format", length = 30)
     private String fileFormat;
 
+    @Column(name = "delimiter", length = 10)
+    private String delimiter;
+
+    @Column(name = "has_header")
+    private Boolean hasHeader;
+
+    @Column(name = "skip_rows")
+    private Integer skipRows;
+
+    @Column(name = "archive_directory", length = 500)
+    private String archiveDirectory;
+
+    @Column(name = "error_directory", length = 500)
+    private String errorDirectory;
+
     /**
      * Raw source identifier from bridge discovery (IPv4, IPv6, hostname, file path,
      * etc.).
@@ -296,6 +311,46 @@ public class Analyzer extends BaseObject<String> {
 
     public void setFileFormat(String fileFormat) {
         this.fileFormat = fileFormat;
+    }
+
+    public String getDelimiter() {
+        return delimiter;
+    }
+
+    public void setDelimiter(String delimiter) {
+        this.delimiter = delimiter;
+    }
+
+    public Boolean getHasHeader() {
+        return hasHeader;
+    }
+
+    public void setHasHeader(Boolean hasHeader) {
+        this.hasHeader = hasHeader;
+    }
+
+    public Integer getSkipRows() {
+        return skipRows;
+    }
+
+    public void setSkipRows(Integer skipRows) {
+        this.skipRows = skipRows;
+    }
+
+    public String getArchiveDirectory() {
+        return archiveDirectory;
+    }
+
+    public void setArchiveDirectory(String archiveDirectory) {
+        this.archiveDirectory = archiveDirectory;
+    }
+
+    public String getErrorDirectory() {
+        return errorDirectory;
+    }
+
+    public void setErrorDirectory(String errorDirectory) {
+        this.errorDirectory = errorDirectory;
     }
 
     /**

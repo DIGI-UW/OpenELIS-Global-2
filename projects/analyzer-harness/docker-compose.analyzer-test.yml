@@ -20,6 +20,7 @@ services:
     image: openelis-astm-simulator.harness
     volumes:
       - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - ./volume/analyzer-imports:/data/analyzer-imports  # FILE fixture drops into bridge watched folders
       - /var/run/docker.sock:/var/run/docker.sock  # TEST/HARNESS ONLY — dynamic analyzer network management
     ports:
       - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
@@ -60,6 +61,10 @@ services:
   #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
+    # Run as root in CI/test harness to avoid bind-mount permission mismatches
+    # between the CI runner (creates files) and the bridge (archives/deletes them).
+    # Production deployments use the Dockerfile's USER astm:astm (uid 9257).
+    user: "0:0"
     build:
       context: ../../tools/openelis-analyzer-bridge
       dockerfile: Dockerfile

@@ -58,9 +58,6 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
     private AnalyzerFieldService analyzerFieldService;
 
     @Autowired
-    private FileImportService fileImportService;
-
-    @Autowired
     private SerialPortService serialPortService;
 
     @Autowired
@@ -86,11 +83,11 @@ public class AnalyzerQueryServiceImpl implements AnalyzerQueryService {
             // Block push-only transports — derive from config entities, not
             // protocolVersion (which tracks message format, not transport).
             try {
-                Integer analyzerIdInt = Integer.valueOf(analyzerId);
-                if (fileImportService.getByAnalyzerId(analyzerIdInt).isPresent()) {
+                if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
                     throw new LIMSRuntimeException(
                             "Analyzer uses a push-only transport (file import) and cannot be queried");
                 }
+                Integer analyzerIdInt = Integer.valueOf(analyzerId);
                 if (serialPortService.getByAnalyzerId(analyzerIdInt).isPresent()) {
                     throw new LIMSRuntimeException(
                             "Analyzer uses a push-only transport (RS-232 serial) and cannot be queried");
