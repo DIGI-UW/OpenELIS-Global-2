@@ -21,7 +21,18 @@ import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
+import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+
+export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
+  if (!queryValue) {
+    return "/AnalyzerResults";
+  }
+
+  return queryMode === "id"
+    ? `/AnalyzerResults?id=${queryValue}`
+    : `/AnalyzerResults?type=${queryValue}`;
+};
 
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -131,7 +142,10 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/AnalyzerResults?type=" + props.type;
+      window.location.href = buildAnalyzerResultsRedirectUrl(
+        props.queryMode,
+        props.queryValue || props.type,
+      );
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -158,28 +172,24 @@ const AnalyserResults = (props) => {
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
+    jpSet(form, name, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
     console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, "resultList[" + rowId + "].sentDate_", d);
+    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
   const handleCheckBox = (e, rowId) => {
     const { name, id, checked } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
   };
 
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);

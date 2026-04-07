@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
+import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
@@ -29,6 +30,7 @@ import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
+import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
@@ -81,6 +83,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    private AnalyzerErrorService analyzerErrorService;
 
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("bridgeRegistrationExecutor")
@@ -299,11 +304,10 @@ public class AnalyzerRestController extends BaseRestController {
             // directly tests analyzer transports (bridge is mandatory).
             Map<String, Object> response;
             Integer analyzerIdInt = Integer.valueOf(id);
-            var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
             var serialConfig = serialPortService.getByAnalyzerId(analyzerIdInt);
 
-            if (fileConfig.isPresent()) {
-                response = testFileViaBridge(fileConfig.get().getImportDirectory());
+            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                response = testFileViaBridge(analyzer.getImportDirectory());
             } else if (serialConfig.isPresent()) {
                 response = testSerialViaBridge(serialConfig.get().getPortName());
             } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
@@ -1025,24 +1029,11 @@ public class AnalyzerRestController extends BaseRestController {
                         analyzer.getPort(), protocol);
             }
 
-            // FILE analyzers: register by watch directory (use unified fields on Analyzer)
+            // FILE analyzers: register by watch directory (unified fields on Analyzer)
             if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
                 registered = bridgeRegistrationService.registerFile(id, name, analyzer.getImportDirectory(),
-                        analyzer.getFilePattern(), analyzer.getColumnMappings());
-            } else {
-                // Fallback: check legacy FileImportConfiguration table
-                try {
-                    Integer analyzerIdInt = Integer.valueOf(id);
-                    var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
-                    if (fileConfig.isPresent()) {
-                        var fc = fileConfig.get();
-                        registered = bridgeRegistrationService.registerFile(id, name, fc.getImportDirectory(),
-                                fc.getFilePattern(), fc.getColumnMappings());
-                    }
-                } catch (NumberFormatException e) {
-                    logger.debug("Analyzer id '{}' is not numeric; skipping legacy FileImportConfiguration fallback",
-                            id);
-                }
+                        analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
+                        analyzer.getDelimiter(), analyzer.getSkipRows());
             }
 
             if (registered) {
@@ -1419,6 +1410,86 @@ public class AnalyzerRestController extends BaseRestController {
 
     private boolean isBlank(Object value) {
         return value == null || String.valueOf(value).trim().isEmpty();
+    }
+
+    /**
+     * POST /rest/analyzer/discovered-sources Report an unknown analyzer source
+     * discovered by the bridge. Creates a PENDING_REGISTRATION stub if no analyzer
+     * with this sourceId exists. Idempotent via UNIQUE constraint on
+     * discovered_source_id: duplicate inserts return the existing stub.
+     */
+    @PostMapping("/discovered-sources")
+    public ResponseEntity<Map<String, Object>> reportDiscoveredSource(@RequestBody Map<String, String> body) {
+        String sourceId = body.get("sourceId");
+        String protocol = body.get("protocol");
+        String protocolHint = body.get("protocolHint");
+        String transport = body.get("transport");
+
+        if (sourceId == null || sourceId.isBlank()) {
+            return ResponseEntity.badRequest().body(AnalyzerControllerHelper.wrapError("sourceId is required"));
+        }
+
+        // Build display name with length safety (Analyzer.name is VARCHAR(100))
+        String displayName = (protocolHint != null && !protocolHint.isBlank()) ? protocolHint
+                : "Unknown (" + sourceId + ")";
+        if (displayName.length() > 100) {
+            displayName = displayName.substring(0, 97) + "...";
+        }
+
+        Analyzer stub = new Analyzer();
+        stub.setName(displayName);
+        stub.setStatus(AnalyzerStatus.PENDING_REGISTRATION);
+        stub.setDiscoveredSourceId(sourceId);
+        stub.setSysUserId("bridge-discovery");
+
+        // Try insert. UNIQUE index on discovered_source_id handles races.
+        // On duplicate, catch the constraint violation and return existing stub.
+        String analyzerId;
+        try {
+            analyzerId = analyzerService.insert(stub);
+        } catch (Exception e) {
+            if (isDuplicateKeyViolation(e)) {
+                Optional<Analyzer> existing = analyzerService.findByDiscoveredSourceId(sourceId);
+                if (existing.isPresent()) {
+                    Analyzer found = existing.get();
+                    Map<String, Object> response = new LinkedHashMap<>();
+                    response.put("analyzerId", found.getId());
+                    response.put("status", found.getStatus().name());
+                    response.put("alreadyExists", true);
+                    return ResponseEntity.ok(response);
+                }
+            }
+            throw e;
+        }
+
+        // Error dashboard entry — best-effort (stub is the critical data)
+        try {
+            Analyzer created = analyzerService.get(analyzerId);
+            String errorMsg = String.format(
+                    "Unregistered source discovered: sourceId=%s, protocol=%s, transport=%s, hint=%s", sourceId,
+                    protocol, transport, protocolHint);
+            analyzerErrorService.createError(created, AnalyzerError.ErrorType.UNREGISTERED_SOURCE,
+                    AnalyzerError.Severity.WARNING, errorMsg, null);
+        } catch (Exception e) {
+            logger.warn("Failed to create error entry for discovered source {}: {}", sourceId, e.getMessage());
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("analyzerId", analyzerId);
+        response.put("status", AnalyzerStatus.PENDING_REGISTRATION.name());
+        response.put("alreadyExists", false);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    private boolean isDuplicateKeyViolation(Throwable e) {
+        while (e != null) {
+            String msg = e.getMessage();
+            if (msg != null && (msg.contains("duplicate key") || msg.contains("unique constraint"))) {
+                return true;
+            }
+            e = e.getCause();
+        }
+        return false;
     }
 
 }

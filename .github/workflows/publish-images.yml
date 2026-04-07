@@ -1,14 +1,16 @@
 # Publishes tested images after merge/release only.
-# Triggered by 03 - E2E completion and gated on downstream E2E checkpoint status.
+# Triggered by 03 - E2E build completion and gated on the wrapper-reported
+# `03 Checkpoint - E2E` contract.
 name: Publish Images
 
 on:
   workflow_run:
     workflows: ["03 - E2E"]
     types: [completed]
+    branches: [develop, "v*"]
 
 concurrency:
-  group: publish-images-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.head_sha }}
+  group: publish-images-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: true
 
 jobs:
@@ -26,38 +28,17 @@ jobs:
       image_transfer: ${{ steps.context.outputs.image_transfer }}
       build_run_id: ${{ github.event.workflow_run.id }}
     steps:
-      - name: Download build context artifact
-        id: download
-        uses: actions/download-artifact@v4
-        with:
-          name: e2e-build-context
-          path: /tmp/e2e-build-context
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: Parse build context
+      - name: Capture publish context from triggering workflow
         id: context
         run: |
-          if [ "${{ steps.download.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
-            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
-              echo "::error::Expected build context artifact from successful 03 - E2E run, but it was not available."
-              exit 1
-            fi
-            echo "event_name=unknown" >> "$GITHUB_OUTPUT"
-            echo "image_transfer=none" >> "$GITHUB_OUTPUT"
-            echo "head_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          EVENT_NAME="$(cat /tmp/e2e-build-context/event_name 2>/dev/null || echo 'unknown')"
-          IMAGE_TRANSFER="$(cat /tmp/e2e-build-context/image_transfer 2>/dev/null || echo 'none')"
-          HEAD_SHA="$(cat /tmp/e2e-build-context/head_sha 2>/dev/null || echo '')"
-          if [ -z "$HEAD_SHA" ]; then
-            HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
-          fi
-
+          EVENT_NAME="${{ github.event.workflow_run.event }}"
+          IMAGE_TRANSFER="none"
+          HEAD_SHA="${{ github.event.workflow_run.head_sha }}"
           HEAD_BRANCH="${{ github.event.workflow_run.head_branch }}"
+
+          if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            IMAGE_TRANSFER="ghcr"
+          fi
 
           echo "event_name=$EVENT_NAME" >> "$GITHUB_OUTPUT"
           echo "image_transfer=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
@@ -93,8 +74,8 @@ jobs:
                 ref: sha,
                 per_page: 100,
               });
+              const status = res.data.find((entry) => entry.context === contextName);
 
-              const status = res.data.find((s) => s.context === contextName);
               if (!status) {
                 core.info(`No '${contextName}' status yet for ${sha}; waiting...`);
               } else if (status.state === 'success') {

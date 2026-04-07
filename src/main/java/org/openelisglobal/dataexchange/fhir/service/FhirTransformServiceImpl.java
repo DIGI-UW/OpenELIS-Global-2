@@ -4,6 +4,7 @@ import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
 import ca.uhn.fhir.parser.DataFormatException;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.client.exceptions.FhirClientConnectionException;
+import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
@@ -984,8 +985,9 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return serviceRequestsForSampleItem;
     }
 
-    private ServiceRequest transformToServiceRequest(String anlaysisId) {
-        return transformToServiceRequest(analysisService.get(anlaysisId));
+    @Override
+    public ServiceRequest transformToServiceRequest(String anlaysisId) {
+        return this.transformToServiceRequest(analysisService.get(anlaysisId));
     }
 
     private ServiceRequest transformToServiceRequest(Analysis analysis) {
@@ -1145,6 +1147,16 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         specimen.setReceivedTime(new Date());
         specimen.setCollection(transformToCollection(sampleItem.getCollectionDate(), sampleItem.getCollector(),
                 sampleItem.getSample()));
+
+        // Add container type using SNOMED CT 434711009 (Specimen container)
+        if (sampleItem.getTypeOfSample() != null) {
+            Specimen.SpecimenContainerComponent container = new Specimen.SpecimenContainerComponent();
+            CodeableConcept containerType = new CodeableConcept();
+            containerType.addCoding().setSystem("http://snomed.info/sct").setCode("434711009")
+                    .setDisplay("Specimen container (physical object)");
+            container.setType(containerType);
+            specimen.addContainer(container);
+        }
 
         for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
             specimen.addRequest(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
@@ -1364,9 +1376,31 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             }
         }
 
-        if (observation.hasCode() && observation.getCode().getCodingFirstRep().getSystem().equals("http://loinc.org")) {
+        if (observation.hasCode()) {
+            boolean matchedLoinc = false;
+
             for (Coding code : observation.getCode().getCoding()) {
-                bean.setTestName(code.getDisplay());
+                if ("http://loinc.org".equals(code.getSystem())) {
+                    matchedLoinc = true;
+
+                    List<Test> tests = testService.getTestsByLoincCode(code.getCode());
+                    if (tests.isEmpty()) {
+                        throw new InternalErrorException("No test with loinc code " + code.getCode());
+                    }
+
+                    if (tests.getFirst().getLoinc().equals(code.getCode())) {
+                        bean.setTestId(tests.getFirst().getId());
+                    } else {
+                        throw new InternalErrorException("Observation code " + code.getCode()
+                                + " does not match test loinc code " + tests.getFirst().getLoinc());
+                    }
+
+                    break;
+                }
+            }
+
+            if (!matchedLoinc) {
+                throw new InternalErrorException("Observation has code but no LOINC code was found");
             }
         }
 
@@ -1542,7 +1576,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return transformResultToDiagnosticReport(analysisService.get(analysisId));
     }
 
-    private DiagnosticReport transformResultToDiagnosticReport(Analysis analysis) {
+    @Override
+    public DiagnosticReport transformResultToDiagnosticReport(Analysis analysis) {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToDiagnosticReport",
                 "transformResultToDiagnosticReport called");
 

@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -23,7 +22,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * approach: Write tests BEFORE implementation
  * 
  */
-public class AnalyzerFieldMappingRestControllerTest extends BaseWebContextSensitiveTest {
+public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyzerControllerTest {
 
     @Autowired
     private DataSource dataSource;
