@@ -149,6 +149,8 @@ verify_seed_contract() {
   verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
   verify_profile_catalog_ready "Mindray BS-300" "hl7/mindray-bs300"
   verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
+  verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
@@ -158,6 +160,8 @@ verify_seed_contract() {
   verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
   verify_realized_analyzer_mappings "Mindray BS-300" "hl7/mindray-bs300"
   verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
+  verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
 }
 
