@@ -4,7 +4,7 @@ import {
   MOCK_CANCELLED_SEARCH_RESPONSE,
   MOCK_STATUS_OPTIONS,
   MOCK_QA_EVENTS,
-} from "../../fixtures/study-electronic-orders";
+} from "../../../fixtures/study-electronic-orders";
 
 /**
  * Study Electronic Orders — E2E tests
