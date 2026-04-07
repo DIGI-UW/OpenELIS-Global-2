@@ -697,9 +697,8 @@ public class ResultsValidationUtility {
                 String nationalId = patientService.getNationalId(patient);
                 String gender = patientService.getGender(patient);
                 String birthday = patientService.getBirthdayForDisplay(patient);
-                String patientInfo = (nationalId != null ? nationalId : "") + ", "
-                        + (gender != null ? gender : "") + ", "
-                        + (birthday != null ? birthday : "");
+                String patientInfo = (nationalId != null ? nationalId : "") + ", " + (gender != null ? gender : "")
+                    + ", " + (birthday != null ? birthday : "");
                 analysisResultItem.setPatientInfo(patientInfo);
             }
         }
