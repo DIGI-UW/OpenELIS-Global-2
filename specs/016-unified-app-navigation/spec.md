@@ -1,5 +1,10 @@
 # Feature Specification: Unified Application Navigation
 
+**Feature Branch**: `spec/016-unified-app-navigation`  
+**Created**: 2026-04-06  
+**Status**: Ready for Planning  
+**Input**: Feature request from navigation unification epic
+
 ## Overview
 
 This specification outlines the implementation of a unified,
@@ -60,7 +65,12 @@ sections with a single global sidebar component.
 - Support hierarchical menu structure with parent/child relationships
 - Enable country-specific menu customizations
 - Include icon mapping for menu items
-- **Config Resolution Strategy:** Follow existing
+- **Note**: This is separate from the existing
+  `/var/lib/openelis-global/menu/menu_config.json` which handles menu filtering.
+  The new configuration will define the complete menu structure and will be
+  loaded via a new `MenuConfigurationHandler` following the existing
+  `DomainConfigurationHandler` pattern.
+- **Config Resolution Strategy**: Follow existing
   `ConfigurationInitializationService` pattern where filesystem configs (e.g.,
   Madagascar distribution) completely override classpath defaults. No merging
   occurs.
@@ -94,10 +104,14 @@ sections with a single global sidebar component.
 
 #### FR3: Role-Based Access Control
 
-- Extend backend menu model with `requiredRole` attribute
-- Filter menu items based on user roles in `/rest/menu` API
-- Support multiple roles per menu item
+- Extend backend menu model with `requiredRole` attribute (single role for
+  simplicity)
+- Support multiple roles per menu item via multiple `requiredRole` entries in
+  JSON config
+- Filter menu items based on user roles in `/rest/menu` API using Spring
+  Security role keys (e.g., `GLOBAL_ADMIN`)
 - Maintain security by enforcing server-side filtering
+- Treat omitted or empty `requiredRole` as visible to all authenticated users
 
 #### FR4: Backend Enhancements
 
@@ -160,11 +174,11 @@ public class Menu extends BaseObject<String> {
     private String id;
     private String parentId;
     private String displayKey;
-    private String url;
+    private String actionURL;  // Matches existing entity field name
     private String iconName;
     private String requiredRole;
     private UUID fhirUuid;
-    private Integer sortOrder;
+    private Integer presentationOrder;  // Matches existing entity field name
 }
 ```
 
