@@ -1,15 +1,28 @@
 package org.openelisglobal.dataexchange.service.order;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateTimeType;
+import org.hl7.fhir.r4.model.Encounter;
+import org.hl7.fhir.r4.model.Extension;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Period;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.ServiceRequest;
+import org.hl7.fhir.r4.model.Task;
+import org.hl7.fhir.r4.model.Task.ParameterComponent;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
@@ -20,33 +33,20 @@ import org.openelisglobal.dataexchange.order.dao.ElectronicOrderDAO;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder.SortOrder;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.test.service.TestService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.util.Arrays;
-import org.apache.commons.lang3.ObjectUtils;
-import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.DateTimeType;
-import org.hl7.fhir.r4.model.Encounter;
-import org.hl7.fhir.r4.model.Extension;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Period;
-import org.hl7.fhir.r4.model.Reference;
-import org.hl7.fhir.r4.model.Task;
-import org.hl7.fhir.r4.model.Task.ParameterComponent;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.statusofsample.service.StatusOfSampleService;
+import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<ElectronicOrder, String>
@@ -254,6 +254,7 @@ public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<E
     public int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds) {
         return getBaseObjectDAO().getCountOfElectronicOrdersByStatusList(statusIds);
     }
+
     @Override
     @Transactional(readOnly = true)
     public ElectronicOrderDisplayItem buildStudyElectronicOrderDisplayItem(ElectronicOrder electronicOrder) {
@@ -300,8 +301,7 @@ public class ElectronicOrderServiceImpl extends AuditableBaseObjectServiceImpl<E
             if (serviceRequest.getRequisition() != null) {
                 displayItem.setReferringLabNumber(serviceRequest.getRequisition().getValue());
             }
-            org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read()
-                    .resource(org.hl7.fhir.r4.model.Patient.class)
+            org.hl7.fhir.r4.model.Patient fhirPatient = fhirClient.read().resource(org.hl7.fhir.r4.model.Patient.class)
                     .withId(serviceRequest.getSubject().getReferenceElement().getIdPart()).execute();
             if (fhirPatient != null) {
                 for (Identifier identifier : fhirPatient.getIdentifier()) {

@@ -11,6 +11,8 @@ import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
 import org.openelisglobal.dataexchange.order.ElectronicOrderSortOrderCategoryConvertor;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderPaging;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
@@ -18,6 +20,7 @@ import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.organization.util.OrganizationTypeList;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,9 +32,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
-import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.ExternalOrderStatus;
-import org.openelisglobal.spring.util.SpringContext;
 
 @RestController
 public class RestStudyElectronicOrdersController extends BaseController {
@@ -39,7 +39,6 @@ public class RestStudyElectronicOrdersController extends BaseController {
     private static final String[] ALLOWED_FIELDS = new String[] { "searchType", "searchValue", "startDate", "endDate",
             "testIds", "statusId", "useAllInfo", "organizationId", "organizationList", "qaEventId", "qaAuthorizer",
             "qaNote", "electronicOrderId", };
-
 
     @Autowired
     private ElectronicOrderService electronicOrderService;
@@ -107,7 +106,9 @@ public class RestStudyElectronicOrdersController extends BaseController {
                     electronicOrders = electronicOrderService.searchForStudyElectronicOrders(form);
                     LogEvent.logDebug(this.getClass().getSimpleName(), "showStudyElectronicOrders",
                             "Found " + electronicOrders.size() + " electronic orders");
-                    eOrderDisplayItems = electronicOrders.stream().map(electronicOrderService::buildStudyElectronicOrderDisplayItem).collect(Collectors.toList());
+                    eOrderDisplayItems = electronicOrders.stream()
+                            .map(electronicOrderService::buildStudyElectronicOrderDisplayItem)
+                            .collect(Collectors.toList());
                     paging.setDatabaseResults(request, form, eOrderDisplayItems);
                 }
             } else {
@@ -187,7 +188,8 @@ public class RestStudyElectronicOrdersController extends BaseController {
             electronicOrder.setQaAuthorizer(qaAuthorizer);
 
             // Set status to Cancelled (status_id = 22 for EXTERNAL_ORDER Cancelled)
-            electronicOrder.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(ExternalOrderStatus.Cancelled));
+            electronicOrder.setStatusId(
+                    SpringContext.getBean(IStatusService.class).getStatusID(ExternalOrderStatus.Cancelled));
 
             // Update the electronic order
             electronicOrderService.update(electronicOrder);
@@ -200,8 +202,7 @@ public class RestStudyElectronicOrdersController extends BaseController {
             LogEvent.logError(this.getClass().getSimpleName(), "rejectStudyElectronicOrder",
                     "Error rejecting electronic order: " + e.getMessage());
             LogEvent.logError(e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An unexpected error occurred");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An unexpected error occurred");
         }
     }
 }

@@ -282,31 +282,31 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
         <Column lg={14} />
         <Column lg={2}>
           <Stack orientation="vertical" gap={3}>
-          {pagination && (
-            <>
-              <Link>
-                {currentApiPage} / {totalApiPages}
-              </Link>
-              <Stack orientation="horizontal" gap={3}>
-                <Button
-                  hasIconOnly
-                  id="loadpreviousresults"
-                  onClick={loadPreviousResultsPage}
-                  disabled={!previousPage}
-                  renderIcon={ArrowLeft}
-                  iconDescription="previous"
-                ></Button>
-                <Button
-                  hasIconOnly
-                  id="loadnextresults"
-                  onClick={loadNextResultsPage}
-                  disabled={!nextPage}
-                  renderIcon={ArrowRight}
-                  iconDescription="next"
-                ></Button>
-              </Stack>
-            </>
-          )}
+            {pagination && (
+              <>
+                <Link>
+                  {currentApiPage} / {totalApiPages}
+                </Link>
+                <Stack orientation="horizontal" gap={3}>
+                  <Button
+                    hasIconOnly
+                    id="loadpreviousresults"
+                    onClick={loadPreviousResultsPage}
+                    disabled={!previousPage}
+                    renderIcon={ArrowLeft}
+                    iconDescription="previous"
+                  ></Button>
+                  <Button
+                    hasIconOnly
+                    id="loadnextresults"
+                    onClick={loadNextResultsPage}
+                    disabled={!nextPage}
+                    renderIcon={ArrowRight}
+                    iconDescription="next"
+                  ></Button>
+                </Stack>
+              </>
+            )}
           </Stack>
         </Column>
       </>

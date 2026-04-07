@@ -270,46 +270,44 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
         data-cy="reject-eorder-modal"
       >
         <Stack gap={5}>
-        <Select
-          id="reject-reason"
-          labelText={intl.formatMessage({
-            id: "eorder.reject.reason",
-            defaultMessage: "Rejection Reason *",
-          })}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          disabled={isSubmitting}
-        >
-          <SelectItem value="" text="Select a reason" />
-          {qaEvents.map((event) => (
-            <SelectItem key={event.id} value={event.id} text={event.value} />
-          ))}
-        </Select>
+          <Select
+            id="reject-reason"
+            labelText={intl.formatMessage({
+              id: "eorder.reject.reason",
+              defaultMessage: "Rejection Reason *",
+            })}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            disabled={isSubmitting}
+          >
+            <SelectItem value="" text="Select a reason" />
+            {qaEvents.map((event) => (
+              <SelectItem key={event.id} value={event.id} text={event.value} />
+            ))}
+          </Select>
 
+          <TextInput
+            id="reject-authorizer"
+            labelText={intl.formatMessage({
+              id: "eorder.reject.authorizer",
+              defaultMessage: "Authorizer",
+            })}
+            value={rejectAuthorizer}
+            onChange={(e) => setRejectAuthorizer(e.target.value)}
+            disabled={isSubmitting}
+          />
 
-        <TextInput
-          id="reject-authorizer"
-          labelText={intl.formatMessage({
-            id: "eorder.reject.authorizer",
-            defaultMessage: "Authorizer",
-          })}
-          value={rejectAuthorizer}
-          onChange={(e) => setRejectAuthorizer(e.target.value)}
-          disabled={isSubmitting}
-        />
-
-
-        <TextArea
-          id="reject-note"
-          labelText={intl.formatMessage({
-            id: "eorder.reject.note",
-            defaultMessage: "Notes",
-          })}
-          value={rejectNote}
-          onChange={(e) => setRejectNote(e.target.value)}
-          disabled={isSubmitting}
-          rows={4}
-        />
+          <TextArea
+            id="reject-note"
+            labelText={intl.formatMessage({
+              id: "eorder.reject.note",
+              defaultMessage: "Notes",
+            })}
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            disabled={isSubmitting}
+            rows={4}
+          />
         </Stack>
       </Modal>
 
