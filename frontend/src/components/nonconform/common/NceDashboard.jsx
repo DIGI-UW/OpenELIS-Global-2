@@ -45,7 +45,11 @@ const STATUS_CONFIG = {
     icon: CheckmarkFilled,
     labelKey: "nce.status.correctiveAction",
   },
-  Closed: { type: "gray", icon: CheckmarkFilled, labelKey: "nce.status.closed" },
+  Closed: {
+    type: "gray",
+    icon: CheckmarkFilled,
+    labelKey: "nce.status.closed",
+  },
 };
 
 export const NceDashboard = () => {
@@ -453,7 +457,9 @@ export const NceDashboard = () => {
                       size="sm"
                     >
                       {STATUS_CONFIG[nce.status]?.labelKey
-                        ? intl.formatMessage({ id: STATUS_CONFIG[nce.status].labelKey })
+                        ? intl.formatMessage({
+                            id: STATUS_CONFIG[nce.status].labelKey,
+                          })
                         : nce.status}
                     </Tag>
                     {isOverdue(nce) && (

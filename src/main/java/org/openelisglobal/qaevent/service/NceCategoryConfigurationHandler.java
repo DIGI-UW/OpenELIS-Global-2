@@ -97,8 +97,8 @@ public class NceCategoryConfigurationHandler implements DomainConfigurationHandl
 
             try {
                 String[] values = parseCsvLine(line);
-                boolean processed = processCsvLine(values, nameIndex, displayKeyIndex, activeIndex,
-                        localeColumnIndexes, existingByName);
+                boolean processed = processCsvLine(values, nameIndex, displayKeyIndex, activeIndex, localeColumnIndexes,
+                        existingByName);
                 if (processed) {
                     processedCount++;
                 }

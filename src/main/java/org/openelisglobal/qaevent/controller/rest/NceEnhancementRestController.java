@@ -182,12 +182,10 @@ public class NceEnhancementRestController extends BaseRestController {
                 contentType = "application/octet-stream";
             }
 
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
+            return ResponseEntity.ok().contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "attachment; filename=\"" + attachment.getFileName() + "\"")
-                    .contentLength(fileContent.length)
-                    .body(resource);
+                    .contentLength(fileContent.length).body(resource);
         } catch (IOException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "downloadAttachment",
                     "Error reading attachment file: " + e.getMessage());

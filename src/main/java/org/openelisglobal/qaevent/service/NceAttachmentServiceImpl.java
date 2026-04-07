@@ -31,21 +31,14 @@ public class NceAttachmentServiceImpl extends AuditableBaseObjectServiceImpl<Nce
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     /** Allowed MIME types for attachments */
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "application/pdf",
-            "application/msword",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.ms-excel",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/plain",
-            "text/csv");
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/gif",
+            "application/pdf", "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain", "text/csv");
 
     /** Allowed file extensions */
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
-            ".jpg", ".jpeg", ".png", ".gif", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".gif", ".pdf", ".doc",
+            ".docx", ".xls", ".xlsx", ".txt", ".csv");
 
     @Value("${org.openelisglobal.nce.attachment.path:/var/lib/openelis-global/nce-attachments}")
     private String attachmentStoragePath;

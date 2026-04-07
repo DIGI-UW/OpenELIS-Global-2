@@ -14,8 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Service implementation for generating unique NCE numbers.
  *
- * <p>Uses synchronized method to ensure thread safety within the single JVM.
- * A unique constraint on nc_event.nce_number (added via Liquibase migration
+ * <p>
+ * Uses synchronized method to ensure thread safety within the single JVM. A
+ * unique constraint on nc_event.nce_number (added via Liquibase migration
  * nce-016) provides an additional safety net against duplicates.
  */
 @Service

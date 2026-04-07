@@ -39,7 +39,8 @@ public class GlobalLocaleResolver extends AbstractLocaleContextResolver implemen
         // Check Accept-Language header for per-request locale (REST API clients)
         String acceptLanguage = request.getHeader("Accept-Language");
         if (acceptLanguage != null && !acceptLanguage.isEmpty()) {
-            // Parse the first locale from the header (e.g., "fr-FR,fr;q=0.9,en;q=0.8" -> "fr-FR")
+            // Parse the first locale from the header (e.g., "fr-FR,fr;q=0.9,en;q=0.8" ->
+            // "fr-FR")
             String primaryLocale = acceptLanguage.split(",")[0].trim();
             // Remove quality value if present (e.g., "fr;q=0.9" -> "fr")
             if (primaryLocale.contains(";")) {
