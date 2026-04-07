@@ -84,6 +84,7 @@ export default defineConfig({
         "**/error-dashboard.spec.ts",
         "**/navbar.spec.ts",
         "**/sidenav.spec.ts",
+        "**/study-electronic-orders.spec.ts",
       ],
       use: {
         ...devices["Desktop Chrome"],
