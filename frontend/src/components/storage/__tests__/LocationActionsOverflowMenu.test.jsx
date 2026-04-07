@@ -139,7 +139,12 @@ describe("LocationActionsOverflowMenu", () => {
     // Or Space key
     fireEvent.keyDown(menuButton, { key: " ", code: "Space" });
 
-    // Menu should be accessible via keyboard - check aria-label exists
-    expect(menuButton.getAttribute("aria-label")).toBeTruthy();
+    // Menu should be accessible via keyboard - check for an accessible label
+    // Carbon latest may use aria-label, aria-labelledby, or title for the OverflowMenu button
+    const hasAccessibleLabel =
+      menuButton.getAttribute("aria-label") ||
+      menuButton.getAttribute("aria-labelledby") ||
+      menuButton.getAttribute("title");
+    expect(hasAccessibleLabel).toBeTruthy();
   });
 });

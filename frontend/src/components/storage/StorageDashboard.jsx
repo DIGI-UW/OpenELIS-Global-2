@@ -3527,34 +3527,25 @@ const StorageDashboard = () => {
                               {rows.map((row) => (
                                 <React.Fragment key={row.id || row.key}>
                                   <TableExpandRow
+                                    key={row.id}
                                     data-testid={`room-row-${row.id}`}
                                     isExpanded={
                                       !!expandedRowIds[String(row.id)]
                                     }
-                                    {...getRowProps({
-                                      row,
-                                      onClick: (e) => {
-                                        const target = e.target;
-
-                                        // Don't expand if clicking on action button (overflow menu)
-                                        if (
-                                          target.closest(
-                                            '[data-testid="location-actions-overflow-menu"]',
-                                          ) ||
-                                          target.closest(
-                                            ".cds--overflow-menu",
-                                          ) ||
-                                          target.closest(
-                                            'button[aria-label*="Location actions"]',
-                                          )
-                                        ) {
-                                          return; // Let the action button handle its own click
-                                        }
-
-                                        // Expand on click anywhere else in the row (including expand button)
-                                        handleRowExpand(row.id);
-                                      },
-                                    })}
+                                    onExpand={() => handleRowExpand(row.id)}
+                                    ariaLabel={
+                                      expandedRowIds[String(row.id)]
+                                        ? intl.formatMessage({
+                                            id: "carbon.table.row.collapse",
+                                            defaultMessage:
+                                              "Collapse current row",
+                                          })
+                                        : intl.formatMessage({
+                                            id: "carbon.table.row.expand",
+                                            defaultMessage:
+                                              "Expand current row",
+                                          })
+                                    }
                                   >
                                     {row.cells.map((cell) => (
                                       <TableCell key={cell.id}>
@@ -3793,10 +3784,12 @@ const StorageDashboard = () => {
                                 <React.Fragment key={row.id || row.key}>
                                   <TableExpandRow
                                     data-testid={`device-row-${row.id}`}
-                                    isExpanded={row.isExpanded}
+                                    isExpanded={
+                                      !!expandedRowIds[String(row.id)]
+                                    }
                                     onExpand={() => handleRowExpand(row.id)}
                                     ariaLabel={
-                                      row.isExpanded
+                                      expandedRowIds[String(row.id)]
                                         ? intl.formatMessage({
                                             id: "carbon.table.row.collapse",
                                             defaultMessage:
@@ -3808,31 +3801,6 @@ const StorageDashboard = () => {
                                               "Expand current row",
                                           })
                                     }
-                                    {...getRowProps({
-                                      row,
-                                      onClick: (e) => {
-                                        const target = e.target;
-
-                                        // Don't expand if clicking on action button (overflow menu)
-                                        if (
-                                          target.closest(
-                                            '[data-testid="location-actions-overflow-menu"]',
-                                          ) ||
-                                          target.closest(
-                                            ".cds--overflow-menu",
-                                          ) ||
-                                          target.closest(
-                                            'button[aria-label*="Location actions"]',
-                                          )
-                                        ) {
-                                          e.stopPropagation();
-                                          return;
-                                        }
-
-                                        // Expand on click anywhere else in the row (including expand button)
-                                        handleRowExpand(row.id);
-                                      },
-                                    })}
                                   >
                                     {row.cells.map((cell) => (
                                       <TableCell key={cell.id}>
@@ -4124,10 +4092,12 @@ const StorageDashboard = () => {
                                 <React.Fragment key={row.id || row.key}>
                                   <TableExpandRow
                                     data-testid={`shelf-row-${row.id}`}
-                                    isExpanded={row.isExpanded}
+                                    isExpanded={
+                                      !!expandedRowIds[String(row.id)]
+                                    }
                                     onExpand={() => handleRowExpand(row.id)}
                                     ariaLabel={
-                                      row.isExpanded
+                                      expandedRowIds[String(row.id)]
                                         ? intl.formatMessage({
                                             id: "carbon.table.row.collapse",
                                             defaultMessage:
@@ -4139,31 +4109,6 @@ const StorageDashboard = () => {
                                               "Expand current row",
                                           })
                                     }
-                                    {...getRowProps({
-                                      row,
-                                      onClick: (e) => {
-                                        const target = e.target;
-
-                                        // Don't expand if clicking on action button (overflow menu)
-                                        if (
-                                          target.closest(
-                                            '[data-testid="location-actions-overflow-menu"]',
-                                          ) ||
-                                          target.closest(
-                                            ".cds--overflow-menu",
-                                          ) ||
-                                          target.closest(
-                                            'button[aria-label*="Location actions"]',
-                                          )
-                                        ) {
-                                          e.stopPropagation();
-                                          return;
-                                        }
-
-                                        // Expand on click anywhere else in the row (including expand button)
-                                        handleRowExpand(row.id);
-                                      },
-                                    })}
                                   >
                                     {row.cells.map((cell) => (
                                       <TableCell key={cell.id}>
@@ -4456,10 +4401,12 @@ const StorageDashboard = () => {
                                 <React.Fragment key={row.id || row.key}>
                                   <TableExpandRow
                                     data-testid={`rack-row-${row.id}`}
-                                    isExpanded={row.isExpanded}
+                                    isExpanded={
+                                      !!expandedRowIds[String(row.id)]
+                                    }
                                     onExpand={() => handleRowExpand(row.id)}
                                     ariaLabel={
-                                      row.isExpanded
+                                      expandedRowIds[String(row.id)]
                                         ? intl.formatMessage({
                                             id: "carbon.table.row.collapse",
                                             defaultMessage:
@@ -4471,31 +4418,6 @@ const StorageDashboard = () => {
                                               "Expand current row",
                                           })
                                     }
-                                    {...getRowProps({
-                                      row,
-                                      onClick: (e) => {
-                                        const target = e.target;
-
-                                        // Don't expand if clicking on action button (overflow menu)
-                                        if (
-                                          target.closest(
-                                            '[data-testid="location-actions-overflow-menu"]',
-                                          ) ||
-                                          target.closest(
-                                            ".cds--overflow-menu",
-                                          ) ||
-                                          target.closest(
-                                            'button[aria-label*="Location actions"]',
-                                          )
-                                        ) {
-                                          e.stopPropagation();
-                                          return;
-                                        }
-
-                                        // Expand on click anywhere else in the row (including expand button)
-                                        handleRowExpand(row.id);
-                                      },
-                                    })}
                                   >
                                     {row.cells.map((cell) => (
                                       <TableCell key={cell.id}>

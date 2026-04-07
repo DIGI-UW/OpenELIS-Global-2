@@ -2,19 +2,8 @@
 FROM node:20.20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
-# preferred, but there appears to be some overlap 
-# RUN npm ci --omit=dev
+RUN npm ci
 COPY . ./
-# preferred, but there appears to be issues
-# COPY ./src ./src
-# COPY ./public ./public
-# COPY ./tsconfig.json ./tsconfig.json
-# COPY ./.prettierrc.json ./.prettierrc.json
-# COPY ./.eslintrc.js ./.eslintrc.js
-
-# Disable ESLint during production build - linting happens in CI, not deployment
-ENV DISABLE_ESLINT_PLUGIN=true
 RUN npm run build
 
 # production env
