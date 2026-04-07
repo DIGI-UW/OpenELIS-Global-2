@@ -1,5 +1,6 @@
 import {
   Button,
+  Stack,
   Column,
   Link,
   Select,
@@ -81,7 +82,6 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
 
     // Check if response is valid
     if (!response) {
-      console.error("Response is null or undefined");
       setEOrders([]);
       setHasEOrders(false);
       addNotification({
@@ -174,9 +174,6 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
           defaultMessage="Search by Patient Code"
         />
       </Column>
-      <Column lg={16} md={8} sm={4}>
-        <br />
-      </Column>
       <Column lg={9} md={4} sm={4}>
         <TextInput
           id="searchValue"
@@ -210,9 +207,6 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
           id="study.eorder.search.date_range.title"
           defaultMessage="Search by Date Range and Status"
         />
-      </Column>
-      <Column lg={16} md={8} sm={4}>
-        <br />
       </Column>
       <Column lg={3} md={2} sm={2}>
         <CustomDatePicker
@@ -286,22 +280,14 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
 
       <>
         <Column lg={14} />
-        <Column
-          lg={2}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "10px",
-            width: "110%",
-          }}
-        >
+        <Column lg={2}>
+          <Stack orientation="vertical" gap={3}>
           {pagination && (
             <>
               <Link>
                 {currentApiPage} / {totalApiPages}
               </Link>
-              <div style={{ display: "flex", gap: "10px" }}>
+              <Stack orientation="horizontal" gap={3}>
                 <Button
                   hasIconOnly
                   id="loadpreviousresults"
@@ -318,9 +304,10 @@ const StudyEOrderSearch = ({ setEOrders = () => {}, eOrderRef }) => {
                   renderIcon={ArrowRight}
                   iconDescription="next"
                 ></Button>
-              </div>
+              </Stack>
             </>
           )}
+          </Stack>
         </Column>
       </>
     </>

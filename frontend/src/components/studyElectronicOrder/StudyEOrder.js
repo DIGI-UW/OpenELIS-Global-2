@@ -14,9 +14,11 @@ import {
   TextArea,
   TextInput,
   InlineLoading,
+  Stack,
 } from "@carbon/react";
 import React, { useState, useEffect } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import config from "../../config.json";
 import {
   getFromOpenElisServer,
@@ -36,6 +38,7 @@ const HEADER_KEYS = {
 
 const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
   const intl = useIntl();
+  const history = useHistory();
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [qaEvents, setQaEvents] = useState([]);
@@ -153,7 +156,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
 
   const handleEdit = (externalOrderId) => {
     // Redirect to React order entry page with external order ID
-    window.location.href = `/SamplePatientEntry?ID=${externalOrderId}`;
+    history.push(`/SamplePatientEntry?ID=${externalOrderId}`);
   };
 
   const handleReject = (electronicOrderId) => {
@@ -266,6 +269,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
         primaryButtonDisabled={isSubmitting || !rejectReason}
         data-cy="reject-eorder-modal"
       >
+        <Stack gap={5}>
         <Select
           id="reject-reason"
           labelText={intl.formatMessage({
@@ -282,7 +286,6 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
           ))}
         </Select>
 
-        <br />
 
         <TextInput
           id="reject-authorizer"
@@ -295,7 +298,6 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
           disabled={isSubmitting}
         />
 
-        <br />
 
         <TextArea
           id="reject-note"
@@ -308,6 +310,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
           disabled={isSubmitting}
           rows={4}
         />
+        </Stack>
       </Modal>
 
       {eOrders.length > 0 && (
@@ -366,7 +369,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
                             if (cell.info.header === HEADER_KEYS.ACTIONS) {
                               return (
                                 <TableCell key={cell.id}>
-                                  <div style={{ display: "flex", gap: "8px" }}>
+                                  <Stack orientation="horizontal" gap={3}>
                                     <Button
                                       size="sm"
                                       disabled={isDisabled}
@@ -411,7 +414,7 @@ const StudyEOrder = ({ eOrderRef, eOrders, setEOrders }) => {
                                         />
                                       )}
                                     </Button>
-                                  </div>
+                                  </Stack>
                                 </TableCell>
                               );
                             }

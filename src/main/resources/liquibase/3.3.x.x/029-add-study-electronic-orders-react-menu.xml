@@ -28,7 +28,7 @@
             <column name="display_key" value="banner.menu.study.eorders" />
             <column
                 name="tool_tip_key"
-                value="tooltip.bannner.menu.study.eorders"
+                value="tooltip.banner.menu.study.eorders"
             />
             <column name="new_window" valueBoolean="false" />
             <column name="is_active" valueBoolean="true" />
