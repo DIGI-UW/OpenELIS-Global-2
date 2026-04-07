@@ -133,6 +133,16 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Sample getUnassignedSampleByAccessionNumber(String labNumber) {
+        if (labNumber != null && labNumber.contains(".")) {
+            labNumber = labNumber.substring(0, labNumber.indexOf('.'));
+        }
+        // Get sample by accession number and check if it has an unassigned referral
+        return sampleDAO.getUnassignedSampleByAccessionNumber(labNumber);
+    }
+
+    @Override
     @Transactional
     public boolean insertDataWithAccessionNumber(Sample sample) {
         insert(sample);
@@ -159,7 +169,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Date getCompletedDate(Sample sample) {
-        Date date = null;
+        Timestamp date = null;
         List<Analysis> analysisList = analysisService.getAnalysesBySampleId(sample.getId());
 
         for (Analysis analysis : analysisList) {
@@ -173,7 +183,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
                 }
             }
         }
-        return date;
+        return date != null ? new Date(date.getTime()) : null;
     }
 
     private boolean isCanceled(Analysis analysis) {

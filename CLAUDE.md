@@ -10,7 +10,7 @@
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.7.0, 8 core principles)
+   governance (v1.10.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -88,12 +88,15 @@ Key principles to verify:
       Valueholder→DAO→Service→Controller→Form)
 - [ ] Carbon Design System (NO Bootstrap/Tailwind)
 - [ ] FHIR R4 compliance (for external-facing entities)
-- [ ] React Intl (NO hardcoded strings)
+- [ ] React Intl (NO hardcoded strings, new keys in `en.json` ONLY — Transifex
+      is source of truth for non-English translations)
 - [ ] Test-Driven Development (TDD workflow)
 - [ ] Liquibase for schema changes
 - [ ] @Transactional in services ONLY (NOT controllers)
 - [ ] Services compile all data within transaction (prevent
       LazyInitializationException)
+- [ ] Test Quality Invariants V.6 (Inversion Test, no assert-on-mock-return,
+      auth ordering tests)
 
 ### TDD Workflow (MANDATORY for SpecKit)
 
@@ -171,7 +174,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.10.0
 
 ## Recent Changes
 

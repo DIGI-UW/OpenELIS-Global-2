@@ -3,12 +3,12 @@ package org.openelisglobal.analyzer.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,12 +16,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerBridgeStartupRegistrarTest {
+
+    private static final int ASYNC_TIMEOUT_MS = 5_000;
 
     @Mock
     private AnalyzerService analyzerService;
@@ -55,28 +56,50 @@ public class AnalyzerBridgeStartupRegistrarTest {
 
     @Test
     public void shouldRegisterFileAnalyzerOnStartup() {
-        FileImportConfiguration cfg = new FileImportConfiguration();
-        cfg.setImportDirectory("/data/analyzer-imports/quantstudio");
-        cfg.setFilePattern("*.csv");
+        // Set unified FILE fields directly on Analyzer entity
+        analyzer.setImportDirectory("/data/analyzer-imports/quantstudio");
+        analyzer.setFilePattern("*.csv");
+        analyzer.setFileFormat("CSV");
+        analyzer.setDelimiter(",");
+        analyzer.setSkipRows(0);
 
         when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
-        when(fileImportService.getByAnalyzerId(2009)).thenReturn(Optional.of(cfg));
-        when(bridgeRegistrationService.registerFile(any(), any(), any(), any())).thenReturn(true);
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
 
-        registrar.reRegisterActiveAnalyzers(rootContextRefreshedEvent());
+        registrar.onStartup(rootContextRefreshedEvent());
 
-        verify(bridgeRegistrationService).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
-                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"));
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
+                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"), eq(Map.of()), eq("CSV"), eq(","), eq(0));
+    }
+
+    @Test
+    public void shouldRegisterFileAnalyzerWithColumnMappings() {
+        analyzer.setImportDirectory("/data/analyzer-imports/quantstudio");
+        analyzer.setFilePattern("*.xlsx");
+        analyzer.setFileFormat("EXCEL");
+        analyzer.setColumnMappings(Map.of("Sample Name", "sampleId", "CT", "result"));
+
+        when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
+
+        registrar.onStartup(rootContextRefreshedEvent());
+
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
+                eq("/data/analyzer-imports/quantstudio"), eq("*.xlsx"),
+                eq(Map.of("Sample Name", "sampleId", "CT", "result")), eq("EXCEL"), any(), any());
     }
 
     @Test
     public void shouldSkipDeletedAnalyzerOnStartup() {
         analyzer.setStatus(Analyzer.AnalyzerStatus.DELETED);
-        when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
 
-        registrar.reRegisterActiveAnalyzers(rootContextRefreshedEvent());
+        registrar.onStartup(rootContextRefreshedEvent());
 
-        verify(bridgeRegistrationService, never()).registerFile(any(), any(), any(), any());
-        verify(bridgeRegistrationService, never()).registerTcp(any(), any(), any(), any(), any());
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerFile(any(), any(), any(), any(),
+                any(), any(), any(), any());
+        verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerTcp(any(), any(), any(), any(),
+                any());
     }
 }
