@@ -12,7 +12,7 @@ jest.mock("../genericSample/GenericSampleOrder", () => (props) => {
 
 jest.mock("react-router-dom", () => ({
   useParams: () => ({ notebookId: "15", notebookEntryId: "99" }),
-  useHistory: () => ({ push: jest.fn() }),
+  useNavigate: () => ({ push: jest.fn() }),
 }));
 
 describe("NotebookSampleOrder rollout", () => {

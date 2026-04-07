@@ -25,7 +25,7 @@ import {
   InProgress,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const STATUS_TAG_MAP = {
@@ -37,7 +37,7 @@ const STATUS_TAG_MAP = {
 
 const EQADistributionDashboard = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [shipments, setShipments] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [summary, setSummary] = useState({
@@ -208,7 +208,7 @@ const EQADistributionDashboard = () => {
       <Button
         kind="primary"
         size="sm"
-        onClick={() => history.push(`/EQADistribution/create?id=${row.id}`)}
+        onClick={() => navigate(`/EQADistribution/create?id=${row.id}`)}
       >
         {intl.formatMessage({ id: "eqa.distribution.action.continue" })}
       </Button>
@@ -316,7 +316,7 @@ const EQADistributionDashboard = () => {
             kind="primary"
             size="md"
             renderIcon={Add}
-            onClick={() => history.push("/EQADistribution/create")}
+            onClick={() => navigate("/EQADistribution/create")}
           >
             {intl.formatMessage({ id: "eqa.distribution.createShipment" })}
           </Button>

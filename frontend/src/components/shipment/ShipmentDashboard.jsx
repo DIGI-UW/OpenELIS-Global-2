@@ -25,7 +25,7 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -40,7 +40,7 @@ const TAB_ROUTES = ["boxes", "unassigned"];
 
 const ShipmentDashboard = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const componentMounted = useRef(true);
   const { addNotification } = useContext(NotificationContext);
@@ -130,7 +130,7 @@ const ShipmentDashboard = () => {
   useEffect(() => {
     const newPath = `/SampleShipment/${TAB_ROUTES[selectedTab]}`;
     if (location.pathname !== newPath) {
-      history.push(newPath);
+      navigate(newPath);
     }
   }, [selectedTab, history, location.pathname]);
 
@@ -283,7 +283,7 @@ const ShipmentDashboard = () => {
       (box) => box.boxId?.toLowerCase() === searchTerm.trim().toLowerCase(),
     );
     if (exactMatch) {
-      history.push(`/SampleShipment/box/${exactMatch.id}`);
+      navigate(`/SampleShipment/box/${exactMatch.id}`);
     } else {
       addNotification({
         kind: "info",
@@ -298,12 +298,12 @@ const ShipmentDashboard = () => {
 
   // Handle create new box
   const handleCreateBox = () => {
-    history.push("/SampleShipment/create-box");
+    navigate("/SampleShipment/create-box");
   };
 
   // Handle view box details
   const handleViewBox = (boxId) => {
-    history.push(`/SampleShipment/box/${boxId}`);
+    navigate(`/SampleShipment/box/${boxId}`);
   };
 
   // Handle add sample to box

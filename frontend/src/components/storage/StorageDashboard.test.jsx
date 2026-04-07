@@ -24,7 +24,7 @@ const mockHistory = {
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
+  useNavigate: () => mockHistory,
 }));
 
 // Helper function to create mock location

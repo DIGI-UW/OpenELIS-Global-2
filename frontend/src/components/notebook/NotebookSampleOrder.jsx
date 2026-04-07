@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams, useHistory } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { FormattedMessage } from "react-intl";
 import GenericSampleOrder from "../genericSample/GenericSampleOrder";
 
@@ -18,7 +18,7 @@ import GenericSampleOrder from "../genericSample/GenericSampleOrder";
  */
 export default function NotebookSampleOrder() {
   const { notebookId, notebookEntryId } = useParams();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   // Build breadcrumbs based on context
   const breadcrumbs = [
@@ -40,11 +40,11 @@ export default function NotebookSampleOrder() {
   const handleSaveSuccess = (data) => {
     // Navigate back to the notebook entry form with the samples tab active
     if (notebookEntryId) {
-      history.push(`/NoteBookInstanceEditForm/${notebookEntryId}?tab=samples`);
+      navigate(`/NoteBookInstanceEditForm/${notebookEntryId}?tab=samples`);
     } else if (notebookId) {
-      history.push(`/NoteBookInstanceEntryForm/${notebookId}?tab=samples`);
+      navigate(`/NoteBookInstanceEntryForm/${notebookId}?tab=samples`);
     } else {
-      history.push("/NoteBookDashboard");
+      navigate("/NoteBookDashboard");
     }
   };
 

@@ -28,7 +28,7 @@ import {
   NotificationKinds,
 } from "../../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import PageBreadCrumb from "../../../common/PageBreadCrumb";
 import LogoUploadSection from "./LogoUploadSection";
 import ColorPickerSection from "./ColorPickerSection";
@@ -36,7 +36,7 @@ import config from "../../../../config.json";
 
 function SiteBrandingConfig() {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 

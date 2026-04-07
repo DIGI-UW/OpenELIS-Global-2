@@ -1,7 +1,12 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { confirmAlert } from "react-confirm-alert";
 import { IntlProvider } from "react-intl";
-import { Route, BrowserRouter as Router, Switch } from "react-router-dom";
+import {
+  Route,
+  BrowserRouter as Router,
+  Routes,
+  Navigate,
+} from "react-router-dom";
 import "./App.css";
 import RedirectOldUI from "./RedirectOldUI";
 import UserSessionDetailsContext from "./UserSessionDetailsContext";
@@ -337,18 +342,13 @@ export default function App() {
         <>
           <Router>
             <Layout onChangeLanguage={onChangeLanguage}>
-              <Switch>
-                <Route path="/login" exact component={() => <Login />} />
+              <Routes>
+                <Route path="/login" element={<Login />} />
                 <Route
                   path="/ChangePasswordLogin"
-                  exact
-                  component={() => <ChangePassword />}
+                  element={<ChangePassword />}
                 />
-                <Route
-                  path="/landing"
-                  exact
-                  component={() => <LandingPage />}
-                />
+                <Route path="/landing" element={<LandingPage />} />
                 <SecureRoute
                   path="/"
                   exact
@@ -1022,8 +1022,8 @@ export default function App() {
                   )}
                   role={Roles.ANALYSER_IMPORT}
                 />
-                <Route path="*" component={() => <RedirectOldUI />} />
-              </Switch>
+                <Route path="*" element={<RedirectOldUI />} />
+              </Routes>
             </Layout>
           </Router>
         </>

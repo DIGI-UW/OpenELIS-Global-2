@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from "react";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
 import {
@@ -38,7 +38,7 @@ const SampleBatchEntrySetup = () => {
   const { notificationVisible } = useContext(NotificationContext);
   const intl = useIntl();
   const componentMounted = useRef(false);
-  const history = useHistory();
+  const navigate = useNavigate();
   const [siteNames, setSiteNames] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [facilityChecked, setFacilityChecked] = useState(false);
@@ -737,7 +737,7 @@ const SampleBatchEntrySetup = () => {
                   <Column lg={4} md={2} sm={2}>
                     <Button
                       data-testid="cancel-button-BatchOrderEntry"
-                      onClick={() => history.push("/")}
+                      onClick={() => navigate("/")}
                       kind="secondary"
                     >
                       <FormattedMessage id="label.button.cancel" />

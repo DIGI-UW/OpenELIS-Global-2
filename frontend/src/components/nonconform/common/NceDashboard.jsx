@@ -30,7 +30,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "./NceDashboard.css";
 
 const STATUS_CONFIG = {
@@ -54,7 +54,7 @@ const STATUS_CONFIG = {
 
 export const NceDashboard = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { addNotification } = useContext(NotificationContext);
 
   // State
@@ -238,12 +238,12 @@ export const NceDashboard = () => {
 
   // Navigate to report NCE
   const handleReportNce = () => {
-    history.push("/ReportNonConformingEvent");
+    navigate("/ReportNonConformingEvent");
   };
 
   // Navigate to NCE details
   const handleViewDetails = (nce) => {
-    history.push(`/ViewNonConformingEvent?nceNumber=${nce.nceNumber}`);
+    navigate(`/ViewNonConformingEvent?nceNumber=${nce.nceNumber}`);
   };
 
   // Get category name

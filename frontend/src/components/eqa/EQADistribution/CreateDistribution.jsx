@@ -14,7 +14,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -22,7 +22,7 @@ import {
 
 const CreateDistribution = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [name, setName] = useState("");
   const [programId, setProgramId] = useState("");
@@ -262,7 +262,7 @@ const CreateDistribution = () => {
                 {intl.formatMessage({ id: "eqa.distribution.create" })}
               </Button>
             ) : (
-              <Button onClick={() => history.push("/EQADistribution")}>
+              <Button onClick={() => navigate("/EQADistribution")}>
                 {intl.formatMessage({
                   id: "eqa.distribution.backToDashboard",
                 })}

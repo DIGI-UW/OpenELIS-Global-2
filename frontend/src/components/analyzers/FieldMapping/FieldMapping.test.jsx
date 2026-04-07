@@ -41,7 +41,7 @@ const mockHistory = {
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
+  useNavigate: () => mockHistory,
   useParams: () => ({ id: "1" }),
   useLocation: () => ({ pathname: "/analyzers/1/mappings" }),
 }));

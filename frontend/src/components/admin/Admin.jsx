@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import config from "../../config.json";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Switch, Route, useRouteMatch, useHistory } from "react-router-dom";
+import { Routes, Route, useRouteMatch, useNavigate } from "react-router-dom";
 import "../Style.css";
 import ReflexTestManagement from "./reflexTests/ReflexTestManagement";
 import CalendarManagement from "./calendarManagement";
@@ -109,7 +109,7 @@ function Admin() {
   const intl = useIntl();
   const intl = useIntl();
   const { path } = useRouteMatch();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [isSmallScreen, setIsSmallScreen] = useState(false);
   const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
 
@@ -124,7 +124,7 @@ function Admin() {
   // Navigation handler to prevent page reload
   const handleNavigation = (targetPath) => (e) => {
     e.preventDefault();
-    history.push(targetPath);
+    navigate(targetPath);
   };
 
   useEffect(() => {
@@ -451,136 +451,154 @@ function Admin() {
         </SideNavItems>
       </SideNav>
 
-      <Switch>
+      <Routes>
         <Route
           path={`${path}/calendarManagement`}
-          component={CalendarManagement}
+          element={<CalendarManagement />}
         />
-        <Route path={`${path}/reflex`} component={ReflexTestManagement} />
-        <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
-        <Route path={`${path}/TestCatalog`} component={TestCatalog} />
-        <Route path={`${path}/MethodManagement`} component={ManageMethod} />
-        <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
-        <Route path={`${path}/labNumber`} component={LabNumberManagement} />
-        <Route path={`${path}/program`} component={ProgramManagement} />
-        <Route path={`${path}/eqaProgram`} component={EQAProgramManagement} />
-        <Route path={`${path}/providerMenu`} component={ProviderMenu} />
-        <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
+        <Route path={`${path}/reflex`} element={<ReflexTestManagement />} />
+        <Route path={`${path}/calculatedValue`} element={<CalculatedValue />} />
+        <Route path={`${path}/TestCatalog`} element={<TestCatalog />} />
+        <Route path={`${path}/MethodManagement`} element={<ManageMethod />} />
+        <Route
+          path={`${path}/AnalyzerTestName`}
+          element={<AnalyzerTestName />}
+        />
+        <Route path={`${path}/labNumber`} element={<LabNumberManagement />} />
+        <Route path={`${path}/program`} element={<ProgramManagement />} />
+        <Route path={`${path}/eqaProgram`} element={<EQAProgramManagement />} />
+        <Route path={`${path}/providerMenu`} element={<ProviderMenu />} />
+        <Route path={`${path}/NotifyUser`} element={<PushNotificationPage />} />
         <Route
           path={`${path}/barcodeConfiguration`}
-          component={BarcodeConfiguration}
+          element={<BarcodeConfiguration />}
         />
         <Route
           path={`${path}/organizationManagement`}
-          component={OrganizationManagement}
+          element={<OrganizationManagement />}
         />
         <Route
           path={`${path}/organizationEdit`}
-          component={OrganizationAddModify}
+          element={<OrganizationAddModify />}
         />
         <Route
           path={`${path}/resultReportingConfiguration`}
-          component={ResultReportingConfiguration}
+          element={<ResultReportingConfiguration />}
         />
-        <Route path={`${path}/userManagement`} component={UserManagement} />
+        <Route path={`${path}/userManagement`} element={<UserManagement />} />
         <Route
           path={`${path}/batchTestReassignment`}
-          component={BatchTestReassignmentAndCancelation}
+          element={<BatchTestReassignmentAndCancelation />}
         />
-        <Route path={`${path}/userEdit`} component={UserAddModify} />
+        <Route path={`${path}/userEdit`} element={<UserAddModify />} />
         <Route
           path={`${path}/globalMenuManagement`}
-          component={GlobalMenuManagement}
+          element={<GlobalMenuManagement />}
         />
         <Route
           path={`${path}/billingMenuManagement`}
-          component={BillingMenuManagement}
+          element={<BillingMenuManagement />}
         />
         <Route
           path={`${path}/SiteBrandingMenu`}
-          component={SiteBrandingConfig}
+          element={<SiteBrandingConfig />}
         />
         <Route
           path={`${path}/nonConformityMenuManagement`}
-          component={NonConformityMenuManagement}
+          element={<NonConformityMenuManagement />}
         />
         <Route
           path={`${path}/patientMenuManagement`}
-          component={PatientMenuManagement}
+          element={<PatientMenuManagement />}
         />
         <Route
           path={`${path}/studyMenuManagement`}
-          component={StudyMenuManagement}
+          element={<StudyMenuManagement />}
         />
-        <Route path={`${path}/commonproperties`} component={CommonProperties} />
+        <Route
+          path={`${path}/commonproperties`}
+          element={<CommonProperties />}
+        />
         <Route
           path={`${path}/testManagementConfigMenu`}
-          component={TestManagementConfigMenu}
+          element={<TestManagementConfigMenu />}
         />
         <Route
           path={`${path}/ResultSelectListAdd`}
-          component={ResultSelectListAdd}
+          element={<ResultSelectListAdd />}
         />
-        <Route path={`${path}/TestAdd`} component={TestAdd} />
-        <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
-        <Route path={`${path}/TestOrderability`} component={TestOrderability} />
-        <Route path={`${path}/MethodCreate`} component={MethodCreate} />
+        <Route path={`${path}/TestAdd`} element={<TestAdd />} />
+        <Route path={`${path}/TestModifyEntry`} element={<TestModifyEntry />} />
+        <Route
+          path={`${path}/TestOrderability`}
+          element={<TestOrderability />}
+        />
+        <Route path={`${path}/MethodCreate`} element={<MethodCreate />} />
         <Route
           path={`${path}/TestSectionManagement`}
-          component={TestSectionManagement}
+          element={<TestSectionManagement />}
         />
         <Route
           path={`${path}/TestSectionCreate`}
-          component={TestSectionCreate}
+          element={<TestSectionCreate />}
         />
-        <Route path={`${path}/TestSectionOrder`} component={TestSectionOrder} />
+        <Route
+          path={`${path}/TestSectionOrder`}
+          element={<TestSectionOrder />}
+        />
         <Route
           path={`${path}/TestSectionTestAssign`}
-          component={TestSectionTestAssign}
+          element={<TestSectionTestAssign />}
         />
         <Route
           path={`${path}/SampleTypeManagement`}
-          component={SampleTypeManagement}
+          element={<SampleTypeManagement />}
         />
-        <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
-        <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />
+        <Route
+          path={`${path}/SampleTypeCreate`}
+          element={<SampleTypeCreate />}
+        />
+        <Route path={`${path}/SampleTypeOrder`} element={<SampleTypeOrder />} />
         <Route
           path={`${path}/SampleTypeTestAssign`}
-          component={SampleTypeTestAssign}
+          element={<SampleTypeTestAssign />}
         />
-        <Route path={`${path}/UomManagement`} component={UomManagement} />
-        <Route path={`${path}/UomCreate`} component={UomCreate} />
-        <Route path={`${path}/PanelManagement`} component={PanelManagement} />
-        <Route path={`${path}/PanelCreate`} component={PanelCreate} />
-        <Route path={`${path}/PanelOrder`} component={PanelOrder} />
-        <Route path={`${path}/PanelTestAssign`} component={PanelTestAssign} />
-        <Route path={`${path}/TestActivation`} component={TestActivation} />
-        <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
-        <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
+        <Route path={`${path}/UomManagement`} element={<UomManagement />} />
+        <Route path={`${path}/UomCreate`} element={<UomCreate />} />
+        <Route path={`${path}/PanelManagement`} element={<PanelManagement />} />
+        <Route path={`${path}/PanelCreate`} element={<PanelCreate />} />
+        <Route path={`${path}/PanelOrder`} element={<PanelOrder />} />
+        <Route path={`${path}/PanelTestAssign`} element={<PanelTestAssign />} />
+        <Route path={`${path}/TestActivation`} element={<TestActivation />} />
+        <Route path={`${path}/TestRenameEntry`} element={<TestRenameEntry />} />
+        <Route
+          path={`${path}/PanelRenameEntry`}
+          element={<PanelRenameEntry />}
+        />
         <Route
           path={`${path}/SampleTypeRenameEntry`}
-          component={SampleTypeRenameEntry}
+          element={<SampleTypeRenameEntry />}
         />
         <Route
           path={`${path}/TestSectionRenameEntry`}
-          component={TestSectionRenameEntry}
+          element={<TestSectionRenameEntry />}
         />
-        <Route path={`${path}/UomRenameEntry`} component={UomRenameEntry} />
+        <Route path={`${path}/UomRenameEntry`} element={<UomRenameEntry />} />
         <Route
           path={`${path}/SelectListRenameEntry`}
-          component={SelectListRenameEntry}
+          element={<SelectListRenameEntry />}
         />
         <Route
           path={`${path}/MethodRenameEntry`}
-          component={MethodRenameEntry}
+          element={<MethodRenameEntry />}
         />
         <Route
           path={`${path}/languageManagement`}
-          component={LanguageManagement}
+          element={<LanguageManagement />}
         />
         <Route
           path={`${path}/translationManagement`}
-          component={TranslationManagement}
+          element={<TranslationManagement />}
         />
         <Route
           path={`${path}/NonConformityConfigurationMenu`}
@@ -674,35 +692,38 @@ function Admin() {
         />
         <Route
           path={`${path}/testNotificationConfigMenu`}
-          component={TestNotificationConfigMenu}
+          element={<TestNotificationConfigMenu />}
         />
         <Route
           path={`${path}/testNotificationConfig`}
-          component={TestNotificationConfigEdit}
+          element={<TestNotificationConfigEdit />}
         />
         <Route
           path={`${path}/DictionaryMenu`}
-          component={DictionaryManagement}
+          element={<DictionaryManagement />}
         />
-        <Route path={`${path}/PluginFile`} component={PluginList} />
+        <Route path={`${path}/PluginFile`} element={<PluginList />} />
         <Route
           path={`${path}/SearchIndexManagement`}
-          component={SearchIndexManagement}
+          element={<SearchIndexManagement />}
         />
         <Route
           path={`${path}/loggingManagement`}
-          component={LoggingManagement}
+          element={<LoggingManagement />}
         />
         <Route
           path={`${path}/externalConnections`}
-          component={ExternalConnectionMenu}
+          element={<ExternalConnectionMenu />}
         />
         <Route
           path={`${path}/externalConnectionEdit`}
-          component={ExternalConnectionAddModify}
+          element={<ExternalConnectionAddModify />}
         />
-        <Route path={`${path}/DatabaseCleaning`} component={DatabaseCleaning} />
-      </Switch>
+        <Route
+          path={`${path}/DatabaseCleaning`}
+          element={<DatabaseCleaning />}
+        />
+      </Routes>
     </>
   );
 }

@@ -55,7 +55,7 @@ import { BrowserRouter } from "react-router-dom";
 // Context
 import { NotificationContext } from "../../../../layout/Layout";
 
-// Mock react-router-dom useHistory
+// Mock react-router-dom useNavigate
 const mockHistory = {
   push: jest.fn(),
   replace: jest.fn(),
@@ -64,7 +64,7 @@ const mockHistory = {
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
+  useNavigate: () => mockHistory,
 }));
 
 // 7. Component under test

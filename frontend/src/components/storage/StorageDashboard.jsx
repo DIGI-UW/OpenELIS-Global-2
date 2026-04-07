@@ -37,7 +37,7 @@ import {
   Pagination,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   getFromOpenElisServer,
   postToOpenElisServerForPDF,
@@ -66,7 +66,7 @@ const TAB_ROUTES = ["samples", "rooms", "devices", "shelves", "racks", "boxes"];
 
 const StorageDashboard = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const componentMounted = useRef(true);
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -920,7 +920,7 @@ const StorageDashboard = () => {
   useEffect(() => {
     if (location.pathname === "/Storage") {
       // Redirect to default tab (samples)
-      history.replace("/Storage/samples");
+      navigate("/Storage/samples", { replace: true });
       return;
     }
     const tabIndex = getTabFromUrl();
@@ -1064,7 +1064,7 @@ const StorageDashboard = () => {
 
     setSelectedTab(tabIndex);
     const tabName = TAB_ROUTES[tabIndex] || "samples";
-    history.push(`/Storage/${tabName}`);
+    navigate(`/Storage/${tabName}`);
   };
 
   const loadRooms = () => {

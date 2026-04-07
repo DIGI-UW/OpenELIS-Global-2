@@ -24,7 +24,7 @@ import {
 } from "@carbon/react";
 import { useContext, useEffect, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -39,7 +39,7 @@ import ShipmentNavigation from "./ShipmentNavigation";
 
 const BoxCreation = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { addNotification } = useContext(NotificationContext);
 
   // Auto-generated box number
@@ -403,7 +403,7 @@ const BoxCreation = () => {
               }),
             });
             setLoading(false);
-            history.push(`/SampleShipment/box/${response.id}`);
+            navigate(`/SampleShipment/box/${response.id}`);
           };
 
           addSamplesAndNavigate();
@@ -482,7 +482,7 @@ const BoxCreation = () => {
                   }),
                 });
                 setLoading(false);
-                history.push(`/SampleShipment/box/${response.id}`);
+                navigate(`/SampleShipment/box/${response.id}`);
               },
             );
           };
@@ -496,7 +496,7 @@ const BoxCreation = () => {
   };
 
   const handleCancel = () => {
-    history.push("/SampleShipment/boxes");
+    navigate("/SampleShipment/boxes");
   };
 
   // Calculate remaining capacity

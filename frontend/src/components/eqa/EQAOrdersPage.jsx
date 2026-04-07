@@ -26,7 +26,7 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
@@ -52,7 +52,7 @@ const PRIORITY_TAG_MAP = {
 
 const EQAOrdersPage = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const { addNotification } = useContext(NotificationContext);
 
   const [orders, setOrders] = useState([]);
@@ -157,7 +157,7 @@ const EQAOrdersPage = () => {
   }));
 
   const handleEnterNewTest = () => {
-    history.push("/SamplePatientEntry?isEQA=true");
+    navigate("/SamplePatientEntry?isEQA=true");
   };
 
   if (loading) {

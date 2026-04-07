@@ -20,7 +20,7 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useLocation, useHistory } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMenuAutoExpand } from "./useMenuAutoExpand";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
@@ -72,7 +72,7 @@ function OEHeader({
 
   const intl = useIntl();
   const location = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const [switchCollapsed, setSwitchCollapsed] = useState(true);
   const [menus, setMenus] = useState({
@@ -465,7 +465,7 @@ function OEHeader({
         if (menuItem.menu.openInNewWindow) {
           window.open(menuItem.menu.actionURL);
         } else {
-          history.push(menuItem.menu.actionURL);
+          navigate(menuItem.menu.actionURL);
         }
       }
     };

@@ -7,12 +7,12 @@ import {
 } from "@carbon/icons-react";
 import { Tab, TabList, Tabs } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./ShipmentNavigation.css";
 
 const ShipmentNavigation = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
 
   const navigationOptions = [
@@ -64,7 +64,7 @@ const ShipmentNavigation = () => {
   const handleTabChange = (evt) => {
     const selectedIndex = evt.selectedIndex;
     const selectedOption = navigationOptions[selectedIndex];
-    history.push(selectedOption.path);
+    navigate(selectedOption.path);
   };
 
   return (

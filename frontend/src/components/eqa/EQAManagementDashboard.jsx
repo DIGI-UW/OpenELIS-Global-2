@@ -28,7 +28,7 @@ import {
   WarningAlt,
 } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const STATUS_TAG_MAP = {
@@ -41,7 +41,7 @@ const STATUS_TAG_MAP = {
 
 const EQAManagementDashboard = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [samples, setSamples] = useState([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [searchText, setSearchText] = useState("");
@@ -219,7 +219,7 @@ const EQAManagementDashboard = () => {
           kind="primary"
           size="sm"
           onClick={() =>
-            history.push(
+            navigate(
               `/result?accessionNumber=${encodeURIComponent(row.accessionNumber)}`,
             )
           }
@@ -233,7 +233,7 @@ const EQAManagementDashboard = () => {
         kind="primary"
         size="sm"
         onClick={() =>
-          history.push(
+          navigate(
             `/result?accessionNumber=${encodeURIComponent(row.accessionNumber)}`,
           )
         }
@@ -261,7 +261,7 @@ const EQAManagementDashboard = () => {
         </div>
         <Button
           renderIcon={Add}
-          onClick={() => history.push("/SamplePatientEntry?isEQA=true")}
+          onClick={() => navigate("/SamplePatientEntry?isEQA=true")}
         >
           {intl.formatMessage({ id: "eqa.tests.enterNew" })}
         </Button>

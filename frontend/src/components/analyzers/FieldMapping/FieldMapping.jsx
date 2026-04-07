@@ -20,7 +20,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useParams, useHistory, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import * as analyzerService from "../../../services/analyzerService";
 import FieldMappingPanel from "./FieldMappingPanel";
 import MappingPanel from "./MappingPanel";
@@ -45,7 +45,7 @@ const extractMappings = (mappingsData) => {
 
 const FieldMapping = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const { id: analyzerId } = useParams();
 
@@ -165,9 +165,9 @@ const FieldMapping = () => {
       params.delete("selectedField");
       sessionStorage.removeItem(`fieldMapping.${analyzerId}.selectedField`);
     }
-    history.replace({
+    navigate({
       pathname: location.pathname,
-      search: params.toString(),
+      search: params.toString(, { replace: true }),
     });
   };
 
@@ -248,7 +248,7 @@ const FieldMapping = () => {
               },
             ]}
             showBackArrow={true}
-            onBack={() => history.push("/analyzers")}
+            onBack={() => navigate("/analyzers")}
             subtitle={intl.formatMessage({
               id: "analyzer.fieldMapping.page.subtitle",
             })}
@@ -425,9 +425,9 @@ const FieldMapping = () => {
               } else {
                 params.delete("search");
               }
-              history.replace({
+              navigate({
                 pathname: location.pathname,
-                search: params.toString(),
+                search: params.toString(, { replace: true }),
               });
             }}
             mappings={mappings}
