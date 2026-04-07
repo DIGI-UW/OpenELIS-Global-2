@@ -1,0 +1,33 @@
+frontend:
+  # UI layer (React 17 + Carbon)
+  - changed-files:
+    - any-glob-to-any-file: ['frontend/src/**/*', 'frontend/public/**/*']
+
+backend:
+  # Controller, Service, DAO, Valueholder layers (Java 21 + Spring MVC)
+  - changed-files:
+    - any-glob-to-any-file: ['src/main/java/**/*', 'src/main/resources/**/*', 'pom.xml']
+
+test:
+  # JUnit 4 and E2E frameworks
+  - changed-files:
+    - any-glob-to-any-file: ['src/test/**/*', 'frontend/cypress/**/*', 'frontend/playwright/**/*']
+
+fhir:
+  # FHIR R4 Interoperability constraints
+  - changed-files:
+    - any-glob-to-any-file: ['src/main/java/org/openelisglobal/fhir/**/*']
+
+analyzers:
+  # Machine data ingestion rules
+  - changed-files:
+    - any-glob-to-any-file: ['src/main/java/org/openelisglobal/analysis/**/*']
+
+i18n:
+  # Strict localization (Transifex sync boundaries)
+  - changed-files:
+    - any-glob-to-any-file: ['frontend/src/languages/**/*.json']
+
+ci/cd:
+  - changed-files:
+    - any-glob-to-any-file: ['.github/workflows/**/*', 'docker-compose*.yml', 'Dockerfile', 'scripts/**/*']

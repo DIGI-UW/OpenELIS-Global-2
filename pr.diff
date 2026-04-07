@@ -1,0 +1,311 @@
+diff --git a/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformService.java b/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformService.java
+index e11ca2905d..3d618ed2e7 100644
+--- a/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformService.java
++++ b/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformService.java
+@@ -5,6 +5,7 @@
+ import java.util.concurrent.Future;
+ import org.hl7.fhir.r4.model.Bundle;
+ import org.hl7.fhir.r4.model.ContactPoint;
++import org.hl7.fhir.r4.model.DiagnosticReport;
+ import org.hl7.fhir.r4.model.HumanName;
+ import org.hl7.fhir.r4.model.Identifier;
+ import org.hl7.fhir.r4.model.Practitioner;
+@@ -92,6 +93,9 @@ org.hl7.fhir.r4.model.Observation transformResultToObservation(org.openelisgloba
+ 
+     TestResultItem createResultFromObservation(org.hl7.fhir.r4.model.Observation observation);
+ 
++    DiagnosticReport transformResultToDiagnosticReport(org.openelisglobal.analysis.valueholder.Analysis analysis)
++            throws FhirTransformationException;
++
+     <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service);
+ 
+ }
+diff --git a/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java b/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java
+index 6572e95a2b..e1b4efd817 100644
+--- a/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java
++++ b/src/main/java/org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java
+@@ -1552,7 +1552,8 @@ private DiagnosticReport transformResultToDiagnosticReport(String analysisId) {
+         return transformResultToDiagnosticReport(analysisService.get(analysisId));
+     }
+ 
+-    private DiagnosticReport transformResultToDiagnosticReport(Analysis analysis) {
++    @Override
++    public DiagnosticReport transformResultToDiagnosticReport(Analysis analysis) {
+         LogEvent.logTrace(this.getClass().getSimpleName(), "transformResultToDiagnosticReport",
+                 "transformResultToDiagnosticReport called");
+ 
+diff --git a/src/main/java/org/openelisglobal/fhir/providers/DiagnosticReportProvider.java b/src/main/java/org/openelisglobal/fhir/providers/DiagnosticReportProvider.java
+new file mode 100644
+index 0000000000..d5db87a8e2
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/fhir/providers/DiagnosticReportProvider.java
+@@ -0,0 +1,78 @@
++package org.openelisglobal.fhir.providers;
++
++import ca.uhn.fhir.rest.annotation.IdParam;
++import ca.uhn.fhir.rest.annotation.Read;
++import ca.uhn.fhir.rest.server.IResourceProvider;
++import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
++import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
++import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
++import java.util.List;
++import java.util.UUID;
++import org.hl7.fhir.instance.model.api.IBaseResource;
++import org.hl7.fhir.r4.model.DiagnosticReport;
++import org.hl7.fhir.r4.model.IdType;
++import org.openelisglobal.analysis.service.AnalysisService;
++import org.openelisglobal.analysis.valueholder.Analysis;
++import org.openelisglobal.common.log.LogEvent;
++import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
++import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.stereotype.Component;
++
++/**
++ * FHIR provider for DiagnosticReport resources backed by OpenELIS Analysis
++ * data.
++ */
++@Component
++public class DiagnosticReportProvider implements IResourceProvider {
++
++    @Autowired
++    private AnalysisService analysisService;
++
++    @Autowired
++    private FhirTransformService fhirTransformService;
++
++    @Override
++    public Class<? extends IBaseResource> getResourceType() {
++        return DiagnosticReport.class;
++    }
++
++    @Read
++    public DiagnosticReport readDiagnosticReport(@IdParam IdType theId) {
++        String method = "readDiagnosticReport";
++        try {
++            FhirProviderUtils.validateIdParam(theId, "DiagnosticReport", this.getClass().getSimpleName(), method);
++
++            List<Analysis> matches = analysisService.getAllMatching("fhirUuid", UUID.fromString(theId.getIdPart()));
++            if (matches == null || matches.isEmpty()) {
++                throw new ResourceNotFoundException("DiagnosticReport/" + theId.getIdPart());
++            }
++            if (matches.size() > 1) {
++                LogEvent.logError(this.getClass().getSimpleName(), method,
++                        "Duplicate Analysis records found for fhirUuid=" + theId.getIdPart());
++                throw new InternalErrorException("Multiple Analysis records found for DiagnosticReport UUID");
++            }
++
++            Analysis analysis = matches.get(0);
++            DiagnosticReport report = fhirTransformService.transformResultToDiagnosticReport(analysis);
++            if (report == null) {
++                throw new InternalErrorException("Failed to transform Analysis to DiagnosticReport");
++            }
++
++            return report;
++
++        } catch (InvalidRequestException | ResourceNotFoundException e) {
++            throw e;
++        } catch (IllegalArgumentException e) {
++            throw new InvalidRequestException("DiagnosticReport ID must be a valid UUID");
++        } catch (FhirTransformationException e) {
++            LogEvent.logError(this.getClass().getSimpleName(), method,
++                    "FHIR transformation error while reading DiagnosticReport: " + e.getMessage());
++            throw new InternalErrorException("FHIR transformation failed for DiagnosticReport", e);
++        } catch (Exception e) {
++            LogEvent.logError(this.getClass().getSimpleName(), method,
++                    "Unexpected error while reading DiagnosticReport: " + e.getMessage());
++            throw new InternalErrorException("Unexpected server error while reading DiagnosticReport", e);
++        }
++    }
++}
+diff --git a/src/test/java/org/openelisglobal/fhir/DiagnosticReportFacadeTest.java b/src/test/java/org/openelisglobal/fhir/DiagnosticReportFacadeTest.java
+new file mode 100644
+index 0000000000..7ed726b93c
+--- /dev/null
++++ b/src/test/java/org/openelisglobal/fhir/DiagnosticReportFacadeTest.java
+@@ -0,0 +1,101 @@
++package org.openelisglobal.fhir;
++
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertNotNull;
++
++import ca.uhn.fhir.context.FhirContext;
++import ca.uhn.fhir.rest.server.RestfulServer;
++import com.fasterxml.jackson.databind.JsonNode;
++import com.fasterxml.jackson.databind.ObjectMapper;
++import java.util.Arrays;
++import org.junit.Before;
++import org.junit.Test;
++import org.openelisglobal.BaseWebContextSensitiveTest;
++import org.openelisglobal.fhir.providers.DiagnosticReportProvider;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.mock.web.MockHttpServletRequest;
++import org.springframework.mock.web.MockHttpServletResponse;
++import org.springframework.mock.web.MockServletConfig;
++import org.springframework.mock.web.MockServletContext;
++
++public class DiagnosticReportFacadeTest extends BaseWebContextSensitiveTest {
++
++    private RestfulServer fhirServlet;
++    private ObjectMapper objectMapper;
++
++    @Autowired
++    private DiagnosticReportProvider diagnosticReportProvider;
++
++    private MockServletContext servletContext;
++
++    @Before
++    public void setUp() throws Exception {
++
++        executeDataSetWithStateManagement("testdata/result-facade.xml");
++
++        servletContext = new MockServletContext();
++
++        fhirServlet = new RestfulServer(FhirContext.forR4());
++        fhirServlet.setResourceProviders(Arrays.asList(diagnosticReportProvider));
++
++        MockServletConfig servletConfig = new MockServletConfig(servletContext);
++        servletConfig.addInitParameter("name", "FhirServlet");
++        fhirServlet.init(servletConfig);
++
++        objectMapper = new ObjectMapper();
++    }
++
++    @Test
++    public void readDiagnosticReport_shouldReturnSuccess() throws Exception {
++
++        String fhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
++
++        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/" + fhirUuid);
++
++        MockHttpServletResponse response = new MockHttpServletResponse();
++
++        fhirServlet.service(request, response);
++
++        assertEquals(200, response.getStatus());
++
++        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
++
++        assertEquals("DiagnosticReport", jsonResponse.get("resourceType").asText());
++        assertEquals("final", jsonResponse.get("status").asText());
++        assertNotNull(jsonResponse.get("result"));
++    }
++
++    @Test
++    public void readDiagnosticReport_withNonExistentId_shouldReturn404() throws Exception {
++
++        String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
++
++        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/" + nonExistentUuid);
++
++        MockHttpServletResponse response = new MockHttpServletResponse();
++
++        fhirServlet.service(request, response);
++
++        assertEquals(404, response.getStatus());
++
++        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
++
++        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
++    }
++
++    @Test
++    public void readDiagnosticReport_withInvalidUuid_shouldReturn400() throws Exception {
++
++        MockHttpServletRequest request = buildFhirRequest("GET", "/DiagnosticReport/not-a-uuid");
++
++        MockHttpServletResponse response = new MockHttpServletResponse();
++
++        fhirServlet.service(request, response);
++
++        assertEquals(400, response.getStatus());
++
++        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
++
++        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
++    }
++}
+diff --git a/src/test/java/org/openelisglobal/fhir/providers/DiagnosticReportProviderTest.java b/src/test/java/org/openelisglobal/fhir/providers/DiagnosticReportProviderTest.java
+new file mode 100644
+index 0000000000..b951113e8f
+--- /dev/null
++++ b/src/test/java/org/openelisglobal/fhir/providers/DiagnosticReportProviderTest.java
+@@ -0,0 +1,78 @@
++package org.openelisglobal.fhir.providers;
++
++import static org.mockito.ArgumentMatchers.eq;
++import static org.mockito.Mockito.when;
++
++import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
++import java.util.Arrays;
++import java.util.Collections;
++import java.util.UUID;
++import org.hl7.fhir.r4.model.DiagnosticReport;
++import org.hl7.fhir.r4.model.IdType;
++import org.junit.Test;
++import org.junit.runner.RunWith;
++import org.mockito.InjectMocks;
++import org.mockito.Mock;
++import org.mockito.junit.MockitoJUnitRunner;
++import org.openelisglobal.analysis.service.AnalysisService;
++import org.openelisglobal.analysis.valueholder.Analysis;
++import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
++import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
++
++@RunWith(MockitoJUnitRunner.class)
++public class DiagnosticReportProviderTest {
++
++    @Mock
++    private AnalysisService analysisService;
++
++    @Mock
++    private FhirTransformService fhirTransformService;
++
++    @InjectMocks
++    private DiagnosticReportProvider diagnosticReportProvider;
++
++    @Test(expected = InternalErrorException.class)
++    public void readDiagnosticReport_whenDuplicateUuidMatches_shouldReturn500() throws Exception {
++        String uuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
++        IdType id = new IdType("DiagnosticReport", uuid);
++
++        Analysis first = new Analysis();
++        Analysis second = new Analysis();
++        when(analysisService.getAllMatching("fhirUuid", UUID.fromString(uuid)))
++                .thenReturn(Arrays.asList(first, second));
++
++        diagnosticReportProvider.readDiagnosticReport(id);
++    }
++
++    @Test(expected = InternalErrorException.class)
++    public void readDiagnosticReport_whenTransformThrows_shouldReturn500() throws Exception {
++        String uuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
++        IdType id = new IdType("DiagnosticReport", uuid);
++
++        Analysis analysis = new Analysis();
++        when(analysisService.getAllMatching("fhirUuid", UUID.fromString(uuid)))
++                .thenReturn(Collections.singletonList(analysis));
++        when(fhirTransformService.transformResultToDiagnosticReport(eq(analysis)))
++                .thenThrow(new FhirTransformationException("transform failed"));
++
++        diagnosticReportProvider.readDiagnosticReport(id);
++    }
++
++    @Test
++    public void readDiagnosticReport_whenSingleMatchAndTransformSuccess_shouldReturnReport() throws Exception {
++        String uuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02";
++        IdType id = new IdType("DiagnosticReport", uuid);
++
++        Analysis analysis = new Analysis();
++        DiagnosticReport report = new DiagnosticReport();
++        report.setId(uuid);
++
++        when(analysisService.getAllMatching("fhirUuid", UUID.fromString(uuid)))
++                .thenReturn(Collections.singletonList(analysis));
++        when(fhirTransformService.transformResultToDiagnosticReport(eq(analysis))).thenReturn(report);
++
++        DiagnosticReport result = diagnosticReportProvider.readDiagnosticReport(id);
++
++        org.junit.Assert.assertEquals(uuid, result.getIdElement().getIdPart());
++    }
++}
