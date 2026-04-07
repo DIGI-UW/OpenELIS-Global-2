@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="resync-menu-seq-after-nce-012" author="pmanko">
+    <comment>
+      nce-012-add-dashboard-menu inserted a menu row via
+      COALESCE(MAX(id),0)+1 instead of nextval('menu_seq'),
+      leaving the sequence behind the actual max ID. Resync
+      so subsequent nextval calls produce unused IDs.
+    </comment>
+    <sql>
+      SELECT setval('clinlims.menu_seq',
+        COALESCE((SELECT MAX(id) FROM clinlims.menu), 0) + 1, false);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>
