@@ -94,4 +94,32 @@
         </insert>
     </changeSet>
 
+
+    <changeSet author="sagar" id="add-study-electronic-orders-react-rest-urls-4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module_url WHERE url_path = '/rest/StudyElectronicOrders'
+            </sqlCheck>
+        </preConditions>
+        <comment>Map REST endpoints to StudyElectronicOrdersReact module so ModuleAuthenticationInterceptor enforces RBAC</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/rest/StudyElectronicOrders" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact')"
+            />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/rest/rejectStudyElectronicOrder" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'StudyElectronicOrdersReact')"
+            />
+        </insert>
+    </changeSet>
 </databaseChangeLog>
