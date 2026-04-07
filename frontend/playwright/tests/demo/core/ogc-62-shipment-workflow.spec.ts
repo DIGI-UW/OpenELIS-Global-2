@@ -10,6 +10,8 @@ import {
   LONG_PAUSE,
   MODERATE_PAUSE,
   SHORT_PAUSE,
+  QUICK_TIMEOUT,
+  MINIMAL_TIMEOUT,
 } from "../../../helpers/timeouts";
 
 /**
@@ -132,7 +134,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
 
   const tabList = page.locator('[role="tablist"]').first();
   if (await tabList.isVisible()) {
-    await scrollToAndPause(page, tabList, pause, LONG_PAUSE * 1.33);
+    await scrollToAndPause(page, tabList, pause, QUICK_TIMEOUT);
   }
 
   // ── Verify Shipment Boxes tab ──────────────────────────────────
@@ -296,9 +298,9 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     await expect(successNotification.or(boxDetailsPage).first()).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
-    await pause(LONG_PAUSE * 1.33);
+    await pause(QUICK_TIMEOUT);
   } else {
-    await pause(LONG_PAUSE * 0.67);
+    await pause(MINIMAL_TIMEOUT);
   }
 
   await showTitleCard(
@@ -362,21 +364,21 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
 
   const table = page.locator("table").first();
   if (await table.isVisible()) {
-    await scrollToAndPause(page, table, pause, LONG_PAUSE * 1.33);
+    await scrollToAndPause(page, table, pause, QUICK_TIMEOUT);
 
     // If there are rows, try clicking the first one to view details
     const firstRow = table.locator("tbody tr").first();
     if (await firstRow.isVisible()) {
       await showSceneLabel(page, "US3 · Click Box for Details", testInfo);
       await firstRow.click();
-      await pause(LONG_PAUSE * 1.33);
+      await pause(QUICK_TIMEOUT);
 
       // Verify we navigated to box details or a modal opened
       const boxDetails = page
         .getByText(/box.*detail|sample.*count|manifest/i)
         .first();
       if (await boxDetails.isVisible()) {
-        await scrollToAndPause(page, boxDetails, pause, LONG_PAUSE * 1.33);
+        await scrollToAndPause(page, boxDetails, pause, QUICK_TIMEOUT);
       }
     }
   }

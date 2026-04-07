@@ -1,3 +1,6 @@
+/** Minimal timeout for pause use purposes */
+export const MINIMAL_TIMEOUT = 1_000;
+
 /** Conditional checks, dropdown options, negative assertions (element absent) */
 export const QUICK_TIMEOUT = 2_000;
 
