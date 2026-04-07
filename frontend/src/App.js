@@ -531,6 +531,12 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
+                  path="/NceDashboard"
+                  exact
+                  component={() => <NonConformIndex form="NceDashboard" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                />
+                <SecureRoute
                   path="/ReportNonConformingEvent"
                   exact
                   component={() => (
