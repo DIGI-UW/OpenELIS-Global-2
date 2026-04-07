@@ -19,7 +19,6 @@ import {
 import React, { useState, useEffect } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
-import config from "../../config.json";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFormData,
