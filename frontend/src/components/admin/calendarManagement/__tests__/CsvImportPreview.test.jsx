@@ -53,8 +53,9 @@ describe("CsvImportPreview", () => {
       />,
     );
 
-    // FileUploader renders a button to choose files
-    expect(screen.getByText(/Choose/i)).toBeInTheDocument();
+    // FileUploader renders a button/label to choose files (may appear multiple times in Carbon latest)
+    const chooseElements = screen.getAllByText(/Choose/i);
+    expect(chooseElements.length).toBeGreaterThanOrEqual(1);
   });
 
   test("primary button disabled when no rows parsed", () => {

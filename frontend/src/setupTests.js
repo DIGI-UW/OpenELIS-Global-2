@@ -2,7 +2,7 @@
 // allows you to do things like:
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 
 // Mock window.scrollTo since jsdom doesn't implement it
 Object.defineProperty(window, "scrollTo", {
@@ -25,6 +25,33 @@ window.getComputedStyle = (element, pseudoElement) => {
 const { TextEncoder, TextDecoder } = require("util");
 if (!global.TextEncoder) global.TextEncoder = TextEncoder;
 if (!global.TextDecoder) global.TextDecoder = TextDecoder;
+
+// Polyfill fetch for jsdom (Jest 29 jsdom doesn't include it)
+if (!global.fetch) {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({ ok: true, json: () => Promise.resolve({}) }),
+  );
+}
+
+// Mock window.matchMedia for Carbon v11+ responsive breakpoints (jsdom doesn't implement it)
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: jest.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
+// Mock Element.scrollIntoView for Carbon Dropdown/ComboBox (jsdom doesn't implement it)
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = jest.fn();
+}
 
 // Mock ResizeObserver for Carbon components and other UI elements
 global.ResizeObserver = class ResizeObserver {

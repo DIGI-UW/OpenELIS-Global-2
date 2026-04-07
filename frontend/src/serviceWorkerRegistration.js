@@ -1,7 +1,7 @@
 // Function to register the service worker
 export function registerServiceWorker() {
   // Only register service worker in production
-  if (process.env.NODE_ENV !== "production") {
+  if (import.meta.env.MODE !== "production") {
     console.log(
       "Service Worker registration skipped in development environment",
     );
