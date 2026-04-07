@@ -153,6 +153,10 @@
 
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
         <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
+        <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
+
 
         <properties>
             <property name="hibernate.ejb.cfgfile"
