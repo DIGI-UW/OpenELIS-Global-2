@@ -247,8 +247,10 @@ This starts:
 - fhir (HAPI FHIR server)
 - frontend (React dev server with hot reload)
 - proxy (nginx; self-signed locally, or LE entrypoint when `USE_LE_COMPOSE`)
-- openelis-analyzer-bridge (ASTM→HTTP bridge on 12001)
-- astm-simulator (Mock analyzer on 5000)
+- openelis-analyzer-bridge (analyzer bridge: ASTM on 12001, HL7/MLLP on 2575,
+  FILE watchers)
+- analyzer-mock (multi-protocol mock: ASTM on 5050, HL7 on 5380/6001/6002, FILE
+  via API on 8085)
 - virtual-serial (Virtual serial ports /dev/serial/ttyVUSB0-4)
 
 Report: "Started harness stack (8 services)"
@@ -375,13 +377,13 @@ Report: "Seeded 4 analyzers via REST API"
 ### 7) Verify analyzer infrastructure (checkpoint #7)
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "openelis-analyzer-bridge|astm-simulator|virtual-serial"
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep -E "openelis-analyzer-bridge|analyzer-mock|virtual-serial"
 ```
 
 Expected containers:
 
 - `analyzer-harness-openelis-analyzer-bridge-1` → Up
-- `analyzer-harness-astm-simulator-1` → Up (healthy)
+- `analyzer-harness-analyzer-mock-1` → Up (healthy)
 - `analyzer-harness-virtual-serial-1` → Up
 
 Report each container's status. If any are not running, warn but continue.
