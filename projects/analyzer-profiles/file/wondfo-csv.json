@@ -1,0 +1,77 @@
+{
+  "profileMeta": {
+    "id": "wondfo-csv",
+    "version": "1.0.0",
+    "displayName": "Wondfo Finecare FS-205 (CSV)",
+    "manufacturer": "Wondfo Biotech",
+    "validation_status": "PENDING - profile built from OGC-344 spec (40-column CSV, 4 real records validated). Header names inferred from column descriptions; must be validated against real history.csv."
+  },
+  "category": "POCT",
+  "protocol": {
+    "name": "FILE",
+    "format": "CSV"
+  },
+  "supported_extensions": [
+    ".csv"
+  ],
+  "column_mapping": {
+    "Serial Number": "deviceSerialNumber",
+    "Sample Number": "sampleId",
+    "Test Name": "testCode",
+    "Result": "result",
+    "Unit": "unit",
+    "Reference Range": "referenceRange",
+    "Date/Time": "dateTime",
+    "Reagent Lot": "reagentLot",
+    "QC Status": "qcStatus"
+  },
+  "column_spec": {
+    "reference": "OGC-344-finecare-fs205-field-mapping-v1.0",
+    "total_columns": 40,
+    "core_columns": [
+      "Serial Number",
+      "Sample Number",
+      "Test Name",
+      "Result",
+      "Unit",
+      "Reference Range",
+      "Date/Time",
+      "Reagent Lot",
+      "QC Status"
+    ],
+    "phi_excluded_columns": [
+      "Patient Name",
+      "Age",
+      "Gender"
+    ],
+    "notes": "Header names are inferred from OGC-344 column descriptions (Col 0=Serial Number, Col 1=Sample Number, etc.). Must be validated against real history.csv export. Column indices from spec: 0=Serial Number, 1=Sample Number, 3=Test Name, 4=Result, 5=Unit, 6=Reference Range, 21=Date/Time, 23=Reagent Lot, 25-27=PHI (excluded)."
+  },
+  "line_field_order": [
+    "sampleId",
+    "testCode",
+    "result",
+    "interpretation",
+    "position",
+    "dateTime",
+    "dateTime",
+    "unit"
+  ],
+  "default_test_mappings": [
+    { "test_code": "TSH", "test_name_hint": "Thyroid Stimulating Hormone", "loinc": "11580-8", "unit": "mIU/L" },
+    { "test_code": "β-hCG", "test_name_hint": "Beta-Human Chorionic Gonadotropin", "loinc": "21198-7", "unit": "mIU/mL" }
+  ],
+  "configDefaults": {
+    "fileFormat": "CSV",
+    "delimiter": ",",
+    "hasHeader": true,
+    "skipRows": 1
+  },
+  "parsing_notes": {
+    "metadata_row": "Row 0 is a metadata line containing instrument serial number. Skipped via skipRows=1.",
+    "comparison_operators": "Result values may contain comparison operators (e.g. '<2', '>100'). These are stored as-is (string storage).",
+    "reference_range_format": "Column 6 may contain pipe-delimited interpretive criteria (e.g. 'Négatif：<5 | Indeterminate：5≤X≤25 | Positif：>25').",
+    "duplicate_key": "Serial Number (Col 0) + Date/Time (Col 21) + Test Name (Col 3)",
+    "phi_exclusion": "Columns 25-27 (Patient Name, Age, Gender) must NOT be imported.",
+    "encoding": "UTF-8 (with Latin-1 fallback per OGC-344 spec)"
+  }
+}
