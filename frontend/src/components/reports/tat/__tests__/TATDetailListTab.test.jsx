@@ -179,7 +179,8 @@ describe("TATDetailListTab", () => {
         r.textContent.includes("LAB-002"),
       );
       expect(statRow).toBeTruthy();
-      expect(statRow.style.borderLeft).toBe("3px solid #da1e28");
+      // jsdom normalizes hex colors to rgb() format
+      expect(statRow.style.borderLeft).toBe("3px solid rgb(218, 30, 40)");
     });
   });
 

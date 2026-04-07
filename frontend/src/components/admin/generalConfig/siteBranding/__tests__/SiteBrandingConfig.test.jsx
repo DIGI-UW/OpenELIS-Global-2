@@ -44,7 +44,7 @@ import {
 import userEvent from "@testing-library/user-event";
 
 // 4. jest-dom matchers
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";

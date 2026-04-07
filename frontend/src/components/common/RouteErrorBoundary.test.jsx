@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -24,10 +24,6 @@ describe("RouteErrorBoundary", () => {
   beforeEach(() => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     reloadMock = jest.fn();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { reload: reloadMock },
-    });
   });
 
   afterEach(() => {
@@ -58,20 +54,24 @@ describe("RouteErrorBoundary", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls window.location.reload when the Reload button is clicked", async () => {
+  it("calls window.location.reload when the Reload button is clicked", () => {
+    // jsdom 26 freezes window.location.reload (non-configurable, non-writable).
+    // Use the onReload prop to inject a testable callback.
     render(
       <IntlProvider locale="en" messages={messages}>
         <RouteErrorBoundary
           titleKey="errorBoundary.route.resultsSearch.title"
           messageKey="errorBoundary.route.resultsSearch.message"
           resetKey="1"
+          onReload={reloadMock}
         >
           <ThrowingChild />
         </RouteErrorBoundary>
       </IntlProvider>,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /Reload/i }));
+    const reloadButton = screen.getByRole("button", { name: /Reload/i });
+    fireEvent.click(reloadButton);
     expect(reloadMock).toHaveBeenCalled();
   });
 

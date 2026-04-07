@@ -5,7 +5,7 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import SerialConfiguration from "../SerialConfiguration";
 import * as serialService from "../../../../services/serialService";

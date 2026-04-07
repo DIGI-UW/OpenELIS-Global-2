@@ -24,7 +24,7 @@ jest.mock("../../../../services/analyzerService", () => ({
 // ========== IMPORTS ==========
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
@@ -214,10 +214,16 @@ describe("FileImportConfiguration", () => {
       { timeout: 2000 },
     );
     const toggleButton = formatDropdown.querySelector("button");
-    await userEvent.click(toggleButton);
-    await userEvent.click(
-      screen.getByText(messages["fileImport.format.excel"]),
-    );
+    // Use fireEvent for Carbon Dropdown to reliably open and select
+    fireEvent.click(toggleButton);
+
+    // Wait for listbox to appear, then click the Excel option
+    const excelOption = await waitFor(() => {
+      return screen.getByRole("option", {
+        name: messages["fileImport.format.excel"],
+      });
+    });
+    fireEvent.click(excelOption);
 
     await waitFor(() => {
       expect(

@@ -33,7 +33,12 @@ class RouteErrorBoundaryClass extends React.Component {
   }
 
   handleReload = () => {
-    window.location.reload();
+    const { onReload } = this.props;
+    if (onReload) {
+      onReload();
+    } else {
+      window.location.reload();
+    }
   };
 
   render() {
