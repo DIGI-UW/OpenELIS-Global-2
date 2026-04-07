@@ -1024,3 +1024,108 @@ nav.cds--side-nav .cds--side-nav__link::before {
   font-weight: bold;
   font-size: 0.85em;
 }
+
+/* Help Slide Panel Styles - Following Carbon Design System patterns */
+.help-slide-panel {
+  background-color: var(--cds-help-background, white);
+  border-radius: 0.3rem;
+  transition: background-color 0.2s ease-in-out;
+  padding: 1rem;
+  max-width: 600px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.help-slide-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 0.5rem;
+}
+
+.help-slide-header {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--cds-help-border-subtle, #e0e0e0);
+}
+
+.help-slide-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cds-help-text-primary, #161616);
+  text-align: center;
+}
+
+.help-slide-body {
+  flex: 1;
+  padding: 1rem 0;
+}
+
+.help-slide-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.help-slide-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  background-color: var(--cds-help-background, white);
+  padding: 1rem 1.5rem;
+  border: none;
+  border-radius: 0.3rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  text-align: left;
+  gap: 0.75rem;
+  color: var(--cds-help-text-secondary, #837994);
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+.help-slide-button:hover:not(:disabled) {
+  background-color: var(--cds-help-background-hover, #dfdae8);
+}
+
+.help-slide-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.help-slide-button:focus {
+  outline: 2px solid var(--cds-help-focus, #0f62fe);
+  outline-offset: 2px;
+}
+
+.help-slide-icon {
+  flex-shrink: 0;
+  color: var(--cds-help-icon-secondary, #525252);
+}
+
+.help-slide-text {
+  flex: 1;
+  font-weight: 400;
+}
+
+.help-slide-error {
+  padding: 1rem;
+  background-color: var(--cds-help-error-background, #fef7f7);
+  border: 1px solid var(--cds-help-error-border, #ffd7d7);
+  border-radius: 0.3rem;
+  color: var(--cds-help-error-text, #da1e28);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+/* Responsive adjustments for help slide panel */
+@media (max-width: 768px) {
+  .help-slide-panel {
+    padding: 0.75rem;
+  }
+
+  .help-slide-button {
+    padding: 0.875rem 1rem;
+  }
+}

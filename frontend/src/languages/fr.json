@@ -576,6 +576,8 @@
   "banner.menu.help.formDBS": "Formulaire DBS",
   "banner.menu.help.formVL": "Formulaire VL",
   "banner.menu.help.usermanual": "Manuel de l'utilisateur",
+  "banner.menu.help.title": "Aide",
+  "help.error.unavailable": "La configuration d'aide n'est pas actuellement disponible",
   "banner.menu.home": "Accueil",
   "banner.menu.inventory": "Inventaire",
   "banner.menu.inventory.catalog": "Gérer le catalogue",

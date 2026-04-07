@@ -576,6 +576,8 @@
   "banner.menu.help.formDBS": "DBS表单",
   "banner.menu.help.formVL": "VL表单",
   "banner.menu.help.usermanual": "用户手册",
+  "banner.menu.help.title": "帮助",
+  "help.error.unavailable": "帮助配置当前不可用",
   "banner.menu.home": "首页",
   "banner.menu.inventory": "库存",
   "banner.menu.inventory.catalog": "管理目录",

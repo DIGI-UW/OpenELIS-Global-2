@@ -576,6 +576,8 @@
   "banner.menu.help.formDBS": "Формуляр DBS",
   "banner.menu.help.formVL": "Формуляр VL",
   "banner.menu.help.usermanual": "Ръководство за потребителя",
+  "banner.menu.help.title": "Помощ",
+  "help.error.unavailable": "Помощната конфигурация в момента не е на разположение",
   "banner.menu.home": "Начало",
   "banner.menu.inventory": "Инвентар",
   "banner.menu.inventory.catalog": "Управление на каталог",
