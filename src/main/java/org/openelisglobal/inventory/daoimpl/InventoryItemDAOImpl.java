@@ -147,7 +147,7 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
 
             // Apply filters
             if (itemType != null) {
-                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
+                predicates.add(cb.equal(root.get("itemType"), itemType));
             }
             if (isActive != null) {
                 String activeValue = isActive ? "Y" : "N";
@@ -197,7 +197,7 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
             var predicates = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
 
             if (itemType != null) {
-                predicates.add(cb.equal(root.get("itemType").as(String.class), itemType.name()));
+                predicates.add(cb.equal(root.get("itemType"), itemType));
             }
             if (isActive != null) {
                 String activeValue = isActive ? "Y" : "N";
