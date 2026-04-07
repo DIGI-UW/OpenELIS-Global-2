@@ -311,7 +311,7 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
         analysis.setIsReportable(test.getIsReportable());
         analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
         analysis.setRevision("0");
-        analysis.setStartedDate(DateUtil.getNowAsSqlDate());
+        analysis.setStartedDate(DateUtil.getNowAsTimestamp());
         analysis.setStatusId(
                 SpringContext.getBean(IStatusService.class).getStatusID(StatusService.AnalysisStatus.NotStarted));
         analysis.setSampleItem(sampleItem);

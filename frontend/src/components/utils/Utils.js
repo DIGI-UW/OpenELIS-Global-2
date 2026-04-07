@@ -8,6 +8,24 @@ const getAcceptLanguageHeader = () => {
   return localStorage.getItem("locale") || navigator.language || "en";
 };
 
+const handleSessionError = (response) => {
+  if (response.status === 403) {
+    response
+      .clone()
+      .json()
+      .then((body) => {
+        if (body && body.message && body.message.includes("CSRF")) {
+          alert(
+            "Your session has expired. The page will reload so you can continue.",
+          );
+          window.location.reload();
+        }
+      })
+      .catch(() => {});
+  }
+  return response;
+};
+
 export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
   fetch(
     config.serverBaseUrl + endPoint,
@@ -37,11 +55,10 @@ export const getFromOpenElisServer = (endPoint, callback, signal = null) => {
       }
     })
     .catch((error) => {
-      // Don't log AbortError - it's expected when component unmounts
-      if (error.name !== "AbortError") {
-        console.error(error);
+      if (error.name === "AbortError") {
+        return; // Component is unmounting — don't call callback
       }
-      // Ensure callback is always called, even on error, to avoid hanging promises
+      console.error(error);
       callback(undefined);
     });
 };
@@ -67,12 +84,14 @@ export const postToOpenElisServer = (
       body: payLoad,
     },
   )
+    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status, extraParams);
     })
     .catch((error) => {
       console.error(error);
+      callback(0, extraParams);
     });
 };
 
@@ -97,9 +116,11 @@ export const postToOpenElisServerFullResponse = (
       body: payLoad,
     },
   )
+    .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -122,12 +143,14 @@ export const postToOpenElisServerFormData = (
       body: formData,
     },
   )
+    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status, extraParams);
     })
     .catch((error) => {
       console.error(error);
+      callback(0, extraParams);
     });
 };
 
@@ -152,6 +175,7 @@ export const postToOpenElisServerJsonResponse = (
       body: payLoad,
     },
   )
+    .then(handleSessionError)
     .then((response) => {
       // Check if response is ok (status 200-299)
       if (!response.ok) {
@@ -220,6 +244,7 @@ export const postToOpenElisServerForBlob = (
       body: payLoad,
     },
   )
+    .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -253,6 +278,7 @@ export const postToOpenElisServerForPDF = (endPoint, payLoad, callback) => {
       body: payLoad,
     },
   )
+    .then(handleSessionError)
     .then((response) => response.blob())
     .then((blob) => {
       callback(true, blob);
@@ -288,12 +314,14 @@ export const putToOpenElisServer = (endPoint, payLoad, callback) => {
   }
 
   fetch(config.serverBaseUrl + endPoint, options)
+    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status);
     })
     .catch((error) => {
       console.error(error);
+      callback(0);
     });
 };
 
@@ -314,9 +342,11 @@ export const putToOpenElisServerFullResponse = (
     },
     body: payLoad,
   })
+    .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -331,12 +361,14 @@ export const deleteFromOpenElisServer = (endPoint, callback) => {
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
+    .then(handleSessionError)
     .then((response) => response.status)
     .then((status) => {
       callback(status);
     })
     .catch((error) => {
       console.error(error);
+      callback(0);
     });
 };
 
@@ -355,9 +387,11 @@ export const deleteFromOpenElisServerFullResponse = (
       "Accept-Language": getAcceptLanguageHeader(),
     },
   })
+    .then(handleSessionError)
     .then((response) => callback(response, extraParams))
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 
@@ -405,6 +439,7 @@ export const patchToOpenElisServerJsonResponse = (
       body: payLoad,
     },
   )
+    .then(handleSessionError)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -416,6 +451,7 @@ export const patchToOpenElisServerJsonResponse = (
     })
     .catch((error) => {
       console.error(error);
+      callback(undefined, extraParams);
     });
 };
 

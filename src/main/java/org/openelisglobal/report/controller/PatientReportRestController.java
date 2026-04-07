@@ -20,7 +20,7 @@ public class PatientReportRestController extends BaseRestController {
     private PatientReportService patientReportService;
 
     @GetMapping("/patient-results")
-    @PreAuthorize("hasRole('ROLE_RESULTS')")
+    @PreAuthorize("hasRole('RESULTS')")
     public ResponseEntity<ReportingData> getPatientResults(@RequestParam String patientId, HttpServletRequest request) {
         ReportingData data = patientReportService.buildPatientResultsReport(patientId, getSysUserId(request));
         if (data == null) {
