@@ -57,9 +57,14 @@
         nce_type_id="3" status="Resolved"
         discussion_date="2025-04-02 13:00:00.0" />
 
-    <nce_specimen id="1" nce_id="1001" sample_item_id="602" />
-    <nce_specimen id="2" nce_id="1002" sample_item_id="602" />
-    <nce_specimen id="3" nce_id="1003" sample_item_id="603" />
-    <nce_specimen id="4" nce_id="1002" sample_item_id="601" />
-    <nce_specimen id="5" nce_id="1002" sample_item_id="601" />
+    <nce_specimen id="1" nce_id="1001" sample_item_id="602"
+        last_updated="2025-04-15 10:00:00" />
+    <nce_specimen id="2" nce_id="1002" sample_item_id="602"
+        last_updated="2025-04-15 10:00:00" />
+    <nce_specimen id="3" nce_id="1003" sample_item_id="603"
+        last_updated="2025-04-15 10:00:00" />
+    <nce_specimen id="4" nce_id="1002" sample_item_id="601"
+        last_updated="2025-04-15 10:00:00" />
+    <nce_specimen id="5" nce_id="1002" sample_item_id="601"
+        last_updated="2025-04-15 10:00:00" />
 </dataset>

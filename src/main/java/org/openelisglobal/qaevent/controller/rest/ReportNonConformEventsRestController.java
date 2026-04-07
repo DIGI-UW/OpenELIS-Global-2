@@ -1,9 +1,11 @@
 package org.openelisglobal.qaevent.controller.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LIMSInvalidConfigurationException;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.rest.bean.NceSampleInfo;
@@ -12,7 +14,9 @@ import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.RequesterService;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
+import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.worker.NonConformingEventWorker;
 import org.openelisglobal.sample.service.SampleService;
@@ -30,7 +34,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 public class ReportNonConformEventsRestController extends BaseRestController {
@@ -41,19 +47,27 @@ public class ReportNonConformEventsRestController extends BaseRestController {
     private final NonConformingEventWorker nonConformingEventWorker;
     private final NceCategoryService nceCategoryService;
     private final RequesterService requesterService;
+    private final NceAttachmentService nceAttachmentService;
 
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private NceNumberGeneratorService nceNumberGeneratorService;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     public ReportNonConformEventsRestController(SampleService sampleService, SampleItemService sampleItemService,
             SearchResultsService searchResultsService, NonConformingEventWorker nonConformingEventWorker,
-            NceCategoryService nceCategoryService, RequesterService requesterService) {
+            NceCategoryService nceCategoryService, RequesterService requesterService,
+            NceAttachmentService nceAttachmentService) {
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
         this.searchResultsService = searchResultsService;
         this.nonConformingEventWorker = nonConformingEventWorker;
         this.nceCategoryService = nceCategoryService;
         this.requesterService = requesterService;
+        this.nceAttachmentService = nceAttachmentService;
     }
 
     @GetMapping(value = "/rest/nonconformevents", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -97,7 +111,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             eventData.setLabOrderNumber(params.get("labOrderNumber"));
             eventData.setSpecimenId(params.get("specimenId"));
             eventData.setCurrentUserId(params.get("currentUserId"));
-            eventData.setNceCategories(nceCategoryService.getAllNceCategories());
+            eventData.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
 
             SystemUser systemUser = systemUserService.getUserById(getSysUserId(request));
             eventData.setName(systemUser.getFirstName() + " " + systemUser.getLastName());
@@ -107,7 +121,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
                     Arrays.asList(params.get("specimenId").split(",")), systemUser.getId(), ncenumber);
 
             eventData.setNceNumber(event.getNceNumber());
-            eventData.setId(event.getId());
+            eventData.setId(String.valueOf(event.getId()));
 
             Sample sample = getSampleForLabNumber(params.get("labOrderNumber"));
             if (sample != null) {
@@ -128,7 +142,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
             requesterService.setSampleId(sample == null ? null : sample.getId());
             eventData.setSite(requesterService.getReferringSiteName());
             eventData.setPrescriberName(requesterService.getRequesterLastFirstName());
-            eventData.setNceCategories(nceCategoryService.getAllNceCategories());
+            eventData.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
             eventData.setReportDate(DateUtil.formatDateAsText(Calendar.getInstance().getTime()));
 
             return ResponseEntity.ok(eventData);
@@ -139,17 +153,72 @@ public class ReportNonConformEventsRestController extends BaseRestController {
     }
 
     @PostMapping(value = "/rest/reportnonconformingevent", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form) {
+    public ResponseEntity<?> postReportNonConformingEvent(@RequestBody NonConformingEventForm form,
+            HttpServletRequest request) {
+        return saveNonConformingEvent(form, null, request);
+    }
+
+    @PostMapping(value = "/rest/reportnonconformingevent/with-attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> postReportNonConformingEventWithAttachments(@RequestPart("nceData") String nceDataJson,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files, HttpServletRequest request) {
         try {
+            NonConformingEventForm form = objectMapper.readValue(nceDataJson, NonConformingEventForm.class);
+            return saveNonConformingEvent(form, files, request);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "postReportNonConformingEventWithAttachments",
+                    e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "error", "Failed to process request"));
+        }
+    }
+
+    private ResponseEntity<?> saveNonConformingEvent(NonConformingEventForm form, List<MultipartFile> files,
+            HttpServletRequest request) {
+        try {
+            String sysUserId = getSysUserId(request);
+
+            if (form.getId() == null || form.getId().isEmpty()) {
+                String nceNumber = form.getNceNumber();
+                if (nceNumber == null || nceNumber.isEmpty()) {
+                    nceNumber = nceNumberGeneratorService.generateNceNumber();
+                }
+
+                List<String> specimens = new ArrayList<>();
+                if (form.getSpecimenId() != null && !form.getSpecimenId().isEmpty()) {
+                    specimens = Arrays.asList(form.getSpecimenId().split(","));
+                }
+
+                NcEvent newEvent = nonConformingEventWorker.create(form.getLabOrderNumber(), specimens, sysUserId,
+                        nceNumber);
+                form.setId(String.valueOf(newEvent.getId()));
+            }
+
+            form.setCurrentUserId(sysUserId);
             boolean updated = nonConformingEventWorker.update(form);
-            if (updated) {
-                return ResponseEntity.ok().body(Map.of("success", true));
-            } else {
+            if (!updated) {
                 return ResponseEntity.ok().body(Map.of("success", false));
             }
+
+            if (files != null && !files.isEmpty()) {
+                Integer userId = Integer.valueOf(sysUserId);
+                Integer nceId = Integer.valueOf(form.getId());
+
+                for (MultipartFile file : files) {
+                    if (!file.isEmpty()) {
+                        nceAttachmentService.createAttachmentFromUpload(nceId, file, userId);
+                    }
+                }
+            }
+
+            return ResponseEntity.ok().body(Map.of("success", true));
+        } catch (IllegalArgumentException e) {
+            // Validation error (file size, type, etc.) - safe to return to client
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("success", false, "error", e.getMessage()));
         } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "saveNonConformingEvent", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred while processing the request.");
+                    .body(Map.of("success", false, "error", "An unexpected error occurred while saving the NCE"));
         }
     }
 

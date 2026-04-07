@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ================================================================== -->
+    <!-- NCE Enhancement - Core functionality for Report NCE feature        -->
+    <!-- ================================================================== -->
+
+    <!-- ================================================================== -->
+    <!-- ENHANCE: nc_event table - Add severity and title columns           -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-001-enhance-nc-event">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nc_event" columnName="title"/>
+            </not>
+        </preConditions>
+        <comment>Add title, immediate_action, and severity columns to nc_event</comment>
+
+        <addColumn schemaName="clinlims" tableName="nc_event">
+            <column name="title" type="VARCHAR(200)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="immediate_action" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="reagan-meant" id="nce-002-nc-event-indexes">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <not>
+                <indexExists schemaName="clinlims" indexName="idx_nc_event_status"/>
+            </not>
+        </preConditions>
+        <comment>Add indexes for nc_event columns</comment>
+
+        <createIndex schemaName="clinlims" tableName="nc_event" indexName="idx_nc_event_status">
+            <column name="status"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="nc_event" indexName="idx_nc_event_severity">
+            <column name="severity"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- ENHANCE: nce_action_log table - Add effectiveness review columns   -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-003-enhance-nce-action-log">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_action_log"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_action_log" columnName="effective"/>
+            </not>
+        </preConditions>
+        <comment>Add effectiveness review columns to nce_action_log</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_action_log">
+            <column name="effective" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="review_comments" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="reviewed_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="review_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- CREATE: nce_attachment table - File attachments for NCEs           -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-004-create-nce-attachment">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="nce_attachment"/>
+            </not>
+        </preConditions>
+        <comment>Create nce_attachment table for file attachments</comment>
+
+        <createTable schemaName="clinlims" tableName="nce_attachment">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="nce_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_path" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="file_type" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="file_size" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="uploaded_by" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+            <column name="uploaded_date" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+            baseTableSchemaName="clinlims"
+            baseTableName="nce_attachment"
+            baseColumnNames="nce_id"
+            constraintName="fk_nce_attachment_nce"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="nc_event"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+
+        <createIndex schemaName="clinlims" tableName="nce_attachment" indexName="idx_nce_attachment_nce_id">
+            <column name="nce_id"/>
+        </createIndex>
+
+        <createSequence schemaName="clinlims" sequenceName="nce_attachment_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add reference table entries for new tables                         -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-010-reference-tables">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'NCE_ATTACHMENT'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add reference table entries for NCE tables</comment>
+
+        <sql>
+            INSERT INTO clinlims.reference_tables (id, name, keep_history, is_hl7_encoded)
+            SELECT COALESCE(MAX(id), 0) + 1, 'NCE_ATTACHMENT', 'Y', 'N'
+            FROM clinlims.reference_tables;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add last_updated column to nce_specimen table                      -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-011-add-nce-specimen-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_specimen"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_specimen" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column to nce_specimen table</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_specimen">
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add last_updated column to nce_action_log table                    -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-013-add-nce-action-log-last-updated">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_action_log"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_action_log" columnName="last_updated"/>
+            </not>
+        </preConditions>
+        <comment>Add last_updated column to nce_action_log table</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_action_log">
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add name_localization_id to nce_category table                     -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-014-add-nce-category-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_category"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_category" columnName="name_localization_id"/>
+            </not>
+        </preConditions>
+        <comment>Add name_localization_id column to nce_category table for localization support</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_category">
+            <column name="name_localization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="fk_nce_category_localization"
+            baseTableSchemaName="clinlims"
+            baseTableName="nce_category"
+            baseColumnNames="name_localization_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="localization"
+            referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add name_localization_id to nce_type table                         -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-015-add-nce-type-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_type"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_type" columnName="name_localization_id"/>
+            </not>
+        </preConditions>
+        <comment>Add name_localization_id column to nce_type table for localization support</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_type">
+            <column name="name_localization_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="fk_nce_type_localization"
+            baseTableSchemaName="clinlims"
+            baseTableName="nce_type"
+            baseColumnNames="name_localization_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="localization"
+            referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add NCE Dashboard menu item under Non-Conformity menu              -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-012-add-dashboard-menu">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_nce_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Add NCE Dashboard menu item under Non-Conformity</comment>
+
+        <sql>
+            INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+            SELECT
+                COALESCE(MAX(id), 0) + 1,
+                (SELECT id FROM clinlims.menu WHERE element_id = 'menu_nonconformity'),
+                0,
+                'menu_nce_dashboard',
+                '/NceDashboard',
+                'banner.menu.nonconformity.dashboard',
+                true
+            FROM clinlims.menu;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Backfill localization for existing nce_category records            -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-016-backfill-category-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_category"/>
+            <columnExists schemaName="clinlims" tableName="nce_category" columnName="name_localization_id"/>
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.nce_category WHERE name_localization_id IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Create localization records for existing nce_category rows without localization</comment>
+
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                cat_record RECORD;
+                new_loc_id INTEGER;
+            BEGIN
+                FOR cat_record IN
+                    SELECT id, name FROM clinlims.nce_category WHERE name_localization_id IS NULL AND name IS NOT NULL
+                LOOP
+                    -- Insert into localization table
+                    INSERT INTO clinlims.localization (id, description, lastupdated)
+                    VALUES (nextval('clinlims.localization_seq'), 'NCE Category: ' || cat_record.name, NOW())
+                    RETURNING id INTO new_loc_id;
+
+                    -- Insert English value
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'en', cat_record.name, NOW());
+
+                    -- Update nce_category with localization reference
+                    UPDATE clinlims.nce_category SET name_localization_id = new_loc_id WHERE id = cat_record.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Backfill localization for existing nce_type records                -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-017-backfill-type-localization">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_type"/>
+            <columnExists schemaName="clinlims" tableName="nce_type" columnName="name_localization_id"/>
+            <sqlCheck expectedResult="1">
+                SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+                FROM clinlims.nce_type WHERE name_localization_id IS NULL
+            </sqlCheck>
+        </preConditions>
+        <comment>Create localization records for existing nce_type rows without localization</comment>
+
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                type_record RECORD;
+                new_loc_id INTEGER;
+            BEGIN
+                FOR type_record IN
+                    SELECT id, name FROM clinlims.nce_type WHERE name_localization_id IS NULL AND name IS NOT NULL
+                LOOP
+                    -- Insert into localization table
+                    INSERT INTO clinlims.localization (id, description, lastupdated)
+                    VALUES (nextval('clinlims.localization_seq'), 'NCE Type: ' || type_record.name, NOW())
+                    RETURNING id INTO new_loc_id;
+
+                    -- Insert English value
+                    INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+                    VALUES (nextval('clinlims.localization_value_seq'), new_loc_id, 'en', type_record.name, NOW());
+
+                    -- Update nce_type with localization reference
+                    UPDATE clinlims.nce_type SET name_localization_id = new_loc_id WHERE id = type_record.id;
+                END LOOP;
+            END $$;
+        </sql>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add unique constraint on nc_event.nce_number                       -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-018-unique-nce-number">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <columnExists schemaName="clinlims" tableName="nc_event" columnName="nce_number"/>
+            <not>
+                <indexExists schemaName="clinlims" indexName="uq_nc_event_nce_number"/>
+            </not>
+        </preConditions>
+        <comment>Add unique constraint on nce_number to prevent duplicate NCE numbers</comment>
+
+        <addUniqueConstraint
+            schemaName="clinlims"
+            tableName="nc_event"
+            columnNames="nce_number"
+            constraintName="uq_nc_event_nce_number"/>
+    </changeSet>
+
+</databaseChangeLog>
