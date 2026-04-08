@@ -101,4 +101,6 @@ public interface FhirTransformService {
 
     ServiceRequest transformToServiceRequest(String anlaysisId);
 
+    SamplePatientUpdateData createOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysuserId);
+
 }

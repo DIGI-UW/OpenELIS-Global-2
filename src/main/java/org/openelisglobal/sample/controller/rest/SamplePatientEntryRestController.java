@@ -32,7 +32,6 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
@@ -42,13 +41,12 @@ import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
-import org.openelisglobal.patient.action.IPatientUpdate;
-import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.action.util.SampleUtil;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
@@ -267,7 +265,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
-        testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+        SampleUtil.testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 
         updateData.setAccessionNumber(sampleOrder.getLabNo());
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
@@ -522,20 +520,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             field.setFieldName(AdditionalFieldName.CONTACT_TRACING_INDEX_RECORD_NUMBER);
             field.setFieldValue(sampleOrder.getContactTracingIndexRecordNumber());
             updateData.addSampleField(field);
-        }
-    }
-
-    private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,
-            IPatientUpdate patientUpdate, SamplePatientUpdateData updateData)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-        patientUpdate.setPatientUpdateStatus(patientInfo);
-        updateData.setSavePatient(patientUpdate.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION);
-
-        if (updateData.isSavePatient()) {
-            updateData.setPatientErrors(patientUpdate.preparePatientData(request, patientInfo));
-        } else {
-            updateData.setPatientErrors(new BaseErrors());
         }
     }
 

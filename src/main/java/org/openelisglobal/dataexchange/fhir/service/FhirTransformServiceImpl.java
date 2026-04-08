@@ -986,6 +986,63 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
+    public SamplePatientUpdateData createOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysuserId) {
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData(sysuserId);
+
+        if (serviceRequest.hasSpecimen()) {
+            Reference specimenRef = serviceRequest.getSpecimenFirstRep();
+            String specimenUUID = specimenRef.getReferenceElement().getIdPart();
+
+            SampleItem sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
+            if (sampleItem != null) {
+                Sample sample = sampleItem.getSample();
+                updateData.setSample(sample);
+                updateData.setAccessionNumber(sample.getAccessionNumber());
+            }
+        }
+
+        if (serviceRequest.hasSubject()) {
+            Reference subjectRef = serviceRequest.getSubject();
+            if (ResourceType.Patient.name().equals(subjectRef.getReferenceElement().getResourceType())) {
+                String patientUUID = subjectRef.getReferenceElement().getIdPart();
+                Patient patient = getItemByFhirId(patientUUID, patientService);
+
+                if (patient != null) {
+                    updateData.setPatientId(patient.getId());
+                }
+            }
+        }
+
+        if (serviceRequest.hasRequester()) {
+            Reference requesterRef = serviceRequest.getRequester();
+            String requesterUUID = requesterRef.getReferenceElement().getIdPart();
+
+            if (ResourceType.Practitioner.name().equals(requesterRef.getReferenceElement().getResourceType())) {
+                Provider provider = getItemByFhirId(requesterUUID, providerService);
+                if (provider != null) {
+                    updateData.setProvider(provider);
+                    updateData.setProviderPerson(provider.getPerson());
+                }
+            }
+        }
+
+        if (serviceRequest.hasPriority()) {
+            String fhirPriority = serviceRequest.getPriority().toCode();
+            try {
+                updateData.setPriority(OrderPriority.valueOf(fhirPriority.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                updateData.setPriority(OrderPriority.ROUTINE);
+            }
+        }
+
+        if (serviceRequest.hasStatus()) {
+            // You can use this to set the logic for whether this is a new order or update
+        }
+
+        return updateData;
+    }
+
+    @Override
     public ServiceRequest transformToServiceRequest(String anlaysisId) {
         return this.transformToServiceRequest(analysisService.get(anlaysisId));
     }

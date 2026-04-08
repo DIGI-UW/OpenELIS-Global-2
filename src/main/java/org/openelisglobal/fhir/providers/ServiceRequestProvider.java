@@ -1,11 +1,13 @@
 package org.openelisglobal.fhir.providers;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.Create;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
 import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
@@ -30,11 +32,21 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.action.util.SampleUtil;
+import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.openelisglobal.sample.service.PatientManagementUpdate;
+import org.openelisglobal.sample.service.SamplePatientEntryService;
+import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ServiceRequestProvider implements IResourceProvider {
+
+    @Autowired
+    private SamplePatientEntryService samplePatientService;
 
     @Autowired
     private AnalysisService analysisService;
@@ -75,6 +87,39 @@ public class ServiceRequestProvider implements IResourceProvider {
             LogEvent.logError(this.getClass().getSimpleName(), method,
                     "Unexpected error while Reading Patient: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error while Reading Patient", e);
+        }
+    }
+
+    @Create
+    public MethodOutcome createServiceRequest(ServiceRequest serviceRequest, HttpServletRequest request) {
+        String method = "createServiceRequest";
+        String sysuserId = FhirProviderUtils.getSysUserId(request);
+        try {
+            if (serviceRequest == null) {
+                throw new InvalidRequestException("ServiceRequest resource cannot be null");
+            }
+            SamplePatientUpdateData updateData = fhirTransformService.createOrderItemFromServiceRequest(serviceRequest,
+                    sysuserId);
+            SamplePatientEntryForm form = new SamplePatientEntryForm();
+            PatientManagementInfo patientInfo = new PatientManagementInfo();
+            Patient patient = fhirTransformService.transformToFhirPatient(updateData.getPatientId());
+            patientInfo = fhirTransformService.createOePatientManagementInfo(patient);
+            PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
+            patientUpdate.setSysUserIdFromRequest(request);
+            SampleUtil.testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+            samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
+            fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
+
+            // Return the created resource with its new ID
+            MethodOutcome outcome = new MethodOutcome();
+            outcome.setResource(serviceRequest);
+            return outcome;
+        } catch (InvalidRequestException e) {
+            throw e; // FHIR server will map this to HTTP 400
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method,
+                    "Unexpected error while creating ServiceRequest: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while creating ServiceRequest", e);
         }
     }
 
