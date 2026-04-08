@@ -408,21 +408,21 @@ function ProviderMenu() {
           onRequestClose={closeAddModal}
         >
           <TextInput
-            id="lastName"
+            id="addLastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
             value={lastName}
             onChange={(e) => handleLastNameChange(e)}
             required
           />
           <TextInput
-            id="firstName"
+            id="addFirstName"
             labelText={intl.formatMessage({ id: "provider.providerFirstName" })}
             value={firstName}
             onChange={(e) => handleFirstNameChange(e)}
             required
           />
           <TextInput
-            id="telephone"
+            id="addTelephone"
             labelText={intl.formatMessage(
               {
                 id: "patient.label.primaryphone",
@@ -439,13 +439,7 @@ function ProviderMenu() {
             invalidText={phoneValidation.status ? "" : phoneValidation.body}
           />
           <TextInput
-            id="email"
-            labelText={intl.formatMessage({ id: "provider.email" })}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextInput
-            id="email"
+            id="addEmail"
             labelText={intl.formatMessage({ id: "provider.email" })}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -453,7 +447,7 @@ function ProviderMenu() {
 
           <Dropdown
             className="dropdown-list"
-            id="isActive"
+            id="addIsActive"
             titleText="Active"
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
@@ -462,7 +456,7 @@ function ProviderMenu() {
             onChange={({ selectedItem }) => setIsActive(selectedItem)}
           />
           <TextInput
-            id="fax"
+            id="addFax"
             labelText={intl.formatMessage({ id: "provider.fax" })}
             value={fax}
             onChange={(e) => setFax(e.target.value)}
@@ -478,21 +472,21 @@ function ProviderMenu() {
           onRequestClose={closeUpdateModal}
         >
           <TextInput
-            id="lastName"
+            id="updateLastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
             value={lastName}
             onChange={(e) => handleLastNameChange(e)}
             required
           />
           <TextInput
-            id="firstName"
+            id="updateFirstName"
             labelText={intl.formatMessage({ id: "provider.providerFirstName" })}
             value={firstName}
             onChange={(e) => handleFirstNameChange(e)}
             required
           />
           <TextInput
-            id="telephone"
+            id="updateTelephone"
             labelText={intl.formatMessage(
               {
                 id: "patient.label.primaryphone",
@@ -514,14 +508,8 @@ function ProviderMenu() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <TextInput
-            id="updateEmail"
-            labelText={intl.formatMessage({ id: "provider.email" })}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
           <Dropdown
-            id="isActive"
+            id="updateIsActive"
             titleText="Active"
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
@@ -530,7 +518,7 @@ function ProviderMenu() {
             onChange={({ selectedItem }) => setIsActive(selectedItem)}
           />
           <TextInput
-            id="fax"
+            id="updateFax"
             labelText={intl.formatMessage({ id: "provider.fax" })}
             value={fax}
             onChange={(e) => setFax(e.target.value)}
