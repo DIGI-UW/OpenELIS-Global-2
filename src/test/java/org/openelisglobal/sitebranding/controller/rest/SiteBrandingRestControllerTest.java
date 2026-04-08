@@ -9,8 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
-import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -21,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 
 /**
@@ -40,14 +37,10 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     @Autowired
     private SiteBrandingService siteBrandingService;
 
-    @Autowired
-    private DataSource dataSource;
-
     @Value("${org.openelisglobal.branding.dir:/var/lib/openelis-global/branding/}")
     private String brandingDir;
 
     private ObjectMapper objectMapper;
-    private JdbcTemplate jdbcTemplate;
 
     // Minimal valid 1x1 transparent PNG (67 bytes)
     private static final byte[] VALID_PNG_BYTES = Base64.getDecoder()
@@ -57,22 +50,7 @@ public class SiteBrandingRestControllerTest extends BaseWebContextSensitiveTest 
     public void setUp() throws Exception {
         super.setUp();
         objectMapper = new ObjectMapper();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-        cleanTestData();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        cleanTestData();
-    }
-
-    private void cleanTestData() {
-        try {
-            // Clean up ALL site branding data to ensure test isolation
-            jdbcTemplate.execute("DELETE FROM site_branding");
-        } catch (Exception e) {
-            // Ignore cleanup errors
-        }
+        executeDataSetWithStateManagement("testdata/site-branding.xml");
     }
 
     /**

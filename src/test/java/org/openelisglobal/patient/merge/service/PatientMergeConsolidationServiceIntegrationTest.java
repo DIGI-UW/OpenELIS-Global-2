@@ -6,7 +6,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import javax.sql.DataSource;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -14,21 +13,7 @@ import org.openelisglobal.patient.dao.PatientDAO;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 
-/**
- * Integration tests for PatientMergeConsolidationService using DBUnit fixtures.
- * 
- * Tests FR-004 (Clinical Data Reassignment) and FR-009 (Demographic Merging)
- * with actual database operations using DBUnit XML test data.
- * 
- * Test Data (patient-merge-testdata.xml): - Primary Patient: ID 9001 (partial
- * demographics) - Merged Patient: ID 9002 (has clinical data + extra
- * demographics) - 3 sample_human records linked to merged patient - 2
- * patient_contact records linked to merged patient - 2 electronic_order records
- * linked to merged patient - 2 patient_relations records involving merged
- * patient
- */
 public class PatientMergeConsolidationServiceIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String PRIMARY_PATIENT_ID = "9001";
@@ -44,24 +29,13 @@ public class PatientMergeConsolidationServiceIntegrationTest extends BaseWebCont
     @Autowired
     private DataSource dataSource;
 
-    private JdbcTemplate jdbcTemplate;
-
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        jdbcTemplate = new JdbcTemplate(dataSource);
-
         // Load system user data (required for admin user foreign key)
         executeDataSetWithStateManagement("testdata/system-user.xml");
-
         // Load patient merge test data
         executeDataSetWithStateManagement("testdata/patient-merge-testdata.xml");
-    }
-
-    @After
-    public void tearDown() {
-        // Clean up test data to avoid polluting database
-        cleanMergeTestData();
     }
 
     /**
@@ -286,53 +260,45 @@ public class PatientMergeConsolidationServiceIntegrationTest extends BaseWebCont
     }
 
     // ============================================
-    // Helper Methods
+    // Helper Methods Updated to DBUnit / Pure JDBC
     // ============================================
 
+    private int getCount(String query, String patientId) {
+        try (java.sql.Connection conn = dataSource.getConnection();
+                java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setLong(1, Long.parseLong(patientId));
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to execute test assertion count query", e);
+        }
+        return 0;
+    }
+
     private int countSampleHumanForPatient(String patientId) {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM sample_human WHERE patient_id = ?", Integer.class,
-                Long.parseLong(patientId));
+        return getCount("SELECT COUNT(*) FROM sample_human WHERE patient_id = ?", patientId);
     }
 
     private int countPatientContactForPatient(String patientId) {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM patient_contact WHERE patient_id = ?", Integer.class,
-                Long.parseLong(patientId));
+        return getCount("SELECT COUNT(*) FROM patient_contact WHERE patient_id = ?", patientId);
     }
 
     private int countElectronicOrderForPatient(String patientId) {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM electronic_order WHERE patient_id = ?", Integer.class,
-                Long.parseLong(patientId));
+        return getCount("SELECT COUNT(*) FROM electronic_order WHERE patient_id = ?", patientId);
     }
 
     private int countPatientRelationsPatId(String patientId) {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM patient_relations WHERE pat_id = ?", Integer.class,
-                Long.parseLong(patientId));
+        return getCount("SELECT COUNT(*) FROM patient_relations WHERE pat_id = ?", patientId);
     }
 
     private int countPatientRelationsPatIdSource(String patientId) {
-        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM patient_relations WHERE pat_id_source = ?",
-                Integer.class, Long.parseLong(patientId));
+        return getCount("SELECT COUNT(*) FROM patient_relations WHERE pat_id_source = ?", patientId);
     }
 
     private boolean isEmpty(String value) {
         return value == null || value.trim().isEmpty();
-    }
-
-    private void cleanMergeTestData() {
-        try {
-            // Delete in reverse dependency order
-            jdbcTemplate.execute("DELETE FROM patient_relations WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM electronic_order WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM patient_contact WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM sample_human WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM sample WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM status_of_sample WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM provider WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM patient WHERE id >= 9000");
-            jdbcTemplate.execute("DELETE FROM person WHERE id >= 9000");
-        } catch (Exception e) {
-            // Log but don't fail - cleanup is best effort
-            System.err.println("Failed to clean merge test data: " + e.getMessage());
-        }
     }
 }
