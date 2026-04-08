@@ -35,6 +35,9 @@ import org.hl7.fhir.r4.model.ContactPoint.ContactPointUse;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.DateType;
 import org.hl7.fhir.r4.model.DecimalType;
+import org.hl7.fhir.r4.model.Device;
+import org.hl7.fhir.r4.model.Device.DeviceDeviceNameComponent;
+import org.hl7.fhir.r4.model.Device.DeviceNameType;
 import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.DiagnosticReport.DiagnosticReportStatus;
 import org.hl7.fhir.r4.model.Enumerations.AdministrativeGender;
@@ -67,6 +70,8 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
@@ -189,6 +194,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     private FhirFacilityOrganizationService facilityOrganizationService;
     @Autowired
     private TestResultService testResultService;
+    @Autowired
+    private AnalyzerService analyzerService;
 
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
@@ -258,6 +265,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Map<String, DiagnosticReport> diagnosticReports = new HashMap<>();
         Map<String, Observation> observations = new HashMap<>();
         Map<String, Practitioner> requesters = new HashMap<>();
+        Set<String> includedAnalyzerIds = new HashSet<>();
+        Map<String, Analyzer> analyzerCache = new HashMap<>();
         for (String sampleId : sampleIds) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                     "transforming sampleId: " + sampleId);
@@ -374,6 +383,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                                 "observation collision with id: " + observation.getIdElement().getIdPart());
                     }
+                    setDeviceReferenceAndInclude(observation, result.getAnalysis(), fhirOperations, tempIdGenerator,
+                            analyzerCache, includedAnalyzerIds);
                     observations.put(observation.getIdElement().getIdPart(), observation);
                 }
             }
@@ -1284,12 +1295,19 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
         FhirOperations fhirOperations = new FhirOperations();
+        Set<String> includedAnalyzerIds = new HashSet<>();
+        Map<String, Analyzer> analyzerCache = new HashMap<>();
+
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
             Observation observation = transformResultToObservation(resultSet.result.getId());
+            setDeviceReferenceAndInclude(observation, resultSet.result.getAnalysis(), fhirOperations, tempIdGenerator,
+                    analyzerCache, includedAnalyzerIds);
             this.addToOperations(fhirOperations, tempIdGenerator, observation);
         }
         for (ResultSet resultSet : actionDataSet.getModifiedResults()) {
             Observation observation = this.transformResultToObservation(resultSet.result.getId());
+            setDeviceReferenceAndInclude(observation, resultSet.result.getAnalysis(), fhirOperations, tempIdGenerator,
+                    analyzerCache, includedAnalyzerIds);
             this.addToOperations(fhirOperations, tempIdGenerator, observation);
         }
 
@@ -1300,6 +1318,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
                 this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
             }
+            includeDeviceIfNeeded(analysis, fhirOperations, tempIdGenerator, analyzerCache, includedAnalyzerIds);
         }
         try {
             Bundle responseBundle = fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
@@ -1492,6 +1511,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
         FhirOperations fhirOperations = new FhirOperations();
+        Set<String> includedAnalyzerIds = new HashSet<>();
+        Map<String, Analyzer> analyzerCache = new HashMap<>();
 
         for (Result result : deletableList) {
             Observation observation = transformResultToObservation(result.getId());
@@ -1501,6 +1522,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         for (Result result : resultUpdateList) {
             Observation observation = this.transformResultToObservation(result.getId());
+            setDeviceReferenceAndInclude(observation, result.getAnalysis(), fhirOperations, tempIdGenerator,
+                    analyzerCache, includedAnalyzerIds);
             this.addToOperations(fhirOperations, tempIdGenerator, observation);
         }
 
@@ -1511,6 +1534,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 DiagnosticReport diagnosticReport = this.transformResultToDiagnosticReport(analysis.getId());
                 this.addToOperations(fhirOperations, tempIdGenerator, diagnosticReport);
             }
+            includeDeviceIfNeeded(analysis, fhirOperations, tempIdGenerator, analyzerCache, includedAnalyzerIds);
         }
 
         Map<String, Task> referingTaskMap = new HashMap<>();
@@ -1572,6 +1596,49 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         }
     }
 
+    /**
+     * Resolves the analyzer for an analysis, sets Observation.device reference, and
+     * ensures the corresponding Device resource is included in the bundle (once per
+     * analyzer). Single DB lookup per unique analyzerId.
+     */
+    private void setDeviceReferenceAndInclude(Observation observation, Analysis analysis, FhirOperations fhirOperations,
+            TempIdGenerator tempIdGenerator, Map<String, Analyzer> analyzerCache, Set<String> includedAnalyzerIds) {
+        if (analysis == null || GenericValidator.isBlankOrNull(analysis.getAnalyzerId())) {
+            return;
+        }
+        Analyzer analyzer = analyzerCache.computeIfAbsent(analysis.getAnalyzerId(), id -> analyzerService.get(id));
+        if (analyzer == null) {
+            return;
+        }
+        String fhirUuid = analyzer.ensureFhirUuid();
+        observation.setDevice(this.createReferenceFor(ResourceType.Device, fhirUuid));
+        if (!includedAnalyzerIds.contains(analysis.getAnalyzerId())) {
+            Device device = this.transformAnalyzerToDevice(analyzer);
+            this.addToOperations(fhirOperations, tempIdGenerator, device);
+            includedAnalyzerIds.add(analysis.getAnalyzerId());
+        }
+    }
+
+    /**
+     * Ensures the Device resource for an analysis's analyzer is included in the
+     * bundle. Use when no Observation is available (e.g., DiagnosticReport paths).
+     */
+    private void includeDeviceIfNeeded(Analysis analysis, FhirOperations fhirOperations,
+            TempIdGenerator tempIdGenerator, Map<String, Analyzer> analyzerCache, Set<String> includedAnalyzerIds) {
+        if (analysis == null || GenericValidator.isBlankOrNull(analysis.getAnalyzerId())) {
+            return;
+        }
+        if (includedAnalyzerIds.contains(analysis.getAnalyzerId())) {
+            return;
+        }
+        Analyzer analyzer = analyzerCache.computeIfAbsent(analysis.getAnalyzerId(), id -> analyzerService.get(id));
+        if (analyzer != null) {
+            Device device = this.transformAnalyzerToDevice(analyzer);
+            this.addToOperations(fhirOperations, tempIdGenerator, device);
+            includedAnalyzerIds.add(analysis.getAnalyzerId());
+        }
+    }
+
     private DiagnosticReport transformResultToDiagnosticReport(String analysisId) {
         return transformResultToDiagnosticReport(analysisService.get(analysisId));
     }
@@ -1611,6 +1678,43 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         diagnosticReport.setCode(transformTestToCodeableConcept(test.getId()));
 
         return diagnosticReport;
+    }
+
+    private Device transformAnalyzerToDevice(Analyzer analyzer) {
+        Device device = new Device();
+        // ensureFhirUuid() generates a UUID if missing (shouldn't happen with backfill
+        // migration)
+        String fhirUuid = analyzer.ensureFhirUuid();
+        device.setId(fhirUuid);
+
+        device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_uuid", fhirUuid));
+
+        if (!GenericValidator.isBlankOrNull(analyzer.getMachineId())) {
+            device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_machineId",
+                    analyzer.getMachineId()));
+            device.setSerialNumber(analyzer.getMachineId());
+        }
+
+        if (!GenericValidator.isBlankOrNull(analyzer.getDiscoveredSourceId())) {
+            device.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/analyzer_sourceId",
+                    analyzer.getDiscoveredSourceId()));
+        }
+
+        if (!GenericValidator.isBlankOrNull(analyzer.getName())) {
+            device.addDeviceName(new DeviceDeviceNameComponent().setName(analyzer.getName())
+                    .setType(DeviceNameType.USERFRIENDLYNAME));
+        }
+
+        if (!GenericValidator.isBlankOrNull(analyzer.getType())) {
+            device.setType(new CodeableConcept().setText(analyzer.getType()));
+        }
+
+        Identifier facilityId = createFacilityIdentifier();
+        if (facilityId != null) {
+            device.setOwner(new Reference().setIdentifier(facilityId));
+        }
+
+        return device;
     }
 
     private DiagnosticReport genNewDiagnosticReport(Analysis analysis) {
@@ -1721,6 +1825,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             observation.setEffective(new DateTimeType(analysis.getStartedDate()));
         }
         // observation.setIssued(new Date());
+
         return observation;
     }
 

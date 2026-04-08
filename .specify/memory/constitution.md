@@ -687,7 +687,10 @@ direct database access from controllers, NO business logic in DAOs.
 
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
    - **Transactions start here (NOT in controllers)** - `@Transactional`
-     annotations MUST be on service methods only, NEVER on controller methods
+     annotations MUST NOT appear on controller methods. DAOs retain
+     `@Transactional` (per Layer 2 convention); with Spring's default `REQUIRED`
+     propagation, DAO transactions participate in the enclosing service
+     transaction rather than creating new ones.
    - Call DAOs for persistence, FHIR services for sync
    - Validation logic before persistence
    - Logging via `LogEvent.logError()` for errors
@@ -731,9 +734,10 @@ mixes with HTTP handling and business rules.
 - **Controllers accessing entity relationships** (e.g.,
   `position.getParentRack().getParentShelf()`) - Services must return complete
   data structures with all relationships resolved within the transaction
-- **@Transactional annotations in controllers** - Transaction management MUST be
-  in service layer only. Controllers delegate to services, which manage
-  transaction boundaries. Example anti-pattern:
+- **@Transactional annotations in controllers** - Transaction boundaries MUST be
+  managed by the service layer. Controllers MUST NOT have `@Transactional`.
+  (Note: DAOs correctly carry `@Transactional` per Layer 2 convention — the
+  prohibition is controller-specific.) Example anti-pattern:
   `@GetMapping("/endpoint") @Transactional(readOnly = true)`
 
 ---
@@ -1631,6 +1635,7 @@ sync.
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.9.1: Clarify @Transactional prohibition scope — controllers only, not DAOs (2026-04-03)
   Amendment v1.9.0: Playwright E2E testing support (2026-01-27)
   Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
   Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)
