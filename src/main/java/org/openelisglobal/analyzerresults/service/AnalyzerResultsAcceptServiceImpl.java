@@ -602,6 +602,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                         .getStatusID(resultItem.getIsAccepted() ? AnalysisStatus.TechnicalAcceptance
                                 : AnalysisStatus.TechnicalRejected);
                 analysis.setStatusId(statusId);
+                analysis.setAnalyzerId(resultItem.getAnalyzerId());
             }
 
             analysis.setSysUserId(sysUserId);
@@ -695,6 +696,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             analysis.setTestSection(test.getTestSection());
             analysis.setIsReportable(test.getIsReportable());
             analysis.setRevision("0");
+            analysis.setAnalyzerId(resultItem.getAnalyzerId());
         }
     }
 
