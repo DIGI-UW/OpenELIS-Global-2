@@ -166,7 +166,7 @@ const InventoryCatalog = () => {
     const labels = {
       REAGENT: "Reagent",
       RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Analyzer Cartridge",
+      CARTRIDGE: "Equipment",
       HIV_KIT: "HIV Test Kit",
       SYPHILIS_KIT: "Syphilis Test Kit",
       ENZYME: "Enzyme",

@@ -87,5 +87,6 @@
 
     <include file="liquibase/3.5.x.x/029-electronic-signature.xml"/>
     <include file="liquibase/3.5.x.x/030-fix-biorepository-approved-sample-type-lastupdated.xml"/>
+    <include file="liquibase/3.5.x.x/032-add-next-maintenance-date-to-inventory-item.xml"/>
 
 </databaseChangeLog>

@@ -170,6 +170,13 @@ const InventoryDashboard = () => {
       header: "Last Maintenance Date",
     },
     {
+      key: "nextMaintenanceDate",
+      header: intl.formatMessage({
+        id: "catalog.item.nextMaintenanceDate",
+        defaultMessage: "Next Maintenance Date",
+      }),
+    },
+    {
       key: "actions",
       header: "Action",
     },
@@ -632,6 +639,9 @@ const InventoryDashboard = () => {
           : "N/A",
         lastMaintenanceDate: item?.lastMaintenanceDate
           ? formatDate(item.lastMaintenanceDate)
+          : "N/A",
+        nextMaintenanceDate: item?.nextMaintenanceDate
+          ? formatDate(item.nextMaintenanceDate)
           : "N/A",
       };
     }

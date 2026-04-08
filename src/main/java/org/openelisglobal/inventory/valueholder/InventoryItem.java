@@ -128,6 +128,10 @@ public class InventoryItem extends BaseObject<Long> {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime lastMaintenanceDate;
 
+    @Column(name = "next_maintenance_date")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime nextMaintenanceDate;
+
     @Column(name = "current_location", length = 255)
     private String currentLocation;
 

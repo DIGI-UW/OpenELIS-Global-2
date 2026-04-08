@@ -197,7 +197,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     const labels = {
       REAGENT: "Reagent",
       RDT: "RDT (Rapid Diagnostic Test)",
-      CARTRIDGE: "Analyzer Cartridge",
+      CARTRIDGE: "Equipment",
       HIV_KIT: "HIV Test Kit",
       SYPHILIS_KIT: "Syphilis Test Kit",
     };
@@ -274,6 +274,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         lastServiceDate: convertFromISODateTime(item.lastServiceDate) || "",
         lastMaintenanceDate:
           convertFromISODateTime(item.lastMaintenanceDate) || "",
+        nextMaintenanceDate:
+          convertFromISODateTime(item.nextMaintenanceDate) || "",
         // Reagent-specific additional fields
         concentration: item.concentration || "",
         // RDT-specific
@@ -308,6 +310,7 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         installationDate: "",
         lastServiceDate: "",
         lastMaintenanceDate: "",
+        nextMaintenanceDate: "",
         // Reagent-specific additional fields
         concentration: "",
         // RDT-specific
@@ -494,6 +497,11 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         if (formData.lastMaintenanceDate) {
           sanitizedData.lastMaintenanceDate = convertToISODateTime(
             formData.lastMaintenanceDate,
+          );
+        }
+        if (formData.nextMaintenanceDate) {
+          sanitizedData.nextMaintenanceDate = convertToISODateTime(
+            formData.nextMaintenanceDate,
           );
         }
       } else if (formData.itemType === "RDT") {
@@ -787,6 +795,21 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                   value={formData.lastMaintenanceDate}
                   onChange={(e) =>
                     handleChange("lastMaintenanceDate", e.target.value)
+                  }
+                />
+              </DatePicker>
+
+              <DatePicker datePickerType="single">
+                <DatePickerInput
+                  id="nextMaintenanceDate"
+                  placeholder="mm/dd/yyyy"
+                  labelText={intl.formatMessage({
+                    id: "catalog.item.nextMaintenanceDate",
+                    defaultMessage: "Next Maintenance Date",
+                  })}
+                  value={formData.nextMaintenanceDate}
+                  onChange={(e) =>
+                    handleChange("nextMaintenanceDate", e.target.value)
                   }
                 />
               </DatePicker>

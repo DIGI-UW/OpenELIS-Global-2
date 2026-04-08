@@ -266,6 +266,9 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
         case "lastmaintenancedate":
         case "last_maintenance_date":
             return "lastMaintenanceDate";
+        case "nextmaintenancedate":
+        case "next_maintenance_date":
+            return "nextMaintenanceDate";
         case "currentlocation":
         case "current_location":
             return "currentLocation";
