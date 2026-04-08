@@ -21,7 +21,7 @@ public class NceHistory extends BaseObject<Integer> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nce_history_seq_gen")
-    @SequenceGenerator(name = "nce_history_seq_gen", sequenceName = "nce_history_seq", schema = "clinlims", allocationSize = 1)
+    @SequenceGenerator(name = "nce_history_seq_gen", sequenceName = "nce_history_id_seq", schema = "clinlims", allocationSize = 1)
     @Column(name = "id")
     private Integer id;
 

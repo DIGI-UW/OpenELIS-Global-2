@@ -74,6 +74,7 @@ public class NonConformingEventForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String specimenId;
 
+    @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String analysisId;
 
     /// for displayNcEvent

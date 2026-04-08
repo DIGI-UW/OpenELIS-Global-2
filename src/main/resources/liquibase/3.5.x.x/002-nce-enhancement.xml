@@ -168,12 +168,28 @@
                 <columnExists schemaName="clinlims" tableName="nce_specimen" columnName="last_updated"/>
             </not>
         </preConditions>
-        <comment>Add last_updated and analysis_id columns to nce_specimen table</comment>
+        <comment>Add last_updated column to nce_specimen table</comment>
 
         <addColumn schemaName="clinlims" tableName="nce_specimen">
             <column name="last_updated" type="TIMESTAMP">
                 <constraints nullable="true"/>
             </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add analysis_id column to nce_specimen table                       -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-021-add-nce-specimen-analysis-id">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nce_specimen"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nce_specimen" columnName="analysis_id"/>
+            </not>
+        </preConditions>
+        <comment>Add analysis_id column to nce_specimen for linking tests to NCEs</comment>
+
+        <addColumn schemaName="clinlims" tableName="nce_specimen">
             <column name="analysis_id" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
@@ -417,7 +433,6 @@
             <column name="timestamp"/>
         </createIndex>
 
-        <createSequence schemaName="clinlims" sequenceName="nce_history_seq" startValue="1" incrementBy="1"/>
     </changeSet>
 
     <!-- ================================================================== -->

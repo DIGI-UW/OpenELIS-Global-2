@@ -64,7 +64,7 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
 
   // Build context string from result row
   const contextString = resultRow
-    ? `Lab #: ${resultRow.accessionNumber || ""} - Test: ${resultRow.testName || ""}, Result: ${resultRow.resultValue || ""}, Patient: ${resultRow.patientName || ""}`
+    ? `${intl.formatMessage({ id: "column.name.labNo", defaultMessage: "Lab #" })}: ${resultRow.accessionNumber || ""} - ${intl.formatMessage({ id: "column.name.testName", defaultMessage: "Test" })}: ${resultRow.testName || ""}, ${intl.formatMessage({ id: "column.name.result", defaultMessage: "Result" })}: ${resultRow.resultValue || ""}, ${intl.formatMessage({ id: "patient.label", defaultMessage: "Patient" })}: ${resultRow.patientName || ""}`
     : "";
 
   // Set reporter name from session
@@ -119,8 +119,13 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
       if (response && response.nceNumber) {
         setNceForm((prev) => ({ ...prev, nceNumber: response.nceNumber }));
       } else {
-        const nceNumber = `NCE-${Date.now()}`;
-        setNceForm((prev) => ({ ...prev, nceNumber }));
+        setErrors((prev) => ({
+          ...prev,
+          nceNumber: intl.formatMessage({
+            id: "nce.error.numberGeneration",
+            defaultMessage: "Failed to generate NCE number. Please try again.",
+          }),
+        }));
       }
     });
   }, []);
@@ -159,6 +164,12 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
 
   const handleSubmit = () => {
     const newErrors = {};
+    if (!nceForm.nceNumber) {
+      newErrors.nceNumber = intl.formatMessage({
+        id: "nce.error.numberGeneration",
+        defaultMessage: "NCE number is required. Please retry.",
+      });
+    }
     if (!nceForm.dateOfEvent) {
       newErrors.dateOfEvent = intl.formatMessage({
         id: "nce.error.dateOfEvent.required",
@@ -608,14 +619,22 @@ const InlineNceForm = ({ resultRow, onClose, onSubmitSuccess }) => {
           <div className="inline-nce-linked-item">
             <CheckmarkFilled size={16} />
             <span>
-              Sample: {resultRow.accessionNumber}
+              {intl.formatMessage({
+                id: "sample.label",
+                defaultMessage: "Sample",
+              })}
+              : {resultRow.accessionNumber}
               {resultRow.sequenceNumber ? `-${resultRow.sequenceNumber}` : ""}
             </span>
           </div>
           <div className="inline-nce-linked-item">
             <CheckmarkFilled size={16} />
             <span>
-              Result: {resultRow.testName} — {resultRow.resultValue || ""}
+              {intl.formatMessage({
+                id: "column.name.result",
+                defaultMessage: "Result",
+              })}
+              : {resultRow.testName} — {resultRow.resultValue || ""}
             </span>
           </div>
         </div>

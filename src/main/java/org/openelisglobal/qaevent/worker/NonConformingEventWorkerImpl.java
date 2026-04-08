@@ -63,17 +63,36 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         event.setLabOrderNumber(labOrderId);
         event.setReportDate(new java.sql.Date(System.currentTimeMillis()));
         event = ncEventService.save(event);
+        // Parse analysisId safely once
+        Integer parsedAnalysisId = null;
+        if (analysisId != null && !analysisId.trim().isEmpty()) {
+            try {
+                parsedAnalysisId = Integer.valueOf(analysisId.trim());
+            } catch (NumberFormatException e) {
+                // Invalid analysisId - log and skip linking analysis
+                LogEvent.logWarn(this.getClass().getSimpleName(), "create",
+                        "Invalid analysisId: " + analysisId);
+            }
+        }
+
         for (String specimenId : specimens) {
             Integer nceId = event.getId();
-            Integer sampleItemId = Integer.parseInt(specimenId);
+            Integer sampleItemId;
+            try {
+                sampleItemId = Integer.valueOf(specimenId.trim());
+            } catch (NumberFormatException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "create",
+                        "Invalid specimenId: " + specimenId);
+                continue;
+            }
 
             // Check if this specimen is already linked to this NCE
             if (!nceSpecimenService.existsByNceIdAndSampleItemId(nceId, sampleItemId)) {
                 NceSpecimen specimen = new NceSpecimen();
                 specimen.setNceId(nceId);
                 specimen.setSampleItemId(sampleItemId);
-                if (analysisId != null && !analysisId.isEmpty()) {
-                    specimen.setAnalysisId(Integer.parseInt(analysisId));
+                if (parsedAnalysisId != null) {
+                    specimen.setAnalysisId(parsedAnalysisId);
                 }
                 specimen.setSysUserId(sysUserId);
                 nceSpecimenService.save(specimen);
@@ -81,7 +100,14 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
         }
 
         // Log history for creation
-        Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
+        Integer userId = null;
+        if (sysUserId != null) {
+            try {
+                userId = Integer.valueOf(sysUserId.trim());
+            } catch (NumberFormatException e) {
+                // Invalid sysUserId - leave userId as null
+            }
+        }
         nceHistoryService.logActivity(event.getId(), "CREATED", "NCE created with number: " + nceNumber, null, null,
                 userId);
 
@@ -128,7 +154,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEventService.update(ncEvent);
 
             // Log history for update
-            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
             nceHistoryService.logActivity(ncEvent.getId(), "UPDATED", "NCE details updated", null, null, userId);
 
             return true;
@@ -155,7 +181,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEventService.update(ncEvent);
 
             // Log history for follow-up (status changed to CAPA)
-            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
             nceHistoryService.logActivity(ncEvent.getId(), "STATUS_CHANGED", "Status changed to CAPA for follow-up",
                     null, "CAPA", userId);
 
@@ -352,7 +378,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEventService.update(ncEvent);
 
             // Log history for corrective action update
-            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
             nceHistoryService.logActivity(ncEvent.getId(), "CORRECTIVE_ACTION", "Corrective action updated", null, null,
                     userId);
 
@@ -376,12 +402,23 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEventService.update(ncEvent);
 
             // Log history for resolution
-            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            Integer userId = parseIntegerSafely(form.getCurrentUserId());
             nceHistoryService.logActivity(ncEvent.getId(), "RESOLVED", "NCE resolved and marked as Completed", null,
                     "Completed", userId);
 
             return true;
         }
         return false;
+    }
+
+    private Integer parseIntegerSafely(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }
