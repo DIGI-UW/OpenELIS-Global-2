@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.sample.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -245,9 +246,12 @@ public class OrderSearchRestController extends BaseRestController {
                     }
                 }
 
-                // Label is complete if all sample items have storage assignments
+                // Label is complete if all sample items have storage assignments OR storage is
+                // skipped
                 boolean labelComplete = false;
-                if (!sampleItemsForProgress.isEmpty()) {
+                if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+                    labelComplete = true;
+                } else if (!sampleItemsForProgress.isEmpty()) {
                     labelComplete = sampleItemsForProgress.stream().allMatch(si -> {
                         SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
                         return assignment != null && assignment.getLocationId() != null;
@@ -303,6 +307,7 @@ public class OrderSearchRestController extends BaseRestController {
                 stepProgress.put("qa", qaComplete);
                 orderData.put("stepProgress", stepProgress);
                 orderData.put("status", orderStatus);
+                orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
                 ordersList.add(orderData);
             }
@@ -505,9 +510,12 @@ public class OrderSearchRestController extends BaseRestController {
             }
             stepProgress.put("collect", collectComplete);
 
-            // Label is complete if all sample items have storage assignments
+            // Label is complete if all sample items have storage assignments OR storage is
+            // skipped
             boolean labelComplete = false;
-            if (!sampleItems.isEmpty()) {
+            if (Boolean.TRUE.equals(sample.getStorageSkipped())) {
+                labelComplete = true;
+            } else if (!sampleItems.isEmpty()) {
                 labelComplete = sampleItems.stream().allMatch(si -> {
                     SampleStorageAssignment assignment = sampleStorageAssignmentDAO.findBySampleItemId(si.getId());
                     return assignment != null && assignment.getLocationId() != null;
@@ -520,10 +528,50 @@ public class OrderSearchRestController extends BaseRestController {
             stepProgress.put("qa", qaComplete);
             response.put("stepProgress", stepProgress);
 
+            // Include storageSkipped flag
+            response.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
+
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "searchOrder", "Error searching for order: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Update the storageSkipped flag on a sample.
+     *
+     * <p>
+     * Used when the user checks "No storage required" checkbox on the Label step.
+     *
+     * @param labNumber      the lab/accession number
+     * @param storageSkipped true if storage is intentionally skipped
+     * @return success/failure response
+     */
+    @org.springframework.web.bind.annotation.PutMapping(value = "/storage-skipped", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> updateStorageSkipped(@RequestParam String labNumber,
+            @RequestParam boolean storageSkipped, HttpServletRequest request) {
+
+        try {
+            Sample sample = sampleService.getSampleByAccessionNumber(labNumber);
+            if (sample == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            sample.setStorageSkipped(storageSkipped);
+            sample.setSysUserId(getSysUserId(request));
+            sampleService.update(sample);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("labNumber", labNumber);
+            response.put("storageSkipped", storageSkipped);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "updateStorageSkipped",
+                    "Error updating storageSkipped: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -831,6 +879,134 @@ public class OrderSearchRestController extends BaseRestController {
             sampleOrderItems.put("priority", sample.getPriority().name());
         }
 
+        // Environmental workflow fields (OGC-356)
+        Map<String, String> environmentalFields = buildEnvironmentalFields(sample, sampleId);
+        if (!environmentalFields.isEmpty()) {
+            sampleOrderItems.put("environmentalFields", environmentalFields);
+        }
+
         return sampleOrderItems;
+    }
+
+    /**
+     * Build environmental fields map from ObservationHistory entries. Used for
+     * environmental workflow orders (non-patient samples).
+     */
+    private Map<String, String> buildEnvironmentalFields(Sample sample, String sampleId) {
+        Map<String, String> envFields = new HashMap<>();
+
+        LogEvent.logDebug(this.getClass().getSimpleName(), "buildEnvironmentalFields",
+                "Building environmental fields for sampleId: " + sampleId);
+
+        // Workflow type
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sampleId);
+        LogEvent.logDebug(this.getClass().getSimpleName(), "buildEnvironmentalFields",
+                "workflowType from DB: " + workflowType);
+        if (workflowType != null) {
+            envFields.put("workflowType", workflowType);
+        }
+
+        // Collection site description
+        String siteDescription = observationHistoryService
+                .getRawValueForSample(ObservationType.ENV_COLLECTION_SITE_DESCRIPTION, sampleId);
+        if (siteDescription != null) {
+            envFields.put("collectionSiteDescription", siteDescription);
+        }
+
+        // Requester reference
+        String requesterRef = observationHistoryService.getRawValueForSample(ObservationType.ENV_REQUESTER_REFERENCE,
+                sampleId);
+        if (requesterRef != null) {
+            envFields.put("requesterReference", requesterRef);
+        }
+
+        // Environmental conditions
+        String conditions = observationHistoryService.getRawValueForSample(ObservationType.ENV_ENVIRONMENTAL_CONDITIONS,
+                sampleId);
+        if (conditions != null) {
+            envFields.put("environmentalConditions", conditions);
+        }
+
+        // Location hierarchy (Region, District, Village)
+        String regionId = observationHistoryService.getRawValueForSample(ObservationType.ENV_LOCATION_REGION_ID,
+                sampleId);
+        if (regionId != null) {
+            envFields.put("locationHierarchy.1", regionId);
+        }
+
+        String districtId = observationHistoryService.getRawValueForSample(ObservationType.ENV_LOCATION_DISTRICT_ID,
+                sampleId);
+        if (districtId != null) {
+            envFields.put("locationHierarchy.2", districtId);
+        }
+
+        String villageId = observationHistoryService.getRawValueForSample(ObservationType.ENV_LOCATION_VILLAGE_ID,
+                sampleId);
+        if (villageId != null) {
+            envFields.put("locationHierarchy.3", villageId);
+        }
+
+        // Sampling site fields
+        String samplingSiteId = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_ID,
+                sampleId);
+        if (samplingSiteId != null) {
+            envFields.put("samplingSiteId", samplingSiteId);
+        }
+        String samplingSiteName = observationHistoryService.getRawValueForSample(ObservationType.ENV_SAMPLING_SITE_NAME,
+                sampleId);
+        if (samplingSiteName != null) {
+            envFields.put("samplingSiteName", samplingSiteName);
+        }
+        String siteType = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_TYPE, sampleId);
+        if (siteType != null) {
+            envFields.put("siteType", siteType);
+        }
+        String siteSubtype = observationHistoryService.getRawValueForSample(ObservationType.ENV_SITE_SUBTYPE, sampleId);
+        if (siteSubtype != null) {
+            envFields.put("siteSubtype", siteSubtype);
+        }
+        String envZone = observationHistoryService.getRawValueForSample(ObservationType.ENV_ENVIRONMENTAL_ZONE,
+                sampleId);
+        if (envZone != null) {
+            envFields.put("environmentalZone", envZone);
+        }
+        String regulatoryRef = observationHistoryService.getRawValueForSample(ObservationType.ENV_REGULATORY_REFERENCE,
+                sampleId);
+        if (regulatoryRef != null) {
+            envFields.put("regulatoryReference", regulatoryRef);
+        }
+        String collectionMethod = observationHistoryService.getRawValueForSample(ObservationType.ENV_COLLECTION_METHOD,
+                sampleId);
+        if (collectionMethod != null) {
+            envFields.put("collectionMethod", collectionMethod);
+        }
+        String contactPerson = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PERSON,
+                sampleId);
+        if (contactPerson != null) {
+            envFields.put("contactPerson", contactPerson);
+        }
+        String contactPhone = observationHistoryService.getRawValueForSample(ObservationType.ENV_CONTACT_PHONE,
+                sampleId);
+        if (contactPhone != null) {
+            envFields.put("contactPhone", contactPhone);
+        }
+
+        // GPS coordinates from Sample entity (already added by
+        // 029-add-gps-coordinates-to-sample.xml)
+        if (sample.getGpsLatitude() != null) {
+            envFields.put("gpsLatitude", String.valueOf(sample.getGpsLatitude()));
+        }
+        if (sample.getGpsLongitude() != null) {
+            envFields.put("gpsLongitude", String.valueOf(sample.getGpsLongitude()));
+        }
+        if (sample.getGpsAccuracyMeters() != null) {
+            envFields.put("gpsAccuracy", String.valueOf(sample.getGpsAccuracyMeters()));
+        }
+        if (sample.getGpsCaptureMethod() != null) {
+            envFields.put("gpsCaptureMethod", sample.getGpsCaptureMethod());
+        }
+
+        return envFields;
     }
 }

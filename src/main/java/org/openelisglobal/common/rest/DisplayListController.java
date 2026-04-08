@@ -682,4 +682,28 @@ public class DisplayListController extends BaseRestController {
                 .collect(Collectors.toList())));
         return rolesWithTestSections;
     }
+
+    /**
+     * Get dictionary entries by category name.
+     *
+     * <p>
+     * Used by environmental workflow to fetch managed dropdown values (e.g.,
+     * "Sampling Site Type", "Environmental Zone").
+     *
+     * @param categoryName the dictionary category name
+     * @return list of id/value pairs
+     */
+    @GetMapping(value = "dictionary/category/{categoryName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getDictionaryByCategory(@PathVariable String categoryName) {
+        List<Dictionary> dictionaries = dictionaryService.getDictionaryEntrysByCategoryNameLocalizedSort(categoryName);
+
+        List<IdValuePair> result = new ArrayList<>();
+        for (Dictionary dict : dictionaries) {
+            if ("Y".equals(dict.getIsActive())) {
+                result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+            }
+        }
+        return result;
+    }
 }

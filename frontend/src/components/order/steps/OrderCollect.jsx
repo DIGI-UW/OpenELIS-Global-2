@@ -10,6 +10,10 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getPendingRequests,
+  convertRequestsToSamples,
+} from "../api/sampleTypeRequestApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import "../order-workflow.scss";
@@ -30,6 +34,7 @@ const OrderCollect = () => {
   const componentMounted = useRef(true);
 
   const {
+    orderId,
     orderData,
     samples,
     setSamples,
@@ -54,6 +59,10 @@ const OrderCollect = () => {
   // Units of measure for sample collection
   const [unitOfMeasures, setUnitOfMeasures] = useState([]);
 
+  // Pending sample type requests from Step 1
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+
   // Fetch sample types and UOMs on mount
   useEffect(() => {
     componentMounted.current = true;
@@ -77,6 +86,57 @@ const OrderCollect = () => {
       componentMounted.current = false;
     };
   }, []);
+
+  // Load pending sample type requests when orderId is available
+  useEffect(() => {
+    const loadPendingRequests = async () => {
+      if (!orderId || !componentMounted.current) return;
+
+      // Only load if samples don't already have sampleItemIds (not yet collected)
+      const hasSampleItemIds = samples.some((s) => s.sampleItemId);
+      if (hasSampleItemIds) return;
+
+      setIsLoadingRequests(true);
+      try {
+        const requests = await getPendingRequests(orderId);
+        if (componentMounted.current && requests && requests.length > 0) {
+          setPendingRequests(requests);
+          // Convert pending requests to samples array for the UI
+          const samplesFromRequests = convertRequestsToSamples(requests);
+          // Merge with any existing sample data (preserve collection details if already entered)
+          const mergedSamples = samplesFromRequests.map((reqSample, idx) => {
+            const existing = samples[idx];
+            if (existing && existing.sampleTypeId === reqSample.sampleTypeId) {
+              // Preserve existing collection details
+              return {
+                ...reqSample,
+                collectionDate:
+                  existing.collectionDate || reqSample.collectionDate,
+                collectionTime:
+                  existing.collectionTime || reqSample.collectionTime,
+                collectorId: existing.collectorId || reqSample.collectorId,
+                collectionConditions:
+                  existing.collectionConditions ||
+                  reqSample.collectionConditions,
+                receivedDate: existing.receivedDate || reqSample.receivedDate,
+                receivedTime: existing.receivedTime || reqSample.receivedTime,
+              };
+            }
+            return reqSample;
+          });
+          setSamples(mergedSamples);
+        }
+      } catch {
+        // Failed to load pending requests
+      } finally {
+        if (componentMounted.current) {
+          setIsLoadingRequests(false);
+        }
+      }
+    };
+
+    loadPendingRequests();
+  }, [orderId]);
 
   // Track if we've already attempted to reload samples
   const hasAttemptedReload = useRef(false);

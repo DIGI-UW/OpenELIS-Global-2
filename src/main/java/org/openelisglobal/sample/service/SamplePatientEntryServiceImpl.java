@@ -175,7 +175,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         String patientId = updateData.getPatientId();
         String sampleId = updateData.getSample() != null ? updateData.getSample().getId() : null;
 
-        if (GenericValidator.isBlankOrNull(patientId) || GenericValidator.isBlankOrNull(sampleId)) {
+        // OGC-356: For environmental samples, sampleId is required but patientId can be
+        // null
+        // Only skip if sampleId is missing (required for observation association)
+        if (GenericValidator.isBlankOrNull(sampleId)) {
             return;
         }
 
@@ -185,7 +188,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         for (ObservationHistory observation : updateData.getObservations()) {
             observation.setSampleId(sampleId);
-            observation.setPatientId(patientId);
+            // OGC-356: patientId can be null for environmental samples
+            if (!GenericValidator.isBlankOrNull(patientId)) {
+                observation.setPatientId(patientId);
+            }
 
             // For updates, check if observation already exists for this sample/type
             // If so, update it instead of inserting a duplicate

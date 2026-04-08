@@ -6,7 +6,16 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  putToOpenElisServer,
+} from "../utils/Utils";
+import {
+  createRequestsForSamples,
+  getRequestsBySample,
+  convertRequestsToSamples,
+} from "./api/sampleTypeRequestApi";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 
 /**
@@ -184,6 +193,23 @@ export const OrderProvider = ({ children }) => {
     qa: false,
   });
 
+  // Storage assignment skipped flag (Label step)
+  // Persisted to backend via /rest/order/storage-skipped endpoint
+  const [storageSkipped, setStorageSkippedState] = useState(false);
+
+  // Wrapper for setStorageSkipped - persists to backend
+  const setStorageSkipped = useCallback(
+    (value) => {
+      setStorageSkippedState(value);
+
+      if (labNumber) {
+        const endpoint = `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${value}`;
+        putToOpenElisServer(endpoint, null, Function.prototype);
+      }
+    },
+    [labNumber],
+  );
+
   // Test-to-sample assignments for Step 2
   // Structure: { [testId]: { testId, testName, isPanel, assignedToSamples: [sampleIndex, ...] } }
   const [testSampleAssignments, setTestSampleAssignments] = useState({});
@@ -251,11 +277,39 @@ export const OrderProvider = ({ children }) => {
             };
 
             setOrderDataState(loadedOrderData);
-            setSamplesState(response.samples || [sampleObject]);
+
+            // Load sample type requests if no sample_items exist (decoupled workflow)
+            // This handles Step 1 edit where samples are stored as requests, not items
+            const hasSampleItems =
+              response.samples &&
+              response.samples.length > 0 &&
+              response.samples.some((s) => s.sampleItemId);
+
+            if (!hasSampleItems && response.id) {
+              // Try to load sample type requests
+              getRequestsBySample(response.id)
+                .then((requests) => {
+                  if (requests && requests.length > 0) {
+                    const samplesFromRequests =
+                      convertRequestsToSamples(requests);
+                    setSamplesState(samplesFromRequests);
+                  } else {
+                    setSamplesState(response.samples || [sampleObject]);
+                  }
+                })
+                .catch((err) => {
+                  console.error("Failed to load sample type requests:", err);
+                  setSamplesState(response.samples || [sampleObject]);
+                });
+            } else {
+              setSamplesState(response.samples || [sampleObject]);
+            }
+
             setIsReadOnly(readOnly);
             setIsEditMode(false);
             setIsDirty(false);
             setSaveStatus(SaveStatus.SAVED);
+
             setStepProgress(
               response.stepProgress || {
                 enter: false,
@@ -264,6 +318,11 @@ export const OrderProvider = ({ children }) => {
                 qa: false,
               },
             );
+
+            // Load storageSkipped from backend response
+            const savedStorageSkipped = response.storageSkipped === true;
+            setStorageSkippedState(savedStorageSkipped);
+
             setError(null);
             lastSavedDataRef.current = JSON.stringify({
               orderData: loadedOrderData,
@@ -282,8 +341,10 @@ export const OrderProvider = ({ children }) => {
 
   /**
    * Convert samples array to XML format expected by backend
+   * @param samplesArray - Array of sample objects
+   * @param envFields - Optional environmentalFields from orderData (for GPS fallback)
    */
-  const buildSampleXML = useCallback((samplesArray) => {
+  const buildSampleXML = useCallback((samplesArray, envFields = {}) => {
     if (!samplesArray || samplesArray.length === 0) {
       return "";
     }
@@ -346,9 +407,11 @@ export const OrderProvider = ({ children }) => {
           storageLocation.positionCoordinate ||
           "";
 
-        // GPS data
-        const gpsLatitude = sampleXMLData.gpsLatitude || "";
-        const gpsLongitude = sampleXMLData.gpsLongitude || "";
+        // GPS data - fallback to environmentalFields for environmental workflow
+        const gpsLatitude =
+          sampleXMLData.gpsLatitude || envFields.gpsLatitude || "";
+        const gpsLongitude =
+          sampleXMLData.gpsLongitude || envFields.gpsLongitude || "";
         const gpsAccuracy = sampleXMLData.gpsAccuracy || "";
         const gpsCaptureMethod = sampleXMLData.gpsCaptureMethod || "";
 
@@ -420,7 +483,9 @@ export const OrderProvider = ({ children }) => {
       setError(null);
 
       // Build sample XML and referral items
-      const sampleXML = buildSampleXML(samples);
+      // Pass environmentalFields for GPS fallback in environmental workflow
+      const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+      const sampleXML = buildSampleXML(samples, envFields);
       const referralItems = buildReferralItems(samples);
       const useReferral = referralItems.length > 0;
 
@@ -545,6 +610,167 @@ export const OrderProvider = ({ children }) => {
       buildSampleXML,
       buildReferralItems,
     ],
+  );
+
+  /**
+   * Save order entry only (Step 1) - creates order metadata and sample_type_requests,
+   * but NOT sample_item records. Sample items are created in Step 2 (Collect Sample).
+   *
+   * This enables the decoupled workflow where:
+   * - Step 1: Order metadata + requested sample types
+   * - Step 2: Physical sample collection (creates sample_item records)
+   *
+   * @param {boolean} silent - If true, no loading indicator is shown
+   */
+  const saveOrderEntry = useCallback(
+    async (silent = false) => {
+      if (isReadOnly && !isEditMode) {
+        return Promise.reject(new Error("Cannot save in read-only mode"));
+      }
+
+      if (!silent) {
+        setIsSubmitting(true);
+      }
+      setSaveStatus(SaveStatus.SAVING);
+      setError(null);
+
+      // For Step 1, we send empty sampleXML - sample types will be saved as requests
+      const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+
+      // Prepare order data WITHOUT sample items
+      const submitData = {
+        ...orderData,
+        sampleXML: "", // Empty - no sample_item records created
+        referralItems: [],
+        useReferral: false,
+        orderEntryOnly: true, // Flag for backend to skip sample validation
+        sampleOrderItems: {
+          ...orderData.sampleOrderItems,
+          priorityList: [],
+          programList: [],
+          referringSiteList: [],
+          providersList: [],
+          paymentOptions: [],
+          testLocationCodeList: [],
+        },
+        initialSampleConditionList: [],
+        testSectionList: [],
+      };
+
+      // Remove extra fields that fail validation
+      if (submitData.sampleOrderItems.questionnaire) {
+        delete submitData.sampleOrderItems.questionnaire;
+      }
+      if (submitData.sampleOrderItems.vlProgramFields) {
+        delete submitData.sampleOrderItems.vlProgramFields;
+      }
+      if (submitData.sampleOrderItems.paymentStatus) {
+        delete submitData.sampleOrderItems.paymentStatus;
+      }
+      if (submitData.sampleOrderItems.program) {
+        delete submitData.sampleOrderItems.program;
+      }
+
+      return new Promise((resolve, reject) => {
+        const endpoint = "/rest/SamplePatientEntry";
+
+        if (orderId) {
+          submitData.sampleOrderItems = {
+            ...submitData.sampleOrderItems,
+            sampleId: orderId,
+          };
+        }
+
+        postToOpenElisServer(
+          endpoint,
+          JSON.stringify(submitData),
+          async (status) => {
+            if (status === 200 || status === 201) {
+              // Reload order to get the created sample ID
+              const labNo = orderData?.sampleOrderItems?.labNo;
+              if (labNo) {
+                getFromOpenElisServer(
+                  `/rest/order/search?labNumber=${encodeURIComponent(labNo)}`,
+                  async (response) => {
+                    if (response) {
+                      const sampleId = response.id;
+                      setOrderId(sampleId);
+
+                      // Create sample_type_requests for each selected sample type
+                      const samplesWithTypes = samples.filter(
+                        (s) => s.sampleTypeId,
+                      );
+                      if (samplesWithTypes.length > 0 && sampleId) {
+                        try {
+                          await createRequestsForSamples(
+                            sampleId,
+                            samplesWithTypes,
+                          );
+                        } catch (err) {
+                          // Reject with error so UI shows failure
+                          if (!silent) {
+                            setIsSubmitting(false);
+                          }
+                          setSaveStatus(SaveStatus.ERROR);
+                          setError("Failed to save sample type requests");
+                          reject(
+                            new Error(
+                              "Failed to save sample type requests: " +
+                                err.message,
+                            ),
+                          );
+                          return;
+                        }
+                      }
+
+                      // Update state
+                      setIsDirty(false);
+                      setSaveStatus(SaveStatus.SAVED);
+                      setOrderDataState((prev) => ({
+                        ...prev,
+                        patientProperties: {
+                          ...prev.patientProperties,
+                          patientUpdateStatus: "NO_ACTION",
+                          patientPK:
+                            response.patientProperties?.patientPK ||
+                            prev.patientProperties?.patientPK,
+                        },
+                      }));
+
+                      if (!silent) {
+                        setIsSubmitting(false);
+                      }
+                      resolve({ success: true, sampleId });
+                    } else {
+                      if (!silent) {
+                        setIsSubmitting(false);
+                      }
+                      resolve({ success: true });
+                    }
+                  },
+                );
+              } else {
+                if (!silent) {
+                  setIsSubmitting(false);
+                }
+                setIsDirty(false);
+                setSaveStatus(SaveStatus.SAVED);
+                resolve({ success: true });
+              }
+            } else {
+              if (!silent) {
+                setIsSubmitting(false);
+              }
+              setSaveStatus(SaveStatus.ERROR);
+              const errorMsg = "Failed to save order";
+              setError(errorMsg);
+              reject(new Error(errorMsg));
+            }
+          },
+        );
+      });
+    },
+    [orderId, orderData, samples, isReadOnly, isEditMode],
   );
 
   /**
@@ -696,6 +922,7 @@ export const OrderProvider = ({ children }) => {
       label: false,
       qa: false,
     });
+    setStorageSkipped(false);
     lastSavedDataRef.current = null;
 
     // Re-fetch form defaults from API to get correct date format
@@ -830,17 +1057,20 @@ export const OrderProvider = ({ children }) => {
     isDirty,
     error,
     stepProgress,
+    storageSkipped,
     testSampleAssignments,
 
     // Actions
     loadOrder,
     saveOrder,
+    saveOrderEntry, // Step 1: saves order + creates sample_type_requests (no sample_items)
     setCurrentStep,
     setOrderData,
     setSamples,
     resetOrder,
     enableEditMode,
     markStepComplete,
+    setStorageSkipped,
     // Test assignment actions (Step 2)
     assignTestToSample,
     removeTestFromSample,

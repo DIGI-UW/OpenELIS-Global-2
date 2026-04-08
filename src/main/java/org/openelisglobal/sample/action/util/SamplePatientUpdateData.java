@@ -362,7 +362,14 @@ public class SamplePatientUpdateData {
             sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
         }
 
-        sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
+        // Set domain based on workflow type (OGC-356)
+        // Environmental samples use "E" domain, clinical/human samples use "H" domain
+        String workflowType = sampleOrder.getEnvironmentalFieldAsString("workflowType");
+        if ("environmental".equals(workflowType)) {
+            sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.environmental"));
+        } else {
+            sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
+        }
         sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
 
         setElectronicOrderIfNeeded(sampleOrder);
@@ -639,6 +646,145 @@ public class SamplePatientUpdateData {
                         ValueType.LITERAL);
             }
         }
+
+        // Add environmental workflow observations (OGC-356)
+        addEnvironmentalObservations(sampleOrder, observationHistoryService);
+    }
+
+    /**
+     * Add environmental workflow observations from the environmentalFields map.
+     * Maps frontend field keys to ObservationHistoryType names.
+     */
+    private void addEnvironmentalObservations(SampleOrderItem sampleOrder,
+            ObservationHistoryService observationHistoryService) {
+        if (sampleOrder.getEnvironmentalFields() == null || sampleOrder.getEnvironmentalFields().isEmpty()) {
+            return;
+        }
+
+        java.util.Map<String, Object> envFields = sampleOrder.getEnvironmentalFields();
+
+        // Collection site description
+        createObservation(getStringValue(envFields, "collectionSiteDescription"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_SITE_DESCRIPTION),
+                ValueType.LITERAL);
+
+        // Requester reference (e.g., EPA Method number)
+        createObservation(getStringValue(envFields, "requesterReference"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REQUESTER_REFERENCE),
+                ValueType.LITERAL);
+
+        // Environmental conditions at collection
+        createObservation(getStringValue(envFields, "environmentalConditions"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_CONDITIONS),
+                ValueType.LITERAL);
+
+        // Location hierarchy IDs - supports both nested object and flat keys
+        String locationRegionId = getNestedLocationValue(envFields, 1);
+        String locationDistrictId = getNestedLocationValue(envFields, 2);
+        String locationVillageId = getNestedLocationValue(envFields, 3);
+
+        createObservation(locationRegionId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_LOCATION_REGION_ID),
+                ValueType.LITERAL);
+        createObservation(locationDistrictId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_LOCATION_DISTRICT_ID),
+                ValueType.LITERAL);
+        createObservation(locationVillageId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_LOCATION_VILLAGE_ID),
+                ValueType.LITERAL);
+
+        // Workflow type (clinical vs environmental)
+        createObservation(getStringValue(envFields, "workflowType"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WORKFLOW_TYPE),
+                ValueType.LITERAL);
+
+        // Sampling site fields
+        createObservation(getStringValue(envFields, "samplingSiteId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "samplingSiteName"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_NAME),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "siteType"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_TYPE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "siteSubtype"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_SUBTYPE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "environmentalZone"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_ZONE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "regulatoryReference"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "collectionMethod"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "contactPerson"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PERSON),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "contactPhone"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PHONE),
+                ValueType.LITERAL);
+    }
+
+    /**
+     * Safely get a String value from a Map that may contain Object values.
+     */
+    private String getStringValue(java.util.Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value.toString();
+    }
+
+    /**
+     * Extract location ID from environmentalFields for a given hierarchy level.
+     * Supports both: - New format: flat keys like "locationHierarchy.1",
+     * "locationHierarchy.2" - Old format: nested object "locationHierarchy": {"1":
+     * "id1", "2": "id2"}
+     */
+    @SuppressWarnings("unchecked")
+    private String getNestedLocationValue(java.util.Map<String, Object> envFields, int level) {
+        // Try new flat key format first: locationHierarchy.1, locationHierarchy.2, etc.
+        String value = getStringValue(envFields, "locationHierarchy." + level);
+        if (!GenericValidator.isBlankOrNull(value)) {
+            return value;
+        }
+
+        // Try old nested object format: locationHierarchy: {1: "id", 2: "id"}
+        Object locationHierarchy = envFields.get("locationHierarchy");
+        if (locationHierarchy instanceof java.util.Map) {
+            java.util.Map<String, Object> hierarchyMap = (java.util.Map<String, Object>) locationHierarchy;
+            Object levelValue = hierarchyMap.get(String.valueOf(level));
+            if (levelValue == null) {
+                levelValue = hierarchyMap.get(level); // Try integer key
+            }
+            if (levelValue != null) {
+                return levelValue.toString();
+            }
+        }
+
+        // Try alternative formats: location_Region, location_District, location_Village
+        switch (level) {
+        case 1:
+            value = getStringValue(envFields, "location_Region");
+            break;
+        case 2:
+            value = getStringValue(envFields, "location_District");
+            break;
+        case 3:
+            value = getStringValue(envFields, "location_Village");
+            if (GenericValidator.isBlankOrNull(value)) {
+                value = getStringValue(envFields, "location_Town");
+            }
+            break;
+        }
+        return value;
     }
 
     public boolean getCustomNotificationLogic() {

@@ -241,27 +241,45 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        // Extract sampleOrder and workflowType early so we can check for environmental
+        // workflow
+        SampleOrderItem sampleOrder = form.getSampleOrderItems();
+        String workflowType = sampleOrder != null ? sampleOrder.getEnvironmentalFieldAsString("workflowType") : null;
+
         formValidator.validate(form, result);
+
+        // OGC-356: For environmental workflow, only check for non-patient validation
+        // errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
         if (result.hasErrors()) {
-            logger.error("Validation failed: {}", result.getAllErrors());
-            saveErrors(result);
-            // Preserve critical order identifiers before setupForm() overwrites them
-            String preservedSampleId = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getSampleId()
-                    : null;
-            String preservedLabNo = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getLabNo() : null;
-            setupForm(form, request, "");
-            // Restore the preserved identifiers after setupForm()
-            if (preservedSampleId != null && form.getSampleOrderItems() != null) {
-                form.getSampleOrderItems().setSampleId(preservedSampleId);
+            boolean hasNonPatientErrors = true;
+            if ("environmental".equals(workflowType)) {
+                List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                        .filter(error -> !error.getField().startsWith("patientProperties."))
+                        .collect(Collectors.toList());
+                hasNonPatientErrors = !nonPatientErrors.isEmpty();
             }
-            if (preservedLabNo != null && form.getSampleOrderItems() != null) {
-                form.getSampleOrderItems().setLabNo(preservedLabNo);
+
+            if (hasNonPatientErrors) {
+                saveErrors(result);
+                // Preserve critical order identifiers before setupForm() overwrites them
+                String preservedSampleId = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getSampleId()
+                        : null;
+                String preservedLabNo = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getLabNo()
+                        : null;
+                setupForm(form, request, "");
+                // Restore the preserved identifiers after setupForm()
+                if (preservedSampleId != null && form.getSampleOrderItems() != null) {
+                    form.getSampleOrderItems().setSampleId(preservedSampleId);
+                }
+                if (preservedLabNo != null && form.getSampleOrderItems() != null) {
+                    form.getSampleOrderItems().setLabNo(preservedLabNo);
+                }
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
-        SampleOrderItem sampleOrder = form.getSampleOrderItems();
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -279,7 +297,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
+
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+
+        // OGC-356: For environmental workflow, don't save patient data
+        if ("environmental".equals(workflowType)) {
+            updateData.setSavePatient(false);
+            updateData.setPatientErrors(new BaseErrors());
+        }
 
         updateData.setAccessionNumber(sampleOrder.getLabNo());
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
@@ -318,9 +343,36 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // For decoupled workflow (orderEntryOnly=true), samples are not required
         // They will be added in a later step (Collect Sample)
         boolean requireSampleItems = !form.isOrderEntryOnly();
+
+        // DEBUG: Log before validation
+        LogEvent.logInfo(this.getClass().getName(), "processRequest",
+                "DEBUG: Before validation - form.isOrderEntryOnly()=" + form.isOrderEntryOnly()
+                        + ", requireSampleItems=" + requireSampleItems);
+
         updateData.validateSample(result, requireSampleItems);
 
+        // DEBUG: Log validation result
+        LogEvent.logInfo(this.getClass().getName(), "processRequest",
+                "DEBUG: After validation - result.hasErrors()=" + result.hasErrors());
         if (result.hasErrors()) {
+            LogEvent.logInfo(this.getClass().getName(), "processRequest",
+                    "DEBUG: Validation errors=" + result.getAllErrors());
+        }
+
+        // OGC-356: For environmental workflow, ignore patient-related validation errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
+        boolean hasNonPatientErrors = result.hasErrors();
+        if (hasNonPatientErrors && "environmental".equals(workflowType)) {
+            // Check if all errors are patient-related
+            List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                    .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
+            hasNonPatientErrors = !nonPatientErrors.isEmpty();
+            LogEvent.logInfo(this.getClass().getName(), "processRequest",
+                    "DEBUG: Environmental workflow - non-patient errors: " + nonPatientErrors.size()
+                            + ", total errors: " + result.getErrorCount());
+        }
+
+        if (hasNonPatientErrors) {
             saveErrors(result);
             // Preserve critical order identifiers before setupForm() overwrites them
             String preservedSampleId = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getSampleId()
@@ -334,6 +386,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             if (preservedLabNo != null && form.getSampleOrderItems() != null) {
                 form.getSampleOrderItems().setLabNo(preservedLabNo);
             }
+            LogEvent.logInfo(this.getClass().getName(), "processRequest",
+                    "DEBUG: Returning early due to validation errors");
             return form;
         }
 

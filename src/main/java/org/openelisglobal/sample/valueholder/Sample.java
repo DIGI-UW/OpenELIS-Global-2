@@ -69,6 +69,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private Integer gpsAccuracyMeters;
     private String gpsCaptureMethod;
     private Timestamp gpsCaptureTimestamp;
+    private Boolean storageSkipped = false;
 
     // testing one-to-many
     // this is for HSE I and II - ability to enter up to two projects
@@ -456,6 +457,14 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setGpsCaptureTimestamp(Timestamp gpsCaptureTimestamp) {
         this.gpsCaptureTimestamp = gpsCaptureTimestamp;
+    }
+
+    public Boolean getStorageSkipped() {
+        return storageSkipped;
+    }
+
+    public void setStorageSkipped(Boolean storageSkipped) {
+        this.storageSkipped = storageSkipped;
     }
 
     public String getGpsCoordinatesDisplay() {

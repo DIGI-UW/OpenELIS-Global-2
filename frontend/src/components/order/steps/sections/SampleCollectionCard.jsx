@@ -44,23 +44,40 @@ const SampleCollectionCard = ({
 }) => {
   const intl = useIntl();
 
-  // Auto-populate receivedDate/receivedTime for new samples that don't have values yet
-  // This ensures the displayed fallback value is actually saved to the sample
+  // Auto-populate dates/times for new samples that don't have values yet
+  // collectionDate/Time default to now; receivedDate/Time default to server values
   useEffect(() => {
     if (!sample.sampleItemId && !isReadOnly) {
       const updates = {};
+
+      if (!sample.collectionDate) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        updates.collectionDate = `${yyyy}-${mm}-${dd}`;
+      }
+      if (!sample.collectionTime) {
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const min = String(now.getMinutes()).padStart(2, "0");
+        updates.collectionTime = `${hh}:${min}`;
+      }
       if (!sample.receivedDate && serverReceivedDate) {
         updates.receivedDate = serverReceivedDate;
       }
       if (!sample.receivedTime && serverReceivedTime) {
         updates.receivedTime = serverReceivedTime;
       }
+
       if (Object.keys(updates).length > 0) {
         onUpdate(sampleIndex, updates);
       }
     }
   }, [
     sample.sampleItemId,
+    sample.collectionDate,
+    sample.collectionTime,
     sample.receivedDate,
     sample.receivedTime,
     serverReceivedDate,
@@ -209,6 +226,7 @@ const SampleCollectionCard = ({
             })}
             value={sample.quantity || ""}
             onChange={(e, { value }) => handleFieldChange("quantity", value)}
+            onWheel={(e) => e.target.blur()}
             min={0}
             step={0.5}
             disabled={isReadOnly}
@@ -260,6 +278,7 @@ const SampleCollectionCard = ({
         <Column lg={4} md={4} sm={4}>
           <DatePicker
             datePickerType="single"
+            maxDate={new Date().toISOString()}
             onChange={(dates) => {
               if (dates && dates[0]) {
                 const month = String(dates[0].getMonth() + 1).padStart(2, "0");
@@ -347,6 +366,7 @@ const SampleCollectionCard = ({
           <Column lg={4} md={4} sm={4}>
             <DatePicker
               datePickerType="single"
+              maxDate={new Date().toISOString()}
               onChange={(dates) => {
                 if (dates && dates[0]) {
                   const month = String(dates[0].getMonth() + 1).padStart(

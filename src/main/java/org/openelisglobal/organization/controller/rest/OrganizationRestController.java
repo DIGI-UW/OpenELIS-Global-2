@@ -1,8 +1,12 @@
 package org.openelisglobal.organization.controller.rest;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -63,6 +67,9 @@ public class OrganizationRestController extends BaseController {
             "organizationLocalAbbreviation", "organizationName", "shortName", "isActive", "multipleUnit",
             "streetAddress", "city", "department", "commune", "village", "state", "zipCode", "internetAddress",
             "mlsSentinelLabFlag", "cliaNum", "mlsLabFlag", "selectedTypes*" };
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private OrganizationService organizationService;
@@ -450,17 +457,44 @@ public class OrganizationRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.REFERRAL_ORGANIZATIONS);
         DisplayListService.getInstance().refreshLists();
 
-        // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
-        // status.setComplete();
-        // return findForward(FWD_SUCCESS_INSERT, form);
-        return ResponseEntity.ok("Organization saved or updated successfully.");
+        Map<String, Object> result2 = new HashMap<>();
+        result2.put("id", organization.getId());
+        result2.put("organizationName", organization.getOrganizationName());
+        result2.put("shortName", organization.getShortName());
+        result2.put("success", true);
+        return ResponseEntity.ok(result2);
     }
 
-    // private void setDefaultButtonAttributes(HttpServletRequest request) {
-    // request.setAttribute(ALLOW_EDITS_KEY, "true");
-    // request.setAttribute(PREVIOUS_DISABLED, "false");
-    // request.setAttribute(NEXT_DISABLED, "false");
-    // }
+    /**
+     * Get all organization types.
+     */
+    @GetMapping(value = "/organization/types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<OrganizationType>> getOrganizationTypes() {
+        return ResponseEntity.ok(organizationTypeService.getAll());
+    }
+
+    /**
+     * Generate a unique, sequential site code for new sampling sites. Format:
+     * SYYMMDD-NNNNN (e.g., S260408-00001) — max 14 chars, fits short_name(15). Uses
+     * a DB sequence (site_code_seq) for guaranteed uniqueness.
+     */
+    @GetMapping(value = "/organization/generate-site-code", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> generateSiteCode() {
+        try {
+            Number seqVal = (Number) entityManager.createNativeQuery("SELECT nextval('clinlims.site_code_seq')")
+                    .getSingleResult();
+            String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
+            String code = String.format("S%s-%05d", date, seqVal.longValue());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("siteCode", code);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "generateSiteCode",
+                    "Error generating site code: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     private void persistAddressParts(Organization organization, Map<String, OrganizationAddress> addressParts) {
         OrganizationAddress departmentAddress = addressParts.get(DEPARTMENT_ADDRESS_KEY);

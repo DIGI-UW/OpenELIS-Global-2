@@ -17,8 +17,14 @@ import { useOrderContext } from "./OrderContext";
  */
 
 const OrderContextCard = ({ className = "" }) => {
-  const { labNumber, orderData, samples, stepProgress, isReadOnly } =
-    useOrderContext();
+  const {
+    labNumber,
+    orderData,
+    samples,
+    stepProgress,
+    storageSkipped,
+    isReadOnly,
+  } = useOrderContext();
 
   // Don't render if no order is loaded
   if (!labNumber && !orderData?.sampleOrderItems?.labNo) {
@@ -43,10 +49,21 @@ const OrderContextCard = ({ className = "" }) => {
     0,
   );
 
-  // Calculate step progress percentage
-  const completedSteps = Object.values(stepProgress || {}).filter(
-    Boolean,
-  ).length;
+  // Calculate step completion based on actual data state (same logic as OrderStepper)
+  const isEnterComplete = !!displayLabNumber;
+  const isCollectComplete =
+    samples.length > 0 && samples.every((s) => s.sampleItemId);
+  const allHaveStorage =
+    samples.length > 0 && samples.every((s) => s.storageLocationId);
+  const isLabelComplete = allHaveStorage || storageSkipped;
+  const isQaComplete = stepProgress?.qa || false;
+
+  const completedSteps = [
+    isEnterComplete,
+    isCollectComplete,
+    isLabelComplete,
+    isQaComplete,
+  ].filter(Boolean).length;
   const progressPercent = (completedSteps / 4) * 100;
 
   // Determine order status

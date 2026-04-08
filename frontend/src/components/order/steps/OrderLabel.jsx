@@ -17,6 +17,7 @@ import {
   SelectItem,
   TextArea,
   InlineNotification,
+  Checkbox,
 } from "@carbon/react";
 import { Printer, Checkmark } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
@@ -57,6 +58,8 @@ const OrderLabel = () => {
     stepProgress,
     markStepComplete,
     orderId,
+    storageSkipped,
+    setStorageSkipped,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -103,27 +106,39 @@ const OrderLabel = () => {
   useEffect(() => {
     const initialStorage = {};
     const initialNotes = {};
+    let hasAnyStorage = false;
+
     samples.forEach((sample, index) => {
       if (sample.storageLocationId) {
+        hasAnyStorage = true;
         initialStorage[index] = {
           locationId: sample.storageLocationId,
           locationType: sample.storageLocationType || "device",
           hierarchicalPath: sample.storageHierarchicalPath || "",
           position: sample.storagePositionCoordinate || "",
-          pending: false, // Already saved
+          pending: false,
         };
       }
-      // Always set notes from sample data (even if empty string)
       if (sample.storageNotes !== undefined && sample.storageNotes !== null) {
         initialNotes[index] = sample.storageNotes;
       }
     });
+
     if (Object.keys(initialStorage).length > 0) {
       setAssignedStorage(initialStorage);
     }
-    // Always update notes to reflect loaded data
     setConditionNotes((prev) => ({ ...prev, ...initialNotes }));
-  }, [samples]);
+
+    // If label step was completed but no samples have storage, it means storage was skipped
+    if (
+      stepProgress.label &&
+      samples.length > 0 &&
+      !hasAnyStorage &&
+      !storageSkipped
+    ) {
+      setStorageSkipped(true);
+    }
+  }, [samples, stepProgress.label, storageSkipped, setStorageSkipped]);
 
   // Get current sample being configured
   const currentSample = samples[selectedSampleIndex] || {};
@@ -432,8 +447,17 @@ const OrderLabel = () => {
     }
   };
 
-  // Check if we can proceed (at least order label printed)
-  const canProceed = printedLabels.has("order") || printedLabels.has("sample");
+  // Check if all samples have storage assigned
+  const allSamplesHaveStorage =
+    samples.length > 0 &&
+    samples.every((s, idx) => s.storageLocationId || assignedStorage[idx]);
+
+  // Check if we can proceed:
+  // - At least one label printed AND
+  // - Either all samples have storage OR user has checked "skip storage"
+  const canProceed =
+    (printedLabels.has("order") || printedLabels.has("sample")) &&
+    (allSamplesHaveStorage || storageSkipped);
 
   // Don't render if no order loaded (will redirect)
   if (!orderId && !labNumber) {
@@ -625,21 +649,38 @@ const OrderLabel = () => {
 
             if (unassignedCount > 0) {
               return (
-                <InlineNotification
-                  kind="warning"
-                  lowContrast
-                  hideCloseButton
-                  title={intl.formatMessage(
-                    {
-                      id: "storage.unassigned.title",
-                      defaultMessage:
-                        "{count} sample(s) need storage assignment",
-                    },
-                    { count: unassignedCount },
-                  )}
-                  subtitle={unassignedNames}
-                  style={{ marginBottom: "1rem" }}
-                />
+                <>
+                  <InlineNotification
+                    kind={storageSkipped ? "info" : "warning"}
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage(
+                      {
+                        id: "storage.unassigned.title",
+                        defaultMessage:
+                          "{count} sample(s) without storage assignment",
+                      },
+                      { count: unassignedCount },
+                    )}
+                    subtitle={unassignedNames}
+                    style={{ marginBottom: "1rem" }}
+                  />
+                  <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+                    <Checkbox
+                      id="skip-storage-checkbox"
+                      labelText={intl.formatMessage(
+                        {
+                          id: "storage.skipRemaining",
+                          defaultMessage:
+                            "Skip storage for unassigned samples ({count}) - will be processed immediately",
+                        },
+                        { count: unassignedCount },
+                      )}
+                      checked={storageSkipped}
+                      onChange={(_, { checked }) => setStorageSkipped(checked)}
+                    />
+                  </div>
+                </>
               );
             }
             return (

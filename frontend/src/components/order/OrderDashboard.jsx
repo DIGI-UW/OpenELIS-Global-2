@@ -195,9 +195,22 @@ const OrderDashboardContent = () => {
     if (!order.stepProgress) return "enter";
     if (!order.stepProgress.enter) return "enter";
     if (!order.stepProgress.collect) return "collect";
-    if (!order.stepProgress.label) return "label";
+    if (!isLabelStepComplete(order)) return "label";
     if (!order.stepProgress.qa) return "qa";
     return "qa";
+  };
+
+  // Check if label step is complete based on storage or storageSkipped
+  const isLabelStepComplete = (order) => {
+    // Check if storageSkipped is set from backend
+    const storageSkipped = order.storageSkipped === true;
+
+    // Check if all samples have storage assigned
+    const allHaveStorage =
+      order.samples?.length > 0 &&
+      order.samples.every((s) => s.storageLocationId);
+
+    return allHaveStorage || storageSkipped || order.stepProgress?.label;
   };
 
   const getStepProgressValue = (order) => {
@@ -205,9 +218,19 @@ const OrderDashboardContent = () => {
     let completed = 0;
     if (order.stepProgress.enter) completed++;
     if (order.stepProgress.collect) completed++;
-    if (order.stepProgress.label) completed++;
+    if (isLabelStepComplete(order)) completed++;
     if (order.stepProgress.qa) completed++;
     return (completed / 4) * 100;
+  };
+
+  const getCompletedStepsCount = (order) => {
+    if (!order.stepProgress) return 0;
+    let completed = 0;
+    if (order.stepProgress.enter) completed++;
+    if (order.stepProgress.collect) completed++;
+    if (isLabelStepComplete(order)) completed++;
+    if (order.stepProgress.qa) completed++;
+    return completed;
   };
 
   // Table headers
@@ -315,12 +338,7 @@ const OrderDashboardContent = () => {
           hideLabel
         />
         <span className="progress-label">
-          {
-            ORDER_STEPS.filter(
-              (_, i) => order.stepProgress?.[ORDER_STEPS[i]?.key],
-            ).length
-          }
-          /4
+          {getCompletedStepsCount(order)}/4
         </span>
       </div>
     ),

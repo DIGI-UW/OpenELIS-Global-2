@@ -12,7 +12,6 @@ import {
   Switch,
   Accordion,
   AccordionItem,
-  InlineNotification,
   Link,
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
@@ -25,6 +24,7 @@ import {
 } from "../../common/CustomNotification";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientSearchSection from "./sections/PatientSearchSection";
+import LocationSection from "./sections/LocationSection";
 import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
@@ -56,7 +56,7 @@ const OrderEnter = () => {
     samples,
     setSamples,
     labNumber,
-    saveOrder,
+    saveOrderEntry, // Step 1 uses saveOrderEntry (creates sample_type_requests, not sample_items)
     markStepComplete,
     isReadOnly,
     isEditMode,
@@ -69,7 +69,10 @@ const OrderEnter = () => {
   const [localLabNumber, setLocalLabNumber] = useState(
     labNumber || orderData?.sampleOrderItems?.labNo || "",
   );
-  const [workflowType, setWorkflowType] = useState("clinical"); // "clinical" | "environmental"
+  const [workflowType, setWorkflowType] = useState(
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
+      "clinical",
+  ); // "clinical" | "environmental"
   const [labUnitConfig, setLabUnitConfig] = useState(null);
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
@@ -89,19 +92,33 @@ const OrderEnter = () => {
     }
   }, [labNumber, orderData?.sampleOrderItems?.labNo]);
 
+  // Sync workflow type from loaded order data (e.g., when editing existing order)
+  useEffect(() => {
+    const savedWorkflowType =
+      orderData?.sampleOrderItems?.environmentalFields?.workflowType;
+    if (savedWorkflowType && savedWorkflowType !== workflowType) {
+      setWorkflowType(savedWorkflowType);
+    }
+  }, [orderData?.sampleOrderItems?.environmentalFields?.workflowType]);
+
   // Fetch lab unit configuration
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer("/rest/labUnit/config", (response) => {
       if (componentMounted.current && response) {
         setLabUnitConfig(response);
-        // Set default workflow type based on lab unit config
-        if (response.workflowType === "Environmental") {
-          setWorkflowType("environmental");
-        } else if (response.workflowType === "Clinical") {
-          setWorkflowType("clinical");
+        // Only set default workflow type from config if no saved workflow type exists
+        // (i.e., this is a new order, not an edit)
+        const savedWorkflowType =
+          orderData?.sampleOrderItems?.environmentalFields?.workflowType;
+        if (!savedWorkflowType) {
+          if (response.workflowType === "Environmental") {
+            setWorkflowType("environmental");
+          } else if (response.workflowType === "Clinical") {
+            setWorkflowType("clinical");
+          }
+          // If "Both", keep default "clinical"
         }
-        // If "Both", keep default "clinical"
       }
     });
     return () => {
@@ -148,7 +165,34 @@ const OrderEnter = () => {
 
   // Handle workflow type switch
   const handleWorkflowTypeChange = (index) => {
-    setWorkflowType(index === 0 ? "clinical" : "environmental");
+    const newWorkflowType = index === 0 ? "clinical" : "environmental";
+    setWorkflowType(newWorkflowType);
+
+    // Persist workflow type to orderData for backend storage
+    // For environmental samples, set patientUpdateStatus to NO_ACTION since there's no patient
+    setOrderData((prev) => ({
+      ...prev,
+      // Set top-level patientUpdateStatus for backend
+      patientUpdateStatus:
+        newWorkflowType === "environmental"
+          ? "NO_ACTION"
+          : prev.patientUpdateStatus,
+      patientProperties: {
+        ...prev.patientProperties,
+        // Also set inside patientProperties where backend reads it
+        patientUpdateStatus:
+          newWorkflowType === "environmental"
+            ? "NO_ACTION"
+            : prev.patientProperties?.patientUpdateStatus,
+      },
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        environmentalFields: {
+          ...prev.sampleOrderItems?.environmentalFields,
+          workflowType: newWorkflowType,
+        },
+      },
+    }));
   };
 
   // Validation check
@@ -156,10 +200,10 @@ const OrderEnter = () => {
     localLabNumber &&
     Object.values(phoneValidation).every((item) => item.status !== false);
 
-  // Save handler - uses orderEntryOnly=true since this is Step 1 (no samples yet)
+  // Save handler - uses saveOrderEntry which creates sample_type_requests (not sample_items)
   const handleSave = async () => {
     try {
-      await saveOrder(false, true); // silent=false, orderEntryOnly=true
+      await saveOrderEntry(false); // silent=false
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -179,7 +223,7 @@ const OrderEnter = () => {
   // Save and navigate to next step
   const handleSaveAndNext = async () => {
     try {
-      await saveOrder(false, true); // silent=false, orderEntryOnly=true
+      await saveOrderEntry(false); // silent=false
       markStepComplete("enter");
       history.push("/order/collect");
     } catch (error) {
@@ -195,7 +239,7 @@ const OrderEnter = () => {
   // Save as draft handler
   const handleSaveAsDraft = async () => {
     try {
-      await saveOrder(true, true); // silent=true, orderEntryOnly=true
+      await saveOrderEntry(true); // silent=true
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -403,27 +447,13 @@ const OrderEnter = () => {
           />
         )}
 
-        {/* Section 3: Location (Environmental) - Placeholder */}
+        {/* Section 3: Location (Environmental) */}
         {workflowType === "environmental" && (
-          <Tile className="order-section">
-            <h4 className="section-title">
-              <FormattedMessage id="order.location" defaultMessage="Location" />
-            </h4>
-            <InlineNotification
-              kind="info"
-              title={intl.formatMessage({
-                id: "environmental.coming.soon",
-                defaultMessage: "Environmental workflow",
-              })}
-              subtitle={intl.formatMessage({
-                id: "environmental.location.info",
-                defaultMessage:
-                  "Location hierarchy fields (Region/District/Town-Village) and GPS capture will be available here.",
-              })}
-              hideCloseButton
-              lowContrast
-            />
-          </Tile>
+          <LocationSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
         )}
 
         {/* Section 4: Program Selection */}
