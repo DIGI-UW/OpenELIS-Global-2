@@ -207,6 +207,7 @@ public class AnalyzerRestController extends BaseRestController {
             // Multiple analyzers can share a name (e.g., two instruments of the same
             // model).
             Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(
