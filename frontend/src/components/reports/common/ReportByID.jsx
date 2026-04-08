@@ -7,7 +7,7 @@ import config from "../../../config.json";
 
 function ReportByID(props) {
   const intl = useIntl();
-  const intl = useIntl();
+  
   const [nationalId, setNationalId] = useState("");
   const [errors, setErrors] = useState({});
   const [notificationVisible, setNotificationVisible] = useState(false);

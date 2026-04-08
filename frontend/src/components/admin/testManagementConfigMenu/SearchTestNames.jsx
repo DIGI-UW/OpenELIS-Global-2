@@ -4,7 +4,7 @@ import { useIntl } from "react-intl";
 
 function SearchTestNames({ testNames, onFilter }) {
   const intl = useIntl();
-  const intl = useIntl();
+
   const [searchTest, setSearchTest] = useState("");
 
   useEffect(() => {

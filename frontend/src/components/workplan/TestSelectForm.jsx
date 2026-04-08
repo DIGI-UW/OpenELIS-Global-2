@@ -21,8 +21,6 @@ function TestSelectForm(props) {
     }
   };
 
-  const intl = useIntl();
-
   useEffect(() => {
     mounted.current = true;
     let testId = new URLSearchParams(window.location.search).get("testId");

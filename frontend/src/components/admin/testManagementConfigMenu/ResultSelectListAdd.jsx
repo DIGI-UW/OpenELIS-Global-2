@@ -60,7 +60,6 @@ function ResultSelectListAdd() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const [isLoading, setIsLoading] = useState(true);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [bothFilled, setBothFilled] = useState(false);

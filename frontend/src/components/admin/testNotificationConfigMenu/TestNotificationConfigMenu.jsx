@@ -52,8 +52,6 @@ function TestNotificationConfigMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);

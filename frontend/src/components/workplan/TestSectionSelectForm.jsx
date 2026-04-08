@@ -21,8 +21,6 @@ function TestSectionSelectForm(props) {
     }
   };
 
-  const intl = useIntl();
-
   useEffect(() => {
     mounted.current = true;
     let testSectionId = new URLSearchParams(window.location.search).get(

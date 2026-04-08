@@ -46,8 +46,6 @@ function TestRenameEntry() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
   const [finished, setFinished] = useState(true);

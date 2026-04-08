@@ -31,7 +31,7 @@ const LOG_LEVELS = [
 
 function LoggingManagement() {
   const intl = useIntl();
-  const intl = useIntl();
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 

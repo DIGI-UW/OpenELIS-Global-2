@@ -89,7 +89,7 @@ export const RoutineReports = (props) => {
 
 const RoutineIndex = () => {
   const intl = useIntl();
-  const intl = useIntl();
+  
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
 

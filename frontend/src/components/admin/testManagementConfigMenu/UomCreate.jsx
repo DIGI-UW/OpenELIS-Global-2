@@ -43,8 +43,6 @@ function UomCreate() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const [loading, setLoading] = useState(true);
   const [saveButton, setSaveButton] = useState(true);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);

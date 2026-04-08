@@ -46,7 +46,6 @@ function ReferredOutTests(props) {
   );
   const { configurationProperties } = useContext(ConfigurationContext);
 
-  const intl = useIntl();
   const dateTypeList = [
     {
       id: "option-0",

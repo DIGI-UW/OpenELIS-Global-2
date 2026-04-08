@@ -24,7 +24,7 @@ import { NotificationContext } from "./layout/Layout";
 
 function ChangePassword() {
   const intl = useIntl();
-  const intl = useIntl();
+
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const [submitting, setSubmitting] = useState(false);

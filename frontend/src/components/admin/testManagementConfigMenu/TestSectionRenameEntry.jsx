@@ -31,8 +31,6 @@ function TestSectionRenameEntry() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
   const modalHeading = intl.formatMessage({
     id: "test.section.label",

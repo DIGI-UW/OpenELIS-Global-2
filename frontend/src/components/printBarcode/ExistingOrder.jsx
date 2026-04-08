@@ -23,7 +23,7 @@ import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 const ExistingOrder = () => {
   const intl = useIntl();
-  const intl = useIntl();
+
   const componentMounted = useRef(false);
   const [accessionNumber, setAccessionNumber] = useState("");
   const [orderLabels, setOrderLabels] = useState(1);

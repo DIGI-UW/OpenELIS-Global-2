@@ -42,8 +42,6 @@ function SearchPatientForm(props) {
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
 
-  const intl = useIntl();
-
   const [dob, setDob] = useState("");
   const [patientSearchResults, setPatientSearchResults] = useState([]);
   const [importStatus, setImportStatus] = useState({});

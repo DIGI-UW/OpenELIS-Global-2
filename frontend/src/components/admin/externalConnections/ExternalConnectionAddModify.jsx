@@ -41,7 +41,6 @@ function ExternalConnectionAddModify() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const componentMounted = useRef(false);
   const [loading, setLoading] = useState(true);
   const [saveButton, setSaveButton] = useState(true);

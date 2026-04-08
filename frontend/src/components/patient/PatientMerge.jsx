@@ -34,7 +34,7 @@ const STEP_CONFIRM = 2;
 
 function PatientMerge() {
   const intl = useIntl();
-  const intl = useIntl();
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 

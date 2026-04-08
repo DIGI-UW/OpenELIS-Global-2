@@ -38,7 +38,7 @@ function BatchTestReassignmentAndCancelation() {
     useContext(NotificationContext);
 
   const componentMounted = useRef(false);
-  const intl = useIntl();
+
   const resetToDefault = () => {
     setSaveButton(true);
     setIsLoading(true);

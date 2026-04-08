@@ -6,7 +6,7 @@ import config from "../../../config.json";
 
 function ReportByLabNo(props) {
   const intl = useIntl();
-  const intl = useIntl();
+  
   const [values, setValues] = useState({ from: "", to: "" });
 
   const handleChange = (e) => {

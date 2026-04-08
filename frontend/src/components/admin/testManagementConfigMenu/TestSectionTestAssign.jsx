@@ -64,7 +64,6 @@ function TestSectionTestAssign() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
   const [testSectionTestAssignModal, setTestSectionTestAssignModal] =

@@ -30,8 +30,6 @@ function TestAdd() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
 

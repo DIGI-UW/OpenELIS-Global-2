@@ -161,8 +161,6 @@ export function SearchResultForm(props) {
     }
   };
 
-  const intl = useIntl();
-
   const loadNextResultsPage = () => {
     setLoading(true);
     getFromOpenElisServer(url + "&page=" + nextPage, setResultsWithId);
@@ -794,8 +792,6 @@ export function SearchResults(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
-
-  const intl = useIntl();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);

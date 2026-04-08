@@ -65,7 +65,6 @@ function SampleTypeOrder() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [confirmSelection, setConfirmSelection] = useState(false);
   const [sampleTypeOrderList, setSampleTypeOrderList] = useState({});

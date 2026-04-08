@@ -31,7 +31,7 @@ const SESSION_TIMEOUT_OPTIONS = [
 
 function SystemSettings() {
   const intl = useIntl();
-  const intl = useIntl();
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(

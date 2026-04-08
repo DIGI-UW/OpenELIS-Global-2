@@ -161,7 +161,7 @@ export const StudyReports = (props) => {
 
 const StudyIndex = () => {
   const intl = useIntl();
-  const intl = useIntl();
+  
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
 

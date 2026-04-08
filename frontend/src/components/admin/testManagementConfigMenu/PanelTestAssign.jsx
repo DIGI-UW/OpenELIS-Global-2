@@ -63,7 +63,6 @@ function PanelTestAssign() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const [isLoading, setIsLoading] = useState(true);
   const [panelTestList, setPanelTestList] = useState([]);
   const [panelId, setPanelId] = useState("");

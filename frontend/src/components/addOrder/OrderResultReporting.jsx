@@ -68,7 +68,7 @@ const OrderResultReporting = (props) => {
     providerSMSNotificationTestIds: [],
     providerEmailNotificationTestIds: [],
   });
-  const intl = useIntl();
+
   const headers = [
     "",
     intl.formatMessage({ id: "patient.label" }),

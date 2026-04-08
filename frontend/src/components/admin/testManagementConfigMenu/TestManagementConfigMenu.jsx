@@ -57,8 +57,6 @@ function TestManagementConfigMenu() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
 
   return (

@@ -95,7 +95,7 @@ const PARITY_OPTIONS = [
 
 function DeviceManagement() {
   const intl = useIntl();
-  const intl = useIntl();
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(

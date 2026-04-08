@@ -14,7 +14,7 @@ function SearchIndexManagement() {
   const [loading, setLoading] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const intl = useIntl();
+
   const rebuildIndex = async (res) => {
     setNotificationVisible(true);
     if (res) {

@@ -21,8 +21,6 @@ function PanelSelectForm(props) {
     }
   };
 
-  const intl = useIntl();
-
   useEffect(() => {
     mounted.current = true;
     let priorityId = new URLSearchParams(window.location.search).get(

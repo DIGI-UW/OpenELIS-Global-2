@@ -21,8 +21,6 @@ function PanelSelectForm(props) {
     }
   };
 
-  const intl = useIntl();
-
   useEffect(() => {
     mounted.current = true;
     let panelId = new URLSearchParams(window.location.search).get("panelId");

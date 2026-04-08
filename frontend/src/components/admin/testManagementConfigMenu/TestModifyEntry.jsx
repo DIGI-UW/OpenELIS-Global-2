@@ -44,7 +44,6 @@ function TestModifyEntry() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const [isLoading, setIsLoading] = useState(false);
   const [testMonifyList, setTestModifyList] = useState({});
   const [filteredTests, setFilteredTests] = useState([]);

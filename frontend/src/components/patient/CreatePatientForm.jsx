@@ -47,8 +47,6 @@ function CreatePatientForm(props) {
     useContext(NotificationContext);
   const { configurationProperties } = useContext(ConfigurationContext);
 
-  const intl = useIntl();
-
   const [patientDetails, setPatientDetails] = useState(CreatePatientFormValues);
   const [healthRegions, setHealthRegions] = useState([]);
   const [healthDistricts, setHealthDistricts] = useState([]);

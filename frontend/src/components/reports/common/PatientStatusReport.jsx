@@ -34,7 +34,7 @@ function PatientStatusReport(props) {
   );
   const { configurationProperties } = useContext(ConfigurationContext);
 
-  const intl = useIntl();
+  
   const itemList = [
     {
       id: "option-0",

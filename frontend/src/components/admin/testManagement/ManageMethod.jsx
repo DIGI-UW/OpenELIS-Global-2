@@ -39,7 +39,6 @@ function ManageMethod() {
   const intl = useIntl();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const intl = useIntl();
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [englishLabel, setEnglishLabel] = useState("");

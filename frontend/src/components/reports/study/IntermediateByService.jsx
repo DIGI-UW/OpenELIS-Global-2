@@ -10,7 +10,7 @@ import { encodeDate } from "../../utils/Utils";
 
 const IntermediateByService = (props) => {
   const intl = useIntl();
-  const intl = useIntl();
+  
   const { configurationProperties } = useContext(ConfigurationContext);
   const componentMounted = useRef(false);
   const [siteNames, setSiteNames] = useState([]);

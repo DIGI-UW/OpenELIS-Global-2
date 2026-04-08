@@ -17,7 +17,7 @@ import "../Style.css";
 
 const PrePrint = () => {
   const intl = useIntl();
-  const intl = useIntl();
+
   const componentMounted = useRef(false);
   const [sampleTypes, setSampleTypes] = useState([]);
   const [selectedSampleTypeId, setSelectedSampleTypeId] = useState(null);

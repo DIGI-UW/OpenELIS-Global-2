@@ -62,7 +62,7 @@ const getAlertTypes = (intl) => [
 
 function AlertSettings() {
   const intl = useIntl();
-  const intl = useIntl();
+
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const notify = useCallback(

@@ -53,7 +53,6 @@ function UserAddModify() {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const componentMounted = useRef(false);
-  const intl = useIntl();
 
   const [saveButton, setSaveButton] = useState(true);
   const [validation, setValidation] = useState({

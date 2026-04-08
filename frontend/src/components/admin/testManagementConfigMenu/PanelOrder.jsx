@@ -69,7 +69,6 @@ function PanelOrder() {
   const [confirmSelection, setConfirmSelection] = useState(false);
   const [panelOrderList, setPanelOrderList] = useState({});
   const [panelOrderListPost, setPanelOrderListPost] = useState([]);
-  const intl = useIntl();
 
   const componentMounted = useRef(false);
 

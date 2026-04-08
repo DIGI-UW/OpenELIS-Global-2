@@ -64,7 +64,6 @@ function TestSectionCreate() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const [isLoading, setIsLoading] = useState(true);
   const [bothFilled, setBothFilled] = useState(false);
   const [testSectionCreateList, setTestSectionCreateList] = useState({});

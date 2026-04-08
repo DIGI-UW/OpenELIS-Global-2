@@ -75,7 +75,6 @@ export function SearchSampleForm(props) {
   const [searchFormValues, setSearchFormValues] = useState({
     accessionNumber: "",
   });
-  const intl = useIntl();
 
   const querySearch = (values) => {
     setLoading(true);
@@ -194,7 +193,7 @@ export function SampleItemsDisplay(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const intl = useIntl();
+
   const [expandedRows, setExpandedRows] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Track selected values for each dropdown to prevent auto-selection

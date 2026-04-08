@@ -31,7 +31,6 @@ function PanelRenameEntry() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
   const modalHeading = intl.formatMessage({ id: "field.panel" });
 
   const componentMounted = useRef(false);
