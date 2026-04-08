@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
   TableCell,
-  Pagination,
   TableBody,
   Button,
   TableHead,
@@ -24,23 +23,17 @@ import CustomLabNumberInput from "../../common/CustomLabNumberInput";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import { auditTrailHeaderData } from "./AuditTrailTableHeader";
+import config from "../../../config.json";
 
 const AuditTrailReport = ({ id }) => {
   const [labNo, setLabNo] = useState("");
   const [isLabNoError, setIsLabNoError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
   const [auditTrailItems, setAuditTrailItems] = useState([]);
   const [data, setData] = useState(null);
 
   const intl = useIntl();
-
-  const handlePageChange = (pageInfo) => {
-    setPage(pageInfo.page);
-    setPageSize(pageInfo.pageSize);
-  };
 
   const handleViewReport = () => {
     if (labNo.length === 0) {
@@ -65,7 +58,7 @@ const AuditTrailReport = ({ id }) => {
           // Add unique id and format timestamp for each item
           const updatedAuditTrailItems = data.log.map((item, index) => {
             const formattedTimeStamp = new Date(item.timeStamp).toLocaleString(
-              "en-GB",
+              navigator.language,
               {
                 day: "2-digit",
                 month: "2-digit",
@@ -81,7 +74,6 @@ const AuditTrailReport = ({ id }) => {
           setIsLabNoError(null);
           setAuditTrailItems(updatedAuditTrailItems);
           setData(data);
-          console.log("site name", data.sampleOrderItems.referringSiteName);
         }
         setIsLoading(false);
         setShowNotification(true);
@@ -151,7 +143,41 @@ const AuditTrailReport = ({ id }) => {
         </Grid>
       </Form>
       <br />
-      {auditTrailItems && data && (
+      {auditTrailItems.length > 0 && data && (
+        <Grid fullWidth={true}>
+          <Column lg={16}>
+            <Button
+              kind="secondary"
+              onClick={() =>
+                window.open(
+                  config.serverBaseUrl +
+                    "/rest/AuditTrailReport/exportCsv?accessionNumber=" +
+                    labNo,
+                  "_blank",
+                )
+              }
+              style={{ marginRight: "1rem" }}
+            >
+              <FormattedMessage id="systemAudit.filter.export" />
+            </Button>
+            <Button
+              kind="tertiary"
+              onClick={() =>
+                window.open(
+                  config.serverBaseUrl +
+                    "/rest/AuditTrailReport/exportPdf?accessionNumber=" +
+                    labNo,
+                  "_blank",
+                )
+              }
+            >
+              <FormattedMessage id="systemAudit.filter.exportPdf" />
+            </Button>
+          </Column>
+        </Grid>
+      )}
+      <br />
+      {auditTrailItems.length > 0 && data && (
         <div
           style={{ display: "flex", justifyContent: "center", margin: "20px" }}
         >
@@ -243,32 +269,18 @@ const AuditTrailReport = ({ id }) => {
                 </span>
               </div>
               <div style={{ marginBottom: "10px" }}>
-                {`${data?.sampleOrderItems?.providerFirstName} ${data?.sampleOrderItems?.providerLastName}`}
-              </div>
-            </Column>
-            <Column lg={8} style={{ marginBottom: "20px" }}>
-              <div style={{ marginBottom: "10px" }}>
-                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                  <FormattedMessage id="label.audittrailreport.requester.firstname" />
-                </span>
-              </div>
-              <div style={{ marginBottom: "10px" }}>
-                {`${data?.sampleOrderItems?.providerFirstName}`}
-              </div>
-            </Column>
-            <Column lg={8} style={{ marginBottom: "20px" }}>
-              <div style={{ marginBottom: "10px" }}>
-                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                  <FormattedMessage id="label.audittrailreport.requester.lastname" />
-                </span>
-              </div>
-              <div style={{ marginBottom: "10px" }}>
-                {`${data?.sampleOrderItems?.providerLastName}`}
+                {[
+                  data?.sampleOrderItems?.providerFirstName,
+                  data?.sampleOrderItems?.providerLastName,
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               </div>
             </Column>
           </Grid>
         </div>
       )}
+      <Grid fullWidth={true}>
       <Column lg={16}>
         <DataTable
           rows={auditTrailItems ?? []}
@@ -276,7 +288,7 @@ const AuditTrailReport = ({ id }) => {
           isSortable
         >
           {({ rows, headers, getHeaderProps, getTableProps }) => (
-            <TableContainer title="Patient Results">
+            <TableContainer title={intl.formatMessage({ id: "audittrail.table.title.patientResults" })}>
               <Table {...getTableProps()}>
                 <TableHead>
                   <TableRow>
@@ -291,10 +303,7 @@ const AuditTrailReport = ({ id }) => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {rows
-                    .slice((page - 1) * pageSize)
-                    .slice(0, pageSize)
-                    .map((row) => (
+                  {rows.map((row) => (
                       <TableRow key={row.id}>
                         {row.cells.map((cell) => (
                           <TableCell key={cell.id}>{cell.value}</TableCell>
@@ -306,46 +315,8 @@ const AuditTrailReport = ({ id }) => {
             </TableContainer>
           )}
         </DataTable>
-        <Pagination
-          onChange={handlePageChange}
-          page={page}
-          pageSize={pageSize}
-          pageSizes={[10, 30, 50, 100]}
-          totalItems={auditTrailItems.length}
-          forwardText={intl.formatMessage({ id: "pagination.forward" })}
-          backwardText={intl.formatMessage({ id: "pagination.backward" })}
-          itemRangeText={(min, max, total) =>
-            intl.formatMessage(
-              { id: "pagination.item-range" },
-              { min: min, max: max, total: total },
-            )
-          }
-          itemsPerPageText={intl.formatMessage({
-            id: "pagination.items-per-page",
-          })}
-          itemText={(min, max) =>
-            intl.formatMessage(
-              { id: "pagination.item" },
-              { min: min, max: max },
-            )
-          }
-          pageNumberText={intl.formatMessage({
-            id: "pagination.page-number",
-          })}
-          pageRangeText={(_current, total) =>
-            intl.formatMessage(
-              { id: "pagination.page-range" },
-              { total: total },
-            )
-          }
-          pageText={(page, pagesUnknown) =>
-            intl.formatMessage(
-              { id: "pagination.page" },
-              { page: pagesUnknown ? "" : page },
-            )
-          }
-        />
       </Column>
+      </Grid>
     </>
   );
 };
