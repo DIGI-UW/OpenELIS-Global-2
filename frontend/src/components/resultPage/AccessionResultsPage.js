@@ -199,7 +199,12 @@ function AccessionResultsPage() {
         };
       })
       .filter((row) => matchesFilter(row.status, activeFilter));
-  }, [activeFilter, resultsState.accessionNumber, resultsState.testResult, statusMap]);
+  }, [
+    activeFilter,
+    resultsState.accessionNumber,
+    resultsState.testResult,
+    statusMap,
+  ]);
 
   const onSearch = () => {
     const nextAccession = searchValue.trim();
@@ -255,7 +260,10 @@ function AccessionResultsPage() {
               }}
             />
             <Button onClick={onSearch}>
-              <FormattedMessage id="label.button.search" defaultMessage="Search" />
+              <FormattedMessage
+                id="label.button.search"
+                defaultMessage="Search"
+              />
             </Button>
           </div>
         </Column>
@@ -286,7 +294,10 @@ function AccessionResultsPage() {
                     <TableRow>
                       <TableExpandHeader />
                       {headers.map((header) => (
-                        <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                        <TableHeader
+                          key={header.key}
+                          {...getHeaderProps({ header })}
+                        >
                           {header.header}
                         </TableHeader>
                       ))}
@@ -301,7 +312,9 @@ function AccessionResultsPage() {
                             defaultMessage="No results found for accession number {accessionNumber}"
                             values={{
                               accessionNumber:
-                                resultsState.accessionNumber || searchValue || "-",
+                                resultsState.accessionNumber ||
+                                searchValue ||
+                                "-",
                             }}
                           />
                         </TableCell>
@@ -322,9 +335,7 @@ function AccessionResultsPage() {
                               </TableCell>
                             ))}
                           </TableExpandRow>
-                          <TableExpandedRow
-                            colSpan={headers.length + 1}
-                          >
+                          <TableExpandedRow colSpan={headers.length + 1}>
                             {/*
                               Carbon row objects only contain transformed cell values,
                               so we resolve full detail fields from the source list by id.
@@ -332,69 +343,73 @@ function AccessionResultsPage() {
                             {(() => {
                               const detailRow =
                                 (resultsState.testResult || []).find(
-                                  (item) => String(item.id || item.analysisId) === row.id,
+                                  (item) =>
+                                    String(item.id || item.analysisId) ===
+                                    row.id,
                                 ) || {};
                               return (
-                            <Grid fullWidth={true}>
-                              <Column lg={8} md={4} sm={2}>
-                                <p>
-                                  <strong>
-                                    <FormattedMessage
-                                      id="accession.results.detail.method"
-                                      defaultMessage="Method:"
-                                    />
-                                  </strong>{" "}
-                                  {detailRow.testMethod || "-"}
-                                </p>
-                                <p>
-                                  <strong>
-                                    <FormattedMessage
-                                      id="accession.results.detail.normalRange"
-                                      defaultMessage="Normal range:"
-                                    />
-                                  </strong>{" "}
-                                  {detailRow.normalRange || "-"}
-                                </p>
-                                <p>
-                                  <strong>
-                                    <FormattedMessage
-                                      id="accession.results.detail.result"
-                                      defaultMessage="Result value:"
-                                    />
-                                  </strong>{" "}
-                                  {formatResult(detailRow)}
-                                </p>
-                              </Column>
-                              <Column lg={8} md={4} sm={2}>
-                                <p>
-                                  <strong>
-                                    <FormattedMessage
-                                      id="accession.results.detail.technician"
-                                      defaultMessage="Technician:"
-                                    />
-                                  </strong>{" "}
-                                  {detailRow.technician || "-"}
-                                </p>
-                                <p>
-                                  <strong>
-                                    <FormattedMessage
-                                      id="accession.results.detail.notes"
-                                      defaultMessage="Notes:"
-                                    />
-                                  </strong>{" "}
-                                  {detailRow.note || detailRow.remarks || "-"}
-                                </p>
-                                <p>
-                                  <strong>
-                                    <FormattedMessage
-                                      id="accession.results.detail.testDate"
-                                      defaultMessage="Test date:"
-                                    />
-                                  </strong>{" "}
-                                  {detailRow.testDate || "-"}
-                                </p>
-                              </Column>
-                            </Grid>
+                                <Grid fullWidth={true}>
+                                  <Column lg={8} md={4} sm={2}>
+                                    <p>
+                                      <strong>
+                                        <FormattedMessage
+                                          id="accession.results.detail.method"
+                                          defaultMessage="Method:"
+                                        />
+                                      </strong>{" "}
+                                      {detailRow.testMethod || "-"}
+                                    </p>
+                                    <p>
+                                      <strong>
+                                        <FormattedMessage
+                                          id="accession.results.detail.normalRange"
+                                          defaultMessage="Normal range:"
+                                        />
+                                      </strong>{" "}
+                                      {detailRow.normalRange || "-"}
+                                    </p>
+                                    <p>
+                                      <strong>
+                                        <FormattedMessage
+                                          id="accession.results.detail.result"
+                                          defaultMessage="Result value:"
+                                        />
+                                      </strong>{" "}
+                                      {formatResult(detailRow)}
+                                    </p>
+                                  </Column>
+                                  <Column lg={8} md={4} sm={2}>
+                                    <p>
+                                      <strong>
+                                        <FormattedMessage
+                                          id="accession.results.detail.technician"
+                                          defaultMessage="Technician:"
+                                        />
+                                      </strong>{" "}
+                                      {detailRow.technician || "-"}
+                                    </p>
+                                    <p>
+                                      <strong>
+                                        <FormattedMessage
+                                          id="accession.results.detail.notes"
+                                          defaultMessage="Notes:"
+                                        />
+                                      </strong>{" "}
+                                      {detailRow.note ||
+                                        detailRow.remarks ||
+                                        "-"}
+                                    </p>
+                                    <p>
+                                      <strong>
+                                        <FormattedMessage
+                                          id="accession.results.detail.testDate"
+                                          defaultMessage="Test date:"
+                                        />
+                                      </strong>{" "}
+                                      {detailRow.testDate || "-"}
+                                    </p>
+                                  </Column>
+                                </Grid>
                               );
                             })()}
                           </TableExpandedRow>

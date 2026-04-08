@@ -31,8 +31,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
- * Mirrors {@link org.openelisglobal.result.controller.AccessionResultsController} data loading for
- * the React Accession Results page.
+ * Mirrors
+ * {@link org.openelisglobal.result.controller.AccessionResultsController} data
+ * loading for the React Accession Results page.
  */
 @Controller
 @RequestMapping(value = "/rest/")

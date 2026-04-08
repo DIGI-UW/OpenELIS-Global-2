@@ -929,7 +929,11 @@ export const NceDashboard = () => {
                                 <p className="nce-note-text">{note.text}</p>
                                 <div className="nce-note-meta">
                                   <span className="nce-note-user">
-                                    {note.userName || intl.formatMessage({ id: "nce.history.system", defaultMessage: "System" })}
+                                    {note.userName ||
+                                      intl.formatMessage({
+                                        id: "nce.history.system",
+                                        defaultMessage: "System",
+                                      })}
                                   </span>
                                   <span className="nce-note-time">
                                     {note.timestamp
@@ -1013,7 +1017,11 @@ export const NceDashboard = () => {
                               )}
                               <div className="nce-history-meta">
                                 <span className="nce-history-user">
-                                  {entry.userName || intl.formatMessage({ id: "nce.history.system", defaultMessage: "System" })}
+                                  {entry.userName ||
+                                    intl.formatMessage({
+                                      id: "nce.history.system",
+                                      defaultMessage: "System",
+                                    })}
                                 </span>
                                 <span className="nce-history-time">
                                   {entry.timestamp

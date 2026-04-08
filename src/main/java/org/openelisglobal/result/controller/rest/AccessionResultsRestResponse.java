@@ -7,7 +7,8 @@ import org.openelisglobal.test.beanItems.TestResultItem;
 
 /**
  * JSON payload for {@code GET /rest/accession-results}, aligned with legacy
- * {@link org.openelisglobal.result.controller.AccessionResultsController} loading rules.
+ * {@link org.openelisglobal.result.controller.AccessionResultsController}
+ * loading rules.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AccessionResultsRestResponse {
@@ -15,7 +16,10 @@ public class AccessionResultsRestResponse {
     private String accessionNumber;
     private Boolean searchFinished;
     private List<TestResultItem> testResult = new ArrayList<>();
-    /** Non-null when the accession could not be resolved (mirrors legacy validation errors). */
+    /**
+     * Non-null when the accession could not be resolved (mirrors legacy validation
+     * errors).
+     */
     private String error;
 
     private String firstName;
