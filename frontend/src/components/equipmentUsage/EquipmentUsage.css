@@ -281,6 +281,27 @@
 }
 
 /* Date Picker Input in Table */
+.tableDatePicker {
+  width: 100%;
+  min-width: 140px;
+}
+
+.tableDatePicker .cds--date-picker,
+.tableDatePicker .bx--date-picker,
+.tableDatePicker .cds--date-picker-container,
+.tableDatePicker .bx--date-picker-container,
+.tableDatePicker .cds--date-picker-input__wrapper,
+.tableDatePicker .bx--date-picker-input__wrapper {
+  width: 100%;
+}
+
+.tableDatePicker .cds--date-picker-container label,
+.tableDatePicker .bx--date-picker-container label {
+  display: none;
+}
+
+.tableDatePicker .cds--text-input,
+.tableDatePicker .bx--text-input,
 .tableInput[type="text"].bx--date-picker__input {
   padding: 6px 8px;
   height: 32px;

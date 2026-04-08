@@ -1,13 +1,9 @@
 import { useState, useEffect, useContext, useCallback } from "react";
-import {
-  Button,
-  Grid,
-  Column,
-  Loading,
-} from "@carbon/react";
+import { Button, Grid, Column, Loading } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import CustomDatePicker from "../common/CustomDatePicker";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
@@ -502,14 +498,16 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                       {usageRows.map((row) => (
                         <tr key={row.id}>
                           <td>
-                            <input
+                            <CustomDatePicker
                               id={`date-picker-${row.id}`}
-                              type="date"
+                              key={`date-${row.id}`}
+                              labelText=""
                               value={row.date}
-                              onChange={(e) =>
-                                handleRowChange(row.id, "date", e.target.value)
+                              updateStateValue={true}
+                              className="tableDatePicker"
+                              onChange={(date) =>
+                                handleRowChange(row.id, "date", date)
                               }
-                              className="tableInput"
                             />
                           </td>
                           <td>
@@ -606,18 +604,16 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                             />
                           </td>
                           <td>
-                            <input
+                            <CustomDatePicker
                               id={`approval-date-picker-${row.id}`}
-                              type="date"
+                              key={`approval-date-${row.id}`}
+                              labelText=""
                               value={row.approvalDate}
-                              onChange={(e) =>
-                                handleRowChange(
-                                  row.id,
-                                  "approvalDate",
-                                  e.target.value,
-                                )
+                              updateStateValue={true}
+                              className="tableDatePicker"
+                              onChange={(date) =>
+                                handleRowChange(row.id, "approvalDate", date)
                               }
-                              className="tableInput"
                             />
                           </td>
                           <td>
