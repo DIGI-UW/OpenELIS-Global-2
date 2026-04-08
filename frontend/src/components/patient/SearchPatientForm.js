@@ -189,6 +189,10 @@ function SearchPatientForm(props) {
   };
 
   const fetchPatientResults = (res) => {
+    if (!res || !res.patientSearchResults) {
+      setPatientSearchResults([]);
+      return;
+    }
     let patientsResults = res.patientSearchResults;
     // Filter out the EQA placeholder patient (NULL/NULL)
     patientsResults = patientsResults.filter(

@@ -21,6 +21,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTest {
@@ -39,6 +40,7 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        SecurityContextHolder.clearContext();
         MockitoAnnotations.initMocks(this);
         controller = webApplicationContext.getBean(AnalyzerFhirImportController.class);
         originalAnalyzerResultsService = ReflectionTestUtils.getField(controller, "analyzerResultsService");

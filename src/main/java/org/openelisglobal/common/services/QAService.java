@@ -254,7 +254,8 @@ public class QAService {
     }
 
     private static boolean hasNonConformingEvent(SampleItem sampleItem) {
-        List<NceSpecimen> nceSpecimens = nceSpecimenService.getSpecimenBySampleItemId(sampleItem.getId());
+        List<NceSpecimen> nceSpecimens = nceSpecimenService
+                .getSpecimenBySampleItemId(Integer.valueOf(sampleItem.getId()));
         return !nceSpecimens.isEmpty();
     }
 

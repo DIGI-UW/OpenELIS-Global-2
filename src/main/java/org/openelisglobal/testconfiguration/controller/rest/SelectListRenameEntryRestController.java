@@ -9,6 +9,7 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.testconfiguration.form.ResultSelectListRenameForm;
 import org.openelisglobal.testconfiguration.service.ResultSelectListService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @RestController
 @RequestMapping("/rest")
+@PreAuthorize("hasRole('ADMIN')")
 public class SelectListRenameEntryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "nameEnglish", "nameFrench", "resultSelectOptionId" };
