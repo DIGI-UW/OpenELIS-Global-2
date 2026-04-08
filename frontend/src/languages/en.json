@@ -2062,7 +2062,6 @@
   "label.includeInactiveTests": "Include inactive tests",
   "label.inside.normalrange": "is inside the normal range",
   "label.lastPrinted": "Last printed: {date} {time} by {user}",
-  "label.loading": "Loading...",
   "label.loinc": "LOINC",
   "label.management.title": "Label Management",
   "label.notequals": "does not equal",
