@@ -12,9 +12,9 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  Modal,
   TextArea,
   Loading,
+  ComboBox,
 } from "@carbon/react";
 import {
   Add,
@@ -26,9 +26,13 @@ import {
   Time,
   Chemistry,
   DataBase,
+  Download,
+  Document,
+  View,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
 import { useHistory } from "react-router-dom";
 import "./NceDashboard.css";
@@ -82,10 +86,12 @@ export const NceDashboard = () => {
     overdue: 0,
   });
 
-  // Modal state
-  const [noteModalOpen, setNoteModalOpen] = useState(false);
-  const [selectedNce, setSelectedNce] = useState(null);
+  // Inline form state (keyed by nce id)
+  const [noteFormOpen, setNoteFormOpen] = useState(null);
+  const [assignFormOpen, setAssignFormOpen] = useState(null);
   const [noteText, setNoteText] = useState("");
+  const [assignee, setAssignee] = useState(null);
+  const [users, setUsers] = useState([]);
 
   // Load NCE data
   const loadNceData = useCallback(() => {
@@ -109,10 +115,23 @@ export const NceDashboard = () => {
     });
   }, []);
 
+  // Load users for assignment
+  const loadUsers = useCallback(() => {
+    console.log("DEBUG: loadUsers called, fetching /rest/nce/users");
+    getFromOpenElisServer("/rest/nce/users", (data) => {
+      console.log("DEBUG: /rest/nce/users response:", data);
+      console.log("DEBUG: isArray:", Array.isArray(data), "length:", data ? data.length : "null");
+      if (data && Array.isArray(data)) {
+        setUsers(data);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     loadNceData();
     loadCategories();
-  }, [loadNceData, loadCategories]);
+    loadUsers();
+  }, [loadNceData, loadCategories, loadUsers]);
 
   // Calculate summary counts
   const calculateSummaryCounts = (list) => {
@@ -212,28 +231,159 @@ export const NceDashboard = () => {
   };
 
   // Handle acknowledge
-  const handleAcknowledge = () => {
-    // TODO: Implement acknowledge API call
+  const handleAcknowledge = (nce) => {
+    // Log acknowledgment via history
+    const payload = {
+      nceId: nce.id,
+      activity: "ACKNOWLEDGED",
+      description: "NCE acknowledged",
+    };
+    postToOpenElisServer(
+      "/rest/nce/history",
+      JSON.stringify(payload),
+      (response) => {
+        if (response) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "notification.success",
+              defaultMessage: "Success",
+            }),
+            message: intl.formatMessage({
+              id: "nce.acknowledge.success",
+              defaultMessage: "NCE acknowledged successfully",
+            }),
+          });
+          loadNceData(); // Refresh data
+        }
+      },
+    );
   };
 
-  // Handle assign
-  const handleAssign = () => {
-    // TODO: Implement assign modal/API
+  // Toggle inline assign form
+  const handleAssign = (nce) => {
+    if (assignFormOpen === nce.id) {
+      setAssignFormOpen(null);
+    } else {
+      setAssignFormOpen(nce.id);
+      setNoteFormOpen(null);
+      setAssignee(null);
+      loadUsers();
+    }
   };
 
-  // Handle add note
+  // Submit assignment
+  const submitAssign = (nceId) => {
+    if (!assignee || !assignee.id) {
+      addNotification({
+        kind: "warning",
+        title: intl.formatMessage({
+          id: "notification.warning",
+          defaultMessage: "Warning",
+        }),
+        message: intl.formatMessage({
+          id: "nce.assign.selectUser",
+          defaultMessage: "Please select a user to assign",
+        }),
+      });
+      return;
+    }
+
+    const payload = {
+      nceId: nceId,
+      assignedTo: assignee.id,
+    };
+    postToOpenElisServer(
+      "/rest/nce/assign",
+      JSON.stringify(payload),
+      (response) => {
+        if (response) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "notification.success",
+              defaultMessage: "Success",
+            }),
+            message: intl.formatMessage({
+              id: "nce.assign.success",
+              defaultMessage: "NCE assigned successfully",
+            }),
+          });
+          setAssignFormOpen(null);
+          setAssignee(null);
+          loadNceData();
+        }
+      },
+    );
+  };
+
+  // Toggle inline note form
   const handleAddNote = (nce) => {
-    setSelectedNce(nce);
-    setNoteText("");
-    setNoteModalOpen(true);
+    if (noteFormOpen === nce.id) {
+      setNoteFormOpen(null);
+    } else {
+      setNoteFormOpen(nce.id);
+      setAssignFormOpen(null);
+      setNoteText("");
+    }
   };
 
   // Submit note
-  const submitNote = () => {
-    // TODO: Implement note submission API
-    setNoteModalOpen(false);
-    setSelectedNce(null);
-    setNoteText("");
+  const submitNote = (nceId) => {
+    if (!noteText.trim()) {
+      addNotification({
+        kind: "warning",
+        title: intl.formatMessage({
+          id: "notification.warning",
+          defaultMessage: "Warning",
+        }),
+        message: intl.formatMessage({
+          id: "nce.note.empty",
+          defaultMessage: "Please enter a note",
+        }),
+      });
+      return;
+    }
+
+    const payload = {
+      nceId: nceId,
+      activity: "NOTE_ADDED",
+      description: noteText,
+    };
+    postToOpenElisServer(
+      "/rest/nce/history",
+      JSON.stringify(payload),
+      (response) => {
+        if (response) {
+          addNotification({
+            kind: "success",
+            title: intl.formatMessage({
+              id: "notification.success",
+              defaultMessage: "Success",
+            }),
+            message: intl.formatMessage({
+              id: "nce.note.success",
+              defaultMessage: "Note added successfully",
+            }),
+          });
+          setNoteFormOpen(null);
+          setNoteText("");
+          loadNceData();
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "nce.note.error",
+              defaultMessage: "Failed to add note",
+            }),
+          });
+        }
+      },
+    );
   };
 
   // Navigate to report NCE
@@ -244,6 +394,94 @@ export const NceDashboard = () => {
   // Navigate to NCE details
   const handleViewDetails = (nce) => {
     history.push(`/ViewNonConformingEvent?nceNumber=${nce.nceNumber}`);
+  };
+
+  // Handle attachment download with authentication
+  const handleDownloadAttachment = async (attachmentId, fileName) => {
+    try {
+      const url = `${config.serverBaseUrl}/rest/nce/attachments/${attachmentId}/download`;
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Error downloading attachment:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
+          id: "nce.attachment.downloadError",
+          defaultMessage: "Failed to download attachment",
+        }),
+      });
+    }
+  };
+
+  // Handle attachment view (for images and PDFs) with authentication
+  const handleViewAttachment = async (attachmentId, fileType) => {
+    try {
+      const url = `${config.serverBaseUrl}/rest/nce/attachments/${attachmentId}/download`;
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("View failed");
+      }
+
+      const blob = await response.blob();
+      const viewUrl = window.URL.createObjectURL(blob);
+      window.open(viewUrl, "_blank");
+    } catch (error) {
+      console.error("Error viewing attachment:", error);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message: intl.formatMessage({
+          id: "nce.attachment.viewError",
+          defaultMessage: "Failed to view attachment",
+        }),
+      });
+    }
+  };
+
+  // Check if file type is viewable in browser
+  const isViewableFileType = (fileType) => {
+    if (!fileType) return false;
+    return (
+      fileType.startsWith("image/") ||
+      fileType === "application/pdf" ||
+      fileType.startsWith("text/")
+    );
+  };
+
+  // Format file size for display
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   // Get category name
@@ -589,9 +827,109 @@ export const NceDashboard = () => {
                           </div>
                         </div>
                       )}
+                      {/* Attachments section */}
+                      {nce.attachments && nce.attachments.length > 0 && (
+                        <div className="nce-detail-section">
+                          <h4>
+                            <FormattedMessage
+                              id="nce.field.attachments"
+                              defaultMessage="Attachments"
+                            />
+                          </h4>
+                          <div className="nce-attachments-list">
+                            {nce.attachments.map((attachment) => (
+                              <div
+                                key={attachment.id}
+                                className="nce-attachment-item"
+                              >
+                                <Document size={16} />
+                                <span className="nce-attachment-name">
+                                  {attachment.fileName}
+                                </span>
+                                <span className="nce-attachment-size">
+                                  {formatFileSize(attachment.fileSize)}
+                                </span>
+                                <div className="nce-attachment-actions">
+                                  {isViewableFileType(attachment.fileType) && (
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      hasIconOnly
+                                      iconDescription={intl.formatMessage({
+                                        id: "label.button.view",
+                                        defaultMessage: "View",
+                                      })}
+                                      renderIcon={View}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewAttachment(
+                                          attachment.id,
+                                          attachment.fileType,
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                  <Button
+                                    kind="ghost"
+                                    size="sm"
+                                    hasIconOnly
+                                    iconDescription={intl.formatMessage({
+                                      id: "nce.attachment.download",
+                                      defaultMessage: "Download",
+                                    })}
+                                    renderIcon={Download}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownloadAttachment(
+                                        attachment.id,
+                                        attachment.fileName,
+                                      );
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Notes section */}
+                      {nce.notes && nce.notes.length > 0 && (
+                        <div className="nce-detail-section">
+                          <h4>
+                            <FormattedMessage
+                              id="nce.field.notes"
+                              defaultMessage="Notes"
+                            />{" "}
+                            ({nce.notes.length})
+                          </h4>
+                          <div className="nce-notes-list">
+                            {nce.notes.map((note) => (
+                              <div
+                                key={note.id}
+                                className="nce-note-item"
+                              >
+                                <p className="nce-note-text">{note.text}</p>
+                                <div className="nce-note-meta">
+                                  <span className="nce-note-user">
+                                    {note.userName || "System"}
+                                  </span>
+                                  <span className="nce-note-time">
+                                    {note.timestamp
+                                      ? new Date(note.timestamp).toLocaleString()
+                                      : ""}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div className="nce-detail-footer">
                         <span>{nce.notesCount || 0} notes</span>
-                        <span>{nce.attachmentsCount || 0} attachments</span>
+                        <span>
+                          {nce.attachments ? nce.attachments.length : 0}{" "}
+                          attachments
+                        </span>
                       </div>
                     </TabPanel>
 
@@ -629,12 +967,42 @@ export const NceDashboard = () => {
 
                     {/* History Tab */}
                     <TabPanel>
-                      <p>
-                        <FormattedMessage
-                          id="nce.history.noItems"
-                          defaultMessage="No history available."
-                        />
-                      </p>
+                      {nce.history && nce.history.length > 0 ? (
+                        <div className="nce-history-list">
+                          {nce.history.map((entry, idx) => (
+                            <div
+                              key={entry.id || idx}
+                              className="nce-history-item"
+                            >
+                              <div className="nce-history-activity">
+                                {entry.activity}
+                              </div>
+                              {entry.description && (
+                                <div className="nce-history-description">
+                                  {entry.description}
+                                </div>
+                              )}
+                              <div className="nce-history-meta">
+                                <span className="nce-history-user">
+                                  {entry.userName || "System"}
+                                </span>
+                                <span className="nce-history-time">
+                                  {entry.timestamp
+                                    ? new Date(entry.timestamp).toLocaleString()
+                                    : ""}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>
+                          <FormattedMessage
+                            id="nce.history.noItems"
+                            defaultMessage="No history available."
+                          />
+                        </p>
+                      )}
                     </TabPanel>
                   </TabPanels>
                 </Tabs>
@@ -652,7 +1020,7 @@ export const NceDashboard = () => {
                     />
                   </Button>
                   <Button
-                    kind="tertiary"
+                    kind={assignFormOpen === nce.id ? "secondary" : "tertiary"}
                     size="sm"
                     renderIcon={UserFollow}
                     onClick={() => handleAssign(nce)}
@@ -663,7 +1031,7 @@ export const NceDashboard = () => {
                     />
                   </Button>
                   <Button
-                    kind="ghost"
+                    kind={noteFormOpen === nce.id ? "secondary" : "ghost"}
                     size="sm"
                     renderIcon={DocumentAdd}
                     onClick={() => handleAddNote(nce)}
@@ -674,6 +1042,97 @@ export const NceDashboard = () => {
                     />
                   </Button>
                 </div>
+
+                {/* Inline assign form */}
+                {assignFormOpen === nce.id && (
+                  <div className="nce-inline-form">
+                    <ComboBox
+                      id={`assign-user-${nce.id}`}
+                      titleText=""
+                      placeholder={intl.formatMessage({
+                        id: "nce.modal.searchUser",
+                        defaultMessage: "Search for a user...",
+                      })}
+                      items={users}
+                      itemToString={(user) => {
+                        if (!user) return "";
+                        const name = user.displayName || `${user.firstName || ""} ${user.lastName || ""}`.trim();
+                        if (name && user.loginName) {
+                          return `${name} (${user.loginName})`;
+                        }
+                        return name || user.loginName || "";
+                      }}
+                      shouldFilterItem={({ item, inputValue }) => {
+                        if (!inputValue) return true;
+                        const name = item.displayName || `${item.firstName || ""} ${item.lastName || ""}`.trim();
+                        const label = `${name} (${item.loginName || ""})`.toLowerCase();
+                        return label.includes(inputValue.toLowerCase());
+                      }}
+                      selectedItem={assignee}
+                      onChange={({ selectedItem }) => setAssignee(selectedItem)}
+                    />
+                    <div className="nce-inline-form-buttons">
+                      <Button
+                        kind="primary"
+                        size="sm"
+                        onClick={() => submitAssign(nce.id)}
+                      >
+                        <FormattedMessage
+                          id="label.button.assign"
+                          defaultMessage="Assign"
+                        />
+                      </Button>
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={() => setAssignFormOpen(null)}
+                      >
+                        <FormattedMessage
+                          id="label.button.cancel"
+                          defaultMessage="Cancel"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Inline note form */}
+                {noteFormOpen === nce.id && (
+                  <div className="nce-inline-form">
+                    <TextArea
+                      labelText=""
+                      placeholder={intl.formatMessage({
+                        id: "nce.modal.notePlaceholder",
+                        defaultMessage: "Enter your note...",
+                      })}
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      rows={3}
+                    />
+                    <div className="nce-inline-form-buttons">
+                      <Button
+                        kind="primary"
+                        size="sm"
+                        onClick={() => submitNote(nce.id)}
+                      >
+                        <FormattedMessage
+                          id="label.button.save"
+                          defaultMessage="Save"
+                        />
+                      </Button>
+                      <Button
+                        kind="ghost"
+                        size="sm"
+                        onClick={() => setNoteFormOpen(null)}
+                      >
+                        <FormattedMessage
+                          id="label.button.cancel"
+                          defaultMessage="Cancel"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -703,42 +1162,6 @@ export const NceDashboard = () => {
         }}
       />
 
-      {/* Add Note Modal */}
-      <Modal
-        open={noteModalOpen}
-        onRequestClose={() => setNoteModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "nce.modal.addNote",
-          defaultMessage: "Add Note",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "label.button.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.button.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={submitNote}
-      >
-        <p>
-          <FormattedMessage
-            id="nce.modal.addNoteDescription"
-            defaultMessage="Add a note to NCE {nceNumber}"
-            values={{ nceNumber: selectedNce?.nceNumber }}
-          />
-        </p>
-        <TextArea
-          labelText=""
-          placeholder={intl.formatMessage({
-            id: "nce.modal.notePlaceholder",
-            defaultMessage: "Enter your note...",
-          })}
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-          rows={4}
-        />
-      </Modal>
     </div>
   );
 };

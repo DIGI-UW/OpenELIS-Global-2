@@ -17,6 +17,7 @@ import org.openelisglobal.qaevent.form.NonConformingEventForm;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceActionLogService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceHistoryService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
@@ -46,6 +47,8 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
     private NceCategoryService nceCategoryService;
     @Autowired
     private NceTypeService nceTypeService;
+    @Autowired
+    private NceHistoryService nceHistoryService;
 
     @Override
     public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber) {
@@ -68,6 +71,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 nceSpecimenService.save(specimen);
             }
         }
+
+        // Log history for creation
+        Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
+        nceHistoryService.logActivity(event.getId(), "CREATED", "NCE created with number: " + nceNumber, null, null,
+                userId);
+
         return event;
     }
 
@@ -109,6 +118,11 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 ncEvent.setNameOfReporter(form.getName());
             }
             ncEventService.update(ncEvent);
+
+            // Log history for update
+            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            nceHistoryService.logActivity(ncEvent.getId(), "UPDATED", "NCE details updated", null, null, userId);
+
             return true;
         }
         return false;
@@ -131,6 +145,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setComments(form.getComments());
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
+
+            // Log history for follow-up (status changed to CAPA)
+            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            nceHistoryService.logActivity(ncEvent.getId(), "STATUS_CHANGED", "Status changed to CAPA for follow-up",
+                    null, "CAPA", userId);
+
             return true;
         }
         return false;
@@ -322,6 +342,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             setActionLogs(form, ncEvent);
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
+
+            // Log history for corrective action update
+            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            nceHistoryService.logActivity(ncEvent.getId(), "CORRECTIVE_ACTION", "Corrective action updated", null, null,
+                    userId);
+
             return true;
         }
         return false;
@@ -340,6 +366,12 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             ncEvent.setDateCompleted(getDate(form.getDateCompleted(), "dd/MM/yyyy"));
             ncEvent.setSysUserId(form.getCurrentUserId());
             ncEventService.update(ncEvent);
+
+            // Log history for resolution
+            Integer userId = form.getCurrentUserId() != null ? Integer.valueOf(form.getCurrentUserId()) : null;
+            nceHistoryService.logActivity(ncEvent.getId(), "RESOLVED", "NCE resolved and marked as Completed", null,
+                    "Completed", userId);
+
             return true;
         }
         return false;

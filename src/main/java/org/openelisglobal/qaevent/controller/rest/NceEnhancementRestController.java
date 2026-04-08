@@ -21,18 +21,25 @@ import org.openelisglobal.qaevent.valueholder.NceAttachment;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.qaevent.valueholder.NceType;
+import org.openelisglobal.qaevent.service.NceHistoryService;
+import org.openelisglobal.qaevent.valueholder.NceHistory;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -68,6 +75,12 @@ public class NceEnhancementRestController extends BaseRestController {
     @Autowired
     private NceAttachmentService nceAttachmentService;
 
+    @Autowired
+    private NceHistoryService nceHistoryService;
+
+    @Autowired
+    private SystemUserService systemUserService;
+
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateNceNumber() {
         String nceNumber = nceNumberGeneratorService.generateNceNumber();
@@ -97,6 +110,19 @@ public class NceEnhancementRestController extends BaseRestController {
             item.suspectedCauses = event.getSuspectedCauses();
             item.proposedAction = event.getProposedAction();
 
+            // Fetch assigned user name
+            if (event.getAssignedTo() != null) {
+                item.assignedTo = String.valueOf(event.getAssignedTo());
+                try {
+                    SystemUser assignedUser = systemUserService.get(String.valueOf(event.getAssignedTo()));
+                    if (assignedUser != null) {
+                        item.assignedToName = assignedUser.getFirstName() + " " + assignedUser.getLastName();
+                    }
+                } catch (Exception e) {
+                    item.assignedToName = "Unknown";
+                }
+            }
+
             // Fetch linked specimens
             List<NceSpecimen> specimens = nceSpecimenService.getSpecimenByNceId(event.getId());
             List<LinkedSpecimenDTO> linkedSpecimens = new ArrayList<>();
@@ -120,6 +146,62 @@ public class NceEnhancementRestController extends BaseRestController {
                 linkedSpecimens.add(linkedSpec);
             }
             item.linkedSpecimens = linkedSpecimens;
+
+            // Fetch attachments
+            List<NceAttachment> attachments = nceAttachmentService.findByNceId(event.getId());
+            List<AttachmentDTO> attachmentDTOs = new ArrayList<>();
+            for (NceAttachment attachment : attachments) {
+                AttachmentDTO attachmentDTO = new AttachmentDTO();
+                attachmentDTO.id = attachment.getId();
+                attachmentDTO.fileName = attachment.getFileName();
+                attachmentDTO.fileType = attachment.getFileType();
+                attachmentDTO.fileSize = attachment.getFileSize();
+                attachmentDTO.uploadedDate = attachment.getUploadedDate() != null
+                        ? attachment.getUploadedDate().toString()
+                        : null;
+                attachmentDTOs.add(attachmentDTO);
+            }
+            item.attachments = attachmentDTOs;
+
+            // Fetch history and extract notes
+            List<NceHistory> historyRecords = nceHistoryService.findByNceId(event.getId());
+            List<HistoryDTO> historyDTOs = new ArrayList<>();
+            List<NoteDTO> noteDTOs = new ArrayList<>();
+            for (NceHistory history : historyRecords) {
+                HistoryDTO historyDTO = new HistoryDTO();
+                historyDTO.id = String.valueOf(history.getId());
+                historyDTO.activity = history.getActivity();
+                historyDTO.description = history.getDescription();
+                historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toString() : null;
+
+                // Get user name
+                String userName = null;
+                if (history.getUserId() != null) {
+                    try {
+                        SystemUser user = systemUserService.get(String.valueOf(history.getUserId()));
+                        if (user != null) {
+                            userName = user.getFirstName() + " " + user.getLastName();
+                        }
+                    } catch (Exception e) {
+                        userName = "Unknown";
+                    }
+                }
+                historyDTO.userName = userName;
+                historyDTOs.add(historyDTO);
+
+                // Extract notes from history
+                if ("NOTE_ADDED".equals(history.getActivity())) {
+                    NoteDTO noteDTO = new NoteDTO();
+                    noteDTO.id = String.valueOf(history.getId());
+                    noteDTO.text = history.getDescription();
+                    noteDTO.userName = userName;
+                    noteDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toString() : null;
+                    noteDTOs.add(noteDTO);
+                }
+            }
+            item.history = historyDTOs;
+            item.notes = noteDTOs;
+            item.notesCount = noteDTOs.size();
 
             nceList.add(item);
         }
@@ -193,6 +275,122 @@ public class NceEnhancementRestController extends BaseRestController {
         }
     }
 
+    /**
+     * Add a history entry (note) to an NCE.
+     *
+     * @param historyRequest the history entry request
+     * @param httpRequest    the HTTP request for user context
+     * @return the created history entry
+     */
+    @PostMapping(value = "/history", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> addHistoryEntry(@RequestBody HistoryEntryRequest historyRequest,
+            HttpServletRequest httpRequest) {
+        if (historyRequest.nceId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "nceId is required"));
+        }
+
+        // Get current user ID from security context
+        String sysUserId = getSysUserId(httpRequest);
+        Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
+
+        String activity = historyRequest.activity != null ? historyRequest.activity : "NOTE_ADDED";
+
+        // If acknowledging, update NCE status from Pending to Under Investigation
+        if ("ACKNOWLEDGED".equals(activity)) {
+            NcEvent event = ncEventService.get(historyRequest.nceId);
+            if (event != null && "Pending".equals(event.getStatus())) {
+                event.setStatus("Under Investigation");
+                event.setSysUserId(sysUserId);
+                ncEventService.update(event);
+            }
+        }
+
+        NceHistory history = nceHistoryService.logActivity(historyRequest.nceId, activity,
+                historyRequest.description, null, null, userId);
+
+        return ResponseEntity.ok(Map.of("success", true, "id", history.getId()));
+    }
+
+    /**
+     * Assign an NCE to a user.
+     *
+     * @param assignRequest the assignment request
+     * @param httpRequest   the HTTP request for user context
+     * @return success response
+     */
+    @PostMapping(value = "/assign", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> assignNce(@RequestBody AssignRequest assignRequest,
+            HttpServletRequest httpRequest) {
+        if (assignRequest.nceId == null || assignRequest.assignedTo == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "nceId and assignedTo are required"));
+        }
+
+        NcEvent event = ncEventService.get(assignRequest.nceId);
+        if (event == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Get assignee name for history
+        String assigneeName = "Unknown";
+        try {
+            SystemUser assignee = systemUserService.get(assignRequest.assignedTo);
+            if (assignee != null) {
+                assigneeName = assignee.getFirstName() + " " + assignee.getLastName();
+            }
+        } catch (Exception e) {
+            // Use Unknown if user lookup fails
+        }
+
+        // Update the event's assignedTo field
+        event.setAssignedTo(Integer.valueOf(assignRequest.assignedTo));
+        String sysUserId = getSysUserId(httpRequest);
+        event.setSysUserId(sysUserId);
+        ncEventService.update(event);
+
+        // Log assignment in history
+        Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
+        nceHistoryService.logActivity(assignRequest.nceId, "ASSIGNED", "Assigned to " + assigneeName, null,
+                assignRequest.assignedTo, userId);
+
+        return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    /**
+     * Get list of users for assignment autocomplete.
+     *
+     * @param search optional search term to filter users
+     * @return list of users
+     */
+    @GetMapping(value = "/users", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<UserDTO>> getUsers(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) String search) {
+        List<SystemUser> allUsers = systemUserService.getAllSystemUsers();
+
+        List<UserDTO> result = allUsers.stream().filter(user -> user.getIsActive() != null && "Y".equals(user.getIsActive()))
+                .filter(user -> {
+                    if (search == null || search.isEmpty()) {
+                        return true;
+                    }
+                    String searchLower = search.toLowerCase();
+                    String firstName = user.getFirstName() != null ? user.getFirstName().toLowerCase() : "";
+                    String lastName = user.getLastName() != null ? user.getLastName().toLowerCase() : "";
+                    String loginName = user.getLoginName() != null ? user.getLoginName().toLowerCase() : "";
+                    return firstName.contains(searchLower) || lastName.contains(searchLower)
+                            || loginName.contains(searchLower);
+                }).map(user -> {
+                    UserDTO dto = new UserDTO();
+                    dto.id = String.valueOf(user.getId());
+                    dto.firstName = user.getFirstName();
+                    dto.lastName = user.getLastName();
+                    dto.loginName = user.getLoginName();
+                    dto.displayName = (user.getFirstName() != null ? user.getFirstName() : "")
+                            + (user.getLastName() != null ? " " + user.getLastName() : "");
+                    return dto;
+                }).collect(Collectors.toList());
+
+        return ResponseEntity.ok(result);
+    }
+
     public static class NceCategoryDTO {
         public String id;
         public String name;
@@ -220,12 +418,60 @@ public class NceEnhancementRestController extends BaseRestController {
         public String immediateAction;
         public String suspectedCauses;
         public String proposedAction;
+        public String assignedTo;
+        public String assignedToName;
+        public int notesCount;
+        public List<NoteDTO> notes;
         public List<LinkedSpecimenDTO> linkedSpecimens;
+        public List<AttachmentDTO> attachments;
+        public List<HistoryDTO> history;
+    }
+
+    public static class NoteDTO {
+        public String id;
+        public String text;
+        public String userName;
+        public String timestamp;
+    }
+
+    public static class HistoryDTO {
+        public String id;
+        public String activity;
+        public String description;
+        public String timestamp;
+        public String userName;
+    }
+
+    public static class AttachmentDTO {
+        public Integer id;
+        public String fileName;
+        public String fileType;
+        public Long fileSize;
+        public String uploadedDate;
     }
 
     public static class LinkedSpecimenDTO {
         public Integer sampleItemId;
         public String labOrderNumber;
         public String sampleType;
+    }
+
+    public static class HistoryEntryRequest {
+        public Integer nceId;
+        public String activity;
+        public String description;
+    }
+
+    public static class AssignRequest {
+        public Integer nceId;
+        public String assignedTo;
+    }
+
+    public static class UserDTO {
+        public String id;
+        public String firstName;
+        public String lastName;
+        public String loginName;
+        public String displayName;
     }
 }
