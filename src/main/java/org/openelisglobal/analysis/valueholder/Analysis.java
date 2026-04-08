@@ -85,6 +85,7 @@ public class Analysis extends BaseObject<String> implements NoteObject {
     private boolean correctedSincePatientReport;
     private ValueHolderInterface method;
     private ResultFile resultFile;
+    private String analyzerId;
 
     public Analysis() {
         super();
@@ -544,6 +545,14 @@ public class Analysis extends BaseObject<String> implements NoteObject {
 
     public void setResultFile(ResultFile resultFile) {
         this.resultFile = resultFile;
+    }
+
+    public String getAnalyzerId() {
+        return analyzerId;
+    }
+
+    public void setAnalyzerId(String analyzerId) {
+        this.analyzerId = analyzerId;
     }
 
 }
