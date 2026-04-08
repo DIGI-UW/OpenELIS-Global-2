@@ -66,6 +66,14 @@ Cypress.on("window:before:load", (win) => {
         .join(" "),
       timestamp: new Date().toISOString(),
     });
+    // Also send to CI terminal for debugging
+    const errorMessage = args
+      .map((arg) =>
+        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
+      )
+      .join(" ");
+    console.error(`Browser Console Error: ${errorMessage}`);
+    cy.task("log", `Browser Console Error: ${errorMessage}`);
   };
 
   win.console.warn = (...args) => {
@@ -80,6 +88,14 @@ Cypress.on("window:before:load", (win) => {
         .join(" "),
       timestamp: new Date().toISOString(),
     });
+    // Also send to CI terminal for debugging
+    const warnMessage = args
+      .map((arg) =>
+        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg),
+      )
+      .join(" ");
+    console.warn(`Browser Console Warning: ${warnMessage}`);
+    cy.task("log", `Browser Console Warning: ${warnMessage}`);
   };
 
   win.console.info = (...args) => {
