@@ -8,6 +8,14 @@ import Layout from "./Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import messages from "../../languages/en.json";
 
+// Mock react-router-dom
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/" }),
+  useParams: () => ({}),
+}));
+
 // Mock Utils
 jest.mock("../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),

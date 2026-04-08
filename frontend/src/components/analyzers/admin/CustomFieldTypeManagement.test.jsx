@@ -19,6 +19,14 @@ jest.mock("../../../services/analyzerService", () => ({
   deleteCustomFieldType: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: "/analyzers" }),
+}));
+
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
 // 1. React
@@ -84,6 +92,7 @@ describe("CustomFieldTypeManagement", () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
+    mockNavigate.mockClear();
   });
 
   /**

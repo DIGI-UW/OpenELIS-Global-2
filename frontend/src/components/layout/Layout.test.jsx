@@ -6,6 +6,14 @@ import { MemoryRouter } from "react-router-dom";
 import Layout, { ConfigurationContext, NotificationContext } from "./Layout";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 
+// Mock react-router-dom
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/" }),
+  useParams: () => ({}),
+}));
+
 /**
  * Integration tests for Layout.js
  *

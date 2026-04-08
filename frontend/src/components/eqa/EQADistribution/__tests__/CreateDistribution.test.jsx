@@ -12,6 +12,13 @@ jest.mock("../../../utils/Utils", () => ({
   postToOpenElisServerJsonResponse: jest.fn(),
 }));
 
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/" }),
+  useParams: () => ({}),
+}));
+
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>

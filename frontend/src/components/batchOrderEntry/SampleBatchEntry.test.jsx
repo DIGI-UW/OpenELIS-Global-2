@@ -16,6 +16,13 @@ jest.mock("../utils/Utils", () => ({
   postToOpenElisServerJsonResponse: jest.fn(),
 }));
 
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/" }),
+  useParams: () => ({}),
+}));
+
 const baseOrderFormValues = {
   patientProperties: {},
   sampleOrderItems: {
