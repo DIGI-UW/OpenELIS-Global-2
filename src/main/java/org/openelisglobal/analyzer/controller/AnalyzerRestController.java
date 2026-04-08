@@ -304,11 +304,10 @@ public class AnalyzerRestController extends BaseRestController {
             // directly tests analyzer transports (bridge is mandatory).
             Map<String, Object> response;
             Integer analyzerIdInt = Integer.valueOf(id);
-            var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
             var serialConfig = serialPortService.getByAnalyzerId(analyzerIdInt);
 
-            if (fileConfig.isPresent()) {
-                response = testFileViaBridge(fileConfig.get().getImportDirectory());
+            if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                response = testFileViaBridge(analyzer.getImportDirectory());
             } else if (serialConfig.isPresent()) {
                 response = testSerialViaBridge(serialConfig.get().getPortName());
             } else if (analyzer.getIpAddress() != null && analyzer.getPort() != null) {
@@ -510,34 +509,38 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
+     * POST /rest/analyzer/analyzers/{id}/delete Soft-delete an analyzer.
      *
      * <p>
-     * Implements 90-day soft delete window per spec requirement:
-     * <ul>
-     * <li>If analyzer has recent results (within 90 days): soft delete (status =
-     * DELETED)</li>
-     * <li>If analyzer has no recent results: hard delete (remove from
-     * database)</li>
-     * </ul>
+     * Sets the analyzer status to {@link AnalyzerStatus#DELETED} and marks it
+     * inactive. The authenticated user's sysUserId is recorded for audit history.
      *
      * <p>
      * Note: Uses POST instead of DELETE HTTP method due to Spring Security 6 CSRF
      * protection blocking DELETE requests even with valid CSRF tokens.
      *
-     * @param id Analyzer ID to delete
-     * @return 200 on success with deletion details, 404 if analyzer not found
+     * @param id      Analyzer ID to delete
+     * @param request HTTP request used to resolve the authenticated user
+     * @return 200 on success with deletion details, 401 if user context cannot be
+     *         resolved, 404 if analyzer not found
      */
     @PostMapping("/analyzers/{id}/delete")
-    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id, HttpServletRequest request) {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null || sysUserId.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(AnalyzerControllerHelper.wrapError("Unable to determine authenticated user"));
+            }
+
             analyzer.setStatus(AnalyzerStatus.DELETED);
             analyzer.setActive(false);
+            analyzer.setSysUserId(sysUserId);
             analyzerService.update(analyzer);
 
             unregisterFromBridgeAsync(id, analyzer.getName());
@@ -552,9 +555,8 @@ public class AnalyzerRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {
             logger.error("Error deleting analyzer", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
@@ -606,6 +608,8 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("filePattern", analyzer.getFilePattern());
         map.put("columnMappings", analyzer.getColumnMappings());
         map.put("fileFormat", analyzer.getFileFormat());
+        map.put("delimiter", analyzer.getDelimiter());
+        map.put("skipRows", analyzer.getSkipRows());
 
         // Derive plugin type info from analyzer_type FK
         boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();
@@ -1030,24 +1034,11 @@ public class AnalyzerRestController extends BaseRestController {
                         analyzer.getPort(), protocol);
             }
 
-            // FILE analyzers: register by watch directory (use unified fields on Analyzer)
+            // FILE analyzers: register by watch directory (unified fields on Analyzer)
             if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
                 registered = bridgeRegistrationService.registerFile(id, name, analyzer.getImportDirectory(),
-                        analyzer.getFilePattern(), analyzer.getColumnMappings());
-            } else {
-                // Fallback: check legacy FileImportConfiguration table
-                try {
-                    Integer analyzerIdInt = Integer.valueOf(id);
-                    var fileConfig = fileImportService.getByAnalyzerId(analyzerIdInt);
-                    if (fileConfig.isPresent()) {
-                        var fc = fileConfig.get();
-                        registered = bridgeRegistrationService.registerFile(id, name, fc.getImportDirectory(),
-                                fc.getFilePattern(), fc.getColumnMappings());
-                    }
-                } catch (NumberFormatException e) {
-                    logger.debug("Analyzer id '{}' is not numeric; skipping legacy FileImportConfiguration fallback",
-                            id);
-                }
+                        analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
+                        analyzer.getDelimiter(), analyzer.getSkipRows());
             }
 
             if (registered) {
