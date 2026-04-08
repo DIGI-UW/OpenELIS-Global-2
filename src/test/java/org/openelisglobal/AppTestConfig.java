@@ -352,4 +352,17 @@ public class AppTestConfig implements WebMvcConfigurer {
     public DataExportTaskDAO dataExportTaskDAO() {
         return mock(DataExportTaskDAO.class);
     }
+
+    @Bean
+    @Profile("test")
+    public org.openelisglobal.calendar.service.WeekendConfigService weekendConfigService() {
+        return mock(org.openelisglobal.calendar.service.WeekendConfigService.class);
+    }
+
+    @Bean
+    @Profile("test")
+    public org.openelisglobal.calendar.service.PublicHolidayService publicHolidayService() {
+        return mock(org.openelisglobal.calendar.service.PublicHolidayService.class);
+    }
+
 }
