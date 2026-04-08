@@ -52,6 +52,11 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
 
     @Override
     public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber) {
+        return create(labOrderId, specimens, sysUserId, nceNumber, null);
+    }
+
+    public NcEvent create(String labOrderId, List<String> specimens, String sysUserId, String nceNumber,
+            String analysisId) {
         NcEvent event = new NcEvent();
         event.setSysUserId(sysUserId);
         event.setNceNumber(nceNumber);
@@ -67,6 +72,9 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 NceSpecimen specimen = new NceSpecimen();
                 specimen.setNceId(nceId);
                 specimen.setSampleItemId(sampleItemId);
+                if (analysisId != null && !analysisId.isEmpty()) {
+                    specimen.setAnalysisId(Integer.parseInt(analysisId));
+                }
                 specimen.setSysUserId(sysUserId);
                 nceSpecimenService.save(specimen);
             }

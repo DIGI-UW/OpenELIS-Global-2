@@ -19,7 +19,7 @@
                 <columnExists schemaName="clinlims" tableName="nc_event" columnName="title"/>
             </not>
         </preConditions>
-        <comment>Add title, immediate_action, severity, and assigned_to columns to nc_event</comment>
+        <comment>Add title, immediate_action, and severity columns to nc_event</comment>
 
         <addColumn schemaName="clinlims" tableName="nc_event">
             <column name="title" type="VARCHAR(200)">
@@ -29,9 +29,6 @@
                 <constraints nullable="true"/>
             </column>
             <column name="severity" type="VARCHAR(20)">
-                <constraints nullable="true"/>
-            </column>
-            <column name="assigned_to" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
             <column name="last_updated" type="TIMESTAMP">
@@ -171,10 +168,13 @@
                 <columnExists schemaName="clinlims" tableName="nce_specimen" columnName="last_updated"/>
             </not>
         </preConditions>
-        <comment>Add last_updated column to nce_specimen table</comment>
+        <comment>Add last_updated and analysis_id columns to nce_specimen table</comment>
 
         <addColumn schemaName="clinlims" tableName="nce_specimen">
             <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+            <column name="analysis_id" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
@@ -418,6 +418,25 @@
         </createIndex>
 
         <createSequence schemaName="clinlims" sequenceName="nce_history_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- ================================================================== -->
+    <!-- Add assigned_to column to nc_event table                           -->
+    <!-- ================================================================== -->
+    <changeSet author="reagan-meant" id="nce-020-add-assigned-to">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="nc_event"/>
+            <not>
+                <columnExists schemaName="clinlims" tableName="nc_event" columnName="assigned_to"/>
+            </not>
+        </preConditions>
+        <comment>Add assigned_to column to nc_event for user assignment</comment>
+
+        <addColumn schemaName="clinlims" tableName="nc_event">
+            <column name="assigned_to" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
     </changeSet>
 
     <!-- ================================================================== -->

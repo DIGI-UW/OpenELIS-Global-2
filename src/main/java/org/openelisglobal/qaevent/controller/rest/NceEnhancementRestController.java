@@ -24,6 +24,8 @@ import org.openelisglobal.qaevent.valueholder.NceCategory;
 import org.openelisglobal.qaevent.valueholder.NceHistory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.qaevent.valueholder.NceType;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -81,6 +83,9 @@ public class NceEnhancementRestController extends BaseRestController {
     @Autowired
     private SystemUserService systemUserService;
 
+    @Autowired
+    private AnalysisService analysisService;
+
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateNceNumber() {
         String nceNumber = nceNumberGeneratorService.generateNceNumber();
@@ -129,6 +134,7 @@ public class NceEnhancementRestController extends BaseRestController {
             for (NceSpecimen specimen : specimens) {
                 LinkedSpecimenDTO linkedSpec = new LinkedSpecimenDTO();
                 linkedSpec.sampleItemId = specimen.getSampleItemId();
+                linkedSpec.analysisId = specimen.getAnalysisId();
 
                 // Get sample item details
                 SampleItem sampleItem = sampleItemService.get(String.valueOf(specimen.getSampleItemId()));
@@ -143,6 +149,19 @@ public class NceEnhancementRestController extends BaseRestController {
                         linkedSpec.labOrderNumber = sample.getAccessionNumber();
                     }
                 }
+
+                // Get test name from analysis
+                if (specimen.getAnalysisId() != null) {
+                    try {
+                        Analysis analysis = analysisService.get(String.valueOf(specimen.getAnalysisId()));
+                        if (analysis != null && analysis.getTest() != null) {
+                            linkedSpec.testName = analysis.getTest().getLocalizedTestName().getLocalizedValue();
+                        }
+                    } catch (Exception e) {
+                        // Analysis may not exist
+                    }
+                }
+
                 linkedSpecimens.add(linkedSpec);
             }
             item.linkedSpecimens = linkedSpecimens;
@@ -289,6 +308,12 @@ public class NceEnhancementRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("error", "nceId is required"));
         }
 
+        // Validate NCE exists
+        NcEvent event = ncEventService.get(historyRequest.nceId);
+        if (event == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "NCE not found"));
+        }
+
         // Get current user ID from security context
         String sysUserId = getSysUserId(httpRequest);
         Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
@@ -296,13 +321,10 @@ public class NceEnhancementRestController extends BaseRestController {
         String activity = historyRequest.activity != null ? historyRequest.activity : "NOTE_ADDED";
 
         // If acknowledging, update NCE status from Pending to Under Investigation
-        if ("ACKNOWLEDGED".equals(activity)) {
-            NcEvent event = ncEventService.get(historyRequest.nceId);
-            if (event != null && "Pending".equals(event.getStatus())) {
-                event.setStatus("Under Investigation");
-                event.setSysUserId(sysUserId);
-                ncEventService.update(event);
-            }
+        if ("ACKNOWLEDGED".equals(activity) && "Pending".equals(event.getStatus())) {
+            event.setStatus("Under Investigation");
+            event.setSysUserId(sysUserId);
+            ncEventService.update(event);
         }
 
         NceHistory history = nceHistoryService.logActivity(historyRequest.nceId, activity, historyRequest.description,
@@ -325,24 +347,28 @@ public class NceEnhancementRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(Map.of("error", "nceId and assignedTo are required"));
         }
 
+        // Safely parse assignedTo
+        Integer assignedToId;
+        try {
+            assignedToId = Integer.valueOf(assignRequest.assignedTo);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "assignedTo must be a valid numeric ID"));
+        }
+
         NcEvent event = ncEventService.get(assignRequest.nceId);
         if (event == null) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(404).body(Map.of("error", "NCE not found"));
         }
 
-        // Get assignee name for history
-        String assigneeName = "Unknown";
-        try {
-            SystemUser assignee = systemUserService.get(assignRequest.assignedTo);
-            if (assignee != null) {
-                assigneeName = assignee.getFirstName() + " " + assignee.getLastName();
-            }
-        } catch (Exception e) {
-            // Use Unknown if user lookup fails
+        // Validate assignee exists
+        SystemUser assignee = systemUserService.get(assignRequest.assignedTo);
+        if (assignee == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
         }
+        String assigneeName = assignee.getFirstName() + " " + assignee.getLastName();
 
         // Update the event's assignedTo field
-        event.setAssignedTo(Integer.valueOf(assignRequest.assignedTo));
+        event.setAssignedTo(assignedToId);
         String sysUserId = getSysUserId(httpRequest);
         event.setSysUserId(sysUserId);
         ncEventService.update(event);
@@ -452,8 +478,10 @@ public class NceEnhancementRestController extends BaseRestController {
 
     public static class LinkedSpecimenDTO {
         public Integer sampleItemId;
+        public Integer analysisId;
         public String labOrderNumber;
         public String sampleType;
+        public String testName;
     }
 
     public static class HistoryEntryRequest {

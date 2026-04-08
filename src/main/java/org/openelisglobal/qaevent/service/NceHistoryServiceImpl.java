@@ -43,7 +43,7 @@ public class NceHistoryServiceImpl extends AuditableBaseObjectServiceImpl<NceHis
         history.setNewValue(newValue);
         history.setUserId(userId);
         history.setTimestamp(new Timestamp(System.currentTimeMillis()));
-        history.setSysUserId(userId != null ? String.valueOf(userId) : "1");
+        history.setSysUserId(userId != null ? String.valueOf(userId) : null);
 
         Integer id = insert(history);
         history.setId(id);

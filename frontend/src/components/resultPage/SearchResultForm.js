@@ -42,6 +42,8 @@ import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
+import InlineNceForm from "../nonconform/common/InlineNceForm";
+import { Warning } from "@carbon/icons-react";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -816,6 +818,7 @@ export function SearchResults(props) {
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
+  const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
 
   const componentMounted = useRef(false);
 
@@ -1343,16 +1346,14 @@ export function SearchResults(props) {
               sampleAccessionNumber: response.sampleAccessionNumber || "",
             },
           }));
+        } else {
+          // SampleItem may not have location assigned yet
+          console.debug("No location found for SampleItem:", sampleItemId);
+          setSampleLocations((prev) => ({
+            ...prev,
+            [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
+          }));
         }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
-        setSampleLocations((prev) => ({
-          ...prev,
-          [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
-        }));
       },
     );
   };
@@ -1632,6 +1633,31 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
+        {/* Report NCE */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+        </Grid>
+        {nceFormOpenRow === data.id && (
+          <InlineNceForm
+            resultRow={data}
+            onClose={() => setNceFormOpenRow(null)}
+            onSubmitSuccess={() => setNceFormOpenRow(null)}
+          />
+        )}
       </>
     );
   };

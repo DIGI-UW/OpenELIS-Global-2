@@ -446,7 +446,16 @@ export const NceDashboard = () => {
 
       const blob = await response.blob();
       const viewUrl = window.URL.createObjectURL(blob);
-      window.open(viewUrl, "_blank");
+      const newWindow = window.open(viewUrl, "_blank");
+      // Revoke object URL after the new window loads to free memory
+      if (newWindow) {
+        newWindow.addEventListener("load", () => {
+          window.URL.revokeObjectURL(viewUrl);
+        });
+      } else {
+        // Fallback: revoke after a timeout if popup was blocked
+        setTimeout(() => window.URL.revokeObjectURL(viewUrl), 60000);
+      }
     } catch (error) {
       console.error("Error viewing attachment:", error);
       addNotification({
@@ -799,31 +808,46 @@ export const NceDashboard = () => {
                           <p>{nce.triggerSourceType}</p>
                         </div>
                       )}
-                      {nce.linkedSamples && nce.linkedSamples.length > 0 && (
-                        <div className="nce-detail-section">
-                          <h4>
-                            <FormattedMessage
-                              id="nce.field.linkedItems"
-                              defaultMessage="Linked Items"
-                            />
-                          </h4>
-                          <div className="nce-linked-items">
-                            {nce.linkedSamples.map((sample, idx) => (
-                              <div key={idx} className="nce-linked-item">
-                                <DataBase size={16} />
-                                <span>Sample: {sample.labOrderNumber}</span>
-                              </div>
-                            ))}
-                            {nce.linkedResults &&
-                              nce.linkedResults.map((result, idx) => (
+                      {nce.linkedSpecimens &&
+                        nce.linkedSpecimens.length > 0 && (
+                          <div className="nce-detail-section">
+                            <h4>
+                              <FormattedMessage
+                                id="nce.field.linkedItems"
+                                defaultMessage="Linked Items"
+                              />
+                            </h4>
+                            <div className="nce-linked-items">
+                              {nce.linkedSpecimens.map((specimen, idx) => (
                                 <div key={idx} className="nce-linked-item">
-                                  <Chemistry size={16} />
-                                  <span>Result: {result.testName}</span>
+                                  <DataBase size={16} />
+                                  <span>
+                                    Specimen #{specimen.sampleItemId}
+                                    {specimen.sampleType
+                                      ? ` — ${specimen.sampleType}`
+                                      : ""}
+                                    {specimen.labOrderNumber
+                                      ? ` (${specimen.labOrderNumber})`
+                                      : ""}
+                                  </span>
+                                  {specimen.testName && (
+                                    <span style={{ marginLeft: "0.25rem" }}>
+                                      <Chemistry size={16} />
+                                      {` Test: ${specimen.testName}`}
+                                    </span>
+                                  )}
                                 </div>
                               ))}
+                              {nce.linkedResults &&
+                                nce.linkedResults.map((result, idx) => (
+                                  <div key={idx} className="nce-linked-item">
+                                    <Chemistry size={16} />
+                                    <span>Result: {result.testName}</span>
+                                  </div>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                       {/* Attachments section */}
                       {nce.attachments && nce.attachments.length > 0 && (
                         <div className="nce-detail-section">
@@ -905,7 +929,7 @@ export const NceDashboard = () => {
                                 <p className="nce-note-text">{note.text}</p>
                                 <div className="nce-note-meta">
                                   <span className="nce-note-user">
-                                    {note.userName || "System"}
+                                    {note.userName || intl.formatMessage({ id: "nce.history.system", defaultMessage: "System" })}
                                   </span>
                                   <span className="nce-note-time">
                                     {note.timestamp
@@ -921,10 +945,19 @@ export const NceDashboard = () => {
                         </div>
                       )}
                       <div className="nce-detail-footer">
-                        <span>{nce.notesCount || 0} notes</span>
+                        <span>
+                          {nce.notesCount || 0}{" "}
+                          <FormattedMessage
+                            id="nce.field.notes"
+                            defaultMessage="Notes"
+                          />
+                        </span>
                         <span>
                           {nce.attachments ? nce.attachments.length : 0}{" "}
-                          attachments
+                          <FormattedMessage
+                            id="nce.field.attachments"
+                            defaultMessage="Attachments"
+                          />
                         </span>
                       </div>
                     </TabPanel>
@@ -980,7 +1013,7 @@ export const NceDashboard = () => {
                               )}
                               <div className="nce-history-meta">
                                 <span className="nce-history-user">
-                                  {entry.userName || "System"}
+                                  {entry.userName || intl.formatMessage({ id: "nce.history.system", defaultMessage: "System" })}
                                 </span>
                                 <span className="nce-history-time">
                                   {entry.timestamp
@@ -1044,7 +1077,10 @@ export const NceDashboard = () => {
                   <div className="nce-inline-form">
                     <ComboBox
                       id={`assign-user-${nce.id}`}
-                      titleText=""
+                      titleText={intl.formatMessage({
+                        id: "nce.modal.selectUser",
+                        defaultMessage: "Select User",
+                      })}
                       placeholder={intl.formatMessage({
                         id: "nce.modal.searchUser",
                         defaultMessage: "Search for a user...",
@@ -1101,7 +1137,10 @@ export const NceDashboard = () => {
                 {noteFormOpen === nce.id && (
                   <div className="nce-inline-form">
                     <TextArea
-                      labelText=""
+                      labelText={intl.formatMessage({
+                        id: "nce.modal.addNote",
+                        defaultMessage: "Add Note",
+                      })}
                       placeholder={intl.formatMessage({
                         id: "nce.modal.notePlaceholder",
                         defaultMessage: "Enter your note...",

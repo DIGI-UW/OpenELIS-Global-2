@@ -74,6 +74,8 @@ public class NonConformingEventForm extends BaseForm {
     @Pattern(regexp = ValidationHelper.ID_REGEX)
     private String specimenId;
 
+    private String analysisId;
+
     /// for displayNcEvent
     private PatientSearch patientSearch;
 
@@ -496,6 +498,14 @@ public class NonConformingEventForm extends BaseForm {
 
     public void setSpecimenId(String specimenId) {
         this.specimenId = specimenId;
+    }
+
+    public String getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(String analysisId) {
+        this.analysisId = analysisId;
     }
 
     public List<NcEvent> getnceEventsSearchResults() {
