@@ -164,6 +164,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                         // not a db value, nothing to save
                     } else {
                         siteInformation.setValue(propertyHolder.getValue());
+                        siteInformation.setSysUserId("1");
                         siteInformationService.save(siteInformation);
                     }
                 }

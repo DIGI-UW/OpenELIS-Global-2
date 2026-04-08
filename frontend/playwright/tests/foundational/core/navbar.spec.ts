@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 
 test.describe("Navbar (Header) actions", () => {
   test("logo click navigates to home", async ({ page }) => {

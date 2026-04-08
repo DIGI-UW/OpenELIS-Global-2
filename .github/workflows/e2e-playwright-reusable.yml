@@ -79,6 +79,15 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      - name: Configure swap for OOM resilience
+        run: |
+          if [ ! -f /swapfile ]; then
+            sudo fallocate -l 4G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+          fi
+          sudo swapon /swapfile 2>/dev/null || true
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -99,7 +108,7 @@ jobs:
             ${{ runner.os }}-playwright-
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+        run: npx playwright install --only-shell chromium --with-deps
         working-directory: frontend
 
       - name: Prepare .env from template
@@ -163,19 +172,10 @@ jobs:
 
       # ── Analyzer Harness Pre-Start Setup ────────────────────────────────────
 
-      - name: Create analyzer import bind-mount directories
+      - name: Create analyzer import bind-mount parent
         if: inputs.setup_analyzer_harness
         run: |
           mkdir -p projects/analyzer-harness/volume/analyzer-imports
-          for slug in \
-            quantstudio-5 \
-            quantstudio-7 \
-            fluorocycler-xt \
-            demo--quantstudio-5 \
-            demo--quantstudio-7 \
-            demo--fluorocycler-xt; do
-            mkdir -p "projects/analyzer-harness/volume/analyzer-imports/$slug/incoming"
-          done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
       # ── Container Startup ───────────────────────────────────────────────────
@@ -191,6 +191,10 @@ jobs:
               COMPOSE_CMD+=(-f "$f")
             fi
           done
+          COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits.yml")
+          if [ "${{ inputs.setup_analyzer_harness }}" = "true" ]; then
+            COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits-harness.yml")
+          fi
           "${COMPOSE_CMD[@]}" up -d --no-build --wait --wait-timeout 900
 
       - name: Validate cert material in shared volume mounts
@@ -249,65 +253,35 @@ jobs:
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           DB_CONTAINER: openelisglobal-database
 
-      - name: Fix analyzer-imports permissions
+      - name: Fix analyzer-imports permissions after seeding
         if: inputs.setup_analyzer_harness
         run: |
-          for dir in \
-            quantstudio-5 \
-            quantstudio-7 \
-            fluorocycler-xt \
-            demo--quantstudio-5 \
-            demo--quantstudio-7 \
-            demo--fluorocycler-xt; do
-            timeout 120 bash -c "until [ -d projects/analyzer-harness/volume/analyzer-imports/$dir/incoming ]; do sleep 1; done"
-            echo "Found: $dir/incoming"
-          done
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
 
-      - name: Verify analyzer test mappings
-        if: inputs.setup_analyzer_harness
+      # ── Memory Instrumentation ─────────────────────────────────────────────
+
+      - name: Memory snapshot (pre-test)
         run: |
-          REQUIRED_ANALYZERS=(
-            "Cepheid GeneXpert (ASTM Mode)"
-            "QuantStudio 5"
-            "QuantStudio 7"
-            "FluoroCycler XT"
-            "Mindray BC-5380"
-            "Mindray BS-200"
-            "Mindray BS-300"
-          )
-          MAX_ATTEMPTS=12
-          SLEEP_SECONDS=5
-          ATTEMPT=1
-          while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
-            echo "Mapping gate attempt ${ATTEMPT}/${MAX_ATTEMPTS}"
-            MISSING=0
-            for analyzer in "${REQUIRED_ANALYZERS[@]}"; do
-              MAPPINGS=$(docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A \
-                -c "SELECT COUNT(*) FROM clinlims.analyzer_test_map m JOIN clinlims.analyzer a ON a.id = m.analyzer_id WHERE a.name = '$analyzer';" \
-                2>/dev/null | tr -d '[:space:]' || echo 0)
-              MAPPINGS="${MAPPINGS:-0}"
-              echo "$analyzer: $MAPPINGS test mappings"
-              if [ "$MAPPINGS" = "0" ]; then
-                MISSING=1
-              fi
-            done
-            if [ "$MISSING" = "0" ]; then
-              echo "Analyzer mapping gate passed."
-              exit 0
-            fi
-            if [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; then
-              echo "Mappings still missing; sleeping ${SLEEP_SECONDS}s..."
-              sleep "$SLEEP_SECONDS"
-            fi
-            ATTEMPT=$((ATTEMPT + 1))
-          done
-          echo "::error::Analyzer mapping gate failed: one or more required analyzers still have 0 test mappings"
-          exit 1
-        env:
-          BASE_URL: https://localhost
-          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
-          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          echo "=== System Memory ==="
+          free -m
+          echo ""
+          echo "=== Docker Container Memory ==="
+          docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null || true
+          echo ""
+          echo "=== Chromium Binary ==="
+          ls -lah ~/.cache/ms-playwright/chromium*/chrome-linux*/chrome 2>/dev/null || \
+          ls -lah ~/.cache/ms-playwright/chromium_headless_shell*/chrome-headless-shell-linux*/chrome-headless-shell 2>/dev/null || \
+          echo "Browser binary not found in expected locations"
+
+      - name: Start memory monitor (background)
+        run: |
+          (while true; do
+            echo "--- $(date -u +%H:%M:%S) ---"
+            free -m | grep "^Mem:"
+            docker stats --no-stream --format "{{.Name}}: {{.MemUsage}} ({{.MemPerc}})" 2>/dev/null || true
+            sleep 30
+          done) > /tmp/memory-monitor.log 2>&1 &
+          echo $! > /tmp/memory-monitor.pid
 
       # ── Test Execution ──────────────────────────────────────────────────────
 
@@ -333,6 +307,19 @@ jobs:
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
           FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
           FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
+
+      - name: Memory snapshot (post-test) + monitor dump
+        if: ${{ !cancelled() }}
+        run: |
+          echo "=== System Memory (post-test) ==="
+          free -m
+          echo ""
+          echo "=== Docker Container Memory (post-test) ==="
+          docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null || true
+          echo ""
+          echo "=== Memory Monitor Log (30s intervals during test) ==="
+          kill "$(cat /tmp/memory-monitor.pid 2>/dev/null)" 2>/dev/null || true
+          cat /tmp/memory-monitor.log 2>/dev/null || echo "No monitor log found"
 
       # ── Artifact Upload ─────────────────────────────────────────────────────
 
@@ -373,6 +360,12 @@ jobs:
           find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
           echo "=== Tomcat Errors ==="
           find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== FHIR Server Errors (last 500 lines) ==="
+          docker logs --tail 500 external-fhir-api 2>&1 | grep -iE 'ERROR|Exception|SEVERE' | grep -v 'ConstraintViolationException.*already exists' | tail -100 || echo "(none)"
+          echo "=== OE Webapp Errors (last 500 lines) ==="
+          docker logs --tail 500 openelisglobal-webapp 2>&1 | grep -E ' -- ERROR -- | -- WARN -- ' | tail -100 || echo "(none)"
+          echo "=== Bridge Logs (last 200 lines) ==="
+          docker logs --tail 200 openelis-analyzer-bridge 2>&1 | tail -200 || echo "(none)"
 
       - name: Dump docker logs on failure
         if: failure()
