@@ -46,8 +46,9 @@ public class PatientManagementRestController extends BaseRestController {
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void savepatient(HttpServletRequest request,
-            @Validated(SamplePatientEntryForm.SamplePatientEntry.class) 
+    public ResponseEntity<Map<String, String>> savepatient(
+            HttpServletRequest request,
+            @Validated(SamplePatientEntryForm.SamplePatientEntry.class)
             @RequestBody PatientManagementInfo patientInfo,
             BindingResult bindingResult) throws Exception {
 
@@ -56,22 +57,26 @@ public class PatientManagementRestController extends BaseRestController {
         } else {
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
         }
+
         Patient patient = new Patient();
 
         if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION) {
             PatientUtil.preparePatientData(bindingResult, request, patientInfo, patient);
+
             if (bindingResult.hasErrors()) {
                 try {
                     throw new BindException(bindingResult);
                 } catch (BindException e) {
                     LogEvent.logError(e);
-                    return;
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Validation failed"));
                 }
             }
+
             try {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
                 fhirTransformService.transformPersistPatient(patientInfo,
-                        (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
+                        patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD);
                 photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
             } catch (LIMSRuntimeException e) {
                 if (e.getCause() instanceof StaleObjectStateException) {
@@ -80,10 +85,16 @@ public class PatientManagementRestController extends BaseRestController {
                     LogEvent.logDebug(e);
                 }
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
+                return ResponseEntity.status(409)
+                    .body(Map.of("error", "Conflict: record modified by another user"));
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
+                return ResponseEntity.status(500)
+                    .body(Map.of("error", "FHIR processing failed"));
             }
         }
+
+        return ResponseEntity.ok(Map.of("status", "success"));
     }
 
     @PreAuthorize("hasRole('PATIENT_VIEW')")

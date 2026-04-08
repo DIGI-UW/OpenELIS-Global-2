@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="2024-add-patient-view-role" author="Mouli24">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'PATIENT_VIEW'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Add PATIENT_VIEW role for patient photo endpoint authorization.
+            Grants access to Results entry and Results Admin roles
+            via the SamplePatientEntry module.
+        </comment>
+
+        <!-- Step 1: Create the PATIENT_VIEW role -->
+        <insert schemaName="clinlims" tableName="system_role">
+            <column name="id" valueSequenceNext="system_role_seq" />
+            <column name="name" value="PATIENT_VIEW" />
+            <column name="description"
+                value="Allows viewing of patient photos and sensitive patient data" />
+            <column name="display_key" value="role.patient.view" />
+            <column name="active" valueBoolean="true" />
+            <column name="editable" valueBoolean="true" />
+        </insert>
+
+        <!-- Step 2: Grant PATIENT_VIEW to Results entry role -->
+        <insert schemaName="clinlims" tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role
+                                WHERE name = 'Results entry')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module
+                                WHERE name = 'SamplePatientEntry' limit 1)" />
+        </insert>
+
+        <!-- Step 3: Grant PATIENT_VIEW to Results Admin role -->
+        <insert schemaName="clinlims" tableName="system_role_module">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role
+                                WHERE name = 'Results Admin')" />
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module
+                                WHERE name = 'SamplePatientEntry' limit 1)" />
+        </insert>
+
+    </changeSet>
+
+</databaseChangeLog>
