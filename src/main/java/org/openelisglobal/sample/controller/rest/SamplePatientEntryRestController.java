@@ -275,6 +275,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 if (preservedLabNo != null && form.getSampleOrderItems() != null) {
                     form.getSampleOrderItems().setLabNo(preservedLabNo);
                 }
+                return form;
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));

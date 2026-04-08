@@ -665,10 +665,10 @@ public class OrganizationRestController extends BaseController {
                     organizations = new ArrayList<>();
                 }
             } else {
-                int startRecNo = (page - 1) * pageSize;
+                int startRecNo = Math.max(0, (page - 1) * pageSize);
                 organizations = organizationService.getPageOfOrganizations(startRecNo);
                 organizations = filterByReferringSiteTypes(organizations);
-                totalCount = organizations.size();
+                totalCount = organizationService.getTotalOrganizationCount();
             }
 
             List<Map<String, Object>> results = new ArrayList<>();

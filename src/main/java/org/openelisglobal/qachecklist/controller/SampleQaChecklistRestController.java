@@ -86,6 +86,15 @@ public class SampleQaChecklistRestController extends BaseRestController {
     @GetMapping("/{sampleId}")
     public ResponseEntity<?> getQaChecklist(@PathVariable String sampleId) {
         try {
+            // Validate that sampleId is numeric
+            try {
+                Integer.parseInt(sampleId.trim());
+            } catch (NumberFormatException e) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Invalid sampleId: must be a numeric value");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
+
             logger.info("Getting QA checklist for sample: {}", sampleId);
 
             SampleQaChecklist checklist = sampleQaChecklistService.findBySampleId(sampleId);
@@ -188,7 +197,13 @@ public class SampleQaChecklistRestController extends BaseRestController {
                 if (sampleIdObj instanceof Number) {
                     sampleId = ((Number) sampleIdObj).intValue();
                 } else if (sampleIdObj instanceof String) {
-                    sampleId = Integer.parseInt((String) sampleIdObj);
+                    try {
+                        sampleId = Integer.parseInt(((String) sampleIdObj).trim());
+                    } catch (NumberFormatException e) {
+                        Map<String, String> error = new HashMap<>();
+                        error.put("error", "Invalid sampleId: must be a numeric value");
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                    }
                 }
             } else if (requestBody.containsKey("labNumber")) {
                 String labNumber = (String) requestBody.get("labNumber");

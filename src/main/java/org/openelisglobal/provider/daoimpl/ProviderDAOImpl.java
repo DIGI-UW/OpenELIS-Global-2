@@ -186,6 +186,12 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
     public List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, String phone) {
         List<Provider> list = new Vector<>();
         try {
+            // Strip non-numeric characters from search value
+            String phoneValue = phone != null ? phone.replaceAll("[^0-9]", "") : "";
+            if (phoneValue.isEmpty()) {
+                return list;
+            }
+
             // calculate maxRow to be one more than the page size
             int endingRecNo = startingRecNo
                     + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
@@ -199,8 +205,6 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
                     + "replace(replace(replace(replace(p.person.fax, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') "
                     + "ORDER BY p.active DESC, p.person.lastName";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
-            // Strip non-numeric characters from search value
-            String phoneValue = phone.replaceAll("[^0-9]", "");
             query.setParameter("phoneValue", phoneValue);
             query.setFirstResult(startingRecNo - 1);
             query.setMaxResults(endingRecNo - 1);
@@ -217,6 +221,12 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
     @Override
     @Transactional(readOnly = true)
     public int getTotalSearchedProviderCountByPhone(String phone) {
+        // Strip non-numeric characters from search value
+        String phoneValue = phone != null ? phone.replaceAll("[^0-9]", "") : "";
+        if (phoneValue.isEmpty()) {
+            return 0;
+        }
+
         List<Provider> list = null;
         try {
             String sql = "from Provider p where "
@@ -224,8 +234,6 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
                     + "replace(replace(replace(replace(p.person.workPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
                     + "replace(replace(replace(replace(p.person.fax, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%')";
             Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
-            // Strip non-numeric characters from search value
-            String phoneValue = phone.replaceAll("[^0-9]", "");
             query.setParameter("phoneValue", phoneValue);
 
             list = query.list();
