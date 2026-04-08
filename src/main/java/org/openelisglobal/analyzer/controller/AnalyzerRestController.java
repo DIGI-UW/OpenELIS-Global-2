@@ -605,6 +605,8 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("filePattern", analyzer.getFilePattern());
         map.put("columnMappings", analyzer.getColumnMappings());
         map.put("fileFormat", analyzer.getFileFormat());
+        map.put("delimiter", analyzer.getDelimiter());
+        map.put("skipRows", analyzer.getSkipRows());
 
         // Derive plugin type info from analyzer_type FK
         boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();
