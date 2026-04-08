@@ -107,7 +107,6 @@ import { getFromOpenElisServer } from "../utils/Utils";
 
 function Admin() {
   const intl = useIntl();
-  const intl = useIntl();
   const { path } = useRouteMatch();
   const navigate = useNavigate();
   const [isSmallScreen, setIsSmallScreen] = useState(false);

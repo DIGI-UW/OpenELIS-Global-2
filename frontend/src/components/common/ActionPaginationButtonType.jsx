@@ -23,7 +23,6 @@ const ActionPaginationButtonType = ({
   type,
 }) => {
   const intl = useIntl();
-  const intl = useIntl();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
 
   useEffect(() => {

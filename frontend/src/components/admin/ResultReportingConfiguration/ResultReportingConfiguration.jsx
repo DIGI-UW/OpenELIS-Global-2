@@ -37,8 +37,6 @@ function ResultReportingConfiguration() {
 
   const componentMounted = useRef(false);
 
-  const intl = useIntl();
-
   const [loading, setLoading] = useState(false);
   const [reportsResp, setReportsResp] = useState({});
   const [reportsRespPost, setReportsRespPost] = useState({});

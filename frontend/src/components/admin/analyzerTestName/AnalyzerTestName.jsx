@@ -49,8 +49,6 @@ function AnalyzerTestName() {
     useContext(NotificationContext);
   const { reloadConfiguration } = useContext(ConfigurationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);

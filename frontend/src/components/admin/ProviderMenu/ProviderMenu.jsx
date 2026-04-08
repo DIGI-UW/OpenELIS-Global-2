@@ -50,8 +50,6 @@ function ProviderMenu() {
   const { reloadConfiguration, configurationProperties } =
     useContext(ConfigurationContext);
 
-  const intl = useIntl();
-
   const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);

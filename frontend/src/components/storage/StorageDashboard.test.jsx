@@ -463,7 +463,9 @@ describe("StorageDashboard Filter UI", () => {
 
     // Click the first Clear Filters button
     const clearButtons = screen.getAllByTestId("clear-filters-button");
-    fireEvent.click(clearButtons[0]);
+    act(() => {
+      fireEvent.click(clearButtons[0]);
+    });
 
     // Verify button disappears after clearing
     await waitFor(() => {
@@ -578,7 +580,9 @@ describe("StorageDashboard Filter UI", () => {
 
     // Click clear
     const clearButtons = screen.getAllByTestId("clear-filters-button");
-    fireEvent.click(clearButtons[0]);
+    act(() => {
+      fireEvent.click(clearButtons[0]);
+    });
 
     // Should disappear
     await waitFor(() => {
@@ -617,7 +621,9 @@ describe("StorageDashboard Filter UI", () => {
 
     // Click clear
     const clearButtons = screen.getAllByTestId("clear-filters-button");
-    fireEvent.click(clearButtons[0]);
+    act(() => {
+      fireEvent.click(clearButtons[0]);
+    });
 
     // Should disappear
     await waitFor(() => {
@@ -715,7 +721,9 @@ describe("StorageDashboard Filter UI", () => {
 
     // Click the Samples tab to activate it
     const samplesTab = await screen.findByTestId("tab-samples");
-    fireEvent.click(samplesTab);
+    act(() => {
+      fireEvent.click(samplesTab);
+    });
 
     // Wait for the sample list to appear
     const sampleList = await screen.findByTestId("sample-list");
@@ -1116,7 +1124,9 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Click to expand
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify expanded content appears by test id
     const expandedElements = await screen.findAllByTestId(
@@ -1132,7 +1142,9 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Click to collapse
-    fireEvent.click(collapseButton);
+    act(() => {
+      fireEvent.click(collapseButton);
+    });
 
     // Wait for state update - expanded content should be removed
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1166,7 +1178,9 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Expand first row
-    fireEvent.click(firstExpandButton);
+    act(() => {
+      fireEvent.click(firstExpandButton);
+    });
     const expandedElements1 = await screen.findAllByTestId(
       "expanded-room-1",
       {},
@@ -1175,7 +1189,9 @@ describe("StorageDashboard Expandable Rows", () => {
     expect(expandedElements1.length).toBeGreaterThan(0);
 
     // Expand second row (both should remain expanded)
-    fireEvent.click(secondExpandButton);
+    act(() => {
+      fireEvent.click(secondExpandButton);
+    });
     const expandedElements2 = await screen.findAllByTestId(
       "expanded-room-2",
       {},
@@ -1218,7 +1234,9 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Expand first row
-    fireEvent.click(firstExpandButton);
+    act(() => {
+      fireEvent.click(firstExpandButton);
+    });
     const expandedElements1Initial = await screen.findAllByTestId(
       "expanded-room-1",
       {},
@@ -1232,7 +1250,9 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Expand second row (both should remain expanded)
-    fireEvent.click(secondExpandButton);
+    act(() => {
+      fireEvent.click(secondExpandButton);
+    });
     const expandedElements2Initial = await screen.findAllByTestId(
       "expanded-room-2",
       {},
@@ -1286,13 +1306,17 @@ describe("StorageDashboard Expandable Rows", () => {
     const expandButton = rowScope.getByRole("button", {
       name: /expand current row/i,
     });
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     await screen.findByText(/Description/i);
 
     // Switch to devices tab
     const devicesTab = screen.getByRole("tab", { name: /devices/i });
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for devices tab to load
     await screen.findByText("Freezer Unit 1");
@@ -1324,7 +1348,9 @@ describe("StorageDashboard Expandable Rows", () => {
       name: /expand current row/i,
     });
 
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify all required fields are displayed by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1359,7 +1385,9 @@ describe("StorageDashboard Expandable Rows", () => {
       name: /expand current row/i,
     });
 
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify all required fields are displayed by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1390,7 +1418,9 @@ describe("StorageDashboard Expandable Rows", () => {
       name: /expand current row/i,
     });
 
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify all required fields are displayed by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1420,7 +1450,9 @@ describe("StorageDashboard Expandable Rows", () => {
       name: /expand current row/i,
     });
 
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify all required fields are displayed by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1457,7 +1489,9 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Expand second row (Storage Room with null description)
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify "N/A" is displayed for missing description by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1485,7 +1519,9 @@ describe("StorageDashboard Expandable Rows", () => {
       name: /expand current row/i,
     });
 
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify date is formatted (should not be raw ISO string) by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1516,7 +1552,9 @@ describe("StorageDashboard Expandable Rows", () => {
       name: /expand current row/i,
     });
 
-    fireEvent.click(expandButton);
+    act(() => {
+      fireEvent.click(expandButton);
+    });
 
     // Verify expanded content appears by test id
     const expandedContentElements = await screen.findAllByTestId(
@@ -1596,7 +1634,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab to appear and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1637,7 +1677,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1678,7 +1720,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1719,7 +1763,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1760,7 +1806,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1801,7 +1849,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1839,7 +1889,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for devices tab and click it
     const devicesTab = await screen.findByTestId("tab-devices");
-    fireEvent.click(devicesTab);
+    act(() => {
+      fireEvent.click(devicesTab);
+    });
 
     // Wait for device to appear
     await screen.findByText("Freezer Unit 1");
@@ -1856,7 +1908,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Use act to ensure React processes the click and menu opens
     await act(async () => {
-      fireEvent.click(menuButton);
+      act(() => {
+        fireEvent.click(menuButton);
+      });
       // Small delay for Carbon OverflowMenu to open and render items
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
@@ -1877,7 +1931,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Click the menu item (already found above)
     // Carbon OverflowMenuItem handles onClick internally
-    fireEvent.click(labelManagementItem);
+    act(() => {
+      fireEvent.click(labelManagementItem);
+    });
 
     // Verify Label Management modal opens - wait for modal to appear
     // The modal has a data-testid, so we can find it directly
@@ -1921,7 +1977,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for shelves tab and click it
     const shelvesTab = await screen.findByTestId("tab-shelves");
-    fireEvent.click(shelvesTab);
+    act(() => {
+      fireEvent.click(shelvesTab);
+    });
 
     // Wait for shelf to appear
     await screen.findByText("Shelf A");
@@ -1938,7 +1996,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Use act to ensure React processes the click and menu opens
     await act(async () => {
-      fireEvent.click(menuButton);
+      act(() => {
+        fireEvent.click(menuButton);
+      });
       // Small delay for Carbon OverflowMenu to open and render items
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
@@ -1959,7 +2019,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Click the menu item (already found above)
     // Carbon OverflowMenuItem handles onClick internally
-    fireEvent.click(labelManagementItem);
+    act(() => {
+      fireEvent.click(labelManagementItem);
+    });
 
     // Verify Label Management modal opens - wait for modal to appear
     // The modal has a data-testid, so we can find it directly
@@ -2006,7 +2068,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Wait for racks tab and click it
     const racksTab = await screen.findByTestId("tab-racks");
-    fireEvent.click(racksTab);
+    act(() => {
+      fireEvent.click(racksTab);
+    });
 
     // Wait for rack to appear
     await screen.findByText("Rack 1");
@@ -2023,7 +2087,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Use act to ensure React processes the click and menu opens
     await act(async () => {
-      fireEvent.click(menuButton);
+      act(() => {
+        fireEvent.click(menuButton);
+      });
       // Small delay for Carbon OverflowMenu to open and render items
       await new Promise((resolve) => setTimeout(resolve, 100));
     });
@@ -2044,7 +2110,9 @@ describe("StorageDashboard Capacity Display", () => {
 
     // Click the menu item (already found above)
     // Carbon OverflowMenuItem handles onClick internally
-    fireEvent.click(labelManagementItem);
+    act(() => {
+      fireEvent.click(labelManagementItem);
+    });
 
     // Verify Label Management modal opens - wait for modal to appear
     // The modal has a data-testid, so we can find it directly
@@ -2366,14 +2434,18 @@ describe("StorageDashboard Pagination (OGC-150)", () => {
 
     // Act: Switch to Rooms tab
     const roomsTab = screen.getByTestId("tab-rooms");
-    fireEvent.click(roomsTab);
+    act(() => {
+      fireEvent.click(roomsTab);
+    });
 
     // Wait for rooms tab to load
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     // Switch back to Samples tab
     const samplesTab = screen.getByTestId("tab-samples");
-    fireEvent.click(samplesTab);
+    act(() => {
+      fireEvent.click(samplesTab);
+    });
 
     // Assert: Pagination component should still be visible (state preserved)
     await waitFor(

@@ -59,8 +59,6 @@ function BarcodeConfiguration() {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const intl = useIntl();
-
   const [barcodeFromValues, setBarcodeFormValues] = useState(
     BarcodeConfigurationFormValues,
   );
