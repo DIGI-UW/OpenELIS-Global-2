@@ -2978,6 +2978,7 @@
   "notebook.page.sampleReception.title": "Sample Reception",
   "notebook.page.sampleReception.totalSamples": "Total Samples",
   "notebook.page.sampleReception.verified": "Verified",
+  "notebook.page.tb.qc.error.storageDestinationRequired": "Please choose Temporary Storage or Long-term Storage for samples routed to storage.",
   "notebook.page.title": "Notebook",
   "notebook.pages.none.subtitle": "Click to add Pages",
   "notebook.pages.none.title": "No Pages Added",

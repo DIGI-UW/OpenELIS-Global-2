@@ -360,12 +360,13 @@ function TBQualityCheckPage({
       return;
     }
 
+    const shouldRouteToProcessing =
+      bulkApplyValues.qcResult === "PASS" ||
+      bulkApplyValues.qcResult === "FAIL_PROCEED";
+
     const resolvedDestination =
       bulkApplyValues.destination ||
-      (bulkApplyValues.qcResult === "PASS" ||
-      bulkApplyValues.qcResult === "FAIL_PROCEED"
-        ? "PROCESSING"
-        : "");
+      (shouldRouteToProcessing ? "PROCESSING" : "");
 
     if (
       bulkApplyValues.qcResult === "PASS_TO_STORAGE" &&
@@ -603,18 +604,6 @@ function TBQualityCheckPage({
           setSuccessMessage(message);
           setSelectedSampleIds([]);
 
-          // DEBUG: Log passing samples with their destinations
-          console.log("=== ROUTING DEBUG ===");
-          console.log(
-            "Passing samples:",
-            passingSamples.map((s) => ({
-              id: s.id,
-              accessionNumber: s.accessionNumber,
-              destination: s.destination,
-              qcResult: s.qcResult,
-            })),
-          );
-
           // Route samples to next page based on destination
           const processingIds = passingSamples
             .filter(
@@ -632,16 +621,6 @@ function TBQualityCheckPage({
                 s.destination === "LONG_TERM_STORAGE",
             )
             .map((s) => parseInt(s.id, 10));
-
-          console.log(
-            "Processing IDs (destination=PROCESSING):",
-            processingIds,
-          );
-          console.log(
-            "Storage IDs (destination=TEMPORARY_STORAGE or LONG_TERM_STORAGE):",
-            storageIds,
-          );
-          console.log("==================");
 
           if (processingIds.length > 0) {
             routeSamplesToPage(processingIds, 3); // Route to Page 3 (Initial Sample Processing)
