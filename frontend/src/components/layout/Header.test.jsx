@@ -9,12 +9,10 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./Layout";
 import messages from "../../languages/en.json";
 
-// Mock react-router-dom
+// Mock react-router-dom - use actual hooks for useLocation to work with MemoryRouter
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
   useNavigate: () => jest.fn(),
-  useLocation: () => ({ pathname: "/" }),
-  useParams: () => ({}),
 }));
 
 /**

@@ -17,14 +17,11 @@ jest.mock("../utils/Utils", () => ({
 }));
 
 // Mock react-router-dom
-const mockHistory = {
-  replace: jest.fn(),
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockHistory,
+  useNavigate: () => mockNavigate,
 }));
 
 // Helper function to create mock location
@@ -505,7 +502,9 @@ describe("StorageDashboard Filter UI", () => {
     });
 
     // Click Clear
-    fireEvent.click(screen.getAllByTestId("clear-filters-button")[0]);
+    act(() => {
+      fireEvent.click(screen.getAllByTestId("clear-filters-button")[0]);
+    });
 
     // Should disappear
     await waitFor(() => {
@@ -541,7 +540,9 @@ describe("StorageDashboard Filter UI", () => {
     });
 
     // Click clear
-    fireEvent.click(screen.getAllByTestId("clear-filters-button")[0]);
+    act(() => {
+      fireEvent.click(screen.getAllByTestId("clear-filters-button")[0]);
+    });
 
     // Should disappear
     await waitFor(() => {
@@ -805,7 +806,9 @@ describe("StorageDashboard Boxes tab CRUD integration (C3)", () => {
     await screen.findByText(/Storage Management Dashboard/i);
 
     // Boxes tab should be active from route, but click to be explicit
-    fireEvent.click(await screen.findByTestId("tab-boxes"));
+    act(() => {
+      fireEvent.click(screen.getByTestId("tab-boxes"));
+    });
 
     const addButton = await screen.findByTestId("add-box-button");
     expect(!!addButton.disabled).toBe(true);
@@ -1275,11 +1278,13 @@ describe("StorageDashboard Expandable Rows", () => {
     });
 
     // Collapse first row
-    fireEvent.click(
-      firstRowScope.getByRole("button", {
-        name: /collapse current row/i,
-      }),
-    );
+    act(() => {
+      fireEvent.click(
+        firstRowScope.getByRole("button", {
+          name: /collapse current row/i,
+        }),
+      );
+    });
 
     // Verify first row is collapsed but second remains expanded
     await new Promise((resolve) => setTimeout(resolve, 100));
