@@ -70,8 +70,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
                 parsedAnalysisId = Integer.valueOf(analysisId.trim());
             } catch (NumberFormatException e) {
                 // Invalid analysisId - log and skip linking analysis
-                LogEvent.logWarn(this.getClass().getSimpleName(), "create",
-                        "Invalid analysisId: " + analysisId);
+                LogEvent.logWarn(this.getClass().getSimpleName(), "create", "Invalid analysisId: " + analysisId);
             }
         }
 
@@ -81,8 +80,7 @@ public class NonConformingEventWorkerImpl implements NonConformingEventWorker {
             try {
                 sampleItemId = Integer.valueOf(specimenId.trim());
             } catch (NumberFormatException e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "create",
-                        "Invalid specimenId: " + specimenId);
+                LogEvent.logWarn(this.getClass().getSimpleName(), "create", "Invalid specimenId: " + specimenId);
                 continue;
             }
 
