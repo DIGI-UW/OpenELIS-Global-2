@@ -1,15 +1,9 @@
 import { useState, useEffect, useContext, useCallback } from "react";
-import {
-  Button,
-  Grid,
-  Column,
-  Loading,
-  DatePicker,
-  DatePickerInput,
-} from "@carbon/react";
+import { Button, Grid, Column, Loading } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import CustomDatePicker from "../common/CustomDatePicker";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CartridgeUsageAPI from "./EquipmentUsageService";
 import ChooseEquipmentModal from "./modals/ChooseEquipment";
@@ -504,24 +498,17 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                       {usageRows.map((row) => (
                         <tr key={row.id}>
                           <td>
-                            <DatePicker
-                              datePickerType="single"
-                              dateFormat="mm/dd/yyyy"
-                            >
-                              <DatePickerInput
-                                id={`date-picker-${row.id}`}
-                                labelText="Date"
-                                placeholder="mm/dd/yyyy"
-                                value={row.date}
-                                onChange={(e) =>
-                                  handleRowChange(
-                                    row.id,
-                                    "date",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </DatePicker>
+                            <CustomDatePicker
+                              id={`date-picker-${row.id}`}
+                              key={`date-${row.id}`}
+                              labelText=""
+                              value={row.date}
+                              updateStateValue={true}
+                              className="tableDatePicker"
+                              onChange={(date) =>
+                                handleRowChange(row.id, "date", date)
+                              }
+                            />
                           </td>
                           <td>
                             <input
@@ -617,24 +604,17 @@ const EquipmentUsageLog = ({ onSubmitSuccess }) => {
                             />
                           </td>
                           <td>
-                            <DatePicker
-                              datePickerType="single"
-                              dateFormat="mm/dd/yyyy"
-                            >
-                              <DatePickerInput
-                                id={`approval-date-picker-${row.id}`}
-                                labelText="Approval Date"
-                                placeholder="mm/dd/yyyy"
-                                value={row.approvalDate}
-                                onChange={(e) =>
-                                  handleRowChange(
-                                    row.id,
-                                    "approvalDate",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </DatePicker>
+                            <CustomDatePicker
+                              id={`approval-date-picker-${row.id}`}
+                              key={`approval-date-${row.id}`}
+                              labelText=""
+                              value={row.approvalDate}
+                              updateStateValue={true}
+                              className="tableDatePicker"
+                              onChange={(date) =>
+                                handleRowChange(row.id, "approvalDate", date)
+                              }
+                            />
                           </td>
                           <td>
                             <input
