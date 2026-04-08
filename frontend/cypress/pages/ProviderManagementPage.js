@@ -9,7 +9,7 @@ class ProviderManagementPage {
       activeStatus: ".cds--list-box__menu-item__option",
       lastNameInput: "#addLastName",
       firstNameInput: "#addFirstName",
-      provderSearchBar: "#provider-search-bar",
+      providerSearchBar: "#provider-search-bar",
       modalAddButton: "div.cds--modal button:contains('Add')",
       updateButton: "div.cds--modal button:contains('Update')",
     };
@@ -49,7 +49,7 @@ class ProviderManagementPage {
   }
 
   searchProvider(value) {
-    cy.get(this.selectors.provderSearchBar).clear().type(value);
+    cy.get(this.selectors.providerSearchBar).clear().type(value);
   }
 
   confirmProvider(value) {

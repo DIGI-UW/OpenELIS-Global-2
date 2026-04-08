@@ -448,7 +448,7 @@ function ProviderMenu() {
           <Dropdown
             className="dropdown-list"
             id="addIsActive"
-            titleText="Active"
+            titleText={intl.formatMessage({ id: "label.active" })}
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
             itemToString={(item) => (item ? item.value : "")}
@@ -510,7 +510,7 @@ function ProviderMenu() {
           />
           <Dropdown
             id="updateIsActive"
-            titleText="Active"
+            titleText={intl.formatMessage({ id: "label.active" })}
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
             itemToString={(item) => (item ? item.value : "")}

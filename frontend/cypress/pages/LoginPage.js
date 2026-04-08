@@ -17,12 +17,12 @@ class LoginPage {
     cy.visit("/login");
   }
 
-  getUsernameElement() {
-    return cy.get(SELECTORS.USERNAME);
+  getUsernameElement(options = {}) {
+    return cy.get(SELECTORS.USERNAME, options);
   }
 
-  getPasswordElement() {
-    return cy.get(SELECTORS.PASSWORD);
+  getPasswordElement(options = {}) {
+    return cy.get(SELECTORS.PASSWORD, options);
   }
 
   enterUsername(value) {
