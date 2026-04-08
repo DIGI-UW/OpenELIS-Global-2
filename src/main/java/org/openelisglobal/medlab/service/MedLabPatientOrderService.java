@@ -20,11 +20,20 @@ public interface MedLabPatientOrderService {
      * @param testIds         list of test IDs to include
      * @param notebookEntryId notebook entry ID (optional)
      * @param notebookPageId  notebook page ID (optional)
+     * @param sampleCollectionPageId sample collection page ID (optional)
      * @param sysUserId       the system user ID
      * @return the created order information
      */
     Map<String, Object> createPatientOrder(String patientId, String labNo, String requestDate, String receivedDate,
-            String priority, List<String> testIds, Integer notebookEntryId, Integer notebookPageId, String sysUserId);
+            String priority, List<String> testIds, Integer notebookEntryId, Integer notebookPageId,
+            Integer sampleCollectionPageId, String sysUserId);
+
+    default Map<String, Object> createPatientOrder(String patientId, String labNo, String requestDate,
+            String receivedDate, String priority, List<String> testIds, Integer notebookEntryId,
+            Integer notebookPageId, String sysUserId) {
+        return createPatientOrder(patientId, labNo, requestDate, receivedDate, priority, testIds, notebookEntryId,
+                notebookPageId, null, sysUserId);
+    }
 
     /**
      * Creates bulk patient orders for multiple patients at once. Uses
@@ -37,11 +46,32 @@ public interface MedLabPatientOrderService {
      * @param priority        the order priority
      * @param notebookEntryId notebook entry ID (optional)
      * @param notebookPageId  notebook page ID (optional)
+     * @param sampleCollectionPageId sample collection page ID (optional)
      * @param sysUserId       the system user ID
      * @return result with created orders information
      */
     Map<String, Object> createBulkPatientOrders(List<Map<String, Object>> patients, String labNumberPrefix,
-            List<String> testIds, String priority, Integer notebookEntryId, Integer notebookPageId, String sysUserId);
+            List<String> testIds, String priority, Integer notebookEntryId, Integer notebookPageId,
+            Integer sampleCollectionPageId, String sysUserId);
+
+    default Map<String, Object> createBulkPatientOrders(List<Map<String, Object>> patients, String labNumberPrefix,
+            List<String> testIds, String priority, Integer notebookEntryId, Integer notebookPageId, String sysUserId) {
+        return createBulkPatientOrders(patients, labNumberPrefix, testIds, priority, notebookEntryId, notebookPageId,
+                null, sysUserId);
+    }
+
+    /**
+     * Links existing imported samples to a patient/participant so downstream pages
+     * can resolve the relationship outside notebook-page metadata.
+     *
+     * @param sampleItemIds   sample item IDs to link
+     * @param patientId       patient/participant ID
+     * @param notebookPageId  notebook page ID (optional)
+     * @param sysUserId       the system user ID
+     * @return linking result
+     */
+    Map<String, Object> linkSamplesToPatient(List<Integer> sampleItemIds, String patientId, Integer notebookPageId,
+            String sysUserId);
 
     /**
      * Creates independent orders for multiple samples with sequential lab numbers.

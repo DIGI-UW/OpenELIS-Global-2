@@ -117,7 +117,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
     @Transactional
     public Map<String, Object> createPatientOrder(String patientId, String labNo, String requestDate,
             String receivedDate, String priority, List<String> testIds, Integer notebookEntryId, Integer notebookPageId,
-            String sysUserId) {
+            Integer sampleCollectionPageId, String sysUserId) {
 
         Map<String, Object> result = new HashMap<>();
         LogEvent.logInfo(this.getClass().getSimpleName(), "createPatientOrder", "Starting order creation: patientId="
@@ -203,6 +203,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             orderData.put("receivedDate", receivedDate);
             orderData.put("notebookEntryId", notebookEntryId);
             orderData.put("notebookPageId", notebookPageId);
+            orderData.put("sampleCollectionPageId", sampleCollectionPageId);
             orderData.put("patientId", patientId);
 
             try {
@@ -219,19 +220,28 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             LogEvent.logInfo(this.getClass().getSimpleName(), "createPatientOrder",
                     "ElectronicOrder created: id=" + order.getId() + ", externalId=" + labNo);
 
-            // Create NotebookPageSample entry for tracking (uses labNo as reference since
-            // sample not yet created)
-            if (notebookPageId != null) {
+            // Track the pending sample on the collection page so the individual
+            // workflow hands off cleanly from page 1 to page 2.
+            Integer trackingPageId = sampleCollectionPageId != null ? sampleCollectionPageId : notebookPageId;
+            if (trackingPageId != null) {
                 try {
-                    // Create a placeholder NotebookPageSample with the labNo as identifier
-                    // This will be updated when the sample is collected
-                    notebookPageSampleService.createPageSampleForPageString(notebookPageId, labNo,
-                            NotebookPageSample.Status.PENDING);
+                    Map<String, Object> trackingData = new HashMap<>();
+                    trackingData.put("linkedOrderId", order.getId());
+                    trackingData.put("linkedOrderLabNo", labNo);
+                    trackingData.put("labNo", labNo);
+                    trackingData.put("accessionNumber", labNo);
+                    trackingData.put("patientId", patient.getId());
+                    String patientName = patientService.getLastFirstName(patient);
+                    trackingData.put("patientName", patientName);
+                    trackingData.put("participantName", patientName);
+
+                    notebookPageSampleService.createPageSampleForPageString(trackingPageId, labNo,
+                            NotebookPageSample.Status.PENDING, trackingData);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "createPatientOrder",
-                            "NotebookPageSample created for labNo=" + labNo + " on page=" + notebookPageId);
+                            "NotebookPageSample created for labNo=" + labNo + " on page=" + trackingPageId);
                 } catch (Exception npsError) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "createPatientOrder",
-                            "Failed to create NotebookPageSample for labNo=" + labNo + " on page=" + notebookPageId
+                            "Failed to create NotebookPageSample for labNo=" + labNo + " on page=" + trackingPageId
                                     + ": " + npsError.getMessage());
                     // Don't fail the order creation - notebook tracking is optional
                 }
@@ -262,7 +272,8 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
     @Override
     @Transactional
     public Map<String, Object> createBulkPatientOrders(List<Map<String, Object>> patients, String labNumberPrefix,
-            List<String> testIds, String priority, Integer notebookEntryId, Integer notebookPageId, String sysUserId) {
+            List<String> testIds, String priority, Integer notebookEntryId, Integer notebookPageId,
+            Integer sampleCollectionPageId, String sysUserId) {
 
         Map<String, Object> result = new HashMap<>();
         List<Map<String, Object>> createdOrders = new ArrayList<>();
@@ -402,6 +413,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 orderData.put("testIds", testIds);
                 orderData.put("notebookEntryId", notebookEntryId);
                 orderData.put("notebookPageId", notebookPageId);
+                orderData.put("sampleCollectionPageId", sampleCollectionPageId);
                 orderData.put("patientId", patientId);
 
                 try {
@@ -415,11 +427,22 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 LogEvent.logInfo(this.getClass().getSimpleName(), "createBulkPatientOrders",
                         "ElectronicOrder created: id=" + order.getId() + ", externalId=" + labNo);
 
-                // Create NotebookPageSample entry for tracking
-                if (notebookPageId != null) {
+                // Track the pending sample on the collection page so bulk participant
+                // orders and single orders land in the same step-2 workflow.
+                Integer trackingPageId = sampleCollectionPageId != null ? sampleCollectionPageId : notebookPageId;
+                if (trackingPageId != null) {
                     try {
-                        notebookPageSampleService.createPageSampleForPageString(notebookPageId, labNo,
-                                NotebookPageSample.Status.PENDING);
+                        Map<String, Object> trackingData = new HashMap<>();
+                        trackingData.put("linkedOrderId", order.getId());
+                        trackingData.put("linkedOrderLabNo", labNo);
+                        trackingData.put("labNo", labNo);
+                        trackingData.put("accessionNumber", labNo);
+                        trackingData.put("patientId", patientId);
+                        trackingData.put("patientName", lastName + ", " + firstName);
+                        trackingData.put("participantName", lastName + ", " + firstName);
+
+                        notebookPageSampleService.createPageSampleForPageString(trackingPageId, labNo,
+                                NotebookPageSample.Status.PENDING, trackingData);
                     } catch (Exception npsError) {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "createBulkPatientOrders",
                                 "Failed to create NotebookPageSample: " + npsError.getMessage());
@@ -461,6 +484,90 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
             // Re-throw to trigger transaction rollback
             throw new RuntimeException("Bulk order creation failed: " + e.getMessage(), e);
+        }
+
+        return result;
+    }
+
+    @Override
+    @Transactional
+    public Map<String, Object> linkSamplesToPatient(List<Integer> sampleItemIds, String patientId, Integer notebookPageId,
+            String sysUserId) {
+
+        Map<String, Object> result = new HashMap<>();
+
+        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
+            result.put("success", false);
+            result.put("error", "At least one sample is required");
+            return result;
+        }
+
+        Patient patient = patientService.get(patientId);
+        if (patient == null) {
+            result.put("success", false);
+            result.put("error", "Patient not found: " + patientId);
+            return result;
+        }
+
+        String patientName = patientService.getLastFirstName(patient);
+        int linkedCount = 0;
+        List<String> errors = new ArrayList<>();
+
+        for (Integer sampleItemId : sampleItemIds) {
+            try {
+                SampleItem sampleItem = sampleItemService.get(String.valueOf(sampleItemId));
+                if (sampleItem == null || sampleItem.getSample() == null) {
+                    errors.add("Sample item not found: " + sampleItemId);
+                    continue;
+                }
+
+                Sample sample = sampleItem.getSample();
+
+                SampleHuman sampleHumanLookup = new SampleHuman();
+                sampleHumanLookup.setSampleId(sample.getId());
+                SampleHuman sampleHuman = sampleHumanService.getDataBySample(sampleHumanLookup);
+                if (sampleHuman == null) {
+                    sampleHuman = new SampleHuman();
+                    sampleHuman.setSampleId(sample.getId());
+                }
+
+                sampleHuman.setPatientId(patient.getId());
+                sampleHuman.setSysUserId(sysUserId);
+                sampleHumanService.save(sampleHuman);
+
+                if (notebookPageId != null) {
+                    NotebookPageSample pageSample = notebookPageSampleService.getByPageIdAndSampleItemId(notebookPageId,
+                            sampleItemId);
+                    if (pageSample != null) {
+                        Map<String, Object> data = pageSample.getData() != null ? new HashMap<>(pageSample.getData())
+                                : new HashMap<>();
+                        data.put("patientId", patient.getId());
+                        data.put("patientName", patientName);
+                        data.put("participantName", patientName);
+                        pageSample.setData(data);
+                        pageSample.setSysUserId(sysUserId);
+                        notebookPageSampleService.update(pageSample);
+                    }
+                }
+
+                linkedCount++;
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "linkSamplesToPatient",
+                        "Error linking sample item " + sampleItemId + " to patient " + patientId + ": "
+                                + e.getMessage());
+                errors.add("Error linking sample item " + sampleItemId + ": " + e.getMessage());
+            }
+        }
+
+        result.put("success", linkedCount > 0);
+        result.put("linkedCount", linkedCount);
+        result.put("patientId", patient.getId());
+        result.put("patientName", patientName);
+        if (!errors.isEmpty()) {
+            result.put("errors", errors);
+        }
+        if (linkedCount == 0) {
+            result.put("error", errors.isEmpty() ? "No samples were linked" : errors.get(0));
         }
 
         return result;
@@ -836,6 +943,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             // Parse test IDs and notebookPageId from order data
             List<String> testIds = new ArrayList<>();
             Integer orderNotebookPageId = null;
+            Integer orderSampleCollectionPageId = null;
             if (StringUtils.isNotBlank(order.getData())) {
                 try {
                     @SuppressWarnings("unchecked")
@@ -849,6 +957,10 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                     Object pageIdObj = orderData.get("notebookPageId");
                     if (pageIdObj != null) {
                         orderNotebookPageId = Integer.parseInt(pageIdObj.toString());
+                    }
+                    Object sampleCollectionPageObj = orderData.get("sampleCollectionPageId");
+                    if (sampleCollectionPageObj != null) {
+                        orderSampleCollectionPageId = Integer.parseInt(sampleCollectionPageObj.toString());
                     }
                 } catch (Exception e) {
                     LogEvent.logWarn(this.getClass().getSimpleName(), "recordSampleCollection",
@@ -922,6 +1034,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
             // Create SampleItems and Analyses for each test
             int testCount = 0;
+            String primarySampleItemId = null;
             TypeOfSample typeOfSample = null;
             if (StringUtils.isNotBlank(sampleTypeId)) {
                 typeOfSample = typeOfSampleService.get(sampleTypeId);
@@ -971,6 +1084,9 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 }
 
                 sampleItemService.insert(sampleItem);
+                if (primarySampleItemId == null) {
+                    primarySampleItemId = sampleItem.getId();
+                }
                 LogEvent.logInfo(this.getClass().getSimpleName(), "recordSampleCollection",
                         "SampleItem created: id=" + sampleItem.getId());
 
@@ -989,15 +1105,19 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 testCount++;
             }
 
-            // Update NotebookPageSample entries for this labNo to COMPLETED
-            // Use orderNotebookPageId or the passed notebookPageId
-            Integer effectivePageId = orderNotebookPageId != null ? orderNotebookPageId : notebookPageId;
+            // Update NotebookPageSample entry for this labNo to COMPLETED on the
+            // sample collection page. The placeholder row is created on page 2 using
+            // sampleCollectionPageId, not the original order-entry page.
+            Integer effectivePageId = orderSampleCollectionPageId != null ? orderSampleCollectionPageId
+                    : (orderNotebookPageId != null ? orderNotebookPageId : notebookPageId);
             if (effectivePageId != null) {
                 NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(labNo,
                         effectivePageId);
                 if (pageSample != null) {
                     pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                    pageSample.setSampleItemId(sample.getId()); // Update with actual sample ID
+                    if (primarySampleItemId != null) {
+                        pageSample.setSampleItemId(primarySampleItemId);
+                    }
                     pageSample.setSysUserId(sysUserId);
                     notebookPageSampleService.update(pageSample);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "recordSampleCollection",
