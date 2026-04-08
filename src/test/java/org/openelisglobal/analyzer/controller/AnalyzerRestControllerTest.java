@@ -240,9 +240,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         // (fresh analyzer has no recent results → hard delete → 200 with message)
         UserSessionData usd = new UserSessionData();
         usd.setSytemUserId(1);
-        mockMvc.perform(
-                post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON)
-                        .sessionAttr(IActionConstants.USER_SESSION_DATA, usd))
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/delete")
+                .contentType(MediaType.APPLICATION_JSON).sessionAttr(IActionConstants.USER_SESSION_DATA, usd))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
     }
 
