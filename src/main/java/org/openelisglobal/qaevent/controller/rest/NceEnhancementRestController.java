@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -86,6 +87,11 @@ public class NceEnhancementRestController extends BaseRestController {
     @Autowired
     private AnalysisService analysisService;
 
+    @Value("${org.openelisglobal.nce.attachment.path:/var/lib/openelis-global/nce-attachments}")
+    private String attachmentBaseDir;
+
+    private static final int USER_AUTOCOMPLETE_RESULT_LIMIT = 25;
+
     @GetMapping(value = "/generate-number", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateNceNumber() {
         String nceNumber = nceNumberGeneratorService.generateNceNumber();
@@ -108,8 +114,8 @@ public class NceEnhancementRestController extends BaseRestController {
             item.nceCategoryId = event.getNceCategoryId();
             item.nceTypeId = event.getNceTypeId();
             item.labOrderNumber = event.getLabOrderNumber();
-            item.dateOfEvent = event.getDateOfEvent() != null ? event.getDateOfEvent().toString() : null;
-            item.reportDate = event.getReportDate() != null ? event.getReportDate().toString() : null;
+            item.dateOfEvent = event.getDateOfEvent() != null ? event.getDateOfEvent().toLocalDate().toString() : null;
+            item.reportDate = event.getReportDate() != null ? event.getReportDate().toLocalDate().toString() : null;
             item.nameOfReporter = event.getNameOfReporter();
             item.immediateAction = event.getImmediateAction();
             item.suspectedCauses = event.getSuspectedCauses();
@@ -176,7 +182,7 @@ public class NceEnhancementRestController extends BaseRestController {
                 attachmentDTO.fileType = attachment.getFileType();
                 attachmentDTO.fileSize = attachment.getFileSize();
                 attachmentDTO.uploadedDate = attachment.getUploadedDate() != null
-                        ? attachment.getUploadedDate().toString()
+                        ? attachment.getUploadedDate().toInstant().toString()
                         : null;
                 attachmentDTOs.add(attachmentDTO);
             }
@@ -191,7 +197,7 @@ public class NceEnhancementRestController extends BaseRestController {
                 historyDTO.id = String.valueOf(history.getId());
                 historyDTO.activity = history.getActivity();
                 historyDTO.description = history.getDescription();
-                historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toString() : null;
+                historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString() : null;
 
                 // Get user name
                 String userName = null;
@@ -214,7 +220,7 @@ public class NceEnhancementRestController extends BaseRestController {
                     noteDTO.id = String.valueOf(history.getId());
                     noteDTO.text = history.getDescription();
                     noteDTO.userName = userName;
-                    noteDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toString() : null;
+                    noteDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString() : null;
                     noteDTOs.add(noteDTO);
                 }
             }
@@ -268,7 +274,13 @@ public class NceEnhancementRestController extends BaseRestController {
         }
 
         try {
-            Path filePath = Paths.get(attachment.getFilePath());
+            Path basePath = Paths.get(attachmentBaseDir).toRealPath();
+            Path filePath = Paths.get(attachment.getFilePath()).normalize();
+            if (!filePath.startsWith(basePath)) {
+                LogEvent.logError(this.getClass().getSimpleName(), "downloadAttachment",
+                        "Attachment path is outside allowed directory: " + filePath);
+                return ResponseEntity.status(403).build();
+            }
             if (!Files.exists(filePath)) {
                 LogEvent.logError(this.getClass().getSimpleName(), "downloadAttachment",
                         "Attachment file not found on disk: " + filePath);
@@ -316,7 +328,7 @@ public class NceEnhancementRestController extends BaseRestController {
 
         // Get current user ID from security context
         String sysUserId = getSysUserId(httpRequest);
-        Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
+        Integer userId = parseUserIdSafely(sysUserId);
 
         String activity = historyRequest.activity != null ? historyRequest.activity : "NOTE_ADDED";
 
@@ -374,7 +386,7 @@ public class NceEnhancementRestController extends BaseRestController {
         ncEventService.update(event);
 
         // Log assignment in history
-        Integer userId = sysUserId != null ? Integer.valueOf(sysUserId) : null;
+        Integer userId = parseUserIdSafely(sysUserId);
         nceHistoryService.logActivity(assignRequest.nceId, "ASSIGNED", "Assigned to " + assigneeName, null,
                 assignRequest.assignedTo, userId);
 
@@ -412,9 +424,22 @@ public class NceEnhancementRestController extends BaseRestController {
                     dto.displayName = (user.getFirstName() != null ? user.getFirstName() : "")
                             + (user.getLastName() != null ? " " + user.getLastName() : "");
                     return dto;
-                }).collect(Collectors.toList());
+                }).limit(USER_AUTOCOMPLETE_RESULT_LIMIT).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
+    }
+
+    private Integer parseUserIdSafely(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(userId.trim());
+        } catch (NumberFormatException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "parseUserIdSafely",
+                    "Non-numeric userId from security context: " + userId);
+            return null;
+        }
     }
 
     public static class NceCategoryDTO {

@@ -130,6 +130,15 @@ export const NceDashboard = () => {
     loadUsers();
   }, [loadNceData, loadCategories, loadUsers]);
 
+  // Normalize timestamp strings to ISO format for reliable cross-browser parsing
+  const parseTimestamp = (ts) => {
+    if (!ts) return null;
+    // Java Timestamp.toString() produces "YYYY-MM-DD HH:MM:SS.S" — replace space with T for ISO
+    const normalized = ts.includes("T") ? ts : ts.replace(" ", "T");
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
   // Calculate summary counts
   const calculateSummaryCounts = (list) => {
     const counts = {
@@ -231,15 +240,15 @@ export const NceDashboard = () => {
   const handleAcknowledge = (nce) => {
     // Log acknowledgment via history
     const payload = {
-      nceId: nce.id,
+      nceId: Number(nce.id),
       activity: "ACKNOWLEDGED",
       description: "NCE acknowledged",
     };
     postToOpenElisServer(
       "/rest/nce/history",
       JSON.stringify(payload),
-      (response) => {
-        if (response) {
+      (status) => {
+        if (status >= 200 && status < 300) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -251,7 +260,19 @@ export const NceDashboard = () => {
               defaultMessage: "NCE acknowledged successfully",
             }),
           });
-          loadNceData(); // Refresh data
+          loadNceData();
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "nce.acknowledge.error",
+              defaultMessage: "Failed to acknowledge NCE",
+            }),
+          });
         }
       },
     );
@@ -287,14 +308,14 @@ export const NceDashboard = () => {
     }
 
     const payload = {
-      nceId: nceId,
+      nceId: Number(nceId),
       assignedTo: assignee.id,
     };
     postToOpenElisServer(
       "/rest/nce/assign",
       JSON.stringify(payload),
-      (response) => {
-        if (response) {
+      (status) => {
+        if (status >= 200 && status < 300) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -309,6 +330,18 @@ export const NceDashboard = () => {
           setAssignFormOpen(null);
           setAssignee(null);
           loadNceData();
+        } else {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "notification.error",
+              defaultMessage: "Error",
+            }),
+            message: intl.formatMessage({
+              id: "nce.assign.error",
+              defaultMessage: "Failed to assign NCE",
+            }),
+          });
         }
       },
     );
@@ -343,15 +376,15 @@ export const NceDashboard = () => {
     }
 
     const payload = {
-      nceId: nceId,
+      nceId: Number(nceId),
       activity: "NOTE_ADDED",
       description: noteText,
     };
     postToOpenElisServer(
       "/rest/nce/history",
       JSON.stringify(payload),
-      (response) => {
-        if (response) {
+      (status) => {
+        if (status >= 200 && status < 300) {
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -936,11 +969,9 @@ export const NceDashboard = () => {
                                       })}
                                   </span>
                                   <span className="nce-note-time">
-                                    {note.timestamp
-                                      ? new Date(
-                                          note.timestamp,
-                                        ).toLocaleString()
-                                      : ""}
+                                    {parseTimestamp(
+                                      note.timestamp,
+                                    )?.toLocaleString() ?? ""}
                                   </span>
                                 </div>
                               </div>
@@ -1024,9 +1055,9 @@ export const NceDashboard = () => {
                                     })}
                                 </span>
                                 <span className="nce-history-time">
-                                  {entry.timestamp
-                                    ? new Date(entry.timestamp).toLocaleString()
-                                    : ""}
+                                  {parseTimestamp(
+                                    entry.timestamp,
+                                  )?.toLocaleString() ?? ""}
                                 </span>
                               </div>
                             </div>
