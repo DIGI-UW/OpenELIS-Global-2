@@ -1,7 +1,7 @@
 package org.openelisglobal.qaevent.daoimpl;
 
-import java.util.List;
 import jakarta.persistence.TypedQuery;
+import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.qaevent.dao.NceHistoryDAO;
 import org.openelisglobal.qaevent.valueholder.NceHistory;

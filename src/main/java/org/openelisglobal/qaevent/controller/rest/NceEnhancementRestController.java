@@ -1,5 +1,6 @@
 package org.openelisglobal.qaevent.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,16 +14,16 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.service.NceAttachmentService;
 import org.openelisglobal.qaevent.service.NceCategoryService;
+import org.openelisglobal.qaevent.service.NceHistoryService;
 import org.openelisglobal.qaevent.service.NceNumberGeneratorService;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
 import org.openelisglobal.qaevent.service.NceTypeService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceAttachment;
 import org.openelisglobal.qaevent.valueholder.NceCategory;
+import org.openelisglobal.qaevent.valueholder.NceHistory;
 import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.qaevent.valueholder.NceType;
-import org.openelisglobal.qaevent.service.NceHistoryService;
-import org.openelisglobal.qaevent.valueholder.NceHistory;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -35,7 +36,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -305,8 +305,8 @@ public class NceEnhancementRestController extends BaseRestController {
             }
         }
 
-        NceHistory history = nceHistoryService.logActivity(historyRequest.nceId, activity,
-                historyRequest.description, null, null, userId);
+        NceHistory history = nceHistoryService.logActivity(historyRequest.nceId, activity, historyRequest.description,
+                null, null, userId);
 
         return ResponseEntity.ok(Map.of("success", true, "id", history.getId()));
     }
@@ -366,8 +366,8 @@ public class NceEnhancementRestController extends BaseRestController {
             @org.springframework.web.bind.annotation.RequestParam(required = false) String search) {
         List<SystemUser> allUsers = systemUserService.getAllSystemUsers();
 
-        List<UserDTO> result = allUsers.stream().filter(user -> user.getIsActive() != null && "Y".equals(user.getIsActive()))
-                .filter(user -> {
+        List<UserDTO> result = allUsers.stream()
+                .filter(user -> user.getIsActive() != null && "Y".equals(user.getIsActive())).filter(user -> {
                     if (search == null || search.isEmpty()) {
                         return true;
                     }

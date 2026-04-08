@@ -19,7 +19,7 @@
                 <columnExists schemaName="clinlims" tableName="nc_event" columnName="title"/>
             </not>
         </preConditions>
-        <comment>Add title, immediate_action, and severity columns to nc_event</comment>
+        <comment>Add title, immediate_action, severity, and assigned_to columns to nc_event</comment>
 
         <addColumn schemaName="clinlims" tableName="nc_event">
             <column name="title" type="VARCHAR(200)">
@@ -29,6 +29,9 @@
                 <constraints nullable="true"/>
             </column>
             <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="assigned_to" type="INTEGER">
                 <constraints nullable="true"/>
             </column>
             <column name="last_updated" type="TIMESTAMP">
@@ -415,55 +418,6 @@
         </createIndex>
 
         <createSequence schemaName="clinlims" sequenceName="nce_history_seq" startValue="1" incrementBy="1"/>
-    </changeSet>
-
-    <!-- ================================================================== -->
-    <!-- FIX: Rename lastupdated to last_updated if incorrectly created     -->
-    <!-- ================================================================== -->
-    <changeSet author="reagan-meant" id="nce-018b-fix-nce-history-column">
-        <preConditions onFail="MARK_RAN">
-            <tableExists schemaName="clinlims" tableName="nce_history"/>
-            <columnExists schemaName="clinlims" tableName="nce_history" columnName="lastupdated"/>
-        </preConditions>
-        <comment>Rename lastupdated to last_updated for consistency with BaseObject</comment>
-        <renameColumn schemaName="clinlims" tableName="nce_history" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
-    </changeSet>
-
-    <!-- ================================================================== -->
-    <!-- FIX: Add last_updated column if missing                            -->
-    <!-- ================================================================== -->
-    <changeSet author="reagan-meant" id="nce-018c-add-last-updated-column">
-        <preConditions onFail="MARK_RAN">
-            <tableExists schemaName="clinlims" tableName="nce_history"/>
-            <not>
-                <columnExists schemaName="clinlims" tableName="nce_history" columnName="last_updated"/>
-            </not>
-        </preConditions>
-        <comment>Add last_updated column if it doesn't exist</comment>
-        <addColumn schemaName="clinlims" tableName="nce_history">
-            <column name="last_updated" type="TIMESTAMP">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
-    </changeSet>
-
-    <!-- ================================================================== -->
-    <!-- Add assigned_to column to nc_event table                           -->
-    <!-- ================================================================== -->
-    <changeSet author="reagan-meant" id="nce-020-add-assigned-to">
-        <preConditions onFail="MARK_RAN">
-            <tableExists schemaName="clinlims" tableName="nc_event"/>
-            <not>
-                <columnExists schemaName="clinlims" tableName="nc_event" columnName="assigned_to"/>
-            </not>
-        </preConditions>
-        <comment>Add assigned_to column to nc_event for user assignment</comment>
-
-        <addColumn schemaName="clinlims" tableName="nc_event">
-            <column name="assigned_to" type="INTEGER">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
     </changeSet>
 
     <!-- ================================================================== -->

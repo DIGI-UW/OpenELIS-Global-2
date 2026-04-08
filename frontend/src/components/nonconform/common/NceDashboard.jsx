@@ -117,10 +117,7 @@ export const NceDashboard = () => {
 
   // Load users for assignment
   const loadUsers = useCallback(() => {
-    console.log("DEBUG: loadUsers called, fetching /rest/nce/users");
     getFromOpenElisServer("/rest/nce/users", (data) => {
-      console.log("DEBUG: /rest/nce/users response:", data);
-      console.log("DEBUG: isArray:", Array.isArray(data), "length:", data ? data.length : "null");
       if (data && Array.isArray(data)) {
         setUsers(data);
       }
@@ -904,10 +901,7 @@ export const NceDashboard = () => {
                           </h4>
                           <div className="nce-notes-list">
                             {nce.notes.map((note) => (
-                              <div
-                                key={note.id}
-                                className="nce-note-item"
-                              >
+                              <div key={note.id} className="nce-note-item">
                                 <p className="nce-note-text">{note.text}</p>
                                 <div className="nce-note-meta">
                                   <span className="nce-note-user">
@@ -915,7 +909,9 @@ export const NceDashboard = () => {
                                   </span>
                                   <span className="nce-note-time">
                                     {note.timestamp
-                                      ? new Date(note.timestamp).toLocaleString()
+                                      ? new Date(
+                                          note.timestamp,
+                                        ).toLocaleString()
                                       : ""}
                                   </span>
                                 </div>
@@ -1056,7 +1052,9 @@ export const NceDashboard = () => {
                       items={users}
                       itemToString={(user) => {
                         if (!user) return "";
-                        const name = user.displayName || `${user.firstName || ""} ${user.lastName || ""}`.trim();
+                        const name =
+                          user.displayName ||
+                          `${user.firstName || ""} ${user.lastName || ""}`.trim();
                         if (name && user.loginName) {
                           return `${name} (${user.loginName})`;
                         }
@@ -1064,8 +1062,11 @@ export const NceDashboard = () => {
                       }}
                       shouldFilterItem={({ item, inputValue }) => {
                         if (!inputValue) return true;
-                        const name = item.displayName || `${item.firstName || ""} ${item.lastName || ""}`.trim();
-                        const label = `${name} (${item.loginName || ""})`.toLowerCase();
+                        const name =
+                          item.displayName ||
+                          `${item.firstName || ""} ${item.lastName || ""}`.trim();
+                        const label =
+                          `${name} (${item.loginName || ""})`.toLowerCase();
                         return label.includes(inputValue.toLowerCase());
                       }}
                       selectedItem={assignee}
@@ -1161,7 +1162,6 @@ export const NceDashboard = () => {
           setPageSize(newPageSize);
         }}
       />
-
     </div>
   );
 };

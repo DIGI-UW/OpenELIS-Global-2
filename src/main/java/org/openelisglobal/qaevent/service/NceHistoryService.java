@@ -18,7 +18,8 @@ public interface NceHistoryService extends BaseObjectService<NceHistory, Integer
      * Log a history entry for an NCE.
      *
      * @param nceId       the NCE ID
-     * @param activity    the activity type (e.g., "CREATED", "STATUS_CHANGED", "UPDATED")
+     * @param activity    the activity type (e.g., "CREATED", "STATUS_CHANGED",
+     *                    "UPDATED")
      * @param description detailed description of the change
      * @param oldValue    previous value (if applicable)
      * @param newValue    new value (if applicable)
