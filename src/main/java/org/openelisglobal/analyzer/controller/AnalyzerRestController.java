@@ -509,23 +509,20 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
+     * POST /rest/analyzer/analyzers/{id}/delete Soft-delete an analyzer.
      *
      * <p>
-     * Implements 90-day soft delete window per spec requirement:
-     * <ul>
-     * <li>If analyzer has recent results (within 90 days): soft delete (status =
-     * DELETED)</li>
-     * <li>If analyzer has no recent results: hard delete (remove from
-     * database)</li>
-     * </ul>
+     * Sets the analyzer status to {@link AnalyzerStatus#DELETED} and marks it
+     * inactive. The authenticated user's sysUserId is recorded for audit history.
      *
      * <p>
      * Note: Uses POST instead of DELETE HTTP method due to Spring Security 6 CSRF
      * protection blocking DELETE requests even with valid CSRF tokens.
      *
-     * @param id Analyzer ID to delete
-     * @return 200 on success with deletion details, 404 if analyzer not found
+     * @param id      Analyzer ID to delete
+     * @param request HTTP request used to resolve the authenticated user
+     * @return 200 on success with deletion details, 401 if user context cannot be
+     *         resolved, 404 if analyzer not found
      */
     @PostMapping("/analyzers/{id}/delete")
     public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id, HttpServletRequest request) {
@@ -537,9 +534,8 @@ public class AnalyzerRestController extends BaseRestController {
 
             String sysUserId = getSysUserId(request);
             if (sysUserId == null || sysUserId.trim().isEmpty()) {
-                Map<String, Object> error = new LinkedHashMap<>();
-                error.put("error", "Unable to determine authenticated user");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(AnalyzerControllerHelper.wrapError("Unable to determine authenticated user"));
             }
 
             analyzer.setStatus(AnalyzerStatus.DELETED);
@@ -559,9 +555,8 @@ public class AnalyzerRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {
             logger.error("Error deleting analyzer", e);
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(AnalyzerControllerHelper.wrapError(e.getMessage()));
         }
     }
 
