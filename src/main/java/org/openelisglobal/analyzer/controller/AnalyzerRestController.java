@@ -529,15 +529,23 @@ public class AnalyzerRestController extends BaseRestController {
      * @return 200 on success with deletion details, 404 if analyzer not found
      */
     @PostMapping("/analyzers/{id}/delete")
-    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id, HttpServletRequest request) {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
 
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null || sysUserId.trim().isEmpty()) {
+                Map<String, Object> error = new LinkedHashMap<>();
+                error.put("error", "Unable to determine authenticated user");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
             analyzer.setStatus(AnalyzerStatus.DELETED);
             analyzer.setActive(false);
+            analyzer.setSysUserId(sysUserId);
             analyzerService.update(analyzer);
 
             unregisterFromBridgeAsync(id, analyzer.getName());
