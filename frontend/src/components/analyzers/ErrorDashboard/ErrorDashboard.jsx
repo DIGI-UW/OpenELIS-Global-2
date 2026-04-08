@@ -199,10 +199,13 @@ const ErrorDashboard = () => {
     } else {
       params.delete("search");
     }
-    navigate({
-      pathname: location.pathname,
-      search: params.toString(, { replace: true }),
-    });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString(),
+      },
+      { replace: true },
+    );
 
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -227,10 +230,13 @@ const ErrorDashboard = () => {
     } else {
       params.delete(filterName);
     }
-    navigate({
-      pathname: location.pathname,
-      search: params.toString(, { replace: true }),
-    });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString(),
+      },
+      { replace: true },
+    );
 
     loadErrors(newFilters);
   };

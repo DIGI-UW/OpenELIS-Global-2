@@ -167,7 +167,7 @@ const FieldMapping = () => {
     }
     navigate({
       pathname: location.pathname,
-      search: params.toString(, { replace: true }),
+      search: params.toString() { replace: true }),
     });
   };
 
@@ -427,7 +427,7 @@ const FieldMapping = () => {
               }
               navigate({
                 pathname: location.pathname,
-                search: params.toString(, { replace: true }),
+                search: params.toString() { replace: true }),
               });
             }}
             mappings={mappings}

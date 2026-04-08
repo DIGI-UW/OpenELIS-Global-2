@@ -160,7 +160,7 @@ const AnalyzersList = () => {
       } else {
         params.delete("search");
       }
-      navigate({ search: params.toString(, { replace: true }) });
+      navigate({ search: params.toString() }, { replace: true });
     }, 300);
   };
 
@@ -174,7 +174,7 @@ const AnalyzersList = () => {
     } else {
       params.delete(filterName);
     }
-    navigate({ search: params.toString(, { replace: true }) });
+    navigate({ search: params.toString() }, { replace: true });
   };
 
   const headers = [

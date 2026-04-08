@@ -21,14 +21,11 @@ jest.mock("../../../services/analyzerService", () => ({
   updateAnalyzer: jest.fn(),
 }));
 
-const mockHistory = {
-  push: jest.fn(),
-  replace: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockHistory,
+  useNavigate: () => mockNavigate,
   useLocation: () => ({ pathname: "/analyzers" }),
 }));
 
@@ -97,8 +94,7 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
-    mockHistory.push.mockClear();
-    mockHistory.replace.mockClear();
+    mockNavigate.mockClear();
 
     // Default mock implementations for AnalyzerForm dependencies
     getAnalyzerTypes.mockImplementation((filters, callback) => {

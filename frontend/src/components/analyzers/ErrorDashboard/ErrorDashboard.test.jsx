@@ -17,6 +17,14 @@ jest.mock("../../../components/utils/Utils", () => ({
   postToOpenElisServerFullResponse: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: "/error-dashboard", search: "" }),
+}));
+
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
 // 1. React
