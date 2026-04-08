@@ -17,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerQueryService;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -236,8 +238,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Act & Assert: POST delete endpoint returns 200 with deletion result
         // (fresh analyzer has no recent results → hard delete → 200 with message)
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
         mockMvc.perform(
-                post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON))
+                post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr(IActionConstants.USER_SESSION_DATA, usd))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
     }
 
