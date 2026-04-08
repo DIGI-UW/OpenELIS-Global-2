@@ -9,6 +9,7 @@ services:
     # analyzer-mock-server submodule revision for Playwright expectations.
     volumes:
       - ./projects/analyzer-harness/e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
+      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5000:9600"

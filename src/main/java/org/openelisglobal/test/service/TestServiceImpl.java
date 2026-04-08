@@ -101,6 +101,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     public TestServiceImpl() {
         super(Test.class);
+        this.auditTrailLog = true;
         initializeGlobalVariables();
     }
 

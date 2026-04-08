@@ -30,9 +30,6 @@ public class AnalyzerQueryServiceTest {
     private AnalyzerService analyzerService;
 
     @Mock
-    private FileImportService fileImportService;
-
-    @Mock
     private SerialPortService serialPortService;
 
     private AnalyzerQueryServiceImpl analyzerQueryService;
@@ -41,7 +38,6 @@ public class AnalyzerQueryServiceTest {
     public void setUp() {
         analyzerQueryService = new AnalyzerQueryServiceImpl();
         ReflectionTestUtils.setField(analyzerQueryService, "analyzerService", analyzerService);
-        ReflectionTestUtils.setField(analyzerQueryService, "fileImportService", fileImportService);
         ReflectionTestUtils.setField(analyzerQueryService, "serialPortService", serialPortService);
 
         // Default: return a valid TCP-capable analyzer so startQuery passes validation
@@ -52,7 +48,7 @@ public class AnalyzerQueryServiceTest {
         when(analyzerService.get(anyString())).thenReturn(analyzer);
 
         // Default: no file-import or serial-port config (TCP analyzer)
-        when(fileImportService.getByAnalyzerId(any())).thenReturn(Optional.empty());
+        // analyzer.importDirectory is null by default (no FILE transport)
         when(serialPortService.getByAnalyzerId(any())).thenReturn(Optional.empty());
     }
 
