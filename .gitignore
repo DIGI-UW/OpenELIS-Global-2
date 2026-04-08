@@ -87,6 +87,7 @@ projects/*/volume/
 .dev-docs/
 
 # Playwright test artifacts (generated, not source)
+.playwright-mcp/
 **/playwright-report/
 **/playwright/.cache/
 **/playwright/.auth/

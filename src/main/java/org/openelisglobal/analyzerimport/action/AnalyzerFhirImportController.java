@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Device;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.Specimen;
@@ -96,6 +97,40 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
                 if (analyzer == null) {
                     // Try by name
                     analyzer = analyzerService.getByName(analyzerId).orElse(null);
+                }
+            }
+
+            // Fallback: try to resolve analyzer from Device resource in the bundle.
+            // Prefer identifier-based resolution (stable) over device name (display-only).
+            if (analyzer == null) {
+                for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+                    Resource resource = entry.getResource();
+                    if (resource instanceof Device device) {
+                        // Try identifiers first (machineId, sourceId, pattern match)
+                        if (device.hasIdentifier()) {
+                            List<String> identifierValues = device.getIdentifier().stream()
+                                    .map(org.hl7.fhir.r4.model.Identifier::getValue)
+                                    .filter(v -> v != null && !v.isBlank()).toList();
+                            analyzer = analyzerService.findByIdentifierPatternMatch(identifierValues).orElse(null);
+                        }
+                        // Fall back to serial number (machineId)
+                        if (analyzer == null && device.hasSerialNumber()) {
+                            analyzer = analyzerService.findByIdentifierPatternMatch(device.getSerialNumber())
+                                    .orElse(null);
+                        }
+                        // Last resort: device display name
+                        if (analyzer == null && device.hasDeviceName()) {
+                            String deviceName = device.getDeviceNameFirstRep().getName();
+                            if (deviceName != null && !deviceName.isBlank()) {
+                                analyzer = analyzerService.getByName(deviceName).orElse(null);
+                            }
+                        }
+                        if (analyzer != null) {
+                            LogEvent.logInfo(CLASS_NAME, "importFhirBundle",
+                                    "Resolved analyzer from bundle Device resource");
+                            break;
+                        }
+                    }
                 }
             }
 

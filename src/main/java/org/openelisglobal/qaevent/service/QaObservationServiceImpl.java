@@ -15,6 +15,7 @@ public class QaObservationServiceImpl extends AuditableBaseObjectServiceImpl<QaO
 
     QaObservationServiceImpl() {
         super(QaObservation.class);
+        this.auditTrailLog = true;
     }
 
     @Override
