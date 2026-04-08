@@ -179,22 +179,7 @@ export function SearchResultForm(props) {
     setPatient(patient);
   };
   useEffect(() => {
-    // Only fire a patient-driven search when no URL accession/date params will
-    // trigger their own authoritative search from the [searchBy] effect. This
-    // prevents a broad (empty-accession) request from overwriting the URL-driven
-    // accession search with stale or wider results.
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasUrlSearch =
-      urlParams.get("accessionNumber") ||
-      urlParams.get("upperAccessionNumber") ||
-      urlParams.get("collectionDate") ||
-      urlParams.get("recievedDate") ||
-      urlParams.get("selectedTest") ||
-      urlParams.get("selectedSampleStatus") ||
-      urlParams.get("selectedAnalysisStatus");
-    if (!hasUrlSearch) {
-      querySearch(searchFormValues);
-    }
+    querySearch(searchFormValues);
   }, [patient]);
 
   const querySearch = (values) => {
@@ -409,6 +394,14 @@ export function SearchResultForm(props) {
     let upperAccessionNumber = new URLSearchParams(window.location.search).get(
       "upperAccessionNumber",
     );
+    if (accessionNumber) {
+      let searchValues = {
+        ...searchFormValues,
+        accessionNumber: accessionNumber,
+      };
+      setSearchFormValues(searchValues);
+      querySearch(searchValues);
+    }
     if (accessionNumber || upperAccessionNumber) {
       let searchValues = {
         ...searchFormValues,
