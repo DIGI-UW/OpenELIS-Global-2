@@ -19,6 +19,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
     private final NotificationConfigOptionDAO notificationConfigOptionDAO;
     private final SiteInformationService siteInformationService;
 
+    private static final int DEFAULT_ESCALATION_DELAY_MINUTES = 15;
     private static final String SITE_INFO_ESCALATION_ENABLED = "alert.escalation.enabled";
     private static final String SITE_INFO_ESCALATION_DELAY_MINUTES = "alert.escalation.delayMinutes";
     private static final String SITE_INFO_SUPERVISOR_EMAIL = "alert.supervisor.email";
@@ -79,7 +80,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
         @SuppressWarnings("unchecked")
         Map<String, Map<String, Boolean>> alertConfigs = (Map<String, Map<String, Boolean>>) config.get("alertConfigs");
         Boolean escalationEnabled = (Boolean) config.get("escalationEnabled");
-        Integer escalationDelayMinutes = (Integer) config.get("escalationDelayMinutes");
+        Integer escalationDelayMinutes = parseEscalationDelayMinutes(config.get("escalationDelayMinutes"));
         String supervisorEmail = (String) config.get("supervisorEmail");
 
         if (alertConfigs != null) {
@@ -108,8 +109,36 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
         saveSiteInformation(SITE_INFO_ESCALATION_ENABLED,
                 escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean");
         saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES,
-                escalationDelayMinutes != null ? escalationDelayMinutes.toString() : "15", "text");
+                escalationDelayMinutes != null ? escalationDelayMinutes.toString()
+                        : String.valueOf(DEFAULT_ESCALATION_DELAY_MINUTES),
+                "text");
         saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text");
+    }
+
+    private Integer parseEscalationDelayMinutes(Object rawValue) {
+        if (rawValue == null) {
+            return DEFAULT_ESCALATION_DELAY_MINUTES;
+        }
+
+        if (rawValue instanceof Integer) {
+            return (Integer) rawValue;
+        }
+
+        if (rawValue instanceof Number || rawValue instanceof String) {
+            String normalized = rawValue.toString().trim();
+
+            if (normalized.isEmpty()) {
+                return DEFAULT_ESCALATION_DELAY_MINUTES;
+            }
+
+            try {
+                return Integer.parseInt(normalized);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid escalationDelayMinutes: must be an integer", e);
+            }
+        }
+
+        throw new IllegalArgumentException("Invalid escalationDelayMinutes: must be an integer");
     }
 
     private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active) {

@@ -101,6 +101,34 @@ public class AlertNotificationConfigIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void testSaveAlertNotificationConfig_AcceptsStringEscalationDelayMinutes() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("alertConfigs", new HashMap<>());
+        config.put("escalationEnabled", true);
+        config.put("escalationDelayMinutes", "15");
+        config.put("supervisorEmail", "escalation@lab.com");
+
+        alertNotificationConfigService.saveAlertNotificationConfig(config);
+
+        SiteInformation escalationDelay = siteInformationService
+                .getSiteInformationByName("alert.escalation.delayMinutes");
+
+        assertNotNull("Escalation delay setting should exist", escalationDelay);
+        assertEquals("Escalation delay should be saved from string input", "15", escalationDelay.getValue());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testSaveAlertNotificationConfig_RejectsNonNumericEscalationDelayMinutes() {
+        Map<String, Object> config = new HashMap<>();
+        config.put("alertConfigs", new HashMap<>());
+        config.put("escalationEnabled", true);
+        config.put("escalationDelayMinutes", "abc");
+        config.put("supervisorEmail", "escalation@lab.com");
+
+        alertNotificationConfigService.saveAlertNotificationConfig(config);
+    }
+
+    @Test
     public void testGetAlertNotificationConfig_ReturnsExistingConfiguration() {
         Map<String, Object> savedConfig = getStringObjectMap();
         alertNotificationConfigService.saveAlertNotificationConfig(savedConfig);
