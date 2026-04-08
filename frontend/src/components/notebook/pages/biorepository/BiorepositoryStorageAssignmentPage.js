@@ -77,6 +77,14 @@ const STORAGE_CONDITIONS = [
     description: "Long-term sample preservation",
   },
   {
+    id: "FROZEN_MINUS150",
+    label: "Ultra-Low Freezer (-150°C)",
+    tempRange: "-150°C",
+    min: -145,
+    max: -155,
+    description: "Long-term sample preservation",
+  },
+  {
     id: "LIQUID_NITROGEN",
     label: "Liquid Nitrogen (-196°C)",
     tempRange: "-196°C",

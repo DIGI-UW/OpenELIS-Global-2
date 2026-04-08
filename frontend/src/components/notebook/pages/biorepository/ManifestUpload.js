@@ -91,7 +91,7 @@ function ManifestUpload({ shipmentId, onImportComplete, onCancel }) {
       // Validate biosafety level if provided
       if (
         row.biosafetyLevel &&
-        !["BSL_1", "BSL_2", "BSL_3", "BSL_4"].includes(row.biosafetyLevel)
+        !["BSL_1", "BSL_2", "BSL_3"].includes(row.biosafetyLevel)
       ) {
         errors.push({
           row: i + 1,

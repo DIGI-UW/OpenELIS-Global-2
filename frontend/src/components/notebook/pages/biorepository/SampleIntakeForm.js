@@ -162,7 +162,6 @@ function SampleIntakeForm({
     { id: "BSL_1", text: "BSL-1" },
     { id: "BSL_2", text: "BSL-2" },
     { id: "BSL_3", text: "BSL-3" },
-    { id: "BSL_4", text: "BSL-4" },
   ];
 
   // Validation state
