@@ -15,6 +15,7 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String
 
     RoleServiceImpl() {
         super(Role.class);
+        this.auditTrailLog = true;
     }
 
     @Override
