@@ -272,6 +272,7 @@
   "catalog.item.lowStockThreshold": "Low Stock Threshold",
   "catalog.item.manufacturer": "Manufacturer",
   "catalog.item.minimumStock": "Minimum Stock Level",
+  "catalog.item.nextMaintenanceDate": "Next Maintenance Date",
   "catalog.item.name": "Item Name",
   "catalog.item.reorderLevel": "Reorder Level",
   "catalog.item.reorderQuantity": "Reorder Quantity",

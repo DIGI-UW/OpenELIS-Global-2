@@ -171,7 +171,10 @@ const InventoryDashboard = () => {
     },
     {
       key: "nextMaintenanceDate",
-      header: "Next Maintenance Date",
+      header: intl.formatMessage({
+        id: "catalog.item.nextMaintenanceDate",
+        defaultMessage: "Next Maintenance Date",
+      }),
     },
     {
       key: "actions",

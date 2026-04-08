@@ -803,7 +803,10 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
                 <DatePickerInput
                   id="nextMaintenanceDate"
                   placeholder="mm/dd/yyyy"
-                  labelText="Next Maintenance Date"
+                  labelText={intl.formatMessage({
+                    id: "catalog.item.nextMaintenanceDate",
+                    defaultMessage: "Next Maintenance Date",
+                  })}
                   value={formData.nextMaintenanceDate}
                   onChange={(e) =>
                     handleChange("nextMaintenanceDate", e.target.value)
