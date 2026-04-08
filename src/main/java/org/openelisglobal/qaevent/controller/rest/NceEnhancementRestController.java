@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.beans.factory.annotation.Value;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
@@ -34,6 +33,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -197,7 +197,8 @@ public class NceEnhancementRestController extends BaseRestController {
                 historyDTO.id = String.valueOf(history.getId());
                 historyDTO.activity = history.getActivity();
                 historyDTO.description = history.getDescription();
-                historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString() : null;
+                historyDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString()
+                        : null;
 
                 // Get user name
                 String userName = null;
@@ -220,7 +221,8 @@ public class NceEnhancementRestController extends BaseRestController {
                     noteDTO.id = String.valueOf(history.getId());
                     noteDTO.text = history.getDescription();
                     noteDTO.userName = userName;
-                    noteDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString() : null;
+                    noteDTO.timestamp = history.getTimestamp() != null ? history.getTimestamp().toInstant().toString()
+                            : null;
                     noteDTOs.add(noteDTO);
                 }
             }
