@@ -49,7 +49,6 @@ function OrganizationAddModify() {
   const { configurationProperties } = useContext(ConfigurationContext);
 
   const componentMounted = useRef(false);
-  const intl = useIntl();
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);

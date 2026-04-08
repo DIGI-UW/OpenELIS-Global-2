@@ -34,14 +34,11 @@ jest.mock("../../../services/analyzerService", () => ({
 }));
 
 // Mock react-router-dom
-const mockHistory = {
-  replace: jest.fn(),
-  push: jest.fn(),
-};
+const mockNavigate = jest.fn();
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useNavigate: () => mockHistory,
+  useNavigate: () => mockNavigate,
   useParams: () => ({ id: "1" }),
   useLocation: () => ({ pathname: "/analyzers/1/mappings" }),
 }));
@@ -94,8 +91,7 @@ describe("FieldMapping", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockHistory.push.mockClear();
-    mockHistory.replace.mockClear();
+    mockNavigate.mockClear();
     analyzerService.getPendingCodes.mockImplementation((id, callback) => {
       callback([]);
     });

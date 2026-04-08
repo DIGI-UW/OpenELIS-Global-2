@@ -165,10 +165,13 @@ const FieldMapping = () => {
       params.delete("selectedField");
       sessionStorage.removeItem(`fieldMapping.${analyzerId}.selectedField`);
     }
-    navigate({
-      pathname: location.pathname,
-      search: params.toString() { replace: true }),
-    });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString(),
+      },
+      { replace: true },
+    );
   };
 
   const handleCreateMapping = (mappingData) => {
@@ -425,10 +428,13 @@ const FieldMapping = () => {
               } else {
                 params.delete("search");
               }
-              navigate({
-                pathname: location.pathname,
-                search: params.toString() { replace: true }),
-              });
+              navigate(
+                {
+                  pathname: location.pathname,
+                  search: params.toString(),
+                },
+                { replace: true },
+              );
             }}
             mappings={mappings}
           />
