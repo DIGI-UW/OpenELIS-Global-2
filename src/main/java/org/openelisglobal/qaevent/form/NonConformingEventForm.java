@@ -9,8 +9,6 @@ import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.openelisglobal.qaevent.valueholder.NceActionLog;
-import org.openelisglobal.qaevent.valueholder.NceCategory;
-import org.openelisglobal.qaevent.valueholder.NceType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.validation.annotations.SafeHtml;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
@@ -56,7 +54,13 @@ public class NonConformingEventForm extends BaseForm {
     private Integer reportingUnit;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String title;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String description;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String immediateAction;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String suspectedCauses;
@@ -78,6 +82,13 @@ public class NonConformingEventForm extends BaseForm {
     private String nceCategory;
 
     private String nceType;
+
+    // New fields for NCE enhancement
+    private String nceCategoryId;
+
+    private String nceTypeId;
+
+    private String severity;
 
     private String consequences;
 
@@ -105,9 +116,9 @@ public class NonConformingEventForm extends BaseForm {
 
     private List<IdValuePair> reportingUnits;
 
-    private List<NceCategory> nceCategories;
+    private List<IdValuePair> nceCategories;
 
-    private List<NceType> nceTypes;
+    private List<IdValuePair> nceTypes;
 
     private List<IdValuePair> labComponentList;
 
@@ -223,12 +234,28 @@ public class NonConformingEventForm extends BaseForm {
         this.reportingUnit = reportingUnit;
     }
 
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
     public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImmediateAction() {
+        return immediateAction;
+    }
+
+    public void setImmediateAction(String immediateAction) {
+        this.immediateAction = immediateAction;
     }
 
     public String getSuspectedCauses() {
@@ -285,6 +312,30 @@ public class NonConformingEventForm extends BaseForm {
 
     public void setNceType(String nceType) {
         this.nceType = nceType;
+    }
+
+    public String getNceCategoryId() {
+        return nceCategoryId;
+    }
+
+    public void setNceCategoryId(String nceCategoryId) {
+        this.nceCategoryId = nceCategoryId;
+    }
+
+    public String getNceTypeId() {
+        return nceTypeId;
+    }
+
+    public void setNceTypeId(String nceTypeId) {
+        this.nceTypeId = nceTypeId;
+    }
+
+    public String getSeverity() {
+        return severity;
+    }
+
+    public void setSeverity(String severity) {
+        this.severity = severity;
     }
 
     public String getConsequences() {
@@ -391,19 +442,19 @@ public class NonConformingEventForm extends BaseForm {
         this.reportingUnits = reportingUnits;
     }
 
-    public List<NceCategory> getNceCategories() {
+    public List<IdValuePair> getNceCategories() {
         return nceCategories;
     }
 
-    public void setNceCategories(List<NceCategory> nceCategories) {
+    public void setNceCategories(List<IdValuePair> nceCategories) {
         this.nceCategories = nceCategories;
     }
 
-    public List<NceType> getNceTypes() {
+    public List<IdValuePair> getNceTypes() {
         return nceTypes;
     }
 
-    public void setNceTypes(List<NceType> list) {
+    public void setNceTypes(List<IdValuePair> list) {
         this.nceTypes = list;
     }
 

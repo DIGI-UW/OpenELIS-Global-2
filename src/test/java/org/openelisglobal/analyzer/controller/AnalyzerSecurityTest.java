@@ -130,36 +130,9 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
-    // ── Path traversal: File import ─────────────────────────────────────
-
-    @Test
-    public void testCreateFileImportConfig_WithTraversalPath_ReturnsBadRequest() throws Exception {
-        String body = "{\"analyzerId\":1,\"importDirectory\":\"/data/analyzer-imports/../../etc\","
-                + "\"filePattern\":\"*.csv\",\"active\":true}";
-
-        mockMvc.perform(
-                post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
-
-    @Test
-    public void testCreateFileImportConfig_WithSiblingDirAttack_ReturnsBadRequest() throws Exception {
-        String body = "{\"analyzerId\":1,\"importDirectory\":\"/data/analyzer-imports-evil\","
-                + "\"filePattern\":\"*.csv\",\"active\":true}";
-
-        mockMvc.perform(
-                post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
-
-    @Test
-    public void testCreateFileImportConfig_WithAbsoluteEtcPath_ReturnsBadRequest() throws Exception {
-        String body = "{\"analyzerId\":1,\"importDirectory\":\"/etc\"," + "\"filePattern\":\"*.csv\",\"active\":true}";
-
-        mockMvc.perform(
-                post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
+    // File-import security tests removed: FileImportRestController deleted
+    // (FILE config is on Analyzer entity, managed through existing analyzer
+    // endpoints)
 
     // ── Helper ──────────────────────────────────────────────────────────
 
