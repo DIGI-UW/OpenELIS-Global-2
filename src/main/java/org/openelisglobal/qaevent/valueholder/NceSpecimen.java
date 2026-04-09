@@ -26,6 +26,9 @@ public class NceSpecimen extends BaseObject<Integer> {
     @Column(name = "sample_item_id")
     private Integer sampleItemId;
 
+    @Column(name = "analysis_id")
+    private Integer analysisId;
+
     @Override
     public Integer getId() {
         return id;
@@ -50,6 +53,14 @@ public class NceSpecimen extends BaseObject<Integer> {
 
     public void setSampleItemId(Integer sampleItemId) {
         this.sampleItemId = sampleItemId;
+    }
+
+    public Integer getAnalysisId() {
+        return analysisId;
+    }
+
+    public void setAnalysisId(Integer analysisId) {
+        this.analysisId = analysisId;
     }
 
     @Override
