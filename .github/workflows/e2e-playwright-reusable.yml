@@ -1,0 +1,453 @@
+# Unified Playwright E2E executor — parameterized for both core and harness.
+# Called by e2e-authoritative-reusable.yml twice: once for core projects
+# (build.docker-compose.yml only) and once for harness projects (with
+# analyzer bridge overlay). Runs test shards, merges blob reports into
+# a single HTML report, and enforces a gate.
+name: E2E / Playwright (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      projects:
+        description: "Comma-separated Playwright projects to run (e.g. core-app,core-demo)"
+        required: true
+        type: string
+      artifact_prefix:
+        description: "Prefix for artifact names (e.g. core, harness)"
+        required: true
+        type: string
+      compose_files:
+        description: "Comma-separated Docker Compose files to start"
+        required: false
+        type: string
+        default: "build.docker-compose.yml"
+      fixture_mode:
+        description: "Fixture loading mode: core (SQL files) or harness (load-test-fixtures.sh)"
+        required: false
+        type: string
+        default: "core"
+      setup_analyzer_harness:
+        description: "Run analyzer harness setup (plugin jars, seeding, cert validation)"
+        required: false
+        type: boolean
+        default: false
+      # Standard passthrough inputs
+      build_run_id:
+        description: "Build workflow run id for cross-run artifact downloads"
+        required: false
+        type: string
+        default: ""
+      artifact_source_mode:
+        description: "Artifact source mode: cross_run or same_run"
+        required: false
+        type: string
+        default: "cross_run"
+      checkout_ref:
+        description: "Ref to checkout for test execution"
+        required: false
+        type: string
+        default: ""
+      test_user:
+        description: "CI login user"
+        required: false
+        type: string
+        default: ""
+      test_pass:
+        description: "CI login password"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  # ─── Test Shards ────────────────────────────────────────────────────────────
+  test-shards:
+    name: ${{ inputs.artifact_prefix }} ${{ matrix.shard_index }}/2
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_index: [1, 2]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Configure swap for OOM resilience
+        run: |
+          if [ ! -f /swapfile ]; then
+            sudo fallocate -l 4G /swapfile
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+          fi
+          sudo swapon /swapfile 2>/dev/null || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Restore Playwright browser cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: npx playwright install --only-shell chromium --with-deps
+        working-directory: frontend
+
+      - name: Prepare .env from template
+        run: cp .env.example .env
+
+      # ── Artifact Downloads ──────────────────────────────────────────────────
+
+      - name: Download image map (cross-run)
+        if: inputs.artifact_source_mode == 'cross_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
+          path: /tmp/e2e-image-map
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download image map (same-run)
+        if: inputs.artifact_source_mode == 'same_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
+          path: /tmp/e2e-image-map
+
+      - name: Download plugin jars (cross-run)
+        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'cross_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download plugin jars (same-run)
+        if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'same_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-plugin-jars
+          path: /tmp/e2e-plugin-jars
+
+      - name: Restore plugin jars for runtime loading
+        if: inputs.setup_analyzer_harness
+        run: |
+          mkdir -p volume/plugins
+          rm -rf volume/plugins/*
+          cp /tmp/e2e-plugin-jars/*.jar volume/plugins/
+          ls -lah volume/plugins
+
+      # ── Docker Setup ────────────────────────────────────────────────────────
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and retag prebuilt compose images
+        run: |
+          MAP_FILE="${{ inputs.setup_analyzer_harness && 'e2e-image-map.txt' || 'e2e-image-map-base.txt' }}"
+          E2E_IMAGE_MAP_FILE="/tmp/e2e-image-map/$MAP_FILE" bash scripts/e2e/pull-retag-e2e-images.sh
+
+      # ── Analyzer Harness Pre-Start Setup ────────────────────────────────────
+
+      - name: Create analyzer import bind-mount parent
+        if: inputs.setup_analyzer_harness
+        run: |
+          mkdir -p projects/analyzer-harness/volume/analyzer-imports
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+
+      # ── Container Startup ───────────────────────────────────────────────────
+
+      - name: Start containers (no rebuild)
+        run: |
+          COMPOSE_CMD=(docker compose)
+          IFS=',' read -ra FILES <<< "${{ inputs.compose_files }}"
+          for f in "${FILES[@]}"; do
+            f="${f#"${f%%[![:space:]]*}"}"
+            f="${f%"${f##*[![:space:]]}"}"
+            if [ -n "$f" ]; then
+              COMPOSE_CMD+=(-f "$f")
+            fi
+          done
+          COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits.yml")
+          if [ "${{ inputs.setup_analyzer_harness }}" = "true" ]; then
+            COMPOSE_CMD+=(-f ".github/ci/ci.memory-limits-harness.yml")
+          fi
+          "${COMPOSE_CMD[@]}" up -d --no-build --wait --wait-timeout 900
+
+      - name: Validate cert material in shared volume mounts
+        if: inputs.setup_analyzer_harness
+        run: |
+          docker exec openelisglobal-webapp sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+          docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+
+      - name: Wait for readiness
+        env:
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          TIMEOUT_SECONDS: "240"
+        run: |
+          if [ "${{ inputs.setup_analyzer_harness }}" = "true" ]; then
+            bash scripts/e2e/wait-for-analyzer-harness-readiness.sh
+          else
+            bash scripts/e2e/wait-for-openelis-login.sh
+          fi
+
+      # ── Fixture Loading ─────────────────────────────────────────────────────
+
+      - name: Load core SQL fixtures
+        if: inputs.fixture_mode == 'core'
+        run: |
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/e2e-foundational-data.sql
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/analyzer-harness-e2e.sql
+          docker exec -i openelisglobal-database \
+            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
+            < src/test/resources/fixtures/file-import-e2e.sql
+
+      - name: Load harness fixtures
+        if: inputs.fixture_mode == 'harness'
+        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+
+      - name: Create core analyzer import directories
+        if: inputs.fixture_mode == 'core'
+        run: |
+          docker exec openelisglobal-webapp mkdir -p \
+            /data/analyzer-imports/e2e-qs5/incoming \
+            /data/analyzer-imports/e2e-qs7/incoming \
+            /data/analyzer-imports/e2e-fluorocycler/incoming
+
+      # ── Analyzer Harness Post-Fixture Setup ─────────────────────────────────
+
+      - name: Seed analyzers via REST API
+        if: inputs.setup_analyzer_harness
+        run: bash projects/analyzer-harness/seed-analyzers.sh
+        env:
+          BASE_URL: https://localhost
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          DB_CONTAINER: openelisglobal-database
+
+      - name: Fix analyzer-imports permissions after seeding
+        if: inputs.setup_analyzer_harness
+        run: |
+          sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
+
+      # ── Memory Instrumentation ─────────────────────────────────────────────
+
+      - name: Memory snapshot (pre-test)
+        run: |
+          echo "=== System Memory ==="
+          free -m
+          echo ""
+          echo "=== Docker Container Memory ==="
+          docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null || true
+          echo ""
+          echo "=== Chromium Binary ==="
+          ls -lah ~/.cache/ms-playwright/chromium*/chrome-linux*/chrome 2>/dev/null || \
+          ls -lah ~/.cache/ms-playwright/chromium_headless_shell*/chrome-headless-shell-linux*/chrome-headless-shell 2>/dev/null || \
+          echo "Browser binary not found in expected locations"
+
+      - name: Start memory monitor (background)
+        run: |
+          (while true; do
+            echo "--- $(date -u +%H:%M:%S) ---"
+            free -m | grep "^Mem:"
+            docker stats --no-stream --format "{{.Name}}: {{.MemUsage}} ({{.MemPerc}})" 2>/dev/null || true
+            sleep 30
+          done) > /tmp/memory-monitor.log 2>&1 &
+          echo $! > /tmp/memory-monitor.pid
+
+      # ── Test Execution ──────────────────────────────────────────────────────
+
+      - name: Run Playwright tests
+        run: |
+          CMD=(npm run pw:test --)
+          IFS=',' read -ra PROJECTS <<< "${{ inputs.projects }}"
+          for p in "${PROJECTS[@]}"; do
+            CMD+=("--project=$p")
+          done
+          CMD+=("--shard=${{ matrix.shard_index }}/2")
+          if [[ "${{ inputs.setup_analyzer_harness }}" == "true" ]]; then
+            CMD+=("--workers=1")
+          fi
+          printf 'Running: %s\n' "${CMD[*]}"
+          "${CMD[@]}"
+        working-directory: frontend
+        env:
+          CI: true
+          BASE_URL: https://localhost
+          TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
+          FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
+          FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
+
+      - name: Memory snapshot (post-test) + monitor dump
+        if: ${{ !cancelled() }}
+        run: |
+          echo "=== System Memory (post-test) ==="
+          free -m
+          echo ""
+          echo "=== Docker Container Memory (post-test) ==="
+          docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}" 2>/dev/null || true
+          echo ""
+          echo "=== Memory Monitor Log (30s intervals during test) ==="
+          kill "$(cat /tmp/memory-monitor.pid 2>/dev/null)" 2>/dev/null || true
+          cat /tmp/memory-monitor.log 2>/dev/null || echo "No monitor log found"
+
+      # ── Artifact Upload ─────────────────────────────────────────────────────
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-blob-report-${{ matrix.shard_index }}
+          path: frontend/blob-report
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-screenshots-${{ matrix.shard_index }}
+          path: frontend/test-results/**/test-failed-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-traces-${{ matrix.shard_index }}
+          path: frontend/test-results/**/trace.zip
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Extract application and Tomcat logs
+        if: failure() && inputs.setup_analyzer_harness
+        run: |
+          mkdir -p /tmp/oe-logs /tmp/tomcat-logs
+          docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. /tmp/oe-logs/ 2>/dev/null || true
+          docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. /tmp/tomcat-logs/ 2>/dev/null || true
+          echo "=== OpenELIS App Errors ==="
+          find /tmp/oe-logs -name '*.log' -exec grep -E 'ERROR|WARN|Exception|Caused by' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== Tomcat Errors ==="
+          find /tmp/tomcat-logs -name 'catalina*' -exec grep -iE 'ERROR|SEVERE|Exception|Caused by|at org\.' {} + 2>/dev/null | tail -200 || echo "(none)"
+          echo "=== FHIR Server Errors (last 500 lines) ==="
+          docker logs --tail 500 external-fhir-api 2>&1 | grep -iE 'ERROR|Exception|SEVERE' | grep -v 'ConstraintViolationException.*already exists' | tail -100 || echo "(none)"
+          echo "=== OE Webapp Errors (last 500 lines) ==="
+          docker logs --tail 500 openelisglobal-webapp 2>&1 | grep -E ' -- ERROR -- | -- WARN -- ' | tail -100 || echo "(none)"
+          echo "=== Bridge Logs (last 200 lines) ==="
+          docker logs --tail 200 openelis-analyzer-bridge 2>&1 | tail -200 || echo "(none)"
+
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+        with:
+          tail: ${{ inputs.setup_analyzer_harness && '2000' || '100' }}
+
+  # ─── Report Merge ─────────────────────────────────────────────────────────
+  merge-reports:
+    name: Report Merge
+    if: ${{ always() && !cancelled() }}
+    needs: [test-shards]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Download blob reports from shards
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          path: frontend/all-blob-reports
+          pattern: ${{ inputs.artifact_prefix }}-blob-report-*
+          merge-multiple: true
+
+      - name: Validate blob reports were downloaded
+        if: ${{ needs.test-shards.result == 'success' }}
+        run: |
+          if [ ! -d ./all-blob-reports ] || [ -z "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            echo "::error::Test shards succeeded but no blob reports were downloaded"
+            exit 1
+          fi
+        working-directory: frontend
+
+      - name: Resolve Playwright version for report merge
+        id: playwright-version
+        working-directory: frontend
+        run: |
+          VERSION=$(node -e "const lock=require('./package-lock.json'); const pkg=require('./package.json'); const clean=(s)=>s?String(s).replace(/^[~^]/,''):''; const v=(lock.packages?.['node_modules/playwright']?.version)||(lock.packages?.['node_modules/@playwright/test']?.version)||clean(pkg.devDependencies?.['@playwright/test'])||clean(pkg.dependencies?.playwright); if(!v){console.error('Unable to resolve Playwright version'); process.exit(1);} process.stdout.write(v);")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Merge blob reports into HTML report
+        run: |
+          if [ -d ./all-blob-reports ] && [ -n "$(ls -A ./all-blob-reports 2>/dev/null)" ]; then
+            npx --yes playwright@${{ steps.playwright-version.outputs.version }} merge-reports --reporter html ./all-blob-reports
+          else
+            echo "No blob reports available; skipping merge."
+          fi
+        working-directory: frontend
+
+      - name: Upload merged HTML report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_prefix }}-playwright-report-html-attempt-${{ github.run_attempt }}
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # ─── Gate ─────────────────────────────────────────────────────────────────
+  gate:
+    name: Gate
+    if: always()
+    needs: [test-shards, merge-reports]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce shard and merge success
+        run: |
+          if [[ "${{ needs.test-shards.result }}" != "success" ]]; then
+            echo "Test shards failed: ${{ needs.test-shards.result }}"
+            exit 1
+          fi
+          if [[ "${{ needs.merge-reports.result }}" != "success" ]]; then
+            echo "Report merge failed: ${{ needs.merge-reports.result }}"
+            exit 1
+          fi
+          echo "${{ inputs.artifact_prefix }} Playwright gate passed."

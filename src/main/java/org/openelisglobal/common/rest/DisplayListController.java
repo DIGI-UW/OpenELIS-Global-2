@@ -294,19 +294,19 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_EDUCATION);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
     }
 
     @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_MARITAL_STATUS);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
     }
 
     @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_NATIONALITY);
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
     }
 
     @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -324,7 +324,7 @@ public class DisplayListController extends BaseRestController {
     @GetMapping(value = "patientPaymentsOptions", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getSamplePatientPaymentOptions() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
+        return DisplayListService.getInstance().getFreshList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
     }
 
     @GetMapping(value = "testLocationCodes", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -451,6 +451,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_ACCURACY_METERS));
         configs.put(Property.GPS_TIMEOUT_SECONDS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.GPS_TIMEOUT_SECONDS));
+        configs.put(Property.EQA_ENABLED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.EQA_ENABLED));
         return configs;
     }
 
@@ -681,5 +683,29 @@ public class DisplayListController extends BaseRestController {
                         "oeg-" + r.getName().trim() + "-" + e.getTestSectionName().trim()))
                 .collect(Collectors.toList())));
         return rolesWithTestSections;
+    }
+
+    /**
+     * Get dictionary entries by category name.
+     *
+     * <p>
+     * Used by environmental workflow to fetch managed dropdown values (e.g.,
+     * "Sampling Site Type", "Environmental Zone").
+     *
+     * @param categoryName the dictionary category name
+     * @return list of id/value pairs
+     */
+    @GetMapping(value = "dictionary/category/{categoryName}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getDictionaryByCategory(@PathVariable String categoryName) {
+        List<Dictionary> dictionaries = dictionaryService.getDictionaryEntrysByCategoryNameLocalizedSort(categoryName);
+
+        List<IdValuePair> result = new ArrayList<>();
+        for (Dictionary dict : dictionaries) {
+            if ("Y".equals(dict.getIsActive())) {
+                result.add(new IdValuePair(dict.getId(), dict.getLocalizedName()));
+            }
+        }
+        return result;
     }
 }

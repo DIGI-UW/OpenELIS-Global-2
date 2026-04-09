@@ -27,6 +27,7 @@ import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
+import { jpGet, jpSet } from "../utils/JsonPath";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -40,6 +41,29 @@ import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
+import EQABadge from "../eqa/EQABadge";
+import InlineNceForm from "../nonconform/common/InlineNceForm";
+import { Warning } from "@carbon/icons-react";
+import ESignatureButton, {
+  SignatureMeaning,
+} from "../esignature/ESignatureButton";
+
+/**
+ * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
+ * two-segment pattern {@code BASE-SUFFIX} where SUFFIX is numeric (analysis ordinal).
+ * Multi-segment accessions (e.g. harness {@code HARN-QS7-2026-00001}) must stay intact.
+ */
+function labNumberForLogbookSearch(accessionNumber) {
+  if (!accessionNumber) {
+    return "";
+  }
+  const trimmed = accessionNumber.trim();
+  const parts = trimmed.split("-");
+  if (parts.length === 2 && /^\d+$/.test(parts[1])) {
+    return parts[0];
+  }
+  return trimmed;
+}
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -160,7 +184,22 @@ export function SearchResultForm(props) {
     setPatient(patient);
   };
   useEffect(() => {
-    querySearch(searchFormValues);
+    // Only fire a patient-driven search when no URL accession/date params will
+    // trigger their own authoritative search from the [searchBy] effect. This
+    // prevents a broad (empty-accession) request from overwriting the URL-driven
+    // accession search with stale or wider results.
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrlSearch =
+      urlParams.get("accessionNumber") ||
+      urlParams.get("upperAccessionNumber") ||
+      urlParams.get("collectionDate") ||
+      urlParams.get("recievedDate") ||
+      urlParams.get("selectedTest") ||
+      urlParams.get("selectedSampleStatus") ||
+      urlParams.get("selectedAnalysisStatus");
+    if (!hasUrlSearch) {
+      querySearch(searchFormValues);
+    }
   }, [patient]);
 
   const querySearch = (values) => {
@@ -171,7 +210,7 @@ export function SearchResultForm(props) {
       values.accessionNumber !== ""
         ? values.accessionNumber
         : values.startLabNo;
-    let labNo = accessionNumber ? accessionNumber.split("-")[0] : "";
+    let labNo = labNumberForLogbookSearch(accessionNumber);
     const endLabNo = values.endLabNo ? values.endLabNo : "";
     values.unitType = values.unitType ? values.unitType : "";
 
@@ -375,14 +414,6 @@ export function SearchResultForm(props) {
     let upperAccessionNumber = new URLSearchParams(window.location.search).get(
       "upperAccessionNumber",
     );
-    if (accessionNumber) {
-      let searchValues = {
-        ...searchFormValues,
-        accessionNumber: accessionNumber,
-      };
-      setSearchFormValues(searchValues);
-      querySearch(searchValues);
-    }
     if (accessionNumber || upperAccessionNumber) {
       let searchValues = {
         ...searchFormValues,
@@ -790,6 +821,7 @@ export function SearchResults(props) {
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
+  const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
 
   const componentMounted = useRef(false);
 
@@ -1032,6 +1064,7 @@ export function SearchResults(props) {
                 : row.accessionNumber) +
                 "-" +
                 row.sequenceNumber}
+              {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
               <br></br>
               {row.patientName} <br></br>
               {row.patientInfo}
@@ -1135,10 +1168,9 @@ export function SearchResults(props) {
                 rows={1}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
+              <div className="note" style={{ whiteSpace: "pre-wrap" }}>
+                {row.pastNotes?.replace(/<br\s*\/?>/gi, "\n")}
+              </div>
             </div>
           </>
         );
@@ -1317,16 +1349,14 @@ export function SearchResults(props) {
               sampleAccessionNumber: response.sampleAccessionNumber || "",
             },
           }));
+        } else {
+          // SampleItem may not have location assigned yet
+          console.debug("No location found for SampleItem:", sampleItemId);
+          setSampleLocations((prev) => ({
+            ...prev,
+            [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
+          }));
         }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
-        setSampleLocations((prev) => ({
-          ...prev,
-          [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
-        }));
       },
     );
   };
@@ -1606,6 +1636,31 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
+        {/* Report NCE */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+        </Grid>
+        {nceFormOpenRow === data.id && (
+          <InlineNceForm
+            resultRow={data}
+            onClose={() => setNceFormOpenRow(null)}
+            onSubmitSuccess={() => setNceFormOpenRow(null)}
+          />
+        )}
       </>
     );
   };
@@ -1736,50 +1791,44 @@ export function SearchResults(props) {
     // setState({value: e.target.value})
     console.debug("State updated to ", e.target.value);
     var form = { ...props.results };
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
-    var refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
-    var testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
+    jpSet(form, name, value);
+    var refer = jpGet(form, "testResult[" + rowId + "].refer");
+    var testId = jpGet(form, "testResult[" + rowId + "].testId");
     var referList = { ...referTest };
     referList[rowId] = refer === "true" ? true : false;
     setReferTest(referList);
     if (refer == "true") {
-      jp.value(
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredTestId",
         testId,
       );
-      jp.value(
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         configurationProperties.currentDateAsText,
       );
     } else {
-      jp.value(
-        form,
-        "testResult[" + rowId + "].referralItem.referredTestId",
-        "",
-      );
-      jp.value(
+      jpSet(form, "testResult[" + rowId + "].referralItem.referredTestId", "");
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         "",
       );
     }
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    jpSet(form, isModified, "true");
     props.setResultForm(form);
   };
 
   const handleRejectCheckBoxChange = (e, rowId) => {
     const { name, checked } = e.target;
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
     var shadowRejected = "testResult[" + rowId + "].shadowRejected";
-    jp.value(form, shadowRejected, checked);
+    jpSet(form, shadowRejected, checked);
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    jpSet(form, isModified, "true");
 
     var allrejectedItems = { ...rejectedItems };
     allrejectedItems[rowId] = checked;
@@ -1800,14 +1849,13 @@ export function SearchResults(props) {
     if (form.testResult[rowId].referralItem) {
       if (form.testResult[rowId].referralItem.referredSendDate != date) {
         console.debug("handleDatePickerChange:" + date);
-        var jp = require("jsonpath");
-        jp.value(
+        jpSet(
           form,
           "testResult[" + rowId + "].referralItem.referredSendDate",
           date,
         );
         var isModified = "testResult[" + rowId + "].isModified";
-        jp.value(form, isModified, "true");
+        jpSet(form, isModified, "true");
         props.setResultForm(form);
       }
     }
@@ -1830,13 +1878,48 @@ export function SearchResults(props) {
     setAcceptAsIs(newAcceptAsIs);
   };
 
-  const handleSave = (values) => {
-    console.debug("handleSave:" + values);
+  const buildSignContext = () => {
+    const results = (props.results && props.results.testResult) || [];
+    const count = results.length;
+    const accessions = [
+      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
+    ];
+    if (accessions.length === 1) {
+      return intl.formatMessage(
+        {
+          id: "esig.context.saveResults",
+          defaultMessage: "Save {count} result(s) for accession {accession}",
+        },
+        {
+          count,
+          accession:
+            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
+        },
+      );
+    }
+    return intl.formatMessage(
+      {
+        id: "esig.context.saveResultsMulti",
+        defaultMessage:
+          "Save {count} result(s) across {accessionCount} accessions",
+      },
+      { count, accessionCount: accessions.length },
+    );
+  };
+
+  const getFirstAnalysisId = () => {
+    const results = (props.results && props.results.testResult) || [];
+    for (const r of results) {
+      if (r.analysisId) return Number(r.analysisId);
+    }
+    return 0;
+  };
+
+  const handleSave = () => {
     if (isSubmitting) {
       return;
     }
     setIsSubmitting(true);
-    values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
@@ -1997,15 +2080,17 @@ export function SearchResults(props) {
                 }
               />
 
-              <Button
-                type="button"
-                id="saveResults"
-                onClick={handleSave}
-                style={{ marginTop: "16px" }}
+              <ESignatureButton
+                meaning={SignatureMeaning.AUTHORED}
+                context={buildSignContext()}
+                recordType="RESULT_BATCH"
+                recordId={getFirstAnalysisId()}
+                onSign={handleSave}
                 disabled={isSubmitting}
+                style={{ marginTop: "16px" }}
               >
                 <FormattedMessage id="label.button.save" />
-              </Button>
+              </ESignatureButton>
             </Form>
           )}
         </Formik>

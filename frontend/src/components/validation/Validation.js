@@ -22,7 +22,11 @@ import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
+import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import ESignatureButton, {
+  SignatureMeaning,
+} from "../esignature/ESignatureButton";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -114,7 +118,45 @@ const Validation = (props) => {
     },
   ];
 
-  const handleSave = (values) => {
+  const buildSignContext = () => {
+    const results = (props.results && props.results.resultList) || [];
+    const count = results.length;
+    const accessions = [
+      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
+    ];
+    if (accessions.length === 1) {
+      return intl.formatMessage(
+        {
+          id: "esig.context.validateResults",
+          defaultMessage:
+            "Validate {count} result(s) for accession {accession}",
+        },
+        {
+          count,
+          accession:
+            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
+        },
+      );
+    }
+    return intl.formatMessage(
+      {
+        id: "esig.context.validateResultsMulti",
+        defaultMessage:
+          "Validate {count} result(s) across {accessionCount} accessions",
+      },
+      { count, accessionCount: accessions.length },
+    );
+  };
+
+  const getFirstAnalysisId = () => {
+    const results = (props.results && props.results.resultList) || [];
+    for (const r of results) {
+      if (r.analysisId) return Number(r.analysisId);
+    }
+    return 0;
+  };
+
+  const handleSave = () => {
     if (isSubmitting) {
       return;
     }
@@ -154,28 +196,24 @@ const Validation = (props) => {
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
+    jpSet(form, name, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
     console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, "resultList[" + rowId + "].sentDate_", d);
+    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
   const handleCheckBox = (e, rowId) => {
     const { name, id, checked } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
   };
 
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
@@ -298,10 +336,9 @@ const Validation = (props) => {
       case "pastNotes":
         return (
           <>
-            <div
-              className="note"
-              dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-            />
+            <div className="note" style={{ whiteSpace: "pre-wrap" }}>
+              {row.pastNotes?.replace(/<br\s*\/?>/gi, "\n")}
+            </div>
           </>
         );
 
@@ -467,16 +504,17 @@ const Validation = (props) => {
               }
             />
 
-            <Button
-              type="button"
-              onClick={() => handleSave(values)}
-              id="submit"
-              style={{ marginTop: "16px" }}
-              data-testid="Save-btn"
+            <ESignatureButton
+              meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+              context={buildSignContext()}
+              recordType="VALIDATION_BATCH"
+              recordId={getFirstAnalysisId()}
+              onSign={handleSave}
               disabled={isSubmitting}
+              style={{ marginTop: "16px" }}
             >
               <FormattedMessage id="label.button.save" />
-            </Button>
+            </ESignatureButton>
           </Form>
         )}
       </Formik>

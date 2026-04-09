@@ -25,6 +25,7 @@ import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
 import { getFromOpenElisServer } from "../utils/Utils";
 import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
+import LabelsSection from "../barcodeWorkflow/LabelsSection";
 
 const SampleType = (props) => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
@@ -78,6 +79,8 @@ const SampleType = (props) => {
             configurationProperties?.AUTOFILL_COLLECTION_DATE === "true"
               ? configurationProperties.currentTimeAsText
               : "",
+          numOrderLabels: 1,
+          numSpecimenLabels: 1,
         },
   );
   const [loading, setLoading] = useState(true);
@@ -159,6 +162,17 @@ const SampleType = (props) => {
     });
   }
 
+  const handleLabelsSectionChange = (labelsModel) => {
+    const nextOrderLabels = labelsModel?.orderRow?.quantities?.order ?? 0;
+    const nextSpecimenLabels =
+      labelsModel?.sampleRows?.[0]?.quantities?.specimen ?? 0;
+    setSampleXml((currentSampleXml) => ({
+      ...currentSampleXml,
+      numOrderLabels: nextOrderLabels,
+      numSpecimenLabels: nextSpecimenLabels,
+    }));
+  };
+
   useEffect(() => {
     updateSampleXml(sampleXml, index);
   }, [sampleXml]);
@@ -234,6 +248,7 @@ const SampleType = (props) => {
   };
 
   const triggerPanelCheckBoxChange = (isChecked, testIds) => {
+    if (!testIds) return;
     const testIdsList = testIds.split(",").map((id) => id.trim());
     testIdsList.map((testId) => {
       let testIndex = findTestIndex(testId);
@@ -311,7 +326,7 @@ const SampleType = (props) => {
   };
 
   useEffect(() => {
-    if (props.sample.referralItems.length > 0 && referralReasons.length > 0) {
+    if (props.sample.referralItems?.length > 0 && referralReasons.length > 0) {
       setRequestTestReferral(props.sample.requestReferralEnabled);
       setReferralRequests(props.sample.referralItems);
     }
@@ -432,7 +447,7 @@ const SampleType = (props) => {
   }, []);
 
   const fetchUomCreate = (res) => {
-    if (componentMounted.current) {
+    if (componentMounted.current && res) {
       setUomList(res.existingUomList || []);
     }
   };
@@ -506,7 +521,10 @@ const SampleType = (props) => {
           }}
           required
         >
-          <SelectItem text="Select sample type" value="" />
+          <SelectItem
+            text={intl.formatMessage({ id: "sample.select.type" })}
+            value=""
+          />
           {sampleTypes?.map((sampleType, i) => (
             <SelectItem text={sampleType.value} value={sampleType.id} key={i} />
           ))}
@@ -622,6 +640,30 @@ const SampleType = (props) => {
               handleStorageLocationChange(location, positionCoordinate);
             }}
           />
+        </div>
+        <div className="inlineDiv">
+          <div className="cds--col">
+            <h4>
+              <FormattedMessage id="barcode.labels.section.title" />
+            </h4>
+            <LabelsSection
+              orderQuantity={sampleXml?.numOrderLabels ?? 1}
+              specimenQuantities={[sampleXml?.numSpecimenLabels ?? 1]}
+              onChange={handleLabelsSectionChange}
+              orderLabelText={intl.formatMessage({
+                id: "barcode.labels.order.row",
+              })}
+              specimenLabelFormatter={(sampleNumber) =>
+                intl.formatMessage(
+                  { id: "barcode.labels.sample.row" },
+                  { sampleNumber },
+                )
+              }
+              runningTotalLabel={intl.formatMessage({
+                id: "barcode.labels.running.total",
+              })}
+            />
+          </div>
         </div>
         <div className="testPanels">
           <div className="cds--col">
