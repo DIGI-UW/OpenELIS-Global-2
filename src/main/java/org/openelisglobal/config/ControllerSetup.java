@@ -64,7 +64,7 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         LogEvent.logWarn(this.getClass().getName(), "handleResponseStatusException",
                 ex.getStatusCode() + (ex.getReason() != null ? ": " + ex.getReason() : ""));
         String body = ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString();
-        return new ResponseEntity<>(body, new HttpHeaders(), ex.getStatusCode());
+        return new ResponseEntity<>(body, ex.getHeaders(), ex.getStatusCode());
     }
 
     @Override
