@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
@@ -41,41 +42,12 @@ public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyze
         super.setUp();
         objectMapper = new ObjectMapper();
         jdbcTemplate = new JdbcTemplate(dataSource);
-        // Clean up analyzer test data before each test
-        cleanAnalyzerTestData();
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
-    /**
-     * Clean up analyzer-related test data Note: Must delete in order due to foreign
-     * key constraints
-     */
-    private void cleanAnalyzerTestData() {
-        try {
-            // Identify analyzer IDs created by tests
-            String analyzerIdSubquery = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')";
-            String analyzerFieldSubquery = "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery
-                    + ")";
-
-            // Delete dependent mappings first (respecting FK constraints)
-            jdbcTemplate.execute(
-                    "DELETE FROM qualitative_result_mapping WHERE analyzer_field_id IN " + analyzerFieldSubquery);
-            jdbcTemplate.execute("DELETE FROM unit_mapping WHERE analyzer_field_id IN " + analyzerFieldSubquery);
-            jdbcTemplate
-                    .execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN " + analyzerFieldSubquery);
-            jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_id IN " + analyzerIdSubquery);
-
-            // Delete analyzer fields
-            jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
-
-            // Finally delete the analyzers
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
-
-            // Ensure analyzer sequence is synchronized with existing data
-            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
-            jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
-        } catch (Exception e) {
-            System.out.println("Failed to clean analyzer test data: " + e.getMessage());
-        }
+    @After
+    public void tearDown() {
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     /**
@@ -84,9 +56,8 @@ public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyze
     private String[] createTestAnalyzerAndField() throws Exception {
         // Create analyzer
         String uniqueName = "TEST-Mapping-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + AnalyzerTestCleanup.uniqueIp() + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))

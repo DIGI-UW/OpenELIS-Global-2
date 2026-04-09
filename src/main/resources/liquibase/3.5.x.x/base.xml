@@ -18,6 +18,8 @@
   <include relativeToChangelogFile="true" file="003-calendar-management.xml"/>
   <!-- Add Audit Trail menu under Reports, deactivate old entries -->
   <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
+  <!-- Electronic Signature (21 CFR Part 11 Compliance) -->
+  <include relativeToChangelogFile="true" file="004-electronic-signature.xml"/>
 
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>

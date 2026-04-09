@@ -282,6 +282,8 @@ public abstract class ConfigurationProperties {
         EQA_ENABLED("eqaEnabled", "text"), // if true, EQA checkbox appears on order entry to mark sample as EQA
         ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"); // Controls order entry workflow: "Clinical",
                                                                      // "Environmental", or "Both"
+        ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
+        ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"); // signing session inactivity timeout
 
         // visible on
         // the ui

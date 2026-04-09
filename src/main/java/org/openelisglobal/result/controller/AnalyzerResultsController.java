@@ -215,8 +215,17 @@ public class AnalyzerResultsController extends BaseController {
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
-        form.setType(type);
-        if (GenericValidator.isBlankOrNull(type)) {
+        String requestedAnalyzerId = id;
+        String effectiveType = type;
+        if (GenericValidator.isBlankOrNull(effectiveType) && !GenericValidator.isBlankOrNull(requestedAnalyzerId)) {
+            Analyzer analyzer = analyzerService.get(requestedAnalyzerId);
+            if (analyzer != null) {
+                effectiveType = analyzer.getName();
+            }
+        }
+
+        form.setType(effectiveType);
+        if (GenericValidator.isBlankOrNull(effectiveType) && GenericValidator.isBlankOrNull(requestedAnalyzerId)) {
             return form;
         }
         List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
