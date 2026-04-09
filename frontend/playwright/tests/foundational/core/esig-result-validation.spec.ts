@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { SiteInformationPage } from "../../../fixtures/esig-admin";
 import { createEsigSampleOrder } from "../../../helpers/seed-esig-data";
 import {
+  QUICK_TIMEOUT,
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
@@ -85,22 +86,22 @@ test("E-Signature — full result entry and validation flow", async ({
     ).toBeVisible({ timeout: SHORT_TIMEOUT });
   });
 
-  await test.step("Complete first-use certification", async () => {
+  await test.step("Complete certification if needed, then verify signing step", async () => {
     const modal = page.getByRole("dialog");
 
-    // First-time user sees certification ceremony before signing
-    await expect(modal.getByText(/certification/i)).toBeVisible({
-      timeout: SHORT_TIMEOUT,
-    });
+    // The user may or may not be certified already (depends on whether
+    // the API contract tests ran first in this shard). Handle both paths.
+    const certText = modal.getByText(/certification/i);
+    if (
+      await certText.isVisible({ timeout: QUICK_TIMEOUT }).catch(() => false)
+    ) {
+      // Certification ceremony — acknowledge and certify
+      await modal.locator('label[for="certification-acknowledgement"]').click();
+      await modal.locator('input[type="password"]').fill(password);
+      await modal.getByRole("button", { name: /certify|continue/i }).click();
+    }
 
-    // Acknowledge the certification statement (click the checkbox label, not the password label)
-    await modal.locator('label[for="certification-acknowledgement"]').click();
-
-    // Fill password and certify
-    await modal.locator('input[type="password"]').fill(password);
-    await modal.getByRole("button", { name: /certify|continue/i }).click();
-
-    // After certification, signing step appears with AUTHORED meaning
+    // Now we should be on the signing step with AUTHORED meaning
     await expect(modal.getByText("Authored")).toBeVisible({
       timeout: UI_TIMEOUT,
     });
@@ -114,7 +115,11 @@ test("E-Signature — full result entry and validation flow", async ({
 
     // Fill username if visible (full-auth mode)
     const usernameInput = modal.locator("#signature-username");
-    if (await usernameInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (
+      await usernameInput
+        .isVisible({ timeout: QUICK_TIMEOUT })
+        .catch(() => false)
+    ) {
       await usernameInput.fill(username);
     }
 
