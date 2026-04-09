@@ -217,6 +217,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
             // Save the order
             electronicOrderService.insert(order);
+            syncAccessionSequenceForLabNo(labNo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "createPatientOrder",
                     "ElectronicOrder created: id=" + order.getId() + ", externalId=" + labNo);
 
@@ -366,27 +367,10 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 String lastName = (String) patientData.get("lastName");
                 Patient patient = validatedPatients.get(patientId);
 
-                // Generate unique lab number
-                long nextNumber = accessionService.getNextNumberIncrement(labNumberPrefix,
-                        org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
-                String labNo = labNumberPrefix + String.format("%03d", nextNumber);
+                String labNo = reserveNextAvailableLabNumber(labNumberPrefix);
 
                 LogEvent.logInfo(this.getClass().getSimpleName(), "createBulkPatientOrders",
                         "Creating order for patient " + patientId + " with labNo " + labNo);
-
-                // Check if order with this lab number already exists (race condition check)
-                List<ElectronicOrder> existingOrders = electronicOrderService.getElectronicOrdersByExternalId(labNo);
-                if (existingOrders != null && !existingOrders.isEmpty()) {
-                    throw new RuntimeException("Order with lab number '" + labNo + "' already exists for patient "
-                            + patientId + " (" + firstName + " " + lastName + ")");
-                }
-
-                // Also check if a sample with this accession number already exists
-                Sample existingSample = sampleService.getSampleByAccessionNumber(labNo);
-                if (existingSample != null) {
-                    throw new RuntimeException("Sample with lab number '" + labNo + "' already exists for patient "
-                            + patientId + " (" + firstName + " " + lastName + ")");
-                }
 
                 // Create ElectronicOrder (the actual order entity)
                 ElectronicOrder order = new ElectronicOrder();
@@ -642,27 +626,10 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                 // Get patient from sample (may be null for anonymous samples)
                 Patient patient = sampleHumanService.getPatientForSample(sample);
 
-                // Generate unique lab number
-                long nextNumber = accessionService.getNextNumberIncrement(labNumberPrefix.trim(),
-                        org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
-                String labNo = labNumberPrefix.trim() + String.format("%03d", nextNumber);
+                String labNo = reserveNextAvailableLabNumber(labNumberPrefix.trim());
 
                 LogEvent.logInfo(this.getClass().getSimpleName(), "createBulkIndependentOrders",
                         "Creating order for sample " + sampleId + " with labNo " + labNo);
-
-                // Check if order with this lab number already exists
-                List<ElectronicOrder> existingOrders = electronicOrderService.getElectronicOrdersByExternalId(labNo);
-                if (existingOrders != null && !existingOrders.isEmpty()) {
-                    throw new RuntimeException(
-                            "Order with lab number '" + labNo + "' already exists for sample " + sampleId);
-                }
-
-                // Also check if a sample with this accession number already exists
-                Sample existingSample = sampleService.getSampleByAccessionNumber(labNo);
-                if (existingSample != null) {
-                    throw new RuntimeException(
-                            "Sample with lab number '" + labNo + "' already exists for sample " + sampleId);
-                }
 
                 // Create ElectronicOrder
                 ElectronicOrder order = new ElectronicOrder();
@@ -747,17 +714,96 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
     public List<String> getLabNumberPreview(String prefix, int count) {
         List<String> previewNumbers = new ArrayList<>();
 
-        // Get the next number WITHOUT incrementing (peek at sequence)
-        long nextNumber = accessionService.getNextNumberNoIncrement(prefix,
-                org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
+        String normalizedPrefix = prefix == null ? "" : prefix.trim();
+        if (normalizedPrefix.isEmpty() || count <= 0) {
+            return previewNumbers;
+        }
 
-        // Generate preview numbers
-        for (int i = 0; i < count; i++) {
-            String labNo = prefix + String.format("%03d", nextNumber + i);
-            previewNumbers.add(labNo);
+        long nextNumber = accessionService.getNextNumberNoIncrement(normalizedPrefix,
+                org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
+        long candidateNumber = Math.max(1L, nextNumber);
+
+        while (previewNumbers.size() < count) {
+            String labNo = normalizedPrefix + String.format("%03d", candidateNumber);
+            if (!labNumberExists(labNo)) {
+                previewNumbers.add(labNo);
+            }
+            candidateNumber++;
         }
 
         return previewNumbers;
+    }
+
+    private String reserveNextAvailableLabNumber(String prefix) {
+        String normalizedPrefix = prefix == null ? "" : prefix.trim();
+        if (normalizedPrefix.isEmpty()) {
+            throw new RuntimeException("Lab number prefix is required");
+        }
+
+        for (int attempt = 0; attempt < 100; attempt++) {
+            long nextNumber = accessionService.getNextNumberIncrement(normalizedPrefix,
+                    org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
+            String labNo = normalizedPrefix + String.format("%03d", nextNumber);
+            if (!labNumberExists(labNo)) {
+                return labNo;
+            }
+        }
+
+        throw new RuntimeException("Unable to generate a unique lab number for prefix '" + normalizedPrefix + "'");
+    }
+
+    private boolean labNumberExists(String labNo) {
+        List<ElectronicOrder> existingOrders = electronicOrderService.getElectronicOrdersByExternalId(labNo);
+        if (existingOrders != null && !existingOrders.isEmpty()) {
+            return true;
+        }
+
+        return sampleService.getSampleByAccessionNumber(labNo) != null;
+    }
+
+    private void syncAccessionSequenceForLabNo(String labNo) {
+        if (StringUtils.isBlank(labNo)) {
+            return;
+        }
+
+        int suffixStart = findNumericSuffixStart(labNo);
+        if (suffixStart < 0 || suffixStart >= labNo.length()) {
+            return;
+        }
+
+        String prefix = labNo.substring(0, suffixStart);
+        long suffixValue;
+        try {
+            suffixValue = Long.parseLong(labNo.substring(suffixStart));
+        } catch (NumberFormatException e) {
+            return;
+        }
+
+        if (prefix.isEmpty()) {
+            return;
+        }
+
+        try {
+            long nextNumber = accessionService.getNextNumberNoIncrement(prefix,
+                    org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
+            long currentValue = Math.max(0L, nextNumber - 1L);
+            if (suffixValue > currentValue) {
+                accessionService.setCurVal(prefix,
+                        org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL,
+                        suffixValue);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncAccessionSequenceForLabNo",
+                    "Failed to sync accession sequence for " + labNo + ": " + e.getMessage());
+        }
+    }
+
+    private int findNumericSuffixStart(String value) {
+        int index = value.length() - 1;
+        while (index >= 0 && Character.isDigit(value.charAt(index))) {
+            index--;
+        }
+        return index == value.length() - 1 ? -1 : index + 1;
     }
 
     @Override
@@ -922,16 +968,6 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             LogEvent.logInfo(this.getClass().getSimpleName(), "recordSampleCollection",
                     "Found order: id=" + order.getId() + ", patient=" + order.getPatient());
 
-            // Check if sample already exists (idempotency check)
-            Sample existingSample = sampleService.getSampleByAccessionNumber(labNo);
-            if (existingSample != null) {
-                LogEvent.logInfo(this.getClass().getSimpleName(), "recordSampleCollection",
-                        "Sample already exists for labNo: " + labNo + ", updating collection info");
-                // Update existing sample with collection details
-                return updateExistingSampleCollection(existingSample, sampleTypeId, containerType, collectionTime,
-                        collectionDate, collectorId, volume, sysUserId);
-            }
-
             // Get patient from order
             Patient patient = order.getPatient();
             if (patient == null) {
@@ -966,6 +1002,23 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
                     LogEvent.logWarn(this.getClass().getSimpleName(), "recordSampleCollection",
                             "Failed to parse order data: " + e.getMessage());
                 }
+            }
+
+            Integer effectivePageId = orderSampleCollectionPageId != null ? orderSampleCollectionPageId
+                    : (orderNotebookPageId != null ? orderNotebookPageId : notebookPageId);
+
+            // Check if sample already exists (idempotency check)
+            Sample existingSample = sampleService.getSampleByAccessionNumber(labNo);
+            if (existingSample != null) {
+                LogEvent.logInfo(this.getClass().getSimpleName(), "recordSampleCollection",
+                        "Sample already exists for labNo: " + labNo + ", updating collection info");
+                Map<String, Object> existingResult = updateExistingSampleCollection(existingSample, sampleTypeId,
+                        containerType, collectionTime, collectionDate, collectorId, volume, sysUserId);
+                if (Boolean.TRUE.equals(existingResult.get("success"))) {
+                    String existingPrimarySampleItemId = getPrimarySampleItemId(existingSample);
+                    completeCollectionPageSample(labNo, existingPrimarySampleItemId, effectivePageId, sysUserId);
+                }
+                return existingResult;
             }
 
             if (testIds.isEmpty()) {
@@ -1108,22 +1161,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             // Update NotebookPageSample entry for this labNo to COMPLETED on the
             // sample collection page. The placeholder row is created on page 2 using
             // sampleCollectionPageId, not the original order-entry page.
-            Integer effectivePageId = orderSampleCollectionPageId != null ? orderSampleCollectionPageId
-                    : (orderNotebookPageId != null ? orderNotebookPageId : notebookPageId);
-            if (effectivePageId != null) {
-                NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(labNo,
-                        effectivePageId);
-                if (pageSample != null) {
-                    pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                    if (primarySampleItemId != null) {
-                        pageSample.setSampleItemId(primarySampleItemId);
-                    }
-                    pageSample.setSysUserId(sysUserId);
-                    notebookPageSampleService.update(pageSample);
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "recordSampleCollection",
-                            "NotebookPageSample updated: id=" + pageSample.getId());
-                }
-            }
+            completeCollectionPageSample(labNo, primarySampleItemId, effectivePageId, sysUserId);
 
             // Update order status (optional - could use a "Collected" status)
             // order.setStatusId(statusService.getStatusID(ExternalOrderStatus.Realized));
@@ -1163,11 +1201,13 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
         if (StringUtils.isNotBlank(collectionDate)) {
             Timestamp collectionTimestamp;
             if (StringUtils.isNotBlank(collectionTime)) {
-                collectionTimestamp = DateUtil.convertStringDateToTimestamp(collectionDate + " " + collectionTime);
+                collectionTimestamp = DateUtil.convertStringDateToTimestampWithPatternNoLocale(
+                        collectionDate + " " + collectionTime, "yyyy-MM-dd HH:mm");
             } else {
                 collectionTimestamp = DateUtil.convertStringDateToTruncatedTimestamp(collectionDate);
             }
             sample.setCollectionDate(collectionTimestamp);
+            sample.setReceivedTimestamp(collectionTimestamp);
         }
         sample.setSysUserId(sysUserId);
         sampleService.update(sample);
@@ -1213,6 +1253,35 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
         result.put("labNo", sample.getAccessionNumber());
         result.put("message", "Sample collection updated successfully");
         return result;
+    }
+
+    private String getPrimarySampleItemId(Sample sample) {
+        List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        if (sampleItems == null || sampleItems.isEmpty()) {
+            return null;
+        }
+        return sampleItems.get(0).getId();
+    }
+
+    private void completeCollectionPageSample(String labNo, String primarySampleItemId, Integer effectivePageId,
+            String sysUserId) {
+        if (effectivePageId == null) {
+            return;
+        }
+
+        NotebookPageSample pageSample = notebookPageSampleService.getBySampleItemIdAndPageId(labNo, effectivePageId);
+        if (pageSample == null) {
+            return;
+        }
+
+        pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
+        if (primarySampleItemId != null) {
+            pageSample.setSampleItemId(primarySampleItemId);
+        }
+        pageSample.setSysUserId(sysUserId);
+        notebookPageSampleService.update(pageSample);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "completeCollectionPageSample",
+                "NotebookPageSample updated: id=" + pageSample.getId());
     }
 
     @Override
