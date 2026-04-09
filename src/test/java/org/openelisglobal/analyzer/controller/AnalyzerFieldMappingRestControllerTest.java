@@ -56,9 +56,8 @@ public class AnalyzerFieldMappingRestControllerTest extends AuthenticatedAnalyze
     private String[] createTestAnalyzerAndField() throws Exception {
         // Create analyzer
         String uniqueName = "TEST-Mapping-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + AnalyzerTestCleanup.uniqueIp() + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))

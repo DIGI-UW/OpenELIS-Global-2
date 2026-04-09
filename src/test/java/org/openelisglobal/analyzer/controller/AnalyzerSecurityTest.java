@@ -96,8 +96,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
     @Test
     public void testCreateAnalyzer_WithPrivateIP_Succeeds() throws Exception {
         String uniqueName = "TEST-SEC-Private-" + System.currentTimeMillis();
-        String body = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"192.168.1.100\",\"port\":5000,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\"," + "\"ipAddress\":\""
+                + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists());
@@ -110,7 +110,7 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         // Create a valid analyzer first
         String uniqueName = "TEST-SEC-Update-" + System.currentTimeMillis();
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"192.168.1.100\",\"port\":5000,\"testUnitIds\":[]}";
+                + "\"ipAddress\":\"" + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         String createResponse = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))

@@ -1,9 +1,10 @@
 package org.openelisglobal.analyzer.controller;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Shared cleanup utility for analyzer controller tests.
+ * Shared cleanup and test data utilities for analyzer controller tests.
  *
  * Deletes all test-created analyzer rows and resyncs the analyzer_seq sequence.
  * Call in both @Before and @After to ensure isolation regardless of test
@@ -11,7 +12,25 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 public final class AnalyzerTestCleanup {
 
+    private static final AtomicInteger IP_COUNTER = new AtomicInteger(0);
+
     private AnalyzerTestCleanup() {
+    }
+
+    /**
+     * Generate a unique RFC 5737 TEST-NET IP that will never collide across test
+     * runs or parallel execution. Uses 198.51.100.x (TEST-NET-2).
+     */
+    public static String uniqueIp() {
+        int n = IP_COUNTER.incrementAndGet();
+        return "198.51." + ((n / 255) % 255 + 1) + "." + (n % 254 + 1);
+    }
+
+    /**
+     * Generate a unique source ID for discovered-sources tests.
+     */
+    public static String uniqueSourceId() {
+        return "test-source-" + System.currentTimeMillis() + "-" + IP_COUNTER.incrementAndGet();
     }
 
     /**
