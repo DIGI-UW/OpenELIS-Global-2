@@ -526,7 +526,16 @@ public class BarcodeLabelMaker {
                         label.incrementNumPrinted();
                     }
                 }
-                getBarcodeLabelService().save(label.getLabelInfo());
+                try {
+                    getBarcodeLabelService().save(label.getLabelInfo());
+                } catch (jakarta.persistence.OptimisticLockException | org.hibernate.StaleObjectStateException e) {
+                    // Tolerate concurrent print requests racing to update the same label row
+                    LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
+                            "Optimistic lock on label print count (concurrent request): " + e.getMessage());
+                } catch (RuntimeException e) {
+                    // DB connectivity, constraint violations, etc. — rethrow so the caller knows
+                    throw e;
+                }
             }
             document.close();
             writer.close();
