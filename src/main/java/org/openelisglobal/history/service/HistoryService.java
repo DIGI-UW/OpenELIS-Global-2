@@ -1,5 +1,6 @@
 package org.openelisglobal.history.service;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -10,4 +11,11 @@ public interface HistoryService extends BaseObjectService<History, String> {
     List<History> getHistoryByRefIdAndRefTableId(String Id, String Table) throws LIMSRuntimeException;
 
     List<History> getHistoryByRefIdAndRefTableId(History history) throws LIMSRuntimeException;
+
+    List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
+            List<String> referenceTableIds, String activity, String search, int page, int pageSize)
+            throws LIMSRuntimeException;
+
+    long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
+            List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException;
 }
