@@ -221,6 +221,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
             // Save the order
             electronicOrderService.insert(order);
+            syncAccessionSequenceForLabNo(labNo);
             LogEvent.logInfo(this.getClass().getSimpleName(), "createPatientOrder",
                     "ElectronicOrder created: id=" + order.getId() + ", externalId=" + labNo);
 
@@ -790,6 +791,52 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
 
         return sampleService.getSampleByAccessionNumber(labNo) != null;
     }
+
+    private void syncAccessionSequenceForLabNo(String labNo) {
+        if (StringUtils.isBlank(labNo)) {
+            return;
+        }
+
+        int suffixStart = findNumericSuffixStart(labNo);
+        if (suffixStart < 0 || suffixStart >= labNo.length()) {
+            return;
+        }
+
+        String prefix = labNo.substring(0, suffixStart);
+        long suffixValue;
+        try {
+            suffixValue = Long.parseLong(labNo.substring(suffixStart));
+        } catch (NumberFormatException e) {
+            return;
+        }
+
+        if (prefix.isEmpty()) {
+            return;
+        }
+
+        try {
+            long nextNumber = accessionService.getNextNumberNoIncrement(prefix,
+                    org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL);
+            long currentValue = Math.max(0L, nextNumber - 1L);
+            if (suffixValue > currentValue) {
+                accessionService.setCurVal(prefix,
+                        org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat.GENERAL,
+                        suffixValue);
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "syncAccessionSequenceForLabNo",
+                    "Failed to sync accession sequence for " + labNo + ": " + e.getMessage());
+        }
+    }
+
+    private int findNumericSuffixStart(String value) {
+        int index = value.length() - 1;
+        while (index >= 0 && Character.isDigit(value.charAt(index))) {
+            index--;
+        }
+        return index == value.length() - 1 ? -1 : index + 1;
+    }
+
 
     @Override
     public List<Map<String, Object>> getOrdersForPage(Integer pageId) {
