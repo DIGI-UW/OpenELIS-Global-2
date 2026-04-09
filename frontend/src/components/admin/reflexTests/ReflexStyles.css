@@ -13,8 +13,14 @@ body {
 .no-suggestions {
   color: #999;
   padding: 0.5rem;
-  z-index: 10000;
+  border: 1px solid #999;
+  background-color: #ffffff;
   position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  z-index: 10;
+  margin-top: 0;
 }
 
 .suggestions {
@@ -33,7 +39,9 @@ body {
 }
 
 .suggestions-container {
-  position: relative;
+  position: absolute;
+  top: 100%;
+  left: 0;
   width: 100%;
 }
 

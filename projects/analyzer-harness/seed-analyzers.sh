@@ -148,6 +148,9 @@ verify_seed_contract() {
   verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
   verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
   verify_profile_catalog_ready "Mindray BS-300" "hl7/mindray-bs300"
+  verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
+  verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
@@ -156,6 +159,9 @@ verify_seed_contract() {
   verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
   verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
   verify_realized_analyzer_mappings "Mindray BS-300" "hl7/mindray-bs300"
+  verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
+  verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
 }
 
@@ -295,38 +301,13 @@ echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
 # Clean stale data (default). Ensures clean baseline on every startup.
+# Matches container_name on db.openelis.org in docker-compose.base.yml / build.docker-compose.yml.
 resolve_db_container() {
-  local names
-  names="$(docker ps -a --format '{{.Names}}' || true)"
-
   if [ -n "${DB_CONTAINER:-}" ]; then
     echo "$DB_CONTAINER"
     return 0
   fi
-
-  for candidate in analyzer-harness-db-1 openelisglobal-database; do
-    if printf '%s\n' "$names" | grep -Fx "$candidate" >/dev/null; then
-      echo "$candidate"
-      return 0
-    fi
-  done
-
-  local detected
-  detected=$(printf '%s\n' "$names" | grep -i 'db' | head -n 1 || true)
-  if [ -n "$detected" ]; then
-    echo "$detected"
-    return 0
-  fi
-
-  echo "ERROR: Could not determine database container for analyzer cleanup." >&2
-  if [ -n "$names" ]; then
-    echo "Known containers: $names" | tr '\n' ' ' >&2
-    echo >&2
-  else
-    echo "Known containers: (none)" >&2
-  fi
-  echo "Set DB_CONTAINER explicitly to override auto-detection." >&2
-  return 1
+  echo "openelisglobal-database"
 }
 
 DB_CONTAINER="$(resolve_db_container)"
@@ -439,7 +420,34 @@ create_analyzer "Mindray BS-300" "{
   \"defaultConfigId\": \"hl7/mindray-bs300\"
 }"
 
+# 8. Wondfo Finecare FS-205 (FILE/CSV — POCT immunoassay)
+create_analyzer "Wondfo Finecare FS-205" '{
+  "name": "Wondfo Finecare FS-205",
+  "analyzerType": "IMMUNOLOGY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/wondfo-csv"
+}'
+
+# 9. Tecan Infinite F50 (FILE/CSV — ELISA plate reader)
+create_analyzer "Tecan Infinite F50" '{
+  "name": "Tecan Infinite F50",
+  "analyzerType": "IMMUNOLOGY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/tecan-f50"
+}'
+
+# 10. Thermo Multiskan FC (FILE/CSV — ELISA plate reader)
+create_analyzer "Thermo Multiskan FC" '{
+  "name": "Thermo Multiskan FC",
+  "analyzerType": "IMMUNOLOGY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/multiskan-fc"
+}'
+
 echo ""
 verify_seed_contract
 echo ""
-echo "Done. 7 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP)."
+echo "Done. 10 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP + 3 new FILE)."

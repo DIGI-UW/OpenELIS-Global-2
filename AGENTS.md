@@ -519,6 +519,31 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 **Reference:**
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
 
+### X. Legacy Code Removal (NEW in v1.10.0)
+
+**Rule:** When a feature touches legacy or deprecated code, the legacy path MUST
+be addressed — removed, tracked for removal in a paired PR, or filed as a
+priority issue. Never extend legacy code.
+
+**Why:** Legacy code preserved "for compatibility" causes **context drift** —
+developers (and AI agents) naturally gravitate toward extending what exists
+instead of building on the target architecture. This results in the same
+capability built twice, confusion about which path is authoritative, and
+compounding maintenance debt. The legacy path becomes the path of least
+resistance, pulling all future work toward the wrong design.
+
+**How:**
+
+- Do NOT add features to superseded components (entities, readers, handlers)
+- Remove legacy code in the same PR, a paired PR, or a tracked priority issue
+- No dual-write to old and new tables/entities
+- Respect component boundaries (bridge owns parsing, OE owns config)
+- Build on the target architecture, not the legacy one
+
+**Anti-pattern:** Marking code `@Deprecated` without migrating callers or
+tracking removal. Building the same capability in two places because legacy code
+exists in one of them.
+
 ---
 
 ## Development Workflow
@@ -1735,7 +1760,7 @@ npm run pw:test
 # Run specific project
 npm run pw:test -- --project=core-app
 npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness
+npm run pw:test -- --project=harness-foundational
 npm run pw:test -- --project=harness-demo
 
 # Record demo videos (local only)
@@ -1743,7 +1768,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -2194,6 +2219,11 @@ Before creating PR, verify ALL items:
 - **Pull Request Tips:** `PULL_REQUEST_TIPS.md` (15-point checklist)
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
+- **E2E CI Architecture:** `.specify/reports/ci-e2e-architecture-spec.md` -
+  concise source of truth for fork/non-fork E2E workflow topology, artifact
+  contracts, and checkpoint/status semantics
+- **E2E CI Operator Model:** `.github/e2e-ci-operator-model.md` - operational
+  troubleshooting guide for CI maintainers
 
 ### Testing Documentation
 

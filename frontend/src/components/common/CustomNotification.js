@@ -24,7 +24,8 @@ export const AlertDialog = () => {
                 notificationBody.kind !== NotificationKinds.error ? 2000 : 3000
               }
               onClose={(event) => {
-                return false;
+                // Remove notification from array when it closes automatically
+                removeNotification(index);
               }}
               onCloseButtonClick={(event) => {
                 removeNotification(index);

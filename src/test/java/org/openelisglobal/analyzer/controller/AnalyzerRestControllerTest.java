@@ -11,12 +11,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerQueryService;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -38,6 +41,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
     private ObjectMapper objectMapper;
     private JdbcTemplate jdbcTemplate;
+    private String testIp;
+    private String testIp2;
 
     @Before
     public void setUp() throws Exception {
@@ -48,33 +53,14 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         // Get controller from application context and inject mock service
         AnalyzerRestController controller = webApplicationContext.getBean(AnalyzerRestController.class);
         ReflectionTestUtils.setField(controller, "analyzerQueryService", analyzerQueryService);
-        // Clean up analyzer test data before each test
-        cleanAnalyzerTestData();
+        AnalyzerTestCleanup.clean(jdbcTemplate);
+        testIp = AnalyzerTestCleanup.uniqueIp();
+        testIp2 = AnalyzerTestCleanup.uniqueIp();
     }
 
-    /**
-     * Clean up analyzer-related test data Note: Must delete in order due to foreign
-     * key constraints
-     */
-    private void cleanAnalyzerTestData() {
-        try {
-            // Delete test-created analyzer data in order (respecting foreign keys)
-            String analyzerIdSubquery = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')";
-            jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN "
-                    + "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery + ")");
-            jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
-            // Delete analyzer (clean by name pattern)
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
-
-            // Ensure analyzer sequence is synchronized with existing data
-            // This prevents ID collisions when tests run together
-            // Get max ID and set sequence to maxId+1 (so nextval returns maxId+1)
-            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
-            // Set sequence to maxId (next nextval() will return maxId+1)
-            jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
-        } catch (Exception e) {
-            // Cleanup is best effort - don't fail if it doesn't work
-        }
+    @After
+    public void tearDown() {
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     /**
@@ -95,9 +81,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testCreateAnalyzer_WithValidData_ReturnsCreated() throws Exception {
         // Arrange: Create analyzer form JSON
         String uniqueName = "TEST-Analyzer-" + System.currentTimeMillis();
-        String requestBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         // Act & Assert: Endpoint should create analyzer
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
@@ -112,9 +97,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testTestConnection_WithValidConfig_ReturnsSuccess() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Connection-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -135,7 +119,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.ipAddress").value("192.168.1.100")).andExpect(jsonPath("$.port").value(5000));
+                .andExpect(jsonPath("$.ipAddress").value(testIp)).andExpect(jsonPath("$.port").value(5000));
     }
 
     /**
@@ -145,9 +129,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzer_WithValidId_ReturnsAnalyzer() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Get-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -183,9 +166,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testUpdateAnalyzer_WithValidData_ReturnsUpdated() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Update-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -219,9 +201,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testDeleteAnalyzer_WithValidId_ReturnsNoContent() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Delete-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -236,8 +217,10 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
         // Act & Assert: POST delete endpoint returns 200 with deletion result
         // (fresh analyzer has no recent results → hard delete → 200 with message)
-        mockMvc.perform(
-                post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON))
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/delete")
+                .contentType(MediaType.APPLICATION_JSON).sessionAttr(IActionConstants.USER_SESSION_DATA, usd))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
     }
 
@@ -256,9 +239,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testQueryAnalyzer_StartsQueryJob() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Query-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\"172.20.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\""
+                + testIp2 + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -298,9 +280,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetQueryStatus_ReturnsStatus() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Query-Status-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\"172.20.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\""
+                + testIp2 + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -341,9 +322,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetQueryStatus_WithInvalidJobId_ReturnsNotFound() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Query-Status-NotFound-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\"172.20.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\""
+                + testIp2 + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -378,9 +358,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzers_ResponseIncludesPluginLoadedField() throws Exception {
         // Arrange: Create a test analyzer
         String uniqueName = "TEST-PluginLoaded-List-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
                 .andExpect(status().isCreated());
@@ -413,9 +392,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzer_PluginLoadedFalse_WhenNoMatchingPlugin() throws Exception {
         // Arrange: Create analyzer (no real plugin JAR loaded for "Chemistry Analyzer")
         String uniqueName = "TEST-PluginLoaded-False-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -446,7 +424,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testCreateAnalyzer_WithNonNumericPluginTypeId_ReturnsCreated() throws Exception {
         String uniqueName = "TEST-NonNumericPlugin-" + System.currentTimeMillis();
         String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
-                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"" + testIp + "\",\"port\":1200}";
 
         // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
         // instead of 500 NumberFormatException
@@ -465,8 +443,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testUpdateAnalyzer_WithNonNumericPluginTypeId_ReturnsOk() throws Exception {
         // Arrange: Create analyzer first (without pluginTypeId)
         String uniqueName = "TEST-NonNumericPluginUpdate-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
-                + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\"," + "\"ipAddress\":\""
+                + testIp + "\",\"port\":1200}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -494,9 +472,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
         String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"" + testIp
+                + "\"," + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
@@ -512,7 +489,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.ipAddress").value("192.168.1.100")).andExpect(jsonPath("$.port").value(5380))
+                .andExpect(jsonPath("$.ipAddress").value(testIp)).andExpect(jsonPath("$.port").value(5380))
                 .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
                 .andExpect(jsonPath("$.protocol").value("HL7_V2_3_1"))
                 // Must have TCP reachability info (not just hardcoded success)
@@ -588,5 +565,62 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         // communicationMode should be null (not set), but effective should default
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
+    }
+
+    // === OGC-526: Discovered sources endpoint tests ===
+
+    @Test
+    public void testDiscoveredSources_CreatesStubAnalyzer() throws Exception {
+        String body = "{\"sourceId\":\"" + AnalyzerTestCleanup.uniqueSourceId()
+                + "\",\"protocol\":\"ASTM\",\"transport\":\"TCP\",\"protocolHint\":\"GENEXPERT\"}";
+
+        MvcResult result = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> response = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertNotNull("Should return analyzerId", response.get("analyzerId"));
+        assertEquals("PENDING_REGISTRATION", response.get("status"));
+        assertEquals(false, response.get("alreadyExists"));
+    }
+
+    @Test
+    public void testDiscoveredSources_IdempotentOnDuplicateSourceId() throws Exception {
+        String srcId = AnalyzerTestCleanup.uniqueSourceId();
+        String body = "{\"sourceId\":\"" + srcId + "\",\"protocol\":\"HL7\",\"transport\":\"MLLP\"}";
+
+        // First call — creates stub
+        MvcResult first = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> firstResponse = objectMapper.readValue(first.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        String firstId = String.valueOf(firstResponse.get("analyzerId"));
+
+        // Second call — returns existing stub
+        MvcResult second = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+
+        Map<String, Object> secondResponse = objectMapper.readValue(second.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertEquals("Same analyzer ID on duplicate", firstId, String.valueOf(secondResponse.get("analyzerId")));
+        assertEquals(true, secondResponse.get("alreadyExists"));
+    }
+
+    @Test
+    public void testDiscoveredSources_MissingSourceId_Returns400() throws Exception {
+        String body = "{\"protocol\":\"ASTM\",\"transport\":\"TCP\"}";
+
+        mockMvc.perform(post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
     }
 }

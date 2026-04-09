@@ -23,6 +23,7 @@ public class MethodServiceImpl extends AuditableBaseObjectServiceImpl<Method, St
 
     MethodServiceImpl() {
         super(Method.class);
+        this.auditTrailLog = true;
     }
 
     @Override

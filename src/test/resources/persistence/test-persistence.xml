@@ -99,6 +99,11 @@
         <class>org.openelisglobal.inventory.valueholder.InventoryTransaction</class>
         <class>org.openelisglobal.inventory.valueholder.InventoryUsage</class>
 
+        <!-- Shipment Management entities (OGC-62) -->
+        <class>org.openelisglobal.shipment.valueholder.ShippingBox</class>
+        <class>org.openelisglobal.shipment.valueholder.Shipment</class>
+        <class>org.openelisglobal.shipment.valueholder.BoxSampleItem</class>
+
         <!-- ASTM Analyzer Field Mapping entities (004-astm-analyzer-mapping) -->
         <!-- All analyzer entities use JPA annotations -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
@@ -145,6 +150,10 @@
         <class>org.openelisglobal.eqa.valueholder.EQAProgramEnrollment</class>
         <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
+
+        <!-- Electronic Signature entities (21 CFR Part 11) -->
+        <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
+        <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
 
         <properties>
             <property name="hibernate.ejb.cfgfile"

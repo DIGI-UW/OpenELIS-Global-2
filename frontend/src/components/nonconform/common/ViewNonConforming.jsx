@@ -16,6 +16,7 @@ import {
   TextInput,
   Table,
   RadioButton,
+  Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -27,6 +28,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { Download } from "@carbon/icons-react";
 
 export const initialReportFormValues = {
   type: undefined,
@@ -365,7 +367,6 @@ export const ViewNonConformingEvent = () => {
                           name="radio-group"
                           onClick={() => {
                             setSelected(row.nceNumber);
-                            console.log(row);
                           }}
                           labelText=""
                           id={row.id}
@@ -510,6 +511,97 @@ export const ViewNonConformingEvent = () => {
               {data.nceEventsSearchResults[0].proposedAction ?? ""}
             </div>
           </Column>
+
+          {/* Display saved severity */}
+          {data.severity && (
+            <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage
+                    id="nce.field.severity"
+                    defaultMessage="Severity"
+                  />
+                </span>
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <Tag
+                  type={
+                    data.severity === "CRITICAL"
+                      ? "red"
+                      : data.severity === "MAJOR"
+                        ? "magenta"
+                        : data.severity === "MINOR"
+                          ? "blue"
+                          : "green"
+                  }
+                >
+                  <FormattedMessage
+                    id={`nce.severity.${data.severity?.toLowerCase() || "low"}`}
+                    defaultMessage={data.severity || "Low"}
+                  />
+                </Tag>
+              </div>
+            </Column>
+          )}
+
+          {/* Display saved category */}
+          {data.nceCategory && (
+            <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage
+                    id="nce.field.category"
+                    defaultMessage="Category"
+                  />
+                </span>
+              </div>
+              <div style={{ marginBottom: "10px" }}>{data.nceCategory}</div>
+            </Column>
+          )}
+
+          {/* Display saved type */}
+          {data.nceType && (
+            <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage id="nce.field.type" defaultMessage="Type" />
+                </span>
+              </div>
+              <div style={{ marginBottom: "10px" }}>{data.nceType}</div>
+            </Column>
+          )}
+
+          {/* Display attachments */}
+          {data.attachments && data.attachments.length > 0 && (
+            <Column lg={16} md={8} sm={4} style={{ marginBottom: "20px" }}>
+              <div style={{ marginBottom: "10px" }}>
+                <span style={{ color: "#3366B3", fontWeight: "bold" }}>
+                  <FormattedMessage
+                    id="nce.field.attachments"
+                    defaultMessage="Attachments"
+                  />
+                </span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                {data.attachments.map((attachment) => (
+                  <Button
+                    key={attachment.id}
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={Download}
+                    onClick={() =>
+                      window.open(
+                        `/api/OpenELIS-Global/rest/nce/attachments/${attachment.id}/download`,
+                        "_blank",
+                      )
+                    }
+                  >
+                    {attachment.fileName}
+                  </Button>
+                ))}
+              </div>
+            </Column>
+          )}
 
           <Column lg={3} md={3} sm={1} style={{ marginBottom: "20px" }}>
             <div style={{ marginBottom: "10px" }}>
