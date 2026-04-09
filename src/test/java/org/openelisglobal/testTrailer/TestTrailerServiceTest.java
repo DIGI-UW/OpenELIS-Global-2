@@ -8,6 +8,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.testtrailer.service.TestTrailerService;
@@ -78,7 +79,8 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(3, testTrailers.size());
     }
 
-    // 1. getData() - populates fields on an existing trailer
+    // 1. getData() - populates fields from seed data (insert() unavailable due to
+    // known DAO bug)
     @Test
     public void getData_populatesTestTrailerFields() {
         TestTrailer testTrailer = new TestTrailer();
@@ -88,59 +90,61 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Description 1", testTrailer.getDescription());
     }
 
-    // 2. insert() - duplicate throws exception
-    @Test(expected = org.openelisglobal.common.exception.LIMSRuntimeException.class)
+    // 2. insert() - duplicate name throws either duplicate or runtime exception
+    @Test
     public void insert_duplicateName_throwsException() {
         TestTrailer duplicate = new TestTrailer();
         duplicate.setTestTrailerName("Trailer Name 1");
         duplicate.setDescription("Some description");
-        testTrailerService.insert(duplicate);
-    }
-
-    // 3. insert() - unique name succeeds
-    @Test
-    public void insert_uniqueName_succeeds() {
-        TestTrailer newTrailer = new TestTrailer();
-        newTrailer.setTestTrailerName("Brand New Trailer");
-        newTrailer.setDescription("New description");
-
         try {
-            String id = testTrailerService.insert(newTrailer);
-            Assert.assertNotNull(id);
+            testTrailerService.insert(duplicate);
+            Assert.fail("Expected exception not thrown");
         } catch (Exception e) {
-            // Known issue: DAO duplicate check is broken
-            Assert.assertTrue(e instanceof LIMSRuntimeException);
+            Assert.assertTrue(e instanceof LIMSDuplicateRecordException || e instanceof LIMSRuntimeException);
         }
     }
 
-    // 4. save() - duplicate throws exception
+    // 3. insert() - known DAO bug in duplicateTestTrailerExists() causes
+    // LIMSRuntimeException
+    // even for unique names; test documents this behavior until the DAO is fixed
+    @Test
+    public void insert_uniqueName_documentsKnownDaoBug() {
+        TestTrailer newTrailer = new TestTrailer();
+        newTrailer.setTestTrailerName("Brand New Trailer");
+        newTrailer.setDescription("New description");
+        try {
+            String id = testTrailerService.insert(newTrailer);
+            Assert.assertNotNull(id);
+        } catch (LIMSRuntimeException e) {
+            Assert.assertTrue(e.getMessage().contains("duplicateTestTrailerExists"));
+        }
+    }
+
+    // 4. save() - duplicate name throws exception
     @Test
     public void save_duplicateName_throwsException() {
         TestTrailer duplicate = new TestTrailer();
         duplicate.setTestTrailerName("Trailer Name 1");
         duplicate.setDescription("Some description");
-
         try {
             testTrailerService.save(duplicate);
             Assert.fail("Expected exception not thrown");
         } catch (Exception e) {
-            Assert.assertTrue(e instanceof org.openelisglobal.common.exception.LIMSDuplicateRecordException
-                    || e instanceof org.openelisglobal.common.exception.LIMSRuntimeException);
+            Assert.assertTrue(e instanceof LIMSDuplicateRecordException || e instanceof LIMSRuntimeException);
         }
     }
 
-    // 5. update() - duplicate throws exception
+    // 5. update() - duplicate name throws exception using seed data (insert()
+    // unavailable due to known DAO bug)
     @Test
     public void update_duplicateName_throwsException() {
         TestTrailer trailer = testTrailerService.get("2");
         trailer.setTestTrailerName("Trailer Name 1");
-
         try {
             testTrailerService.update(trailer);
             Assert.fail("Expected exception not thrown");
         } catch (Exception e) {
-            Assert.assertTrue(e instanceof org.openelisglobal.common.exception.LIMSDuplicateRecordException
-                    || e instanceof org.openelisglobal.common.exception.LIMSRuntimeException);
+            Assert.assertTrue(e instanceof LIMSDuplicateRecordException || e instanceof LIMSRuntimeException);
         }
     }
 
@@ -152,5 +156,4 @@ public class TestTrailerServiceTest extends BaseWebContextSensitiveTest {
         TestTrailer result = testTrailerService.getTestTrailerByName(testTrailer);
         Assert.assertNull("Should return null for non-existent trailer name", result);
     }
-
 }
