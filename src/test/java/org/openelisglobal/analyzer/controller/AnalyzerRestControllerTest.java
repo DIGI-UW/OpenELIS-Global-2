@@ -51,39 +51,12 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         // Get controller from application context and inject mock service
         AnalyzerRestController controller = webApplicationContext.getBean(AnalyzerRestController.class);
         ReflectionTestUtils.setField(controller, "analyzerQueryService", analyzerQueryService);
-        // Clean up analyzer test data before each test
-        cleanAnalyzerTestData();
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     @After
     public void tearDown() {
-        cleanAnalyzerTestData();
-    }
-
-    /**
-     * Clean up analyzer-related test data Note: Must delete in order due to foreign
-     * key constraints
-     */
-    private void cleanAnalyzerTestData() {
-        try {
-            // Delete test-created analyzer data in order (respecting foreign keys)
-            String analyzerIdSubquery = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')";
-            jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN "
-                    + "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery + ")");
-            jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
-            // Delete test-created analyzers (TEST-% from explicit creates, Unknown% from
-            // discovered-sources)
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%' OR name LIKE 'Unknown%'");
-
-            // Ensure analyzer sequence is synchronized with existing data
-            // This prevents ID collisions when tests run together
-            // Get max ID and set sequence to maxId+1 (so nextval returns maxId+1)
-            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
-            // Set sequence to maxId (next nextval() will return maxId+1)
-            jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
-        } catch (Exception e) {
-            // Cleanup is best effort - don't fail if it doesn't work
-        }
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     /**

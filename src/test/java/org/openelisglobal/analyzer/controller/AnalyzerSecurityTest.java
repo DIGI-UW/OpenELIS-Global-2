@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -40,17 +41,12 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         AnalyzerRestController controller = webApplicationContext.getBean(AnalyzerRestController.class);
         ReflectionTestUtils.setField(controller, "analyzerQueryService", analyzerQueryService);
 
-        cleanTestData();
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
-    private void cleanTestData() {
-        try {
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-SEC-%'");
-            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
-            jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
-        } catch (Exception e) {
-            System.out.println("Failed to clean security test data: " + e.getMessage());
-        }
+    @After
+    public void tearDown() {
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     // ── SSRF: Create analyzer with blocked IP ───────────────────────────
