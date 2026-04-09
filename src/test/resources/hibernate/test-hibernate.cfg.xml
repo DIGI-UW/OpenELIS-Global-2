@@ -155,6 +155,8 @@
         <mapping
             class="org.openelisglobal.qaevent.valueholder.NceAttachment" />
         <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceHistory" />
+        <mapping
             class="org.openelisglobal.qaevent.valueholder.NceType" />
         <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
