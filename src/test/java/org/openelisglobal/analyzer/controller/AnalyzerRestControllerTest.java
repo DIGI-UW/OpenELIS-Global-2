@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -54,6 +55,11 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         cleanAnalyzerTestData();
     }
 
+    @After
+    public void tearDown() {
+        cleanAnalyzerTestData();
+    }
+
     /**
      * Clean up analyzer-related test data Note: Must delete in order due to foreign
      * key constraints
@@ -65,8 +71,9 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
             jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN "
                     + "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery + ")");
             jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
-            // Delete analyzer (clean by name pattern)
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
+            // Delete test-created analyzers (TEST-% from explicit creates, Unknown% from
+            // discovered-sources)
+            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%' OR name LIKE 'Unknown%'");
 
             // Ensure analyzer sequence is synchronized with existing data
             // This prevents ID collisions when tests run together

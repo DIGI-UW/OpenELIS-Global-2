@@ -44,6 +44,9 @@ import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { Warning } from "@carbon/icons-react";
+import ESignatureButton, {
+  SignatureMeaning,
+} from "../esignature/ESignatureButton";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -1875,13 +1878,48 @@ export function SearchResults(props) {
     setAcceptAsIs(newAcceptAsIs);
   };
 
-  const handleSave = (values) => {
-    console.debug("handleSave:" + values);
+  const buildSignContext = () => {
+    const results = (props.results && props.results.testResult) || [];
+    const count = results.length;
+    const accessions = [
+      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
+    ];
+    if (accessions.length === 1) {
+      return intl.formatMessage(
+        {
+          id: "esig.context.saveResults",
+          defaultMessage: "Save {count} result(s) for accession {accession}",
+        },
+        {
+          count,
+          accession:
+            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
+        },
+      );
+    }
+    return intl.formatMessage(
+      {
+        id: "esig.context.saveResultsMulti",
+        defaultMessage:
+          "Save {count} result(s) across {accessionCount} accessions",
+      },
+      { count, accessionCount: accessions.length },
+    );
+  };
+
+  const getFirstAnalysisId = () => {
+    const results = (props.results && props.results.testResult) || [];
+    for (const r of results) {
+      if (r.analysisId) return Number(r.analysisId);
+    }
+    return 0;
+  };
+
+  const handleSave = () => {
     if (isSubmitting) {
       return;
     }
     setIsSubmitting(true);
-    values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
@@ -2042,15 +2080,17 @@ export function SearchResults(props) {
                 }
               />
 
-              <Button
-                type="button"
-                id="saveResults"
-                onClick={handleSave}
-                style={{ marginTop: "16px" }}
+              <ESignatureButton
+                meaning={SignatureMeaning.AUTHORED}
+                context={buildSignContext()}
+                recordType="RESULT_BATCH"
+                recordId={getFirstAnalysisId()}
+                onSign={handleSave}
                 disabled={isSubmitting}
+                style={{ marginTop: "16px" }}
               >
                 <FormattedMessage id="label.button.save" />
-              </Button>
+              </ESignatureButton>
             </Form>
           )}
         </Formik>
