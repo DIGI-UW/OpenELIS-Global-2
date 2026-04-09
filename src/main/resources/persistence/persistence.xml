@@ -112,6 +112,10 @@
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
+        <!-- Electronic Signature entities (21 CFR Part 11 Compliance) -->
+        <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
+        <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />
