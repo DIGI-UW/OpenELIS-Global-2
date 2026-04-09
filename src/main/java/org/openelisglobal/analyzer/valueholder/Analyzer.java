@@ -34,6 +34,7 @@ import jakarta.validation.constraints.Pattern;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
@@ -154,6 +155,9 @@ public class Analyzer extends BaseObject<String> {
     @Column(name = "last_activated_date")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastActivatedDate;
+
+    @Column(name = "fhir_uuid")
+    private UUID fhirUuid;
 
     @Override
     public String getId() {
@@ -428,6 +432,33 @@ public class Analyzer extends BaseObject<String> {
 
     public void setDiscoveredSourceId(String discoveredSourceId) {
         this.discoveredSourceId = discoveredSourceId;
+    }
+
+    public UUID getFhirUuid() {
+        return fhirUuid;
+    }
+
+    public void setFhirUuid(UUID fhirUuid) {
+        this.fhirUuid = fhirUuid;
+    }
+
+    /**
+     * Returns the fhirUuid as a String, or null if not yet assigned. Use
+     * {@link #ensureFhirUuid()} to generate and persist a UUID if needed.
+     */
+    public String getFhirUuidAsString() {
+        return fhirUuid != null ? fhirUuid.toString() : null;
+    }
+
+    /**
+     * Ensures this analyzer has a stable FHIR UUID. If none exists, generates one.
+     * Callers should persist the entity after calling this in a write transaction.
+     */
+    public String ensureFhirUuid() {
+        if (fhirUuid == null) {
+            fhirUuid = UUID.randomUUID();
+        }
+        return fhirUuid.toString();
     }
 
     /**
