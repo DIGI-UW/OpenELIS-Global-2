@@ -85,6 +85,10 @@
         <class>org.openelisglobal.notification.valueholder.NotificationConfigOption</class>
         <class>org.openelisglobal.notification.valueholder.NotificationPayloadTemplate</class>
 
+        <!-- Dictionary entities (required by NoteBook.type relationship) -->
+        <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
+        <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
+
         <!-- Notebook Management entities -->
         <class>org.openelisglobal.notebook.valueholder.NoteBook</class>
         <class>org.openelisglobal.notebook.valueholder.NoteBookPage</class>

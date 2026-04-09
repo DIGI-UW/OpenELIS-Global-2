@@ -136,22 +136,18 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
 
     @Override
     public int getTotalSearchedProviderCount(String parameter) {
-        List<Provider> list = null;
         try {
-            String sql = "from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
+            String sql = "select count(p) from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
                     + " '%') or lower(p.person.lastName) like concat('%', lower(:searchValue), '%') or"
                     + " lower(concat(p.person.firstName, ' ', p.person.lastName)) like concat('%',"
                     + " lower(:searchValue), '%')";
-            Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
             query.setParameter("searchValue", parameter);
-
-            list = query.list();
+            return query.uniqueResult().intValue();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in ProviderDAOImpl getTotalSearchedProviderCount()", e);
         }
-
-        return list.size();
     }
 
     @Override
@@ -179,5 +175,65 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
         }
 
         return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Provider> getPagesOfSearchedProvidersByPhone(int startingRecNo, String phone) {
+        List<Provider> list = new Vector<>();
+        try {
+            // Strip non-numeric characters from search value
+            String phoneValue = phone != null ? phone.replaceAll("[^0-9]", "") : "";
+            if (phoneValue.isEmpty()) {
+                return list;
+            }
+
+            // calculate maxRow to be one more than the page size
+            int endingRecNo = startingRecNo
+                    + (Integer.parseInt(ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"))
+                            + 1);
+
+            // Search by primary phone, work phone, or fax - strip non-numeric characters
+            // for comparison
+            String sql = "from Provider p where "
+                    + "replace(replace(replace(replace(p.person.primaryPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
+                    + "replace(replace(replace(replace(p.person.workPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
+                    + "replace(replace(replace(replace(p.person.fax, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') "
+                    + "ORDER BY p.active DESC, p.person.lastName";
+            Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
+            query.setParameter("phoneValue", phoneValue);
+            query.setFirstResult(startingRecNo - 1);
+            query.setMaxResults(endingRecNo - 1);
+
+            list = query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ProviderDAOImpl getPagesOfSearchedProvidersByPhone()", e);
+        }
+
+        return list;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getTotalSearchedProviderCountByPhone(String phone) {
+        // Strip non-numeric characters from search value
+        String phoneValue = phone != null ? phone.replaceAll("[^0-9]", "") : "";
+        if (phoneValue.isEmpty()) {
+            return 0;
+        }
+
+        try {
+            String sql = "select count(p) from Provider p where "
+                    + "replace(replace(replace(replace(p.person.primaryPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
+                    + "replace(replace(replace(replace(p.person.workPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
+                    + "replace(replace(replace(replace(p.person.fax, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%')";
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
+            query.setParameter("phoneValue", phoneValue);
+            return query.uniqueResult().intValue();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in ProviderDAOImpl getTotalSearchedProviderCountByPhone()", e);
+        }
     }
 }
