@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import { OEToastNotificationBody } from "../common/OEToastNotification";
+import type { OEToastNotificationBody } from "../common/notificationTypes";
 
 export interface NotificationContextType {
   notificationVisible: boolean;

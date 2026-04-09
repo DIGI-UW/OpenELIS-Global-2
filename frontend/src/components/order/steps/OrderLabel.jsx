@@ -472,7 +472,7 @@ const OrderLabel = () => {
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
     >
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
 
       {/* Print Labels Section */}
       <Tile className="order-section print-labels-section">

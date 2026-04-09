@@ -1,10 +1,12 @@
 import React, { useContext } from "react";
 import { ToastNotification } from "@carbon/react";
 import { NotificationContext } from "../layout/NotificationContext";
+import type {
+  OEToastNotificationBody,
+  ToastNotificationKind,
+} from "./notificationTypes";
 
-type ToastNotificationKind = React.ComponentProps<
-  typeof ToastNotification
->["kind"];
+export type { OEToastNotificationBody, ToastNotificationKind };
 
 export const OEToastNotificationKinds: Record<string, ToastNotificationKind> = {
   info: "info",
@@ -16,13 +18,6 @@ export const OEToastNotificationKinds: Record<string, ToastNotificationKind> = {
   warningAlt: "warning-alt",
 };
 
-export interface OEToastNotificationBody {
-  title: string;
-  kind: ToastNotificationKind;
-  subtitle?: React.ReactNode;
-  message?: React.ReactNode;
-}
-
 export const OEToastNotification: React.FC = () => {
   const { notifications, removeNotification } = useContext(NotificationContext);
 
@@ -33,7 +28,10 @@ export const OEToastNotification: React.FC = () => {
           key={index}
           title={notificationBody.title}
           timeout={notificationBody.kind !== "error" ? 2000 : 3000}
-          onClose={() => false}
+          onClose={() => {
+            removeNotification(index);
+            return false;
+          }}
           onCloseButtonClick={() => {
             removeNotification(index);
           }}

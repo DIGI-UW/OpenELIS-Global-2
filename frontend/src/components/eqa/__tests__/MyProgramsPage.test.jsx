@@ -20,7 +20,7 @@ jest.mock("../../layout/Layout", () => {
 });
 
 jest.mock("../../common/OEToastNotification", () => ({
-  NotificationKinds: {
+  OEToastNotificationKinds: {
     success: "success",
     error: "error",
     info: "info",

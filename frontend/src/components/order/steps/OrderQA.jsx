@@ -279,7 +279,7 @@ const OrderQA = () => {
       onSave={handleSave}
       onSaveAndNext={handleSubmit}
     >
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
       {isSaving && <Loading withOverlay description="Saving..." />}
 
       <div className="qa-review-container">
