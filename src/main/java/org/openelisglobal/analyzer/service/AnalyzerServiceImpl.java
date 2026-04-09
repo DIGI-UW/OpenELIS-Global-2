@@ -68,6 +68,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
+        this.auditTrailLog = true;
     }
 
     @Override

@@ -116,16 +116,6 @@ export const RoutineReportsMenu = {
       ],
     },
     {
-      title: <FormattedMessage id="sideNav.title.audittrail" />,
-      icon: IbmWatsonNaturalLanguageUnderstanding,
-      SideNavMenuItem: [
-        {
-          link: "/RoutineReport?type=routine&report=auditTrail",
-          label: <FormattedMessage id="sideNav.label.audittrail" />,
-        },
-      ],
-    },
-    {
       title: <FormattedMessage id="sideNav.title.exportcsvfile" />,
       icon: IbmWatsonNaturalLanguageUnderstanding,
       SideNavMenuItem: [

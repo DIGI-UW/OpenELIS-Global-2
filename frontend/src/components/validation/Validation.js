@@ -24,6 +24,9 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import ESignatureButton, {
+  SignatureMeaning,
+} from "../esignature/ESignatureButton";
 
 const Validation = (props) => {
   const componentMounted = useRef(false);
@@ -115,7 +118,45 @@ const Validation = (props) => {
     },
   ];
 
-  const handleSave = (values) => {
+  const buildSignContext = () => {
+    const results = (props.results && props.results.resultList) || [];
+    const count = results.length;
+    const accessions = [
+      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
+    ];
+    if (accessions.length === 1) {
+      return intl.formatMessage(
+        {
+          id: "esig.context.validateResults",
+          defaultMessage:
+            "Validate {count} result(s) for accession {accession}",
+        },
+        {
+          count,
+          accession:
+            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
+        },
+      );
+    }
+    return intl.formatMessage(
+      {
+        id: "esig.context.validateResultsMulti",
+        defaultMessage:
+          "Validate {count} result(s) across {accessionCount} accessions",
+      },
+      { count, accessionCount: accessions.length },
+    );
+  };
+
+  const getFirstAnalysisId = () => {
+    const results = (props.results && props.results.resultList) || [];
+    for (const r of results) {
+      if (r.analysisId) return Number(r.analysisId);
+    }
+    return 0;
+  };
+
+  const handleSave = () => {
     if (isSubmitting) {
       return;
     }
@@ -463,16 +504,17 @@ const Validation = (props) => {
               }
             />
 
-            <Button
-              type="button"
-              onClick={() => handleSave(values)}
-              id="submit"
-              style={{ marginTop: "16px" }}
-              data-testid="Save-btn"
+            <ESignatureButton
+              meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
+              context={buildSignContext()}
+              recordType="VALIDATION_BATCH"
+              recordId={getFirstAnalysisId()}
+              onSign={handleSave}
               disabled={isSubmitting}
+              style={{ marginTop: "16px" }}
             >
               <FormattedMessage id="label.button.save" />
-            </Button>
+            </ESignatureButton>
           </Form>
         )}
       </Formik>

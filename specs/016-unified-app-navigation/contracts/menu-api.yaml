@@ -1,0 +1,206 @@
+openapi: 3.0.3
+info:
+  title: OpenELIS Menu API
+  description: REST API for unified navigation menu management
+  version: 2.0.0
+
+paths:
+  /rest/menu:
+    get:
+      summary: Get menu tree
+      description: |
+        Returns the full menu tree filtered by the authenticated user's roles.
+        Menu items where the user lacks the requiredRole are excluded.
+        New fields (iconName, requiredRole, configSource) are included in the response.
+      operationId: getMenuTree
+      tags:
+        - Menu
+      responses:
+        '200':
+          description: Menu tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuItem'
+        '401':
+          description: Unauthorized
+    post:
+      summary: Save menu items
+      description: |
+        Save a list of menu items. Sets config_source to 'admin' for items
+        modified through this endpoint (distinguishing admin overrides from
+        distribution defaults).
+      operationId: saveMenuTree
+      tags:
+        - Menu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/MenuItem'
+      responses:
+        '200':
+          description: Saved menu tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuItem'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - requires admin role
+
+  /rest/menu/{elementId}:
+    get:
+      summary: Get a specific menu item
+      description: Returns a single menu item and its children by elementId.
+      operationId: getMenuItem
+      tags:
+        - Menu
+      parameters:
+        - name: elementId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Menu item found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+        '404':
+          description: Menu item not found
+    post:
+      summary: Save a single menu item
+      description: |
+        Save a single menu item. Sets config_source to 'admin'.
+      operationId: saveMenuItem
+      tags:
+        - Menu
+      parameters:
+        - name: elementId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MenuItem'
+      responses:
+        '200':
+          description: Saved menu item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+
+  /rest/menu/{elementId}/reset:
+    post:
+      summary: Reset menu item to distribution default
+      description: |
+        Deletes the admin override for a menu item, reverting it to the
+        distribution default value. Only applicable to items with
+        config_source = 'admin'.
+      operationId: resetMenuItem
+      tags:
+        - Menu
+      parameters:
+        - name: elementId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Menu item reset to distribution default
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItem'
+        '404':
+          description: Menu item not found
+        '409':
+          description: Menu item is already at distribution default
+
+components:
+  schemas:
+    Menu:
+      type: object
+      properties:
+        elementId:
+          type: string
+          description: Unique element identifier
+          example: "admin-userManagement"
+        presentationOrder:
+          type: integer
+          description: Sort order within parent
+          example: 1
+        actionURL:
+          type: string
+          description: Navigation target URL
+          example: "/admin/userManagement"
+        displayKey:
+          type: string
+          description: React Intl message key for display text
+          example: "sidenav.label.admin.userManagement"
+        toolTipKey:
+          type: string
+          nullable: true
+          description: React Intl message key for tooltip
+        localizedTitle:
+          type: string
+          description: Server-resolved localized title
+          example: "User Management"
+        localizedTooltip:
+          type: string
+          nullable: true
+          description: Server-resolved localized tooltip
+        openInNewWindow:
+          type: boolean
+          default: false
+        isActive:
+          type: boolean
+          default: true
+        iconName:
+          type: string
+          nullable: true
+          description: Carbon icon component name from MenuIconRegistry
+          example: "User"
+        requiredRole:
+          type: string
+          nullable: true
+          description: Role required to see this item (null = visible to all)
+          example: "GLOBAL_ADMIN"
+        fhirUuid:
+          type: string
+          format: uuid
+          nullable: true
+          description: FHIR resource UUID
+        configSource:
+          type: string
+          enum: [distribution, admin]
+          description: Provenance tracking
+          example: "distribution"
+
+    MenuItem:
+      type: object
+      properties:
+        menu:
+          $ref: '#/components/schemas/Menu'
+        childMenus:
+          type: array
+          items:
+            $ref: '#/components/schemas/MenuItem'
+          description: Ordered child menu items

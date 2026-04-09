@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useContext } from "react";
+import { format } from "date-fns";
 import {
   Button,
   Column,
-  Form,
+  DatePicker,
+  DatePickerInput,
   Grid,
-  Section,
   Select,
   SelectItem,
   TableCell,
@@ -15,10 +16,9 @@ import {
   TextArea,
   TextInput,
   Table,
-  RadioButton,
-  UnorderedList,
-  ListItem,
   Checkbox,
+  Tile,
+  Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -29,26 +29,15 @@ import { NotificationContext } from "../../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  postToOpenElisServerFormData,
 } from "../../utils/Utils";
-import CustomDatePicker from "../../common/CustomDatePicker";
-import { sampleObject } from "../../addOrder/Index";
+import NceFileAttachment from "./NceFileAttachment";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
+import "./ReportNonConformingEvent.css";
 
 const initialReportFormValues = {
   type: undefined,
   value: "",
-  error: undefined,
-  data: undefined,
-};
-
-const initialSelected = {
-  specimenId: undefined,
-  selected: false,
-  labOrderNumber: undefined,
-};
-
-const initialNCEForm = {
-  show: false,
-  data: undefined,
   error: undefined,
 };
 
@@ -56,36 +45,148 @@ export const ReportNonConformingEvent = () => {
   const [reportFormValues, setReportFormValues] = useState(
     initialReportFormValues,
   );
-  const [ldata, setLData] = useState(null);
-  const [selectedSample, setSelectedSample] = useState(initialSelected);
-  // const [nceForm, setnceForm] = useState(initialNCEForm);
+  const [searchResults, setSearchResults] = useState(null);
+  const [linkedSamples, setLinkedSamples] = useState([]);
   const [orderSampleMap, setOrderSampleMap] = useState({});
+  const [categories, setCategories] = useState([]);
+  const [types, setTypes] = useState([]);
+  const [reportingUnits, setReportingUnits] = useState([]);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   const intl = useIntl();
 
   const [nceForm, setnceForm] = useState({
-    data: {
-      reporterName: "",
-      dateOfEvent: null,
-      reportingUnit: "",
-      description: "",
-      suspectedCauses: "",
-      proposedAction: "",
-      reportingUnits: [],
-    },
-    errors: {
-      reporterName: "",
-      dateOfEvent: "",
-      reportingUnit: "",
-      description: "",
-      suspectedCauses: "",
-      proposedAction: "",
-    },
+    nceNumber: "",
+    reporterName: "",
+    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    reportingUnit: "",
+    title: "",
+    description: "",
+    immediateAction: "",
+    suspectedCauses: "",
+    proposedAction: "",
+    severity: "",
+    categoryId: "",
+    typeId: "",
+    attachments: [],
   });
 
-  const handleSubmit = () => {
+  const [errors, setErrors] = useState({});
+
+  // Set reporter name from session when available
+  useEffect(() => {
+    if (userSessionDetails && userSessionDetails.authenticated) {
+      const fullName = [
+        userSessionDetails.firstName,
+        userSessionDetails.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      setnceForm((prev) => ({
+        ...prev,
+        reporterName: fullName || userSessionDetails.loginName || "",
+      }));
+    }
+  }, [userSessionDetails]);
+
+  // Load categories, reporting units, and generate NCE number on mount
+  useEffect(() => {
+    // Fetch categories - try new endpoint first, fall back to displayList
+    getFromOpenElisServer("/rest/nce/categories", (response) => {
+      if (response && Array.isArray(response)) {
+        setCategories(response);
+      } else {
+        // Fallback: fetch from displayList (prebuilt image compatibility)
+        getFromOpenElisServer(
+          "/rest/displayList/NCE_CATEGORY",
+          (fallbackResponse) => {
+            if (fallbackResponse && Array.isArray(fallbackResponse)) {
+              // Convert IdValuePair format to expected format
+              setCategories(
+                fallbackResponse.map((item) => ({
+                  id: item.id,
+                  name: item.value,
+                  types: [], // Types will be fetched separately when category selected
+                })),
+              );
+            }
+          },
+        );
+      }
+    });
+
+    getFromOpenElisServer(
+      "/rest/displayList/TEST_SECTION_ACTIVE",
+      (response) => {
+        if (response && Array.isArray(response)) {
+          setReportingUnits(response);
+        }
+      },
+    );
+
+    // Generate NCE number - try new endpoint first, fall back to timestamp
+    getFromOpenElisServer("/rest/nce/generate-number", (response) => {
+      if (response && response.nceNumber) {
+        setnceForm((prev) => ({
+          ...prev,
+          nceNumber: response.nceNumber,
+        }));
+      } else {
+        // Fallback: generate client-side NCE number
+        const timestamp = Date.now();
+        const nceNumber = `NCE-${timestamp}`;
+        setnceForm((prev) => ({
+          ...prev,
+          nceNumber: nceNumber,
+        }));
+      }
+    });
+  }, []);
+
+  // Update types when category changes
+  useEffect(() => {
+    if (nceForm.categoryId) {
+      const category = categories.find((cat) => cat.id === nceForm.categoryId);
+      if (category && category.types && category.types.length > 0) {
+        setTypes(category.types);
+      } else {
+        // Fallback: fetch types for category from displayList
+        getFromOpenElisServer(
+          `/rest/displayList/NCE_TYPE_FOR_CATEGORY?categoryId=${nceForm.categoryId}`,
+          (response) => {
+            if (response && Array.isArray(response)) {
+              setTypes(
+                response.map((item) => ({
+                  id: item.id,
+                  name: item.value,
+                })),
+              );
+            } else {
+              setTypes([]);
+            }
+          },
+        );
+      }
+    } else {
+      setTypes([]);
+    }
+  }, [nceForm.categoryId, categories]);
+
+  const selectOptions = [
+    { text: "Last Name", value: "lastName" },
+    { text: "First Name", value: "firstName" },
+    { value: "STNumber", text: "Patient Identification Code" },
+    { text: "Lab Number", value: "labNumber" },
+  ];
+
+  const headers = [
+    { key: "labOrderNumber", value: "Lab Number" },
+    { key: "type", value: "Specimen type" },
+  ];
+
+  const handleSearch = () => {
     if (reportFormValues.type === undefined || reportFormValues.value === "") {
       setReportFormValues({
         ...reportFormValues,
@@ -96,580 +197,948 @@ export const ReportNonConformingEvent = () => {
       return;
     }
 
-    setReportFormValues({
-      ...reportFormValues,
-      error: undefined,
-    });
+    setReportFormValues({ ...reportFormValues, error: undefined });
 
-    try {
-      getFromOpenElisServer(
-        `/rest/nonconformevents?${reportFormValues.type}=${reportFormValues.value}`,
-        (data) => {
-          if (data) {
-            if (data.length > 0) {
-              setLData(data);
-            } else {
-              setLData(null);
-              setReportFormValues({
-                ...reportFormValues,
-                error: intl.formatMessage({
-                  id: "error.nonconform.report.data.found",
-                  defaultMessage: "No data found",
-                }),
-              });
-            }
-          } else {
-            setReportFormValues({
-              ...reportFormValues,
-              error: intl.formatMessage({
-                id: "error.nonconform.report.data.found",
-                defaultMessage: "No data found",
-              }),
-            });
-          }
-        },
+    getFromOpenElisServer(
+      `/rest/nonconformevents?${reportFormValues.type}=${reportFormValues.value}`,
+      (data) => {
+        if (data && data.length > 0) {
+          setSearchResults(data);
+        } else {
+          setSearchResults(null);
+          setReportFormValues({
+            ...reportFormValues,
+            error: intl.formatMessage({
+              id: "error.nonconform.report.data.found",
+              defaultMessage: "No data found",
+            }),
+          });
+        }
+      },
+    );
+  };
+
+  const handleLinkSamples = () => {
+    const labNo = Object.keys(orderSampleMap)[0];
+    if (labNo && orderSampleMap[labNo]?.length > 0) {
+      // Check if this lab order is already linked
+      const alreadyLinked = linkedSamples.find(
+        (s) => s.labOrderNumber === labNo,
       );
-    } catch (error) {
-      setReportFormValues({
-        ...reportFormValues,
-        error: intl.formatMessage({
-          id: "error.nonconform.report.data.found",
-          defaultMessage: "No data found",
-        }),
-      });
+
+      if (alreadyLinked) {
+        // Filter out specimen IDs that are already linked
+        const existingSpecimenIds = new Set(alreadyLinked.specimenIds);
+        const newSpecimenIds = orderSampleMap[labNo].filter(
+          (id) => !existingSpecimenIds.has(id),
+        );
+
+        if (newSpecimenIds.length === 0) {
+          // All specimens already linked - show warning
+          addNotification({
+            kind: NotificationKinds.warning,
+            title: intl.formatMessage({ id: "notification.title" }),
+            message: intl.formatMessage({
+              id: "nce.link.duplicate.warning",
+              defaultMessage: "These specimens are already linked to this NCE",
+            }),
+          });
+          setNotificationVisible(true);
+        } else {
+          // Add only new specimen IDs to existing linked sample
+          setLinkedSamples((prev) =>
+            prev.map((s) =>
+              s.labOrderNumber === labNo
+                ? { ...s, specimenIds: [...s.specimenIds, ...newSpecimenIds] }
+                : s,
+            ),
+          );
+        }
+      } else {
+        // New lab order - add it
+        const newLinked = {
+          labOrderNumber: labNo,
+          specimenIds: orderSampleMap[labNo],
+        };
+        setLinkedSamples((prev) => [...prev, newLinked]);
+      }
+
+      setSearchResults(null);
+      setOrderSampleMap({});
+      setReportFormValues(initialReportFormValues);
     }
   };
 
-  const selectOptions = [
-    {
-      text: "Last Name",
-      value: "lastName",
-    },
-    {
-      text: "First Name",
-      value: "firstName",
-    },
-    {
-      value: "STNumber",
-      text: "Patient Identification Code",
-    },
-    {
-      text: "Lab Number",
-      value: "labNumber",
-    },
-  ];
-
-  const headers = [
-    {
-      key: "labOrderNumber",
-      value: "Lab Number",
-    },
-    {
-      key: "type",
-      value: "Specimen type",
-    },
-  ];
-
-  useEffect(() => {
-    console.log(JSON.stringify(selectedSample));
-    if (selectedSample.labOrderNumber && selectedSample.specimenId) {
-      getFromOpenElisServer(
-        `/rest/reportnonconformingevent?labOrderNumber=${selectedSample.labOrderNumber}&specimenId=${selectedSample.specimenId}`,
-        (data) => {
-          console.log("data from server for selected", data);
-          setLData(undefined);
-          setnceForm({
-            ...nceForm,
-            show: true,
-            data: data,
-          });
-        },
-      );
-    }
-  }, [selectedSample]);
+  const handleRemoveLinkedSample = (labOrderNumber) => {
+    setLinkedSamples((prev) =>
+      prev.filter((s) => s.labOrderNumber !== labOrderNumber),
+    );
+  };
 
   const handleNCEFormSubmit = () => {
-    console.log("nceForm.data", nceForm.data);
     const newErrors = {};
-    if (!nceForm.data.dateOfEvent) {
-      newErrors.dateOfEvent = "Date of event is required";
+    if (!nceForm.dateOfEvent) {
+      newErrors.dateOfEvent = intl.formatMessage({
+        id: "nce.error.dateOfEvent.required",
+        defaultMessage: "Date of event is required",
+      });
     }
-    if (!nceForm.data.reportingUnit) {
-      newErrors.reportingUnit = "Reporting unit is required";
+    if (!nceForm.reportingUnit) {
+      newErrors.reportingUnit = intl.formatMessage({
+        id: "nce.error.reportingUnit.required",
+        defaultMessage: "Reporting unit is required",
+      });
     }
-    if (!nceForm.data.description) {
-      newErrors.description = "Description is required";
+    if (!nceForm.description) {
+      newErrors.description = intl.formatMessage({
+        id: "nce.error.description.required",
+        defaultMessage: "Description is required",
+      });
     }
-    if (!nceForm.data.suspectedCauses) {
-      newErrors.suspectedCauses = "Suspected causes are required";
+    if (!nceForm.severity) {
+      newErrors.severity = intl.formatMessage({
+        id: "nce.error.severity.required",
+        defaultMessage: "Severity is required",
+      });
     }
-    if (!nceForm.data.proposedAction) {
-      newErrors.proposedAction = "Proposed action is required";
+    if (!nceForm.categoryId) {
+      newErrors.categoryId = intl.formatMessage({
+        id: "nce.error.category.required",
+        defaultMessage: "Category is required",
+      });
     }
+
     if (Object.keys(newErrors).length > 0) {
-      setnceForm((prev) => ({
-        ...prev,
-        errors: newErrors,
-      }));
+      setErrors(newErrors);
+      return;
+    }
+
+    // Build specimenId from linked samples (comma-separated)
+    const specimenId = linkedSamples.flatMap((s) => s.specimenIds).join(",");
+    const labOrderNumber =
+      linkedSamples.length > 0 ? linkedSamples[0].labOrderNumber : "";
+
+    const body = {
+      nceNumber: nceForm.nceNumber,
+      reporterName: nceForm.reporterName,
+      dateOfEvent: nceForm.dateOfEvent,
+      reportingUnit: nceForm.reportingUnit,
+      labOrderNumber: labOrderNumber,
+      specimenId: specimenId,
+      title: nceForm.title,
+      description: nceForm.description,
+      immediateAction: nceForm.immediateAction,
+      suspectedCauses: nceForm.suspectedCauses,
+      proposedAction: nceForm.proposedAction,
+      severity: nceForm.severity,
+      nceCategoryId: nceForm.categoryId,
+      nceTypeId: nceForm.typeId,
+    };
+
+    const localAttachments = (nceForm.attachments || []).filter(
+      (att) => att.isNew && att.file,
+    );
+
+    const handleSuccess = () => {
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "nonconform.order.save.success",
+        }),
+      });
+      // Reset form and reload defaults
+      setnceForm({
+        nceNumber: "",
+        reporterName: "",
+        dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+        reportingUnit: "",
+        title: "",
+        description: "",
+        immediateAction: "",
+        suspectedCauses: "",
+        proposedAction: "",
+        severity: "",
+        categoryId: "",
+        typeId: "",
+        attachments: [],
+      });
+      setLinkedSamples([]);
+      setErrors({});
+
+      // Set reporter name from session
+      if (userSessionDetails && userSessionDetails.authenticated) {
+        const fullName = [
+          userSessionDetails.firstName,
+          userSessionDetails.lastName,
+        ]
+          .filter(Boolean)
+          .join(" ");
+        setnceForm((prev) => ({
+          ...prev,
+          reporterName: fullName || userSessionDetails.loginName || "",
+        }));
+      }
+
+      // Generate new NCE number
+      getFromOpenElisServer("/rest/nce/generate-number", (response) => {
+        if (response && response.nceNumber) {
+          setnceForm((prev) => ({
+            ...prev,
+            nceNumber: response.nceNumber,
+          }));
+        } else {
+          // Fallback: generate client-side NCE number
+          const timestamp = Date.now();
+          const nceNumber = `NCE-${timestamp}`;
+          setnceForm((prev) => ({
+            ...prev,
+            nceNumber: nceNumber,
+          }));
+        }
+      });
+    };
+
+    const handleError = () => {
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
+      });
+    };
+
+    if (localAttachments.length > 0) {
+      const formData = new FormData();
+      formData.append("nceData", JSON.stringify(body));
+      localAttachments.forEach((att) => {
+        formData.append("files", att.file);
+      });
+
+      postToOpenElisServerFormData(
+        "/rest/reportnonconformingevent/with-attachments",
+        formData,
+        (status) => {
+          if (status === 200 || status === 201) {
+            handleSuccess();
+          } else {
+            handleError();
+          }
+        },
+      );
     } else {
-      let body = {
-        currentUserId: parseInt(nceForm.data.currentUserId),
-        id: parseInt(nceForm.data.id),
-        reportDate: nceForm.data.reportDate,
-        name: nceForm.data.name,
-        reporterName: nceForm.data.reporterName,
-        dateOfEvent: nceForm.data.dateOfEvent,
-        labOrderNumber: nceForm.data.labOrderNumber,
-        prescriberName: nceForm.data.prescriberName,
-        site: nceForm.data.site,
-        reportingUnit: nceForm.data.reportingUnit,
-        description: nceForm.data.description,
-        suspectedCauses: nceForm.data.suspectedCauses,
-        proposedAction: nceForm.data.proposedAction,
-      };
       postToOpenElisServerJsonResponse(
         "/rest/reportnonconformingevent",
         JSON.stringify(body),
         (data) => {
-          setNotificationVisible(true);
-          setReportFormValues(initialReportFormValues);
-          setLData(null);
-          setSelectedSample(initialSelected);
-          setnceForm(initialNCEForm);
-
           if (data.success) {
-            addNotification({
-              kind: OEToastNotificationKinds.success,
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage({
-                id: "nonconform.order.save.success",
-              }),
-            });
+            handleSuccess();
           } else {
-            addNotification({
-              kind: OEToastNotificationKinds.error,
-              title: intl.formatMessage({ id: "notification.title" }),
-              message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
-            });
+            handleError();
           }
         },
       );
     }
+  };
+
+  const handleCancel = () => {
+    setnceForm({
+      nceNumber: "",
+      reporterName: "",
+      dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+      reportingUnit: "",
+      title: "",
+      description: "",
+      immediateAction: "",
+      suspectedCauses: "",
+      proposedAction: "",
+      severity: "",
+      categoryId: "",
+      typeId: "",
+      attachments: [],
+    });
+    setLinkedSamples([]);
+    setSearchResults(null);
+    setErrors({});
+    setReportFormValues(initialReportFormValues);
+
+    // Set reporter name from session
+    if (userSessionDetails && userSessionDetails.authenticated) {
+      const fullName = [
+        userSessionDetails.firstName,
+        userSessionDetails.lastName,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      setnceForm((prev) => ({
+        ...prev,
+        reporterName: fullName || userSessionDetails.loginName || "",
+      }));
+    }
+
+    // Generate new NCE number
+    getFromOpenElisServer("/rest/nce/generate-number", (response) => {
+      if (response && response.nceNumber) {
+        setnceForm((prev) => ({
+          ...prev,
+          nceNumber: response.nceNumber,
+        }));
+      } else {
+        // Fallback: generate client-side NCE number
+        const timestamp = Date.now();
+        const nceNumber = `NCE-${timestamp}`;
+        setnceForm((prev) => ({
+          ...prev,
+          nceNumber: nceNumber,
+        }));
+      }
+    });
   };
 
   return (
     <>
       {notificationVisible === true ? <OEToastNotification /> : ""}
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
+      <div className="nce-form-container">
+        {/* Header */}
+        <div className="nce-form-header">
           <h2>
-            <FormattedMessage id={`nonconform.report`} />
+            <FormattedMessage
+              id="nce.form.title"
+              defaultMessage="Report Non-Conformity Event"
+            />
           </h2>
-        </Column>
-        <Column lg={16} md={8} sm={4}>
-          <Form>
-            <Grid fullWidth={true}>
+          <p className="nce-form-subtitle">
+            <FormattedMessage
+              id="nce.form.subtitle"
+              defaultMessage="Document a quality event and link to affected samples and results"
+            />
+          </p>
+        </div>
+
+        {/* Section 1: Reporter & Event Context */}
+        <Tile className="nce-form-section">
+          <div className="nce-section-header">
+            <span className="nce-section-number">01</span>
+            <h3>
+              <FormattedMessage
+                id="nce.section.reporterContext"
+                defaultMessage="Reporter & Event Context"
+              />
+            </h3>
+          </div>
+
+          <Grid fullWidth>
+            <Column lg={4} md={4} sm={4}>
+              <TextInput
+                id="nce-number"
+                labelText={intl.formatMessage({
+                  id: "nce.field.nceNumber",
+                  defaultMessage: "NCE Number",
+                })}
+                value={nceForm.nceNumber}
+                readOnly
+                className="nce-readonly-field"
+              />
+            </Column>
+            <Column lg={4} md={4} sm={4}>
+              <TextInput
+                id="reporter-name"
+                labelText={intl.formatMessage({
+                  id: "nce.field.reporterName",
+                  defaultMessage: "Reporter Name",
+                })}
+                value={nceForm.reporterName}
+                onChange={(e) =>
+                  setnceForm((prev) => ({
+                    ...prev,
+                    reporterName: e.target.value,
+                  }))
+                }
+              />
+            </Column>
+            <Column lg={4} md={4} sm={4}>
+              <DatePicker
+                id="date-of-event-picker"
+                datePickerType="single"
+                dateFormat="m/d/Y"
+                value={nceForm.dateOfEvent}
+                maxDate={format(new Date(), "MM/dd/yyyy")}
+                onChange={(dates) => {
+                  if (dates && dates[0]) {
+                    const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
+                    setnceForm((prev) => ({
+                      ...prev,
+                      dateOfEvent: formatted,
+                    }));
+                    setErrors((prev) => ({ ...prev, dateOfEvent: "" }));
+                  }
+                }}
+              >
+                <DatePickerInput
+                  id="date-of-event"
+                  placeholder="mm/dd/yyyy"
+                  labelText={
+                    intl.formatMessage({
+                      id: "nce.field.dateOfEvent",
+                      defaultMessage: "Date of Event",
+                    }) + " *"
+                  }
+                  invalid={!!errors.dateOfEvent}
+                  invalidText={errors.dateOfEvent}
+                />
+              </DatePicker>
+            </Column>
+            <Column lg={4} md={4} sm={4}>
+              <Select
+                id="reporting-unit"
+                labelText={
+                  intl.formatMessage({
+                    id: "nce.field.reportingUnit",
+                    defaultMessage: "Reporting Unit",
+                  }) + " *"
+                }
+                value={nceForm.reportingUnit}
+                onChange={(e) => {
+                  setnceForm((prev) => ({
+                    ...prev,
+                    reportingUnit: e.target.value,
+                  }));
+                  setErrors((prev) => ({ ...prev, reportingUnit: "" }));
+                }}
+                invalid={!!errors.reportingUnit}
+                invalidText={errors.reportingUnit}
+              >
+                <SelectItem value="" text="" />
+                {reportingUnits.map((option) => (
+                  <SelectItem
+                    key={option.id}
+                    value={option.id}
+                    text={option.value}
+                  />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+        </Tile>
+
+        {/* Section 2: Classification */}
+        <Tile className="nce-form-section">
+          <div className="nce-section-header">
+            <span className="nce-section-number">02</span>
+            <h3>
+              <FormattedMessage
+                id="nce.section.classification"
+                defaultMessage="Classification"
+              />
+            </h3>
+          </div>
+
+          <Grid fullWidth>
+            <Column lg={8} md={4} sm={4}>
+              <Select
+                id="nce-category"
+                labelText={
+                  intl.formatMessage({
+                    id: "nce.field.category",
+                    defaultMessage: "Category",
+                  }) + " *"
+                }
+                value={nceForm.categoryId}
+                onChange={(e) => {
+                  setnceForm((prev) => ({
+                    ...prev,
+                    categoryId: e.target.value,
+                    typeId: "",
+                  }));
+                  setErrors((prev) => ({ ...prev, categoryId: "" }));
+                }}
+                invalid={!!errors.categoryId}
+                invalidText={errors.categoryId}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "nce.select.category",
+                    defaultMessage: "Select category...",
+                  })}
+                />
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id} text={cat.name} />
+                ))}
+              </Select>
+            </Column>
+            <Column lg={8} md={4} sm={4}>
+              <Select
+                id="nce-type"
+                labelText={intl.formatMessage({
+                  id: "nce.field.subcategory",
+                  defaultMessage: "Subcategory",
+                })}
+                value={nceForm.typeId}
+                onChange={(e) =>
+                  setnceForm((prev) => ({
+                    ...prev,
+                    typeId: e.target.value,
+                  }))
+                }
+                disabled={!nceForm.categoryId}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({
+                    id: "nce.select.subcategory",
+                    defaultMessage: "Select subcategory...",
+                  })}
+                />
+                {types.map((type) => (
+                  <SelectItem key={type.id} value={type.id} text={type.name} />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+
+          <div className="nce-severity-section">
+            <label className="nce-field-label">
+              <FormattedMessage
+                id="nce.field.severity"
+                defaultMessage="Severity"
+              />{" "}
+              *
+            </label>
+            <div className="nce-severity-options">
+              <div
+                className={`nce-severity-card ${nceForm.severity === "CRITICAL" ? "selected critical" : ""}`}
+                onClick={() => {
+                  setnceForm((prev) => ({ ...prev, severity: "CRITICAL" }));
+                  setErrors((prev) => ({ ...prev, severity: "" }));
+                }}
+              >
+                <div className="nce-severity-indicator critical"></div>
+                <div className="nce-severity-content">
+                  <span className="nce-severity-label">
+                    <FormattedMessage
+                      id="nce.severity.critical"
+                      defaultMessage="Critical"
+                    />
+                  </span>
+                  <span className="nce-severity-description">
+                    <FormattedMessage
+                      id="nce.severity.critical.desc"
+                      defaultMessage="Patient safety risk, regulatory violation"
+                    />
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`nce-severity-card ${nceForm.severity === "MAJOR" ? "selected major" : ""}`}
+                onClick={() => {
+                  setnceForm((prev) => ({ ...prev, severity: "MAJOR" }));
+                  setErrors((prev) => ({ ...prev, severity: "" }));
+                }}
+              >
+                <div className="nce-severity-indicator major"></div>
+                <div className="nce-severity-content">
+                  <span className="nce-severity-label">
+                    <FormattedMessage
+                      id="nce.severity.major"
+                      defaultMessage="Major"
+                    />
+                  </span>
+                  <span className="nce-severity-description">
+                    <FormattedMessage
+                      id="nce.severity.major.desc"
+                      defaultMessage="Significant quality or operational impact"
+                    />
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className={`nce-severity-card ${nceForm.severity === "MINOR" ? "selected minor" : ""}`}
+                onClick={() => {
+                  setnceForm((prev) => ({ ...prev, severity: "MINOR" }));
+                  setErrors((prev) => ({ ...prev, severity: "" }));
+                }}
+              >
+                <div className="nce-severity-indicator minor"></div>
+                <div className="nce-severity-content">
+                  <span className="nce-severity-label">
+                    <FormattedMessage
+                      id="nce.severity.minor"
+                      defaultMessage="Minor"
+                    />
+                  </span>
+                  <span className="nce-severity-description">
+                    <FormattedMessage
+                      id="nce.severity.minor.desc"
+                      defaultMessage="Limited impact, easily corrected"
+                    />
+                  </span>
+                </div>
+              </div>
+            </div>
+            {errors.severity && (
+              <div className="nce-error-text">{errors.severity}</div>
+            )}
+          </div>
+        </Tile>
+
+        {/* Section 3: Details */}
+        <Tile className="nce-form-section">
+          <div className="nce-section-header">
+            <span className="nce-section-number">03</span>
+            <h3>
+              <FormattedMessage
+                id="nce.section.details"
+                defaultMessage="Details"
+              />
+            </h3>
+          </div>
+
+          <Grid fullWidth>
+            <Column lg={16} md={8} sm={4}>
+              <TextInput
+                id="nce-title"
+                labelText={intl.formatMessage({
+                  id: "nce.field.title",
+                  defaultMessage: "Title",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "nce.field.title.placeholder",
+                  defaultMessage: "Brief description of the event...",
+                })}
+                value={nceForm.title}
+                onChange={(e) =>
+                  setnceForm((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+              />
+            </Column>
+
+            <Column lg={16} md={8} sm={4}>
+              <TextArea
+                id="nce-description"
+                labelText={
+                  intl.formatMessage({
+                    id: "nce.field.description",
+                    defaultMessage: "Description",
+                  }) + " *"
+                }
+                placeholder={intl.formatMessage({
+                  id: "nce.field.description.placeholder",
+                  defaultMessage:
+                    "Describe what happened, when it was detected, and any relevant context...",
+                })}
+                value={nceForm.description}
+                onChange={(e) => {
+                  setnceForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }));
+                  setErrors((prev) => ({ ...prev, description: "" }));
+                }}
+                rows={4}
+                invalid={!!errors.description}
+                invalidText={errors.description}
+              />
+            </Column>
+
+            <Column lg={16} md={8} sm={4}>
+              <TextArea
+                id="nce-immediate-action"
+                labelText={intl.formatMessage({
+                  id: "nce.field.immediateAction",
+                  defaultMessage: "Immediate Action Taken",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "nce.field.immediateAction.placeholder",
+                  defaultMessage:
+                    "What corrective steps were taken immediately...",
+                })}
+                value={nceForm.immediateAction}
+                onChange={(e) =>
+                  setnceForm((prev) => ({
+                    ...prev,
+                    immediateAction: e.target.value,
+                  }))
+                }
+                rows={3}
+              />
+            </Column>
+
+            <Column lg={8} md={4} sm={4}>
+              <TextArea
+                id="nce-suspected-causes"
+                labelText={intl.formatMessage({
+                  id: "nce.field.suspectedCauses",
+                  defaultMessage: "Suspected Causes",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "nce.field.suspectedCauses.placeholder",
+                  defaultMessage: "Reporter's initial hypotheses on cause...",
+                })}
+                value={nceForm.suspectedCauses}
+                onChange={(e) =>
+                  setnceForm((prev) => ({
+                    ...prev,
+                    suspectedCauses: e.target.value,
+                  }))
+                }
+                rows={3}
+                helperText={intl.formatMessage({
+                  id: "nce.field.suspectedCauses.helper",
+                  defaultMessage:
+                    "Initial assessment only - formal root cause determined during investigation",
+                })}
+              />
+            </Column>
+
+            <Column lg={8} md={4} sm={4}>
+              <TextArea
+                id="nce-proposed-action"
+                labelText={intl.formatMessage({
+                  id: "nce.field.proposedAction",
+                  defaultMessage: "Proposed Action",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "nce.field.proposedAction.placeholder",
+                  defaultMessage: "Recommended next steps...",
+                })}
+                value={nceForm.proposedAction}
+                onChange={(e) =>
+                  setnceForm((prev) => ({
+                    ...prev,
+                    proposedAction: e.target.value,
+                  }))
+                }
+                rows={3}
+                helperText={intl.formatMessage({
+                  id: "nce.field.proposedAction.helper",
+                  defaultMessage:
+                    "Separate from CAPA actions assigned during corrective action workflow",
+                })}
+              />
+            </Column>
+          </Grid>
+        </Tile>
+
+        {/* Section 4: Attachments */}
+        <Tile className="nce-form-section">
+          <div className="nce-section-header">
+            <span className="nce-section-number">04</span>
+            <h3>
+              <FormattedMessage
+                id="nce.section.attachments"
+                defaultMessage="Attachments"
+              />
+            </h3>
+          </div>
+
+          <NceFileAttachment
+            attachments={nceForm.attachments || []}
+            onAttachmentsChange={(attachments) =>
+              setnceForm((prev) => ({
+                ...prev,
+                attachments,
+              }))
+            }
+          />
+        </Tile>
+
+        {/* Section 5: Link to Samples/Results */}
+        <Tile className="nce-form-section">
+          <div className="nce-section-header">
+            <span className="nce-section-number">05</span>
+            <h3>
+              <FormattedMessage
+                id="nce.section.linkSamples"
+                defaultMessage="Link to Samples / Results (Optional)"
+              />
+            </h3>
+          </div>
+
+          {/* Display linked samples */}
+          {linkedSamples.length > 0 && (
+            <div className="nce-linked-samples">
+              {linkedSamples.map((sample) => (
+                <Tag
+                  key={sample.labOrderNumber}
+                  type="blue"
+                  size="md"
+                  filter
+                  onClose={() =>
+                    handleRemoveLinkedSample(sample.labOrderNumber)
+                  }
+                >
+                  {sample.labOrderNumber}
+                </Tag>
+              ))}
+            </div>
+          )}
+
+          {/* Search form */}
+          <div className="nce-search-section">
+            <Grid fullWidth>
               <Column lg={4} md={4} sm={2}>
                 <Select
-                  id="type"
+                  id="search-type"
                   labelText={intl.formatMessage({
                     id: "label.form.searchby",
+                    defaultMessage: "Search by",
                   })}
-                  value={reportFormValues.type}
-                  onChange={(e) => {
+                  value={reportFormValues.type || ""}
+                  onChange={(e) =>
                     setReportFormValues({
                       ...reportFormValues,
                       type: e.target.value,
-                    });
-                  }}
+                    })
+                  }
                 >
-                  <SelectItem key={"emptyselect"} value={""} text={""} />
-                  {selectOptions.map((statusOption) => (
+                  <SelectItem value="" text="" />
+                  {selectOptions.map((option) => (
                     <SelectItem
-                      key={statusOption.value}
-                      value={statusOption.value}
-                      text={statusOption.text}
+                      key={option.value}
+                      value={option.value}
+                      text={option.text}
                     />
                   ))}
                 </Select>
               </Column>
               <Column lg={4} md={4} sm={2}>
                 <TextInput
+                  id="search-value"
                   labelText={intl.formatMessage({
                     id: "testcalculation.label.textValue",
+                    defaultMessage: "Value",
                   })}
                   value={reportFormValues.value}
-                  onChange={(e) => {
+                  onChange={(e) =>
                     setReportFormValues({
                       ...reportFormValues,
                       value: e.target.value,
-                    });
-                  }}
-                  data-cy="fieldName"
-                  id={`field.name`}
+                    })
+                  }
                 />
               </Column>
-              <Column lg={16} md={8} sm={4}>
-                <br></br>
-              </Column>
-              <Column lg={16} md={8} sm={4}>
-                <Button
-                  type="button"
-                  data-testid="nce-search-button"
-                  onClick={handleSubmit}
-                >
-                  <FormattedMessage id="label.button.search" />
+              <Column lg={4} md={4} sm={2} className="nce-search-button-col">
+                <Button kind="tertiary" size="md" onClick={handleSearch}>
+                  <FormattedMessage
+                    id="label.button.search"
+                    defaultMessage="Search"
+                  />
                 </Button>
               </Column>
             </Grid>
-            <br />
-            <Section>
-              <br />
-              {!!reportFormValues.error && (
-                <div style={{ color: "#c62828", margin: 4 }}>
-                  {reportFormValues.error}
-                </div>
-              )}
-            </Section>
-          </Form>
-        </Column>
-        <Column lg={16} md={8} sm={4}>
-          <br></br>
-        </Column>
-      </Grid>
-      {ldata && ldata.length > 0 && (
-        <Grid>
-          <Column lg={16} md={8} sm={4}>
-            <Table style={{ marginTop: "1em" }}>
-              <TableHead>
-                <TableRow>
-                  <TableHeader key="checkbox" />
-                  {headers.map((header) => (
-                    <TableHeader id={header.key} key={header.key}>
-                      {header.value}
-                    </TableHeader>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ldata.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell key={`${row.id}-checkbox`}></TableCell>
+
+            {reportFormValues.error && (
+              <div className="nce-error-text" style={{ marginTop: "0.5rem" }}>
+                {reportFormValues.error}
+              </div>
+            )}
+          </div>
+
+          {/* Search results table */}
+          {searchResults && searchResults.length > 0 && (
+            <div className="nce-search-results">
+              <Table size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader />
                     {headers.map((header) => (
-                      <TableCell
-                        key={header.key}
-                        data-testid="nce-search-result"
-                      >
-                        <UnorderedList>
+                      <TableHeader key={header.key}>{header.value}</TableHeader>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {searchResults.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell />
+                      {headers.map((header) => (
+                        <TableCell key={header.key}>
                           {header.key === "type"
                             ? row.sampleItems.map((item) => (
                                 <Checkbox
-                                  id={row.labOrderNumber + "-" + item.number}
-                                  data-testid="nce-sample-checkbox"
                                   key={item.id}
-                                  labelText={
-                                    item.type +
-                                    " (" +
-                                    row.labOrderNumber +
-                                    "-" +
-                                    item.number +
-                                    ")"
-                                  }
+                                  id={`${row.labOrderNumber}-${item.number}`}
+                                  labelText={`${item.type} (${row.labOrderNumber}-${item.number})`}
                                   checked={
-                                    orderSampleMap[row.labOrderNumber]
-                                      ? orderSampleMap[
-                                          row.labOrderNumber
-                                        ].indexOf(item.id) !== -1
-                                      : false
+                                    orderSampleMap[
+                                      row.labOrderNumber
+                                    ]?.includes(item.id) || false
                                   }
                                   onChange={(e) => {
-                                    let orderSample = { ...orderSampleMap };
+                                    const newMap = { ...orderSampleMap };
                                     if (e.target.checked) {
-                                      if (row.labOrderNumber in orderSample) {
-                                        orderSample[row.labOrderNumber].push(
-                                          item.id,
-                                        );
-                                      } else {
-                                        orderSample = {
-                                          [row.labOrderNumber]: [item.id],
-                                        };
+                                      if (!newMap[row.labOrderNumber]) {
+                                        newMap[row.labOrderNumber] = [];
                                       }
+                                      newMap[row.labOrderNumber].push(item.id);
                                     } else {
-                                      if (row.labOrderNumber in orderSample) {
-                                        var index = orderSample[
-                                          row.labOrderNumber
-                                        ].indexOf(item.id);
-                                        if (index !== -1) {
-                                          orderSample[
-                                            row.labOrderNumber
-                                          ].splice(index, 1);
-                                        }
+                                      const idx = newMap[
+                                        row.labOrderNumber
+                                      ]?.indexOf(item.id);
+                                      if (idx > -1) {
+                                        newMap[row.labOrderNumber].splice(
+                                          idx,
+                                          1,
+                                        );
                                       }
                                     }
-                                    setOrderSampleMap(orderSample);
+                                    setOrderSampleMap(newMap);
                                   }}
                                 />
                               ))
                             : row[header.key]}
-                        </UnorderedList>
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Column>
-          <Column lg={16}>
-            <Button
-              type="button"
-              onClick={() => {
-                const labNo = Object.keys(orderSampleMap)[0];
-                if (labNo) {
-                  setSelectedSample({
-                    specimenId: orderSampleMap[labNo].join(","),
-                    selected: true,
-                    labOrderNumber: labNo,
-                  });
-                }
-              }}
-              data-testid="nce-goto-form-button"
-            >
-              <FormattedMessage id="nonconform.goToNceForm" />
-            </Button>
-          </Column>
-        </Grid>
-      )}
-      {nceForm.show && nceForm.data && (
-        <Grid fullWidth={true}>
-          <Column lg={3} md={3} sm={3}>
-            <div style={{ marginBottom: "10px" }}>
-              <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                <b>
-                  <FormattedMessage id="nonconform.report.field.date" />
-                </b>
-              </span>
-            </div>
-            <div style={{ marginBottom: "10px", color: "#555" }}>
-              {nceForm.data.reportDate}
-            </div>
-          </Column>
-          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
-            <div style={{ marginBottom: "10px" }}>
-              <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                <FormattedMessage id="patient.label.name" />
-              </span>
-            </div>
-            <div style={{ marginBottom: "10px" }}>{nceForm.data.name}</div>
-          </Column>
-          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
-            <div style={{ marginBottom: "10px" }}>
-              <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                <FormattedMessage id="nonconform.nce.number" />
-              </span>
-            </div>
-            <div
-              style={{ marginBottom: "10px" }}
-              data-testid="nce-number-result"
-            >
-              {nceForm.data.nceNumber}
-            </div>
-          </Column>
-
-          <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
-            <div style={{ marginBottom: "10px" }}>
-              <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                <FormattedMessage id="sample.label.labnumber" />
-              </span>
-            </div>
-            <div style={{ marginBottom: "10px" }}>
-              {nceForm.data.labOrderNumber}
-            </div>
-          </Column>
-          <Column lg={4} md={3} sm={3} style={{ marginBottom: "20px" }}>
-            <div style={{ marginBottom: "10px" }}>
-              <span style={{ color: "#3366B3", fontWeight: "bold" }}>
-                <FormattedMessage id="nonconform.label.prescibernamesite" />
-              </span>
-            </div>
-            <div style={{ marginBottom: "10px" }}>
-              {`${nceForm.data.prescriberName} | ${nceForm.data.site}`}
-            </div>
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            <br></br>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <TextInput
-              labelText={
-                <FormattedMessage id="nonconform.person.reporting.different" />
-              }
-              value={nceForm.data.reporterName}
-              onChange={(e) => {
-                setnceForm((prev) => ({
-                  ...prev,
-                  data: {
-                    ...prev.data,
-                    reporterName: e.target.value,
-                  },
-                }));
-              }}
-              id={`field.name`}
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <CustomDatePicker
-              key="startDate"
-              id={"startDate"}
-              labelText={<FormattedMessage id="nonconform.date.event" />}
-              disallowFutureDate={true}
-              autofillDate={true}
-              value={nceForm.data.dateOfEvent}
-              onChange={(date) =>
-                setnceForm((prev) => ({
-                  ...prev,
-                  data: {
-                    ...prev.data,
-                    dateOfEvent: date,
-                  },
-                  errors: {
-                    ...prev.errors,
-                    dateOfEvent: "",
-                  },
-                }))
-              }
-              invalid={!!nceForm.errors.dateOfEvent}
-              invalidText={nceForm.errors.dateOfEvent}
-            />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              labelText={
-                <FormattedMessage id="nonconform.label.reportingunit" />
-              }
-              id="reportingUnits"
-              value={nceForm.data.reportingUnit}
-              onChange={(e) => {
-                setnceForm((prev) => ({
-                  ...prev,
-                  data: {
-                    ...prev.data,
-                    reportingUnit: e.target.value,
-                  },
-                  errors: {
-                    ...prev.errors,
-                    reportingUnit: "",
-                  },
-                }));
-              }}
-              invalid={!!nceForm.errors.reportingUnit}
-              invalidText={nceForm.errors.reportingUnit}
-            >
-              <SelectItem key={"emptyselect"} value={""} text={""} />
-              {nceForm.data.reportingUnits.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.id}
-                  text={option.value}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={handleLinkSamples}
+                style={{ marginTop: "1rem" }}
+              >
+                <FormattedMessage
+                  id="nce.button.linkSelected"
+                  defaultMessage="Link Selected Samples"
                 />
-              ))}
-            </Select>
-          </Column>
+              </Button>
+            </div>
+          )}
 
-          <Column lg={8} md={4} sm={4}>
-            <TextArea
-              labelText={<FormattedMessage id="nonconform.description.nce" />}
-              value={nceForm.data.description}
-              onChange={(e) => {
-                setnceForm((prev) => ({
-                  ...prev,
-                  data: {
-                    ...prev.data,
-                    description: e.target.value,
-                  },
-                  errors: {
-                    ...prev.errors,
-                    description: "",
-                  },
-                }));
-              }}
-              rows={2}
-              id="text-area-1"
-              invalid={!!nceForm.errors.description}
-              invalidText={nceForm.errors.description}
+          {linkedSamples.length === 0 && !searchResults && (
+            <p className="nce-helper-text">
+              <FormattedMessage
+                id="nce.linkSamples.helper"
+                defaultMessage="Search for orders above to link samples to this NCE. This step is optional."
+              />
+            </p>
+          )}
+        </Tile>
+
+        {/* Footer Actions */}
+        <div className="nce-form-actions">
+          <Button kind="secondary" onClick={handleCancel}>
+            <FormattedMessage
+              id="label.button.cancel"
+              defaultMessage="Cancel"
             />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextArea
-              labelText={
-                <FormattedMessage id="nonconform.label.suspected.cause.nce" />
-              }
-              value={nceForm.data.suspectedCauses}
-              onChange={(e) => {
-                setnceForm((prev) => ({
-                  ...prev,
-                  data: {
-                    ...prev.data,
-                    suspectedCauses: e.target.value,
-                  },
-                  errors: {
-                    ...prev.errors,
-                    suspectedCauses: "",
-                  },
-                }));
-              }}
-              rows={2}
-              id="text-area-2"
-              invalid={!!nceForm.errors.suspectedCauses}
-              invalidText={nceForm.errors.suspectedCauses}
+          </Button>
+          <Button kind="primary" onClick={handleNCEFormSubmit}>
+            <FormattedMessage
+              id="nce.button.submit"
+              defaultMessage="Submit NCE"
             />
-          </Column>
-
-          <Column lg={8} md={4} sm={4}>
-            <TextArea
-              labelText={
-                <FormattedMessage id="nonconform.label.proposed.action" />
-              }
-              value={nceForm.data.proposedAction}
-              onChange={(e) => {
-                setnceForm((prev) => ({
-                  ...prev,
-                  data: {
-                    ...prev.data,
-                    proposedAction: e.target.value,
-                  },
-                  errors: {
-                    ...prev.errors,
-                    proposedAction: "",
-                  },
-                }));
-              }}
-              rows={2}
-              id="text-area-3"
-              invalid={!!nceForm.errors.proposedAction}
-              invalidText={nceForm.errors.proposedAction}
-            />
-          </Column>
-
-          <Column lg={16} md={8} sm={4}>
-            <br></br>
-          </Column>
-          <Column lg={16} md={8} sm={4}>
-            {!!nceForm.error && (
-              <div style={{ color: "#c62828", margin: 4 }}>{nceForm.error}</div>
-            )}
-            <Button
-              type="button"
-              data-testid="nce-submit-button"
-              onClick={() => handleNCEFormSubmit()}
-            >
-              <FormattedMessage id="label.button.submit" />
-            </Button>
-          </Column>
-        </Grid>
-      )}
+          </Button>
+        </div>
+      </div>
     </>
   );
 };

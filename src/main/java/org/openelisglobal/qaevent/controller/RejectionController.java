@@ -228,7 +228,7 @@ public class RejectionController extends BaseController {
 
             // NCESpecimen
             NceSpecimen nceSpecimen = new NceSpecimen();
-            nceSpecimen.setNceId(Integer.parseInt(event.getId()));
+            nceSpecimen.setNceId(event.getId());
             nceSpecimen.setSampleItemId(Integer.parseInt(sampItem.getId()));
             nceSpecimen.setSysUserId(getSysUserId(request));
             nceSpecimenService.save(nceSpecimen);
