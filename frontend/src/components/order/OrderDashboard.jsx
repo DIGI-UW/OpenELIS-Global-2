@@ -26,7 +26,10 @@ import {
 import { Add, Scan } from "@carbon/icons-react";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
-import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
+import {
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../common/OEToastNotification";
 import { getFromOpenElisServer } from "../utils/Utils";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import { useOrderContext } from "./OrderContext";
@@ -141,7 +144,7 @@ const OrderDashboardContent = () => {
     } catch (error) {
       console.error("handleContinueOrder: Error loading order", error);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.load.error",
@@ -158,7 +161,7 @@ const OrderDashboardContent = () => {
       history.push("/order/enter");
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.accept.error",
@@ -177,7 +180,7 @@ const OrderDashboardContent = () => {
       history.push(`/order/${returnedStep}`);
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "order.load.error",
@@ -383,7 +386,7 @@ const OrderDashboardContent = () => {
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      {notificationVisible && <AlertDialog />}
+      {notificationVisible && <OEToastNotification />}
 
       <div className="order-dashboard">
         <Stack gap={5}>

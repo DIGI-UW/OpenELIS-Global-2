@@ -24,9 +24,9 @@ import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
 import { NotificationContext } from "../../layout/Layout";
 import {
-  AlertDialog,
-  NotificationKinds,
-} from "../../common/CustomNotification";
+  OEToastNotification,
+  OEToastNotificationKinds,
+} from "../../common/OEToastNotification";
 import StorageLocationSelector from "../../storage/StorageLocationSelector/StorageLocationSelector";
 import {
   postToOpenElisServerJsonResponse,
@@ -210,7 +210,7 @@ const OrderLabel = () => {
     setPrintedLabels((prev) => new Set([...prev, labelType]));
 
     addNotification({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage(
         {
@@ -238,7 +238,7 @@ const OrderLabel = () => {
     setPrintedLabels(allPrinted);
 
     addNotification({
-      kind: NotificationKinds.success,
+      kind: OEToastNotificationKinds.success,
       title: intl.formatMessage({ id: "notification.title" }),
       message: intl.formatMessage({
         id: "label.printAll.success",
@@ -408,14 +408,14 @@ const OrderLabel = () => {
       // Update step progress
       markStepComplete("label");
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message:
           error.message || intl.formatMessage({ id: "server.error.msg" }),
@@ -438,7 +438,7 @@ const OrderLabel = () => {
       history.push("/order/qa");
     } catch (error) {
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message:
           error.message || intl.formatMessage({ id: "server.error.msg" }),
