@@ -75,6 +75,7 @@ services:
             - ./volume/branding:/var/lib/openelis-global/branding
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
             - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
+            - ./volume/nce-attachments:/var/lib/openelis-global/nce-attachments  # NCE file attachments
         # devices:
             # Serial port device mapping example for RS232 analyzer integration
             # Uncomment and adjust device path as needed for your system
