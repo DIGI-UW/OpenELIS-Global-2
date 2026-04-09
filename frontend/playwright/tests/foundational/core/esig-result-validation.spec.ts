@@ -74,45 +74,39 @@ test("E-Signature — full result entry and validation flow", async ({
     });
   });
 
-  await test.step("Click Save — e-sig modal appears with AUTHORED", async () => {
+  await test.step("Click Save — e-sig modal appears", async () => {
     await page.getByRole("button", { name: "Save" }).click();
 
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });
 
-    // Verify modal content
     await expect(
       modal.getByRole("heading", { name: /electronic signature/i }),
     ).toBeVisible({ timeout: SHORT_TIMEOUT });
-    await expect(modal.getByText("Authored")).toBeVisible({
+  });
+
+  await test.step("Complete first-use certification", async () => {
+    const modal = page.getByRole("dialog");
+
+    // First-time user sees certification ceremony before signing
+    await expect(modal.getByText(/certification/i)).toBeVisible({
       timeout: SHORT_TIMEOUT,
+    });
+
+    // Acknowledge the certification statement (click the checkbox label, not the password label)
+    await modal.locator('label[for="certification-acknowledgement"]').click();
+
+    // Fill password and certify
+    await modal.locator('input[type="password"]').fill(password);
+    await modal.getByRole("button", { name: /certify|continue/i }).click();
+
+    // After certification, signing step appears with AUTHORED meaning
+    await expect(modal.getByText("Authored")).toBeVisible({
+      timeout: UI_TIMEOUT,
     });
     await expect(modal.getByText(/21 CFR Part 11/)).toBeVisible({
       timeout: SHORT_TIMEOUT,
     });
-  });
-
-  await test.step("Complete first-use certification if prompted", async () => {
-    const modal = page.getByRole("dialog");
-
-    // Check if certification step is showing
-    const certHeading = modal.getByText(/certification/i);
-    if (await certHeading.isVisible()) {
-      // Acknowledge the certification
-      const acknowledgeCheckbox = modal.locator('label[for*="certification"]');
-      if (await acknowledgeCheckbox.isVisible()) {
-        await acknowledgeCheckbox.click();
-      }
-
-      // Fill password for certification
-      await modal.locator('input[type="password"]').fill(password);
-      await modal.getByRole("button", { name: /certify|continue/i }).click();
-
-      // Wait for certification to complete and signing step to appear
-      await expect(modal.locator('input[type="password"]')).toBeVisible({
-        timeout: UI_TIMEOUT,
-      });
-    }
   });
 
   await test.step("Sign with valid credentials", async () => {
@@ -192,6 +186,10 @@ test("E-Signature — full result entry and validation flow", async ({
     await modal.getByRole("button", { name: /sign/i }).click();
 
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
+
+    // Wait for the page to finish any post-sign navigation/redirect
+    // before attempting cleanup navigation
+    await page.waitForLoadState("networkidle");
   });
 
   // ── Cleanup: Restore original e-sig setting ───────────────────
