@@ -207,6 +207,7 @@ public class AnalyzerRestController extends BaseRestController {
             // Multiple analyzers can share a name (e.g., two instruments of the same
             // model).
             Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
             analyzer.setName(form.getName());
             analyzer.setType(form.getAnalyzerType());
             analyzer.setIpAddress(
@@ -480,6 +481,33 @@ public class AnalyzerRestController extends BaseRestController {
                     analyzer.setAnalyzerType(pluginType);
                 }
             }
+            if (form.getImportDirectory() != null) {
+                analyzer.setImportDirectory(form.getImportDirectory());
+            }
+            if (form.getArchiveDirectory() != null) {
+                analyzer.setArchiveDirectory(form.getArchiveDirectory());
+            }
+            if (form.getErrorDirectory() != null) {
+                analyzer.setErrorDirectory(form.getErrorDirectory());
+            }
+            if (form.getFilePattern() != null) {
+                analyzer.setFilePattern(form.getFilePattern());
+            }
+            if (form.getColumnMappings() != null) {
+                analyzer.setColumnMappings(form.getColumnMappings());
+            }
+            if (form.getFileFormat() != null) {
+                analyzer.setFileFormat(form.getFileFormat());
+            }
+            if (form.getDelimiter() != null) {
+                analyzer.setDelimiter(form.getDelimiter());
+            }
+            if (form.getHasHeader() != null) {
+                analyzer.setHasHeader(form.getHasHeader());
+            }
+            if (form.getSkipRows() != null) {
+                analyzer.setSkipRows(form.getSkipRows());
+            }
             // Update lifecycle status if provided (SETUP → ACTIVE → INACTIVE → DELETED)
             if (form.getStatus() != null) {
                 try {
@@ -605,10 +633,13 @@ public class AnalyzerRestController extends BaseRestController {
 
         // FILE transport fields (unified on analyzer table — same as TCP fields above)
         map.put("importDirectory", analyzer.getImportDirectory());
+        map.put("archiveDirectory", analyzer.getArchiveDirectory());
+        map.put("errorDirectory", analyzer.getErrorDirectory());
         map.put("filePattern", analyzer.getFilePattern());
         map.put("columnMappings", analyzer.getColumnMappings());
         map.put("fileFormat", analyzer.getFileFormat());
         map.put("delimiter", analyzer.getDelimiter());
+        map.put("hasHeader", analyzer.getHasHeader());
         map.put("skipRows", analyzer.getSkipRows());
 
         // Derive plugin type info from analyzer_type FK
