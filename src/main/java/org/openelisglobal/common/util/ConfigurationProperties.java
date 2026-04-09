@@ -280,6 +280,8 @@ public abstract class ConfigurationProperties {
         GPS_TIMEOUT_SECONDS("gpsTimeoutSeconds", "text"), // timeout in seconds for GPS location requests
         USE_NEW_ADDRESS_HIERARCHY("useNewAddressHierarchy", "text"), // if true, use new configurable address hierarchy
         EQA_ENABLED("eqaEnabled", "text"), // if true, EQA checkbox appears on order entry to mark sample as EQA
+        ORDER_ENTRY_WORKFLOW_TYPE("orderEntryWorkflowType", "text"), // Controls order entry workflow: "Clinical",
+                                                                     // "Environmental", or "Both"
         ELECTRONIC_SIGNATURE_ENABLED("electronicSignatureEnabled", "text"), // 21 CFR Part 11 e-signatures
         ESIG_SESSION_TIMEOUT_MINUTES("esigSessionTimeoutMinutes", "text"); // signing session inactivity timeout
 
