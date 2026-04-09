@@ -120,6 +120,9 @@
             fetch="join" lazy="false" cascade="all">
             <column name="result_file_id" not-null="false" unique="true" />
         </many-to-one>
+        <property name="analyzerId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="analyzer_id" precision="10" />
 
     </class>
 
