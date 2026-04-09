@@ -28,7 +28,7 @@ public class AlertNotificationConfigRestControllerTest {
         Map<String, Object> config = new HashMap<>();
         config.put("escalationDelayMinutes", "abc");
 
-        doThrow(new IllegalArgumentException("Invalid escalationDelayMinutes: must be an integer"))
+        doThrow(new IllegalArgumentException("some internal validation detail"))
                 .when(alertNotificationConfigService).saveAlertNotificationConfig(config);
 
         ResponseEntity<Map<String, String>> response = controller.saveAlertNotificationConfig(config);

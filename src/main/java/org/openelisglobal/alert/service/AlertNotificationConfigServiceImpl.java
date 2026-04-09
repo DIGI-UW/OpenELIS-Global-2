@@ -1,5 +1,6 @@
 package org.openelisglobal.alert.service;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @SuppressWarnings("unused")
 public class AlertNotificationConfigServiceImpl implements AlertNotificationConfigService {
 
+    static final String INVALID_ESCALATION_DELAY_MESSAGE = "Invalid escalationDelayMinutes: must be an integer";
     private final NotificationConfigOptionDAO notificationConfigOptionDAO;
     private final SiteInformationService siteInformationService;
 
@@ -108,10 +110,7 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
 
         saveSiteInformation(SITE_INFO_ESCALATION_ENABLED,
                 escalationEnabled != null ? escalationEnabled.toString() : "false", "boolean");
-        saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES,
-                escalationDelayMinutes != null ? escalationDelayMinutes.toString()
-                        : String.valueOf(DEFAULT_ESCALATION_DELAY_MINUTES),
-                "text");
+        saveSiteInformation(SITE_INFO_ESCALATION_DELAY_MINUTES, escalationDelayMinutes.toString(), "text");
         saveSiteInformation(SITE_INFO_SUPERVISOR_EMAIL, supervisorEmail != null ? supervisorEmail : "", "text");
     }
 
@@ -124,8 +123,17 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             return (Integer) rawValue;
         }
 
-        if (rawValue instanceof Number || rawValue instanceof String) {
-            String normalized = rawValue.toString().trim();
+        if (rawValue instanceof Number) {
+            try {
+                BigDecimal numericValue = new BigDecimal(rawValue.toString()).stripTrailingZeros();
+                return numericValue.intValueExact();
+            } catch (NumberFormatException | ArithmeticException e) {
+                throw new IllegalArgumentException(INVALID_ESCALATION_DELAY_MESSAGE, e);
+            }
+        }
+
+        if (rawValue instanceof String) {
+            String normalized = ((String) rawValue).trim();
 
             if (normalized.isEmpty()) {
                 return DEFAULT_ESCALATION_DELAY_MINUTES;
@@ -134,11 +142,11 @@ public class AlertNotificationConfigServiceImpl implements AlertNotificationConf
             try {
                 return Integer.parseInt(normalized);
             } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Invalid escalationDelayMinutes: must be an integer", e);
+                throw new IllegalArgumentException(INVALID_ESCALATION_DELAY_MESSAGE, e);
             }
         }
 
-        throw new IllegalArgumentException("Invalid escalationDelayMinutes: must be an integer");
+        throw new IllegalArgumentException(INVALID_ESCALATION_DELAY_MESSAGE);
     }
 
     private void updateAlertNotificationConfig(NotificationNature nature, NotificationMethod method, boolean active) {
