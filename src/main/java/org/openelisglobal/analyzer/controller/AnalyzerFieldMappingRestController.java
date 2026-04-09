@@ -120,7 +120,7 @@ public class AnalyzerFieldMappingRestController extends BaseRestController {
      */
     @PutMapping("/analyzers/{analyzerId}/mappings/{mappingId}")
     public ResponseEntity<Map<String, Object>> updateMapping(@PathVariable String analyzerId,
-            @PathVariable String mappingId, @Valid @RequestBody AnalyzerFieldMappingForm form) {
+            @PathVariable String mappingId, @RequestBody AnalyzerFieldMappingForm form) {
         try {
             Map<String, Object> response = analyzerFieldMappingService.updatePartial(analyzerId, mappingId, form);
             return ResponseEntity.ok(response);

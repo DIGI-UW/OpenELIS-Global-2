@@ -572,6 +572,16 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             throw new LIMSRuntimeException("Mapping not found: " + mappingId);
         }
 
+        if (form.getOpenelisFieldId() != null && form.getOpenelisFieldId().isBlank()) {
+            throw new LIMSRuntimeException("OpenELIS field ID cannot be blank");
+        }
+        if (form.getSpecimenTypeConstraint() != null && form.getSpecimenTypeConstraint().length() > 50) {
+            throw new LIMSRuntimeException("Specimen type constraint must not exceed 50 characters");
+        }
+        if (form.getPanelConstraint() != null && form.getPanelConstraint().length() > 50) {
+            throw new LIMSRuntimeException("Panel constraint must not exceed 50 characters");
+        }
+
         if (form.getOpenelisFieldId() != null) {
             mapping.setOpenelisFieldId(form.getOpenelisFieldId());
         }
