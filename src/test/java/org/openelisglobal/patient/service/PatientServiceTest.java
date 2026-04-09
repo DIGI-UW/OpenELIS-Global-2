@@ -36,6 +36,7 @@ public class PatientServiceTest extends BaseWebContextSensitiveTest {
 
     @Before
     public void init() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "sample_human" });
         executeDataSetWithStateManagement("testdata/patient.xml");
     }
 
