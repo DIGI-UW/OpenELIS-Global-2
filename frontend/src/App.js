@@ -46,6 +46,7 @@ const CorrectiveActionsPlaceholder = React.lazy(
   () => import("./pages/analyzers/CorrectiveActionsPlaceholder"),
 );
 import ResultSearch from "./components/resultPage/ResultSearch";
+import AccessionResultsPage from "./components/resultPage/AccessionResultsPage";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
@@ -62,6 +63,7 @@ import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
+import TATReport from "./components/reports/tat";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = React.lazy(
   () => import("./components/analyserResults/Index"),
@@ -529,6 +531,12 @@ export default function App() {
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
+                  path="/NceDashboard"
+                  exact
+                  component={() => <NonConformIndex form="NceDashboard" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                />
+                <SecureRoute
                   path="/ReportNonConformingEvent"
                   exact
                   component={() => (
@@ -900,7 +908,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
+                      <AccessionResultsPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RESULTS}
@@ -965,6 +973,12 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   component={() => <AuditTrailReportIndex />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/TATReport"
+                  exact
+                  component={() => <TATReport />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute
