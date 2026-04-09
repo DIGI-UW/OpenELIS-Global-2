@@ -93,6 +93,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     private boolean useReferral;
 
+    /**
+     * Flag for decoupled workflow: if true, samples are not required. This allows
+     * saving orders without samples when using the step-by-step workflow where
+     * samples are added in a later step.
+     */
+    private boolean orderEntryOnly = false;
+
     // for display
     private List<IdValuePair> rejectReasonList;
     private LabelsSectionForm labelsSection;
@@ -316,5 +323,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setPostSavePrintDialog(PostSavePrintDialogForm postSavePrintDialog) {
         this.postSavePrintDialog = postSavePrintDialog;
+    }
+
+    public boolean isOrderEntryOnly() {
+        return orderEntryOnly;
+    }
+
+    public void setOrderEntryOnly(boolean orderEntryOnly) {
+        this.orderEntryOnly = orderEntryOnly;
     }
 }

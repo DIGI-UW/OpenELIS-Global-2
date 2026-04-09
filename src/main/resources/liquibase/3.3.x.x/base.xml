@@ -97,4 +97,13 @@
 
   <!-- Training Installation Configuration -->
   <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
+
+  <!-- OGC-356: Sample QA Checklist for order workflow step 4 -->
+  <include relativeToChangelogFile="true" file="031-create-sample-qa-checklist-table.xml"/>
+
+  <!-- OGC-356: Allow null patient_id for environmental samples -->
+  <include relativeToChangelogFile="true" file="033-allow-null-patient-in-observation-history.xml"/>
+
+  <!-- OGC-356: Sample type request table for decoupled order workflow -->
+  <include relativeToChangelogFile="true" file="034-create-sample-type-request-table.xml"/>
 </databaseChangeLog>

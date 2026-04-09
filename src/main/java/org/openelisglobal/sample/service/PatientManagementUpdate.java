@@ -16,7 +16,6 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -216,8 +215,7 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     }
 
     private void insertNewPatientInfo(String partId, String value, String type) {
-        PersonAddress address;
-        address = new PersonAddress();
+        PersonAddress address = new PersonAddress();
         address.setPersonId(person.getId());
         address.setAddressPartId(partId);
         address.setType(type);
@@ -242,9 +240,13 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         } else {
             Person newContactPerson = patientInfo.getPatientContact().getPerson();
             PatientContact contact = patientContactService.get(patientInfo.getPatientContact().getId());
+
+            if (contact == null || contact.getPerson() == null || contact.getPerson().getId() == null) {
+                return;
+            }
+
             // Reload person from database to get latest version (avoids stale state
             // exception)
-            // The person may have been updated by audit trail, changing its version
             Person oldContactPerson = personService.get(contact.getPerson().getId());
             oldContactPerson.setEmail(newContactPerson.getEmail());
             oldContactPerson.setLastName(newContactPerson.getLastName());
@@ -304,7 +306,7 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         try {
             typeName = patientInfo.getPatientType();
         } catch (RuntimeException e) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "persistPatientType", "typeName ignored");
+            // typeName remains null
         }
 
         if (!GenericValidator.isBlankOrNull(typeName) && !"0".equals(typeName)) {
@@ -354,14 +356,21 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     @Override
     public void setPatientUpdateStatus(PatientManagementInfo patientInfo) {
         patientUpdateStatus = patientInfo.getPatientUpdateStatus();
-        /*
-         * String status = patientInfo.getPatientProcessingStatus();
-         *
-         * if ("noAction".equals(status)) { patientUpdateStatus =
-         * PatientUpdateStatus.NO_ACTION; } else if ("update".equals(status)) {
-         * patientUpdateStatus = PatientUpdateStatus.UPDATE; } else {
-         * patientUpdateStatus = PatientUpdateStatus.ADD; }
-         */
+
+        if (!GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
+            patientID = patientInfo.getPatientPK();
+        }
+
+        // For NO_ACTION, load patient/person objects so they're available for
+        // getPatientId()
+        if (patientUpdateStatus == PatientUpdateStatus.NO_ACTION
+                && !GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
+            patient = patientService.readPatient(patientInfo.getPatientPK());
+            if (patient != null) {
+                person = patient.getPerson();
+                patientIdentities = identityService.getPatientIdentitiesForPatient(patient.getId());
+            }
+        }
     }
 
     @Override
@@ -371,6 +380,13 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
     @Override
     public void persistPatientData(PatientManagementInfo patientInfo) throws LIMSRuntimeException {
+        // NO_ACTION means patient already exists and no changes needed
+        if (patientUpdateStatus == PatientUpdateStatus.NO_ACTION) {
+            if (patient != null && patient.getId() != null) {
+                patientID = patient.getId();
+            }
+            return;
+        }
 
         if (patientUpdateStatus == PatientUpdateStatus.ADD) {
             personService.insert(person);
@@ -391,6 +407,7 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
         persistContact(patientInfo, patient);
         persistPatientRelatedInformation(patientInfo);
+
         patientID = patient.getId();
         patientInfo.setPatientPK(patientID);
         patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
@@ -399,6 +416,7 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
 
     @Override
     public String getPatientId(SamplePatientEntryForm form) {
-        return GenericValidator.isBlankOrNull(patientID) ? form.getPatientProperties().getPatientPK() : patientID;
+        String formPatientPK = form.getPatientProperties() != null ? form.getPatientProperties().getPatientPK() : null;
+        return GenericValidator.isBlankOrNull(patientID) ? formPatientPK : patientID;
     }
 }

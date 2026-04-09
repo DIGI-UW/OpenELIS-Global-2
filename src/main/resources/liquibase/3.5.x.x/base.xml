@@ -18,8 +18,19 @@
   <include relativeToChangelogFile="true" file="003-calendar-management.xml"/>
   <!-- Add Audit Trail menu under Reports, deactivate old entries -->
   <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
+  <!-- Electronic Signature (21 CFR Part 11 Compliance) -->
+  <include relativeToChangelogFile="true" file="004-electronic-signature.xml"/>
 
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
+
+  <!-- Add storage_skipped field to sample table -->
+  <include relativeToChangelogFile="true" file="add_storage_skipped_to_sample.xml"/>
+
+  <!-- Add 'sampling site' organization type for environmental workflows -->
+  <include relativeToChangelogFile="true" file="003-add-sampling-site-org-type.xml"/>
+
+  <!-- Sequence for auto-generating sampling site codes -->
+  <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
 
 </databaseChangeLog>
