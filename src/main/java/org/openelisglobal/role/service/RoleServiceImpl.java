@@ -1,6 +1,7 @@
 package org.openelisglobal.role.service;
 
 import java.util.List;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.role.dao.RoleDAO;
 import org.openelisglobal.role.valueholder.Role;
@@ -50,7 +51,16 @@ public class RoleServiceImpl extends AuditableBaseObjectServiceImpl<Role, String
     @Override
     @Transactional(readOnly = true)
     public Role getRoleByName(String name) {
-        return getBaseObjectDAO().getRoleByName(name);
+        Role role = getBaseObjectDAO().getRoleByName(name);
+        if (role == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "getRoleByName",
+                    "Role not found in database: '" + name + "'");
+            Role stub = new Role();
+            stub.setId("-1");
+            stub.setName(name);
+            return stub;
+        }
+        return role;
     }
 
     @Override
