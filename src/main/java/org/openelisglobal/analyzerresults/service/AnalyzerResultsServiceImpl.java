@@ -7,6 +7,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -15,7 +16,6 @@ import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.action.util.ResultUtil;
-import org.openelisglobal.result.controller.AnalyzerResultsController.SampleGrouping;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -60,7 +60,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerResults> getResultsbyAnalyzer(String analyzerId) {
-        return baseObjectDAO.getAllMatchingOrdered("analyzerId", Integer.parseInt(analyzerId), "id", false);
+        return baseObjectDAO.getAllMatchingOrdered("analyzerId", analyzerId, "id", false);
     }
 
     @Override
@@ -76,15 +76,21 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
                 List<AnalyzerResults> previousResults = baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
                 AnalyzerResults previousResult = null;
 
-                // This next block may seem more complicated then it need be but it covers the
-                // case where there may be a third duplicate
-                // and it covers rereading the same file
+                // Duplicate detection: skip insert if an existing staging entry matches.
+                // Match on timestamp (instrument date) OR result value (re-import of same
+                // data).
+                // This makes re-importing the same file idempotent while still staging
+                // genuinely new results (corrections with different values) for user review.
                 if (previousResults != null) {
                     duplicateByAccessionAndTestOnly = true;
                     for (AnalyzerResults foundResult : previousResults) {
                         previousResult = foundResult;
                         if (foundResult.getCompleteDate() != null
                                 && foundResult.getCompleteDate().equals(result.getCompleteDate())) {
+                            duplicateByAccessionAndTestOnly = false;
+                            break;
+                        }
+                        if (foundResult.getResult() != null && foundResult.getResult().equals(result.getResult())) {
                             duplicateByAccessionAndTestOnly = false;
                             break;
                         }

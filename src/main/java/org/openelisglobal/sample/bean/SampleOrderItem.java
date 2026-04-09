@@ -22,7 +22,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.util.IdValuePair;
@@ -215,6 +217,27 @@ public class SampleOrderItem implements Serializable {
     private QuestionnaireResponse additionalQuestions;
 
     private String programId;
+
+    /**
+     * Environmental workflow fields stored using ObservationHistory pattern. Keys
+     * correspond to ObservationHistoryType.type_name: - collectionSiteDescription:
+     * Description of the collection site - requesterReference: External reference
+     * from requester - environmentalConditions: Weather/environmental conditions at
+     * collection - locationHierarchy.1, locationHierarchy.2, etc.: Address
+     * hierarchy IDs - workflowType: "clinical" or "environmental"
+     *
+     * Note: Uses Object values to support both String values and nested objects
+     * (for backwards compatibility with locationHierarchy as object).
+     */
+    private Map<String, Object> environmentalFields = new HashMap<>();
+
+    private boolean isEQASample;
+    private String eqaProgramId;
+    private String eqaProviderOrganizationId;
+    private String eqaProviderSampleId;
+    private String eqaParticipantId;
+    private String eqaDeadline;
+    private String eqaPriority;
 
     // for display
     private List<IdValuePair> priorityList;
@@ -603,5 +626,84 @@ public class SampleOrderItem implements Serializable {
 
     public void setProgramId(String programId) {
         this.programId = programId;
+    }
+
+    public boolean getIsEQASample() {
+        return isEQASample;
+    }
+
+    public void setIsEQASample(boolean isEQASample) {
+        this.isEQASample = isEQASample;
+    }
+
+    public String getEqaProgramId() {
+        return eqaProgramId;
+    }
+
+    public void setEqaProgramId(String eqaProgramId) {
+        this.eqaProgramId = eqaProgramId;
+    }
+
+    public String getEqaProviderOrganizationId() {
+        return eqaProviderOrganizationId;
+    }
+
+    public void setEqaProviderOrganizationId(String eqaProviderOrganizationId) {
+        this.eqaProviderOrganizationId = eqaProviderOrganizationId;
+    }
+
+    public String getEqaProviderSampleId() {
+        return eqaProviderSampleId;
+    }
+
+    public void setEqaProviderSampleId(String eqaProviderSampleId) {
+        this.eqaProviderSampleId = eqaProviderSampleId;
+    }
+
+    public String getEqaParticipantId() {
+        return eqaParticipantId;
+    }
+
+    public void setEqaParticipantId(String eqaParticipantId) {
+        this.eqaParticipantId = eqaParticipantId;
+    }
+
+    public String getEqaDeadline() {
+        return eqaDeadline;
+    }
+
+    public void setEqaDeadline(String eqaDeadline) {
+        this.eqaDeadline = eqaDeadline;
+    }
+
+    public String getEqaPriority() {
+        return eqaPriority;
+    }
+
+    public void setEqaPriority(String eqaPriority) {
+        this.eqaPriority = eqaPriority;
+    }
+
+    public Map<String, Object> getEnvironmentalFields() {
+        return environmentalFields;
+    }
+
+    public void setEnvironmentalFields(Map<String, Object> environmentalFields) {
+        this.environmentalFields = environmentalFields != null ? environmentalFields : new HashMap<>();
+    }
+
+    /**
+     * Helper method to get a string value from environmentalFields. Handles both
+     * direct String values and nested objects (flattens locationHierarchy).
+     */
+    public String getEnvironmentalFieldAsString(String key) {
+        Object value = environmentalFields.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value.toString();
     }
 }

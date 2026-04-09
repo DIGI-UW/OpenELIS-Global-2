@@ -31,7 +31,6 @@ mvn test -Dtest=*Analyzer*Test
 
 Focus areas per milestone:
 
-- Profile library APIs and SemVer lineage policy.
 - Runtime ASTM config APIs (connection role, QC rules, transforms, extraction,
   aggregation, flags).
 - Pending code queue behavior.
@@ -58,7 +57,7 @@ Run analyzer connection E2E:
 
 ```bash
 cd frontend
-npm run pw:test -- playwright/tests/analyzer-test-connection.spec.ts -g "GeneXpert test-connection succeeds via ASTM mock"
+npm run pw:test -- playwright/tests/foundational/harness/analyzer-test-connection-foundational.spec.ts
 ```
 
 ### 4.2 ASTM message simulation/push path
@@ -78,7 +77,7 @@ Verify:
 
 ```bash
 cd frontend
-GENEXPERT_HOST=<ip> GENEXPERT_PORT=<port> npm run pw:test -- playwright/tests/analyzer-test-connection.spec.ts -g "Real GeneXpert"
+GENEXPERT_HOST=<ip> GENEXPERT_PORT=<port> npm run pw:test -- --project=harness-manual-only playwright/tests/manual-only/harness/analyzer-test-connection-manual-only.spec.ts
 ```
 
 ## 5) Formatting and Final Checks

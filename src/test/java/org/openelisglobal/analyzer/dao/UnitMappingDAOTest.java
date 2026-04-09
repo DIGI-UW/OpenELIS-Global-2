@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Session;
-import org.hibernate.query.NativeQuery;
+import org.hibernate.query.Query;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -37,7 +37,7 @@ public class UnitMappingDAOTest {
     private Session session;
 
     @Mock
-    private NativeQuery<UnitMapping> nativeQuery;
+    private Query<UnitMapping> query;
 
     @InjectMocks
     private UnitMappingDAOImpl unitMappingDAO;
@@ -87,10 +87,9 @@ public class UnitMappingDAOTest {
         expectedMappings.add(mapping2);
 
         when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createNativeQuery(anyString())).thenReturn(nativeQuery);
-        when(nativeQuery.addEntity(eq(UnitMapping.class))).thenReturn(nativeQuery);
-        when(nativeQuery.setParameter(eq("analyzerFieldId"), eq("FIELD-001"))).thenReturn(nativeQuery);
-        when(nativeQuery.list()).thenReturn(expectedMappings);
+        when(session.createQuery(anyString(), eq(UnitMapping.class))).thenReturn(query);
+        when(query.setParameter(eq("analyzerFieldId"), eq("FIELD-001"))).thenReturn(query);
+        when(query.list()).thenReturn(expectedMappings);
 
         // Act
         List<UnitMapping> actualMappings = unitMappingDAO.findByAnalyzerFieldId("FIELD-001");
@@ -109,10 +108,9 @@ public class UnitMappingDAOTest {
     public void testFindByAnalyzerFieldId_NoMappings_ReturnsEmptyList() {
         // Arrange
         when(entityManager.unwrap(Session.class)).thenReturn(session);
-        when(session.createNativeQuery(anyString())).thenReturn(nativeQuery);
-        when(nativeQuery.addEntity(eq(UnitMapping.class))).thenReturn(nativeQuery);
-        when(nativeQuery.setParameter(eq("analyzerFieldId"), eq("FIELD-999"))).thenReturn(nativeQuery);
-        when(nativeQuery.list()).thenReturn(new ArrayList<>());
+        when(session.createQuery(anyString(), eq(UnitMapping.class))).thenReturn(query);
+        when(query.setParameter(eq("analyzerFieldId"), eq("FIELD-999"))).thenReturn(query);
+        when(query.list()).thenReturn(new ArrayList<>());
 
         // Act
         List<UnitMapping> actualMappings = unitMappingDAO.findByAnalyzerFieldId("FIELD-999");

@@ -26,6 +26,7 @@ public class OrganizationType extends BaseObject<String> {
     private String id;
     private String name;
     private String description;
+    private Integer hierarchyLevel;
     @JsonIgnore
     private Set<Organization> organizations;
 
@@ -51,6 +52,14 @@ public class OrganizationType extends BaseObject<String> {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Integer getHierarchyLevel() {
+        return hierarchyLevel;
+    }
+
+    public void setHierarchyLevel(Integer hierarchyLevel) {
+        this.hierarchyLevel = hierarchyLevel;
     }
 
     @Override
