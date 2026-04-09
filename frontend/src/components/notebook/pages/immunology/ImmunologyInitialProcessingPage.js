@@ -36,6 +36,11 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -127,6 +132,7 @@ function ImmunologyInitialProcessingPage({
     processingTemperature: "",
     temperatureUnit: "C",
     selectedReagents: [],
+    reagentQuantities: {},
     selectedEquipment: [],
     cellViabilityPercentage: "",
     finalCellYield: "",
@@ -290,6 +296,7 @@ function ImmunologyInitialProcessingPage({
       processingTemperature: "",
       temperatureUnit: "C",
       selectedReagents: [],
+      reagentQuantities: {},
       selectedEquipment: [],
       cellViabilityPercentage: "",
       finalCellYield: "",
@@ -376,6 +383,18 @@ function ImmunologyInitialProcessingPage({
       return;
     }
 
+    const selectedReagentItems = reagents.filter((reagent) =>
+      processingValues.selectedReagents.includes(reagent.id),
+    );
+    const invalidReagentItems = getInvalidReagentUsageItems(
+      selectedReagentItems,
+      processingValues.reagentQuantities,
+    );
+    if (invalidReagentItems.length > 0) {
+      setError("Enter a quantity greater than 0 for each selected reagent.");
+      return;
+    }
+
     // Build data object with non-empty values
     const data = {};
 
@@ -422,6 +441,11 @@ function ImmunologyInitialProcessingPage({
       data.temperatureUnit = processingValues.temperatureUnit;
     if (processingValues.selectedReagents.length > 0)
       data.selectedReagents = processingValues.selectedReagents;
+    if (processingValues.selectedReagents.length > 0)
+      data.selectedReagentUsages = buildSelectedReagentUsages(
+        selectedReagentItems,
+        processingValues.reagentQuantities,
+      );
     if (processingValues.selectedEquipment.length > 0)
       data.selectedEquipment = processingValues.selectedEquipment;
     if (processingValues.cellViabilityPercentage)
@@ -1690,8 +1714,12 @@ function ImmunologyInitialProcessingPage({
                   </h6>
                 </Column>
                 <Column lg={8} md={4} sm={4}>
-                  <MultiSelect
-                    id="selectedReagents"
+                  <ReagentUsageSelector
+                    reagents={reagents}
+                    selectedIds={processingValues.selectedReagents}
+                    reagentQuantities={processingValues.reagentQuantities}
+                    sampleCount={selectedSampleIds.length}
+                    disabled={loadingReagents}
                     titleText={intl.formatMessage({
                       id: "notebook.immunology.reagents",
                       defaultMessage: "Reagents",
@@ -1700,18 +1728,25 @@ function ImmunologyInitialProcessingPage({
                       id: "notebook.immunology.reagents.placeholder",
                       defaultMessage: "Select reagents...",
                     })}
-                    items={reagents}
-                    itemToString={(item) => (item ? item.label : "")}
-                    selectedItems={reagents.filter((r) =>
-                      processingValues.selectedReagents.includes(r.id),
-                    )}
-                    onChange={({ selectedItems }) =>
+                    onSelectionChange={(selectedItems) =>
                       setProcessingValues((prev) => ({
                         ...prev,
-                        selectedReagents: selectedItems.map((r) => r.id),
+                        selectedReagents: selectedItems.map((reagent) => reagent.id),
+                        reagentQuantities: syncReagentUsageQuantities(
+                          selectedItems,
+                          prev.reagentQuantities,
+                        ),
                       }))
                     }
-                    disabled={loadingReagents}
+                    onQuantityChange={(reagentId, value) =>
+                      setProcessingValues((prev) => ({
+                        ...prev,
+                        reagentQuantities: {
+                          ...prev.reagentQuantities,
+                          [reagentId]: value,
+                        },
+                      }))
+                    }
                   />
                 </Column>
                 <Column lg={8} md={4} sm={4}>

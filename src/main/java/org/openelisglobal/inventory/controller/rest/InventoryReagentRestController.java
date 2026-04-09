@@ -68,6 +68,7 @@ public class InventoryReagentRestController extends BaseRestController {
                 dto.setManufacturer(item.getManufacturer());
                 dto.setCategory(item.getCategory());
                 dto.setStorageRequirements(item.getStorageRequirements());
+                dto.setUnits(item.getUnits());
 
                 if (!lots.isEmpty()) {
                     // Use the first lot (FEFO - earliest expiring) for display
@@ -173,6 +174,7 @@ public class InventoryReagentRestController extends BaseRestController {
         private String manufacturer;
         private String category;
         private String storageRequirements;
+        private String units;
         private String lotNumber;
         private String expirationDate;
         private Double currentQuantity;

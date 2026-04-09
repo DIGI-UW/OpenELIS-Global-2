@@ -60,6 +60,11 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -120,6 +125,7 @@ function MNTDTestExecutionPage({
     runIssues: "",
     runId: "",
     selectedKits: [], // Array of selected kit IDs for multiselect
+    kitQuantities: {},
     operator: "",
     executionDate: new Date().toISOString().split("T")[0],
     executionTime: "",
@@ -323,6 +329,7 @@ function MNTDTestExecutionPage({
       runIssues: "",
       runId: "",
       selectedKits: [],
+      kitQuantities: {},
       operator: "",
       executionDate: new Date().toISOString().split("T")[0],
       executionTime: "",
@@ -346,6 +353,14 @@ function MNTDTestExecutionPage({
     const selectedKitObjects = reagents.filter((r) =>
       executionData.selectedKits.includes(r.id),
     );
+    const invalidKitItems = getInvalidReagentUsageItems(
+      selectedKitObjects,
+      executionData.kitQuantities,
+    );
+    if (invalidKitItems.length > 0) {
+      setError("Enter a quantity greater than 0 for each selected kit.");
+      return;
+    }
 
     // Build kit lot numbers string from selected kits
     const kitLotNumbers = selectedKitObjects
@@ -365,6 +380,10 @@ function MNTDTestExecutionPage({
       kitLot: kitLotNumbers,
       selectedKitIds: executionData.selectedKits,
       selectedReagents: selectedReagents,
+      selectedReagentUsages: buildSelectedReagentUsages(
+        selectedKitObjects,
+        executionData.kitQuantities,
+      ),
       operator: executionData.operator,
       executionDate: executionData.executionDate,
       executionTime: executionData.executionTime,
@@ -406,6 +425,7 @@ function MNTDTestExecutionPage({
                   runIssues: "",
                   runId: "",
                   selectedKits: [],
+                  kitQuantities: {},
                   operator: "",
                   executionDate: new Date().toISOString().split("T")[0],
                   executionTime: "",
@@ -1250,8 +1270,12 @@ function MNTDTestExecutionPage({
                     })}
                   />
                 ) : (
-                  <MultiSelect
-                    id="kit-lot"
+                  <ReagentUsageSelector
+                    reagents={reagents}
+                    selectedIds={executionData.selectedKits}
+                    reagentQuantities={executionData.kitQuantities}
+                    sampleCount={selectedIds.length}
+                    disabled={loadingReagents}
                     titleText={intl.formatMessage({
                       id: "notebook.mntd.testexecution.kitLot",
                       defaultMessage: "Kit Lot Number",
@@ -1260,18 +1284,25 @@ function MNTDTestExecutionPage({
                       id: "notebook.mntd.testexecution.selectKits",
                       defaultMessage: "Select kits...",
                     })}
-                    items={reagents}
-                    itemToString={(item) => (item ? item.label : "")}
-                    selectedItems={reagents.filter((r) =>
-                      executionData.selectedKits.includes(r.id),
-                    )}
-                    onChange={({ selectedItems }) =>
-                      setExecutionData({
-                        ...executionData,
+                    onSelectionChange={(selectedItems) =>
+                      setExecutionData((prev) => ({
+                        ...prev,
                         selectedKits: selectedItems.map((item) => item.id),
-                      })
+                        kitQuantities: syncReagentUsageQuantities(
+                          selectedItems,
+                          prev.kitQuantities,
+                        ),
+                      }))
                     }
-                    disabled={loadingReagents}
+                    onQuantityChange={(reagentId, value) =>
+                      setExecutionData((prev) => ({
+                        ...prev,
+                        kitQuantities: {
+                          ...prev.kitQuantities,
+                          [reagentId]: value,
+                        },
+                      }))
+                    }
                   />
                 )}
               </Column>

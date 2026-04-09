@@ -32,6 +32,11 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -82,6 +87,7 @@ function MNTDSampleProcessingPage({
     technicianName: "",
     processingDate: new Date().toISOString().slice(0, 10),
     selectedReagents: [],
+    reagentQuantities: {},
     selectedInstruments: [],
     batchNumber: "",
     lotNumber: "",
@@ -266,6 +272,18 @@ function MNTDSampleProcessingPage({
       return;
     }
 
+    const selectedReagentItems = reagents.filter((reagent) =>
+      bulkApplyValues.selectedReagents.includes(reagent.id),
+    );
+    const invalidReagentItems = getInvalidReagentUsageItems(
+      selectedReagentItems,
+      bulkApplyValues.reagentQuantities,
+    );
+    if (invalidReagentItems.length > 0) {
+      setError("Enter a quantity greater than 0 for each selected reagent.");
+      return;
+    }
+
     setIsBulkApplying(true);
     setError(null);
 
@@ -277,6 +295,10 @@ function MNTDSampleProcessingPage({
         technicianName: bulkApplyValues.technicianName,
         processingDate: bulkApplyValues.processingDate,
         selectedReagents: bulkApplyValues.selectedReagents,
+        selectedReagentUsages: buildSelectedReagentUsages(
+          selectedReagentItems,
+          bulkApplyValues.reagentQuantities,
+        ),
         selectedInstruments: bulkApplyValues.selectedInstruments,
         batchNumber: bulkApplyValues.batchNumber,
         lotNumber: bulkApplyValues.lotNumber,
@@ -309,6 +331,7 @@ function MNTDSampleProcessingPage({
     selectedSampleIds,
     pageData?.id,
     bulkApplyValues,
+    reagents,
     loadPageSamples,
     onProgressUpdate,
   ]);
@@ -439,6 +462,7 @@ function MNTDSampleProcessingPage({
       technicianName: "",
       processingDate: new Date().toISOString().slice(0, 10),
       selectedReagents: [],
+      reagentQuantities: {},
       selectedInstruments: [],
       batchNumber: "",
       lotNumber: "",
@@ -741,25 +765,36 @@ function MNTDSampleProcessingPage({
           </Column>
 
           <Column lg={8} md={4} sm={4}>
-            <MultiSelect
-              id="selectedReagents"
+            <ReagentUsageSelector
+              reagents={reagents}
+              selectedIds={bulkApplyValues.selectedReagents}
+              reagentQuantities={bulkApplyValues.reagentQuantities}
+              sampleCount={selectedSampleIds.length}
+              disabled={loadingReagents}
               titleText={intl.formatMessage({
                 id: "notebook.mntd.reagents",
                 defaultMessage: "Reagents",
               })}
               label="Select reagents..."
-              items={reagents}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItems={reagents.filter((r) =>
-                bulkApplyValues.selectedReagents.includes(r.id),
-              )}
-              onChange={({ selectedItems }) =>
+              onSelectionChange={(selectedItems) =>
                 setBulkApplyValues((prev) => ({
                   ...prev,
-                  selectedReagents: selectedItems.map((i) => i.id),
+                  selectedReagents: selectedItems.map((item) => item.id),
+                  reagentQuantities: syncReagentUsageQuantities(
+                    selectedItems,
+                    prev.reagentQuantities,
+                  ),
                 }))
               }
-              disabled={loadingReagents}
+              onQuantityChange={(reagentId, value) =>
+                setBulkApplyValues((prev) => ({
+                  ...prev,
+                  reagentQuantities: {
+                    ...prev.reagentQuantities,
+                    [reagentId]: value,
+                  },
+                }))
+              }
             />
           </Column>
 
