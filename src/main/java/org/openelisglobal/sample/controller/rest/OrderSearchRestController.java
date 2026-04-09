@@ -301,7 +301,7 @@ public class OrderSearchRestController extends BaseRestController {
 
                 // Step progress - reuse values calculated for status filtering
                 Map<String, Boolean> stepProgress = new HashMap<>();
-                stepProgress.put("enter", true); // If sample exists, enter is complete
+                stepProgress.put("enter", isEnterComplete(sample));
                 stepProgress.put("collect", collectComplete);
                 stepProgress.put("label", labelComplete);
                 stepProgress.put("qa", qaComplete);
@@ -886,6 +886,35 @@ public class OrderSearchRestController extends BaseRestController {
         }
 
         return sampleOrderItems;
+    }
+
+    /**
+     * Determine whether Step 1 (Enter Order) is genuinely complete.
+     *
+     * <p>
+     * Generating a lab number alone is not sufficient — the order must have been
+     * saved with its required data. We check:
+     * <ul>
+     * <li>receivedDate is set (always written by a proper Step 1 save)</li>
+     * <li>a patient is linked (clinical workflow), OR</li>
+     * <li>an environmental workflow type is recorded (environmental workflow)</li>
+     * </ul>
+     */
+    private boolean isEnterComplete(Sample sample) {
+        // receivedDate is set by a proper Step 1 save; absent for bare lab-number-only
+        // records
+        if (sample.getReceivedDate() == null) {
+            return false;
+        }
+        // Clinical: patient must be linked
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient != null) {
+            return true;
+        }
+        // Environmental: workflow type observation must be recorded
+        String workflowType = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return workflowType != null;
     }
 
     /**

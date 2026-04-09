@@ -83,6 +83,12 @@ public class ProviderRestController {
                 totalCount = (int) providerService.getCount();
             }
 
+            // DAOs fetch pageSize+1 rows for "has next page" detection — trim to requested
+            // size
+            if (providers.size() > pageSize) {
+                providers = providers.subList(0, pageSize);
+            }
+
             List<Map<String, Object>> results = new ArrayList<>();
             for (Provider provider : providers) {
                 Map<String, Object> providerData = new HashMap<>();

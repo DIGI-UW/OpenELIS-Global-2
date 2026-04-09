@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class UomTypeMapDAOImpl extends BaseDAOImpl<UomTypeMap, String> implements UomTypeMapDAO {
+public class UomTypeMapDAOImpl extends BaseDAOImpl<UomTypeMap, Integer> implements UomTypeMapDAO {
 
     public UomTypeMapDAOImpl() {
         super(UomTypeMap.class);

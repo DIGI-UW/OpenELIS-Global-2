@@ -103,17 +103,17 @@ const OrderCollect = () => {
           setPendingRequests(requests);
           // Convert pending requests to samples array for the UI
           const samplesFromRequests = convertRequestsToSamples(requests);
-          // Merge with any existing sample data (preserve collection details if already entered)
+          // Merge with any existing sample data.
+          // collectionDate/Time are intentionally NOT preserved from existing:
+          // the backend stores the order entry date there, not an actual
+          // collection date. SampleCollectionCard will auto-fill them to
+          // today when they are empty. Only Step-2-specific fields (collector,
+          // conditions, receivedDate/Time) are preserved.
           const mergedSamples = samplesFromRequests.map((reqSample, idx) => {
             const existing = samples[idx];
             if (existing && existing.sampleTypeId === reqSample.sampleTypeId) {
-              // Preserve existing collection details
               return {
                 ...reqSample,
-                collectionDate:
-                  existing.collectionDate || reqSample.collectionDate,
-                collectionTime:
-                  existing.collectionTime || reqSample.collectionTime,
                 collectorId: existing.collectorId || reqSample.collectorId,
                 collectionConditions:
                   existing.collectionConditions ||

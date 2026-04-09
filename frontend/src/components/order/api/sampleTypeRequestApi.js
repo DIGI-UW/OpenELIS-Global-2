@@ -5,7 +5,11 @@
  * They are fulfilled in Step 2 (Collect Sample) when actual sample_item records are created.
  */
 
-import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  putToOpenElisServerFullResponse,
+} from "../../utils/Utils";
 
 const BASE_URL = "/rest/sample-type-requests";
 
@@ -116,22 +120,17 @@ export const createRequestsForSamples = async (sampleId, sampleTypes) => {
  */
 export const fulfillRequest = (requestId, sampleItemId) => {
   return new Promise((resolve, reject) => {
-    // Use PUT with query parameter
-    fetch(`${BASE_URL}/${requestId}/fulfill?sampleItemId=${sampleItemId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "same-origin",
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
+    putToOpenElisServerFullResponse(
+      `${BASE_URL}/${requestId}/fulfill?sampleItemId=${sampleItemId}`,
+      null,
+      (response) => {
+        if (response && response.ok) {
+          response.json().then(resolve).catch(reject);
+        } else {
+          reject(new Error("Failed to fulfill request"));
         }
-        throw new Error("Failed to fulfill request");
-      })
-      .then(resolve)
-      .catch(reject);
+      },
+    );
   });
 };
 
@@ -142,21 +141,17 @@ export const fulfillRequest = (requestId, sampleItemId) => {
  */
 export const cancelRequest = (requestId) => {
   return new Promise((resolve, reject) => {
-    fetch(`${BASE_URL}/${requestId}/cancel`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "same-origin",
-    })
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
+    putToOpenElisServerFullResponse(
+      `${BASE_URL}/${requestId}/cancel`,
+      null,
+      (response) => {
+        if (response && response.ok) {
+          response.json().then(resolve).catch(reject);
+        } else {
+          reject(new Error("Failed to cancel request"));
         }
-        throw new Error("Failed to cancel request");
-      })
-      .then(resolve)
-      .catch(reject);
+      },
+    );
   });
 };
 

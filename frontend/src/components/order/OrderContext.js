@@ -297,8 +297,7 @@ export const OrderProvider = ({ children }) => {
                     setSamplesState(response.samples || [sampleObject]);
                   }
                 })
-                .catch((err) => {
-                  console.error("Failed to load sample type requests:", err);
+                .catch(() => {
                   setSamplesState(response.samples || [sampleObject]);
                 });
             } else {
@@ -997,16 +996,28 @@ export const OrderProvider = ({ children }) => {
   }, []);
 
   /**
-   * Auto-save effect - saves every 30 seconds if form is dirty and has a lab number
+   * Auto-save effect - saves every 30 seconds if form is dirty and has minimum required data.
+   * A lab number alone is not sufficient — patient (clinical) or site (environmental) plus
+   * at least one sample type must be present before we persist.
    */
   useEffect(() => {
     const hasLabNumber = orderData?.sampleOrderItems?.labNo;
-    if (isDirty && !isReadOnly && hasLabNumber) {
+    const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+    const workflowType = envFields.workflowType || "clinical";
+    const hasPatientOrSite =
+      workflowType === "environmental"
+        ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
+        : !!(
+            orderData?.patientProperties?.lastName ||
+            orderData?.patientProperties?.nationalId
+          );
+    const hasSampleTypes = samples.some((s) => s.sampleTypeId);
+    const canAutoSave = hasLabNumber && hasPatientOrSite && hasSampleTypes;
+
+    if (isDirty && !isReadOnly && canAutoSave) {
       autoSaveTimerRef.current = setInterval(() => {
         if (isDirty && !isSubmitting) {
-          saveOrder(true).catch((err) => {
-            console.error("Auto-save failed:", err);
-          });
+          saveOrder(true).catch(() => {});
         }
       }, AUTO_SAVE_INTERVAL);
     }
@@ -1022,6 +1033,12 @@ export const OrderProvider = ({ children }) => {
     isSubmitting,
     saveOrder,
     orderData?.sampleOrderItems?.labNo,
+    orderData?.sampleOrderItems?.environmentalFields?.workflowType,
+    orderData?.sampleOrderItems?.environmentalFields?.samplingSiteId,
+    orderData?.sampleOrderItems?.environmentalFields?.samplingSiteName,
+    orderData?.patientProperties?.lastName,
+    orderData?.patientProperties?.nationalId,
+    samples,
   ]);
 
   /**

@@ -5,7 +5,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
 import org.openelisglobal.unitofmeasure.valueholder.UomTypeMap;
 
-public interface UomTypeMapDAO extends BaseDAO<UomTypeMap, String> {
+public interface UomTypeMapDAO extends BaseDAO<UomTypeMap, Integer> {
 
     List<UnitOfMeasure> getUnitOfMeasuresByType(String uomType);
 

@@ -1,12 +1,8 @@
 package org.openelisglobal.organization.controller.rest;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,9 +63,6 @@ public class OrganizationRestController extends BaseController {
             "organizationLocalAbbreviation", "organizationName", "shortName", "isActive", "multipleUnit",
             "streetAddress", "city", "department", "commune", "village", "state", "zipCode", "internetAddress",
             "mlsSentinelLabFlag", "cliaNum", "mlsLabFlag", "selectedTypes*" };
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     @Autowired
     private OrganizationService organizationService;
@@ -481,11 +474,7 @@ public class OrganizationRestController extends BaseController {
     @GetMapping(value = "/organization/generate-site-code", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, String>> generateSiteCode() {
         try {
-            Number seqVal = (Number) entityManager.createNativeQuery("SELECT nextval('clinlims.site_code_seq')")
-                    .getSingleResult();
-            String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
-            String code = String.format("S%s-%05d", date, seqVal.longValue());
-
+            String code = organizationService.generateSiteCode();
             Map<String, String> response = new HashMap<>();
             response.put("siteCode", code);
             return ResponseEntity.ok(response);
@@ -665,8 +654,13 @@ public class OrganizationRestController extends BaseController {
                     organizations = new ArrayList<>();
                 }
             } else {
-                int startRecNo = Math.max(0, (page - 1) * pageSize);
+                int startRecNo = ((page - 1) * pageSize) + 1;
                 organizations = organizationService.getPageOfOrganizations(startRecNo);
+                // DAO fetches pageSize+1 rows for "has next page" detection — trim to requested
+                // size
+                if (organizations.size() > pageSize) {
+                    organizations = organizations.subList(0, pageSize);
+                }
                 organizations = filterByReferringSiteTypes(organizations);
                 totalCount = organizationService.getTotalOrganizationCount();
             }

@@ -73,7 +73,7 @@ const OrderDashboardContent = () => {
   const history = useHistory();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
-  const { loadOrder } = useOrderContext();
+  const { loadOrder, resetOrder } = useOrderContext();
 
   // State
   const [orders, setOrders] = useState([]);
@@ -128,6 +128,7 @@ const OrderDashboardContent = () => {
 
   // Handlers
   const handleNewOrder = () => {
+    resetOrder();
     history.push("/order/enter");
   };
 

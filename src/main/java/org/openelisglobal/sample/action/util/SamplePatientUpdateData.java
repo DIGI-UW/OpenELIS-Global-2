@@ -46,8 +46,6 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.program.service.ImmunohistochemistrySampleService;
-import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
@@ -97,10 +95,6 @@ public class SamplePatientUpdateData {
     private ElectronicOrderService electronicOrderService = SpringContext.getBean(ElectronicOrderService.class);
     private ProgramService programService = SpringContext.getBean(ProgramService.class);
     private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
-    private PathologySampleService pathologySampleService = SpringContext.getBean(PathologySampleService.class);
-    private ImmunohistochemistrySampleService immunohistochemistrySampleService = SpringContext
-            .getBean(ImmunohistochemistrySampleService.class);
-
     private List<ObservationHistory> observations = new ArrayList<>();
     private List<OrganizationAddress> orgAddressExtra = new ArrayList<>();
     private final String currentUserId;

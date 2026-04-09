@@ -195,13 +195,39 @@ const OrderEnter = () => {
     }));
   };
 
-  // Validation check
+  // Minimum data required before any save (including draft) is allowed.
+  // Generating a lab number alone is not sufficient to persist an order.
+  const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
+  const hasPatientOrSite =
+    workflowType === "environmental"
+      ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
+      : !!(
+          orderData?.patientProperties?.lastName ||
+          orderData?.patientProperties?.nationalId
+        );
+  const hasSampleTypes = samples.some((s) => s.sampleTypeId);
+  const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
+
+  // canProceed gates the Save / Save & Next buttons in the layout
   const canProceed =
-    localLabNumber &&
+    canSave &&
     Object.values(phoneValidation).every((item) => item.status !== false);
 
   // Save handler - uses saveOrderEntry which creates sample_type_requests (not sample_items)
   const handleSave = async () => {
+    if (!canSave) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "order.save.incomplete",
+          defaultMessage:
+            "Please add a patient (or sampling site), and at least one sample type before saving.",
+        }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
     try {
       await saveOrderEntry(false); // silent=false
       addNotification({
@@ -222,6 +248,7 @@ const OrderEnter = () => {
 
   // Save and navigate to next step
   const handleSaveAndNext = async () => {
+    if (!canSave) return; // canProceed gate on the button already covers this, but be safe
     try {
       await saveOrderEntry(false); // silent=false
       markStepComplete("enter");
@@ -238,6 +265,19 @@ const OrderEnter = () => {
 
   // Save as draft handler
   const handleSaveAsDraft = async () => {
+    if (!canSave) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "order.save.incomplete",
+          defaultMessage:
+            "Please add a patient (or sampling site), and at least one sample type before saving.",
+        }),
+      });
+      setNotificationVisible(true);
+      return;
+    }
     try {
       await saveOrderEntry(true); // silent=true
       addNotification({
@@ -272,7 +312,12 @@ const OrderEnter = () => {
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
-        <Button kind="tertiary" onClick={handleSaveAsDraft} size="md">
+        <Button
+          kind="tertiary"
+          onClick={handleSaveAsDraft}
+          size="md"
+          disabled={!canSave}
+        >
           <FormattedMessage
             id="button.save.draft"
             defaultMessage="Save as Draft"

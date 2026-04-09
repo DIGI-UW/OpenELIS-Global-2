@@ -262,19 +262,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
             if (hasNonPatientErrors) {
                 saveErrors(result);
-                // Preserve critical order identifiers before setupForm() overwrites them
-                String preservedSampleId = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getSampleId()
-                        : null;
-                String preservedLabNo = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getLabNo()
-                        : null;
-                setupForm(form, request, "");
-                // Restore the preserved identifiers after setupForm()
-                if (preservedSampleId != null && form.getSampleOrderItems() != null) {
-                    form.getSampleOrderItems().setSampleId(preservedSampleId);
-                }
-                if (preservedLabNo != null && form.getSampleOrderItems() != null) {
-                    form.getSampleOrderItems().setLabNo(preservedLabNo);
-                }
                 return form;
             }
         }
@@ -345,20 +332,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // They will be added in a later step (Collect Sample)
         boolean requireSampleItems = !form.isOrderEntryOnly();
 
-        // DEBUG: Log before validation
-        LogEvent.logInfo(this.getClass().getName(), "processRequest",
-                "DEBUG: Before validation - form.isOrderEntryOnly()=" + form.isOrderEntryOnly()
-                        + ", requireSampleItems=" + requireSampleItems);
-
         updateData.validateSample(result, requireSampleItems);
-
-        // DEBUG: Log validation result
-        LogEvent.logInfo(this.getClass().getName(), "processRequest",
-                "DEBUG: After validation - result.hasErrors()=" + result.hasErrors());
-        if (result.hasErrors()) {
-            LogEvent.logInfo(this.getClass().getName(), "processRequest",
-                    "DEBUG: Validation errors=" + result.getAllErrors());
-        }
 
         // OGC-356: For environmental workflow, ignore patient-related validation errors
         // Environmental samples don't require patient data (gender, nationalId, etc.)
@@ -368,27 +342,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
                     .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
             hasNonPatientErrors = !nonPatientErrors.isEmpty();
-            LogEvent.logInfo(this.getClass().getName(), "processRequest",
-                    "DEBUG: Environmental workflow - non-patient errors: " + nonPatientErrors.size()
-                            + ", total errors: " + result.getErrorCount());
         }
 
         if (hasNonPatientErrors) {
             saveErrors(result);
-            // Preserve critical order identifiers before setupForm() overwrites them
-            String preservedSampleId = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getSampleId()
-                    : null;
-            String preservedLabNo = form.getSampleOrderItems() != null ? form.getSampleOrderItems().getLabNo() : null;
-            setupForm(form, request, "");
-            // Restore the preserved identifiers after setupForm()
-            if (preservedSampleId != null && form.getSampleOrderItems() != null) {
-                form.getSampleOrderItems().setSampleId(preservedSampleId);
-            }
-            if (preservedLabNo != null && form.getSampleOrderItems() != null) {
-                form.getSampleOrderItems().setLabNo(preservedLabNo);
-            }
-            LogEvent.logInfo(this.getClass().getName(), "processRequest",
-                    "DEBUG: Returning early due to validation errors");
             return form;
         }
 

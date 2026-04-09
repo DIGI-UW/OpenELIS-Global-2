@@ -528,11 +528,13 @@ public class BarcodeLabelMaker {
                 }
                 try {
                     getBarcodeLabelService().save(label.getLabelInfo());
-                } catch (Exception e) {
-                    // Handle optimistic lock exceptions from concurrent print requests
-                    // Log but don't fail - the PDF was already generated
+                } catch (jakarta.persistence.OptimisticLockException | org.hibernate.StaleObjectStateException e) {
+                    // Tolerate concurrent print requests racing to update the same label row
                     LogEvent.logWarn("BarcodeLabelMaker", "createLabelsAsStreamWithMaximumPrints",
-                            "Failed to save label print count (possible concurrent request): " + e.getMessage());
+                            "Optimistic lock on label print count (concurrent request): " + e.getMessage());
+                } catch (RuntimeException e) {
+                    // DB connectivity, constraint violations, etc. — rethrow so the caller knows
+                    throw e;
                 }
             }
             document.close();

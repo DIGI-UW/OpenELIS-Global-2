@@ -48,10 +48,9 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
             return Collections.emptyList();
         }
         Session session = entityManager.unwrap(Session.class);
-        Query<SampleTypeRequest> query = session.createQuery(
-                "FROM SampleTypeRequest str WHERE str.sample.id = :sampleId "
-                        + "AND str.status = :status ORDER BY str.sortOrder",
-                SampleTypeRequest.class);
+        Query<SampleTypeRequest> query = session
+                .createQuery("FROM SampleTypeRequest str WHERE str.sample.id = :sampleId "
+                        + "AND str.status = :status ORDER BY str.sortOrder", SampleTypeRequest.class);
         query.setParameter("sampleId", id);
         query.setParameter("status", SampleTypeRequest.Status.REQUESTED);
         return query.list();
@@ -64,10 +63,9 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
             return Collections.emptyList();
         }
         Session session = entityManager.unwrap(Session.class);
-        Query<SampleTypeRequest> query = session.createQuery(
-                "FROM SampleTypeRequest str WHERE str.sample.id = :sampleId "
-                        + "AND str.status = :status ORDER BY str.sortOrder",
-                SampleTypeRequest.class);
+        Query<SampleTypeRequest> query = session
+                .createQuery("FROM SampleTypeRequest str WHERE str.sample.id = :sampleId "
+                        + "AND str.status = :status ORDER BY str.sortOrder", SampleTypeRequest.class);
         query.setParameter("sampleId", id);
         query.setParameter("status", SampleTypeRequest.Status.COLLECTED);
         return query.list();

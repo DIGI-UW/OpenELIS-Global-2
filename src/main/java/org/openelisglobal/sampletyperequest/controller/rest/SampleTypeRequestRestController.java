@@ -1,11 +1,11 @@
 package org.openelisglobal.sampletyperequest.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
@@ -14,8 +14,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
-import org.openelisglobal.spring.util.SpringContext;
-import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -55,9 +53,6 @@ public class SampleTypeRequestRestController {
     private UnitOfMeasureService unitOfMeasureService;
 
     @Autowired
-    private SystemUserService systemUserService;
-
-    @Autowired
     private TestService testService;
 
     @Autowired
@@ -87,7 +82,7 @@ public class SampleTypeRequestRestController {
      * Create a new sample type request (Step 1: Enter Order).
      */
     @PostMapping
-    public ResponseEntity<?> createRequest(@RequestBody SampleTypeRequestDTO dto) {
+    public ResponseEntity<?> createRequest(@RequestBody SampleTypeRequestDTO dto, HttpServletRequest request) {
         try {
             // Validate required fields
             if (GenericValidator.isBlankOrNull(dto.getSampleId())) {
@@ -110,32 +105,33 @@ public class SampleTypeRequestRestController {
             }
 
             // Create request
-            SampleTypeRequest request = new SampleTypeRequest();
-            request.setSample(sample);
-            request.setTypeOfSample(typeOfSample);
-            request.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
-            request.setRequestedQuantity(dto.getRequestedQuantity() != null ? dto.getRequestedQuantity() : 1.0);
-            request.setRequestedTests(dto.getRequestedTests());
-            request.setRequestedPanels(dto.getRequestedPanels());
-            request.setStatus(SampleTypeRequest.Status.REQUESTED);
-            request.setCreatedDate(new Timestamp(System.currentTimeMillis()));
-            request.setSysUserId(getSysUserId());
+            SampleTypeRequest sampleTypeRequest = new SampleTypeRequest();
+            sampleTypeRequest.setSample(sample);
+            sampleTypeRequest.setTypeOfSample(typeOfSample);
+            sampleTypeRequest.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
+            sampleTypeRequest
+                    .setRequestedQuantity(dto.getRequestedQuantity() != null ? dto.getRequestedQuantity() : 1.0);
+            sampleTypeRequest.setRequestedTests(dto.getRequestedTests());
+            sampleTypeRequest.setRequestedPanels(dto.getRequestedPanels());
+            sampleTypeRequest.setStatus(SampleTypeRequest.Status.REQUESTED);
+            sampleTypeRequest.setCreatedDate(new Timestamp(System.currentTimeMillis()));
+            sampleTypeRequest.setSysUserId(ControllerUtills.getSysUserId(request));
 
             // Load unit of measure if provided
             if (!GenericValidator.isBlankOrNull(dto.getUnitOfMeasureId())) {
                 UnitOfMeasure uom = unitOfMeasureService.get(dto.getUnitOfMeasureId());
                 if (uom != null) {
-                    request.setUnitOfMeasure(uom);
+                    sampleTypeRequest.setUnitOfMeasure(uom);
                 }
             }
 
-            Integer requestId = sampleTypeRequestService.insert(request);
-            request.setId(requestId);
+            Integer requestId = sampleTypeRequestService.insert(sampleTypeRequest);
+            sampleTypeRequest.setId(requestId);
 
             LogEvent.logInfo(this.getClass().getSimpleName(), "createRequest",
                     "Created sample type request: " + requestId + " for sample: " + dto.getSampleId());
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(request));
+            return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(sampleTypeRequest));
 
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), "createRequest", e.getMessage());
@@ -192,11 +188,6 @@ public class SampleTypeRequestRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error cancelling request: " + e.getMessage());
         }
-    }
-
-    private String getSysUserId() {
-        return SpringContext.getBean(IStatusService.class) instanceof StatusService ? "1"
-                : systemUserService.getAll().get(0).getId();
     }
 
     /**

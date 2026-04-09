@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { ComboBox } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -12,25 +12,35 @@ const AutocompleteMode = ({ onLocationChange }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceTimer = useRef(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   const handleSearch = useCallback((inputValue) => {
-    // Clear previous timer
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
 
-    // Don't search for very short inputs
     if (!inputValue || inputValue.length < 2) {
       setSearchResults([]);
+      setIsLoading(false);
       return;
     }
 
-    // Debounce the search
     debounceTimer.current = setTimeout(() => {
       setIsLoading(true);
       getFromOpenElisServer(
         `/rest/storage/locations/search?q=${encodeURIComponent(inputValue)}`,
         (response) => {
+          if (!isMounted.current) return;
           setIsLoading(false);
           if (response && Array.isArray(response)) {
             setSearchResults(response);

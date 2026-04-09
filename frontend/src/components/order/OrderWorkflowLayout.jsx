@@ -78,6 +78,7 @@ const OrderWorkflowLayout = ({
   canProceed = true,
   onSave,
   onSaveAndNext,
+  extraButtons,
   showSaveButtons = true,
 }) => {
   const intl = useIntl();
@@ -175,13 +176,17 @@ const OrderWorkflowLayout = ({
 
           {/* Save Navigation Buttons - NAV-4 */}
           {showSaveButtons && (
-            <SaveNavigationButtons
-              currentStep={activeStep}
-              canProceed={canProceed}
-              onSave={onSave}
-              onSaveAndNext={onSaveAndNext}
-              className="order-navigation-section"
-            />
+            <div className="order-navigation-section">
+              <SaveNavigationButtons
+                currentStep={activeStep}
+                canProceed={canProceed}
+                onSave={onSave}
+                onSaveAndNext={onSaveAndNext}
+              />
+              {extraButtons && (
+                <div className="order-extra-buttons">{extraButtons}</div>
+              )}
+            </div>
           )}
         </div>
       </Stack>

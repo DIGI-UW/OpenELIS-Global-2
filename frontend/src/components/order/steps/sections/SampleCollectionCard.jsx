@@ -279,6 +279,7 @@ const SampleCollectionCard = ({
           <DatePicker
             datePickerType="single"
             maxDate={new Date().toISOString()}
+            value={formatDateForPicker(sample.collectionDate)}
             onChange={(dates) => {
               if (dates && dates[0]) {
                 const month = String(dates[0].getMonth() + 1).padStart(2, "0");
@@ -306,7 +307,6 @@ const SampleCollectionCard = ({
                 </>
               }
               placeholder="mm/dd/yyyy"
-              value={formatDateForPicker(sample.collectionDate)}
               disabled={isReadOnly}
             />
           </DatePicker>

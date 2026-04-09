@@ -136,22 +136,18 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
 
     @Override
     public int getTotalSearchedProviderCount(String parameter) {
-        List<Provider> list = null;
         try {
-            String sql = "from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
+            String sql = "select count(p) from Provider p where lower(p.person.firstName) like concat('%', lower(:searchValue),"
                     + " '%') or lower(p.person.lastName) like concat('%', lower(:searchValue), '%') or"
                     + " lower(concat(p.person.firstName, ' ', p.person.lastName)) like concat('%',"
                     + " lower(:searchValue), '%')";
-            Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
             query.setParameter("searchValue", parameter);
-
-            list = query.list();
+            return query.uniqueResult().intValue();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in ProviderDAOImpl getTotalSearchedProviderCount()", e);
         }
-
-        return list.size();
     }
 
     @Override
@@ -227,21 +223,17 @@ public class ProviderDAOImpl extends BaseDAOImpl<Provider, String> implements Pr
             return 0;
         }
 
-        List<Provider> list = null;
         try {
-            String sql = "from Provider p where "
+            String sql = "select count(p) from Provider p where "
                     + "replace(replace(replace(replace(p.person.primaryPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
                     + "replace(replace(replace(replace(p.person.workPhone, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%') or "
                     + "replace(replace(replace(replace(p.person.fax, ' ', ''), '-', ''), '(', ''), ')', '') like concat('%', :phoneValue, '%')";
-            Query<Provider> query = entityManager.unwrap(Session.class).createQuery(sql, Provider.class);
+            Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
             query.setParameter("phoneValue", phoneValue);
-
-            list = query.list();
+            return query.uniqueResult().intValue();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in ProviderDAOImpl getTotalSearchedProviderCountByPhone()", e);
         }
-
-        return list.size();
     }
 }

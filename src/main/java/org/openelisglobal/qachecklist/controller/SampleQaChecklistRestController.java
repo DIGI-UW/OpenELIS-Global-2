@@ -213,7 +213,13 @@ public class SampleQaChecklistRestController extends BaseRestController {
                     error.put("error", "Sample not found for lab number: " + labNumber);
                     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
                 }
-                sampleId = Integer.parseInt(sample.getId());
+                try {
+                    sampleId = Integer.parseInt(sample.getId());
+                } catch (NumberFormatException e) {
+                    Map<String, String> error = new HashMap<>();
+                    error.put("error", "Invalid sample data");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                }
             }
 
             if (sampleId == null) {
@@ -261,7 +267,7 @@ public class SampleQaChecklistRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error saving QA checklist", e);
             Map<String, String> error = new HashMap<>();
-            error.put("error", "Failed to save QA checklist: " + e.getMessage());
+            error.put("error", "Failed to save QA checklist");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

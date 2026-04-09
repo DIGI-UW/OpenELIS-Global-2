@@ -2925,6 +2925,7 @@
   "order.saveStatus.saved": "Saved",
   "order.saveStatus.saving": "Saving...",
   "order.saveStatus.unsaved": "Unsaved changes",
+  "order.save.incomplete": "Please add a patient (or sampling site) and at least one sample type before saving.",
   "order.saved.draft": "Draft saved",
   "order.search.placeholder": "Search orders...",
   "order.search.site.name": "Search Site Name",

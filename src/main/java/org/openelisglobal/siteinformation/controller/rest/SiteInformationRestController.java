@@ -391,7 +391,9 @@ public class SiteInformationRestController extends BaseController {
         try {
             java.util.Map<String, Object> config = new java.util.HashMap<>();
 
-            String workflowType = "Both";
+            String configuredWorkflow = ConfigurationProperties.getInstance()
+                    .getPropertyValue(Property.ORDER_ENTRY_WORKFLOW_TYPE);
+            String workflowType = configuredWorkflow != null ? configuredWorkflow : "Both";
             config.put("workflowType", workflowType);
             config.put("labName", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
             config.put("useAccessionNumberValidation", ConfigurationProperties.getInstance()

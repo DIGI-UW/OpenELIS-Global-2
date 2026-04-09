@@ -13,13 +13,13 @@ import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "uom_type_map")
-public class UomTypeMap extends BaseObject<String> {
+public class UomTypeMap extends BaseObject<Integer> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "uom_type_map_seq_gen")
     @SequenceGenerator(name = "uom_type_map_seq_gen", sequenceName = "uom_type_map_seq", allocationSize = 1)
     @Column(name = "id")
-    private String id;
+    private Integer id;
 
     @ManyToOne
     @JoinColumn(name = "uom_id", nullable = false)
@@ -33,12 +33,12 @@ public class UomTypeMap extends BaseObject<String> {
     }
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
