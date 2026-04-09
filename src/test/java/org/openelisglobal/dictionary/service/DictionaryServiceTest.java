@@ -31,7 +31,7 @@ public class DictionaryServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void delete_shouldDeleteDictionary() {
         Dictionary dictionaryToDelete = dictionaryService.get("1");
-        dictionaryToDelete.setSysUserId("admin");
+        dictionaryToDelete.setSysUserId("1");
 
         assertNotNull(dictionaryToDelete);
 
