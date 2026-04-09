@@ -185,8 +185,8 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
         secondLot.setCurrentQuantity(0.75);
         inventoryLotService.update(secondLot);
 
-        assertTrue("Fractional usable stock should be counted", inventoryManagementService
-                .isSufficientInventoryAvailable(1L, 0.5));
+        assertTrue("Fractional usable stock should be counted",
+                inventoryManagementService.isSufficientInventoryAvailable(1L, 0.5));
         assertFalse("Availability should still fail when requested quantity exceeds fractional stock",
                 inventoryManagementService.isSufficientInventoryAvailable(1L, 1.0));
     }

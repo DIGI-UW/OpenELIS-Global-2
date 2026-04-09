@@ -1,6 +1,66 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Principle X: Legacy Code Removal
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.1 → 1.10.0
+Change Type: MINOR - New principle added
+Date: 2026-04-06
+
+Added Sections:
+  - Principle X: Legacy Code Removal
+    * NEW: Mandate to address legacy/deprecated code when touched
+    * NEW: Remove or track (same PR, paired PR, or priority issue)
+    * NEW: No dual-write, no legacy-first development
+    * NEW: Ownership follows architecture (component boundaries)
+
+Rationale:
+  Sprint 014 (Madagascar file analyzers) demonstrated the cost of preserving
+  legacy code: OE-side file readers were extended with features that belong
+  in the bridge, FileImportConfiguration was marked @Deprecated but kept in
+  active use, and HARN-* accession formats persisted because they "worked."
+  Each preserved legacy path became the path of least resistance and caused
+  the same capability to be built twice.
+
+Templates Requiring Updates:
+  ⚠️ AGENTS.md - Add Principle X summary
+  ⚠️ CLAUDE.md - Add Principle X to checklist
+
+Follow-up TODOs:
+  - Create priority issue for FileImportConfiguration removal
+  - Create priority issue for OE-side file reader removal
+-->
+
+<!--
+SYNC IMPACT REPORT - V.6 Refactor: Move tool details to Testing Roadmap
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.9.0 → 1.9.1
+Change Type: PATCH - Restructure V.6 content placement (no rule changes)
+Date: 2026-04-05
+
+Modified Sections:
+  - Principle V > Section V.6: Test Quality Invariants
+    * MOVED: Full J1-J7, F1-F5, E1-E4, U1-U3 rules with code examples
+      to Testing Roadmap § "Test Quality Invariants (Constitution V.6)"
+    * KEPT: Principle-level summaries in constitution (no code examples)
+    * REMOVED: "Exception" note that contradicted the document's own style rule
+    * ADDED: Cross-reference link to Testing Roadmap for full rules
+
+Rationale:
+  Constitution's own note states "Technical implementation details belong in
+  the Testing Roadmap." V.6 violated this with tool-specific code examples
+  (Mockito patterns, RTL imports, Playwright locators). Copilot flagged the
+  contradiction on PR #3335. Fix: keep constitution at principle level, move
+  full rules to Testing Roadmap where they belong.
+
+Templates Requiring Updates:
+  ✅ .specify/guides/testing-roadmap.md - Full J1-U3 rules added
+  ✅ .specify/memory/constitution.md - Slimmed to principle summaries
+
+Follow-up TODOs: None
+-->
+
+<!--
 SYNC IMPACT REPORT - E2E Testing: Pre-Push Validation + Playwright Support (V.5)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.8.1 → 1.9.0
@@ -627,7 +687,10 @@ direct database access from controllers, NO business logic in DAOs.
 
    - Interface + Implementation (annotate with `@Service` + `@Transactional`)
    - **Transactions start here (NOT in controllers)** - `@Transactional`
-     annotations MUST be on service methods only, NEVER on controller methods
+     annotations MUST NOT appear on controller methods. DAOs retain
+     `@Transactional` (per Layer 2 convention); with Spring's default `REQUIRED`
+     propagation, DAO transactions participate in the enclosing service
+     transaction rather than creating new ones.
    - Call DAOs for persistence, FHIR services for sync
    - Validation logic before persistence
    - Logging via `LogEvent.logError()` for errors
@@ -671,9 +734,10 @@ mixes with HTTP handling and business rules.
 - **Controllers accessing entity relationships** (e.g.,
   `position.getParentRack().getParentShelf()`) - Services must return complete
   data structures with all relationships resolved within the transaction
-- **@Transactional annotations in controllers** - Transaction management MUST be
-  in service layer only. Controllers delegate to services, which manage
-  transaction boundaries. Example anti-pattern:
+- **@Transactional annotations in controllers** - Transaction boundaries MUST be
+  managed by the service layer. Controllers MUST NOT have `@Transactional`.
+  (Note: DAOs correctly carry `@Transactional` per Layer 2 convention — the
+  prohibition is controller-specific.) Example anti-pattern:
   `@GetMapping("/endpoint") @Transactional(readOnly = true)`
 
 ---
@@ -791,8 +855,8 @@ implementation details.
 
 - **Playwright** (RECOMMENDED for new tests): Modern async/await patterns,
   auto-waiting, better debugging, parallel execution
-- **Cypress** (EXISTING tests): Existing test suite continues to use Cypress;
-  migration is optional
+- **Cypress** (EXISTING tests only): Do not create new Cypress tests. Existing
+  test suite continues to use Cypress and will be migrated over time
 - **Selection Guidance**: Consult Testing Roadmap
   (`.specify/guides/testing-roadmap.md`) Section "When to Use Playwright vs
   Cypress" for framework selection criteria
@@ -802,7 +866,7 @@ implementation details.
 1. **During Development (Fast Iteration):**
 
    - Run tests individually or in small chunks (5-10 tests)
-   - Playwright: `npx playwright test {spec}.spec.ts`
+   - Playwright: `npm run pw:test -- {spec}.spec.ts`
    - Cypress: `npm run cy:spec "cypress/e2e/{feature}.cy.js"`
    - Purpose: Fast feedback loop while coding
    - **Rationale**: Running tests individually provides faster feedback, easier
@@ -812,7 +876,7 @@ implementation details.
 
    - MUST validate full suite locally with fail-fast enabled
    - Cypress: `npm run cy:failfast`
-   - Playwright: `npx playwright test`
+   - Playwright: `npm run pw:test`
    - Purpose: Catch integration issues BEFORE pushing to CI
    - **Rationale**: CI is expensive (60+ minutes per failure). Validating
      locally before pushing saves time, money, and catches issues faster.
@@ -842,14 +906,14 @@ This wastes 60+ minutes of CI time and delays feedback when issues are found.
 ```bash
 # 1. Development (fast iteration)
 # Playwright (recommended for new tests)
-npx playwright test sidenav.spec.ts    # Individual file
+npm run pw:test -- sidenav.spec.ts     # Individual file
 
 # Cypress (existing tests)
 npm run cy:spec "cypress/e2e/storageAssignment.cy.js"  # Individual file
 
 # 2. Pre-push validation (MANDATORY before pushing)
 npm run cy:failfast                     # Cypress full suite with fail-fast
-npx playwright test                     # Playwright full suite
+npm run pw:test                         # Playwright full suite
 
 # 3. Test specific feature area
 npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
@@ -970,6 +1034,31 @@ The Testing Roadmap provides comprehensive technical guidance on:
 belong in the Testing Roadmap and plan.md, not in the constitution. This section
 focuses on functional requirements and principles.
 
+### V.6 Test Quality Invariants (MANDATORY)
+
+Every test MUST satisfy the **Inversion Test**: if the function under test is
+replaced with a hardcoded return value, the test MUST fail. Tests that pass
+regardless of implementation are scaffolding, not tests.
+
+The following invariants are grouped by layer. For full rules with code examples
+and rationale, see the
+[Testing Roadmap § Test Quality Invariants](../../.specify/guides/testing-roadmap.md#test-quality-invariants-constitution-v6).
+
+**Backend (J1–J7):** No assert-on-mock-return. Verify mock arguments with
+specific matchers. Auth before business logic in every controller suite. Filter
+pass-through tests required. Negative/boundary tests required. No
+catch-and-continue in @Transactional. HQL/SQL param tests required.
+
+**Frontend (F1–F5):** No render-only tests. Verify API request shape. No raw
+fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
+user-visible text.
+
+**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
+
+**Universal (U1–U3):** Inversion Test mandatory. One bug = one regression test.
+No any() without justification.
+
 ---
 
 ### VI. Database Schema Management
@@ -997,7 +1086,7 @@ bypasses these safeguards.
 **Example Changeset**:
 
 ```xml
-<changeSet id="storage-001-create-storage-room-table" author="dev-team">
+<changeSet id="storage-001-create-storage-room-table" author="pkomena">
   <createTable tableName="storage_room">
     <column name="id" type="VARCHAR(36)"><constraints primaryKey="true"/></column>
     <column name="fhir_uuid" type="UUID"><constraints nullable="false" unique="true"/></column>
@@ -1022,12 +1111,31 @@ hardcoded English text in components.
 - Use `intl.formatMessage({ id: 'storage.location.label' })` for all text
 - Supported locales: en (English), fr (French), ar (Arabic), es (Spanish), hi
   (Hindi), pt (Portuguese), sw (Swahili)
-- New features MUST provide translations for at least en + fr
+- New features MUST add keys to `en.json` ONLY (see Translation Workflow below)
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
 
+**Translation Workflow (Transifex)**:
+
+Transifex is the **source of truth** for all non-English translations. The
+project lives under the OpenMRS organization: `o:openmrs:p:openelis-1:r:enjson`.
+
+- **Developers**: Add new i18n keys to `frontend/src/languages/en.json` ONLY. Do
+  NOT edit `fr.json`, `es.json`, or any other locale file. A CI check
+  ("Translation source-of-truth check") will block PRs that modify non-English
+  locale files.
+- **Source push** (`tx-push.yml`): On every push to `develop`, `en.json` is
+  automatically uploaded to Transifex.
+- **Translators**: Add translations on the
+  [Transifex project](https://explore.transifex.com/openmrs/openelis-1/).
+- **Translation pull** (`tx-pull.yml`): Daily at 20:30 UTC, translations are
+  pulled from Transifex and auto-merged to `develop` via the
+  `chore/update-transifex` branch.
+
 **Rationale**: OpenELIS operates in multilingual countries (e.g., Rwanda: en/fr,
 Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
+Transifex provides a single source of truth for translations, enabling community
+translators to contribute without touching code.
 
 **Example**:
 
@@ -1039,7 +1147,7 @@ Kenya: en/sw). Hardcoded strings force costly retrofitting and delay deployment.
 <Button>{intl.formatMessage({ id: 'button.save.location' })}</Button>
 ```
 
-**Translation Files** (`en.json`):
+**Translation Files** — developers edit `en.json` only:
 
 ```json
 {
@@ -1190,6 +1298,42 @@ delivery enables:
 **Reference**:
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
 
+### X. Legacy Code Removal (ADDED 2026-04-06)
+
+**MANDATE**: When a feature touches code that uses a legacy or deprecated
+pattern, the legacy path MUST be addressed — not extended, not worked around,
+not silently preserved.
+
+**Rules**:
+
+- **Never extend legacy code**: If a legacy component (entity, service,
+  controller, reader, handler) is superseded by a new architecture, do NOT add
+  features to the legacy path. Build on the target architecture.
+- **Remove or track**: Legacy code encountered during feature work MUST be
+  either (a) removed in the same PR, (b) removed in a paired PR within the same
+  milestone, or (c) tracked as a priority issue with a clear removal plan.
+  Unmarked `@Deprecated` annotations with no tracked removal are prohibited.
+- **No dual-write**: If data is moved from a legacy table/entity to a new one,
+  stop writing to the old one. Do NOT maintain parallel persistence paths.
+- **Ownership follows architecture**: Respect component boundaries. If the
+  bridge owns file parsing, do NOT add parsing logic to OE. If OE owns config,
+  do NOT store config in the bridge. Building the same capability in two places
+  because legacy code exists in one of them is a violation.
+- **Legacy-first development is prohibited**: When building new features, start
+  from the target architecture. Consult legacy code for reference if needed, but
+  implement in the correct location.
+
+**Rationale**: Legacy code causes **context drift** — developers (and AI agents)
+naturally gravitate toward extending what exists instead of building on the
+target architecture. The legacy path becomes the path of least resistance,
+pulling all future work toward the wrong design. Each preserved legacy path
+doubles maintenance surface, creates confusion about which path is
+authoritative, and results in the same capability built in two places.
+
+**Enforcement**: PRs that extend deprecated/legacy patterns MUST document how
+the legacy path will be removed (same PR, paired PR, or tracked issue). Code
+review should ask: "Why is the legacy path still here?"
+
 ---
 
 ## Technical Stack Constraints
@@ -1333,9 +1477,11 @@ naming conventions and milestone workflow.
 
 **CI/CD Pipeline** (GitHub Actions):
 
-- **`ci.yml`**: Maven build + JaCoCo coverage report
+- **`backend.yml`**: Maven build + JaCoCo coverage report
 - **`publish-and-test.yml`**: Docker image build + integration tests
-- **`frontend-qa.yml`**: Cypress E2E tests
+- **`frontend.yml`**: Frontend static/unit/image quality gate
+- **`e2e-playwright.yml`**: Playwright E2E (core + analyzer harness)
+- **`e2e-cypress-deprecated.yml`**: Cypress E2E tests (deprecated track)
 - **`build-installer.yml`**: Offline installer packaging
 
 All checks MUST pass before merge.
@@ -1476,16 +1622,20 @@ updates, training, refactoring).
 - Backend: `src/main/java/org/openelisglobal/{module}/` existing code examples
 - Frontend: `frontend/src/components/` Carbon component usage
 - FHIR: `org.openelisglobal.fhir.FhirTransformServiceImpl` transform examples
+- CI/E2E validation architecture:
+  [`../reports/ci-e2e-architecture-spec.md`](../reports/ci-e2e-architecture-spec.md)
+  for workflow topology, artifact contracts, and checkpoint/status semantics
 
 **Questions/Clarifications**: Post in GitHub Discussions or weekly developer
 sync.
 
 ---
 
-**Version**: 1.9.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-01-27
+**Version**: 1.9.1 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-04-05
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team
+  Amendment v1.9.1: Clarify @Transactional prohibition scope — controllers only, not DAOs (2026-04-03)
   Amendment v1.9.0: Playwright E2E testing support (2026-01-27)
   Amendment v1.8.1: Cohesion & branch naming clarifications (2025-12-12)
   Amendment v1.8.0: Spec-Driven Iteration (Principle IX) - Milestone-based PR workflow (2025-12-04)

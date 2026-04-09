@@ -517,9 +517,111 @@ button {
   -ms-overflow-style: none; /* IE/Edge */
 }
 
-.cds--side-nav__navigation {
+.cds--side-nav--ux .cds--side-nav__navigation {
   overflow-y: auto !important;
   overflow-x: visible !important;
+  padding-top: 10px !important;
+}
+
+/* Scoped to Header sidenav (isChildOfHeader adds --ux class) to avoid
+   breaking admin/analyzer page sidenavs */
+.cds--side-nav--ux .cds--side-nav__link-text {
+  width: 100%;
+  overflow: visible !important;
+  min-width: 40px !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  line-height: 1.3 !important;
+}
+
+.custom-sidenav-button {
+  box-sizing: border-box;
+  margin: 0;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  visibility: visible !important;
+  align-items: flex-start;
+  background-color: var(--cds-background-hover, #072655);
+  color: var(--cds-text-secondary, #ffffff);
+  transition:
+    color 110ms,
+    background-color 110ms,
+    outline 110ms;
+  -webkit-user-select: none;
+  user-select: none;
+  width: 100%;
+  white-space: normal;
+  word-wrap: break-word;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  min-height: 2rem;
+  height: auto;
+  pointer-events: auto;
+}
+
+.custom-sidenav-button:hover {
+  background-color: var(--cds-background, #295785);
+}
+
+.cds--side-nav--ux .cds--side-nav__link a {
+  pointer-events: auto;
+  text-decoration: none !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+}
+
+.cds--side-nav--ux .cds--side-nav__link a:hover {
+  background-color: var(--cds-background, #295785);
+}
+
+.reduced-padding-nav-menu-item > a.cds--side-nav__link {
+  padding-left: 1rem !important;
+}
+
+.reduced-padding-nav-menu-item .custom-sidenav-button {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  margin: 0;
+}
+
+.reduced-padding-nav-menu-item {
+  margin: 0 !important;
+}
+
+.top-level-menu-item > a {
+  pointer-events: auto !important;
+  text-decoration: none !important;
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  min-height: 2rem !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.top-level-menu-item > a:hover {
+  background-color: var(--cds-background-hover, #072655);
+}
+
+.cds--side-nav--ux .cds--side-nav__menu-item .cds--side-nav__link,
+.cds--side-nav--ux .cds--side-nav__menu .cds--side-nav__link {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  min-height: 2rem !important;
+  align-items: flex-start !important;
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+  height: auto !important;
+  margin: 0 !important;
+}
+
+.cds--side-nav--ux .cds--side-nav__menu-item {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.cds--side-nav--ux .cds--side-nav__icon {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
 }
 
 .cds--side-nav::-webkit-scrollbar {
@@ -910,4 +1012,15 @@ nav.cds--side-nav .cds--side-nav__link::before {
   .reduced-padding-nav-menu-item.cds--side-nav__menu-item
   .cds--side-nav__link[aria-current="page"] {
   padding-left: calc(7rem - 4px) !important;
+}
+
+/* Training installation badge — WCAG AA compliant contrast */
+.training-installation-badge {
+  background-color: #da1e28;
+  color: #ffffff;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 0.85em;
 }

@@ -1,5 +1,19 @@
 # AGENTS.md - README for AI Coding Agents
 
+## FILE Ownership Model (014 Remediation)
+
+For FILE-based analyzer workflows in OpenELIS Global 2:
+
+- Bridge is the runtime owner of directory watching/polling and file transport.
+- OpenELIS owns configuration, bridge registration, direct ingestion endpoint,
+  and result processing.
+- No OpenELIS app-side FILE poller is implemented in this branch. If a fallback
+  poller is added later, it must remain disabled by default unless explicitly
+  enabled.
+
+When guidance conflicts, this ownership model takes precedence for remediation
+work in feature 014.
+
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
 > everything an AI agent needs to know to work effectively on OpenELIS Global 2.
@@ -186,6 +200,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - **React Intl 5.20.12** - ALL user-facing strings MUST use this
 - Message files: `frontend/src/languages/{locale}.json`
 - Usage: `intl.formatMessage({ id: 'key' })`
+- **Add new keys to `en.json` ONLY** — non-English translations are managed on
+  [Transifex](https://explore.transifex.com/openmrs/openelis-1/) (see Section
+  VII)
 
 **Styling:**
 
@@ -194,8 +211,9 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Testing:**
 
-- **Cypress 12.17.3** (E2E tests - existing)
-- **Playwright 1.57.0** (E2E tests - recommended for new tests)
+- **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
+- **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
+  migrated to Playwright)
 - **Jest + React Testing Library** (unit tests)
 
 **Code Quality:**
@@ -425,9 +443,22 @@ hardcoded English text.
 - Message files: `frontend/src/languages/{locale}.json`
 - Use `intl.formatMessage({ id: 'storage.location.label' })`
 - Supported locales: en, fr, ar, es, hi, pt, sw
-- New features MUST provide translations for at least en + fr
+- New keys go in `en.json` ONLY — do NOT edit other locale files
 - Date/time formatting via `intl.formatDate()`, `intl.formatTime()`
 - Number formatting via `intl.formatNumber()`
+
+**Translation Workflow (Transifex):**
+
+[Transifex](https://explore.transifex.com/openmrs/openelis-1/) is the source of
+truth for non-English translations. Developers only edit `en.json`:
+
+1. Developer adds i18n key to `en.json` in their PR
+2. `tx-push.yml` uploads `en.json` to Transifex on merge to `develop`
+3. Translators work on Transifex
+4. `tx-pull.yml` pulls translations daily and auto-merges to `develop`
+
+A CI check ("Translation source-of-truth check") blocks PRs that modify
+non-English locale files. The `chore/update-transifex` bot branch is exempt.
 
 **Example:**
 
@@ -488,6 +519,31 @@ delay feedback. Milestone-based delivery enables manageable code reviews.
 **Reference:**
 [GitHub SpecKit SDD Approach](https://github.com/github/spec-kit/blob/main/spec-driven.md)
 
+### X. Legacy Code Removal (NEW in v1.10.0)
+
+**Rule:** When a feature touches legacy or deprecated code, the legacy path MUST
+be addressed — removed, tracked for removal in a paired PR, or filed as a
+priority issue. Never extend legacy code.
+
+**Why:** Legacy code preserved "for compatibility" causes **context drift** —
+developers (and AI agents) naturally gravitate toward extending what exists
+instead of building on the target architecture. This results in the same
+capability built twice, confusion about which path is authoritative, and
+compounding maintenance debt. The legacy path becomes the path of least
+resistance, pulling all future work toward the wrong design.
+
+**How:**
+
+- Do NOT add features to superseded components (entities, readers, handlers)
+- Remove legacy code in the same PR, a paired PR, or a tracked priority issue
+- No dual-write to old and new tables/entities
+- Respect component boundaries (bridge owns parsing, OE owns config)
+- Build on the target architecture, not the legacy one
+
+**Anti-pattern:** Marking code `@Deprecated` without migrating callers or
+tracking removal. Building the same capability in two places because legacy code
+exists in one of them.
+
 ---
 
 ## Development Workflow
@@ -525,6 +581,32 @@ docker compose -f dev.docker-compose.yml up -d
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
 
+### Context Recovery After Session Resume
+
+When resuming work after a context reset (compaction, new session, or tool
+restart), **immediately reconstruct the development context** before doing any
+work:
+
+```bash
+# 1. Discover all active worktrees and their branches
+git worktree list
+
+# 2. Check status of each relevant worktree
+git status  # (run in each worktree directory)
+
+# 3. List open PRs and their branches/CI status
+gh pr list --author @me
+```
+
+**Why this matters:** This project frequently uses git worktrees for
+multi-branch work (e.g., a feature branch + a CI fix branch). After a context
+reset, the agent loses track of which worktrees exist and which maps to which
+PR. Without this recovery step, edits land in the wrong branch.
+
+**Rule:** When directed to work on a specific branch or PR, always check
+`git worktree list` first. If a worktree exists for that branch, ALL edits go
+there — never in the primary working directory.
+
 ### SpecKit Workflow (Specification-Driven Development)
 
 This project uses [GitHub SpecKit](https://github.com/github/spec-kit) for
@@ -533,31 +615,35 @@ every stage.
 
 **Setup (Required for AI Agents):**
 
-Before using SpecKit commands, install them to your AI agent's command
-directory. This is the **single entry point** for SpecKit setup:
+Before using SpecKit commands or packaged skills, install agent command assets:
 
-**Cross-platform (Python 3.7+):**
+**Cross-platform (Python 3.9+):**
 
 ```bash
-# Install commands for all supported AI agents (Cursor + Claude Code)
-python scripts/install-speckit-commands.py
+# Install legacy + packaged command assets for all supported AI agents
+python3 scripts/install-agent-skills.py
 
 # Or install for specific agent only
-python scripts/install-speckit-commands.py cursor   # Cursor IDE
-python scripts/install-speckit-commands.py claude   # Claude Code CLI
+python3 scripts/install-agent-skills.py cursor   # Cursor IDE
+python3 scripts/install-agent-skills.py claude   # Claude Code CLI
 
 # Skip confirmation prompt (for automation/CI)
-python scripts/install-speckit-commands.py -y all
+python3 scripts/install-agent-skills.py -y all
+
+# Legacy compatibility (SpecKit-only install path)
+python3 scripts/install-speckit-commands.py -y all
 ```
 
 > **Note:** A `.python-version` file is provided for version managers (pyenv,
 > asdf, uv). If you use one, it will automatically select Python 3.11.
 
-This compiles command definitions from `.specify/core/commands/` (upstream
-SpecKit) and `.specify/oe/commands/` (OpenELIS extensions) into agent-specific
-directories (`.cursor/commands/`, `.claude/commands/`).
+This compiles command definitions from legacy SpecKit sources
+(`.specify/core/commands/` + `.specify/oe/commands/`) and packaged skills in
+`.ai/skills/` into agent-specific directories (`.cursor/commands/`,
+`.claude/commands/`, plus packaged skill mirrors under `.cursor/skills/` and
+`.claude/skills/`).
 
-**CI Validation:** The CI pipeline automatically validates that all 9 SpecKit
+**CI Validation:** The CI pipeline validates that required legacy and packaged
 commands compile correctly and contain valid paths.
 
 **Available Commands:**
@@ -573,6 +659,13 @@ commands compile correctly and contain valid paths.
 - `/speckit.constitution` - Create/update project constitution
 - `/speckit.checklist` - Generate custom quality validation checklist
 - `/speckit.taskstoissues` - Convert tasks.md into GitHub issues
+- `/plan-record-playwright` - Plan feature/PR E2E flows and orchestrate
+  write/audit/record lifecycle with correct project usage
+- `/write-playwright-test` - Playwright test authoring from requirements with
+  project registration and narrow-scope validation
+- `/debug-playwright` - Playwright failure diagnosis using source/runtime
+  evidence
+- `/audit-playwright` - Playwright test quality audit and selector hardening
 
 **Standard Workflow:**
 
@@ -1396,7 +1489,13 @@ public class SampleServiceIntegrationTest extends BaseWebContextSensitiveTest {
 }
 ```
 
-### E2E Tests (Cypress)
+### E2E Tests (Cypress) — DEPRECATED
+
+> **STOP: Do NOT create new Cypress tests.** Cypress is deprecated in this
+> repository. All new E2E tests MUST use Playwright. The Cypress docs below are
+> retained only for maintaining existing tests during migration. See the
+> [Playwright section below](#e2e-tests-playwright--recommended) for the
+> recommended approach.
 
 **Location:** `frontend/cypress/e2e/{feature}.cy.js`
 
@@ -1522,10 +1621,222 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### E2E Tests (Playwright) — RECOMMENDED
+
+> **Playwright is the recommended E2E framework** for all new tests. It provides
+> project-based organization, built-in video recording, and faster execution
+> than Cypress.
+>
+> **Execution Contract:**
+>
+> - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
+> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
+>   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
+>   `core-demo-video` run on the build stack only.
+> - `TEST_USER` and `TEST_PASS` are required
+> - Do not create new Cypress tests
+
+**Location:** `frontend/playwright/tests/{feature}.spec.ts` **Config:**
+`frontend/playwright.config.ts` **Helpers:** `frontend/playwright/helpers/`
+**Canonical Guide (single source of truth):**
+`.specify/guides/playwright-best-practices.md` **Operational Reference:**
+`frontend/playwright/README.md`
+
+**Command-first workflow:** Use `/plan-record-playwright` to scope flows and
+project targets, `/write-playwright-test` to author tests, `/audit-playwright`
+to review selectors/quality, and `/debug-playwright` for runtime failures.
+
+#### Playwright Projects
+
+Tests are organized into projects by infrastructure requirement. New test files
+must be explicitly added to a project's `testMatch` allowlist in
+`playwright.config.ts`.
+
+| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
+| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
+| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
+| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
+| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
+| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
+| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
+
+#### CI Workflows
+
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+
+#### Key Patterns
+
+- **Allowlist-based `testMatch`**: New test files are NOT auto-discovered. You
+  must add the glob pattern to the appropriate project in
+  `playwright.config.ts`.
+- **`videoPause(page, ms, testInfo)`** (`helpers/video-pause.ts`): Conditional
+  timeout — pauses only in `core-demo-video` / `harness-demo-video`, no-op
+  elsewhere. Use this instead of `page.waitForTimeout()` for video pacing.
+- **`showTitleCard()` / `showStepCard()`** (`helpers/title-card.ts`): DOM
+  overlay helpers for demo videos. Pass `testInfo` to skip overlays in non-video
+  projects.
+- **`testInfo`**: Playwright's 2nd test callback parameter
+  (`async ({ page }, testInfo)`). Provides `testInfo.project.name` to determine
+  which project is running.
+- **`CORE_DEMO_TESTS` / `HARNESS_DEMO_TESTS`**: Shared globs between each demo
+  pair and its `*-demo-video` project — defined in `playwright.config.ts`.
+
+#### Playwright Anti-Patterns (MUST AVOID)
+
+These patterns cause flaky tests and invisible failures. Apply them as hard
+rules when writing or reviewing Playwright code.
+
+**DO NOT: Use `response.ok()` as test pass/fail**
+
+Use `waitForResponse` for synchronization only. The real assertion must be on
+visible UI state. When the backend returns HTTP 500, checking `response.ok()`
+throws before the UI renders its error notification — CI screenshots show stale
+state.
+
+```typescript
+// DO: sync then assert on UI
+const responsePromise = page.waitForResponse("**/api/save");
+await saveButton.click();
+await responsePromise; // sync only — do not check .ok()
+await expect(page.getByText("Saved successfully")).toBeVisible();
+```
+
+**DO NOT: Use `{ force: true }` on Carbon inputs**
+
+Carbon Design System applies `visually-hidden` to `<input type="checkbox">` and
+`<input type="radio">`. The visible, clickable element is the associated
+`<label>`. Click the label instead.
+
+```typescript
+// DO: click the label
+await page.locator('label[for="saveallresults"]').click();
+// or for dynamic IDs:
+await input.locator("xpath=..").locator("label").click();
+
+// DO NOT:
+await checkbox.check({ force: true }); // bypasses actionability checks
+await page.getByLabel("text").check(); // targets hidden input — will fail
+```
+
+**DO NOT: Use `.catch(() => false)` on `isVisible()`**
+
+`locator.isVisible()` returns `boolean` without throwing. The `.catch()` is dead
+code that hides real errors (like strict mode violations matching 2+ elements).
+The `timeout` parameter on `isVisible()` is deprecated and ignored.
+
+```typescript
+// DO:
+if (await element.isVisible()) { ... }
+// For waiting: use web-first assertion
+await expect(element).toBeVisible({ timeout: 5_000 });
+
+// DO NOT:
+if (await element.isVisible({ timeout: 3000 }).catch(() => false)) { ... }
+```
+
+**DO NOT: Replace autocomplete selection with type + Tab**
+
+The `AutoComplete` component's `onSelect` callback sets server-side IDs that
+`onChange` (typing) does not. Typing + Tab leaves `referringSiteId` empty. Wait
+for suggestion dropdown items, then click one. Provide a Tab fallback only for
+when no suggestions appear.
+
+**ALWAYS: Include at least one `expect()` assertion per test.**
+
+**Full guide:** `.specify/guides/playwright-best-practices.md`
+
+#### Available npm Scripts
+
+```bash
+cd frontend
+
+# Run all projects
+npm run pw:test
+
+# Run specific project
+npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-demo
+npm run pw:test -- --project=harness-foundational
+npm run pw:test -- --project=harness-demo
+
+# Record demo videos (local only)
+npm run pw:test -- --project=core-demo-video
+npm run pw:test -- --project=harness-demo-video
+
+# Run specific test file
+npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
+
+# Interactive UI mode
+npm run pw:test:ui
+```
+
+#### Local Execution
+
+**Prerequisites:**
+
+1. App running at `https://localhost` (or set `BASE_URL`)
+2. Auth env vars: `TEST_USER` and `TEST_PASS`
+
+**Core-app tests (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+```
+
+**Harness tests (analyzer harness stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+```
+
+**Harness demos:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
+```
+
+**Core demos (build stack):**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
+```
+
+**Demo video recording:**
+
+```bash
+cd frontend
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
+# or full harness demos:
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
+# Videos saved to frontend/test-results/
+```
+
+#### Adding New Tests
+
+1. Create test file in `frontend/playwright/tests/`
+2. Add the glob pattern to the appropriate project's `testMatch` array in
+   `playwright.config.ts`
+3. For demo workflow tests, add globs to `CORE_DEMO_TESTS` or
+   `HARNESS_DEMO_TESTS` (each pairs with its `*-demo-video` project)
+4. Use `videoPause()` instead of `page.waitForTimeout()` for any video pacing
+
 ### Testing Resources
 
 **Comprehensive Guides**:
 
+- **Playwright Best Practices (canonical)**:
+  `.specify/guides/playwright-best-practices.md` — Authoritative Playwright
+  testing guidance for humans and agents
+- **Playwright README (operational details)**: `frontend/playwright/README.md` —
+  Project matrix, CI workflows, fixture loading, and local execution guide
 - **Testing Roadmap**: `.specify/guides/testing-roadmap.md` - Comprehensive
   testing guide for all test types (backend and frontend)
 - **Backend Testing Best Practices**:
@@ -1868,10 +2179,16 @@ Before creating PR, verify ALL items:
 
 **GitHub Actions workflows (MUST pass):**
 
-- `ci.yml` - Maven build + JaCoCo coverage report
-- `publish-and-test.yml` - Docker image build + integration tests
-- `frontend-qa.yml` - Cypress E2E tests
-- `build-installer.yml` - Offline installer packaging
+- `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
+  tests (PR + push)
+- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
+  harness) with required Playwright gate (PR)
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
+  required frontend gate (PR)
+- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
+  deprecated Cypress gate (PR)
+- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
+  releases only)
 
 ### Code Review Standards
 
@@ -1902,6 +2219,11 @@ Before creating PR, verify ALL items:
 - **Pull Request Tips:** `PULL_REQUEST_TIPS.md` (15-point checklist)
 - **Code of Conduct:** `CODE_OF_CONDUCT.md` (community standards)
 - **Dev Setup:** `docs/dev_setup.md` (detailed development environment setup)
+- **E2E CI Architecture:** `.specify/reports/ci-e2e-architecture-spec.md` -
+  concise source of truth for fork/non-fork E2E workflow topology, artifact
+  contracts, and checkpoint/status semantics
+- **E2E CI Operator Model:** `.github/e2e-ci-operator-model.md` - operational
+  troubleshooting guide for CI maintainers
 
 ### Testing Documentation
 

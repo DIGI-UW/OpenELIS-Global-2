@@ -11,8 +11,8 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
 
     /**
      * Get available lots for an item sorted by FEFO (First Expired, First Out).
-     * Returns lots that are ACTIVE/IN_USE, QC PASSED, have positive quantity,
-     * and are not effectively expired.
+     * Returns lots that are ACTIVE/IN_USE, QC PASSED, have positive quantity, and
+     * are not effectively expired.
      */
     List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId);
 

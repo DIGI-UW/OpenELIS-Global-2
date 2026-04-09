@@ -27,10 +27,9 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             + "expiration_date, calculated_expiry_after_opening)";
 
     private static final String USABLE_LOT_FILTER_HQL = "l.inventoryItem.id = :itemId "
-            + "AND (l.status = :activeStatus OR l.status = :inUseStatus) "
-            + "AND l.qcStatus = :passedStatus "
-            + "AND l.currentQuantity > 0 "
-            + "AND (" + EFFECTIVE_EXPIRATION_HQL + " is null OR " + EFFECTIVE_EXPIRATION_HQL + " >= :now)";
+            + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
+            + "AND l.currentQuantity > 0 " + "AND (" + EFFECTIVE_EXPIRATION_HQL + " is null OR "
+            + EFFECTIVE_EXPIRATION_HQL + " >= :now)";
 
     public InventoryLotDAOImpl() {
         super(InventoryLot.class);

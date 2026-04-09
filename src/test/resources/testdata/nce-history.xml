@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <nc_event id="2001" name="Test NCE for History"
+        name_of_reporter="Test Reporter" report_date="2025-04-15"
+        nce_number="NCE-HIST-001" date_of_event="2025-04-14"
+        lab_order_number="DEV01250000000000099"
+        description="Test event for history service tests." status="Pending" />
+
+    <nc_event id="2002" name="Another Test NCE"
+        name_of_reporter="Test Reporter 2" report_date="2025-04-16"
+        nce_number="NCE-HIST-002" date_of_event="2025-04-15"
+        lab_order_number="DEV01250000000000100"
+        description="Second test event." status="Pending" />
+
+    <nce_history id="3001" nce_id="2001" activity="CREATED"
+        description="NCE created" timestamp="2025-04-15 10:00:00" user_id="1"
+        last_updated="2025-04-15 10:00:00" />
+
+    <nce_history id="3002" nce_id="2001" activity="NOTE_ADDED"
+        description="Initial investigation note"
+        timestamp="2025-04-15 11:00:00" user_id="1"
+        last_updated="2025-04-15 11:00:00" />
+
+    <nce_history id="3003" nce_id="2001"
+        activity="ACKNOWLEDGED" description="NCE acknowledged"
+        timestamp="2025-04-15 12:00:00" user_id="1"
+        last_updated="2025-04-15 12:00:00" />
+
+    <nce_history id="3004" nce_id="2002" activity="CREATED"
+        description="NCE created" timestamp="2025-04-16 09:00:00" user_id="1"
+        last_updated="2025-04-16 09:00:00" />
+</dataset>

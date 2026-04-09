@@ -82,8 +82,7 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
         inventoryLotService.update(secondLot);
 
         assertEquals("Total current quantity should preserve decimals without applying usability filters",
-                Double.valueOf(100.75),
-                inventoryLotService.getTotalCurrentQuantity(1L));
+                Double.valueOf(100.75), inventoryLotService.getTotalCurrentQuantity(1L));
     }
 
     @Test
