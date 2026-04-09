@@ -236,7 +236,7 @@ export const ReportNonConformingEvent = () => {
         if (newSpecimenIds.length === 0) {
           // All specimens already linked - show warning
           addNotification({
-            kind: NotificationKinds.warning,
+            kind: OEToastNotificationKinds.warning,
             title: intl.formatMessage({ id: "notification.title" }),
             message: intl.formatMessage({
               id: "nce.link.duplicate.warning",
@@ -342,7 +342,7 @@ export const ReportNonConformingEvent = () => {
     const handleSuccess = () => {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.success,
+        kind: OEToastNotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
           id: "nonconform.order.save.success",
@@ -403,7 +403,7 @@ export const ReportNonConformingEvent = () => {
     const handleError = () => {
       setNotificationVisible(true);
       addNotification({
-        kind: NotificationKinds.error,
+        kind: OEToastNotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "nonconform.order.save.fail" }),
       });

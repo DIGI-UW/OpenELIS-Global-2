@@ -38,7 +38,7 @@ const AuditTrailReportIndex = () => {
         ]}
       />
       <div className="orderLegendBody">
-        {notificationVisible === true && <AlertDialog />}
+        {notificationVisible === true && <OEToastNotification />}
         {isLoading && <Loading />}
         {!isLoading && type === "system" && <SystemAuditEvents />}
         {!isLoading && type === "order" && (
