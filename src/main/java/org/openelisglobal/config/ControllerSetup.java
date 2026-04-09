@@ -59,7 +59,7 @@ public class ControllerSetup extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>("Check server logs", new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    @ExceptionHandler(value = { ResponseStatusException.class })
+    @ExceptionHandler(ResponseStatusException.class)
     protected ResponseEntity<Object> handleResponseStatusException(ResponseStatusException ex, WebRequest request) {
         LogEvent.logWarn(this.getClass().getName(), "handleResponseStatusException",
                 ex.getStatusCode() + (ex.getReason() != null ? ": " + ex.getReason() : ""));
