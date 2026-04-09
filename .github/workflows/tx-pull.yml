@@ -4,12 +4,12 @@ on:
     # Runs daily at 8:30 PM UTC
     - cron: '30 20 * * *'
 
-name: Localization / Transifex / Pull
+name: "Scheduled Transifex Update"
 
 jobs:
   pull-translations-from-transifex:
     if: ${{ github.repository == 'DIGI-UW/OpenELIS-Global-2' }}
-    name: Run
+    name: pull-translations-from-transifex
     runs-on: ubuntu-latest
 
     steps:

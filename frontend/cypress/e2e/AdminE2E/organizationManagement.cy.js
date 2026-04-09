@@ -4,10 +4,6 @@ let homePage = null;
 let loginPage = null;
 let adminPage = null;
 let organizationManagement = null;
-const runSuffix = `${Date.now().toString().slice(-6)}${Cypress._.random(10, 99)}`;
-const testOrgName = `TO-${runSuffix}`;
-const testInstituteName = `TL-${runSuffix}`;
-const testOrgPrefix = `P-${runSuffix}`;
 
 before("login", () => {
   loginPage = new LoginPage();
@@ -33,10 +29,10 @@ describe("Add Organization and Institute", function () {
 
   it("Add organisation/site details", function () {
     organizationManagement.clickAddOrganization();
-    organizationManagement.addOrgName(testOrgName);
+    organizationManagement.addOrgName();
     organizationManagement.activateOrganization();
-    organizationManagement.addPrefix(testOrgPrefix);
-    organizationManagement.addParentOrg(testOrgName);
+    organizationManagement.addPrefix();
+    organizationManagement.addParentOrg();
     organizationManagement.checkReferringClinic();
     cy.screenshot("03-org-form-filled");
 
@@ -60,18 +56,18 @@ describe("Add Organization and Institute", function () {
 
   it("Validate added site/organization", function () {
     organizationManagement = adminPage.goToOrganizationManagement();
-    organizationManagement.searchOrganzation(testOrgName);
+    organizationManagement.searchOrganzation();
     cy.screenshot("05-org-search-results");
-    organizationManagement.confirmOrganization(testOrgName);
+    organizationManagement.confirmOrganization();
     cy.screenshot("06-org-confirmed");
   });
 
   it("Add institute details", function () {
     organizationManagement.clickAddOrganization();
-    organizationManagement.addInstituteName(testInstituteName);
+    organizationManagement.addInstituteName();
     organizationManagement.activateOrganization();
     //organizationManagement.addInstitutePrefix();
-    organizationManagement.addParentOrg(testOrgName);
+    organizationManagement.addParentOrg();
     organizationManagement.checkReferalLab();
     cy.screenshot("07-institute-form-filled");
 
@@ -93,9 +89,9 @@ describe("Add Organization and Institute", function () {
 
   it("Validate added institute", function () {
     organizationManagement = adminPage.goToOrganizationManagement();
-    organizationManagement.searchInstitute(testInstituteName);
+    organizationManagement.searchInstitute();
     cy.screenshot("09-institute-search-results");
-    organizationManagement.confirmInstitute(testInstituteName);
+    organizationManagement.confirmInstitute();
     cy.screenshot("10-institute-confirmed");
   });
 });

@@ -144,8 +144,6 @@ function SearchPatientForm(props) {
     setNextPage(null);
     setPreviousPage(null);
     setPagination(false);
-    setPage(1);
-    setPatientSearchResults([]);
     setLoading(true);
     values.dateOfBirth = dob;
     let searchEndPoint =
@@ -195,10 +193,6 @@ function SearchPatientForm(props) {
 
   const fetchPatientResults = (res) => {
     let patientsResults = res.patientSearchResults;
-    // Filter out the EQA placeholder patient (NULL/NULL)
-    patientsResults = patientsResults.filter(
-      (p) => !(p.lastName === "NULL" && p.firstName === "NULL"),
-    );
     if (patientsResults.length > 0) {
       patientsResults.forEach((item) => (item.id = item.patientID));
       setPatientSearchResults(patientsResults);
@@ -571,7 +565,7 @@ function SearchPatientForm(props) {
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
-          <TableContainer title="Patient Results" data-cy="patientResultsTable">
+          <TableContainer title="Patient Results">
             <Table {...getTableProps()}>
               <TableHead>
                 <TableRow>
@@ -603,10 +597,7 @@ function SearchPatientForm(props) {
                       `${firstName} ${lastName}`.trim() || "Patient";
 
                     return (
-                      <TableRow
-                        key={row.id}
-                        data-cy={`patient-result-row-${row.id}`}
-                      >
+                      <TableRow key={row.id}>
                         <TableCell>
                           {dataSourceName === "OpenElis" ? (
                             <div

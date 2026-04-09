@@ -22,58 +22,11 @@ import "../Style.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
 } from "../utils/Utils";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import PatientInfo from "../addOrder/PatientInfo";
 import OrderEntryValidationSchema from "../formModel/validationSchema/OrderEntryValidationSchema";
-import LabelsSection from "../barcodeWorkflow/LabelsSection";
-import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
-
-const normalizeQuantity = (value) => {
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-};
-
-const upsertSampleAttribute = (sampleTag, attributeName, value) => {
-  const attributePattern = new RegExp(`${attributeName}='[^']*'`);
-  if (attributePattern.test(sampleTag)) {
-    return sampleTag.replace(attributePattern, `${attributeName}='${value}'`);
-  }
-  return sampleTag.replace("<sample ", `<sample ${attributeName}='${value}' `);
-};
-
-const updateSampleXmlLabelQuantities = (
-  sampleXml,
-  numOrderLabels,
-  numSpecimenLabels,
-) => {
-  if (!sampleXml || !sampleXml.includes("<sample")) {
-    return sampleXml;
-  }
-
-  return sampleXml.replace(/<sample\s+[^>]*\/>/, (sampleTag) => {
-    let nextTag = upsertSampleAttribute(
-      sampleTag,
-      "numOrderLabels",
-      numOrderLabels,
-    );
-    nextTag = upsertSampleAttribute(
-      nextTag,
-      "numSpecimenLabels",
-      numSpecimenLabels,
-    );
-    return nextTag;
-  });
-};
-
-const extractSampleXmlLabelQuantity = (sampleXml, attributeName) => {
-  if (!sampleXml) {
-    return 1;
-  }
-  const match = sampleXml.match(new RegExp(`${attributeName}='([^']+)'`));
-  return normalizeQuantity(match?.[1]);
-};
 
 const SampleBatchEntry = (props) => {
   const { orderFormValues, setOrderFormValues } = props;
@@ -89,7 +42,8 @@ const SampleBatchEntry = (props) => {
   const [loading, setLoading] = useState(false);
   const [showSampleComponent, setShowSampleComponent] = useState(false);
   const [generatedLabNos, setGeneratedLabNos] = useState([]);
-  const [saveResponse, setSaveResponse] = useState(null);
+  const [renderBarcode, setRenderBarcode] = useState(false);
+  const [source, setSource] = useState("about:blank");
   const [errors, setErrors] = useState([]);
   const [generateSaveButtonDisabled, setGenerateSaveButtonDisabled] =
     useState(false);
@@ -192,24 +146,8 @@ const SampleBatchEntry = (props) => {
     if (!orderFormValues.currentDate) {
       orderFormValues.currentDate = "";
     }
-    const normalizedOrderLabels = extractSampleXmlLabelQuantity(
-      orderFormValues.sampleXML,
-      "numOrderLabels",
-    );
-    const normalizedSpecimenLabels = extractSampleXmlLabelQuantity(
-      orderFormValues.sampleXML,
-      "numSpecimenLabels",
-    );
-    const payload = {
-      ...orderFormValues,
-      sampleXML: updateSampleXmlLabelQuantities(
-        orderFormValues.sampleXML,
-        normalizedOrderLabels,
-        normalizedSpecimenLabels,
-      ),
-    };
-    const body = JSON.stringify(payload);
-    postToOpenElisServerJsonResponse(
+    const body = JSON.stringify(orderFormValues);
+    postToOpenElisServerFullResponse(
       "/rest/SamplePatientEntryBatch",
       body,
       printLabelSets,
@@ -243,58 +181,18 @@ const SampleBatchEntry = (props) => {
   };
 
   const printLabelSets = (res) => {
-    const responseStatus = res?.statusCode ?? res?.status ?? 200;
-    if (!res?.error && responseStatus < 400) {
+    if (res.status) {
       showAlertMessage(
         <FormattedMessage id="save.order.success.msg" />,
         NotificationKinds.success,
       );
-      setSaveResponse(res);
     }
-  };
-
-  const handleLabelsSectionChange = (labelsModel) => {
-    const numOrderLabels =
-      labelsModel?.orderRow?.quantities?.order != null
-        ? normalizeQuantity(labelsModel.orderRow.quantities.order)
-        : 1;
-    const numSpecimenLabels =
-      labelsModel?.sampleRows?.[0]?.quantities?.specimen != null
-        ? normalizeQuantity(labelsModel.sampleRows[0].quantities.specimen)
-        : 1;
-
-    setOrderFormValues((current) => ({
-      ...current,
-      sampleXML: updateSampleXmlLabelQuantities(
-        current.sampleXML,
-        numOrderLabels,
-        numSpecimenLabels,
-      ),
-    }));
-  };
-
-  const buildFallbackPrintableLabels = (accessionNumber) => {
-    const orderLabels = extractSampleXmlLabelQuantity(
-      orderFormValues.sampleXML,
-      "numOrderLabels",
-    );
-    const specimenLabels = extractSampleXmlLabelQuantity(
-      orderFormValues.sampleXML,
-      "numSpecimenLabels",
-    );
-    const encodedAccession = encodeURIComponent(accessionNumber || "");
-    return [
-      {
-        labelType: "order",
-        quantity: orderLabels,
-        printUrl: `/LabelMakerServlet?labNo=${encodedAccession}&type=order&quantity=${orderLabels}`,
-      },
-      {
-        labelType: "specimen",
-        quantity: specimenLabels,
-        printUrl: `/LabelMakerServlet?labNo=${encodedAccession}&type=specimen&quantity=${specimenLabels}`,
-      },
-    ];
+    if (orderFormValues.method === "On Demand") {
+      const labNo = orderFormValues.sampleOrderItems.labNo;
+      const url = `/LabelMakerServlet?labNo=${labNo}`;
+      setSource(url);
+      setRenderBarcode(true);
+    }
   };
 
   const elementError = (path) => {
@@ -581,71 +479,16 @@ const SampleBatchEntry = (props) => {
                 </div>
               )}
 
-              <div className="orderLegendBody">
-                <Grid>
-                  <Column lg={16} md={8} sm={4}>
-                    <h4>
-                      <FormattedMessage id="barcode.labels.section.title" />
-                    </h4>
-                  </Column>
-                  <Column lg={16} md={8} sm={4}>
-                    <LabelsSection
-                      orderQuantity={extractSampleXmlLabelQuantity(
-                        orderFormValues.sampleXML,
-                        "numOrderLabels",
-                      )}
-                      specimenQuantities={[
-                        extractSampleXmlLabelQuantity(
-                          orderFormValues.sampleXML,
-                          "numSpecimenLabels",
-                        ),
-                      ]}
-                      onChange={handleLabelsSectionChange}
-                      orderLabelText={intl.formatMessage({
-                        id: "barcode.labels.order.row",
-                      })}
-                      specimenLabelFormatter={(sampleNumber) =>
-                        intl.formatMessage(
-                          { id: "barcode.labels.sample.row" },
-                          { sampleNumber },
-                        )
-                      }
-                      runningTotalLabel={intl.formatMessage({
-                        id: "barcode.labels.running.total",
-                      })}
-                    />
-                  </Column>
-                </Grid>
-              </div>
-
-              {saveResponse && (
+              {orderFormValues.method === "On Demand" && renderBarcode && (
                 <div className="orderLegendBody">
                   <Grid>
                     <Column lg={16} md={8} sm={4}>
                       <h4>
-                        <FormattedMessage id="barcode.print.dialog.title" />
+                        <FormattedMessage id="barcode.header" />
                       </h4>
                     </Column>
-                    <Column lg={16} md={8} sm={4}>
-                      <PostSavePrintDialog
-                        accessionNumber={
-                          saveResponse?.postSavePrintDialog?.accessionNumber ||
-                          orderFormValues.sampleOrderItems.labNo
-                        }
-                        printableLabelTypes={
-                          saveResponse?.postSavePrintDialog
-                            ?.printableLabelTypes &&
-                          saveResponse.postSavePrintDialog.printableLabelTypes
-                            .length > 0
-                            ? saveResponse.postSavePrintDialog
-                                .printableLabelTypes
-                            : buildFallbackPrintableLabels(
-                                orderFormValues.sampleOrderItems.labNo,
-                              )
-                        }
-                      />
-                    </Column>
                   </Grid>
+                  <iframe src={source} width="100%" height="500px" />
                 </div>
               )}
               <Grid>

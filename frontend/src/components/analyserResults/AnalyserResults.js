@@ -17,22 +17,11 @@ import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServerFullResponse } from "../utils/Utils";
+import { postToOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
-import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
-
-export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
-  if (!queryValue) {
-    return "/AnalyzerResults";
-  }
-
-  return queryMode === "id"
-    ? `/AnalyzerResults?id=${queryValue}`
-    : `/AnalyzerResults?type=${queryValue}`;
-};
 
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -129,28 +118,20 @@ const AnalyserResults = (props) => {
       return;
     }
     setIsSubmitting(true);
-    postToOpenElisServerFullResponse(
+    postToOpenElisServer(
       "/rest/AnalyzerResults",
       JSON.stringify(props.results),
       handleResponse,
     );
   };
-  const handleResponse = async (response) => {
+  const handleResponse = (status) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
     setIsSubmitting(false);
-    if (response.status == 200) {
+    if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = buildAnalyzerResultsRedirectUrl(
-        props.queryMode,
-        props.queryValue || props.type,
-      );
-    } else {
-      const detail = await response.text().catch(() => "");
-      if (detail) {
-        message = message + ": " + detail.substring(0, 200);
-      }
+      window.location.href = "/AnalyzerResults?type=" + props.type;
     }
     addNotification({
       kind: kind,
@@ -172,24 +153,28 @@ const AnalyserResults = (props) => {
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
-    jpSet(form, name, value);
+    var jp = require("jsonpath");
+    jp.value(form, name, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
     console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
-    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
+    var jp = require("jsonpath");
+    jp.value(form, "resultList[" + rowId + "].sentDate_", d);
   };
   const handleCheckBox = (e, rowId) => {
     const { name, id, checked } = e.target;
     let form = props.results;
-    jpSet(form, name, checked);
+    var jp = require("jsonpath");
+    jp.value(form, name, checked);
   };
 
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
-    jpSet(form, name, checked);
+    var jp = require("jsonpath");
+    jp.value(form, name, checked);
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
@@ -377,15 +362,6 @@ const AnalyserResults = (props) => {
 
   return (
     <>
-      {props.results?.resultList?.length === 0 && (
-        <div
-          className="orderLegendBody"
-          data-testid="analyzer-results-empty"
-          style={{ marginTop: "20px" }}
-        >
-          <FormattedMessage id="validation.no.records.display" />
-        </div>
-      )}
       {props.results?.resultList?.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
@@ -413,7 +389,6 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isAccepted",
                   );
-                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -431,7 +406,6 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isRejected",
                   );
-                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -449,7 +423,6 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isDeleted",
                   );
-                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -534,9 +507,6 @@ const AnalyserResults = (props) => {
             >
               <FormattedMessage id="label.button.save" />
             </Button>
-            {isSubmitting && (
-              <span data-testid="analyzer-results-save-in-progress" />
-            )}
           </Form>
         )}
       </Formik>

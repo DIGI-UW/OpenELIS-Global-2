@@ -38,7 +38,6 @@ import PatientHeader from "../common/PatientHeader";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./../pathology/PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -80,7 +79,6 @@ function ImmunohistochemistryCaseView() {
   const [currentApiPage, setCurrentApiPage] = useState(null);
   const [totalApiPages, setTotalApiPages] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [reportParams, setReportParams] = useState({
     0: {
       erPercent: "",
@@ -124,9 +122,6 @@ function ImmunohistochemistryCaseView() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.success" }),
       });
-      setPostSavePrintModel(
-        body?.postSavePrintDialog || buildFallbackPostSavePrintDialog(),
-      );
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -135,35 +130,6 @@ function ImmunohistochemistryCaseView() {
       });
     }
   }
-
-  const buildFallbackPostSavePrintDialog = () => {
-    const accessionNumber = immunohistochemistrySampleInfo.labNumber;
-    if (!accessionNumber) {
-      return null;
-    }
-
-    const labels = [
-      {
-        labelType: "order",
-        quantity: 1,
-        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
-          accessionNumber,
-        )}&type=order&quantity=1`,
-      },
-      {
-        labelType: "specimen",
-        quantity: 1,
-        printUrl: `/LabelMakerServlet?labNo=${encodeURIComponent(
-          accessionNumber,
-        )}&type=specimen&quantity=1`,
-      },
-    ];
-
-    return {
-      accessionNumber,
-      printableLabelTypes: labels,
-    };
-  };
 
   const reportStatus = async (pdfGenerated, blob, index) => {
     setNotificationVisible(true);
@@ -915,7 +881,6 @@ function ImmunohistochemistryCaseView() {
       return;
     }
     setIsSubmitting(true);
-    setPostSavePrintModel(null);
     let submitValues = {
       assignedTechnicianId: immunohistochemistrySampleInfo.assignedTechnicianId,
       assignedPathologistId:
@@ -1074,16 +1039,6 @@ function ImmunohistochemistryCaseView() {
               <FormattedMessage id="label.button.save" />
             </Button>
           </Column>
-          {postSavePrintModel?.accessionNumber && (
-            <Column lg={16} md={8} sm={4}>
-              <PostSavePrintDialog
-                accessionNumber={postSavePrintModel.accessionNumber}
-                printableLabelTypes={
-                  postSavePrintModel.printableLabelTypes || []
-                }
-              />
-            </Column>
-          )}
           <Column lg={16} md={8} sm={4}>
             <div> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
           </Column>

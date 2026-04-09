@@ -32,19 +32,10 @@ const logDOM = (container, selector = null) => {
 };
 
 // Mock Utils
-jest.mock("../utils/Utils", () => {
-  const actualUtils = jest.requireActual("../utils/Utils");
-  return {
-    ...actualUtils,
-    getFromOpenElisServer: jest.fn(),
-    getFromOpenElisServerV2: jest.fn().mockResolvedValue({}),
-    putToOpenElisServer: jest.fn(),
-    postToOpenElisServer: jest.fn(),
-    deleteToOpenElisServer: jest.fn(),
-    urlBase64ToUint8Array: jest.fn(),
-    formatTimestamp: jest.fn((ts) => ts),
-  };
-});
+jest.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: jest.fn(),
+  putToOpenElisServer: jest.fn(),
+}));
 
 // Import mocked functions for use in tests
 const { getFromOpenElisServer } = require("../utils/Utils");

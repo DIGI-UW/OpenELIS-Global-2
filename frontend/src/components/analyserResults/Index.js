@@ -25,8 +25,6 @@ const Index = () => {
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
   const [type, setType] = useState("");
-  const [queryMode, setQueryMode] = useState("type");
-  const [queryValue, setQueryValue] = useState("");
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
@@ -40,27 +38,23 @@ const Index = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
-    const analyzerId = params.get("id");
-    const analyserType = params.get("type");
-    if (analyzerId) {
-      setQueryMode("id");
-      setQueryValue(analyzerId);
-      setType(analyzerId);
-      setUrl("/rest/AnalyzerResults?id=" + analyzerId);
-    } else if (analyserType) {
-      setQueryMode("type");
-      setQueryValue(analyserType);
-      setType(analyserType);
-      setUrl("/rest/AnalyzerResults?type=" + analyserType);
-    }
+    let analyserType = new URLSearchParams(window.location.search).get("type");
+    setType(analyserType);
   }, []);
+
+  useEffect(() => {
+    if (type) {
+      setUrl("/rest/AnalyzerResults?type=" + type);
+    }
+  }, [type]);
 
   useEffect(() => {
     if (url) {
       setIsLoading(true);
-      getFromOpenElisServer(url, handleResults);
+      getFromOpenElisServer(
+        "/rest/AnalyzerResults?type=" + type,
+        handleResults,
+      );
     }
   }, [url]);
 
@@ -209,8 +203,6 @@ const Index = () => {
         </>
         <AnalyserResults
           type={type}
-          queryMode={queryMode}
-          queryValue={queryValue}
           results={results}
           sampleGroup={sampleGroup}
         />

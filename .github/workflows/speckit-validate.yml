@@ -1,26 +1,21 @@
-name: Validation / SpecKit
+name: SpecKit Validation
 on:
   pull_request:
-    # Run on PRs to any branch when command or skill sources change
+    # Run on PRs to any branch when SpecKit files change
     paths:
       - '.specify/**'
-      - '.ai/**'
       - '.cursor/**'
       - '.claude/**'
-      - 'scripts/install-agent-skills.py'
       - 'scripts/install-speckit-commands.py'
   push:
     branches: [develop]
     paths:
       - '.specify/**'
-      - '.ai/**'
-      - 'scripts/install-agent-skills.py'
       - 'scripts/install-speckit-commands.py'
   workflow_dispatch:
 
 jobs:
   validate-speckit-commands:
-    name: Run
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,12 +26,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Compile agent commands and skills
-        run: python scripts/install-agent-skills.py -y all
+      - name: Compile SpecKit commands
+        run: python scripts/install-speckit-commands.py -y all
 
-      - name: Verify required command outputs exist
+      - name: Verify all commands exist
         run: |
-          EXPECTED_COMMANDS="speckit.analyze speckit.checklist speckit.clarify speckit.constitution speckit.implement speckit.plan speckit.specify speckit.tasks speckit.taskstoissues plan-record-playwright write-playwright-test debug-playwright audit-playwright"
+          EXPECTED_COMMANDS="speckit.analyze speckit.checklist speckit.clarify speckit.constitution speckit.implement speckit.plan speckit.specify speckit.tasks speckit.taskstoissues"
           for cmd in $EXPECTED_COMMANDS; do
             if [ ! -f ".cursor/commands/${cmd}.md" ]; then
               echo "ERROR: Missing .cursor/commands/${cmd}.md"
@@ -47,17 +42,7 @@ jobs:
               exit 1
             fi
           done
-          echo "✓ Required commands compiled for both agents"
-
-      - name: Verify packaged skill outputs exist
-        run: |
-          for target in ".cursor/skills/playwright/SKILL.md" ".claude/skills/playwright/SKILL.md"; do
-            if [ ! -f "$target" ]; then
-              echo "ERROR: Missing packaged skill artifact: $target"
-              exit 1
-            fi
-          done
-          echo "✓ Packaged skill artifacts copied for both agents"
+          echo "✓ All 9 commands compiled for both agents"
 
       - name: Verify no invalid path patterns
         run: |
@@ -66,19 +51,18 @@ jobs:
             echo "ERROR: Found invalid '.specify/.specify/' paths in compiled commands"
             exit 1
           fi
-          # Check that command paths use a known source prefix (not bare templates/ or scripts/)
+          # Check that paths use .specify/ prefix (not bare templates/ or scripts/)
           # Use grep -q to properly handle exit codes when grep -v filters all matches
-          if grep -E '(^|[^.])templates/' .cursor/commands/ .claude/commands/ 2>/dev/null | grep -Ev '\.specify/templates/|\.ai/skills/.*/templates/' | grep -q .; then
-            echo "ERROR: Found bare 'templates/' paths (should be '.specify/templates/' or '.ai/skills/.../templates/')"
+          if grep -E '(^|[^.])templates/' .cursor/commands/ .claude/commands/ 2>/dev/null | grep -v '\.specify/templates/' | grep -q .; then
+            echo "ERROR: Found bare 'templates/' paths (should be '.specify/templates/')"
             exit 1
           fi
           echo "✓ All paths correctly formatted"
 
       - name: Summary
         run: |
-          echo "## Agent Command Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## SpecKit Validation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Legacy + packaged commands:** compiled" >> $GITHUB_STEP_SUMMARY
-          echo "- **Packaged skills copied:** yes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commands compiled:** 9" >> $GITHUB_STEP_SUMMARY
           echo "- **Target agents:** Cursor, Claude Code" >> $GITHUB_STEP_SUMMARY
           echo "- **Path validation:** Passed" >> $GITHUB_STEP_SUMMARY

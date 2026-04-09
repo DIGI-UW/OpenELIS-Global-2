@@ -27,7 +27,6 @@ import MappingPanel from "./MappingPanel";
 import QueryStatusModal from "./QueryStatusModal";
 import TestMappingModal from "./TestMappingModal";
 import ValidationDashboard from "./ValidationDashboard";
-import PendingCodesPanel from "./PendingCodesPanel";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./FieldMapping.css";
 
@@ -59,8 +58,6 @@ const FieldMapping = () => {
   const [queryJobId, setQueryJobId] = useState(null);
   const [testMappingModalOpen, setTestMappingModalOpen] = useState(false);
   const [errorNotification, setErrorNotification] = useState(null);
-  const [pendingCodes, setPendingCodes] = useState([]);
-  const [pluginConfig, setPluginConfig] = useState(null);
 
   useEffect(() => {
     if (!analyzerId) {
@@ -116,20 +113,6 @@ const FieldMapping = () => {
       const mappings = extractMappings(mappingsData);
       setMappings(mappings);
       setLoading(false);
-    });
-    analyzerService.getPendingCodes(analyzerId, (pendingCodesData) => {
-      if (Array.isArray(pendingCodesData)) {
-        setPendingCodes(pendingCodesData);
-      } else {
-        setPendingCodes([]);
-      }
-    });
-    analyzerService.getPluginConfig(analyzerId, (pluginConfigData) => {
-      if (pluginConfigData && typeof pluginConfigData === "object") {
-        setPluginConfig(pluginConfigData);
-      } else {
-        setPluginConfig(null);
-      }
     });
 
     // Note: Initial query is removed - fields are loaded from database on page load
@@ -209,17 +192,6 @@ const FieldMapping = () => {
   const hasUnmappedRequired = requiredFieldTypes.some(
     (type) => !mappings.some((m) => m.mappingType === type),
   );
-  const activePendingCodes = pendingCodes.filter(
-    (code) => code.status === "PENDING",
-  ).length;
-
-  const refreshPendingCodes = () => {
-    analyzerService.getPendingCodes(analyzerId, (pendingCodesData) => {
-      if (Array.isArray(pendingCodesData)) {
-        setPendingCodes(pendingCodesData);
-      }
-    });
-  };
 
   return (
     <div className="field-mapping" data-testid="field-mapping">
@@ -317,45 +289,6 @@ const FieldMapping = () => {
               })}
             </div>
             <div className="stat-value">{unmappedFieldsCount}</div>
-          </Tile>
-        </Column>
-        <Column lg={16} md={8} sm={4}>
-          <Tile data-testid="stat-pending-codes">
-            <div className="stat-label">
-              {intl.formatMessage({
-                id: "analyzer.fieldMapping.stats.pendingCodes",
-              })}
-            </div>
-            <div className="stat-value stat-value-small">
-              {activePendingCodes}
-            </div>
-          </Tile>
-        </Column>
-      </Grid>
-
-      <Grid className="field-mapping-plugin-config">
-        <Column lg={16} md={8} sm={4}>
-          <Tile data-testid="plugin-config-snapshot">
-            <div className="stat-label">
-              {intl.formatMessage({
-                id: "analyzer.fieldMapping.pluginConfig.title",
-              })}
-            </div>
-            <pre className="plugin-config-pre">
-              {JSON.stringify(pluginConfig || {}, null, 2)}
-            </pre>
-          </Tile>
-        </Column>
-      </Grid>
-
-      <Grid className="field-mapping-pending-codes">
-        <Column lg={16} md={8} sm={4}>
-          <Tile>
-            <PendingCodesPanel
-              analyzerId={analyzerId}
-              pendingCodes={pendingCodes}
-              onUpdated={refreshPendingCodes}
-            />
           </Tile>
         </Column>
       </Grid>
@@ -470,7 +403,7 @@ const FieldMapping = () => {
                 <FormattedMessage id="analyzer.fieldMapping.panel.target.summary" />
               </p>
               <p>
-                <FormattedMessage id="analyzer.fieldMapping.panel.target.selectField" />
+                Select a field from the left panel to view or create mappings.
               </p>
             </div>
           )}

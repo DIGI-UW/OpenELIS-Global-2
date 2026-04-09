@@ -61,26 +61,5 @@ module.exports = {
         "react/display-name": "off",
       },
     },
-    {
-      files: ["**/*.test.{js,jsx,ts,tsx}"],
-      plugins: ["jest"],
-      rules: {
-        "jest/expect-expect": "error",
-        "jest/no-disabled-tests": "warn",
-        "jest/no-focused-tests": "error",
-        "jest/valid-expect": "error",
-      },
-    },
-    {
-      files: ["playwright/**/*.{ts,spec.ts}"],
-      plugins: ["playwright"],
-      rules: {
-        "playwright/expect-expect": "error",
-        "playwright/missing-playwright-await": "error",
-        "playwright/no-wait-for-timeout": "error",
-        "playwright/no-force-option": "warn",
-        "playwright/prefer-web-first-assertions": "warn",
-      },
-    },
   ],
 };

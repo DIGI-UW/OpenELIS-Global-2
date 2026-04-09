@@ -1,4 +1,4 @@
-name: Automation / Merge Conflicts
+name: Auto Label Conflicts
 
 permissions:
   issues: write
@@ -7,12 +7,11 @@ permissions:
 on:
   push:
     branches: [develop]
-  pull_request_target:
+  pull_request:
     branches: [develop]
 
 jobs:
   auto-label:
-    name: Run
     if: github.repository == 'DIGI-UW/OpenELIS-Global-2'
     runs-on: ubuntu-latest
     steps:

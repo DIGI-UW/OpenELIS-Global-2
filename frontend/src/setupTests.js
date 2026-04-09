@@ -21,11 +21,6 @@ window.getComputedStyle = (element, pseudoElement) => {
   return originalGetComputedStyle(element);
 };
 
-// Polyfill TextEncoder/TextDecoder for jsdom (required by jspdf 4.x)
-const { TextEncoder, TextDecoder } = require("util");
-if (!global.TextEncoder) global.TextEncoder = TextEncoder;
-if (!global.TextDecoder) global.TextDecoder = TextDecoder;
-
 // Mock ResizeObserver for Carbon components and other UI elements
 global.ResizeObserver = class ResizeObserver {
   constructor(callback) {

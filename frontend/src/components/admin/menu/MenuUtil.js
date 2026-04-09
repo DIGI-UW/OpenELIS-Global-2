@@ -1,6 +1,5 @@
 import React from "react";
 import { Checkbox } from "@carbon/react";
-import { jpSet } from "../../utils/JsonPath";
 import { useIntl } from "react-intl";
 
 export const updateMenuWithElementId = (newMenus, field, value) => {};
@@ -62,7 +61,8 @@ export const MenuCheckBox = (props) => {
                 }
               } else {
                 let newMenuItem = { ...menuItem };
-                jpSet(
+                var jp = require("jsonpath");
+                jp.value(
                   newMenuItem,
                   path,
                   setMenuIsActiveToValueIncludeChildren(checked, curMenuItem),

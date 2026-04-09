@@ -35,7 +35,7 @@ export class ErrorDashboardPage {
 
   /** Navigate to the error dashboard page */
   async goto() {
-    await this.page.goto("analyzers/errors", { waitUntil: "domcontentloaded" });
+    await this.page.goto("/analyzers/errors");
   }
 
   /** Assert the page has loaded (root + header + stats visible) */

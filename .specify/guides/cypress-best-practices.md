@@ -3,11 +3,6 @@
 **Quick Reference Guide** for common Cypress E2E testing patterns in OpenELIS
 Global 2.
 
-> **DEPRECATED -- DO NOT USE FOR NEW TESTS.** Cypress is a legacy E2E track in
-> this repository. **Do not create new Cypress tests.** All new E2E tests must
-> use Playwright (see AGENTS.md "E2E Tests (Playwright)"). This guide is
-> retained only for maintaining existing tests.
-
 **For Comprehensive Guidance**: See
 [Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and
 examples.

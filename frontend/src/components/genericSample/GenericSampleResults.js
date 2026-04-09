@@ -27,7 +27,6 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import DataTable from "react-data-table-component";
 import { Formik } from "formik";
-import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
 
 /**
@@ -203,14 +202,15 @@ function GenericSampleResults({
   const handleResultChange = (e, rowId) => {
     const { name, value } = e.target;
     const form = { ...results };
-    jpSet(form, name, value);
+    const jp = require("jsonpath");
+    jp.value(form, name, value);
     // Also update pastNotes when note changes for display
     if (name.includes(".note")) {
       const pastNotesPath = "testResult[" + rowId + "].pastNotes";
-      jpSet(form, pastNotesPath, value);
+      jp.value(form, pastNotesPath, value);
     }
     const isModified = "testResult[" + rowId + "].isModified";
-    jpSet(form, isModified, "true");
+    jp.value(form, isModified, "true");
     setResults(form);
   };
 

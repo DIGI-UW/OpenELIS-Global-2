@@ -12,7 +12,6 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { testConnection } from "../../../services/analyzerService";
-import { resolveAnalyzerApiMessage } from "../constants";
 import "./TestConnectionModal.css";
 
 const TestConnectionModal = ({ analyzer, open, onClose }) => {
@@ -33,23 +32,13 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
   const handleTest = () => {
     if (!analyzer || !analyzer.id) {
       setStatus("error");
-      setLogs([
-        {
-          level: "error",
-          message: intl.formatMessage({ id: "analyzer.delete.error.noId" }),
-        },
-      ]);
+      setLogs([{ level: "error", message: "Analyzer ID is required" }]);
       return;
     }
 
     setStatus("testing");
     setProgress(0);
-    setLogs([
-      {
-        level: "info",
-        message: intl.formatMessage({ id: "analyzer.testConnection.testing" }),
-      },
-    ]);
+    setLogs([{ level: "info", message: "Starting connection test..." }]);
 
     // Simulate progress
     const progressInterval = setInterval(() => {
@@ -77,11 +66,7 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
           ...prev,
           {
             level: "error",
-            message: resolveAnalyzerApiMessage(
-              intl,
-              response,
-              "analyzer.form.testConnection.error",
-            ),
+            message: response.message || response.error || "Connection failed",
           },
         ]);
       } else {
@@ -90,11 +75,7 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
           ...prev,
           {
             level: "success",
-            message: resolveAnalyzerApiMessage(
-              intl,
-              response,
-              "analyzer.testConnection.success",
-            ),
+            message: response.message || "Connection successful!",
           },
         ]);
       }
@@ -145,7 +126,7 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
 
         {status === "error" && (
           <Tag type="red" data-testid="test-connection-error">
-            {intl.formatMessage({ id: "analyzer.form.testConnection.error" })}
+            Connection Failed
           </Tag>
         )}
 

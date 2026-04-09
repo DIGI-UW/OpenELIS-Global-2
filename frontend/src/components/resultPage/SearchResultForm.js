@@ -27,7 +27,6 @@ import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
-import { jpGet, jpSet } from "../utils/JsonPath";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -41,24 +40,6 @@ import CompactFileInput from "./fileUpload/FileInput";
 import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
-import EQABadge from "../eqa/EQABadge";
-
-/**
- * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
- * two-segment pattern {@code BASE-SUFFIX} where SUFFIX is numeric (analysis ordinal).
- * Multi-segment accessions (e.g. harness {@code HARN-QS7-2026-00001}) must stay intact.
- */
-function labNumberForLogbookSearch(accessionNumber) {
-  if (!accessionNumber) {
-    return "";
-  }
-  const trimmed = accessionNumber.trim();
-  const parts = trimmed.split("-");
-  if (parts.length === 2 && /^\d+$/.test(parts[1])) {
-    return parts[0];
-  }
-  return trimmed;
-}
 
 function ResultSearchPage() {
   const [originalResultForm, setOriginalResultForm] = useState({
@@ -190,7 +171,7 @@ export function SearchResultForm(props) {
       values.accessionNumber !== ""
         ? values.accessionNumber
         : values.startLabNo;
-    let labNo = labNumberForLogbookSearch(accessionNumber);
+    let labNo = accessionNumber ? accessionNumber.split("-")[0] : "";
     const endLabNo = values.endLabNo ? values.endLabNo : "";
     values.unitType = values.unitType ? values.unitType : "";
 
@@ -1051,7 +1032,6 @@ export function SearchResults(props) {
                 : row.accessionNumber) +
                 "-" +
                 row.sequenceNumber}
-              {row.isEqaSample && <EQABadge priority={row.eqaPriority} />}
               <br></br>
               {row.patientName} <br></br>
               {row.patientInfo}
@@ -1155,9 +1135,10 @@ export function SearchResults(props) {
                 rows={1}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
-              <div className="note" style={{ whiteSpace: "pre-wrap" }}>
-                {row.pastNotes?.replace(/<br\s*\/?>/gi, "\n")}
-              </div>
+              <div
+                className="note"
+                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
+              />
             </div>
           </>
         );
@@ -1755,44 +1736,50 @@ export function SearchResults(props) {
     // setState({value: e.target.value})
     console.debug("State updated to ", e.target.value);
     var form = { ...props.results };
-    jpSet(form, name, value);
-    var refer = jpGet(form, "testResult[" + rowId + "].refer");
-    var testId = jpGet(form, "testResult[" + rowId + "].testId");
+    var jp = require("jsonpath");
+    jp.value(form, name, value);
+    var refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
+    var testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
     var referList = { ...referTest };
     referList[rowId] = refer === "true" ? true : false;
     setReferTest(referList);
     if (refer == "true") {
-      jpSet(
+      jp.value(
         form,
         "testResult[" + rowId + "].referralItem.referredTestId",
         testId,
       );
-      jpSet(
+      jp.value(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         configurationProperties.currentDateAsText,
       );
     } else {
-      jpSet(form, "testResult[" + rowId + "].referralItem.referredTestId", "");
-      jpSet(
+      jp.value(
+        form,
+        "testResult[" + rowId + "].referralItem.referredTestId",
+        "",
+      );
+      jp.value(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         "",
       );
     }
     var isModified = "testResult[" + rowId + "].isModified";
-    jpSet(form, isModified, "true");
+    jp.value(form, isModified, "true");
     props.setResultForm(form);
   };
 
   const handleRejectCheckBoxChange = (e, rowId) => {
     const { name, checked } = e.target;
     var form = props.results;
-    jpSet(form, name, checked);
+    var jp = require("jsonpath");
+    jp.value(form, name, checked);
     var shadowRejected = "testResult[" + rowId + "].shadowRejected";
-    jpSet(form, shadowRejected, checked);
+    jp.value(form, shadowRejected, checked);
     var isModified = "testResult[" + rowId + "].isModified";
-    jpSet(form, isModified, "true");
+    jp.value(form, isModified, "true");
 
     var allrejectedItems = { ...rejectedItems };
     allrejectedItems[rowId] = checked;
@@ -1813,13 +1800,14 @@ export function SearchResults(props) {
     if (form.testResult[rowId].referralItem) {
       if (form.testResult[rowId].referralItem.referredSendDate != date) {
         console.debug("handleDatePickerChange:" + date);
-        jpSet(
+        var jp = require("jsonpath");
+        jp.value(
           form,
           "testResult[" + rowId + "].referralItem.referredSendDate",
           date,
         );
         var isModified = "testResult[" + rowId + "].isModified";
-        jpSet(form, isModified, "true");
+        jp.value(form, isModified, "true");
         props.setResultForm(form);
       }
     }

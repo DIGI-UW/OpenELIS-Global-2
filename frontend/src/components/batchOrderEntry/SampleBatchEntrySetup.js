@@ -208,7 +208,7 @@ const SampleBatchEntrySetup = () => {
                 })
                 .join(",");
             }
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeSelectId}'  tests='${tests}' testSectionMap='' date='${orderFormValues.currentDate ? orderFormValues.currentDate : ""}' time='${orderFormValues.currentTime ? orderFormValues.currentTime : ""}' testSampleTypeMap='' panels='${panels}' numOrderLabels='1' numSpecimenLabels='1' initialConditionIds=''/>`;
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeSelectId}'  tests='${tests}' testSectionMap='' date='${orderFormValues.currentDate ? orderFormValues.currentDate : ""}' time='${orderFormValues.currentTime ? orderFormValues.currentTime : ""}' testSampleTypeMap='' panels='${panels}'  initialConditionIds=''/>`;
           }
         });
         sampleXmlString += "</samples>";
