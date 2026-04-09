@@ -209,20 +209,29 @@ public class AnalyzerResultsController extends BaseController {
     @RequestMapping(value = "/rest/AnalyzerResults", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
     @ResponseBody
     public AnalyzerResultsForm showRestAnalyzerResults(@RequestParam(required = false) String type,
-            HttpServletRequest request)
+            @RequestParam(required = false) String id, HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         AnalyzerResultsForm form = new AnalyzerResultsForm();
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
-        form.setType(type);
-        if (GenericValidator.isBlankOrNull(type)) {
+        String requestedAnalyzerId = id;
+        String effectiveType = type;
+        if (GenericValidator.isBlankOrNull(effectiveType) && !GenericValidator.isBlankOrNull(requestedAnalyzerId)) {
+            Analyzer analyzer = analyzerService.get(requestedAnalyzerId);
+            if (analyzer != null) {
+                effectiveType = analyzer.getName();
+            }
+        }
+
+        form.setType(effectiveType);
+        if (GenericValidator.isBlankOrNull(effectiveType) && GenericValidator.isBlankOrNull(requestedAnalyzerId)) {
             return form;
         }
         List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
         try {
-            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
-                    AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerIdFromRequest()));
+            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService
+                    .getPluginByAnalyzerId(getAnalyzerIdFromRequest());
             if (analyzerPlugin instanceof BidirectionalAnalyzer) {
                 BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
                 form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());

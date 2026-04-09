@@ -144,14 +144,21 @@
         <mapping resource="hibernate/hbm/TypeOfDataIndicator.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemModuleUrl.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemModuleParam.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceCategory.hbm.xml" />
-        <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceActionLog.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceSpecimen.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceType.hbm.xml" />
-        <mapping resource="hibernate/hbm/NceSpecimen.hbm.xml" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceCategory" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NcEvent" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceActionLog" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceSpecimen" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceAttachment" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceHistory" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceType" />
         <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />
-        <mapping resource="hibernate/hbm/NcEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/Report.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientContact.hbm.xml" />
 

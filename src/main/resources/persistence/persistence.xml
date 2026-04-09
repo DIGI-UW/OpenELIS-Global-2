@@ -83,6 +83,10 @@
         <class>org.openelisglobal.qc.valueholder.QCRuleConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCFrequencyConfig</class>
         <class>org.openelisglobal.qc.valueholder.QCSignature</class>
+        <!-- Calendar Management entities (OGC-310 TAT) -->
+        <class>org.openelisglobal.calendar.valueholder.PublicHoliday</class>
+        <class>org.openelisglobal.calendar.valueholder.WeekendConfig</class>
+
         <!-- Shipment Management entities (OGC-62) -->
         <class>org.openelisglobal.shipment.valueholder.ShippingBox</class>
         <class>org.openelisglobal.shipment.valueholder.Shipment</class>
@@ -107,6 +111,10 @@
         <!-- Migrated from HBM to JPA annotations (004-astm-analyzer-mapping) -->
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
+
+        <!-- Electronic Signature entities (21 CFR Part 11 Compliance) -->
+        <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
+        <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
 
         <properties>
             <property name="hibernate.cfg_xml_file"
