@@ -39,10 +39,10 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getNceActionLogByNceId_ShouldReturnAllNceActionLogsWithAnNceIdMatchingTheParameterValue() {
-        nceActionLogs = nceActionLogService.getNceActionLogByNceId("901");
+        nceActionLogs = nceActionLogService.getNceActionLogByNceId(901);
         assertNotNull(nceActionLogs);
         assertEquals(6, nceActionLogs.size());
-        assertEquals("8", nceActionLogs.get(3).getId());
+        assertEquals(Integer.valueOf(8), nceActionLogs.get(3).getId());
         assertEquals("fix calibration issue", nceActionLogs.get(4).getCorrectiveAction());
     }
 
@@ -51,7 +51,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAll();
         assertNotNull(nceActionLogs);
         assertEquals(10, nceActionLogs.size());
-        assertEquals("3", nceActionLogs.get(2).getId());
+        assertEquals(Integer.valueOf(3), nceActionLogs.get(2).getId());
     }
 
     @Test
@@ -59,7 +59,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllMatching("turnAroundTime", "40");
         assertNotNull(nceActionLogs);
         assertEquals(3, nceActionLogs.size());
-        assertEquals("5", nceActionLogs.get(1).getId());
+        assertEquals(Integer.valueOf(5), nceActionLogs.get(1).getId());
     }
 
     @Test
@@ -67,7 +67,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllMatching(propertyValues);
         assertNotNull(nceActionLogs);
         assertEquals(7, nceActionLogs.size());
-        assertEquals("9", nceActionLogs.get(6).getId());
+        assertEquals(Integer.valueOf(9), nceActionLogs.get(6).getId());
     }
 
     @Test
@@ -75,7 +75,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllOrdered("personResponsible", false);
         assertNotNull(nceActionLogs);
         assertEquals(10, nceActionLogs.size());
-        assertEquals("9", nceActionLogs.get(7).getId());
+        assertEquals(Integer.valueOf(9), nceActionLogs.get(7).getId());
     }
 
     @Test
@@ -83,7 +83,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllOrdered(orderProperties, true);
         assertNotNull(nceActionLogs);
         assertEquals(10, nceActionLogs.size());
-        assertEquals("8", nceActionLogs.get(8).getId());
+        assertEquals(Integer.valueOf(8), nceActionLogs.get(8).getId());
     }
 
     @Test
@@ -91,7 +91,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllMatchingOrdered("ncEventId", "903", "dateCompleted", true);
         assertNotNull(nceActionLogs);
         assertEquals(2, nceActionLogs.size());
-        assertEquals("3", nceActionLogs.get(1).getId());
+        assertEquals(Integer.valueOf(3), nceActionLogs.get(1).getId());
     }
 
     @Test
@@ -99,7 +99,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllMatchingOrdered("ncEventId", "901", orderProperties, true);
         assertNotNull(nceActionLogs);
         assertEquals(6, nceActionLogs.size());
-        assertEquals("8", nceActionLogs.get(4).getId());
+        assertEquals(Integer.valueOf(8), nceActionLogs.get(4).getId());
     }
 
     @Test
@@ -107,7 +107,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllMatchingOrdered(propertyValues, "personResponsible", true);
         assertNotNull(nceActionLogs);
         assertEquals(7, nceActionLogs.size());
-        assertEquals("1", nceActionLogs.get(4).getId());
+        assertEquals(Integer.valueOf(1), nceActionLogs.get(4).getId());
     }
 
     @Test
@@ -115,7 +115,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAllMatchingOrdered(propertyValues, orderProperties, false);
         assertNotNull(nceActionLogs);
         assertEquals(7, nceActionLogs.size());
-        assertEquals("5", nceActionLogs.get(5).getId());
+        assertEquals(Integer.valueOf(5), nceActionLogs.get(5).getId());
     }
 
     @Test
@@ -188,7 +188,7 @@ public class NceActionLogServiceTest extends BaseWebContextSensitiveTest {
         nceActionLogs = nceActionLogService.getAll();
         assertEquals(10, nceActionLogs.size());
         assertTrue(nceActionLogs.stream().anyMatch(nal -> "update software".equals(nal.getCorrectiveAction())));
-        NceActionLog nceActionLog = nceActionLogService.get("6");
+        NceActionLog nceActionLog = nceActionLogService.get(6);
         nceActionLogService.delete(nceActionLog);
         List<NceActionLog> newNceActionLogs = nceActionLogService.getAll();
         assertFalse(newNceActionLogs.stream().anyMatch(nal -> "update software".equals(nal.getCorrectiveAction())));
