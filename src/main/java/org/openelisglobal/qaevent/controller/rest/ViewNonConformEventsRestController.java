@@ -78,8 +78,8 @@ public class ViewNonConformEventsRestController extends BaseRestController {
         NonConformingEventForm response = new NonConformingEventForm();
 
         response.setnceEventsSearchResults(searchResults);
-        response.setNceCategories(nceCategoryService.getAllNceCategories());
-        response.setNceTypes(nceTypeService.getAllNceTypes());
+        response.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
+        response.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
         response.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         response.setSeverityConsequencesList(
@@ -98,8 +98,9 @@ public class ViewNonConformEventsRestController extends BaseRestController {
             sampleItems.add(si);
         }
         response.setSpecimens(sampleItems);
-        response.setReportDate(DateUtil.formatDateAsText(event.getReportDate()));
-        response.setDateOfEvent(DateUtil.formatDateAsText(event.getDateOfEvent()));
+        response.setReportDate(event.getReportDate() != null ? DateUtil.formatDateAsText(event.getReportDate()) : "");
+        response.setDateOfEvent(
+                event.getDateOfEvent() != null ? DateUtil.formatDateAsText(event.getDateOfEvent()) : "");
 
         return ResponseEntity.ok().body(response);
     }

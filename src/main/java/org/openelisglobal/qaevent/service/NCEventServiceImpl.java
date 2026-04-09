@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NCEventServiceImpl extends AuditableBaseObjectServiceImpl<NcEvent, String> implements NCEventService {
+public class NCEventServiceImpl extends AuditableBaseObjectServiceImpl<NcEvent, Integer> implements NCEventService {
 
     @Autowired
     protected NCEventDAO baseObjectDAO;
