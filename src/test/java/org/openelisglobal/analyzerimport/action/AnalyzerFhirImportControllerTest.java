@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -21,6 +22,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTest {
@@ -39,6 +41,7 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        SecurityContextHolder.clearContext();
         MockitoAnnotations.initMocks(this);
         controller = webApplicationContext.getBean(AnalyzerFhirImportController.class);
         originalAnalyzerResultsService = ReflectionTestUtils.getField(controller, "analyzerResultsService");
@@ -114,5 +117,29 @@ public class AnalyzerFhirImportControllerTest extends BaseWebContextSensitiveTes
         List<AnalyzerResults> inserted = (List<AnalyzerResults>) captor.getValue();
         org.junit.Assert.assertEquals(1, inserted.size());
         org.junit.Assert.assertTrue("QC tag should map to isControl=true", inserted.get(0).getIsControl());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void importFhirBundle_MissingAnalyzerRowForNumericHeader_StillStagesResult() throws Exception {
+        when(analyzerService.get("999")).thenThrow(new RuntimeException("analyzer row missing"));
+        String bundleJson = "{\n" + "  \"resourceType\": \"Bundle\",\n" + "  \"type\": \"transaction\",\n"
+                + "  \"entry\": [\n" + "    {\n" + "      \"fullUrl\": \"urn:uuid:specimen-1\",\n"
+                + "      \"resource\": {\n" + "        \"resourceType\": \"Specimen\",\n"
+                + "        \"identifier\": [{\"value\": \"DEV01269990000000001\"}]\n" + "      }\n" + "    },\n"
+                + "    {\n" + "      \"resource\": {\n" + "        \"resourceType\": \"Observation\",\n"
+                + "        \"specimen\": {\"reference\": \"urn:uuid:specimen-1\"},\n"
+                + "        \"code\": {\"coding\": [{\"code\": \"WBC\"}]},\n" + "        \"valueString\": \"42\"\n"
+                + "      }\n" + "    }\n" + "  ]\n" + "}";
+
+        mockMvc.perform(post("/analyzer/fhir").header("X-Analyzer-Id", "999").contentType(MediaType.APPLICATION_JSON)
+                .content(bundleJson)).andExpect(status().isOk()).andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.resultsInserted").value(1));
+
+        ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
+        verify(analyzerResultsService).insertAnalyzerResults(captor.capture(), eq("1"));
+        List<AnalyzerResults> inserted = (List<AnalyzerResults>) captor.getValue();
+        org.junit.Assert.assertEquals(1, inserted.size());
+        org.junit.Assert.assertNull(inserted.get(0).getAnalyzerId());
     }
 }

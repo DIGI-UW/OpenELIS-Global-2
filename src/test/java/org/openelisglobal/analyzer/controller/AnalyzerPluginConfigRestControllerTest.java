@@ -3,6 +3,8 @@ package org.openelisglobal.analyzer.controller;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,13 +21,8 @@ import org.openelisglobal.analyzer.service.AnalyzerPendingCodeService;
 import org.openelisglobal.analyzer.service.AnalyzerPluginConfigService;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextImpl;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensitiveTest {
 
@@ -38,6 +35,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        mockMvc = MockMvcBuilders.webAppContextSetup(this.webApplicationContext).apply(springSecurity()).build();
         MockitoAnnotations.initMocks(this);
         AnalyzerPluginConfigRestController controller = webApplicationContext
                 .getBean(AnalyzerPluginConfigRestController.class);
@@ -49,20 +47,9 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
     public void testGetPluginConfig_AsAdmin_Returns200() throws Exception {
         when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(Map.of("connectionRole", "SERVER"));
 
-        mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").with(adminUser())
+        mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.connectionRole").value("SERVER"));
-    }
-
-    @Test
-    public void testGetPluginConfig_WithoutAuthContext_Returns200InCurrentWebTestHarness() throws Exception {
-        when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(Map.of());
-
-        // BaseWebContextSensitiveTest does not apply the Spring Security test
-        // integration, so this verifies current harness behavior rather than
-        // full filter-chain authorization semantics.
-        mockMvc.perform(get("/rest/analyzer/analyzers/101/plugin-config").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
     }
 
     @Test
@@ -70,7 +57,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         Map<String, Object> config = Map.of("connectionRole", "SERVER", "serverListenPort", 17001);
         when(analyzerPluginConfigService.getConfigAsMap("101")).thenReturn(config);
 
-        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(adminUser())
+        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"connectionRole\":\"SERVER\",\"serverListenPort\":17001}")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.serverListenPort").value(17001));
@@ -81,7 +68,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         when(analyzerPluginConfigService.upsert(eq("101"), any(Map.class), any()))
                 .thenThrow(new IllegalArgumentException("aggregationWindowSeconds invalid"));
 
-        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(adminUser())
+        mockMvc.perform(put("/rest/analyzer/analyzers/101/plugin-config").with(user("admin").roles("GLOBAL_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"aggregationMode\":\"BY_SESSION\",\"aggregationWindowSeconds\":999}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
@@ -96,7 +83,7 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         pendingCode.setStatus(AnalyzerPendingCode.Status.PENDING);
         when(analyzerPendingCodeService.findByAnalyzerId("101")).thenReturn(List.of(pendingCode));
 
-        mockMvc.perform(get("/rest/analyzer/analyzers/101/pending-codes").with(adminUser())
+        mockMvc.perform(get("/rest/analyzer/analyzers/101/pending-codes").with(user("admin").roles("GLOBAL_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("pc-1")).andExpect(jsonPath("$[0].status").value("PENDING"));
     }
@@ -110,19 +97,10 @@ public class AnalyzerPluginConfigRestControllerTest extends BaseWebContextSensit
         when(analyzerPendingCodeService.updateStatus(eq("pc-1"), eq(AnalyzerPendingCode.Status.MAPPED), any()))
                 .thenReturn(updated);
 
-        mockMvc.perform(put("/rest/analyzer/analyzers/101/pending-codes/pc-1/status").with(adminUser())
-                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MAPPED\"}")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value("pc-1")).andExpect(jsonPath("$.status").value("MAPPED"));
-    }
-
-    private RequestPostProcessor adminUser() {
-        return request -> {
-            SecurityContext context = new SecurityContextImpl();
-            context.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "adminADMIN!",
-                    List.of(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN"))));
-            request.getSession(true).setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-                    context);
-            return request;
-        };
+        mockMvc.perform(
+                put("/rest/analyzer/analyzers/101/pending-codes/pc-1/status").with(user("admin").roles("GLOBAL_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"MAPPED\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("pc-1"))
+                .andExpect(jsonPath("$.status").value("MAPPED"));
     }
 }
