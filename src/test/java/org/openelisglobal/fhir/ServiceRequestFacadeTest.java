@@ -1,6 +1,7 @@
 package org.openelisglobal.fhir;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
@@ -73,5 +74,32 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
+
+    @Test
+    public void readServiceRequest_withInvalidUuid_shouldReturn400() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/ServiceRequest/not-a-uuid");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(400, response.getStatus());
+
+        JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
+    }
+
+    @Test
+    public void searchServiceRequest_endpointExists_shouldNotReturn404() throws Exception {
+        MockHttpServletRequest request = buildFhirRequest("GET", "/ServiceRequest");
+        request.setQueryString("subject=Patient/550e8400-e29b-41d4-a716-446655440001");
+        request.addParameter("subject", "Patient/550e8400-e29b-41d4-a716-446655440001");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertNotNull(response);
+        org.junit.Assert.assertTrue(response.getStatus() != 404);
     }
 }
