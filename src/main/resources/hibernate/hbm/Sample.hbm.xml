@@ -97,6 +97,8 @@
             type="java.lang.String" length="10" />
         <property name="gpsCaptureTimestamp"
             column="gps_capture_timestamp" type="java.sql.Timestamp" />
+        <property name="storageSkipped" column="storage_skipped"
+            type="java.lang.Boolean" />
 
         <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"
