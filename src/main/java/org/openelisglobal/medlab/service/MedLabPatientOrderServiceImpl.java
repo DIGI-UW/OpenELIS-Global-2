@@ -778,6 +778,7 @@ public class MedLabPatientOrderServiceImpl implements MedLabPatientOrderService 
             }
         }
 
+
         throw new RuntimeException(
                 "Unable to reserve a unique lab number for prefix '" + normalizedPrefix + "' after "
                         + MAX_LAB_NUMBER_RESERVATION_ATTEMPTS + " attempts");
