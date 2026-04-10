@@ -34,6 +34,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.result.valueholder.Result;
@@ -1020,7 +1021,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return getAnalysisStartedOn(collectionDate);
         }
 
-        String sql = "from Analysis a where a.startedDate = :startedDate and a.statusId not in ( :statusList )";
+        String sql = "from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId not in ( :statusList )";
 
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -1041,7 +1042,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getAnalysesCompletedOnByStatusId(Date completedDate, String statusId)
             throws LIMSRuntimeException {
 
-        String sql = "from Analysis a where a.releasedDate = :releasedDate and a.statusId = :statusId ";
+        String sql = "from Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId = :statusId ";
 
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -1597,7 +1598,9 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getPageAnalysisByStatusFromAccession(List<String> analysisStatusList,
             List<String> sampleStatusList, String accessionNumber) {
 
-        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber >= :accessionNumber" //
+        // Strict equality: only return analyses for the exact requested accession.
+        // The 4-arg overload handles range searches separately.
+        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
                 + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
                 + " AND a.statusId IN (:analysisStatusList)" //
                 + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
@@ -1644,6 +1647,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             analysisStatusList.add(statusService.getStatusID(AnalysisStatus.SampleRejected));
             analysisStatusList.add(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
             analysisStatusList.add(statusService.getStatusID(AnalysisStatus.TechnicalRejected));
+            sampleStatusList.add(statusService.getStatusID(OrderStatus.Finished));
         }
 
         String sql = "";
@@ -1760,7 +1764,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     public int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<String> statusIds) {
-        String sql = "SELECT COUNT(*) From Analysis a where a.releasedDate = :releasedDate and a.statusId in ("
+        String sql = "SELECT COUNT(*) From Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId in ("
                 + " :statusList )";
 
         try {
@@ -1780,7 +1784,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Override
     public int getCountOfAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<String> statusIds) {
 
-        String sql = "SELECT COUNT(*) from Analysis a where a.startedDate = :startedDate and a.statusId not in ("
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId not in ("
                 + " :statusList )";
 
         try {
@@ -1799,7 +1803,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     public int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<String> statusIds) {
-        String sql = "SELECT COUNT(*) from Analysis a where a.startedDate = :startedDate and a.statusId in ("
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId in ("
                 + " :statusList )";
 
         try {
@@ -1819,7 +1823,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Override
     public List<Analysis> getAnalysesResultEnteredOnExcludedByStatusId(Date completedDate, Set<String> statusIds)
             throws LIMSRuntimeException {
-        String sql = "from Analysis a where a.completedDate = :completedDate and a.statusId not in ( :statusList"
+        String sql = "from Analysis a where DATE(a.completedDate) = DATE(:completedDate) and a.statusId not in ( :statusList"
                 + " )";
 
         try {

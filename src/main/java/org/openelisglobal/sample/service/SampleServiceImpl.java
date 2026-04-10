@@ -114,21 +114,14 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Sample getSampleByAccessionNumber(String labNumber) {
+        if (labNumber == null || labNumber.trim().isEmpty()) {
+            return null;
+        }
         String originalLabNumber = labNumber;
-        if (labNumber != null && labNumber.contains(".")) {
+        if (labNumber.contains(".")) {
             labNumber = labNumber.substring(0, labNumber.indexOf('.'));
         }
-        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getSampleByAccessionNumber",
-                "Searching for sample with accessionNumber: " + labNumber + " (original: " + originalLabNumber + ")");
         Sample sample = getMatch("accessionNumber", labNumber).orElse(null);
-        if (sample != null) {
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getSampleByAccessionNumber",
-                    "Found sample: id=" + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
-        } else {
-            org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
-                    "getSampleByAccessionNumber", "No sample found for accessionNumber: " + labNumber);
-        }
         return sample;
     }
 

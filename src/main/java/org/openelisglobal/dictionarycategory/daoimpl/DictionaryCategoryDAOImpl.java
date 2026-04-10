@@ -104,4 +104,5 @@ public class DictionaryCategoryDAOImpl extends BaseDAOImpl<DictionaryCategory, S
 
         return null;
     }
+
 }

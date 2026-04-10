@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -40,17 +41,12 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         AnalyzerRestController controller = webApplicationContext.getBean(AnalyzerRestController.class);
         ReflectionTestUtils.setField(controller, "analyzerQueryService", analyzerQueryService);
 
-        cleanTestData();
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
-    private void cleanTestData() {
-        try {
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-SEC-%'");
-            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
-            jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
-        } catch (Exception e) {
-            System.out.println("Failed to clean security test data: " + e.getMessage());
-        }
+    @After
+    public void tearDown() {
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     // ── SSRF: Create analyzer with blocked IP ───────────────────────────
@@ -100,8 +96,8 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
     @Test
     public void testCreateAnalyzer_WithPrivateIP_Succeeds() throws Exception {
         String uniqueName = "TEST-SEC-Private-" + System.currentTimeMillis();
-        String body = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"192.168.1.100\",\"port\":5000,\"testUnitIds\":[]}";
+        String body = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\"," + "\"ipAddress\":\""
+                + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.id").exists());
@@ -114,7 +110,7 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
         // Create a valid analyzer first
         String uniqueName = "TEST-SEC-Update-" + System.currentTimeMillis();
         String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\","
-                + "\"ipAddress\":\"192.168.1.100\",\"port\":5000,\"testUnitIds\":[]}";
+                + "\"ipAddress\":\"" + AnalyzerTestCleanup.uniqueIp() + "\",\"port\":5000,\"testUnitIds\":[]}";
 
         String createResponse = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -130,36 +126,9 @@ public class AnalyzerSecurityTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.error").value("Connection to this address is not permitted"));
     }
 
-    // ── Path traversal: File import ─────────────────────────────────────
-
-    @Test
-    public void testCreateFileImportConfig_WithTraversalPath_ReturnsBadRequest() throws Exception {
-        String body = "{\"analyzerId\":1,\"importDirectory\":\"/data/analyzer-imports/../../etc\","
-                + "\"filePattern\":\"*.csv\",\"active\":true}";
-
-        mockMvc.perform(
-                post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
-
-    @Test
-    public void testCreateFileImportConfig_WithSiblingDirAttack_ReturnsBadRequest() throws Exception {
-        String body = "{\"analyzerId\":1,\"importDirectory\":\"/data/analyzer-imports-evil\","
-                + "\"filePattern\":\"*.csv\",\"active\":true}";
-
-        mockMvc.perform(
-                post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
-
-    @Test
-    public void testCreateFileImportConfig_WithAbsoluteEtcPath_ReturnsBadRequest() throws Exception {
-        String body = "{\"analyzerId\":1,\"importDirectory\":\"/etc\"," + "\"filePattern\":\"*.csv\",\"active\":true}";
-
-        mockMvc.perform(
-                post("/rest/analyzer/file-import/configurations").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").exists());
-    }
+    // File-import security tests removed: FileImportRestController deleted
+    // (FILE config is on Analyzer entity, managed through existing analyzer
+    // endpoints)
 
     // ── Helper ──────────────────────────────────────────────────────────
 

@@ -23,6 +23,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 
 /**
@@ -46,6 +47,9 @@ public class AnalyzerServiceStatusTest {
 
     @Mock
     private AnalyzerTestMappingService analyzerMappingService;
+
+    @Mock
+    private AuditTrailService auditTrailService;
 
     @InjectMocks
     private AnalyzerServiceImpl analyzerServiceImpl;
