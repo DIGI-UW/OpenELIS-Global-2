@@ -22,8 +22,9 @@ import jakarta.validation.constraints.NotBlank;
  * Maps 13 CSV columns to sample fields per spec FR-010 to FR-014:
  * <ul>
  * <li>Required: sampleId, sampleType, containerType, quantity, unitOfMeasure,
- * collectionSource, collector, collectionDate, collectionTime
- * <li>Optional: customLabel, orderId, patientId, notes
+ * collectionSource, collector
+ * <li>Optional: collectionDate, collectionTime, customLabel, orderId, patientId,
+ * notes
  * </ul>
  */
 public class MedLabManifestImportForm {
@@ -50,10 +51,8 @@ public class MedLabManifestImportForm {
     @NotBlank(message = "Collector column mapping is required")
     private String collectorColumn;
 
-    @NotBlank(message = "Collection Date column mapping is required")
     private String collectionDateColumn;
 
-    @NotBlank(message = "Collection Time column mapping is required")
     private String collectionTimeColumn;
 
     // Optional fields

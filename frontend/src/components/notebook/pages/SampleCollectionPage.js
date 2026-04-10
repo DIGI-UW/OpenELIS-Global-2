@@ -357,12 +357,36 @@ function SampleCollectionPage({
     ],
   );
 
+  // Calculate stats
+  const collectedCount = samples.filter((s) => s.status === "COMPLETED").length;
+  // Include IN_PROGRESS samples in pending count - these are samples that have been partially processed
+  // (e.g., linked to a patient) but not yet collected
+  const pendingCount = samples.filter(
+    (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+  ).length;
+
+  // Filter samples by status for display
+  // Include IN_PROGRESS in pending - when data is applied (e.g., patient linked), status transitions
+  // from PENDING to IN_PROGRESS, but sample still needs to be collected
+  const pendingSamples = samples.filter(
+    (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
+  );
+
+  // Split pending samples into two groups: unlinked samples and samples ready for collection
+  const unlinkedSamples = pendingSamples.filter(
+    (s) => !s.linkedOrderId && !s.linkedOrderLabNo,
+  );
+  const readyForCollection = pendingSamples.filter(
+    (s) => s.linkedOrderId || s.linkedOrderLabNo,
+  );
+
+  const collectedSamples = samples.filter((s) => s.status === "COMPLETED");
+
   // Handle linking samples to patient
   const handleLinkPatient = useCallback(
     (patientId, patientInfo) => {
       if (selectedSampleIds.length === 0 || !patientId) return;
 
-      // Require real page ID for linking
       if (!hasRealPageId) {
         setError(
           "Cannot link samples: Page not properly initialized. Please refresh the page.",
@@ -370,15 +394,34 @@ function SampleCollectionPage({
         return;
       }
 
-      // Store both patientId and patientName for display across all workflow pages
       const patientName = patientInfo
         ? `${patientInfo.firstName || ""} ${patientInfo.lastName || ""}`.trim()
         : "";
+      const selectedSamples = unlinkedSamples.filter((sample) =>
+        selectedSampleIds.includes(String(sample.id)),
+      );
+      const sampleItemIds = selectedSamples
+        .map((sample) => parseInt(sample.sampleItemId, 10))
+        .filter((id) => !Number.isNaN(id));
+
+      if (sampleItemIds.length === 0) {
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "medlab.linkPatient.invalidSelection",
+            defaultMessage:
+              "Selected samples could not be linked because they do not have valid sample item IDs yet",
+          }),
+          kind: NotificationKinds.error,
+        });
+        setNotificationVisible(true);
+        return;
+      }
 
       postToOpenElisServer(
         `/rest/medlab/samples/bulk-link-patient`,
         JSON.stringify({
-          sampleItemIds: selectedSampleIds.map((id) => parseInt(id, 10)),
+          sampleItemIds,
           patientId: patientId,
           notebookPageId: pageData.id,
         }),
@@ -423,40 +466,16 @@ function SampleCollectionPage({
     },
     [
       selectedSampleIds,
-      pageData,
       hasRealPageId,
+      unlinkedSamples,
       intl,
       addNotification,
       setNotificationVisible,
+      pageData,
       loadPageSamples,
       onProgressUpdate,
     ],
   );
-
-  // Calculate stats
-  const collectedCount = samples.filter((s) => s.status === "COMPLETED").length;
-  // Include IN_PROGRESS samples in pending count - these are samples that have been partially processed
-  // (e.g., linked to a patient) but not yet collected
-  const pendingCount = samples.filter(
-    (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
-  ).length;
-
-  // Filter samples by status for display
-  // Include IN_PROGRESS in pending - when data is applied (e.g., patient linked), status transitions
-  // from PENDING to IN_PROGRESS, but sample still needs to be collected
-  const pendingSamples = samples.filter(
-    (s) => s.status === "PENDING" || s.status === "IN_PROGRESS",
-  );
-
-  // Split pending samples into two groups: unlinked samples and samples ready for collection
-  const unlinkedSamples = pendingSamples.filter(
-    (s) => !s.linkedOrderId && !s.linkedOrderLabNo,
-  );
-  const readyForCollection = pendingSamples.filter(
-    (s) => s.linkedOrderId || s.linkedOrderLabNo,
-  );
-
-  const collectedSamples = samples.filter((s) => s.status === "COMPLETED");
 
   const openCollectionModal = useCallback(
     (sampleIds) => {
@@ -555,7 +574,7 @@ function SampleCollectionPage({
       key: "linkedOrder",
       header: intl.formatMessage({
         id: "medlab.collection.linkedOrder",
-        defaultMessage: "Linked Order",
+        defaultMessage: "Linked Lab Order",
       }),
     },
     {
@@ -899,6 +918,7 @@ function SampleCollectionPage({
               patientName: s.patientName || "-",
               linkedOrder:
                 s.linkedOrderLabNo ||
+                s.linkedOrderId ||
                 intl.formatMessage({
                   id: "medlab.collection.unlinked",
                   defaultMessage: "Not Linked",
@@ -1202,6 +1222,7 @@ function SampleCollectionPage({
         }}
         sample={sampleForLinking}
         orderEntryPageId={orderEntryPageId}
+        notebookPageId={pageData?.id}
         onLinkSuccess={handleLinkOrderSuccess}
       />
 
@@ -1214,6 +1235,7 @@ function SampleCollectionPage({
         }}
         samples={samplesForBulkLinking}
         orderEntryPageId={orderEntryPageId}
+        notebookPageId={pageData?.id}
         onLinkSuccess={handleBulkLinkOrderSuccess}
       />
 

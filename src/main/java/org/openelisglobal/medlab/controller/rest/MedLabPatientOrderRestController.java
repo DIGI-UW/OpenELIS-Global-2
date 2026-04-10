@@ -2,6 +2,7 @@ package org.openelisglobal.medlab.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
@@ -10,6 +11,8 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.medlab.service.MedLabPatientOrderService;
 import org.openelisglobal.medlab.service.MedLabTestRequirementsService;
 import org.openelisglobal.medlab.valueholder.MedLabTestRequirements;
+import org.openelisglobal.notebook.service.NotebookPageSampleService;
+import org.openelisglobal.notebook.valueholder.NotebookPageSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +49,32 @@ public class MedLabPatientOrderRestController extends BaseRestController {
 
     @Autowired
     private org.openelisglobal.sample.service.SampleService sampleService;
+
+    @Autowired
+    private NotebookPageSampleService notebookPageSampleService;
+
+    private void updateCollectionPageOrderTracking(Integer notebookPageId, Integer sampleItemId,
+            org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder order, String sysUserId) {
+        if (notebookPageId == null || sampleItemId == null || order == null) {
+            return;
+        }
+
+        NotebookPageSample pageSample = notebookPageSampleService.getByPageIdAndSampleItemId(notebookPageId,
+                sampleItemId);
+        if (pageSample == null) {
+            return;
+        }
+
+        Map<String, Object> data = pageSample.getData() != null ? new HashMap<>(pageSample.getData()) : new HashMap<>();
+        data.put("linkedOrderId", order.getId());
+        data.put("linkedOrderLabNo", order.getExternalId());
+        if (!data.containsKey("labNo") && order.getExternalId() != null) {
+            data.put("labNo", order.getExternalId());
+        }
+        pageSample.setData(data);
+        pageSample.setSysUserId(sysUserId);
+        notebookPageSampleService.update(pageSample);
+    }
 
     // ==================== Test Requirements Endpoints (FR-007)
     // ====================
@@ -177,9 +206,6 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             }
 
             // Validate required fields
-            if (patientId == null || patientId.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Patient ID is required"));
-            }
             if (labNo == null || labNo.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Lab number is required"));
             }
@@ -422,6 +448,10 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             if (body.get("orderId") != null) {
                 orderId = Integer.valueOf(body.get("orderId").toString());
             }
+            Integer notebookPageId = null;
+            if (body.get("notebookPageId") != null) {
+                notebookPageId = Integer.valueOf(body.get("notebookPageId").toString());
+            }
 
             @SuppressWarnings("unchecked")
             List<String> testIds = (List<String>) body.get("testIds");
@@ -476,6 +506,7 @@ public class MedLabPatientOrderRestController extends BaseRestController {
             }
 
             Map<String, Object> result = new java.util.HashMap<>();
+            updateCollectionPageOrderTracking(notebookPageId, sampleItemId, order, sysUserId);
             result.put("success", true);
             result.put("linksCreated", linksCreated);
             result.put("orderId", orderId);
@@ -522,6 +553,9 @@ public class MedLabPatientOrderRestController extends BaseRestController {
                 }
             }
             Integer orderId = body.get("orderId") != null ? Integer.valueOf(body.get("orderId").toString()) : null;
+            Integer notebookPageId = body.get("notebookPageId") != null
+                    ? Integer.valueOf(body.get("notebookPageId").toString())
+                    : null;
             List<String> testIds = new java.util.ArrayList<>();
             if (body.get("testIds") != null) {
                 List<?> rawTestIds = (List<?>) body.get("testIds");
@@ -595,6 +629,7 @@ public class MedLabPatientOrderRestController extends BaseRestController {
                     }
 
                     if (linksForSample > 0) {
+                        updateCollectionPageOrderTracking(notebookPageId, sampleItemId, order, sysUserId);
                         samplesLinked++;
                     }
                 } catch (Exception e) {

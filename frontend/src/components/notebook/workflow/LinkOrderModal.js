@@ -35,6 +35,7 @@ import "../workflow/NotebookWorkflow.css";
  * @param {function} props.onClose - Callback when modal is closed
  * @param {Object} props.sample - The sample to link (sampleId, sampleItemId, accessionNumber, patientId)
  * @param {number} props.orderEntryPageId - The Patient Order Entry page ID (Stage 1)
+ * @param {number} props.notebookPageId - The Sample Collection page ID (Stage 2)
  * @param {function} props.onLinkSuccess - Callback when linking is successful
  */
 function LinkOrderModal({
@@ -42,6 +43,7 @@ function LinkOrderModal({
   onClose,
   sample,
   orderEntryPageId,
+  notebookPageId,
   onLinkSuccess,
 }) {
   const intl = useIntl();
@@ -165,7 +167,6 @@ function LinkOrderModal({
 
   // Select an order from available orders list
   const handleSelectOrder = useCallback((order) => {
-    console.log("Order selected", { order });
     setSelectedOrder(order);
     setSelectedTestIds([]);
 
@@ -292,7 +293,7 @@ function LinkOrderModal({
     setLinkError(null);
 
     try {
-      const endpoint = `${config.serverBaseUrl}/rest/medlab/samples/${sample.sampleId}/link-order`;
+      const endpoint = `${config.serverBaseUrl}/rest/medlab/samples/${sample.sampleItemId}/link-order`;
       const response = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
@@ -304,6 +305,7 @@ function LinkOrderModal({
           orderId: selectedOrder.orderId || selectedOrder.id,
           labNo: selectedOrder.labNo,
           sampleItemId: sample.sampleItemId,
+          notebookPageId,
           testIds: selectedTestIds,
         }),
       });
@@ -426,10 +428,7 @@ function LinkOrderModal({
                     {availableOrders.map((order) => (
                       <ClickableTile
                         key={order.id}
-                        onClick={() => {
-                          console.log("Tile clicked", order);
-                          handleSelectOrder(order);
-                        }}
+                        onClick={() => handleSelectOrder(order)}
                         style={{
                           backgroundColor:
                             selectedOrder?.id === order.id
