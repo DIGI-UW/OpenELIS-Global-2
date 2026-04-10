@@ -228,6 +228,11 @@ public class SamplePatientUpdateData {
         this.newOrganization = newOrganization;
     }
 
+    public void setCurrentOrganization(Organization currentOrganization) {
+        this.currentOrganization = currentOrganization;
+
+    }
+
     public Organization getCurrentOrganization() {
         return currentOrganization;
     }

@@ -77,6 +77,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -1006,55 +1007,88 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     @Override
     public SamplePatientUpdateData createOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysuserId) {
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(sysuserId);
+        List<SampleAddService.SampleTestCollection> sampleItemsTests = new ArrayList<>();
 
-        if (serviceRequest.hasSpecimen()) {
-            Reference specimenRef = serviceRequest.getSpecimenFirstRep();
-            String specimenUUID = specimenRef.getReferenceElement().getIdPart();
-
-            SampleItem sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
-            if (sampleItem != null) {
-                Sample sample = sampleItem.getSample();
-                updateData.setSample(sample);
-                updateData.setAccessionNumber(sample.getAccessionNumber());
-            }
-        }
-
-        if (serviceRequest.hasSubject()) {
-            Reference subjectRef = serviceRequest.getSubject();
-            if (ResourceType.Patient.name().equals(subjectRef.getReferenceElement().getResourceType())) {
-                String patientUUID = subjectRef.getReferenceElement().getIdPart();
-                Patient patient = getItemByFhirId(patientUUID, patientService);
-
-                if (patient != null) {
-                    updateData.setPatientId(patient.getId());
+        if (serviceRequest.hasLocationReference()) {
+            Reference locationRef = serviceRequest.getLocationReferenceFirstRep();
+            if (locationRef.hasReference()) {
+                String locationUUID = locationRef.getReferenceElement().getIdPart();
+                Organization organization = getItemByFhirId(locationUUID, organizationService);
+                if (organization != null) {
+                    updateData.setCurrentOrganization(organization);
                 }
             }
         }
 
-        if (serviceRequest.hasRequester()) {
-            Reference requesterRef = serviceRequest.getRequester();
-            String requesterUUID = requesterRef.getReferenceElement().getIdPart();
+        if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
+            for (Reference reference : serviceRequest.getSpecimen()) {
+                String specimenUUID = reference.getReferenceElement().getIdPart();
 
-            if (ResourceType.Practitioner.name().equals(requesterRef.getReferenceElement().getResourceType())) {
-                Provider provider = getItemByFhirId(requesterUUID, providerService);
-                if (provider != null) {
-                    updateData.setProvider(provider);
-                    updateData.setProviderPerson(provider.getPerson());
+                SampleItem sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
+                if (sampleItem != null) {
+                    Sample sample = sampleItem.getSample();
+                    updateData.setSample(sample);
+                    updateData.setAccessionNumber(sample.getAccessionNumber());
+
+                    if (serviceRequest.hasCode()) {
+                        List<Test> testsToOrder = new ArrayList<>();
+                        for (Coding coding : serviceRequest.getCode().getCoding()) {
+                            if ("http://loinc.org".equalsIgnoreCase(coding.getSystem())) {
+                                List<Test> foundTests = testService.getTestsByLoincCode(coding.getCode());
+                                if (foundTests != null) {
+                                    testsToOrder.addAll(foundTests);
+                                }
+                            }
+                        }
+
+                        if (!testsToOrder.isEmpty()) {
+                            String xml = FhirUtil.buildSampleXml(serviceRequest, testsToOrder, sampleItem);
+
+                            SampleAddService sampleAddService = new SampleAddService(xml, sysuserId, sample,
+                                    DateUtil.getCurrentDateAsText());
+
+                            List<SampleAddService.SampleTestCollection> collections = sampleAddService
+                                    .createSampleTestCollection();
+
+                            sampleItemsTests.addAll(collections);
+                            updateData.setSampleAddService(sampleAddService);
+                        }
+
+                    }
                 }
+            }
+        }
+
+        updateData.setSampleItemsTests(sampleItemsTests);
+
+        if (serviceRequest.hasSubject() && serviceRequest.getSubject().hasReference()) {
+            String patientUUID = serviceRequest.getSubject().getReferenceElement().getIdPart();
+            org.openelisglobal.patient.valueholder.Patient patient = getItemByFhirId(patientUUID, patientService);
+            if (patient != null) {
+                updateData.setPatientId(patient.getId());
+            }
+        }
+
+        if (serviceRequest.hasRequester() && serviceRequest.getRequester().hasReference()) {
+            String requesterUUID = serviceRequest.getRequester().getReferenceElement().getIdPart();
+            org.openelisglobal.provider.valueholder.Provider provider = getItemByFhirId(requesterUUID, providerService);
+            if (provider != null) {
+                updateData.setProvider(provider);
+                provider.getPerson().setSysUserId(sysuserId);
+                updateData.setProviderPerson(provider.getPerson());
             }
         }
 
         if (serviceRequest.hasPriority()) {
-            String fhirPriority = serviceRequest.getPriority().toCode();
-            try {
-                updateData.setPriority(OrderPriority.valueOf(fhirPriority.toUpperCase()));
-            } catch (IllegalArgumentException e) {
+            ServiceRequest.ServiceRequestPriority fhirPriority = serviceRequest.getPriority();
+            if (ServiceRequest.ServiceRequestPriority.STAT.equals(fhirPriority)) {
+                updateData.setPriority(OrderPriority.STAT);
+            } else if (ServiceRequest.ServiceRequestPriority.URGENT.equals(fhirPriority)
+                    || ServiceRequest.ServiceRequestPriority.ASAP.equals(fhirPriority)) {
+                updateData.setPriority(OrderPriority.TIMED);
+            } else {
                 updateData.setPriority(OrderPriority.ROUTINE);
             }
-        }
-
-        if (serviceRequest.hasStatus()) {
-            // You can use this to set the logic for whether this is a new order or update
         }
 
         return updateData;

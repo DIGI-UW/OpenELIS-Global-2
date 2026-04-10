@@ -6,6 +6,7 @@ import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
+import ca.uhn.fhir.rest.annotation.ResourceParam;
 import ca.uhn.fhir.rest.annotation.Search;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.param.DateRangeParam;
@@ -33,6 +34,9 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientUtil;
+import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.action.util.SampleUtil;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
@@ -41,6 +45,8 @@ import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.BindException;
+import org.springframework.validation.Errors;
 
 @Component
 public class ServiceRequestProvider implements IResourceProvider {
@@ -53,6 +59,9 @@ public class ServiceRequestProvider implements IResourceProvider {
 
     @Autowired
     private FhirTransformService fhirTransformService;
+
+    @Autowired
+    private PatientService patientService;
 
     @Autowired
     private FhirUtil util;
@@ -91,35 +100,107 @@ public class ServiceRequestProvider implements IResourceProvider {
     }
 
     @Create
-    public MethodOutcome createServiceRequest(ServiceRequest serviceRequest, HttpServletRequest request) {
-        String method = "createServiceRequest";
-        String sysuserId = FhirProviderUtils.getSysUserId(request);
+    public MethodOutcome createServiceRequest(@ResourceParam ServiceRequest serviceRequest,
+            HttpServletRequest request) {
+
+        final String method = "createServiceRequest";
+        String sysuserId = null;
+
         try {
+
+            if (request == null) {
+                throw new InvalidRequestException("HttpServletRequest cannot be null");
+            }
+
+            sysuserId = FhirProviderUtils.getSysUserId(request);
+            if (sysuserId == null || sysuserId.trim().isEmpty()) {
+                throw new InvalidRequestException("Missing or invalid system user ID");
+            }
+
             if (serviceRequest == null) {
                 throw new InvalidRequestException("ServiceRequest resource cannot be null");
             }
+
+            if (!serviceRequest.hasSubject()) {
+                throw new InvalidRequestException("ServiceRequest.subject is required");
+            }
+
+            if (!serviceRequest.hasCode()) {
+                throw new InvalidRequestException("ServiceRequest.code is required");
+            }
+
             SamplePatientUpdateData updateData = fhirTransformService.createOrderItemFromServiceRequest(serviceRequest,
                     sysuserId);
+
+            if (updateData == null) {
+                throw new InternalErrorException("Failed to transform ServiceRequest into updateData");
+            }
+
+            if (updateData.getPatientId() == null) {
+                throw new InvalidRequestException("Derived patientId is null after transformation");
+            }
+
             SamplePatientEntryForm form = new SamplePatientEntryForm();
-            PatientManagementInfo patientInfo = new PatientManagementInfo();
-            Patient patient = fhirTransformService.transformToFhirPatient(updateData.getPatientId());
-            patientInfo = fhirTransformService.createOePatientManagementInfo(patient);
+            PatientManagementInfo patientInfo;
+
+            Patient fhirPatient = fhirTransformService.transformToFhirPatient(updateData.getPatientId());
+
+            if (fhirPatient == null) {
+                throw new ResourceNotFoundException("Patient not found for ID: " + updateData.getPatientId());
+            }
+
+            patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
+            Errors errors = new BindException(patientInfo, "patientInfo");
+            ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
+
+            org.openelisglobal.patient.valueholder.Patient patient = new org.openelisglobal.patient.valueholder.Patient();
+            PatientUtil.preparePatientData(errors, request, patientInfo, patient);
+
+            if (patientInfo == null) {
+                throw new InternalErrorException("Failed to create PatientManagementInfo");
+            }
+            if (patientInfo.getPatientContact() != null) {
+                patient.getPerson().setSysUserId(sysuserId);
+                patientInfo.getPatientContact().setPerson(patient.getPerson());
+            } else {
+                LogEvent.logInfo(this.getClass().getSimpleName(), method, "No patient contact info provided");
+            }
+
             PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
+
+            if (patientUpdate == null) {
+                throw new InternalErrorException("PatientManagementUpdate bean not found");
+            }
+
             patientUpdate.setSysUserIdFromRequest(request);
+
             SampleUtil.testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
+
             fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
 
-            // Return the created resource with its new ID
             MethodOutcome outcome = new MethodOutcome();
+            outcome.setCreated(true);
             outcome.setResource(serviceRequest);
+
             return outcome;
-        } catch (InvalidRequestException e) {
-            throw e; // FHIR server will map this to HTTP 400
+
+        } catch (InvalidRequestException | ResourceNotFoundException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Client error: " + safeMessage(e));
+
+            throw e;
+
+        } catch (InternalErrorException e) {
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Internal error: " + safeMessage(e));
+
+            throw e;
+
         } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while creating ServiceRequest: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error while creating ServiceRequest", e);
+
+            LogEvent.logError(this.getClass().getSimpleName(), method, "Unhandled exception: " + safeMessage(e));
+
+            throw new InternalErrorException("Unexpected server error while creating ServiceRequest");
         }
     }
 
@@ -179,6 +260,13 @@ public class ServiceRequestProvider implements IResourceProvider {
                     "Error searching ServiceRequest: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error searching ServiceRequest");
         }
+    }
+
+    /**
+     * Prevents NPE when logging exception messages
+     */
+    private String safeMessage(Exception e) {
+        return (e == null || e.getMessage() == null) ? "No error message available" : e.getMessage();
     }
 
 }

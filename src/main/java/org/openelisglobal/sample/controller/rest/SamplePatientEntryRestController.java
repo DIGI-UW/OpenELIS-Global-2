@@ -32,6 +32,7 @@ import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
@@ -284,7 +285,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
         SampleUtil.testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
-
 
         // OGC-356: For environmental workflow, don't save patient data
         if ("environmental".equals(workflowType)) {
