@@ -381,6 +381,10 @@ function PharmaceuticalProcessingPage({
     const selectedReagentItems = reagents.filter((reagent) =>
       bulkPrepareValues.selectedReagents.includes(reagent.id),
     );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      setError("Select at least one reagent before preparing samples.");
+      return;
+    }
     const invalidReagentItems = getInvalidReagentUsageItems(
       selectedReagentItems,
       bulkPrepareValues.reagentQuantities,

@@ -386,6 +386,10 @@ function ImmunologyInitialProcessingPage({
     const selectedReagentItems = reagents.filter((reagent) =>
       processingValues.selectedReagents.includes(reagent.id),
     );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      setError("Select at least one reagent before applying processing.");
+      return;
+    }
     const invalidReagentItems = getInvalidReagentUsageItems(
       selectedReagentItems,
       processingValues.reagentQuantities,

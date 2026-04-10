@@ -353,6 +353,10 @@ function MNTDTestExecutionPage({
     const selectedKitObjects = reagents.filter((r) =>
       executionData.selectedKits.includes(r.id),
     );
+    if (reagents.length > 0 && selectedKitObjects.length === 0) {
+      setError("Select at least one kit before saving execution data.");
+      return;
+    }
     const invalidKitItems = getInvalidReagentUsageItems(
       selectedKitObjects,
       executionData.kitQuantities,

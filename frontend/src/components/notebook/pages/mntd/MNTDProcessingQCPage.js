@@ -301,6 +301,10 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     const selectedKitObjects = reagents.filter((r) =>
       extractionData.selectedKits.includes(r.id),
     );
+    if (reagents.length > 0 && selectedKitObjects.length === 0) {
+      setError("Select at least one extraction kit before saving.");
+      return;
+    }
     const invalidKitItems = getInvalidReagentUsageItems(
       selectedKitObjects,
       extractionData.kitQuantities,

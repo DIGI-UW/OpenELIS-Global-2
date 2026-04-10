@@ -449,6 +449,10 @@ function ImmunologyAdditionalAssaysPage({
     const selectedReagentItems = reagents.filter((reagent) =>
       assayValues.selectedReagents.includes(reagent.id),
     );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      setError("Select at least one reagent before applying assay data.");
+      return;
+    }
     const invalidReagentItems = getInvalidReagentUsageItems(
       selectedReagentItems,
       assayValues.reagentQuantities,

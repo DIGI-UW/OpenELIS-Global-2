@@ -98,48 +98,45 @@ function ReagentUsageSelector({
               Number.isFinite(quantityPerSample) && sampleCount > 0
                 ? quantityPerSample * sampleCount
                 : null;
-            const helperParts = [];
-            if (item.lotNumber) {
-              helperParts.push(
-                intl.formatMessage(
+            const lotText = item.lotNumber
+              ? intl.formatMessage(
                   {
                     id: "notebook.reagentUsage.lot",
                     defaultMessage: "FEFO lot shown: {lot}",
                   },
                   { lot: item.lotNumber },
-                ),
-              );
-            }
-            if (item.currentQuantity !== undefined && item.currentQuantity !== null) {
-              helperParts.push(
-                intl.formatMessage(
-                  {
-                    id: "notebook.reagentUsage.available",
-                    defaultMessage: "Available: {quantity} {units}",
-                  },
-                  {
-                    quantity: item.currentQuantity,
-                    units: item.units || "",
-                  },
-                ),
-              );
-            }
-            if (totalQuantity !== null) {
-              helperParts.push(
-                intl.formatMessage(
-                  {
-                    id: "notebook.reagentUsage.totalDeduction",
-                    defaultMessage:
-                      "Total deduction for {count} sample(s): {total} {units}",
-                  },
-                  {
-                    count: sampleCount,
-                    total: totalQuantity,
-                    units: item.units || "",
-                  },
-                ),
-              );
-            }
+                )
+              : null;
+            const availableText =
+              item.currentQuantity !== undefined && item.currentQuantity !== null
+                ? intl.formatMessage(
+                    {
+                      id: "notebook.reagentUsage.available",
+                      defaultMessage: "Available stock: {quantity} {units}",
+                    },
+                    {
+                      quantity: item.currentQuantity,
+                      units: item.units || "",
+                    },
+                  )
+                : null;
+            const totalDeductionText =
+              totalQuantity !== null
+                ? intl.formatMessage(
+                    {
+                      id: "notebook.reagentUsage.totalDeduction",
+                      defaultMessage:
+                        "Total deduction for {count} sample(s): {total}",
+                    },
+                    {
+                      count: sampleCount,
+                      total: totalQuantity,
+                    },
+                  )
+                : intl.formatMessage({
+                    id: "notebook.reagentUsage.totalDeductionPending",
+                    defaultMessage: "Enter quantity to calculate total deduction",
+                  });
 
             return (
               <div
@@ -153,6 +150,19 @@ function ReagentUsageSelector({
               >
                 <div style={{ marginBottom: "0.5rem", fontWeight: 600 }}>
                   {item.label || item.name}
+                </div>
+                <div
+                  style={{
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                    display: "grid",
+                    gap: "0.25rem",
+                  }}
+                >
+                  {lotText && <div>{lotText}</div>}
+                  {availableText && <div>{availableText}</div>}
+                  <div style={{ fontWeight: 600 }}>{totalDeductionText}</div>
                 </div>
                 <TextInput
                   id={`reagent-quantity-${item.id}`}
@@ -175,7 +185,6 @@ function ReagentUsageSelector({
                     id: "notebook.reagentUsage.quantityInvalid",
                     defaultMessage: "Enter a number greater than 0",
                   })}
-                  helperText={helperParts.join(" | ")}
                 />
               </div>
             );
