@@ -44,9 +44,10 @@ public class InventoryLotRestController extends BaseRestController {
     private InventoryStorageLocationService storageLocationService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<InventoryLot>> getAll() {
+    public ResponseEntity<List<InventoryLot>> getAll(@RequestParam(required = false) LotStatus status) {
         try {
-            List<InventoryLot> lots = inventoryLotService.getAll();
+            List<InventoryLot> lots = status != null ? inventoryLotService.getByStatus(status)
+                    : inventoryLotService.getAll();
             return ResponseEntity.ok(lots);
         } catch (Exception e) {
             LogEvent.logError(e);

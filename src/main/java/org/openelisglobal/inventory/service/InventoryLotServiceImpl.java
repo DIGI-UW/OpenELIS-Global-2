@@ -53,6 +53,12 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional(readOnly = true)
+    public List<InventoryLot> getByStatus(LotStatus status) {
+        return inventoryLotDAO.getByStatus(status);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<InventoryLot> getExpiringLots(int daysFromNow) {
         return inventoryLotDAO.getExpiringLots(daysFromNow);
     }
