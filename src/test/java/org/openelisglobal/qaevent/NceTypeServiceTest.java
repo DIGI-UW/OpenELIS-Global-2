@@ -42,7 +42,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         List<NceType> nceTypes = nceTypeService.getAllNceTypes();
         assertNotNull(nceTypes);
         assertEquals(5, nceTypes.size());
-        assertEquals("2", nceTypes.get(1).getId());
+        assertEquals(Integer.valueOf(2), nceTypes.get(1).getId());
     }
 
     @Test
@@ -50,7 +50,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllMatching("categoryId", "1002");
         assertNotNull(nceTypes);
         assertEquals(2, nceTypes.size());
-        assertEquals("5", nceTypes.get(1).getId());
+        assertEquals(Integer.valueOf(5), nceTypes.get(1).getId());
     }
 
     @Test
@@ -58,7 +58,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllMatching(propertyValues);
         assertNotNull(nceTypes);
         assertEquals(3, nceTypes.size());
-        assertEquals("4", nceTypes.get(1).getId());
+        assertEquals(Integer.valueOf(4), nceTypes.get(1).getId());
     }
 
     @Test
@@ -66,7 +66,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllOrdered("lastupdated", false);
         assertNotNull(nceTypes);
         assertEquals(5, nceTypes.size());
-        assertEquals("4", nceTypes.get(2).getId());
+        assertEquals(Integer.valueOf(4), nceTypes.get(2).getId());
     }
 
     @Test
@@ -74,7 +74,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllOrdered(orderProperties, true);
         assertNotNull(nceTypes);
         assertEquals(5, nceTypes.size());
-        assertEquals("3", nceTypes.get(3).getId());
+        assertEquals(Integer.valueOf(3), nceTypes.get(3).getId());
     }
 
     @Test
@@ -82,7 +82,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllMatchingOrdered("categoryId", "1001", "lastupdated", true);
         assertNotNull(nceTypes);
         assertEquals(3, nceTypes.size());
-        assertEquals("4", nceTypes.get(1).getId());
+        assertEquals(Integer.valueOf(4), nceTypes.get(1).getId());
     }
 
     @Test
@@ -90,7 +90,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllMatchingOrdered("categoryId", "1001", orderProperties, true);
         assertNotNull(nceTypes);
         assertEquals(3, nceTypes.size());
-        assertEquals("1", nceTypes.get(0).getId());
+        assertEquals(Integer.valueOf(1), nceTypes.get(0).getId());
     }
 
     @Test
@@ -98,7 +98,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllMatchingOrdered(propertyValues, "id", true);
         assertNotNull(nceTypes);
         assertEquals(3, nceTypes.size());
-        assertEquals("2", nceTypes.get(2).getId());
+        assertEquals(Integer.valueOf(2), nceTypes.get(2).getId());
     }
 
     @Test
@@ -106,7 +106,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAllMatchingOrdered(propertyValues, orderProperties, false);
         assertNotNull(nceTypes);
         assertEquals(3, nceTypes.size());
-        assertEquals("5", nceTypes.get(0).getId());
+        assertEquals(Integer.valueOf(5), nceTypes.get(0).getId());
     }
 
     @Test
@@ -177,7 +177,7 @@ public class NceTypeServiceTest extends BaseWebContextSensitiveTest {
         nceTypes = nceTypeService.getAll();
         assertEquals(5, nceTypes.size());
         assertTrue(nceTypes.stream().anyMatch(nct -> "expired reagent".equals(nct.getName())));
-        NceType nceType = nceTypeService.get("3");
+        NceType nceType = nceTypeService.get(3);
         nceTypeService.delete(nceType);
         List<NceType> newNceTypes = nceTypeService.getAll();
         assertFalse(newNceTypes.stream().anyMatch(nct -> "expired reagent".equals(nct.getName())));

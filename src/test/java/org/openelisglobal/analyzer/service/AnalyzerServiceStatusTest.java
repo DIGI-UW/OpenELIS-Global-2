@@ -23,6 +23,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
+import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 
 /**
@@ -46,6 +47,9 @@ public class AnalyzerServiceStatusTest {
 
     @Mock
     private AnalyzerTestMappingService analyzerMappingService;
+
+    @Mock
+    private AuditTrailService auditTrailService;
 
     @InjectMocks
     private AnalyzerServiceImpl analyzerServiceImpl;
@@ -381,5 +385,43 @@ public class AnalyzerServiceStatusTest {
         when(baseObjectDAO.findGenericAnalyzersWithPatterns()).thenReturn(Collections.singletonList(analyzer));
 
         assertEquals(Optional.empty(), analyzerServiceImpl.findByIdentifierPatternMatch("MINDRAY^BA-88A^1.0"));
+    }
+
+    // === OGC-526: PENDING_REGISTRATION status transition tests ===
+
+    @Test
+    public void testValidateStatusTransition_FromPendingRegistration_ToSetup_Allowed() {
+        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
+                AnalyzerStatus.SETUP));
+    }
+
+    @Test
+    public void testValidateStatusTransition_FromPendingRegistration_ToInactive_Allowed() {
+        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
+                AnalyzerStatus.INACTIVE));
+    }
+
+    @Test
+    public void testValidateStatusTransition_FromPendingRegistration_ToActive_NotAllowed() {
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
+                AnalyzerStatus.ACTIVE));
+    }
+
+    @Test
+    public void testValidateStatusTransition_FromPendingRegistration_ToDeleted_NotAllowed() {
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
+                AnalyzerStatus.DELETED));
+    }
+
+    @Test
+    public void testValidateStatusTransition_FromPendingRegistration_SameStatus_Allowed() {
+        assertTrue(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.PENDING_REGISTRATION,
+                AnalyzerStatus.PENDING_REGISTRATION));
+    }
+
+    @Test
+    public void testValidateStatusTransition_FromActive_ToPendingRegistration_NotAllowed() {
+        assertFalse(analyzerServiceImpl.validateStatusTransition(AnalyzerStatus.ACTIVE,
+                AnalyzerStatus.PENDING_REGISTRATION));
     }
 }

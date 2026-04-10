@@ -8,6 +8,10 @@
     * the License. * * The Original Code is OpenELIS code. * * Copyright (C)
     ITECH, University of Washington, Seattle WA. All Rights Reserved. -->
 <dataset>
+    <!-- Reference table entry for DICTIONARY (needed for audit trail) -->
+    <reference_tables id="9999" name="DICTIONARY"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+
     <!-- Dictionary Category Entries -->
     <dictionary_category id="1"
         description="Category Description 1" local_Abbrev="CA1"

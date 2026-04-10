@@ -120,9 +120,11 @@ export class Sidenav {
 
   /** Navigate to storage section and wait for load */
   async gotoStorage(path = "samples") {
-    await this.page.goto(`/Storage/${path}`, { waitUntil: "commit" });
+    await this.page.goto(`/Storage/${path}`, {
+      waitUntil: "domcontentloaded",
+    });
     await expect(this.page).toHaveURL(new RegExp(`/Storage/${path}`));
-    await expect(this.nav).toBeVisible();
+    await expect(this.menuButton).toBeVisible();
   }
 
   /**
@@ -142,10 +144,10 @@ export class Sidenav {
   /** Navigate to freezer monitoring */
   async gotoFreezer(tab = 0) {
     await this.page.goto(`/FreezerMonitoring?tab=${tab}`, {
-      waitUntil: "commit",
+      waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(/FreezerMonitoring/);
-    await expect(this.nav).toBeVisible();
+    await expect(this.menuButton).toBeVisible();
   }
 
   /**

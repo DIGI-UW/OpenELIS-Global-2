@@ -2,7 +2,8 @@
 
 **Branch (historical M1 reference)**:
 `feat/012-ogc-337-generic-astm-plugin-profiles-m1-plugin-config`  
-**Current implementation branch**: `feat/012-genexpert-astm-demo`  
+**Current implementation state on this branch**: `fix/013-hl7-test-connection`
+(consolidated analyzer workflow alignment)  
 **Date**: 2026-02-27  
 **Spec**: [spec.md](./spec.md)  
 **Jira**: OGC-337
@@ -109,8 +110,7 @@ specs/012-generic-astm-plugin-profiles/
 
 projects/analyzer-profiles/
 ├── astm/*.json
-├── hl7/*.json
-└── file/*.json
+└── hl7/*.json
 
 src/main/resources/liquibase/3.4.x.x/
 ├── 009-decouple-test-mappings.xml
@@ -123,6 +123,13 @@ src/main/resources/liquibase/3.4.x.x/
 Use `projects/analyzer-profiles/` only. Rename from
 `projects/analyzer-defaults/` and remove legacy references. No compatibility
 alias/fallback is required for this feature.
+
+Scope note for the consolidated branch:
+
+- `012` owns the shared analyzer-profile catalog rename and the ASTM/HL7 profile
+  apply surface used by this feature.
+- FILE profiles live under the same repository path, but FILE-specific profile
+  ownership and runtime behavior are tracked in `014`.
 
 M1 exit criterion for naming:
 

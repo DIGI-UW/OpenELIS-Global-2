@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <changeSet id="add-audit-trail-menu-entry" author="systemLevelAudit">
+    <comment>Add Audit Trail as top-level Reports sub-menu (sibling of Routine/Study)</comment>
+    <sql>
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports'),
+             3, 'menu_reports_audittrail', '/AuditTrailReports', 'sideNav.title.audittrail', true
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail');
+    </sql>
+  </changeSet>
+
+  <changeSet id="deactivate-old-audit-trail-menu-entries" author="systemLevelAudit">
+    <comment>Deactivate old audit trail entries nested under Routine and Study</comment>
+    <sql>
+      UPDATE clinlims.menu SET is_active = false
+        WHERE element_id = 'menu_reports_auditTrail'
+          AND parent_id != (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports');
+      UPDATE clinlims.menu SET is_active = false WHERE element_id = 'menu_reports_auditTrail.study';
+    </sql>
+  </changeSet>
+
+  <changeSet id="add-audit-trail-sidenav-children" author="systemLevelAudit">
+    <comment>Add System Events and Order Events as child menu items under Audit Trail folder</comment>
+    <sql>
+      -- Clear the action_url so the parent becomes a non-navigating folder
+      UPDATE clinlims.menu SET action_url = '' WHERE element_id = 'menu_reports_audittrail';
+
+      -- Add "System Events" child menu item
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail'),
+             1, 'menu_reports_audittrail_system', '/AuditTrailReport?type=system',
+             'sideNav.label.audittrail.systemEvents', true
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail_system');
+
+      -- Add "Order Events" child menu item
+      INSERT INTO clinlims.menu (id, parent_id, presentation_order, element_id, action_url, display_key, is_active)
+      SELECT nextval('clinlims.menu_seq'),
+             (SELECT id FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail'),
+             2, 'menu_reports_audittrail_order', '/AuditTrailReport?type=order',
+             'sideNav.label.audittrail.orderEvents', true
+      WHERE NOT EXISTS (SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_audittrail_order');
+    </sql>
+  </changeSet>
+
+  <changeSet id="add-history-indexes-for-system-audit" author="systemLevelAudit">
+    <comment>Add indexes to support system audit event queries (filter/sort by timestamp, reference_table, sys_user_id)</comment>
+    <sql>
+      CREATE INDEX IF NOT EXISTS idx_history_timestamp_reftable
+        ON clinlims.history (timestamp DESC, reference_table);
+      CREATE INDEX IF NOT EXISTS idx_history_sys_user_id
+        ON clinlims.history (sys_user_id);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>
