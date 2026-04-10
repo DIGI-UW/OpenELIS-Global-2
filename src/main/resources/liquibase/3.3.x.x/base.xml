@@ -89,5 +89,5 @@
 
   <!-- OGC-356: Sample type request table for decoupled order workflow -->
   <include relativeToChangelogFile="true" file="034-create-sample-type-request-table.xml"/>
- 
+
 </databaseChangeLog>
