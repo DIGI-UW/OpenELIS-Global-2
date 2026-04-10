@@ -22,7 +22,9 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.util.IdValuePair;
@@ -215,6 +217,19 @@ public class SampleOrderItem implements Serializable {
     private QuestionnaireResponse additionalQuestions;
 
     private String programId;
+
+    /**
+     * Environmental workflow fields stored using ObservationHistory pattern. Keys
+     * correspond to ObservationHistoryType.type_name: - collectionSiteDescription:
+     * Description of the collection site - requesterReference: External reference
+     * from requester - environmentalConditions: Weather/environmental conditions at
+     * collection - locationHierarchy.1, locationHierarchy.2, etc.: Address
+     * hierarchy IDs - workflowType: "clinical" or "environmental"
+     *
+     * Note: Uses Object values to support both String values and nested objects
+     * (for backwards compatibility with locationHierarchy as object).
+     */
+    private Map<String, Object> environmentalFields = new HashMap<>();
 
     private boolean isEQASample;
     private String eqaProgramId;
@@ -667,5 +682,28 @@ public class SampleOrderItem implements Serializable {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    public Map<String, Object> getEnvironmentalFields() {
+        return environmentalFields;
+    }
+
+    public void setEnvironmentalFields(Map<String, Object> environmentalFields) {
+        this.environmentalFields = environmentalFields != null ? environmentalFields : new HashMap<>();
+    }
+
+    /**
+     * Helper method to get a string value from environmentalFields. Handles both
+     * direct String values and nested objects (flattens locationHierarchy).
+     */
+    public String getEnvironmentalFieldAsString(String key) {
+        Object value = environmentalFields.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value.toString();
     }
 }

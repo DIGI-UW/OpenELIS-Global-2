@@ -15,6 +15,7 @@ import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
+import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
@@ -37,6 +38,9 @@ import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
+import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
@@ -97,8 +101,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
         "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.calendar" }, excludeFilters = {
-
+        "org.openelisglobal.calendar", "org.openelisglobal.esig" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -316,8 +319,19 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean()
-    public AnalyzerResultsController analyzerResultsController() {
-        return mock(AnalyzerResultsController.class);
+    public AnalyzerResultsController analyzerResultsController(TypeOfSampleService typeOfSampleService) {
+        return new AnalyzerResultsController(typeOfSampleService);
+    }
+
+    @Bean
+    public AccessionResultsRestController accessionResultsRestController(RoleService roleService) {
+        return new AccessionResultsRestController(roleService);
+    }
+
+    @Bean
+    @Profile("test")
+    public PagingProperties pagingProperties() {
+        return new PagingProperties();
     }
 
     @Bean
