@@ -420,9 +420,13 @@ function PathologyCaseView() {
           >
             <SelectItem disabled value="placeholder" text="Status" />
 
-            {statuses.map((status, index) => {
+            {statuses.map((status) => {
               return (
-                <SelectItem key={index} text={status.value} value={status.id} />
+                <SelectItem
+                  key={status.id}
+                  text={status.value}
+                  value={status.id}
+                />
               );
             })}
           </Select>
@@ -443,9 +447,9 @@ function PathologyCaseView() {
             }}
           >
             <SelectItem />
-            {technicianUsers.map((user, index) => {
+            {technicianUsers.map((user) => {
               return (
-                <SelectItem key={index} text={user.value} value={user.id} />
+                <SelectItem key={user.id} text={user.value} value={user.id} />
               );
             })}
           </Select>
@@ -467,9 +471,9 @@ function PathologyCaseView() {
             }}
           >
             <SelectItem />
-            {pathologistUsers.map((user, index) => {
+            {pathologistUsers.map((user) => {
               return (
-                <SelectItem key={index} text={user.value} value={user.id} />
+                <SelectItem key={user.id} text={user.value} value={user.id} />
               );
             })}
           </Select>
@@ -993,7 +997,7 @@ function PathologyCaseView() {
                   {pathologySampleInfo.techniques &&
                     pathologySampleInfo.techniques.map((technique, index) => (
                       <Tag
-                        key={index}
+                        key={technique.id}
                         filter
                         onClose={() => {
                           var info = { ...pathologySampleInfo };
@@ -1038,7 +1042,7 @@ function PathologyCaseView() {
                     <>
                       <Column lg={2} md={4} sm={2}>
                         <Tag
-                          key={index}
+                          key={request.id}
                           filter
                           onClose={() => {
                             var info = { ...pathologySampleInfo };
@@ -1067,10 +1071,10 @@ function PathologyCaseView() {
                           }}
                         >
                           <SelectItem />
-                          {requestStatuses.map((status, index) => {
+                          {requestStatuses.map((status) => {
                             return (
                               <SelectItem
-                                key={index}
+                                key={status.id}
                                 text={status.value}
                                 value={status.id}
                               />
@@ -1173,7 +1177,7 @@ function PathologyCaseView() {
                   {pathologySampleInfo.conclusions &&
                     pathologySampleInfo.conclusions.map((conclusion, index) => (
                       <Tag
-                        key={index}
+                        key={conclusion.id}
                         filter
                         onClose={() => {
                           var info = { ...pathologySampleInfo };
@@ -1246,7 +1250,7 @@ function PathologyCaseView() {
                     pathologySampleInfo.immunoHistoChemistryTestIds.map(
                       (test, index) => (
                         <Tag
-                          key={index}
+                          key={test.id}
                           filter
                           onClose={() => {
                             var info = { ...pathologySampleInfo };
