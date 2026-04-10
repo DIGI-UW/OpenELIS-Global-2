@@ -10,9 +10,9 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 public interface InventoryLotService extends BaseObjectService<InventoryLot, Long> {
 
     /**
-     * Get available lots for an item sorted by FEFO (First Expired, First Out)
-     * Returns lots that are: - ACTIVE or IN_USE status - QC PASSED - Have quantity
-     * > 0 - Sorted by earliest expiration date first
+     * Get available lots for an item sorted by FEFO (First Expired, First Out).
+     * Returns lots that are ACTIVE/IN_USE, QC PASSED, have positive quantity, and
+     * are not effectively expired.
      */
     List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId);
 
@@ -25,6 +25,11 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
      * Get lots by storage location ID
      */
     List<InventoryLot> getByStorageLocationId(Long locationId);
+
+    /**
+     * Get lots by status
+     */
+    List<InventoryLot> getByStatus(LotStatus status);
 
     /**
      * Get lots expiring within specified days
@@ -47,9 +52,14 @@ public interface InventoryLotService extends BaseObjectService<InventoryLot, Lon
     InventoryLot getByFhirUuid(String fhirUuid);
 
     /**
-     * Get total current quantity for an item across all lots
+     * Get total current quantity for an item across active/in-use lots.
      */
     Double getTotalCurrentQuantity(Long itemId);
+
+    /**
+     * Get total usable quantity for an item across FEFO-eligible lots.
+     */
+    Double getTotalUsableQuantity(Long itemId);
 
     /**
      * Open a lot (marks as IN_USE and calculates expiry after opening for reagents)
