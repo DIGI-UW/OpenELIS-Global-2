@@ -46,6 +46,7 @@ import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
+import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.service.ProgramService;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.program.valueholder.ProgramSample;
@@ -56,6 +57,7 @@ import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -92,7 +94,7 @@ public class SamplePatientUpdateData {
     private OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
     private ElectronicOrderService electronicOrderService = SpringContext.getBean(ElectronicOrderService.class);
     private ProgramService programService = SpringContext.getBean(ProgramService.class);
-
+    private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
     private List<ObservationHistory> observations = new ArrayList<>();
     private List<OrganizationAddress> orgAddressExtra = new ArrayList<>();
     private final String currentUserId;
@@ -276,24 +278,31 @@ public class SamplePatientUpdateData {
     }
 
     public void validateSample(Errors errors) {
-        // assure accession number
+        validateSample(errors, true);
+    }
 
-        // TODO
-        IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
-                .checkAccessionNumberValidity(accessionNumber, null, null, null);
+    public void validateSample(Errors errors, boolean requireSampleItems) {
+        // assure accession number - skip validation for updates (sample already exists)
+        // When updating, the accession number is already in the database for this
+        // sample,
+        // so checkAccessionNumberValidity would incorrectly return USED_FAIL
+        if (sample == null || sample.getId() == null) {
+            IAccessionNumberValidator.ValidationResults result = AccessionNumberUtil
+                    .checkAccessionNumberValidity(accessionNumber, null, null, null);
 
-        if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
-            String message = AccessionNumberUtil.getInvalidMessage(result);
-            errors.reject(message);
+            if (result != IAccessionNumberValidator.ValidationResults.SUCCESS) {
+                String message = AccessionNumberUtil.getInvalidMessage(result);
+                errors.reject(message);
+            }
         }
 
-        // assure that there is at least 1 sample
-        if (sampleItemsTests.isEmpty()) {
+        // assure that there is at least 1 sample (skip for order-entry-only mode)
+        if (requireSampleItems && sampleItemsTests.isEmpty()) {
             errors.reject("errors.no.sample");
         }
 
-        // assure that all samples have tests
-        if (!allSamplesHaveTests()) {
+        // assure that all samples have tests (skip for order-entry-only mode)
+        if (requireSampleItems && !allSamplesHaveTests()) {
             errors.reject("errors.samples.with.no.tests");
         }
 
@@ -315,6 +324,24 @@ public class SamplePatientUpdateData {
     }
 
     public void createPopulatedSample(String receivedDate, SampleOrderItem sampleOrder) {
+        // Check if editing an existing sample
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getSampleId())) {
+            // Load existing sample for update
+            sample = SpringContext.getBean(SampleService.class).get(sampleOrder.getSampleId());
+            if (sample != null) {
+                sample.setSysUserId(currentUserId);
+                // Update fields that can change during edit
+                sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
+                sample.setReferringId(sampleOrder.getRequesterSampleID());
+                if (useReceiveDateForCollectionDate) {
+                    sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
+                }
+                setElectronicOrderIfNeeded(sampleOrder);
+                return;
+            }
+        }
+
+        // Create new sample
         sample = new Sample();
         sample.setSysUserId(currentUserId);
         sample.setAccessionNumber(accessionNumber);
@@ -329,7 +356,14 @@ public class SamplePatientUpdateData {
             sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
         }
 
-        sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
+        // Set domain based on workflow type (OGC-356)
+        // Environmental samples use "E" domain, clinical/human samples use "H" domain
+        String workflowType = sampleOrder.getEnvironmentalFieldAsString("workflowType");
+        if ("environmental".equals(workflowType)) {
+            sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.environmental"));
+        } else {
+            sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
+        }
         sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
 
         setElectronicOrderIfNeeded(sampleOrder);
@@ -393,7 +427,9 @@ public class SamplePatientUpdateData {
         sampleHuman.setSysUserId(currentUserId);
         sampleHuman.setSampleId(sample.getId());
         sampleHuman.setPatientId(patientId);
-        if (provider != null) {
+        // Only link provider if it's a real provider, not the "unknown provider"
+        // placeholder
+        if (provider != null && Boolean.TRUE.equals(provider.getActive())) {
             sampleHuman.setProviderId(provider.getId());
         }
     }
@@ -522,28 +558,43 @@ public class SamplePatientUpdateData {
     public void initSampleData(String sampleXML, String receivedDate, boolean trackPayments,
             SampleOrderItem sampleOrder) {
         createPopulatedSample(receivedDate, sampleOrder);
-
         addObservations(sampleOrder, trackPayments);
 
         SampleAddService sampleAddService = new SampleAddService(sampleXML, currentUserId, getSample(), receivedDate);
-        setSampleItemsTests(sampleAddService.createSampleTestCollection());
+        List<SampleTestCollection> sampleItems = sampleAddService.createSampleTestCollection();
+        setSampleItemsTests(sampleItems);
         setSampleAddService(sampleAddService);
     }
 
     public void initProgramQuestions(String programId, QuestionnaireResponse additionalQuestions) {
         Program program = programService.get(programId);
         setProgramQuestionnaireResponse(additionalQuestions);
-        if (program.getProgramName().toLowerCase().contains("pathology")) {
-            setProgramSample(new PathologySample());
-        } else if (program.getProgramName().toLowerCase().contains("immunohistochemistry")) {
-            setProgramSample(new ImmunohistochemistrySample());
-        } else if (program.getProgramName().toLowerCase().contains("cytology")) {
-            setProgramSample(new CytologySample());
-        } else {
-            setProgramSample(new ProgramSample());
+
+        // For updates (sample already exists), try to load existing ProgramSample
+        ProgramSample existingProgramSample = null;
+        if (sample != null && sample.getId() != null) {
+            existingProgramSample = programSampleService.getProgrammeSampleBySample(Integer.valueOf(sample.getId()),
+                    program.getProgramName());
         }
-        getProgramSample().setProgram(program);
-        getProgramSample().setSysUserId(currentUserId);
+
+        if (existingProgramSample != null) {
+            // Update existing ProgramSample
+            setProgramSample(existingProgramSample);
+            getProgramSample().setSysUserId(currentUserId);
+        } else {
+            // Create new ProgramSample
+            if (program.getProgramName().toLowerCase().contains("pathology")) {
+                setProgramSample(new PathologySample());
+            } else if (program.getProgramName().toLowerCase().contains("immunohistochemistry")) {
+                setProgramSample(new ImmunohistochemistrySample());
+            } else if (program.getProgramName().toLowerCase().contains("cytology")) {
+                setProgramSample(new CytologySample());
+            } else {
+                setProgramSample(new ProgramSample());
+            }
+            getProgramSample().setProgram(program);
+            getProgramSample().setSysUserId(currentUserId);
+        }
     }
 
     private void addObservations(SampleOrderItem sampleOrder, boolean trackPayments) {
@@ -589,6 +640,145 @@ public class SamplePatientUpdateData {
                         ValueType.LITERAL);
             }
         }
+
+        // Add environmental workflow observations (OGC-356)
+        addEnvironmentalObservations(sampleOrder, observationHistoryService);
+    }
+
+    /**
+     * Add environmental workflow observations from the environmentalFields map.
+     * Maps frontend field keys to ObservationHistoryType names.
+     */
+    private void addEnvironmentalObservations(SampleOrderItem sampleOrder,
+            ObservationHistoryService observationHistoryService) {
+        if (sampleOrder.getEnvironmentalFields() == null || sampleOrder.getEnvironmentalFields().isEmpty()) {
+            return;
+        }
+
+        java.util.Map<String, Object> envFields = sampleOrder.getEnvironmentalFields();
+
+        // Collection site description
+        createObservation(getStringValue(envFields, "collectionSiteDescription"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_SITE_DESCRIPTION),
+                ValueType.LITERAL);
+
+        // Requester reference (e.g., EPA Method number)
+        createObservation(getStringValue(envFields, "requesterReference"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REQUESTER_REFERENCE),
+                ValueType.LITERAL);
+
+        // Environmental conditions at collection
+        createObservation(getStringValue(envFields, "environmentalConditions"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_CONDITIONS),
+                ValueType.LITERAL);
+
+        // Location hierarchy IDs - supports both nested object and flat keys
+        String locationRegionId = getNestedLocationValue(envFields, 1);
+        String locationDistrictId = getNestedLocationValue(envFields, 2);
+        String locationVillageId = getNestedLocationValue(envFields, 3);
+
+        createObservation(locationRegionId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_LOCATION_REGION_ID),
+                ValueType.LITERAL);
+        createObservation(locationDistrictId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_LOCATION_DISTRICT_ID),
+                ValueType.LITERAL);
+        createObservation(locationVillageId,
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_LOCATION_VILLAGE_ID),
+                ValueType.LITERAL);
+
+        // Workflow type (clinical vs environmental)
+        createObservation(getStringValue(envFields, "workflowType"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WORKFLOW_TYPE),
+                ValueType.LITERAL);
+
+        // Sampling site fields
+        createObservation(getStringValue(envFields, "samplingSiteId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "samplingSiteName"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SAMPLING_SITE_NAME),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "siteType"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_TYPE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "siteSubtype"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_SITE_SUBTYPE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "environmentalZone"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_ENVIRONMENTAL_ZONE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "regulatoryReference"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "collectionMethod"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "contactPerson"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PERSON),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "contactPhone"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PHONE),
+                ValueType.LITERAL);
+    }
+
+    /**
+     * Safely get a String value from a Map that may contain Object values.
+     */
+    private String getStringValue(java.util.Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return value.toString();
+    }
+
+    /**
+     * Extract location ID from environmentalFields for a given hierarchy level.
+     * Supports both: - New format: flat keys like "locationHierarchy.1",
+     * "locationHierarchy.2" - Old format: nested object "locationHierarchy": {"1":
+     * "id1", "2": "id2"}
+     */
+    @SuppressWarnings("unchecked")
+    private String getNestedLocationValue(java.util.Map<String, Object> envFields, int level) {
+        // Try new flat key format first: locationHierarchy.1, locationHierarchy.2, etc.
+        String value = getStringValue(envFields, "locationHierarchy." + level);
+        if (!GenericValidator.isBlankOrNull(value)) {
+            return value;
+        }
+
+        // Try old nested object format: locationHierarchy: {1: "id", 2: "id"}
+        Object locationHierarchy = envFields.get("locationHierarchy");
+        if (locationHierarchy instanceof java.util.Map) {
+            java.util.Map<String, Object> hierarchyMap = (java.util.Map<String, Object>) locationHierarchy;
+            Object levelValue = hierarchyMap.get(String.valueOf(level));
+            if (levelValue == null) {
+                levelValue = hierarchyMap.get(level); // Try integer key
+            }
+            if (levelValue != null) {
+                return levelValue.toString();
+            }
+        }
+
+        // Try alternative formats: location_Region, location_District, location_Village
+        switch (level) {
+        case 1:
+            value = getStringValue(envFields, "location_Region");
+            break;
+        case 2:
+            value = getStringValue(envFields, "location_District");
+            break;
+        case 3:
+            value = getStringValue(envFields, "location_Village");
+            if (GenericValidator.isBlankOrNull(value)) {
+                value = getStringValue(envFields, "location_Town");
+            }
+            break;
+        }
+        return value;
     }
 
     public boolean getCustomNotificationLogic() {

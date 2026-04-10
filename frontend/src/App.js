@@ -46,6 +46,7 @@ const CorrectiveActionsPlaceholder = React.lazy(
   () => import("./pages/analyzers/CorrectiveActionsPlaceholder"),
 );
 import ResultSearch from "./components/resultPage/ResultSearch";
+import AccessionResultsPage from "./components/resultPage/AccessionResultsPage";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
@@ -62,6 +63,7 @@ import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
+import TATReport from "./components/reports/tat";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = React.lazy(
   () => import("./components/analyserResults/Index"),
@@ -100,6 +102,14 @@ const ShipmentReport = React.lazy(
 );
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import {
+  OrderProvider,
+  OrderDashboard,
+  OrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+} from "./components/order";
 
 export default function App() {
   const defaultLocale =
@@ -516,6 +526,47 @@ export default function App() {
                   )}
                   role={Roles.RECEPTION}
                 />
+                {/* Decoupled Sample Collection Workflow - NAV-2 */}
+                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                <Route
+                  path="/order"
+                  render={({ match }) => (
+                    <OrderProvider>
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <OrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
@@ -527,6 +578,12 @@ export default function App() {
                   exact
                   component={() => <FindOrder />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NceDashboard"
+                  exact
+                  component={() => <NonConformIndex form="NceDashboard" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/ReportNonConformingEvent"
@@ -900,7 +957,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
+                      <AccessionResultsPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RESULTS}
@@ -965,6 +1022,12 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   component={() => <AuditTrailReportIndex />}
+                  role={Roles.REPORTS}
+                />
+                <SecureRoute
+                  path="/TATReport"
+                  exact
+                  component={() => <TATReport />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute
