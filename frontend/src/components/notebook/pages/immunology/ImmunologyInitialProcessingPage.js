@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -41,6 +48,8 @@ import ReagentUsageSelector, {
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -88,6 +97,8 @@ function ImmunologyInitialProcessingPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -177,6 +188,21 @@ function ImmunologyInitialProcessingPage({
       },
     );
   }, []);
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Load instruments from template or inventory
   const loadInstruments = useCallback(() => {
@@ -387,7 +413,7 @@ function ImmunologyInitialProcessingPage({
       processingValues.selectedReagents.includes(reagent.id),
     );
     if (reagents.length > 0 && selectedReagentItems.length === 0) {
-      setError("Select at least one reagent before applying processing.");
+      notifyError("Select at least one reagent before applying processing.");
       return;
     }
     const invalidReagentItems = getInvalidReagentUsageItems(
@@ -395,7 +421,7 @@ function ImmunologyInitialProcessingPage({
       processingValues.reagentQuantities,
     );
     if (invalidReagentItems.length > 0) {
-      setError("Enter a quantity greater than 0 for each selected reagent.");
+      notifyError("Enter a quantity greater than 0 for each selected reagent.");
       return;
     }
 

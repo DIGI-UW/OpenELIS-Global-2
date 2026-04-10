@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -42,6 +42,8 @@ import ReagentUsageSelector, {
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -64,6 +66,8 @@ function PharmaceuticalProcessingPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State
   const [samples, setSamples] = useState([]);
@@ -120,6 +124,21 @@ function PharmaceuticalProcessingPage({
     { value: "derivatization", label: "Derivatization" },
     { value: "sonication", label: "Sonication" },
   ];
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Load samples and reference data
   useEffect(() => {
@@ -382,7 +401,7 @@ function PharmaceuticalProcessingPage({
       bulkPrepareValues.selectedReagents.includes(reagent.id),
     );
     if (reagents.length > 0 && selectedReagentItems.length === 0) {
-      setError("Select at least one reagent before preparing samples.");
+      notifyError("Select at least one reagent before preparing samples.");
       return;
     }
     const invalidReagentItems = getInvalidReagentUsageItems(
@@ -390,7 +409,7 @@ function PharmaceuticalProcessingPage({
       bulkPrepareValues.reagentQuantities,
     );
     if (invalidReagentItems.length > 0) {
-      setError("Enter a quantity greater than 0 for each selected reagent.");
+      notifyError("Enter a quantity greater than 0 for each selected reagent.");
       return;
     }
 

@@ -4,6 +4,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useContext,
 } from "react";
 import {
   Grid,
@@ -65,6 +66,8 @@ import ReagentUsageSelector, {
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -105,6 +108,8 @@ function MNTDTestExecutionPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -117,6 +122,21 @@ function MNTDTestExecutionPage({
   // Reagents from inventory (for kit lot number selection)
   const [reagents, setReagents] = useState([]);
   const [loadingReagents, setLoadingReagents] = useState(false);
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Execution confirmation modal state
   const [showExecutionModal, setShowExecutionModal] = useState(false);
@@ -354,7 +374,7 @@ function MNTDTestExecutionPage({
       executionData.selectedKits.includes(r.id),
     );
     if (reagents.length > 0 && selectedKitObjects.length === 0) {
-      setError("Select at least one kit before saving execution data.");
+      notifyError("Select at least one kit before saving execution data.");
       return;
     }
     const invalidKitItems = getInvalidReagentUsageItems(
@@ -362,7 +382,7 @@ function MNTDTestExecutionPage({
       executionData.kitQuantities,
     );
     if (invalidKitItems.length > 0) {
-      setError("Enter a quantity greater than 0 for each selected kit.");
+      notifyError("Enter a quantity greater than 0 for each selected kit.");
       return;
     }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import {
   Grid,
   Column,
@@ -36,6 +36,8 @@ import ReagentUsageSelector, {
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 import {
   ESignatureModal,
@@ -69,6 +71,8 @@ function PharmaceuticalTestingPage({
 }) {
   const componentMounted = useRef(true);
   const intl = useIntl();
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -83,6 +87,21 @@ function PharmaceuticalTestingPage({
   const [loadingInstruments, setLoadingInstruments] = useState(false);
   const [reagents, setReagents] = useState([]);
   const [loadingReagents, setLoadingReagents] = useState(false);
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Test Execution modal state (Phase 1)
   const [showExecutionModal, setShowExecutionModal] = useState(false);
@@ -504,7 +523,7 @@ function PharmaceuticalTestingPage({
       testExecutionData.reagentsUsed.includes(reagent.id),
     );
     if (reagents.length > 0 && selectedReagentItems.length === 0) {
-      setError(
+      notifyError(
         intl.formatMessage({
           id: "notebook.pharma.testing.reagentsRequired",
           defaultMessage: "Select at least one reagent before saving.",
@@ -518,7 +537,7 @@ function PharmaceuticalTestingPage({
       testExecutionData.reagentQuantities,
     );
     if (invalidReagentItems.length > 0) {
-      setError(
+      notifyError(
         intl.formatMessage({
           id: "notebook.pharma.testing.reagentQuantityRequired",
           defaultMessage:

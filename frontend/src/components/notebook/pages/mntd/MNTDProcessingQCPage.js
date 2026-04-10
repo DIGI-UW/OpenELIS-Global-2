@@ -4,6 +4,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useContext,
 } from "react";
 import {
   Grid,
@@ -36,6 +37,8 @@ import ReagentUsageSelector, {
   getInvalidReagentUsageItems,
   syncReagentUsageQuantities,
 } from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -110,6 +113,8 @@ const VECTOR_AUTO_METHODS = [
 function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -152,6 +157,21 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         : VECTOR_AUTO_METHODS;
     }
   }, [extractionData.sampleType, extractionData.extractionType]);
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Load reagents from inventory (used for kit lot number selection)
   const loadReagents = useCallback(() => {
@@ -302,7 +322,7 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
       extractionData.selectedKits.includes(r.id),
     );
     if (reagents.length > 0 && selectedKitObjects.length === 0) {
-      setError("Select at least one extraction kit before saving.");
+      notifyError("Select at least one extraction kit before saving.");
       return;
     }
     const invalidKitItems = getInvalidReagentUsageItems(
@@ -310,7 +330,7 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
       extractionData.kitQuantities,
     );
     if (invalidKitItems.length > 0) {
-      setError("Enter a quantity greater than 0 for each selected extraction kit.");
+      notifyError("Enter a quantity greater than 0 for each selected extraction kit.");
       return;
     }
 
