@@ -1,5 +1,9 @@
 package org.openelisglobal.organization.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
@@ -14,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Organization, String>
         implements OrganizationService {
+    @PersistenceContext
+    private EntityManager entityManager;
     @Autowired
     protected OrganizationDAO baseObjectDAO;
     @Autowired
@@ -237,5 +243,14 @@ public class OrganizationServiceImpl extends AuditableBaseObjectServiceImpl<Orga
     @Transactional(readOnly = true)
     public List<Organization> searchOrganizationsWithTypes(String filter) {
         return baseObjectDAO.searchOrganizationsWithTypes(filter);
+    }
+
+    @Override
+    @Transactional
+    public String generateSiteCode() {
+        Number seqVal = (Number) entityManager.createNativeQuery("SELECT nextval('clinlims.site_code_seq')")
+                .getSingleResult();
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMMdd"));
+        return String.format("S%s-%05d", date, seqVal.longValue());
     }
 }

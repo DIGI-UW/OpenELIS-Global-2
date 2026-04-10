@@ -112,4 +112,17 @@ specs/*/research/AnalyzerDocs/
 docs/analyzers/012/
 specs/012-generic-astm-plugin-profiles/docs/
 
+# CI artifact downloads (gh run download)
+core-blob-report-*/
+core-screenshots-*/
+core-traces-*/
+core-playwright-report-*/
+harness-blob-report-*/
+harness-screenshots-*/
+harness-traces-*/
+
+# E2E evidence screenshots
+frontend/e2e-evidence/
+e2e-evidence-*.zip
+
 # Miscellaneous dev artifacts
