@@ -15,7 +15,6 @@
 
 import { test as base, expect } from "@playwright/test";
 import * as fs from "fs";
-import * as path from "path";
 
 export const test = base.extend<{
   crashDiagnostics: void;
@@ -28,14 +27,20 @@ export const test = base.extend<{
     async ({ page, browser }, use, testInfo) => {
       const recentConsole: string[] = [];
       const recentNav: string[] = [];
+      const errorBuffer: string[] = [];
       const MAX_BUFFER = 20;
       let lastUrl = "";
       let navCount = 0;
 
-      // Initialize error context file for persistent logging
-      const errorContextPath = path.join(process.cwd(), "error-context.md");
+      // Initialize a per-test error context file for persistent logging
+      const errorContextPath = testInfo.outputPath(
+        `error-context-worker-${testInfo.workerIndex}.md`,
+      );
       const timestamp = new Date().toISOString();
-      const header = `\n\n=== Test Session: ${timestamp} ===\n`;
+      const header =
+        `\n\n=== Test Session: ${timestamp} ===\n` +
+        `Test: ${testInfo.title}\n` +
+        `Worker: ${testInfo.workerIndex}\n`;
       fs.appendFileSync(errorContextPath, header, "utf8");
 
       function safeUrl(): string {
@@ -76,16 +81,16 @@ export const test = base.extend<{
           recentConsole.push(`[${msg.type()}] ${msg.text()}`);
           if (recentConsole.length > MAX_BUFFER) recentConsole.shift();
 
-          // Save to file for artifact
-          fs.appendFileSync(errorContextPath, `${logMessage}\n`, "utf8");
+          // Buffer for batch write at teardown (avoid sync I/O on hot path)
+          errorBuffer.push(`${logMessage}\n`);
         }
       };
       const onPageError = (error: Error) => {
         console.error(`[pageerror] ${error.message}\n${error.stack ?? ""}`);
 
-        // Save to file for artifact
+        // Buffer for batch write at teardown (avoid sync I/O on hot path)
         const logMessage = `Page Error: ${error.message}\n${error.stack || ""}\n`;
-        fs.appendFileSync(errorContextPath, logMessage, "utf8");
+        errorBuffer.push(logMessage);
       };
       const onCrash = () => dumpContext("CRASH");
       const onClose = () => {
@@ -133,6 +138,11 @@ export const test = base.extend<{
         page.off("close", onClose);
         page.off("requestfailed", onRequestFailed);
         page.off("response", onResponse);
+
+        // Batch write all buffered error logs at once
+        if (errorBuffer.length > 0) {
+          fs.appendFileSync(errorContextPath, errorBuffer.join(""), "utf8");
+        }
       }
     },
     { auto: true },

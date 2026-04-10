@@ -1,6 +1,5 @@
 import { test as base } from "@playwright/test";
 import * as fs from "fs";
-import * as path from "path";
 
 /**
  * Extended test fixture that captures unhandled page errors and console messages.
@@ -13,17 +12,23 @@ import * as path from "path";
  */
 export const test = base.extend<{ capturePageErrors: void }>({
   capturePageErrors: [
-    async ({ page }, use) => {
+    async ({ page }, use, testInfo) => {
       const errors: Error[] = [];
       const consoleMessages: string[] = [];
+      const errorBuffer: string[] = [];
 
-      // Path for error context file
-      const errorContextPath = path.join(process.cwd(), "error-context.md");
+      // Initialize a per-test error context file for persistent logging
+      const errorContextPath = testInfo.outputPath(
+        `error-context-worker-${testInfo.workerIndex}.md`,
+      );
 
-      // Initialize error context file with timestamp
+      // Initialize error context file with timestamp and test info
       const timestamp = new Date().toISOString();
-      const header = `\n\n=== Test Session: ${timestamp} ===\n`;
-      fs.appendFileSync(errorContextPath, header, "utf8");
+      const header =
+        `\n\n=== Test Session: ${timestamp} ===\n` +
+        `Test: ${testInfo.title}\n` +
+        `Worker: ${testInfo.workerIndex}\n`;
+      errorBuffer.push(header);
 
       // Capture unhandled page errors
       page.on("pageerror", (error) => {
@@ -31,9 +36,9 @@ export const test = base.extend<{ capturePageErrors: void }>({
         console.error(errorMessage);
         errors.push(error);
 
-        // Save to file
+        // Buffer for batch write at end (avoid sync I/O on hot path)
         const logMessage = `Page Error: ${error.message}\n${error.stack || ""}\n`;
-        fs.appendFileSync(errorContextPath, logMessage, "utf8");
+        errorBuffer.push(logMessage);
       });
 
       // Capture console errors and warnings systematically
@@ -46,31 +51,42 @@ export const test = base.extend<{ capturePageErrors: void }>({
               ? `Browser Console Error: ${text}`
               : `Browser Console Warning: ${text}`;
 
-          console.log(logMessage); // appears in terminal
+          if (type === "error") {
+            console.error(logMessage);
+          } else {
+            console.warn(logMessage);
+          }
           consoleMessages.push(logMessage);
 
-          // Save to file for artifact
-          fs.appendFileSync(errorContextPath, `${logMessage}\n`, "utf8");
+          // Buffer for batch write at end (avoid sync I/O on hot path)
+          errorBuffer.push(`${logMessage}\n`);
         }
       });
 
-      await use();
+      try {
+        await use();
 
-      if (errors.length > 0) {
-        console.error(
-          `[pageerror] ${errors.length} unhandled error(s) during test`,
-        );
+        if (errors.length > 0) {
+          console.error(
+            `[pageerror] ${errors.length} unhandled error(s) during test`,
+          );
+        }
+
+        if (consoleMessages.length > 0) {
+          console.error(
+            `[console] ${consoleMessages.length} console message(s) during test`,
+          );
+        }
+
+        // Add summary to error context file
+        const summary = `\n--- Summary: ${errors.length} page errors, ${consoleMessages.length} console messages ---\n`;
+        errorBuffer.push(summary);
+      } finally {
+        // Batch write all buffered error logs at once
+        if (errorBuffer.length > 0) {
+          fs.appendFileSync(errorContextPath, errorBuffer.join(""), "utf8");
+        }
       }
-
-      if (consoleMessages.length > 0) {
-        console.error(
-          `[console] ${consoleMessages.length} console message(s) during test`,
-        );
-      }
-
-      // Add summary to error context file
-      const summary = `\n--- Summary: ${errors.length} page errors, ${consoleMessages.length} console messages ---\n`;
-      fs.appendFileSync(errorContextPath, summary, "utf8");
     },
     { auto: true },
   ],
