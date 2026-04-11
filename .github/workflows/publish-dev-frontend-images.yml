@@ -35,7 +35,7 @@ jobs:
           echo "PLATFORM_PAIR_FRONTEND=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
         # Add support for more platforms with QEMU (optional)
         # https://github.com/docker/setup-qemu-action
@@ -76,7 +76,7 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/frontend/${digest#sha256:}"
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ env.PLATFORM_PAIR_FRONTEND }}-frontend
           path: /tmp/digests/frontend/*
@@ -90,7 +90,7 @@ jobs:
       - build-and-push-image-frontend-dev
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: /tmp/digests/frontend
           pattern: digests-*

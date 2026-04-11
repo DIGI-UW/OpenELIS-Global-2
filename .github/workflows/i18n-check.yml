@@ -10,7 +10,7 @@ jobs:
     name: Duplicate key check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check for duplicate i18n keys
         run: |
@@ -34,7 +34,7 @@ jobs:
     if: github.head_ref != 'chore/update-transifex'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 

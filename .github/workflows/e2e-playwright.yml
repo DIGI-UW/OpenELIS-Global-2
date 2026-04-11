@@ -31,20 +31,20 @@ jobs:
       image_transfer: ${{ steps.transfer-mode.outputs.mode }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Set up Java 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
@@ -108,7 +108,7 @@ jobs:
           echo "Early context: event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
 
       - name: Upload early build context
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-build-context-core
           path: /tmp/e2e-build-context-core/
@@ -254,7 +254,7 @@ jobs:
 
       - name: Upload transfer state for E2E wrapper workflow
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-build-transfer-state
           path: /tmp/e2e-transfer-state/
@@ -262,7 +262,7 @@ jobs:
 
       - name: Upload fork image handoff artifact
         if: steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff/
@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload plugin jars artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-plugin-jars
           path: volume/plugins/*.jar
@@ -279,7 +279,7 @@ jobs:
 
       - name: Upload Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -288,7 +288,7 @@ jobs:
 
       - name: Upload base Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt

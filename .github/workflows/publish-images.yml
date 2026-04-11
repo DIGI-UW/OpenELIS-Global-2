@@ -55,7 +55,7 @@ jobs:
       statuses: read
     steps:
       - name: Wait for E2E checkpoint success
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const owner = context.repo.owner;
@@ -118,7 +118,7 @@ jobs:
             dockerhub_suffix: database
     steps:
       - name: Download image map from triggering build workflow
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map

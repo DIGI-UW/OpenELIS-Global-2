@@ -73,7 +73,7 @@ jobs:
         shard_index: [1, 2]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           submodules: recursive
@@ -89,7 +89,7 @@ jobs:
           sudo swapon /swapfile 2>/dev/null || true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
@@ -100,7 +100,7 @@ jobs:
         working-directory: frontend
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -118,7 +118,7 @@ jobs:
 
       - name: Download image map (cross-run)
         if: inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -127,14 +127,14 @@ jobs:
 
       - name: Download image map (same-run)
         if: inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
 
       - name: Download plugin jars (cross-run)
         if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
@@ -143,7 +143,7 @@ jobs:
 
       - name: Download plugin jars (same-run)
         if: inputs.setup_analyzer_harness && inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: e2e-plugin-jars
           path: /tmp/e2e-plugin-jars
@@ -325,7 +325,7 @@ jobs:
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-blob-report-${{ matrix.shard_index }}
           path: frontend/blob-report
@@ -334,7 +334,7 @@ jobs:
 
       - name: Upload failure screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-screenshots-${{ matrix.shard_index }}
           path: frontend/test-results/**/test-failed-*.png
@@ -343,7 +343,7 @@ jobs:
 
       - name: Upload test traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-traces-${{ matrix.shard_index }}
           path: frontend/test-results/**/trace.zip
@@ -381,19 +381,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
 
       - name: Download blob reports from shards
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*
@@ -426,7 +426,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ inputs.artifact_prefix }}-playwright-report-html-attempt-${{ github.run_attempt }}
           path: frontend/playwright-report/

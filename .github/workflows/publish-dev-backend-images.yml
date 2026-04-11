@@ -34,7 +34,7 @@ jobs:
           platform=linux/${{ matrix.platform }}
           echo "PLATFORM_PAIR_BACKEND=${platform//\//-}" >> $GITHUB_ENV
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
         # Add support for more platforms with QEMU (optional)
@@ -74,7 +74,7 @@ jobs:
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/backend/${digest#sha256:}"
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: digests-${{ env.PLATFORM_PAIR_BACKEND }}-backend
           path: /tmp/digests/backend/*
@@ -88,7 +88,7 @@ jobs:
       - build-and-push-image-backend-dev
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: /tmp/digests/backend
           pattern: digests-*

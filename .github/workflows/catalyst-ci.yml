@@ -28,7 +28,7 @@ jobs:
             display: MCP
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -44,7 +44,7 @@ jobs:
 
       - name: Load cached venv
         id: cached-uv-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: projects/catalyst/${{ matrix.project }}/.venv
           key: venv-${{ runner.os }}-${{ matrix.project }}-${{ hashFiles('projects/catalyst/${{ matrix.project }}/uv.lock') }}
@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload test results on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pytest-results-${{ matrix.project }}
           path: projects/catalyst/${{ matrix.project }}/.pytest_cache
