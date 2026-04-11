@@ -26,8 +26,8 @@
     <patient id="1" person_id="1" lastupdated="2026-04-11"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440099" />
 
-    <sample id="1" accession_number="TASK001" status_id="1" domain="H"
-        received_date="2024-06-03 00:00:00.0"
+    <sample id="1" accession_number="TASK001" status_id="1"
+        domain="H" received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2024-06-03 12:00:00"
@@ -35,8 +35,8 @@
     <sample_human id="1" samp_id="1" patient_id="1"
         lastupdated="2026-04-11" />
 
-    <sample id="2" accession_number="TASK003" status_id="3" domain="H"
-        received_date="2024-06-03 00:00:00.0"
+    <sample id="2" accession_number="TASK003" status_id="3"
+        domain="H" received_date="2024-06-03 00:00:00.0"
         entered_date="2024-06-03 00:00:00.0"
         collection_date="2024-06-03 00:00:00.0"
         lastupdated="2024-06-03 12:00:00"

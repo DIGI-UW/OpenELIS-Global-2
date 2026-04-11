@@ -22,29 +22,33 @@ import org.springframework.test.annotation.Rollback;
 /**
  * Integration tests for {@link TaskProvider}.
  *
- * <p>Task is unique among FHIR providers because it owns the lab order
- * lifecycle state machine (READY → IN_PROGRESS → COMPLETED). These tests
- * verify not just HTTP response codes but also that state transitions are
- * correctly persisted to the OpenELIS DB and that invalid transitions are
- * firmly rejected.
+ * <p>
+ * Task is unique among FHIR providers because it owns the lab order lifecycle
+ * state machine (READY → IN_PROGRESS → COMPLETED). These tests verify not just
+ * HTTP response codes but also that state transitions are correctly persisted
+ * to the OpenELIS DB and that invalid transitions are firmly rejected.
  *
- * <p>Test data (task-facade.xml):
+ * <p>
+ * Test data (task-facade.xml):
  * <ul>
- *   <li>VALID_ID     — status READY     (Test Entered,     status_id=1)</li>
- *   <li>COMPLETED_ID — status COMPLETED (Testing Finished, status_id=3)</li>
+ * <li>VALID_ID — status READY (Test Entered, status_id=1)</li>
+ * <li>COMPLETED_ID — status COMPLETED (Testing Finished, status_id=3)</li>
  * </ul>
  */
 @Rollback
 public class TaskFacadeTest extends BaseWebContextSensitiveTest {
 
-    private static final String VALID_ID     = "550e8400-e29b-41d4-a716-446655440050";
+    private static final String VALID_ID = "550e8400-e29b-41d4-a716-446655440050";
     private static final String COMPLETED_ID = "550e8400-e29b-41d4-a716-446655440051";
-    private static final String INVALID_ID   = "00000000-0000-0000-0000-000000000000";
+    private static final String INVALID_ID = "00000000-0000-0000-0000-000000000000";
     private static final String PATIENT_UUID = "550e8400-e29b-41d4-a716-446655440099";
 
-    @Autowired private TaskProvider taskProvider;
-    @Autowired private SampleService sampleService;
-    @Autowired private IStatusService statusService;
+    @Autowired
+    private TaskProvider taskProvider;
+    @Autowired
+    private SampleService sampleService;
+    @Autowired
+    private IStatusService statusService;
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
@@ -69,11 +73,9 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
         request.setRequestURI("/fhir" + path);
         request.setContentType("application/fhir+json");
         request.addHeader("Accept", "application/fhir+json");
-        org.openelisglobal.login.valueholder.UserSessionData usd =
-                new org.openelisglobal.login.valueholder.UserSessionData();
+        org.openelisglobal.login.valueholder.UserSessionData usd = new org.openelisglobal.login.valueholder.UserSessionData();
         usd.setSytemUserId(1);
-        request.getSession()
-                .setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
+        request.getSession().setAttribute(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, usd);
         return request;
     }
 
@@ -110,8 +112,8 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Soft-delete: sample must still exist in DB after DELETE.
-     * Only the FHIR store representation is updated to CANCELLED.
+     * Soft-delete: sample must still exist in DB after DELETE. Only the FHIR store
+     * representation is updated to CANCELLED.
      */
     @Test
     public void deleteTask_shouldReturn204AndKeepSampleInDB() throws Exception {
@@ -119,8 +121,7 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(buildRequest("DELETE", "/Task/" + VALID_ID), response);
 
         assertEquals(204, response.getStatus());
-        assertNotNull("Sample must remain in DB after soft-delete",
-                sampleService.getSampleByFhirUuid(VALID_ID));
+        assertNotNull("Sample must remain in DB after soft-delete", sampleService.getSampleByFhirUuid(VALID_ID));
     }
 
     @Test
@@ -234,8 +235,8 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * READY → COMPLETED skips IN_PROGRESS and must be rejected.
-     * DB must remain unchanged.
+     * READY → COMPLETED skips IN_PROGRESS and must be rejected. DB must remain
+     * unchanged.
      */
     @Test
     public void updateTask_readyToCompleted_shouldReturn400AndLeaveDbUnchanged() throws Exception {
@@ -253,7 +254,8 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * A completed lab order cannot be re-opened — terminal state must block all transitions.
+     * A completed lab order cannot be re-opened — terminal state must block all
+     * transitions.
      */
     @Test
     public void updateTask_fromTerminalCompleted_shouldReturn400AndLeaveDbUnchanged() throws Exception {
@@ -268,7 +270,9 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals(statusService.getStatusID(OrderStatus.Finished), sample.getStatusId());
     }
 
-    /** Re-sending the current status must succeed — callers should not be penalised. */
+    /**
+     * Re-sending the current status must succeed — callers should not be penalised.
+     */
     @Test
     public void updateTask_sameState_shouldBeIdempotentAndReturn200() throws Exception {
         String body = "{\"resourceType\":\"Task\",\"id\":\"" + VALID_ID + "\",\"status\":\"ready\"}";
