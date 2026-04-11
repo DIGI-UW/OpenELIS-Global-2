@@ -1,0 +1,46 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <system_user id="1" external_id="EXT001" login_name="admin"
+        last_name="Admin" first_name="Test" initials="TA" is_active="Y"
+        is_employee="Y" lastupdated="2025-03-08 12:00:00" />
+
+    <status_of_sample id="1"
+        description="No tests have been run for this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Test Entered"
+        display_key="status.sample.notStarted" is_active="Y" />
+    <status_of_sample id="2"
+        description="Some tests have been run on this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing Started"
+        display_key="status.sample.started" is_active="Y" />
+    <status_of_sample id="3"
+        description="All tests have been run on this order" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing finished"
+        display_key="status.sample.finished" is_active="Y" />
+    <status_of_sample id="12"
+        description="The order is non-conforming" code="1" status_type="ORDER"
+        lastupdated="2025-03-18" name="NonConforming"
+        display_key="status.sample.nonConforming" is_active="N" />
+
+    <person id="1" last_name="TaskTest" first_name="User"
+        lastupdated="2026-04-11" />
+    <patient id="1" person_id="1" lastupdated="2026-04-11"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440099" />
+
+    <sample id="1" accession_number="TASK001" status_id="1" domain="H"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2024-06-03 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440050" />
+    <sample_human id="1" samp_id="1" patient_id="1"
+        lastupdated="2026-04-11" />
+
+    <sample id="2" accession_number="TASK003" status_id="3" domain="H"
+        received_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-03 00:00:00.0"
+        collection_date="2024-06-03 00:00:00.0"
+        lastupdated="2024-06-03 12:00:00"
+        fhir_uuid="550e8400-e29b-41d4-a716-446655440051" />
+    <sample_human id="2" samp_id="2" patient_id="1"
+        lastupdated="2026-04-11" />
+</dataset>
