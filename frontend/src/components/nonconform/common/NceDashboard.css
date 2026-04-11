@@ -4,6 +4,22 @@
   margin: 0 auto;
 }
 
+/* Inline forms for assign/note */
+.nce-inline-form {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #f4f4f4;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.nce-inline-form-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  justify-content: flex-end;
+}
+
 .nce-dashboard-loading {
   display: flex;
   justify-content: center;
@@ -315,6 +331,131 @@
 
 .nce-empty-state p {
   color: #525252;
+}
+
+/* Attachments */
+.nce-attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nce-attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.nce-attachment-item svg {
+  flex-shrink: 0;
+  color: #525252;
+}
+
+.nce-attachment-name {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #161616;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nce-attachment-size {
+  font-size: 0.75rem;
+  color: #525252;
+  margin-right: 0.5rem;
+}
+
+.nce-attachment-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.nce-attachment-actions .cds--btn--ghost {
+  min-height: auto;
+  padding: 0.25rem;
+}
+
+/* History */
+.nce-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.nce-history-item {
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-left: 3px solid #0f62fe;
+  border-radius: 4px;
+}
+
+.nce-history-activity {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #161616;
+  margin-bottom: 0.25rem;
+}
+
+.nce-history-description {
+  font-size: 0.8125rem;
+  color: #393939;
+  margin-bottom: 0.25rem;
+}
+
+.nce-history-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.nce-history-user {
+  font-weight: 500;
+}
+
+.nce-history-time {
+  color: #6f6f6f;
+}
+
+/* Notes */
+.nce-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nce-note-item {
+  padding: 0.75rem;
+  background: #f4f4f4;
+  border-left: 3px solid #198038;
+  border-radius: 4px;
+}
+
+.nce-note-text {
+  font-size: 0.875rem;
+  color: #161616;
+  margin: 0 0 0.25rem 0;
+}
+
+.nce-note-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.nce-note-user {
+  font-weight: 500;
+}
+
+.nce-note-time {
+  color: #6f6f6f;
 }
 
 /* Responsive */
