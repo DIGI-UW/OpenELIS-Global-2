@@ -766,11 +766,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 || statusId.equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
             return TaskStatus.REJECTED;
         }
-        // OGC-356: Environmental samples don't have a patient, so only set the patient
-        // reference if patient exists
-        if (patient != null) {
-            task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
-        }
 
         return TaskStatus.READY; // default
     }
