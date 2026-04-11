@@ -1,8 +1,14 @@
 package org.openelisglobal.biorepository.controller.rest;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -30,15 +36,23 @@ import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.sample.dao.SampleDAO;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -64,6 +78,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/rest/biorepository/sample")
 public class BioSampleRestController extends BaseRestController {
 
+    private static final Logger logger = LoggerFactory.getLogger(BioSampleRestController.class);
+
     @Autowired
     private BioSampleService bioSampleService;
 
@@ -72,6 +88,9 @@ public class BioSampleRestController extends BaseRestController {
 
     @Autowired
     private SampleService sampleService;
+
+    @Autowired
+    private SampleDAO sampleDAO;
 
     @Autowired
     private SampleItemService sampleItemService;
@@ -87,6 +106,12 @@ public class BioSampleRestController extends BaseRestController {
 
     @Autowired
     private LocalizationService localizationService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     /**
      * Get a BioSample extension by ID.
@@ -877,6 +902,7 @@ public class BioSampleRestController extends BaseRestController {
      * records.
      */
     @PostMapping(value = "/register", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional
     public ResponseEntity<?> registerSample(@RequestBody SampleRegistrationRequest request,
             HttpServletRequest httpRequest) {
 
@@ -901,14 +927,9 @@ public class BioSampleRestController extends BaseRestController {
             }
 
             // Create Sample (accession-level record)
-            Sample sample = new Sample();
-            sample.setAccessionNumber(generateAccessionNumber());
-            sample.setReceivedTimestamp(request.getReceiptDate() != null ? Timestamp.valueOf(request.getReceiptDate())
-                    : new Timestamp(System.currentTimeMillis()));
-            sample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
-            sample.setDomain("H"); // Human domain
-            sample.setSysUserId(sysUserId);
-            Sample savedSample = sampleService.save(sample);
+            Timestamp receiptTimestamp = request.getReceiptDate() != null ? Timestamp.valueOf(request.getReceiptDate())
+                    : new Timestamp(System.currentTimeMillis());
+            Sample savedSample = createSampleWithGeneratedAccession(receiptTimestamp, sysUserId);
 
             // Create SampleItem (aliquot-level record)
             SampleItem sampleItem = new SampleItem();
@@ -930,7 +951,9 @@ public class BioSampleRestController extends BaseRestController {
                             : BiosafetyLevel.BSL_1);
             bioSample.setEthicsApprovalRef(request.getEthicsApprovalRef());
             bioSample.setMtaReference(request.getMtaReference());
-            bioSample.setSpecialHandling(request.getSpecialHandling());
+            bioSample.setSpecialHandling(
+                    mergeExternalIdIntoSpecialHandling(request.getSpecialHandling(), request.getExternalId(),
+                            request.getBarcode()));
             bioSample.setOriginLab(request.getOriginLab());
             bioSample.setProjectId(request.getProjectId());
             if (request.getRequiredTempMin() != null) {
@@ -962,13 +985,17 @@ public class BioSampleRestController extends BaseRestController {
         }
     }
 
-    /**
-     * Generate a unique accession number for samples.
-     */
-    private String generateAccessionNumber() {
-        String datePart = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String randomPart = String.valueOf(System.currentTimeMillis() % 100000);
-        return datePart + randomPart;
+    private Sample createSampleWithGeneratedAccession(Timestamp receiptTimestamp, String sysUserId) {
+        Sample sample = new Sample();
+        sample.setReceivedTimestamp(receiptTimestamp);
+        sample.setEnteredDate(new java.sql.Date(receiptTimestamp.getTime()));
+        sample.setDomain("H");
+        sample.setSysUserId(sysUserId);
+
+        AccessionNumberHandler accessionNumberHandler = new AccessionNumberHandler(sampleService, sampleDAO,
+                entityManager, BioSampleRestController.class);
+        String sampleId = accessionNumberHandler.generateAndInsertWithUniqueAccessionNumber(sample);
+        return sampleService.get(sampleId);
     }
 
     /**
@@ -1131,20 +1158,20 @@ public class BioSampleRestController extends BaseRestController {
                     i);
 
             // Validate required fields
-            String barcode = sample.getExternalId();
+            String barcode = firstNonBlank(sample.getBarcode(), sample.getExternalId());
             if (barcode == null || barcode.trim().isEmpty()) {
-                rowResult.addError("External ID (barcode) is required");
+                rowResult.addError("Barcode is required");
             } else {
                 barcode = barcode.trim();
                 // Check for duplicates within the manifest
                 if (seenBarcodes.contains(barcode)) {
-                    rowResult.addError("Duplicate barcode in manifest: " + barcode);
+                    rowResult.addError("Duplicate sample ID in manifest: " + barcode);
                 } else {
                     seenBarcodes.add(barcode);
                 }
                 // Check for existing barcode in database
                 if (bioSampleService.barcodeExists(barcode)) {
-                    rowResult.addError("Barcode already exists in system: " + barcode);
+                    rowResult.addError("Sample ID already exists: " + barcode);
                 }
             }
 
@@ -1166,9 +1193,7 @@ public class BioSampleRestController extends BaseRestController {
 
             // Validate biosafety level
             String bsl = sample.getBiosafetyLevel();
-            if (bsl == null || bsl.trim().isEmpty()) {
-                rowResult.addError("Biosafety level is required");
-            } else {
+            if (bsl != null && !bsl.trim().isEmpty()) {
                 try {
                     BiosafetyLevel.valueOf(bsl.trim());
                 } catch (IllegalArgumentException e) {
@@ -1179,6 +1204,25 @@ public class BioSampleRestController extends BaseRestController {
             // Validate origin lab
             if (sample.getOriginLab() == null || sample.getOriginLab().trim().isEmpty()) {
                 rowResult.addError("Origin lab is required");
+            }
+
+            if (sample.getReceiptDate() == null || sample.getReceiptDate().trim().isEmpty()) {
+                rowResult.addError("Receipt date is required");
+            } else if (!isValidDateFormat(sample.getReceiptDate().trim())) {
+                rowResult.addError("Invalid receipt date format: " + sample.getReceiptDate());
+            }
+
+            if (sample.getRequiredTempMin() == null) {
+                rowResult.addError("Minimum storage temperature is required");
+            }
+
+            if (sample.getRequiredTempMax() == null) {
+                rowResult.addError("Maximum storage temperature is required");
+            }
+
+            if (sample.getRequiredTempMin() != null && sample.getRequiredTempMax() != null
+                    && sample.getRequiredTempMin().compareTo(sample.getRequiredTempMax()) > 0) {
+                rowResult.addError("Maximum storage temperature must be greater than or equal to minimum storage temperature");
             }
 
             // Validate collection date format (if provided)
@@ -1220,19 +1264,33 @@ public class BioSampleRestController extends BaseRestController {
             return ResponseEntity.badRequest().body(response);
         }
 
-        Shipment shipment = null;
-        if (request.getShipmentId() != null) {
-            shipment = shipmentService.get(request.getShipmentId());
+        TransactionTemplate rowTransaction = new TransactionTemplate(transactionManager);
+        rowTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        for (SampleRegistrationDTO dto : samples) {
+            try {
+                BulkRegistrationResponse.RegisteredSample registered = rowTransaction
+                        .execute(status -> registerSingleSample(dto, request.getShipmentId(), sysUserId));
+
+                if (registered != null) {
+                    response.addSample(registered);
+                } else {
+                    response.addRowError("Sample registration returned no result");
+                }
+            } catch (Exception e) {
+                String sampleRef = firstNonBlank(dto.getBarcode(), dto.getExternalId());
+                String prefix = (sampleRef == null || sampleRef.isBlank()) ? "Sample" : "Sample '" + sampleRef + "'";
+                String detailedError = getRootCauseMessage(e);
+                logger.error("Bulk manifest import failed for {}", prefix, e);
+                response.addRowError(prefix + ": " + detailedError);
+            }
         }
 
-        try {
-            for (SampleRegistrationDTO dto : samples) {
-                BulkRegistrationResponse.RegisteredSample registered = registerSingleSample(dto, shipment, sysUserId);
-                response.addSample(registered);
-            }
-        } catch (Exception e) {
+        if (response.getRegisteredCount() == 0) {
             response.setSuccess(false);
-            response.setError("Failed to register samples: " + e.getMessage());
+            String errorSummary = response.getRowErrors().isEmpty() ? "Failed to register samples"
+                    : response.getRowErrors().stream().limit(3).collect(Collectors.joining("; "));
+            response.setError("Failed to register samples: " + errorSummary);
             return ResponseEntity.internalServerError().body(response);
         }
 
@@ -1242,11 +1300,13 @@ public class BioSampleRestController extends BaseRestController {
     /**
      * Register a single sample from the manifest DTO.
      */
-    private BulkRegistrationResponse.RegisteredSample registerSingleSample(SampleRegistrationDTO dto, Shipment shipment,
+    private BulkRegistrationResponse.RegisteredSample registerSingleSample(SampleRegistrationDTO dto,
+            Integer shipmentId,
             String sysUserId) {
-        // Get barcode from externalId
-        String barcode = dto.getExternalId() != null ? dto.getExternalId().trim()
-                : generateBarcode().getBody().get("barcode");
+        String barcode = firstNonBlank(dto.getBarcode(), dto.getExternalId());
+        if (barcode == null || barcode.isBlank()) {
+            barcode = generateBarcode().getBody().get("barcode");
+        }
 
         // Find or create sample type by name or ID for biorepository intake.
         TypeOfSample sampleType = resolveManifestSampleType(dto.getSampleTypeId(), sysUserId, true);
@@ -1255,13 +1315,13 @@ public class BioSampleRestController extends BaseRestController {
         }
 
         // Create Sample (accession-level record)
-        Sample sample = new Sample();
-        sample.setAccessionNumber(generateAccessionNumber());
-        sample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
-        sample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
-        sample.setDomain("H"); // Human domain
-        sample.setSysUserId(sysUserId);
-        Sample savedSample = sampleService.save(sample);
+        Timestamp receiptTimestamp = dto.getReceiptDate() != null && !dto.getReceiptDate().trim().isEmpty()
+                ? parseDate(dto.getReceiptDate().trim())
+                : null;
+        if (receiptTimestamp == null) {
+            receiptTimestamp = new Timestamp(System.currentTimeMillis());
+        }
+        Sample savedSample = createSampleWithGeneratedAccession(receiptTimestamp, sysUserId);
 
         // Create SampleItem (aliquot-level record)
         SampleItem sampleItem = new SampleItem();
@@ -1289,7 +1349,8 @@ public class BioSampleRestController extends BaseRestController {
         bioSample.setPrincipalInvestigator(dto.getPrincipalInvestigator());
         bioSample.setPreservationMedium(dto.getPreservationMedium());
         bioSample.setArrivalCondition(dto.getArrivalCondition());
-        bioSample.setSpecialHandling(dto.getSpecialHandling());
+        bioSample.setSpecialHandling(
+                mergeExternalIdIntoSpecialHandling(dto.getSpecialHandling(), dto.getExternalId(), barcode));
         bioSample.setOriginLab(dto.getOriginLab());
         bioSample.setProjectId(dto.getProjectId());
         if (dto.getRequiredTempMin() != null) {
@@ -1298,11 +1359,17 @@ public class BioSampleRestController extends BaseRestController {
         if (dto.getRequiredTempMax() != null) {
             bioSample.setRequiredTempMax(dto.getRequiredTempMax());
         }
-        if (shipment != null) {
-            bioSample.setShipment(shipment);
+        if (shipmentId != null) {
+            Shipment shipment = shipmentService.get(shipmentId);
+            if (shipment != null) {
+                bioSample.setShipment(shipment);
+            }
         }
         bioSample.setSysUserId(sysUserId);
         BioSample savedBioSample = bioSampleService.createForSampleItem(savedSampleItem, bioSample);
+
+        // Force SQL execution in this row transaction so DB constraint failures surface with a specific cause.
+        entityManager.flush();
 
         // Build response
         BulkRegistrationResponse.RegisteredSample registered = new BulkRegistrationResponse.RegisteredSample();
@@ -1311,6 +1378,24 @@ public class BioSampleRestController extends BaseRestController {
         registered.setSampleItemId(Integer.valueOf(savedSampleItem.getId()));
         registered.setSampleId(Integer.valueOf(savedSample.getId()));
         return registered;
+    }
+
+    private String getRootCauseMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "Unknown error";
+        }
+
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+
+        String message = current.getMessage();
+        if (message == null || message.isBlank()) {
+            message = throwable.getMessage();
+        }
+
+        return (message == null || message.isBlank()) ? "Unknown error" : message;
     }
 
     /**
@@ -1323,14 +1408,13 @@ public class BioSampleRestController extends BaseRestController {
         nameOrId = nameOrId.trim();
         String normalizedInput = normalizeSampleTypeLabel(nameOrId);
 
-        // Try to find by ID first
-        try {
+        // Try ID lookup only for numeric identifiers to avoid rollback-only side effects
+        // from invalid numeric conversions in legacy ID handling.
+        if (isNumericIdentifier(nameOrId)) {
             TypeOfSample byId = typeOfSampleService.get(nameOrId);
             if (byId != null) {
                 return byId;
             }
-        } catch (Exception e) {
-            // Not a valid ID, try by name
         }
 
         // Try to find by description (name)
@@ -1342,6 +1426,10 @@ public class BioSampleRestController extends BaseRestController {
         }
 
         return null;
+    }
+
+    private boolean isNumericIdentifier(String value) {
+        return value != null && value.matches("\\d+");
     }
 
     private TypeOfSample resolveManifestSampleType(String nameOrId, String sysUserId, boolean createIfMissing) {
@@ -1613,40 +1701,77 @@ public class BioSampleRestController extends BaseRestController {
      * Check if date string is in valid format.
      */
     private boolean isValidDateFormat(String dateStr) {
-        // Support multiple formats: yyyy-MM-dd, dd/MM/yyyy, dd-MM-yyyy
-        String[] patterns = { "\\d{4}-\\d{2}-\\d{2}", "\\d{2}/\\d{2}/\\d{4}", "\\d{2}-\\d{2}-\\d{4}" };
-        for (String pattern : patterns) {
-            if (dateStr.matches(pattern)) {
-                return true;
-            }
-        }
-        return false;
+        return parseDate(dateStr) != null;
     }
 
     /**
      * Parse date string to Timestamp.
      */
     private Timestamp parseDate(String dateStr) {
-        try {
-            // Try yyyy-MM-dd format (ISO)
-            if (dateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
-                return Timestamp.valueOf(dateStr + " 00:00:00");
-            }
-            // Try dd/MM/yyyy format
-            if (dateStr.matches("\\d{2}/\\d{2}/\\d{4}")) {
-                String[] parts = dateStr.split("/");
-                String iso = parts[2] + "-" + parts[1] + "-" + parts[0];
-                return Timestamp.valueOf(iso + " 00:00:00");
-            }
-            // Try dd-MM-yyyy format
-            if (dateStr.matches("\\d{2}-\\d{2}-\\d{4}")) {
-                String[] parts = dateStr.split("-");
-                String iso = parts[2] + "-" + parts[1] + "-" + parts[0];
-                return Timestamp.valueOf(iso + " 00:00:00");
-            }
-        } catch (Exception e) {
-            // Return null on parse error
+        if (dateStr == null || dateStr.trim().isEmpty()) {
+            return null;
         }
+
+        String normalizedDate = dateStr.trim().replace("T", " ");
+        String[] dateTimePatterns = {
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd HH:mm",
+                "dd/MM/yyyy HH:mm:ss",
+                "dd/MM/yyyy HH:mm",
+                "dd-MM-yyyy HH:mm:ss",
+                "dd-MM-yyyy HH:mm" };
+
+        for (String pattern : dateTimePatterns) {
+            try {
+                LocalDateTime parsedDate = LocalDateTime.parse(normalizedDate, DateTimeFormatter.ofPattern(pattern));
+                return Timestamp.valueOf(parsedDate);
+            } catch (DateTimeParseException e) {
+                // Try the next pattern
+            }
+        }
+
+        String[] datePatterns = { "yyyy-MM-dd", "dd/MM/yyyy", "dd-MM-yyyy" };
+        for (String pattern : datePatterns) {
+            try {
+                LocalDate parsedDate = LocalDate.parse(normalizedDate, DateTimeFormatter.ofPattern(pattern));
+                return Timestamp.valueOf(parsedDate.atStartOfDay());
+            } catch (DateTimeParseException e) {
+                // Try the next pattern
+            }
+        }
+
         return null;
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return null;
+        }
+
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+
+        return null;
+    }
+
+    private String mergeExternalIdIntoSpecialHandling(String specialHandling, String externalId, String barcode) {
+        String normalizedExternalId = firstNonBlank(externalId);
+        if (normalizedExternalId == null || normalizedExternalId.equals(firstNonBlank(barcode))) {
+            return specialHandling;
+        }
+
+        String externalIdNote = "External ID: " + normalizedExternalId;
+        if (specialHandling == null || specialHandling.trim().isEmpty()) {
+            return externalIdNote;
+        }
+
+        if (specialHandling.contains(externalIdNote)) {
+            return specialHandling;
+        }
+
+        return specialHandling + " | " + externalIdNote;
     }
 }
