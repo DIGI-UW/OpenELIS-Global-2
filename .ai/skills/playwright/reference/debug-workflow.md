@@ -39,6 +39,6 @@ Do not proceed with "guess-and-retry" locator churn.
 
 1. Validate project registration:
    `python .ai/skills/playwright/scripts/validate-playwright-project.py <spec>`
-2. Run narrow scope:
+2. Run narrow scope (never raw `npx playwright test`):
    `cd frontend && npm run pw:test -- <spec> --project=<project>`
 3. Expand only after narrow scope passes.

@@ -1,0 +1,174 @@
+.inline-nce-form {
+  padding: 1rem;
+  margin: 0.75rem 0;
+  background: #fff;
+  border: 2px solid #da1e28;
+  border-radius: 4px;
+  width: min(100%, calc(100vw - 18rem));
+  box-sizing: border-box;
+}
+
+.inline-nce-form * {
+  box-sizing: border-box;
+}
+
+.inline-nce-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inline-nce-row > * {
+  flex: 1;
+  min-width: 150px;
+}
+
+.inline-nce-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  color: #da1e28;
+}
+
+.inline-nce-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.inline-nce-context {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: #f4f4f4;
+}
+
+.inline-nce-context-text {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.8125rem;
+  color: #393939;
+}
+
+.inline-nce-section {
+  margin: 0.75rem 0;
+}
+
+.inline-nce-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #525252;
+  margin-bottom: 0.25rem;
+}
+
+.inline-nce-error {
+  font-size: 0.75rem;
+  color: #da1e28;
+  margin-left: 0.5rem;
+}
+
+/* Severity cards */
+.inline-nce-severity {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inline-nce-severity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 120px;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.inline-nce-severity-card:hover {
+  background: #f4f4f4;
+}
+
+.inline-nce-severity-card.selected.critical {
+  border-color: #da1e28;
+  background: #fff1f1;
+}
+
+.inline-nce-severity-card.selected.major {
+  border-color: #f1c21b;
+  background: #fdf6dd;
+}
+
+.inline-nce-severity-card.selected.minor {
+  border-color: #0f62fe;
+  background: #edf5ff;
+}
+
+.inline-nce-severity-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.inline-nce-severity-indicator.critical {
+  background: #da1e28;
+}
+
+.inline-nce-severity-indicator.major {
+  background: #f1c21b;
+}
+
+.inline-nce-severity-indicator.minor {
+  background: #0f62fe;
+}
+
+.inline-nce-severity-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.inline-nce-severity-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.inline-nce-severity-desc {
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+/* Linked items */
+.inline-nce-linked {
+  margin: 0.75rem 0;
+}
+
+.inline-nce-linked-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: #393939;
+  padding: 0.25rem 0;
+}
+
+.inline-nce-linked-item svg {
+  fill: #198038;
+}
+
+/* Buttons */
+.inline-nce-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e0e0e0;
+}

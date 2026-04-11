@@ -58,6 +58,7 @@ import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
 import org.openelisglobal.spring.util.SpringContext;
@@ -85,6 +86,9 @@ import org.springframework.web.servlet.support.RequestContextUtils;
 @Controller
 @RequestMapping(value = "/rest/")
 public class SamplePatientEntryRestController extends BaseSampleEntryController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
+            .getLogger(SamplePatientEntryRestController.class);
 
     @Value("${org.openelisglobal.requester.identifier:}")
     private String requestFhirUuid;
@@ -143,8 +147,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "referralItems*.referredResultType", "referralItems*.modified", "referralItems*.inLabResultId",
             "referralItems*.referralReasonId", "referralItems*.referrer", "referralItems*.referredInstituteId",
             "referralItems*.referredSendDate", "referralItems*.referredTestId", "referralItems*.referredReportDate",
-            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions",
-            "sampleOrderItems.programId" };
+            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId",
+            "orderEntryOnly" };
 
     @Autowired
     private SamplePatientEntryFormValidator formValidator;
@@ -237,15 +241,33 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        // Extract sampleOrder and workflowType early so we can check for environmental
+        // workflow
+        SampleOrderItem sampleOrder = form.getSampleOrderItems();
+        String workflowType = sampleOrder != null ? sampleOrder.getEnvironmentalFieldAsString("workflowType") : null;
+
         formValidator.validate(form, result);
+
+        // OGC-356: For environmental workflow, only check for non-patient validation
+        // errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
         if (result.hasErrors()) {
-            saveErrors(result);
-            setupForm(form, request, "");
+            boolean hasNonPatientErrors = true;
+            if ("environmental".equals(workflowType)) {
+                List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                        .filter(error -> !error.getField().startsWith("patientProperties."))
+                        .collect(Collectors.toList());
+                hasNonPatientErrors = !nonPatientErrors.isEmpty();
+            }
+
+            if (hasNonPatientErrors) {
+                saveErrors(result);
+                return form;
+            }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
-        SampleOrderItem sampleOrder = form.getSampleOrderItems();
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -263,28 +285,68 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
+
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+
+        // OGC-356: For environmental workflow, don't save patient data
+        if ("environmental".equals(workflowType)) {
+            updateData.setSavePatient(false);
+            updateData.setPatientErrors(new BaseErrors());
+        }
 
         updateData.setAccessionNumber(sampleOrder.getLabNo());
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
         updateData.setPriority(sampleOrder.getPriority());
         updateData.initProvider(sampleOrder);
+
+        // initSampleData MUST be called before initProgramQuestions so that the sample
+        // object is loaded (for updates) before we try to load the existing
+        // ProgramSample
+        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
+
+        // Now that sample is loaded, we can initialize program questions (which needs
+        // sample.id for updates)
         if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
             updateData.initProgramQuestions(sampleOrder.getProgramId(), sampleOrder.getAdditionalQuestions());
         }
-        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
+
         updateData.setPatientEmailNotificationTestIds(form.getPatientEmailNotificationTestIds());
         updateData.setPatientSMSNotificationTestIds(form.getPatientSMSNotificationTestIds());
         updateData.setProviderEmailNotificationTestIds(form.getProviderEmailNotificationTestIds());
         updateData.setProviderSMSNotificationTestIds(form.getProviderSMSNotificationTestIds());
         updateData.setCustomNotificationLogic(form.getCustomNotificationLogic());
+        if (sampleOrder.getIsEQASample()) {
+            updateData.setEqaSample(true);
+            updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
+            updateData.setEqaProviderOrganizationId(sampleOrder.getEqaProviderOrganizationId());
+            updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
+            updateData.setEqaParticipantId(sampleOrder.getEqaParticipantId());
+            updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
+            updateData.setEqaPriority(sampleOrder.getEqaPriority());
+        }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
         }
-        updateData.validateSample(result);
-        if (result.hasErrors()) {
+
+        // For decoupled workflow (orderEntryOnly=true), samples are not required
+        // They will be added in a later step (Collect Sample)
+        boolean requireSampleItems = !form.isOrderEntryOnly();
+
+        updateData.validateSample(result, requireSampleItems);
+
+        // OGC-356: For environmental workflow, ignore patient-related validation errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
+        boolean hasNonPatientErrors = result.hasErrors();
+        if (hasNonPatientErrors && "environmental".equals(workflowType)) {
+            // Check if all errors are patient-related
+            List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                    .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
+            hasNonPatientErrors = !nonPatientErrors.isEmpty();
+        }
+
+        if (hasNonPatientErrors) {
             saveErrors(result);
-            setupForm(form, request, "");
+            return form;
         }
 
         try {
@@ -298,10 +360,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 LogEvent.logError(e);
             }
 
-            if (sampleOrder.getPriority().equals(OrderPriority.STAT)) {
+            if (sampleOrder.getPriority() != null && sampleOrder.getPriority().equals(OrderPriority.STAT)) {
                 List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
-                List<Analysis> analyses = sampleService
-                        .getAnalysis(sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo()));
+                Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+                List<Analysis> analyses = statSample != null ? sampleService.getAnalysis(statSample) : null;
                 String message = MessageUtil.getMessage("notification.order.stat",
                         AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
                 StringBuffer sb = new StringBuffer(message);
@@ -329,20 +391,21 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
             // patientUpdate, patientInfo, form, request);
         } catch (LIMSRuntimeException e) {
-            // ActionError error;
+            LogEvent.logError("persistData failed with LIMSRuntimeException", e);
             if (e.getCause() instanceof StaleObjectStateException) {
-                // error = new ActionError("errors.OptimisticLockException", null, null);
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
-                LogEvent.logDebug(e);
-                // error = new ActionError("errors.UpdateException", null, null);
+                logger.error("Order save failed for labNo={}", sampleOrder.getLabNo(), e);
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "samplePatientEntrySave", result.toString());
+            logger.error("SamplePatientEntry errors: {}", result.toString());
+        } catch (Exception e) {
+            logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
+            result.reject("errors.UpdateException", "errors.UpdateException");
 
             // errors.add(ActionMessages.GLOBAL_MESSAGE, error);
-            saveErrors(result);// TODO theses errors are not communicated to the frontend return an error code
-                               // if svae is not successful
+            saveErrors(result); // TODO theses errors are not communicated to the frontend return an error code
+            // if svae is not successful
 
             setupForm(form, request, "");
             request.setAttribute(ALLOW_EDITS_KEY, "false");

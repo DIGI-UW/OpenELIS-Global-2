@@ -97,6 +97,9 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         copyPropertiesPreferDestination(defaultProperties, finalProperties);
         copyPropertiesPreferDestination(hardcodedDefaultProperties, finalProperties);
         copyPropertiesPreferSource(changeProperty, finalProperties);
+        // External connection properties (SMTP, BMP, SMPP) always come fresh
+        // from the external_connection table, overriding any cached values.
+        loadExternalConnectionsIntoFinalProperties();
         try {
             moveConfigFile(changeValuePropertyFile, changedValuePropertyFile);
         } catch (IOException e) {
@@ -161,6 +164,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                         // not a db value, nothing to save
                     } else {
                         siteInformation.setValue(propertyHolder.getValue());
+                        siteInformation.setSysUserId("1");
                         siteInformationService.save(siteInformation);
                     }
                 }
@@ -207,7 +211,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
     private void moveConfigFile(String source, String destination) throws IOException {
         Path sourcePath = Paths.get(source);
         if (Files.isRegularFile(sourcePath)) {
-            Files.move(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(sourcePath, Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
@@ -381,13 +385,22 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                     .getByExternalConnection(externalConnection.get().getId());
             // basic auth is required for info highway
             if (basicAuthData.isPresent()) {
-                properties.setProperty(address.name(), externalConnection.get().getUri().toString());
+                properties.setProperty(address.name(),
+                        externalConnection.get().getUri() != null ? externalConnection.get().getUri().toString() : "");
                 properties.setProperty(username.name(), basicAuthData.get().getUsername());
                 properties.setProperty(password.name(), basicAuthData.get().getPassword());
                 if (externalConnection.get().getActive() != null) {
                     properties.setProperty(enabled.name(), externalConnection.get().getActive().toString());
                 }
             }
+        }
+    }
+
+    private void loadExternalConnectionsIntoFinalProperties() {
+        Properties ecProperties = new Properties();
+        loadExternalConnectionsFromDatabase(ecProperties);
+        for (String propertyName : ecProperties.stringPropertyNames()) {
+            finalProperties.setPropertyValue(propertyName, ecProperties.getProperty(propertyName));
         }
     }
 

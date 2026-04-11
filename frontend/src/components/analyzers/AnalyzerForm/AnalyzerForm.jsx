@@ -24,6 +24,9 @@ import {
   PROTOCOL_VERSIONS,
   PLUGIN_PROTOCOL_DEFAULTS,
   DEFAULT_PROTOCOL_VERSION,
+  COMMUNICATION_MODES,
+  DEFAULT_COMMUNICATION_MODE,
+  resolveAnalyzerApiMessage,
 } from "../constants";
 import "./AnalyzerForm.css";
 
@@ -38,6 +41,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     ipAddress: "",
     port: "",
     protocolVersion: DEFAULT_PROTOCOL_VERSION,
+    communicationMode: DEFAULT_COMMUNICATION_MODE,
     testUnitIds: [],
     status: "SETUP",
     identifierPattern: "",
@@ -92,6 +96,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         ipAddress: analyzer.ipAddress || "",
         port: analyzer.port ? String(analyzer.port) : "",
         protocolVersion: analyzer.protocolVersion || DEFAULT_PROTOCOL_VERSION,
+        communicationMode:
+          analyzer.communicationMode || DEFAULT_COMMUNICATION_MODE,
         testUnitIds: analyzer.testUnitIds || [],
         status: analyzer.status || "SETUP",
         identifierPattern: analyzer.identifierPattern || "",
@@ -104,6 +110,7 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         ipAddress: "",
         port: "",
         protocolVersion: DEFAULT_PROTOCOL_VERSION,
+        communicationMode: DEFAULT_COMMUNICATION_MODE,
         testUnitIds: [],
         status: "SETUP",
         identifierPattern: "",
@@ -168,6 +175,15 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       return a.name.localeCompare(b.name);
     });
   }, [pluginTypes]);
+
+  const communicationModeItems = useMemo(
+    () =>
+      COMMUNICATION_MODES.map((m) => ({
+        ...m,
+        label: intl.formatMessage({ id: m.labelId }),
+      })),
+    [intl],
+  );
 
   const filteredDefaultConfigs = useMemo(() => {
     if (!selectedPluginType?.protocol) return defaultConfigs;
@@ -249,6 +265,10 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
             prev.analyzerType,
           protocolVersion:
             PLUGIN_PROTOCOL_DEFAULTS[protocolUpper] || prev.protocolVersion,
+          communicationMode:
+            configData.communication_mode ||
+            configData.communication?.mode ||
+            prev.communicationMode,
           pluginTypeId: matchingPluginType?.id || prev.pluginTypeId,
         }));
 
@@ -336,10 +356,11 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
         setNotification({
           kind: "error",
           title: intl.formatMessage({ id: "analyzer.form.error.save" }),
-          subtitle:
-            response.error ||
-            response.message ||
-            intl.formatMessage({ id: "analyzer.form.error.unknown" }),
+          subtitle: resolveAnalyzerApiMessage(
+            intl,
+            response,
+            "analyzer.form.error.unknown",
+          ),
         });
       } else {
         setNotification({
@@ -576,6 +597,28 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           {/* Section 3 — Connection (hidden for FILE protocol) */}
           {!isFileProtocol && (
             <FormGroup legendText="">
+              <Dropdown
+                id="analyzer-communication-mode"
+                data-testid="analyzer-form-communication-mode-dropdown"
+                titleText={intl.formatMessage({
+                  id: "analyzer.form.communicationMode",
+                })}
+                items={communicationModeItems}
+                selectedItem={
+                  communicationModeItems.find(
+                    (opt) => opt.value === formData.communicationMode,
+                  ) || null
+                }
+                itemToString={(item) => (item ? item.label : "")}
+                onChange={({ selectedItem }) => {
+                  if (selectedItem) {
+                    handleFieldChange("communicationMode", selectedItem.value);
+                  }
+                }}
+                helperText={intl.formatMessage({
+                  id: "analyzer.form.communicationMode.help",
+                })}
+              />
               <div
                 className="connection-fields"
                 data-testid="analyzer-form-connection-fields"

@@ -32,7 +32,6 @@
   <include relativeToChangelogFile="true" file="021-add-patient-merge-menu-item.xml"/>
   <include relativeToChangelogFile="true" file="022-add-patient-merge-menu-localization.xml"/>
 
-
   <!-- Generic Reporting Framework (reporting-framework) -->
   <include relativeToChangelogFile="true" file="028-create-report-definition-table.xml"/>
 
@@ -51,10 +50,44 @@
   <!-- Site Branding / White Labeling (001-site-branding) -->
   <include relativeToChangelogFile="true" file="028-create-site-branding-table.xml"/>
 
+  <!-- External Quality Assurance (005-eqa-module) -->
+  <include relativeToChangelogFile="true" file="eqa-001-create-eqa-program-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-002-create-eqa-distribution-tables.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-003-create-sample-eqa-table.xml"/>
+  <include relativeToChangelogFile="true" file="eqa-004-create-eqa-result-table.xml"/>
+
+  <!-- EQA Result audit trail columns (T116) -->
+  <include relativeToChangelogFile="true" file="eqa-006-add-result-audit-columns.xml"/>
+
+  <!-- EQA/QC Menu Items, System Module, and Role Assignments -->
+  <include relativeToChangelogFile="true" file="eqa-007-add-eqa-menu-items.xml"/>
+
+  <!-- EQA Program Administration columns (provider, category, frequency) -->
+  <include relativeToChangelogFile="true" file="eqa-008-add-program-admin-columns.xml"/>
+
+  <!-- EQA Enrollment tables (provider-side + self-enrollment + mappings) -->
+  <include relativeToChangelogFile="true" file="eqa-009-create-enrollment-tables.xml"/>
+
+  <!-- EQA Navigation restructure (EQA Tests + EQA Management + standalone Alerts) -->
+  <include relativeToChangelogFile="true" file="eqa-010-restructure-menu.xml"/>
+
   <include relativeToChangelogFile="true" file="029-add-gps-coordinates-to-sample.xml"/>
   <!-- Address Hierarchy Configuration -->
   <include relativeToChangelogFile="true" file="030-add-address-hierarchy-config.xml"/>
   <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
   <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
   <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
+
+  <!-- Training Installation Configuration -->
+  <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
+
+  <!-- OGC-356: Sample QA Checklist for order workflow step 4 -->
+  <include relativeToChangelogFile="true" file="031-create-sample-qa-checklist-table.xml"/>
+
+  <!-- OGC-356: Allow null patient_id for environmental samples -->
+  <include relativeToChangelogFile="true" file="033-allow-null-patient-in-observation-history.xml"/>
+
+  <!-- OGC-356: Sample type request table for decoupled order workflow -->
+  <include relativeToChangelogFile="true" file="034-create-sample-type-request-table.xml"/>
+
 </databaseChangeLog>

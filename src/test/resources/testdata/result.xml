@@ -1,5 +1,9 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
+    <!-- Required for QAService static initializer (used by ResultsLoadUtility) -->
+    <reference_tables id="9999" name="SAMPLE_QAEVENT"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-11-01 12:00:00" />
+
     <localization id="1" description="Test Description 1" />
     <localization id="2" description="Test Description 2" />
     <localization id="3" description="Test Description 3" />
@@ -244,5 +248,54 @@
     <!-- Sample Human -->
     <sample_human id="1" samp_id="1" patient_id="1"
         lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="2" samp_id="2" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+
+
+    <!-- All system_role rows from seed data (post-Liquibase rename). executeDataSetWithStateManagement
+        TRUNCATEs every table in this fixture, so we must include the full role set
+        to avoid breaking dependent tests. -->
+    <system_role id="1" name="Global Administrator"
+        description="Change tests, panels etc." is_grouping_role="false"
+        display_key="role.maintenance" active="true" editable="true" />
+    <system_role id="2" name="User Account Administrator"
+        description="Add/remove users and assign roles."
+        is_grouping_role="false" display_key="role.users" active="true"
+        editable="true" />
+    <system_role id="4" name="Reception"
+        description="Sample entry and patient management."
+        is_grouping_role="false" display_key="role.intake" active="true"
+        editable="true" />
+    <system_role id="5" name="Results"
+        description="Enter and review results." is_grouping_role="false"
+        display_key="role.results" active="true" editable="true" />
+    <system_role id="6" name="Inventory mgr"
+        description="Add and de/reactivate kits." is_grouping_role="false"
+        display_key="role.inventory" active="false" editable="false" />
+    <system_role id="7" name="Reports"
+        description="Generate reports." is_grouping_role="false"
+        display_key="role.reports" active="true" editable="true" />
+    <system_role id="9" name="Results modifier"
+        description="Has permission to modify already entered results"
+        is_grouping_role="false" display_key="role.result.modifier"
+        active="false" editable="true" />
+    <system_role id="10" name="Validation"
+        description="A person who can validate results"
+        is_grouping_role="false" display_key="role.validator" active="true"
+        editable="true" />
+    <system_role id="11" name="Audit Trail"
+        description="Able to view the audit trail" is_grouping_role="false"
+        display_key="role.audittrail" active="true" editable="false" />
+    <system_role id="12" name="Test Management"
+        description="Able to modify test catalog" is_grouping_role="false"
+        display_key="role.test.configuration" active="true" editable="false" />
+    <system_role id="66" name="Results Admin"
+        description="Able to access all results forms"
+        is_grouping_role="false" display_key="role.results.all" active="true"
+        editable="false" />
+    <system_role id="67" name="Identifying Information Edit"
+        description="Able to edit already entered patients and sample primary IDs"
+        is_grouping_role="false" display_key="role.edit.identifiers"
+        active="true" editable="false" />
 
 </dataset>
