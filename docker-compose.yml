@@ -65,9 +65,9 @@ services:
       - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
       - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
       - ./volume/odoo/odoo-test-product-mapping.csv:/var/lib/openelis-global/odoo/odoo-test-product-mapping.csv
-      # REMOVED: bind-mount of ./configuration cause "Read-only file system" for checksums (See NOTE in build.docker-compose.yml, line 77)
+      # REMOVED: bind-mount of ./configuration causes "Read-only file system" for checksums (See NOTE in build.docker-compose.yml)
       #- ./configuration:/var/lib/openelis-global/configuration
-      #Runing OpenELIS with the locally compiled war file
+      # Running OpenELIS with the locally compiled war file
       #- ./target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
     secrets:
       - source: common.properties
