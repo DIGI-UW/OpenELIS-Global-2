@@ -38,8 +38,6 @@
         <mapping resource="hibernate/hbm/CityView.hbm.xml" />
         <mapping resource="hibernate/hbm/StateView.hbm.xml" />
         <mapping resource="hibernate/hbm/County.hbm.xml" />
-        <mapping resource="hibernate/hbm/Dictionary.hbm.xml" />
-        <mapping resource="hibernate/hbm/DictionaryCategory.hbm.xml" />
         <mapping resource="hibernate/hbm/Label.hbm.xml" />
         <mapping resource="hibernate/hbm/Method.hbm.xml" />
         <mapping resource="hibernate/hbm/Note.hbm.xml" />
@@ -154,6 +152,8 @@
             class="org.openelisglobal.qaevent.valueholder.NceSpecimen" />
         <mapping
             class="org.openelisglobal.qaevent.valueholder.NceAttachment" />
+        <mapping
+            class="org.openelisglobal.qaevent.valueholder.NceHistory" />
         <mapping
             class="org.openelisglobal.qaevent.valueholder.NceType" />
         <mapping resource="hibernate/hbm/LabComponent.hbm.xml" />

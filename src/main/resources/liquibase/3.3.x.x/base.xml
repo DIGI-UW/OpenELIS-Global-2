@@ -77,24 +77,17 @@
   <!-- OGC-284: Barcode expansion (labels domain + sample/sample_item barcode info) -->
   <include relativeToChangelogFile="true" file="barcode_expansion.xml"/>
   <include relativeToChangelogFile="true" file="028-barcode-info-tables.xml"/>
-  <!-- Sample shipping management -->
-  <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
-  <!-- shipment-004 removed: unassigned samples now use referral table directly -->
-  <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-008-add-capacity-column.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-009-add-referral-shipment-columns.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-010-add-actual-sample-count.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-011-add-sample-shipment-referral-type.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-012-migrate-to-sample-item.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-013-add-box-label-prefix-config.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
-  <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
 
   <!-- Training Installation Configuration -->
   <include relativeToChangelogFile="true" file="031-add-training-installation-config.xml"/>
+
+  <!-- OGC-356: Sample QA Checklist for order workflow step 4 -->
+  <include relativeToChangelogFile="true" file="031-create-sample-qa-checklist-table.xml"/>
+
+  <!-- OGC-356: Allow null patient_id for environmental samples -->
+  <include relativeToChangelogFile="true" file="033-allow-null-patient-in-observation-history.xml"/>
+
+  <!-- OGC-356: Sample type request table for decoupled order workflow -->
+  <include relativeToChangelogFile="true" file="034-create-sample-type-request-table.xml"/>
+
 </databaseChangeLog>

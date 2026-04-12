@@ -89,14 +89,14 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             if (analyzerId != null && !analyzerId.isBlank()) {
                 // Try numeric ID first (direct DB lookup)
                 if (isNumericId(analyzerId)) {
-                    analyzer = analyzerService.get(analyzerId);
+                    analyzer = tryGetAnalyzerById(analyzerId);
                 }
                 if (analyzer == null) {
-                    analyzer = analyzerService.findByIdentifierPatternMatch(analyzerId).orElse(null);
+                    analyzer = tryFindAnalyzerByIdentifier(analyzerId);
                 }
                 if (analyzer == null) {
                     // Try by name
-                    analyzer = analyzerService.getByName(analyzerId).orElse(null);
+                    analyzer = tryGetAnalyzerByName(analyzerId);
                 }
             }
 
@@ -111,18 +111,17 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
                             List<String> identifierValues = device.getIdentifier().stream()
                                     .map(org.hl7.fhir.r4.model.Identifier::getValue)
                                     .filter(v -> v != null && !v.isBlank()).toList();
-                            analyzer = analyzerService.findByIdentifierPatternMatch(identifierValues).orElse(null);
+                            analyzer = tryFindAnalyzerByIdentifier(identifierValues);
                         }
                         // Fall back to serial number (machineId)
                         if (analyzer == null && device.hasSerialNumber()) {
-                            analyzer = analyzerService.findByIdentifierPatternMatch(device.getSerialNumber())
-                                    .orElse(null);
+                            analyzer = tryFindAnalyzerByIdentifier(device.getSerialNumber());
                         }
                         // Last resort: device display name
                         if (analyzer == null && device.hasDeviceName()) {
                             String deviceName = device.getDeviceNameFirstRep().getName();
                             if (deviceName != null && !deviceName.isBlank()) {
-                                analyzer = analyzerService.getByName(deviceName).orElse(null);
+                                analyzer = tryGetAnalyzerByName(deviceName);
                             }
                         }
                         if (analyzer != null) {
@@ -186,6 +185,7 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
+            LogEvent.logError(e);
             LogEvent.logError(CLASS_NAME, "importFhirBundle",
                     "FHIR Bundle import failed: " + e.getClass().getSimpleName() + ": " + e.getMessage());
             response.put("success", false);
@@ -202,6 +202,40 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             }
         }
         return !value.isEmpty();
+    }
+
+    private Analyzer tryGetAnalyzerById(String analyzerId) {
+        try {
+            return analyzerService.get(analyzerId);
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(CLASS_NAME, "tryGetAnalyzerById",
+                    "Analyzer id from header no longer exists: " + analyzerId);
+            return null;
+        }
+    }
+
+    private Analyzer tryFindAnalyzerByIdentifier(String identifier) {
+        try {
+            return analyzerService.findByIdentifierPatternMatch(identifier).orElse(null);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private Analyzer tryFindAnalyzerByIdentifier(List<String> identifiers) {
+        try {
+            return analyzerService.findByIdentifierPatternMatch(identifiers).orElse(null);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private Analyzer tryGetAnalyzerByName(String name) {
+        try {
+            return analyzerService.getByName(name).orElse(null);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private AnalyzerResults mapObservationToAnalyzerResult(Observation obs, Map<String, String> specimenAccessions,
