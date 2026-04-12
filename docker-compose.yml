@@ -1,57 +1,42 @@
-version: '3.3'
+version: "3.3"
 services:
-    certs:
-        container_name: oe-certs
-        image: itechuw/certgen:main
-        platform: linux/amd64
-        restart: "no"
-        environment:
-            - KEYSTORE_PW="kspass"
-            - TRUSTSTORE_PW="tspass"
-        networks:
-            - default
-        volumes:
-            -  key_trust-store-volume:/etc/openelis-global
-            -  keys-vol:/etc/ssl/private/
-            -  certs-vol:/etc/ssl/certs/
+  certs:
+    container_name: oe-certs
+    image: itechuw/certgen:main
+    platform: linux/amd64
+    restart: "no"
+    environment:
+      - KEYSTORE_PW="kspass"
+      - TRUSTSTORE_PW="tspass"
+    networks:
+      - default
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - keys-vol:/etc/ssl/private/
+      - certs-vol:/etc/ssl/certs/
 
-    db.openelis.org:
-        container_name: openelisglobal-database 
-        image: itechuw/openelis-global-2-database:develop
-        platform: linux/amd64
-        ports:
-            - "15432:5432"
-        restart: always
-        env_file:
-            - ./volume/database/database.env
-        environment:
-            - DB_PASSWORD=${OE_DB_PASSWORD:-clinlims}
-            - DB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD:-superuser}
-        volumes:
-              # preserves the database between containers
-             - db-data:/var/lib/postgresql/data                
-        networks:
-            - default
-        healthcheck:
-            test: [ "CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims" ]
-            timeout: 45s
-            interval: 10s
-            retries: 10 
-            
-    oe.openelis.org:
-        container_name: openelisglobal-webapp 
-        image: itechuw/openelis-global-2:develop   
-        platform: linux/amd64 
-        depends_on:
-            - db.openelis.org
-            - certs
-        ports:
-            - "8080:8080"
-            - "8443:8443"
-        restart: always
-        networks:
-          default:
-              ipv4_address: 172.20.1.121
+  db.openelis.org:
+    container_name: openelisglobal-database
+    image: itechuw/openelis-global-2-database:develop
+    platform: linux/amd64
+    ports:
+      - "15432:5432"
+    restart: always
+    env_file:
+      - ./volume/database/database.env
+    environment:
+      - DB_PASSWORD=${OE_DB_PASSWORD:-clinlims}
+      - DB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD:-superuser}
+    volumes:
+      # preserves the database between containers
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
 
         environment:
             - DEFAULT_PW=adminADMIN! 
@@ -111,34 +96,17 @@ services:
             - CHOKIDAR_USEPOLLING=true
         tty: true
 
-    proxy:
-        image: itechuw/openelis-global-2-proxy:develop
-        container_name: openelisglobal-proxy
-        platform: linux/amd64
-        ports:
-            - 80:80
-            - 443:443
-        volumes:
-            - certs-vol:/etc/nginx/certs/
-            - keys-vol:/etc/nginx/keys/
-            - ./volume/nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
-        networks:
-            - default
-        restart: unless-stopped
-        depends_on:
-        - certs        
-            
 secrets:
   common.properties:
-    file:  ./volume/properties/common.properties     
+    file: ./volume/properties/common.properties
 
 networks:
   default:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.1.0/24  
-        
+        - subnet: 172.20.1.0/24
+
 volumes:
   db-data:
   key_trust-store-volume:
