@@ -112,6 +112,18 @@
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
 
+        <!-- Dictionary entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.dictionary.valueholder.Dictionary</class>
+        <class>org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory</class>
+
+        <!-- UOM type mapping (OGC-356 environmental workflow) -->
+        <class>org.openelisglobal.unitofmeasure.valueholder.UomTypeMap</class>
+
+        <!-- QA Checklist domain (OGC-356 step 4) -->
+        <class>org.openelisglobal.qachecklist.valueholder.SampleQaChecklist</class>
+
+        <!-- Sample Type Request (OGC-356) -->
+        <class>org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest</class>
         <!-- Electronic Signature entities (21 CFR Part 11 Compliance) -->
         <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>

@@ -46,7 +46,6 @@ const CorrectiveActionsPlaceholder = React.lazy(
   () => import("./pages/analyzers/CorrectiveActionsPlaceholder"),
 );
 import ResultSearch from "./components/resultPage/ResultSearch";
-import AccessionResultsPage from "./components/resultPage/AccessionResultsPage";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
@@ -102,6 +101,14 @@ const ShipmentReport = React.lazy(
 );
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import {
+  OrderProvider,
+  OrderDashboard,
+  OrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+} from "./components/order";
 
 export default function App() {
   const defaultLocale =
@@ -518,6 +525,47 @@ export default function App() {
                   )}
                   role={Roles.RECEPTION}
                 />
+                {/* Decoupled Sample Collection Workflow - NAV-2 */}
+                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                <Route
+                  path="/order"
+                  render={({ match }) => (
+                    <OrderProvider>
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <OrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
@@ -908,7 +956,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <AccessionResultsPage />
+                      <ResultSearch />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RESULTS}
