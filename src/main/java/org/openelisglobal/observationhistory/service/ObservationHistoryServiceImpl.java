@@ -32,7 +32,17 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
         TB_DIAGNOSTIC_REASON("TbDiagnosticReason"), TB_FOLLOWUP_REASON("TbFollowupReason"),
         TB_FOLLOWUP_PERIOD_LINE1("TbFollowupReasonPeriodLine1"),
         TB_FOLLOWUP_PERIOD_LINE2("TbFollowupReasonPeriodLine2"), TB_ANALYSIS_METHOD("TbAnalysisMethod"),
-        TB_SAMPLE_ASPECT("TbSampleAspects"), PROVISIONAL_CLINICAL_DIAGNOSIS("provisionalClinicalDiagnosis");
+        TB_SAMPLE_ASPECT("TbSampleAspects"), PROVISIONAL_CLINICAL_DIAGNOSIS("provisionalClinicalDiagnosis"),
+        // Environmental workflow observation types (OGC-356)
+        ENV_COLLECTION_SITE_DESCRIPTION("envCollectionSiteDescription"),
+        ENV_REQUESTER_REFERENCE("envRequesterReference"), ENV_ENVIRONMENTAL_CONDITIONS("envEnvironmentalConditions"),
+        ENV_LOCATION_REGION_ID("envLocationRegionId"), ENV_LOCATION_DISTRICT_ID("envLocationDistrictId"),
+        ENV_LOCATION_VILLAGE_ID("envLocationVillageId"), ENV_WORKFLOW_TYPE("envWorkflowType"),
+        ENV_SAMPLING_SITE_ID("envSamplingSiteId"), ENV_SAMPLING_SITE_NAME("envSamplingSiteName"),
+        ENV_SITE_TYPE("envSiteType"), ENV_SITE_SUBTYPE("envSiteSubtype"),
+        ENV_ENVIRONMENTAL_ZONE("envEnvironmentalZone"), ENV_REGULATORY_REFERENCE("envRegulatoryReference"),
+        ENV_COLLECTION_METHOD("envCollectionMethod"), ENV_CONTACT_PERSON("envContactPerson"),
+        ENV_CONTACT_PHONE("envContactPhone");
 
         private String dbName;
 

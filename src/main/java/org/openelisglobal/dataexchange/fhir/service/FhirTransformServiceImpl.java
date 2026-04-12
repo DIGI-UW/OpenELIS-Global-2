@@ -502,10 +502,13 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             this.addToOperations(fhirOperations, tempIdGenerator, referingServiceRequest.get());
         }
 
-        // patient
-        org.hl7.fhir.r4.model.Patient patient = transformToFhirPatient(patientInfo.getPatientPK());
-        this.addToOperations(fhirOperations, tempIdGenerator, patient);
-        orderEntryObjects.patient = patient;
+        // patient - OGC-356: Environmental samples don't have a patient
+        org.hl7.fhir.r4.model.Patient patient = null;
+        if (patientInfo != null && !GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
+            patient = transformToFhirPatient(patientInfo.getPatientPK());
+            this.addToOperations(fhirOperations, tempIdGenerator, patient);
+            orderEntryObjects.patient = patient;
+        }
 
         // requester
         if (ObjectUtils.isNotEmpty(updateData.getProvider())) {
@@ -695,7 +698,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                                 this.createReferenceFor(ResourceType.DiagnosticReport, analysis.getFhirUuidAsString()));
             }
         }
-        task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        // OGC-356: Environmental samples don't have a patient, so only set the patient
+        // reference if patient exists
+        if (patient != null) {
+            task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
 
         return task;
     }
@@ -1077,7 +1084,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         serviceRequest.addSpecimen(
                 this.createReferenceFor(ResourceType.Specimen, analysis.getSampleItem().getFhirUuidAsString()));
-        serviceRequest.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        // OGC-356: Environmental samples don't have a patient
+        if (patient != null) {
+            serviceRequest.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
         if (provider != null && provider.getFhirUuid() != null) {
             serviceRequest
                     .setRequester(this.createReferenceFor(ResourceType.Practitioner, provider.getFhirUuidAsString()));
@@ -1172,7 +1182,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
             specimen.addRequest(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         }
-        specimen.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        // OGC-356: Environmental samples don't have a patient
+        if (patient != null) {
+            specimen.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
 
         return specimen;
     }
@@ -1670,7 +1683,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         diagnosticReport
                 .addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         diagnosticReport.addSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
-        diagnosticReport.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        // OGC-356: Environmental samples don't have a patient
+        if (patient != null) {
+            diagnosticReport.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
         for (Result curResult : allResults) {
             diagnosticReport
                     .addResult(this.createReferenceFor(ResourceType.Observation, curResult.getFhirUuidAsString()));
@@ -1814,7 +1830,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         observation.setCode(transformTestToCodeableConcept(test.getId()));
         observation.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
         observation.setSpecimen(this.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
-        observation.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        // OGC-356: Environmental samples don't have a patient
+        if (patient != null) {
+            observation.setSubject(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+        }
         // observation.setIssued(result.getOriginalLastupdated());
         observation.setIssued(analysis.getReleasedDate()); // update to get Released Date instead of commpleted date
         // observation.setEffective(new

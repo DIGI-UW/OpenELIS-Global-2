@@ -61,7 +61,18 @@ export async function createSampleOrder(
   // Exact payload structure captured from Chrome Network tab during successful
   // browser order creation. Only dynamic values are parameterized.
   const now = new Date();
-  const today = `${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}/${now.getFullYear()}`;
+  // Server date format depends on configured locale (e.g. DD/MM/YYYY for fr-FR).
+  // Query the active locale's date format from the API.
+  const dateFormatRes = await page.request.get(
+    "/api/OpenELIS-Global/rest/open-configuration-properties",
+  );
+  const configProps = await dateFormatRes.json();
+  const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
+  const useMDY = dateLocale.startsWith("en");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const yyyy = now.getFullYear();
+  const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
   const time =
     receivedTime ||
     `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -109,12 +120,12 @@ export async function createSampleOrder(
       `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
       `numOrderLabels='1' numSpecimenLabels='1'/></samples>`,
     patientProperties: {
-      patientPK: "2",
-      patientUpdateStatus: "NO_ACTION",
-      firstName: "",
-      lastName: "UNKNOWN",
+      patientPK: "",
+      patientUpdateStatus: "ADD",
+      firstName: "Esig",
+      lastName: "Testpatient",
       gender: "M",
-      birthDateForDisplay: "",
+      birthDateForDisplay: useMDY ? "01/01/1990" : "01/01/1990",
       nationalId: uniqueId,
       subjectNumber: uniqueId,
     },
@@ -200,6 +211,12 @@ export async function createSampleOrder(
   }, form);
 
   // Extract the auto-generated accession number from the response JSON.
+  if (!result.ok) {
+    console.warn(
+      `createSampleOrder: server returned HTTP ${result.status}: ${result.text.substring(0, 200)}`,
+    );
+    return "";
+  }
   try {
     const responseForm = JSON.parse(result.text);
     const generatedLabNo = responseForm?.sampleOrderItems?.labNo || "";

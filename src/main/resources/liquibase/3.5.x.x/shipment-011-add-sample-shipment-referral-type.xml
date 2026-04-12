@@ -19,16 +19,35 @@
       <column name="display_key" value="referral.type.sampleShipment"/>
     </insert>
 
-    <!-- Add localization for English and French -->
+    <!-- Add localization base row -->
     <insert tableName="localization">
       <column name="id" valueSequenceNext="localization_seq"/>
       <column name="description" value="referral type - sample shipment"/>
-      <column name="english" value="Sample Shipment"/>
-      <column name="french" value="Envoi d'échantillon"/>
       <column name="lastupdated" valueDate="now()"/>
     </insert>
 
+    <!-- Add English translation -->
+    <insert tableName="localization_value">
+      <column name="id" valueSequenceNext="localization_value_seq"/>
+      <column name="localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'referral type - sample shipment')"/>
+      <column name="locale" value="en"/>
+      <column name="value" value="Sample Shipment"/>
+      <column name="last_updated" valueDate="now()"/>
+    </insert>
+
+    <!-- Add French translation -->
+    <insert tableName="localization_value">
+      <column name="id" valueSequenceNext="localization_value_seq"/>
+      <column name="localization_id" valueComputed="(SELECT id FROM clinlims.localization WHERE description = 'referral type - sample shipment')"/>
+      <column name="locale" value="fr"/>
+      <column name="value" value="Envoi d'échantillon"/>
+      <column name="last_updated" valueDate="now()"/>
+    </insert>
+
     <rollback>
+        <delete tableName="localization_value">
+            <where>localization_id IN (SELECT id FROM clinlims.localization WHERE description = 'referral type - sample shipment')</where>
+        </delete>
         <delete tableName="localization">
             <where>description = 'referral type - sample shipment'</where>
         </delete>
