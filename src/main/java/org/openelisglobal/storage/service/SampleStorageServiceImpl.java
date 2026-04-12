@@ -850,8 +850,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     existingAssignment.setPositionCoordinate(null);
                 }
                 existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                if (reason != null) {
-                    existingAssignment.setNotes(reason);
+                // Update notes if provided (notes parameter takes precedence over reason)
+                if (notes != null && !notes.trim().isEmpty()) {
+                    existingAssignment.setNotes(notes.trim());
+                } else if (reason != null && !reason.trim().isEmpty()) {
+                    // Fall back to reason if notes not provided
+                    existingAssignment.setNotes(reason.trim());
                 }
                 sampleStorageAssignmentDAO.update(existingAssignment);
 
