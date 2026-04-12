@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: ./db/Dockerfile
     container_name: openelisglobal-database
-    image: openelisglobal-databse.build
+    image: openelisglobal-database.build
     ports:
       - "15432:5432"
     restart: always
