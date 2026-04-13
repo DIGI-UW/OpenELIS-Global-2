@@ -54,27 +54,36 @@ public class ServiceRequestProvider implements IResourceProvider {
     @Read
     public ServiceRequest readServiceRequest(@IdParam IdType theId) {
         String method = "readServiceRequest";
-        if (theId == null) {
-            throw new ResourceNotFoundException("The ServiceRequest id should not be null");
-        }
         try {
+            FhirProviderUtils.validateIdParam(theId, "ServiceRequest", this.getClass().getSimpleName(), method);
+
             String analysisUuid = theId.getIdPart();
             List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
 
             if (analyses == null || analyses.isEmpty()) {
-                // This will now correctly return HTTP 404
                 throw new ResourceNotFoundException("Analysis with FHIR ID: " + analysisUuid + " does not exist");
+            }
+            if (analyses.size() > 1) {
+                LogEvent.logError(this.getClass().getSimpleName(), method,
+                        "Duplicate Analysis records found for fhirUuid=" + analysisUuid);
+                throw new InternalErrorException("Multiple Analysis records found for ServiceRequest UUID");
             }
 
             Analysis analysis = analyses.get(0);
-            return fhirTransformService.transformToServiceRequest(analysis.getId());
+            ServiceRequest serviceRequest = fhirTransformService.transformToServiceRequest(analysis.getId());
+            if (serviceRequest == null) {
+                throw new InternalErrorException("Failed to transform Analysis to ServiceRequest");
+            }
+            return serviceRequest;
 
         } catch (ResourceNotFoundException | InvalidRequestException e) {
-            throw e; // FHIR server will map ResourceNotFoundException to 404
+            throw e;
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRequestException("ServiceRequest ID must be a valid UUID");
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method,
-                    "Unexpected error while Reading Patient: " + e.getMessage());
-            throw new InternalErrorException("Unexpected server error while Reading Patient", e);
+                    "Unexpected error while Reading ServiceRequest: " + e.getMessage());
+            throw new InternalErrorException("Unexpected server error while Reading ServiceRequest", e);
         }
     }
 
