@@ -3,6 +3,7 @@ package org.openelisglobal.analysis;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
@@ -531,6 +532,15 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
                 "12345", "13333", true, false);
         Assert.assertNotNull(analyses);
         Assert.assertTrue(analyses.size() >= 1);
+    }
+
+    @Test
+    public void getPageAnalysisByStatusFromAccession_withFinishedTrue_shouldExecuteWithoutTypeError() throws Exception {
+        List<String> analysisStatusList = new ArrayList<>(Arrays.asList("1"));
+        List<String> sampleStatusList = new ArrayList<>(Arrays.asList("1"));
+        List<Analysis> analyses = aService.getPageAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
+                "12345", null, false, true);
+        Assert.assertNotNull(analyses);
     }
 
     @Test

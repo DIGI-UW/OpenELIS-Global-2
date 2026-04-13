@@ -140,6 +140,34 @@ public class SystemAuditTrailIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void testSystemEventsQuery_shouldFilterBySysUserId() {
+        Dictionary dict = new Dictionary();
+        dict.setSortOrder(25);
+        dict.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("CA3"));
+        dict.setDictEntry("User Filter Entry");
+        dict.setIsActive("Y");
+        dict.setLocalAbbreviation("UFE");
+        dict.setSysUserId("1");
+        dictionaryService.insert(dict);
+
+        List<String> dictTableIds = List.of(dictionaryRefTableId);
+
+        List<History> matchingResults = historyService.getSystemEventHistory(null, null, "1", dictTableIds, null, null,
+                1, 100);
+        assertTrue("Should have at least 1 result for user 1", matchingResults.size() >= 1);
+        for (History h : matchingResults) {
+            assertEquals("All results should be for user 1", "1", h.getSysUserId());
+        }
+
+        long matchingCount = historyService.getSystemEventHistoryCount(null, null, "1", dictTableIds, null, null);
+        assertEquals("Count should match results size", matchingCount, matchingResults.size());
+
+        List<History> nonMatchingResults = historyService.getSystemEventHistory(null, null, "9999", dictTableIds, null,
+                null, 1, 100);
+        assertEquals("Should have 0 results for non-existent user", 0, nonMatchingResults.size());
+    }
+
+    @Test
     public void testSystemEventsQuery_shouldPaginate() {
         for (int i = 0; i < 5; i++) {
             Dictionary dict = new Dictionary();
