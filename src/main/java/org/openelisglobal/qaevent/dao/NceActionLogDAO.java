@@ -5,7 +5,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.qaevent.valueholder.NceActionLog;
 
-public interface NceActionLogDAO extends BaseDAO<NceActionLog, String> {
+public interface NceActionLogDAO extends BaseDAO<NceActionLog, Integer> {
 
-    List<NceActionLog> getNceActionLogByNceId(String nceId) throws LIMSRuntimeException;
+    List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException;
 }
