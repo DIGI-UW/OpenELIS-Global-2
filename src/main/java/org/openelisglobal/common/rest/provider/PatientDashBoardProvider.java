@@ -53,8 +53,6 @@ public class PatientDashBoardProvider {
     @Autowired
     AnalysisService analysisService;
 
-    private List<Analysis> cachedFinalizedTodayAnalyses = null;
-
     @Autowired
     IStatusService iStatusService;
 
@@ -79,17 +77,7 @@ public class PatientDashBoardProvider {
     @Autowired
     SystemUserService systemUserService;
 
-    private List<Analysis> getFinalizedTodayAnalyses() {
-        if (cachedFinalizedTodayAnalyses == null) {
-            cachedFinalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
-                    DateUtil.getNowAsSqlDate(),
-                    iStatusService.getStatusID(AnalysisStatus.Finalized));
-        }
-        return cachedFinalizedTodayAnalyses;
-    }
-
-    private double calculateAverageReceptionToValidationTime() {
-        List<Analysis> analyses = getFinalizedTodayAnalyses();
+    private double calculateAverageReceptionToValidationTime(List<Analysis> analyses) {
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
             if (analysis.getStartedDate() != null && analysis.getReleasedDate() != null) {
@@ -134,8 +122,7 @@ public class PatientDashBoardProvider {
         return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
     }
 
-    private double calculateAverageResultToValidationTime() {
-        List<Analysis> analyses = getFinalizedTodayAnalyses();
+    private double calculateAverageResultToValidationTime(List<Analysis> analyses) {
 
         List<Long> hours = new ArrayList<>();
         analyses.forEach(analysis -> {
@@ -156,8 +143,7 @@ public class PatientDashBoardProvider {
         return hours.isEmpty() ? 0.0 : (double) sum / hours.size();
     }
 
-    private List<Analysis> analysesWithDelayedTurnAroundTime() {
-        List<Analysis> analyses = getFinalizedTodayAnalyses();
+    private List<Analysis> analysesWithDelayedTurnAroundTime(List<Analysis> analyses) {
         List<Analysis> delayedAnalyses = new ArrayList<>();
         Duration threshold = Duration.ofHours(96);
         analyses.forEach(analysis -> {
@@ -172,8 +158,8 @@ public class PatientDashBoardProvider {
         return delayedAnalyses;
     }
 
-    private List<Analysis> unprintedResults() {
-        List<Analysis> analyses = getFinalizedTodayAnalyses();
+    private List<Analysis> unprintedResults(List<Analysis> analyses) {
+
         List<Analysis> unprintedAnalyses = new ArrayList<>();
         if (analyses == null) {
             return unprintedAnalyses;
@@ -305,6 +291,10 @@ public class PatientDashBoardProvider {
     public DashBoardMetrics getDasBoardTiles() {
 
         DashBoardMetrics metrics = new DashBoardMetrics();
+        List<Analysis> finalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
+                DateUtil.getNowAsSqlDate(),
+                iStatusService.getStatusID(AnalysisStatus.Finalized));
+
         java.sql.Timestamp startTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
         java.sql.Timestamp endTimestamp = DateUtil
@@ -350,7 +340,7 @@ public class PatientDashBoardProvider {
                             .getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
                     break;
                 case UN_PRINTED_RESULTS:
-                    metrics.setUnPritendResults(unprintedResults().size());
+                    metrics.setUnPritendResults(unprintedResults(finalizedTodayAnalyses).size());
                     break;
                 case INCOMING_ORDERS:
                     List<Integer> estausIds = new ArrayList<>();
@@ -359,10 +349,10 @@ public class PatientDashBoardProvider {
                     metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
                     break;
                 case AVERAGE_TURN_AROUND_TIME:
-                    metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime());
+                    metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime(finalizedTodayAnalyses));
                     break;
                 case DELAYED_TURN_AROUND:
-                    metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime().size());
+                    metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime(finalizedTodayAnalyses).size());
                     break;
                 default:
                     break;
@@ -410,6 +400,9 @@ public class PatientDashBoardProvider {
     private List<OrderDisplayBean> retreiveOrders(DashBoardTile.TileType listType, String systemUserId) {
         Set<Integer> statusIdSet;
         List<Analysis> analyses;
+        List<Analysis> finalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
+                DateUtil.getNowAsSqlDate(),
+                iStatusService.getStatusID(AnalysisStatus.Finalized));
         java.sql.Timestamp startTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
         java.sql.Timestamp endTimestamp = DateUtil
@@ -445,7 +438,7 @@ public class PatientDashBoardProvider {
                         DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 return convertAnalysesToOrderBean(analyses);
             case UN_PRINTED_RESULTS:
-                return convertAnalysesToOrderBean(unprintedResults());
+                return convertAnalysesToOrderBean(unprintedResults(finalizedTodayAnalyses));
             case INCOMING_ORDERS:
                 List<Integer> estausIds = new ArrayList<>();
                 estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
@@ -456,7 +449,7 @@ public class PatientDashBoardProvider {
             case AVERAGE_TURN_AROUND_TIME:
                 return new ArrayList<>();
             case DELAYED_TURN_AROUND:
-                return convertAnalysesToOrderBean(analysesWithDelayedTurnAroundTime());
+                return convertAnalysesToOrderBean(analysesWithDelayedTurnAroundTime(finalizedTodayAnalyses));
             case ORDERS_FOR_USER:
                 if (StringUtils.isNotBlank(systemUserId)) {
                     statusIdSet = new HashSet<>();
@@ -473,9 +466,12 @@ public class PatientDashBoardProvider {
     @ResponseBody
     public AverageTimeDisplayBean getDasBoardAverageTurnAroundTime() {
         AverageTimeDisplayBean timeBean = new AverageTimeDisplayBean();
+        List<Analysis> finalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
+                DateUtil.getNowAsSqlDate(),
+                iStatusService.getStatusID(AnalysisStatus.Finalized));
         timeBean.setReceptionToResult(calculateAverageReceptionToResultTime());
-        timeBean.setReceptionToValidation(calculateAverageReceptionToValidationTime());
-        timeBean.setResultToValidation(calculateAverageResultToValidationTime());
+        timeBean.setReceptionToValidation(calculateAverageReceptionToValidationTime(finalizedTodayAnalyses));
+        timeBean.setResultToValidation(calculateAverageResultToValidationTime(finalizedTodayAnalyses));
         return timeBean;
     }
 }
