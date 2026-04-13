@@ -563,11 +563,8 @@ function TBInitialProcessingPage({
                     status: "COMPLETED",
                   }),
                   () => {
-                    console.log("Samples marked as COMPLETED");
-                    // Route samples to Page 5 (Incubation Monitoring)
-                    console.log("Routing samples to Page 5...");
-                    routeSamplesToPage(sampleIds, 5);
-                    console.log("=== INOCULATION COMPLETE ===");
+                    // Route samples to Page 4 (Incubation Monitoring)
+                    routeSamplesToPage(sampleIds, 4);
                     loadPageSamples();
                     loadStatistics();
                     if (onProgressUpdate) onProgressUpdate();
