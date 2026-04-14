@@ -80,8 +80,6 @@ services:
       - ./volume/branding:/var/lib/openelis-global/branding
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
       - ./volume/analyzer-imports:/data/analyzer-imports
-      # Added: analyzer profiles needed for E2E tests (Mindray, ASTM simulator)
-      - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
     secrets:
       - source: common.properties
     healthcheck:
