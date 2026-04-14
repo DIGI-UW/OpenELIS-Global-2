@@ -1,5 +1,7 @@
 package org.openelisglobal.notebook.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,8 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
@@ -27,22 +27,22 @@ import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample;
+import org.openelisglobal.sample.dao.SampleDAO;
+import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.util.AccessionNumberHandler;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.openelisglobal.sample.dao.SampleDAO;
-import org.openelisglobal.sample.exception.DuplicateAccessionNumberException;
-import org.openelisglobal.sample.util.AccessionNumberHandler;
 
 /**
  * VirologyLab (Virology Laboratory) manifest import implementation.
  * <p>
- * Parses VirologyLab-specific CSV, creates samples + sample items, links to notebook
- * entry, and stores reception and processing metadata on page 1
+ * Parses VirologyLab-specific CSV, creates samples + sample items, links to
+ * notebook entry, and stores reception and processing metadata on page 1
  * NotebookPageSample in JSONB format for flexible virology data storage.
  */
 @Service
@@ -97,8 +97,7 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
 
             // Other genomic materials
             "germ line dna", "somatic dna", "cfna - circulating nucleic acids", "environmental sample",
-            "other genomic material"
-    );
+            "other genomic material");
 
     @Override
     public List<Map<String, String>> getValidVirologyLabSampleTypes() {
@@ -117,8 +116,7 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
         List<ManifestRow> rows = new ArrayList<>();
         List<ParseError> errors = new ArrayList<>();
 
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
 
             String headerLine = reader.readLine();
             if (headerLine == null || headerLine.isBlank()) {
@@ -187,22 +185,22 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
                     String notes = getFieldValue(fields, notesIdx);
 
                     ManifestRow row = new ManifestRow(rowNumber, sampleId, sampleType, source, collectionDate,
-                        receptionDateTime, projectStudyAssociation, volumeConcentration, a260_280, a260_230,
-                        rin, extractionMethodKit, pcrProtocol, libraryPrepProtocol, sequencingPlatform,
-                        runId, operator, processingDateTime, notes);
+                            receptionDateTime, projectStudyAssociation, volumeConcentration, a260_280, a260_230, rin,
+                            extractionMethodKit, pcrProtocol, libraryPrepProtocol, sequencingPlatform, runId, operator,
+                            processingDateTime, notes);
 
                     rows.add(row);
                 } catch (Exception e) {
                     errors.add(new ParseError(rowNumber, "row", "Failed to parse row: " + e.getMessage()));
                     LogEvent.logError(this.getClass().getSimpleName(), "parseManifestCsv",
-                        "Error parsing row " + rowNumber + ": " + e.getMessage());
+                            "Error parsing row " + rowNumber + ": " + e.getMessage());
                 }
             }
 
         } catch (IOException e) {
             errors.add(new ParseError(0, "file", "Failed to read CSV file: " + e.getMessage()));
             LogEvent.logError(this.getClass().getSimpleName(), "parseManifestCsv",
-                "IO error reading CSV: " + e.getMessage());
+                    "IO error reading CSV: " + e.getMessage());
         }
 
         return new ParsedManifest(rows, errors);
@@ -223,8 +221,8 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
 
     @Override
     @Transactional
-    public VirologyLabManifestImportResult createSamplesForEntry(Integer entryId,
-            ParsedManifest parsedManifest, String sysUserId) {
+    public VirologyLabManifestImportResult createSamplesForEntry(Integer entryId, ParsedManifest parsedManifest,
+            String sysUserId) {
 
         List<String> createdSampleIds = new ArrayList<>();
         List<ParseError> errors = new ArrayList<>();
@@ -265,8 +263,8 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
                 parentSample.setReceivedTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
                 String sampleIdDb;
                 try {
-                    AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO,
-                            entityManager, this.getClass());
+                    AccessionNumberHandler handler = new AccessionNumberHandler(sampleService, sampleDAO, entityManager,
+                            this.getClass());
                     sampleIdDb = handler.generateAndInsertWithUniqueAccessionNumber(parentSample);
                     parentSample.setId(sampleIdDb);
                 } catch (DuplicateAccessionNumberException e) {
@@ -300,15 +298,13 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
                 }
 
             } catch (Exception e) {
-                errors.add(new ParseError(row.rowNumber(), "sample",
-                    "Failed to create sample: " + e.getMessage()));
+                errors.add(new ParseError(row.rowNumber(), "sample", "Failed to create sample: " + e.getMessage()));
                 LogEvent.logError(this.getClass().getSimpleName(), "createSamplesForEntry",
-                    "Error creating sample for row " + row.rowNumber() + ": " + e.getMessage());
+                        "Error creating sample for row " + row.rowNumber() + ": " + e.getMessage());
             }
         }
 
-        return new VirologyLabManifestImportResult(totalRequested, createdSampleIds.size(),
-            createdSampleIds, errors);
+        return new VirologyLabManifestImportResult(totalRequested, createdSampleIds.size(), createdSampleIds, errors);
     }
 
     private String[] parseCSVLine(String line) {
@@ -370,8 +366,8 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
         if (row.sampleType() != null && !row.sampleType().trim().isEmpty()) {
             String sampleType = row.sampleType().trim().toLowerCase();
             if (!VALID_VIROLOGY_SAMPLE_TYPES.contains(sampleType)) {
-                errors.add(new ParseError(row.rowNumber(), "sampleType",
-                    "Invalid sample type: " + row.sampleType() + ". Must be one of: " + VALID_VIROLOGY_SAMPLE_TYPES));
+                errors.add(new ParseError(row.rowNumber(), "sampleType", "Invalid sample type: " + row.sampleType()
+                        + ". Must be one of: " + VALID_VIROLOGY_SAMPLE_TYPES));
             }
         }
     }
@@ -382,8 +378,8 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
             try {
                 LocalDate.parse(row.collectionDate().trim(), DateTimeFormatter.ISO_LOCAL_DATE);
             } catch (DateTimeParseException e) {
-                errors.add(new ParseError(row.rowNumber(), "collectionDate",
-                    "Invalid date format. Expected YYYY-MM-DD"));
+                errors.add(
+                        new ParseError(row.rowNumber(), "collectionDate", "Invalid date format. Expected YYYY-MM-DD"));
             }
         }
 
@@ -392,10 +388,10 @@ public class VirologyLabManifestImportServiceImpl implements VirologyLabManifest
                 && !"now".equalsIgnoreCase(row.receptionDateTime().trim())) {
             try {
                 LocalDateTime.parse(row.receptionDateTime().trim().replace(" ", "T"),
-                    DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                        DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             } catch (DateTimeParseException e) {
                 errors.add(new ParseError(row.rowNumber(), "receptionDateTime",
-                    "Invalid date time format. Expected YYYY-MM-DD HH:MM or 'now'"));
+                        "Invalid date time format. Expected YYYY-MM-DD HH:MM or 'now'"));
             }
         }
     }

@@ -20,9 +20,9 @@ public class InventoryReportRestController {
     private InventoryReportService inventoryReportService;
 
     @PostMapping("/generate")
-    public void generateReport(@RequestParam String reportType,
-            @RequestParam(defaultValue = "PDF") String exportFormat, @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate, @RequestParam(defaultValue = "false") boolean includeInactive,
+    public void generateReport(@RequestParam String reportType, @RequestParam(defaultValue = "PDF") String exportFormat,
+            @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "false") boolean includeInactive,
             @RequestParam(defaultValue = "true") boolean includeExpired,
             @RequestParam(defaultValue = "false") boolean groupByType,
             @RequestParam(defaultValue = "false") boolean groupByLocation, HttpServletResponse response)

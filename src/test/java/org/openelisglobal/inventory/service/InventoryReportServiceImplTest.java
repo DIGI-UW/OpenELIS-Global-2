@@ -60,8 +60,8 @@ public class InventoryReportServiceImplTest {
         when(inventoryItemService.getAllActive()).thenReturn(List.of(item));
         when(inventoryLotService.getAll()).thenReturn(List.of(lot));
 
-        GeneratedReport report = inventoryReportService.generateReport("stock_levels", "csv", null, null, false,
-                false, false, false);
+        GeneratedReport report = inventoryReportService.generateReport("stock_levels", "csv", null, null, false, false,
+                false, false);
 
         assertEquals("text/csv", report.getContentType());
         assertTrue(report.getFileName().matches("inventory_stock_levels_\\d{8}\\.csv"));
@@ -87,8 +87,7 @@ public class InventoryReportServiceImplTest {
     @Test
     public void generateReport_shouldRequireDatesForTransactionHistory() {
         try {
-            inventoryReportService.generateReport("transaction_history", "csv", null, null, false, false, false,
-                    false);
+            inventoryReportService.generateReport("transaction_history", "csv", null, null, false, false, false, false);
             fail("Expected IllegalArgumentException when transaction history dates are missing");
         } catch (IllegalArgumentException e) {
             assertEquals("Transaction history report requires startDate and endDate", e.getMessage());

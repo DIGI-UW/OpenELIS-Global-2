@@ -10,11 +10,11 @@ import java.util.Optional;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.notebook.form.VirologyLabManifestImportForm;
+import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.VirologyLabManifestImportService;
-import org.openelisglobal.notebook.service.VirologyLabManifestImportService.VirologyLabManifestImportResult;
 import org.openelisglobal.notebook.service.VirologyLabManifestImportService.ParseError;
 import org.openelisglobal.notebook.service.VirologyLabManifestImportService.ParsedManifest;
-import org.openelisglobal.notebook.service.NotebookEntryService;
+import org.openelisglobal.notebook.service.VirologyLabManifestImportService.VirologyLabManifestImportResult;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -33,10 +33,10 @@ import org.springframework.web.multipart.MultipartFile;
  * REST controller for VirologyLab (Virology Laboratory) manifest CSV import
  * operations.
  *
- * Supports virology sample metadata including: - Required: sampleId, sampleType,
- * source, collectionDate, receptionDateTime - Optional reception metadata:
- * projectStudyAssociation, volumeConcentration, A260/280, A260/230, RIN -
- * Optional processing metadata: extractionMethodKit, pcrProtocol,
+ * Supports virology sample metadata including: - Required: sampleId,
+ * sampleType, source, collectionDate, receptionDateTime - Optional reception
+ * metadata: projectStudyAssociation, volumeConcentration, A260/280, A260/230,
+ * RIN - Optional processing metadata: extractionMethodKit, pcrProtocol,
  * libraryPrepProtocol, sequencingPlatform, runId, operator, processingDateTime,
  * notes - Auto-generated: systemAssignedSampleId, barcodeQrCode
  *
@@ -55,7 +55,8 @@ public class VirologyLabManifestImportController extends BaseRestController {
     private NotebookEntryService notebookEntryService;
 
     /**
-     * Get valid sample types for the VirologyLab laboratory with pagination and filtering.
+     * Get valid sample types for the VirologyLab laboratory with pagination and
+     * filtering.
      *
      * @param offset Pagination offset (default 0)
      * @param limit  Pagination limit (default 50, max 200)
@@ -214,7 +215,8 @@ public class VirologyLabManifestImportController extends BaseRestController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
-            VirologyLabManifestImportResult result = virologyLabManifestImportService.createSamplesForEntry(entryId, parsed, sysUserId);
+            VirologyLabManifestImportResult result = virologyLabManifestImportService.createSamplesForEntry(entryId,
+                    parsed, sysUserId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", result.errors().isEmpty());

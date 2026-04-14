@@ -3,6 +3,7 @@ package org.openelisglobal.notebook.controller.rest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.StringWriter;
 import java.sql.Timestamp;
@@ -29,6 +30,7 @@ import org.openelisglobal.notebook.service.NoteBookPageService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.NotebookPageSampleService;
 import org.openelisglobal.notebook.service.NotebookSampleEntryService;
+import org.openelisglobal.notebook.service.PathologyDiagnosticReportService;
 import org.openelisglobal.notebook.service.PathologySopService;
 import org.openelisglobal.notebook.valueholder.NoteBookPage;
 import org.openelisglobal.notebook.valueholder.NotebookEntry;
@@ -97,6 +99,9 @@ public class PathologyWorkflowController extends BaseRestController {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private PathologyDiagnosticReportService pathologyDiagnosticReportService;
 
     // ========================================
     // SAMPLE CREATION ENDPOINTS
@@ -3932,6 +3937,84 @@ public class PathologyWorkflowController extends BaseRestController {
             response.put("success", false);
             response.put("error", "Failed to get staining data: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // ========================================
+    // DIAGNOSTIC REPORT ENDPOINTS
+    // ========================================
+
+    /**
+     * Get all patients associated with a notebook entry for report generation. GET
+     * /rest/notebook/pathology/report/patients?entryId={entryId}
+     */
+    @GetMapping(value = "/report/patients", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getReportPatients(@RequestParam Integer entryId,
+            HttpServletRequest request) {
+        String sysUserId = getSysUserId(request);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(List.of());
+        }
+
+        try {
+            List<Map<String, Object>> patients = pathologyDiagnosticReportService.getPatientList(entryId);
+            return ResponseEntity.ok(patients);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "getReportPatients",
+                    "Failed to get patient list for entry " + entryId + ": " + e.getMessage());
+            return ResponseEntity.status(500).body(List.of());
+        }
+    }
+
+    /**
+     * Generate a pathology diagnostic report PDF for a specific patient. POST
+     * /rest/notebook/pathology/report/diagnostic-pdf
+     */
+    @PostMapping(value = "/report/diagnostic-pdf", produces = "application/pdf")
+    public void generateDiagnosticReportPdf(@RequestBody Map<String, Object> requestData,
+            HttpServletRequest httpRequest, HttpServletResponse response) throws java.io.IOException {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            response.setStatus(401);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"User session not found\"}");
+            return;
+        }
+
+        Integer entryId = parseInteger(requestData.get("entryId"));
+        String patientKey = parseString(requestData.get("patientKey"));
+
+        if (entryId == null || patientKey == null || patientKey.isBlank()) {
+            response.setStatus(400);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"entryId and patientKey are required\"}");
+            return;
+        }
+
+        try {
+            LogEvent.logInfo(this.getClass().getName(), "generateDiagnosticReportPdf",
+                    "Generating diagnostic report for entry " + entryId + ", patient " + patientKey);
+
+            byte[] pdfBytes = pathologyDiagnosticReportService.generateDiagnosticReportPdf(entryId, patientKey);
+
+            String filename = "PathologyReport_" + patientKey.replaceAll("[^a-zA-Z0-9\\-]", "_") + ".pdf";
+            response.setContentType("application/pdf");
+            response.setHeader("Content-Disposition", "attachment; filename=" + filename);
+            response.setContentLength(pdfBytes.length);
+            response.getOutputStream().write(pdfBytes);
+            response.getOutputStream().flush();
+
+            LogEvent.logInfo(this.getClass().getName(), "generateDiagnosticReportPdf",
+                    "Successfully generated diagnostic report PDF with " + pdfBytes.length + " bytes");
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "generateDiagnosticReportPdf",
+                    "Failed to generate diagnostic report: " + e.getMessage());
+            e.printStackTrace();
+            response.setStatus(500);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.getWriter().write("{\"error\":\"Report generation failed: " + e.getMessage() + "\"}");
         }
     }
 

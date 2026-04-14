@@ -36,10 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>
  * <strong>Loading behavior:</strong> Configuration files are processed by
  * {@link org.openelisglobal.configuration.service.ConfigurationInitializationService}
- * at application startup (on {@code ContextRefreshedEvent}). To pick up configuration
- * changes, a full application restart or context refresh is required. Files are
- * tracked via MD5 checksums to skip unchanged files unless {@code forceReload=true}
- * is configured.
+ * at application startup (on {@code ContextRefreshedEvent}). To pick up
+ * configuration changes, a full application restart or context refresh is
+ * required. Files are tracked via MD5 checksums to skip unchanged files unless
+ * {@code forceReload=true} is configured.
  *
  * <p>
  * <strong>JSON contract:</strong>

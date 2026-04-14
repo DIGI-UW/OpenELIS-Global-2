@@ -22,7 +22,6 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -37,7 +36,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -49,10 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class InventoryReportServiceImpl implements InventoryReportService {
 
     private static final DateTimeFormatter FILE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
-    private static final List<DateTimeFormatter> INPUT_DATE_FORMATS = Arrays.asList(
-            DateTimeFormatter.ISO_LOCAL_DATE,
-            DateTimeFormatter.ofPattern("MM/dd/yyyy"),
-            DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+    private static final List<DateTimeFormatter> INPUT_DATE_FORMATS = Arrays.asList(DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("MM/dd/yyyy"), DateTimeFormatter.ofPattern("dd/MM/yyyy"),
             DateTimeFormatter.ofPattern("dd-MM-yyyy"));
     private static final DateTimeFormatter DISPLAY_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DecimalFormat QUANTITY_FORMAT = new DecimalFormat("#,##0.##");
@@ -127,7 +123,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     private ReportTable buildStockLevelsTable(boolean includeInactive, boolean includeExpired, boolean groupByType,
             boolean groupByLocation, boolean lowStockOnly) {
-        List<InventoryItem> items = includeInactive ? inventoryItemService.getAll() : inventoryItemService.getAllActive();
+        List<InventoryItem> items = includeInactive ? inventoryItemService.getAll()
+                : inventoryItemService.getAllActive();
         List<InventoryLot> lots = filterLots(loadLots(), includeInactive, includeExpired);
         Map<Long, List<InventoryLot>> lotsByItem = lots.stream()
                 .filter(lot -> lot.getInventoryItem() != null && lot.getInventoryItem().getId() != null)
@@ -148,51 +145,38 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 continue;
             }
 
-            LinkedHashSet<String> locations = itemLots.stream().map(this::displayLocation).collect(Collectors.toCollection(LinkedHashSet::new));
-            rows.add(List.of(
-                    safe(item.getName()),
-                    safe(String.valueOf(item.getItemType())),
-                    formatQuantity(totalQuantity),
-                    safe(item.getUnits()),
-                    String.valueOf(threshold),
-                    stockStatus,
-                    String.valueOf(activeLots),
-                    String.join("; ", locations)));
+            LinkedHashSet<String> locations = itemLots.stream().map(this::displayLocation)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            rows.add(List.of(safe(item.getName()), safe(String.valueOf(item.getItemType())),
+                    formatQuantity(totalQuantity), safe(item.getUnits()), String.valueOf(threshold), stockStatus,
+                    String.valueOf(activeLots), String.join("; ", locations)));
         }
 
         sortRows(rows, groupByType ? 1 : null, groupByLocation ? 7 : null, 0);
-        return new ReportTable(lowStockOnly ? "Low Stock Report" : "Stock Levels Report",
-                List.of("Item Name", "Item Type", "Total Quantity", "Units", "Low Stock Threshold", "Status",
-                        "Active Lots", "Storage Locations"),
+        return new ReportTable(
+                lowStockOnly ? "Low Stock Report" : "Stock Levels Report", List.of("Item Name", "Item Type",
+                        "Total Quantity", "Units", "Low Stock Threshold", "Status", "Active Lots", "Storage Locations"),
                 rows);
     }
 
-    private ReportTable buildExpirationForecastTable(boolean includeInactive, boolean includeExpired, boolean groupByType,
-            boolean groupByLocation) {
+    private ReportTable buildExpirationForecastTable(boolean includeInactive, boolean includeExpired,
+            boolean groupByType, boolean groupByLocation) {
         List<List<String>> rows = filterLots(loadLots(), includeInactive, includeExpired).stream()
                 .filter(lot -> lot.getEffectiveExpirationDate() != null)
-                .sorted(Comparator.comparing(InventoryLot::getEffectiveExpirationDate))
-                .map(lot -> {
+                .sorted(Comparator.comparing(InventoryLot::getEffectiveExpirationDate)).map(lot -> {
                     LocalDate expirationDate = toLocalDate(lot.getEffectiveExpirationDate());
                     long daysRemaining = ChronoUnit.DAYS.between(LocalDate.now(), expirationDate);
-                    return List.of(
-                            safe(itemName(lot)),
-                            safe(String.valueOf(lot.getInventoryItem().getItemType())),
-                            safe(lot.getLotNumber()),
-                            formatQuantity(lot.getCurrentQuantity()),
-                            safe(lot.getInventoryItem().getUnits()),
-                            safe(expirationDate.format(DISPLAY_DATE_FORMAT)),
-                            String.valueOf(daysRemaining),
-                            safe(String.valueOf(lot.getQcStatus())),
-                            safe(String.valueOf(lot.getStatus())),
-                            displayLocation(lot));
-                })
-                .collect(Collectors.toCollection(ArrayList::new));
+                    return List.of(safe(itemName(lot)), safe(String.valueOf(lot.getInventoryItem().getItemType())),
+                            safe(lot.getLotNumber()), formatQuantity(lot.getCurrentQuantity()),
+                            safe(lot.getInventoryItem().getUnits()), safe(expirationDate.format(DISPLAY_DATE_FORMAT)),
+                            String.valueOf(daysRemaining), safe(String.valueOf(lot.getQcStatus())),
+                            safe(String.valueOf(lot.getStatus())), displayLocation(lot));
+                }).collect(Collectors.toCollection(ArrayList::new));
 
         sortRows(rows, groupByType ? 1 : null, groupByLocation ? 9 : null, 5);
-        return new ReportTable("Expiration Forecast Report",
-                List.of("Item Name", "Item Type", "Lot Number", "Current Quantity", "Units", "Effective Expiry",
-                        "Days Remaining", "QC Status", "Lot Status", "Storage Location"),
+        return new ReportTable(
+                "Expiration Forecast Report", List.of("Item Name", "Item Type", "Lot Number", "Current Quantity",
+                        "Units", "Effective Expiry", "Days Remaining", "QC Status", "Lot Status", "Storage Location"),
                 rows);
     }
 
@@ -201,21 +185,16 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         List<List<String>> rows = inventoryTransactionService.getByDateRange(range.start(), range.end()).stream()
                 .filter(tx -> includeInactive || isActiveItem(tx.getLot()))
                 .sorted(Comparator.comparing(InventoryTransaction::getTransactionDate).reversed())
-                .map(tx -> List.of(
-                        safe(itemName(tx.getLot())),
-                        safe(lotNumber(tx)),
-                        safe(String.valueOf(tx.getTransactionType())),
-                        formatQuantity(tx.getQuantityChange()),
+                .map(tx -> List.of(safe(itemName(tx.getLot())), safe(lotNumber(tx)),
+                        safe(String.valueOf(tx.getTransactionType())), formatQuantity(tx.getQuantityChange()),
                         formatQuantity(tx.getQuantityAfter()),
-                        safe(toLocalDateTime(tx.getTransactionDate()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))),
-                        safe(String.valueOf(tx.getReferenceType())),
-                        safe(tx.getNotes()),
-                        displayLocation(tx.getLot())))
+                        safe(toLocalDateTime(tx.getTransactionDate())
+                                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))),
+                        safe(String.valueOf(tx.getReferenceType())), safe(tx.getNotes()), displayLocation(tx.getLot())))
                 .collect(Collectors.toCollection(ArrayList::new));
 
-        return new ReportTable("Transaction History Report",
-                List.of("Item Name", "Lot Number", "Transaction Type", "Quantity Change", "Quantity After",
-                        "Transaction Date", "Reference Type", "Notes", "Storage Location"),
+        return new ReportTable("Transaction History Report", List.of("Item Name", "Lot Number", "Transaction Type",
+                "Quantity Change", "Quantity After", "Transaction Date", "Reference Type", "Notes", "Storage Location"),
                 rows);
     }
 
@@ -234,9 +213,11 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
             String itemType = safe(String.valueOf(tx.getLot().getInventoryItem().getItemType()));
             String location = displayLocation(tx.getLot());
-            String key = itemName(tx.getLot()) + "|" + (groupByType ? itemType : "") + "|" + (groupByLocation ? location : "");
+            String key = itemName(tx.getLot()) + "|" + (groupByType ? itemType : "") + "|"
+                    + (groupByLocation ? location : "");
             UsageAggregate aggregate = aggregates.computeIfAbsent(key,
-                    ignored -> new UsageAggregate(itemName(tx.getLot()), itemType, safe(tx.getLot().getInventoryItem().getUnits()), location));
+                    ignored -> new UsageAggregate(itemName(tx.getLot()), itemType,
+                            safe(tx.getLot().getInventoryItem().getUnits()), location));
             aggregate.events++;
             aggregate.totalConsumed += Math.abs(tx.getQuantityChange() != null ? tx.getQuantityChange() : 0.0);
             LocalDateTime txDate = toLocalDateTime(tx.getTransactionDate());
@@ -248,23 +229,16 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             }
         }
 
-        List<List<String>> rows = aggregates.values().stream()
-                .map(aggregate -> List.of(
-                        safe(aggregate.itemName),
-                        safe(aggregate.itemType),
-                        safe(aggregate.units),
-                        String.valueOf(aggregate.events),
-                        formatQuantity(aggregate.totalConsumed),
-                        aggregate.firstUsage != null ? aggregate.firstUsage.toLocalDate().format(DISPLAY_DATE_FORMAT) : "",
-                        aggregate.lastUsage != null ? aggregate.lastUsage.toLocalDate().format(DISPLAY_DATE_FORMAT) : "",
-                        safe(aggregate.location)))
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<List<String>> rows = aggregates.values().stream().map(aggregate -> List.of(safe(aggregate.itemName),
+                safe(aggregate.itemType), safe(aggregate.units), String.valueOf(aggregate.events),
+                formatQuantity(aggregate.totalConsumed),
+                aggregate.firstUsage != null ? aggregate.firstUsage.toLocalDate().format(DISPLAY_DATE_FORMAT) : "",
+                aggregate.lastUsage != null ? aggregate.lastUsage.toLocalDate().format(DISPLAY_DATE_FORMAT) : "",
+                safe(aggregate.location))).collect(Collectors.toCollection(ArrayList::new));
 
         sortRows(rows, groupByType ? 1 : null, groupByLocation ? 7 : null, 0);
-        return new ReportTable("Usage Trends Report",
-                List.of("Item Name", "Item Type", "Units", "Consumption Events", "Total Consumed", "First Usage",
-                        "Last Usage", "Storage Location"),
-                rows);
+        return new ReportTable("Usage Trends Report", List.of("Item Name", "Item Type", "Units", "Consumption Events",
+                "Total Consumed", "First Usage", "Last Usage", "Storage Location"), rows);
     }
 
     private ReportTable buildLotTraceabilityTable(boolean includeInactive, boolean includeExpired, boolean groupByType,
@@ -273,20 +247,15 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         for (InventoryLot lot : filterLots(loadLots(), includeInactive, includeExpired)) {
             List<InventoryTransaction> transactions = inventoryTransactionService.getByLotId(lot.getId());
             InventoryTransaction latest = transactions.stream()
-                    .max(Comparator.comparing(InventoryTransaction::getTransactionDate))
-                    .orElse(null);
-            rows.add(List.of(
-                    safe(itemName(lot)),
-                    safe(String.valueOf(lot.getInventoryItem().getItemType())),
-                    safe(lot.getLotNumber()),
-                    safe(lot.getBarcode()),
+                    .max(Comparator.comparing(InventoryTransaction::getTransactionDate)).orElse(null);
+            rows.add(List.of(safe(itemName(lot)), safe(String.valueOf(lot.getInventoryItem().getItemType())),
+                    safe(lot.getLotNumber()), safe(lot.getBarcode()),
                     lot.getReceiptDate() != null ? toLocalDate(lot.getReceiptDate()).format(DISPLAY_DATE_FORMAT) : "",
-                    formatQuantity(lot.getCurrentQuantity()),
-                    safe(String.valueOf(lot.getQcStatus())),
-                    safe(String.valueOf(lot.getStatus())),
-                    displayLocation(lot),
+                    formatQuantity(lot.getCurrentQuantity()), safe(String.valueOf(lot.getQcStatus())),
+                    safe(String.valueOf(lot.getStatus())), displayLocation(lot),
                     latest != null ? safe(String.valueOf(latest.getTransactionType())) : "",
-                    latest != null ? safe(toLocalDateTime(latest.getTransactionDate()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))) : "",
+                    latest != null ? safe(toLocalDateTime(latest.getTransactionDate())
+                            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))) : "",
                     latest != null ? safe(latest.getNotes()) : ""));
         }
 
@@ -309,11 +278,9 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     }
 
     private List<InventoryLot> filterLots(List<InventoryLot> lots, boolean includeInactive, boolean includeExpired) {
-        return lots.stream()
-                .filter(lot -> lot.getInventoryItem() != null)
+        return lots.stream().filter(lot -> lot.getInventoryItem() != null)
                 .filter(lot -> includeInactive || lot.getInventoryItem().isActive())
-                .filter(lot -> includeExpired || !lot.isExpired())
-                .collect(Collectors.toList());
+                .filter(lot -> includeExpired || !lot.isExpired()).collect(Collectors.toList());
     }
 
     private String buildCsv(ReportTable table) {
@@ -368,7 +335,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     private byte[] buildPdf(ReportTable table) {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            Document document = new Document(table.headers.size() > 7 ? PageSize.A4.rotate() : PageSize.A4, 24, 24, 24, 24);
+            Document document = new Document(table.headers.size() > 7 ? PageSize.A4.rotate() : PageSize.A4, 24, 24, 24,
+                    24);
             PdfWriter.getInstance(document, output);
             document.open();
 
@@ -417,7 +385,8 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         return "\"" + safeValue.replace("\"", "\"\"") + "\"";
     }
 
-    private void sortRows(List<List<String>> rows, Integer primaryIndex, Integer secondaryIndex, Integer fallbackIndex) {
+    private void sortRows(List<List<String>> rows, Integer primaryIndex, Integer secondaryIndex,
+            Integer fallbackIndex) {
         List<Integer> order = new ArrayList<>();
         if (primaryIndex != null) {
             order.add(primaryIndex);

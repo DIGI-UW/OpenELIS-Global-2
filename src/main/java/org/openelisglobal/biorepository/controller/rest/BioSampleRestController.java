@@ -20,10 +20,10 @@ import org.openelisglobal.biorepository.service.BioSampleService;
 import org.openelisglobal.biorepository.service.BiorepositoryApprovedSampleTypeService;
 import org.openelisglobal.biorepository.service.RetentionPolicyService;
 import org.openelisglobal.biorepository.service.ShipmentService;
-import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType;
-import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType.SampleCategory;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
+import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType;
+import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType.SampleCategory;
 import org.openelisglobal.biorepository.valueholder.RetentionPolicy;
 import org.openelisglobal.biorepository.valueholder.Shipment;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -1424,8 +1424,7 @@ public class BioSampleRestController extends BaseRestController {
             return SampleCategory.CELLULAR;
         }
         if (normalized.contains("isolate") || normalized.contains("culture") || normalized.contains("bacteria")
-                || normalized.contains("bacterial") || normalized.contains("viral")
-                || normalized.contains("fungal")) {
+                || normalized.contains("bacterial") || normalized.contains("viral") || normalized.contains("fungal")) {
             return SampleCategory.MICROBIOLOGICAL;
         }
 
