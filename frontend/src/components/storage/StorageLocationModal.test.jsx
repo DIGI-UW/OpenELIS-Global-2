@@ -85,10 +85,34 @@ describe("StorageLocationModal", () => {
     );
 
     await screen.findByTestId("storage-location-modal");
-    await screen.findByLabelText(/location name/i);
+    await screen.findByLabelText(/^name$/i);
     await screen.findByLabelText(/ip address/i);
     await screen.findByLabelText(/^port$/i);
     await screen.findByLabelText(/communication protocol/i);
+  });
+
+  test("testStorageLocationModal_ShelfCreateMode_AllowsSelectingStorageType", async () => {
+    Utils.getFromOpenElisServerV2.mockResolvedValue([
+      {
+        id: "11",
+        name: "Ultra-Low Freezer 1",
+        active: true,
+      },
+    ]);
+
+    renderWithIntl(
+      <StorageLocationModal
+        open={true}
+        locationType="shelf"
+        mode="create"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    await screen.findByTestId("storage-location-modal");
+    await screen.findByTestId("shelf-storage-type-dropdown");
+    await screen.findByLabelText(/shelf label/i);
   });
 
   /**
@@ -213,7 +237,7 @@ describe("StorageLocationModal", () => {
     );
 
     // Assert: Verify fields are pre-filled
-    const nameInput = await screen.findByLabelText(/location name/i);
+    const nameInput = await screen.findByLabelText(/^name$/i);
     expect(nameInput.value).toBe("Freezer Unit 1");
 
     const ipInput = await screen.findByLabelText(/ip address/i);
