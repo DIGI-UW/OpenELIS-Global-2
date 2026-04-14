@@ -122,7 +122,6 @@ public class TestNotificationServiceImpl implements TestNotificationService {
     private void createAndSendResultsNotificationsToConfiguredSources(NotificationNature nature, Result result,
             Optional<? extends NotificationConfig<?>> notificationConfig) {
         ClientResultsViewBean resultsViewInfo = new ClientResultsViewBean(result);
-        resultsViewInfo.setSysUserId(userContextHolder.requireSysUserId());
         resultsViewInfo = clientResultsViewInfoService.save(resultsViewInfo);
 
         String resultForDisplay = "";

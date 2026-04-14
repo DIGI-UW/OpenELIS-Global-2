@@ -28,15 +28,14 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
 
     private final AnalyzerFieldMappingDAO analyzerFieldMappingDAO;
     private final AnalyzerFieldDAO analyzerFieldDAO;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
+    private final UserContextHolder userContextHolder;
 
     @Autowired
     public AnalyzerMappingCopyServiceImpl(AnalyzerFieldMappingDAO analyzerFieldMappingDAO,
-            AnalyzerFieldDAO analyzerFieldDAO) {
+            AnalyzerFieldDAO analyzerFieldDAO, UserContextHolder userContextHolder) {
         this.analyzerFieldMappingDAO = analyzerFieldMappingDAO;
         this.analyzerFieldDAO = analyzerFieldDAO;
+        this.userContextHolder = userContextHolder;
     }
 
     @Override
@@ -114,6 +113,7 @@ public class AnalyzerMappingCopyServiceImpl implements AnalyzerMappingCopyServic
                         existingTargetMapping.setSpecimenTypeConstraint(sourceMapping.getSpecimenTypeConstraint());
                         existingTargetMapping.setPanelConstraint(sourceMapping.getPanelConstraint());
                         existingTargetMapping.setLastupdatedFields();
+                        existingTargetMapping.setSysUserId(userContextHolder.requireSysUserId());
 
                         analyzerFieldMappingDAO.update(existingTargetMapping);
                         result.setCopiedCount(result.getCopiedCount() + 1);

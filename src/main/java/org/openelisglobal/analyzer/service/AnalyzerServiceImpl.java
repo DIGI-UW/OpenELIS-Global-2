@@ -26,7 +26,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.services.PluginAnalyzerService;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -69,9 +68,6 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Autowired
     private NoteBookDAO noteBookDAO;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
@@ -134,16 +130,13 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
                     "analyzerId is null — skipping " + testMappings.size() + " mapping(s)");
             return;
         }
-        String sysUserId = userContextHolder.requireSysUserId();
         for (AnalyzerTestMapping mapping : testMappings) {
             mapping.setAnalyzerId(analyzerId);
             if (newMapping(mapping, existingMappings)) {
-                mapping.setSysUserId(sysUserId);
                 analyzerMappingService.insert(mapping);
                 existingMappings.add(mapping);
             } else {
                 mapping.setLastupdated(analyzerMappingService.get(mapping.getId()).getLastupdated());
-                mapping.setSysUserId(sysUserId);
                 analyzerMappingService.update(mapping);
             }
         }

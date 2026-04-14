@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -56,9 +55,6 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
 
     @Autowired
     private DictionaryService dictionaryService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     @Override
     public String getDomainName() {
@@ -445,7 +441,6 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId(userContextHolder.requireSysUserId());
         testResultService.update(testResult);
         return testResult;
     }
@@ -506,7 +501,6 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             testResult.setFlags(flags);
         }
 
-        testResult.setSysUserId(userContextHolder.requireSysUserId());
         String testResultId = testResultService.insert(testResult);
         testResult.setId(testResultId);
 

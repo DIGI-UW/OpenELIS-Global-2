@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -45,9 +44,6 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
 
     @Autowired
     private LocalizationService localizationService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     @Override
     public String createField(OpenELISFieldForm form) throws LIMSRuntimeException {
@@ -167,8 +163,6 @@ public class OpenELISFieldServiceImpl implements OpenELISFieldService {
 
             test.setIsActive("Y");
             test.setOrderable(true);
-
-            test.setSysUserId(userContextHolder.requireSysUserId());
 
             String testId = testService.insert(test);
 

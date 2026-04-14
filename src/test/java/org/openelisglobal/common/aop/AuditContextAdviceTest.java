@@ -3,6 +3,7 @@ package org.openelisglobal.common.aop;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import org.junit.After;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -64,6 +65,17 @@ public class AuditContextAdviceTest extends BaseWebContextSensitiveTest {
         si.setSysUserId("1");
         String id = siteInformationService.insert(si);
         assertNotNull("Insert should return an ID", id);
+    }
+
+    @Test
+    public void insertAll_autoStampsSysUserIdOnCollectionItems() {
+        SiteInformation si1 = createTestSiteInformation();
+        si1.setSysUserId(null);
+        SiteInformation si2 = createTestSiteInformation();
+        si2.setSysUserId(null);
+        siteInformationService.insertAll(List.of(si1, si2));
+        assertNotNull("SysUserId should have been auto-stamped on first item", si1.getSysUserId());
+        assertNotNull("SysUserId should have been auto-stamped on second item", si2.getSysUserId());
     }
 
     private SiteInformation createTestSiteInformation() {

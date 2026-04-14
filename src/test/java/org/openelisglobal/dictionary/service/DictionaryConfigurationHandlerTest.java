@@ -16,7 +16,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
@@ -43,9 +42,6 @@ public class DictionaryConfigurationHandlerTest {
     @Mock
     private SupportedLocaleService supportedLocaleService;
 
-    @Mock
-    private UserContextHolder userContextHolder;
-
     @InjectMocks
     private DictionaryConfigurationHandler handler;
 
@@ -60,9 +56,6 @@ public class DictionaryConfigurationHandlerTest {
         testCategory.setId("1");
         testCategory.setCategoryName("Test Category");
         testCategory.setDescription("Test Description");
-
-        // Mock user context to return a valid system user ID
-        when(userContextHolder.requireSysUserId()).thenReturn("1");
 
         // Mock localization service to return IDs for inserts
         when(localizationService.insert(any(Localization.class))).thenReturn("1", "2", "3", "4", "5");

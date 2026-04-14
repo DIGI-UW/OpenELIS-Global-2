@@ -5,7 +5,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.person.service.PersonService;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.dao.ProviderDAO;
@@ -20,8 +19,6 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
     protected ProviderDAO baseObjectDAO;
     @Autowired
     protected PersonService personService;
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     ProviderServiceImpl() {
         super(Provider.class);
@@ -152,9 +149,7 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
                 fhirUuid = UUID.randomUUID();
             }
             provider.setFhirUuid(fhirUuid);
-            provider.getPerson().setSysUserId(userContextHolder.requireSysUserId());
             provider.setPerson(personService.save(provider.getPerson()));
-            provider.setSysUserId(userContextHolder.requireSysUserId());
             dbProvider = save(provider);
         }
         return dbProvider;

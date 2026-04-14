@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.role.valueholder.Role;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +32,6 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private RoleService roleService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     @Override
     public String getDomainName() {
@@ -229,8 +225,6 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        // Set system user ID for audit
-        role.setSysUserId(userContextHolder.requireSysUserId());
     }
 
     private Role createRole(String name, String[] values, int descriptionIndex, int displayKeyIndex, int activeIndex,
@@ -284,8 +278,6 @@ public class RolesConfigurationHandler implements DomainConfigurationHandler {
                         "Parent role '" + groupingParentName + "' not found for role '" + name + "'");
             }
         }
-
-        role.setSysUserId(userContextHolder.requireSysUserId());
 
         String roleId = roleService.insert(role);
         role = roleService.get(roleId);

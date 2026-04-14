@@ -18,7 +18,6 @@ import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.organization.service.OrganizationService;
@@ -64,9 +63,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
     private OrganizationService organizationService;
     @Autowired
     private ReferralTypeService referralTypeService;
-    @Autowired
-    private UserContextHolder userContextHolder;
-
     private String REFERRAL_CONFORMATION_ID;
 
     @PostConstruct
@@ -211,7 +207,6 @@ public class ReferralSetServiceImpl implements ReferralSetService {
         List<ReferralSet> referralSets = new ArrayList<>();
         for (ReferralItem referralItem : referralItems) {
             Result result = new Result();
-            result.setSysUserId(userContextHolder.requireSysUserId());
 
             Referral referral = new Referral();
             referral.setFhirUuid(UUID.randomUUID());

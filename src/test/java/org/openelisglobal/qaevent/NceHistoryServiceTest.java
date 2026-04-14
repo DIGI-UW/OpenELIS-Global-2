@@ -68,8 +68,8 @@ public class NceHistoryServiceTest extends BaseWebContextSensitiveTest {
         assertNotNull(history);
         assertNotNull(history.getId());
         assertEquals("ACKNOWLEDGED", history.getActivity());
-        // sysUserId should be null, not hardcoded "1"
-        assertTrue(history.getSysUserId() == null);
+        // sysUserId is auto-stamped from SecurityContext by AuditContextAdvice
+        assertNotNull(history.getSysUserId());
     }
 
     @Test

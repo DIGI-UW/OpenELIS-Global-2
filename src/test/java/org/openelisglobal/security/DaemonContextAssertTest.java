@@ -23,8 +23,8 @@ public class DaemonContextAssertTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @WithDaemonUser
     public void assertDaemonContext_withDaemonUser_passes() {
+        SecurityContextHolder.getContext().setAuthentication(new DaemonAuthenticationToken("1"));
         DaemonContextAssert.assertDaemonContext(); // should not throw
     }
 
@@ -44,8 +44,8 @@ public class DaemonContextAssertTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @WithDaemonUser
     public void assertAuthenticatedContext_withDaemonUser_passes() {
+        SecurityContextHolder.getContext().setAuthentication(new DaemonAuthenticationToken("1"));
         DaemonContextAssert.assertAuthenticatedContext(); // should not throw
     }
 

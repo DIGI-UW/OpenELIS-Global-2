@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
@@ -52,9 +51,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
 
     @Autowired
     private LocalizationValueService localizationValueService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     @Override
     public String getDomainName() {
@@ -279,8 +275,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             section.setIsExternal("Y".equalsIgnoreCase(isExternal) || "true".equalsIgnoreCase(isExternal) ? "Y" : "N");
         }
 
-        section.setSysUserId(userContextHolder.requireSysUserId());
-
         // Handle localization
         processLocalization(section, values, testSectionName, localizationColumns);
     }
@@ -297,7 +291,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         localization.setDescription("test section name");
         localization.setEnglish(translations.getOrDefault("en", testSectionName));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-        localization.setSysUserId(userContextHolder.requireSysUserId());
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -348,8 +341,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
         } else {
             section.setIsExternal("N");
         }
-
-        section.setSysUserId(userContextHolder.requireSysUserId());
 
         String sectionId = testSectionService.insert(section);
         section.setId(sectionId);
@@ -405,7 +396,6 @@ public class TestSectionConfigurationHandler implements DomainConfigurationHandl
             localization.setDescription("test section name");
             localization.setEnglish(translations.getOrDefault("en", testSectionName));
             localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testSectionName)));
-            localization.setSysUserId(userContextHolder.requireSysUserId());
             String localizationId = localizationService.insert(localization);
             localization.setId(localizationId);
             section.setLocalization(localization);

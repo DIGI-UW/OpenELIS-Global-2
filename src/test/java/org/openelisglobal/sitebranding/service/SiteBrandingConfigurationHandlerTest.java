@@ -13,7 +13,6 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
 
 /**
@@ -28,9 +27,6 @@ public class SiteBrandingConfigurationHandlerTest {
     @Mock
     private SiteBrandingService siteBrandingService;
 
-    @Mock
-    private UserContextHolder userContextHolder;
-
     @InjectMocks
     private SiteBrandingConfigurationHandler handler;
 
@@ -38,8 +34,6 @@ public class SiteBrandingConfigurationHandlerTest {
 
     @Before
     public void setUp() {
-        when(userContextHolder.requireSysUserId()).thenReturn("1");
-
         testBranding = new SiteBranding();
         testBranding.setId(1);
         testBranding.setPrimaryColor("#1d4ed8");

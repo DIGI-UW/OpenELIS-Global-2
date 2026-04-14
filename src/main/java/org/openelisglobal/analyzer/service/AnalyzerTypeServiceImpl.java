@@ -20,7 +20,6 @@ import org.openelisglobal.analyzer.dao.AnalyzerTypeDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +33,6 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
 
     @Autowired
     private AnalyzerService analyzerService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     AnalyzerTypeServiceImpl() {
         super(AnalyzerType.class);
@@ -132,7 +128,6 @@ public class AnalyzerTypeServiceImpl extends AuditableBaseObjectServiceImpl<Anal
         defaultInstance.setDescription("Default instance for " + analyzerType.getName());
         defaultInstance.setAnalyzerType(analyzerType);
         defaultInstance.setActive(true);
-        defaultInstance.setSysUserId(userContextHolder.requireSysUserId());
 
         analyzerService.insert(defaultInstance);
         return defaultInstance;

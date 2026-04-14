@@ -21,7 +21,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 import org.openelisglobal.dataexchange.common.IRowTransmissionResponseHandler;
 import org.openelisglobal.dataexchange.service.aggregatereporting.ReportExternalExportService;
@@ -47,8 +46,6 @@ public class SuccessReportHandler implements IRowTransmissionResponseHandler {
     private DocumentTrackService documentTrackService;
     @Autowired
     private ReportExternalExportService reportExternalExportService;
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     String externalExportRowId;
 
@@ -100,7 +97,6 @@ public class SuccessReportHandler implements IRowTransmissionResponseHandler {
                 document.setRecordId(resultIdList[i]);
                 document.setReportTime(now);
                 document.setTableId(resultTableId);
-                document.setSysUserId(userContextHolder.requireSysUserId());
                 documentList.add(document);
             }
         }

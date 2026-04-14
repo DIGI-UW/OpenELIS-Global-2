@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.UUID;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
@@ -83,9 +82,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
     @Autowired
     private UnitOfMeasureService unitOfMeasureService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     @Override
     public String getDomainName() {
@@ -400,8 +396,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             }
         }
 
-        test.setSysUserId(userContextHolder.requireSysUserId());
-
         // Handle localization
         processTestLocalization(test, values, testName, localizationColumns);
 
@@ -421,7 +415,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         localization.setDescription("test name");
         localization.setEnglish(translations.getOrDefault("en", testName));
         localization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testName)));
-        localization.setSysUserId(userContextHolder.requireSysUserId());
         String localizationId = localizationService.insert(localization);
         localization.setId(localizationId);
 
@@ -435,7 +428,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         reportingLocalization.setDescription("test reporting name");
         reportingLocalization.setEnglish(translations.getOrDefault("en", testName));
         reportingLocalization.setFrench(translations.getOrDefault("fr", translations.getOrDefault("en", testName)));
-        reportingLocalization.setSysUserId(userContextHolder.requireSysUserId());
         String reportingLocalizationId = localizationService.insert(reportingLocalization);
         reportingLocalization.setId(reportingLocalizationId);
 
@@ -493,7 +485,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
 
         // Set other defaults
         test.setIsReportable("Y");
-        test.setSysUserId(userContextHolder.requireSysUserId());
 
         String testId = testService.insert(test);
         test.setId(testId);
@@ -592,7 +583,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
                 TypeOfSampleTest mapping = new TypeOfSampleTest();
                 mapping.setTestId(test.getId());
                 mapping.setTypeOfSampleId(sampleType.getId());
-                mapping.setSysUserId(userContextHolder.requireSysUserId());
                 typeOfSampleTestService.insert(mapping);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "createSampleTypeMappings", "Created mapping: test '"
                         + test.getDescription() + "' -> sample type '" + sampleTypeName + "'");
@@ -605,7 +595,6 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             TypeOfSampleTest mapping = new TypeOfSampleTest();
             mapping.setTestId(test.getId());
             mapping.setTypeOfSampleId(sampleType.getId());
-            mapping.setSysUserId(userContextHolder.requireSysUserId());
             typeOfSampleTestService.insert(mapping);
             LogEvent.logDebug(this.getClass().getSimpleName(), "createSingleSampleTypeMapping",
                     "Created mapping: test '" + test.getDescription() + "' -> sample type '"

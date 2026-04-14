@@ -24,7 +24,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 import org.openelisglobal.dataexchange.common.IRowTransmissionResponseHandler;
 import org.openelisglobal.dataexchange.common.ReportTransmission;
@@ -61,8 +60,6 @@ public class ResultExporter {
     private HL7MessageOutService hl7MessageService;
     @Autowired
     private ReportExternalExportService reportExternalExportService;
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     private String resultReportTypeId;
 
@@ -153,7 +150,6 @@ public class ResultExporter {
                     document.setRecordId(resultIdList[i]);
                     document.setReportTime(now);
                     document.setTableId(resultTableId);
-                    document.setSysUserId(userContextHolder.requireSysUserId());
                     documentList.add(document);
                 }
             }

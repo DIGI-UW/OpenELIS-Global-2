@@ -143,6 +143,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
             mapping.setLastupdatedFields();
         }
 
+        stampSysUserId(mapping);
         return analyzerFieldMappingDAO.insert(mapping);
     }
 
@@ -211,6 +212,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
 
         mapping.setIsActive(true);
         mapping.setLastupdatedFields();
+        stampSysUserId(mapping);
 
         return analyzerFieldMappingDAO.update(mapping);
     }
@@ -372,8 +374,6 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         mapping.setIsActive(isActive != null ? isActive : false);
         mapping.setSpecimenTypeConstraint(specimenTypeConstraint);
         mapping.setPanelConstraint(panelConstraint);
-        mapping.setSysUserId(userContextHolder.requireSysUserId());
-
         String mappingId = createMapping(mapping);
         return getMappingWithCompleteData(mappingId);
     }
@@ -561,6 +561,7 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         // mapping.getSysUserId(),
         // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
 
+        stampSysUserId(existingMapping);
         return analyzerFieldMappingDAO.update(existingMapping);
     }
 
@@ -653,7 +654,14 @@ public class AnalyzerFieldMappingServiceImpl extends BaseObjectServiceImpl<Analy
         // mapping.getSysUserId(),
         // IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
 
+        stampSysUserId(mapping);
         return analyzerFieldMappingDAO.update(mapping);
+    }
+
+    private void stampSysUserId(AnalyzerFieldMapping mapping) {
+        if (mapping.getSysUserId() == null || mapping.getSysUserId().isEmpty()) {
+            mapping.setSysUserId(userContextHolder.requireSysUserId());
+        }
     }
 
     /**

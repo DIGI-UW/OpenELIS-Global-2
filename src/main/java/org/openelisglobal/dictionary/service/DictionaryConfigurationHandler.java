@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
@@ -58,9 +57,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
 
     @Autowired
     private SupportedLocaleService supportedLocaleService;
-
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     @Override
     public String getDomainName() {
@@ -282,8 +278,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
                 // Use category name as description to avoid duplicate description conflicts
                 category.setDescription(categoryName);
                 category.setLocalAbbreviation(abbreviation);
-                category.setSysUserId("1"); // System user for configuration loading
-
                 String categoryId = dictionaryCategoryService.insert(category);
                 category = dictionaryCategoryService.get(categoryId);
                 LogEvent.logInfo(this.getClass().getSimpleName(), "tryCreateCategoryWithUniqueAbbreviation",
@@ -345,9 +339,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
             dictionary.setLoincCode(loincCode);
         }
 
-        // Set system user ID for audit
-        dictionary.setSysUserId(userContextHolder.requireSysUserId());
-
         // Handle localization
         processLocalization(dictionary, values, dictEntry, localizationColumns);
     }
@@ -373,7 +364,6 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
         if (localization == null) {
             localization = new Localization();
             localization.setDescription("dictionary entry: " + dictEntry);
-            localization.setSysUserId(userContextHolder.requireSysUserId());
             isNewLocalization = true;
         }
 

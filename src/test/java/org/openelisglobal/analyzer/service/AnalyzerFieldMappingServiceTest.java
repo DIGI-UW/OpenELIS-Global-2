@@ -41,6 +41,9 @@ public class AnalyzerFieldMappingServiceTest {
     @Mock
     private AnalyzerErrorService analyzerErrorService;
 
+    @Mock
+    private org.openelisglobal.common.util.UserContextHolder userContextHolder;
+
     private AnalyzerFieldMappingServiceImpl analyzerFieldMappingService;
 
     private Analyzer testAnalyzer;
@@ -79,6 +82,15 @@ public class AnalyzerFieldMappingServiceTest {
         } catch (Exception e) {
             // If field doesn't exist yet, that's okay - will be added in implementation
         }
+        try {
+            java.lang.reflect.Field field = AnalyzerFieldMappingServiceImpl.class
+                    .getDeclaredField("userContextHolder");
+            field.setAccessible(true);
+            field.set(analyzerFieldMappingService, userContextHolder);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to inject userContextHolder", e);
+        }
+        when(userContextHolder.requireSysUserId()).thenReturn("1");
 
         // Setup test analyzer
         testAnalyzer = new Analyzer();

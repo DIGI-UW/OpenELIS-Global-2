@@ -49,9 +49,21 @@ public class AuditContextAdvice {
 
         String userId = userContextHolder.getCurrentSysUserId();
         for (Object arg : jp.getArgs()) {
-            if (arg instanceof BaseObject<?> bo) {
-                if (bo.getSysUserId() == null || bo.getSysUserId().isEmpty()) {
-                    bo.setSysUserId(userId);
+            stampIfNeeded(arg, userId);
+        }
+    }
+
+    private void stampIfNeeded(Object arg, String userId) {
+        if (arg instanceof BaseObject<?> bo) {
+            if (bo.getSysUserId() == null || bo.getSysUserId().isEmpty()) {
+                bo.setSysUserId(userId);
+            }
+        } else if (arg instanceof Iterable<?> items) {
+            for (Object item : items) {
+                if (item instanceof BaseObject<?> bo) {
+                    if (bo.getSysUserId() == null || bo.getSysUserId().isEmpty()) {
+                        bo.setSysUserId(userId);
+                    }
                 }
             }
         }

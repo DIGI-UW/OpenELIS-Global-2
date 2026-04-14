@@ -28,7 +28,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType;
 import org.openelisglobal.dataexchange.service.aggregatereporting.ReportExternalExportService;
@@ -48,8 +47,6 @@ public class TestUsageBacklog {
     private AnalysisService analysisService;
     @Autowired
     private ReportQueueTypeService reportQueueTypeService;
-    @Autowired
-    private UserContextHolder userContextHolder;
 
     private static String TEST_UTALIZATION_ID;
 
@@ -142,8 +139,6 @@ public class TestUsageBacklog {
         report.setSend(true);
         report.setData(jsonText); // buffer.toString());
         report.setCollectionDate(DateUtil.getNowAsTimestamp());
-        report.setSysUserId(userContextHolder.requireSysUserId());
-
         try {
             if (report.getId() == null) {
                 reportExternalExportService.insert(report);
