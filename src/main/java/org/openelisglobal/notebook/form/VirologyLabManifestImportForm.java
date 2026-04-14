@@ -1,12 +1,13 @@
 package org.openelisglobal.notebook.form;
 
 /**
- * Form class for VirologyLab (Virology Laboratory) manifest CSV column
- * mapping configuration.
+ * Form class for VirologyLab (Virology Laboratory) manifest CSV column mapping
+ * configuration.
  *
- * Allows mapping of CSV column names to VirologyLab-specific fields during manifest
- * import. This enables flexibility in CSV format while maintaining consistent
- * data validation for virology sample reception and processing metadata.
+ * Allows mapping of CSV column names to VirologyLab-specific fields during
+ * manifest import. This enables flexibility in CSV format while maintaining
+ * consistent data validation for virology sample reception and processing
+ * metadata.
  */
 public class VirologyLabManifestImportForm {
 

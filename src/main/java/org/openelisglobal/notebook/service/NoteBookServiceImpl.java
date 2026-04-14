@@ -12,7 +12,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.Hibernate;
 import org.openelisglobal.analysis.service.AnalysisService;

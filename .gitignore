@@ -41,11 +41,14 @@ volume/database/data
 volume/letsencrypt/
 tools/Liquibase-Outdated
 volume/tomcat/*
+volume/lucene/
 volume/database/data*/*
 volume/logs/*
 volume/ocl/*
 volume/odoo/*
 .specify/temp/
+.playwright-mcp/
+frontend/playwright/
 
 # AI Agent command directories (populated by .specify/scripts/bash/install-commands.sh)
 # These are compiled from .specify/core/commands/ and .specify/oe/commands/ and should not be tracked

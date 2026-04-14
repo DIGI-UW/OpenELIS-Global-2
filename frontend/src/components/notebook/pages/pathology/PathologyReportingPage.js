@@ -25,6 +25,8 @@ import {
   Modal,
   TextArea,
   Checkbox,
+  ComboBox,
+  InlineLoading,
 } from "@carbon/react";
 import {
   Renew,
@@ -37,6 +39,8 @@ import {
   Analytics,
   Activity,
   Download,
+  DocumentPdf,
+  View,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
@@ -158,6 +162,19 @@ function PathologyReportingPage({
 
   // Export state
   const [exporting, setExporting] = useState(false);
+
+  // Diagnostic report state
+  const [patientList, setPatientList] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [loadingPatients, setLoadingPatients] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // Report preview state
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState(null);
+  const [previewHtml, setPreviewHtml] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewTitle, setPreviewTitle] = useState("");
 
   // Calculate overall health score (moved here so it's available for useCallback below)
   // Returns null if no data is available
@@ -367,14 +384,33 @@ function PathologyReportingPage({
     );
   }, [entryId, dateRange]);
 
+  // Load patient list for diagnostic report generation
+  const loadPatientList = useCallback(() => {
+    if (!entryId) return;
+    setLoadingPatients(true);
+    getFromOpenElisServer(
+      `/rest/notebook/pathology/report/patients?entryId=${entryId}`,
+      (response) => {
+        if (componentMounted.current) {
+          setPatientList(Array.isArray(response) ? response : []);
+          setLoadingPatients(false);
+        }
+      },
+    );
+  }, [entryId]);
+
   useEffect(() => {
     componentMounted.current = true;
     loadMetrics();
+    loadPatientList();
 
     return () => {
       componentMounted.current = false;
+      if (previewPdfUrl) {
+        window.URL.revokeObjectURL(previewPdfUrl);
+      }
     };
-  }, [loadMetrics]);
+  }, [loadMetrics, loadPatientList]);
 
   // Handle export metrics to Excel
   // The backend /metrics/export endpoint expects entryId (notebook_entry.id), not notebookId (notebook.id)
@@ -754,6 +790,217 @@ function PathologyReportingPage({
     }, 100);
   }, []);
 
+  // Handle diagnostic report PDF generation
+  const handleGenerateDiagnosticPdf = useCallback(async () => {
+    if (!selectedPatient || !entryId) return;
+    setGeneratingPdf(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/pathology/report/diagnostic-pdf`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            entryId: entryId,
+            patientKey: selectedPatient.patientKey,
+          }),
+        },
+      );
+      const contentType = response.headers.get("content-type") || "";
+      if (response.ok && contentType.includes("application/pdf")) {
+        const blob = await response.blob();
+        downloadFile(blob, `PathologyReport_${selectedPatient.patientKey}.pdf`);
+        setSuccess(
+          intl.formatMessage({
+            id: "pathology.reporting.diagnosticPdfGenerated",
+            defaultMessage: "Diagnostic report generated successfully.",
+          }),
+        );
+      } else {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to generate diagnostic report");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [selectedPatient, entryId, downloadFile, intl]);
+
+  // Handle diagnostic report PDF preview
+  const handlePreviewDiagnosticPdf = useCallback(async () => {
+    if (!selectedPatient || !entryId) return;
+    setPreviewLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${config.serverBaseUrl}/rest/notebook/pathology/report/diagnostic-pdf`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": localStorage.getItem("CSRF"),
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            entryId: entryId,
+            patientKey: selectedPatient.patientKey,
+          }),
+        },
+      );
+      const contentType = response.headers.get("content-type") || "";
+      if (response.ok && contentType.includes("application/pdf")) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        setPreviewPdfUrl(url);
+        setPreviewTitle("");
+        setShowPreviewModal(true);
+      } else {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to generate diagnostic report");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [selectedPatient, entryId]);
+
+  // Close preview modal and clean up
+  const handleClosePreview = useCallback(() => {
+    setShowPreviewModal(false);
+    if (previewPdfUrl) {
+      window.URL.revokeObjectURL(previewPdfUrl);
+      setPreviewPdfUrl(null);
+    }
+    setPreviewHtml(null);
+    setPreviewTitle("");
+  }, [previewPdfUrl]);
+
+  // Download from preview modal
+  const handleDownloadFromPreview = useCallback(() => {
+    if (previewPdfUrl && selectedPatient) {
+      const a = document.createElement("a");
+      a.href = previewPdfUrl;
+      a.download = `PathologyReport_${selectedPatient.patientKey}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (previewHtml) {
+      // For metrics preview, trigger the Excel export
+      handleClosePreview();
+      setShowReportModal(true);
+    }
+  }, [previewPdfUrl, selectedPatient, previewHtml, handleClosePreview]);
+
+  // Handle metrics report preview - builds an HTML preview from current metrics
+  const handlePreviewMetricsReport = useCallback(() => {
+    const rejRate = metrics.specimenRejectionRate ?? 0;
+    const assayRate = metrics.assaySuccessRate ?? 0;
+    const tatVal = metrics.turnaroundTime?.overall ?? 0;
+    const downtimeVal = metrics.equipmentDowntime?.total ?? 0;
+
+    const statusColor = (ok) => (ok ? "#198038" : "#da1e28");
+
+    const specimenRows = specimenVolumeData
+      .map(
+        (s) =>
+          `<tr><td>${s.specimenType}</td><td>${s.count}</td><td>${s.percentage}%</td></tr>`,
+      )
+      .join("");
+
+    const tatRows = tatByTypeData
+      .map(
+        (t) =>
+          `<tr><td>${t.specimenType}</td><td>${t.averageTAT}h</td><td>${t.minTAT}h</td><td>${t.maxTAT}h</td><td>${t.withinTarget}%</td></tr>`,
+      )
+      .join("");
+
+    const rejectionRows = rejectionByReasonData
+      .map(
+        (r) =>
+          `<tr><td>${r.reason}</td><td>${r.count}</td><td>${r.percentage}%</td></tr>`,
+      )
+      .join("");
+
+    const equipRows = equipmentDowntimeData
+      .map(
+        (e) =>
+          `<tr><td>${e.equipment}</td><td>${e.downtimeHours}h</td><td>${e.incidents}</td><td>${e.lastIncident}</td></tr>`,
+      )
+      .join("");
+
+    const html = `
+      <html><head><style>
+        body { font-family: 'IBM Plex Sans', Arial, sans-serif; padding: 2rem; color: #161616; }
+        h1 { color: #2B4F87; font-size: 1.5rem; border-bottom: 3px solid #2B4F87; padding-bottom: 0.5rem; }
+        h2 { color: #2B4F87; font-size: 1.1rem; margin-top: 1.5rem; }
+        .meta { color: #525252; font-size: 0.875rem; margin-bottom: 0.25rem; }
+        .score { font-size: 2rem; font-weight: bold; color: ${healthScore >= 75 ? "#198038" : healthScore >= 50 ? "#f1c21b" : "#da1e28"}; }
+        table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; font-size: 0.875rem; }
+        th { background: #2B4F87; color: white; text-align: left; padding: 0.5rem; }
+        td { border-bottom: 1px solid #e0e0e0; padding: 0.5rem; }
+        .kpi { display: inline-block; width: 30%; min-width: 180px; margin: 0.5rem 1% 0.5rem 0; padding: 0.75rem; background: #f4f4f4; border-radius: 4px; vertical-align: top; }
+        .kpi-label { font-size: 0.75rem; color: #525252; text-transform: uppercase; }
+        .kpi-value { font-size: 1.25rem; font-weight: 600; }
+        .kpi-target { font-size: 0.75rem; color: #6f6f6f; }
+        .empty { color: #8d8d8d; font-style: italic; }
+      </style></head><body>
+        <h1>Pathology Performance Metrics Report</h1>
+        <p class="meta">Report Period: ${dateRange.startDate} to ${dateRange.endDate}</p>
+        <p class="meta">Generated: ${new Date().toLocaleString()}</p>
+        <p class="meta">Report ID: ${metrics.reportId || "N/A"}</p>
+        <p>Overall Performance Health: <span class="score">${healthScore ?? 0}%</span></p>
+
+        <h2>Key Performance Indicators</h2>
+        <div>
+          <div class="kpi"><div class="kpi-label">Total Specimens</div><div class="kpi-value">${metrics.totalSamplesProcessed ?? 0}</div></div>
+          <div class="kpi"><div class="kpi-label">Rejection Rate</div><div class="kpi-value" style="color:${statusColor(rejRate <= 5)}">${rejRate}%</div><div class="kpi-target">Target: &lt;5%</div></div>
+          <div class="kpi"><div class="kpi-label">Assay Success Rate</div><div class="kpi-value" style="color:${statusColor(assayRate >= 95)}">${assayRate}%</div><div class="kpi-target">Target: &gt;95%</div></div>
+          <div class="kpi"><div class="kpi-label">Average TAT</div><div class="kpi-value" style="color:${statusColor(tatVal <= 48)}">${tatVal}h</div><div class="kpi-target">Target: &lt;48h</div></div>
+          <div class="kpi"><div class="kpi-label">Equipment Downtime</div><div class="kpi-value" style="color:${statusColor(downtimeVal <= 8)}">${downtimeVal}h</div><div class="kpi-target">Target: &lt;8h</div></div>
+          <div class="kpi"><div class="kpi-label">QC Meetings</div><div class="kpi-value">${metrics.qcMeetingsCount ?? 0}</div></div>
+        </div>
+
+        <h2>Specimen Volume by Type</h2>
+        ${specimenRows ? `<table><tr><th>Specimen Type</th><th>Count</th><th>Percentage</th></tr>${specimenRows}</table>` : '<p class="empty">No specimen data available.</p>'}
+
+        <h2>Turnaround Time by Specimen Type</h2>
+        ${tatRows ? `<table><tr><th>Specimen Type</th><th>Avg TAT</th><th>Min</th><th>Max</th><th>% Within Target</th></tr>${tatRows}</table>` : '<p class="empty">No turnaround time data available.</p>'}
+
+        <h2>Rejection Rates by Reason</h2>
+        ${rejectionRows ? `<table><tr><th>Reason</th><th>Count</th><th>Percentage</th></tr>${rejectionRows}</table>` : '<p class="empty">No rejection data available.</p>'}
+
+        <h2>Equipment Downtime</h2>
+        ${equipRows ? `<table><tr><th>Equipment</th><th>Downtime</th><th>Incidents</th><th>Last Incident</th></tr>${equipRows}</table>` : '<p class="empty">No equipment downtime recorded.</p>'}
+
+        ${metrics.linkedTestOrders?.length ? `<h2>Linked Test Orders</h2><p>${metrics.linkedTestOrders.map((o) => (typeof o === "string" ? o : o.accessionNumber || o.id || JSON.stringify(o))).join(", ")}</p>` : ""}
+      </body></html>`;
+
+    setPreviewHtml(html);
+    setPreviewTitle(
+      intl.formatMessage({
+        id: "pathology.reporting.metricsPreviewTitle",
+        defaultMessage: "Performance Metrics Report Preview",
+      }),
+    );
+    setShowPreviewModal(true);
+  }, [
+    metrics,
+    healthScore,
+    dateRange,
+    specimenVolumeData,
+    tatByTypeData,
+    rejectionByReasonData,
+    equipmentDowntimeData,
+    intl,
+  ]);
+
   // Handle generating report - downloads Excel file from backend
   // The backend /report/export-excel endpoint expects entryId (notebook_entry.id), not notebookId (notebook.id)
   // Excel format includes Sheet 1: Metrics, Sheet 2: All Samples
@@ -1042,6 +1289,27 @@ function PathologyReportingPage({
               defaultMessage="Quick Export CSV"
             />
           </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={View}
+            onClick={handlePreviewMetricsReport}
+            disabled={previewLoading}
+          >
+            {previewLoading ? (
+              <InlineLoading
+                description={intl.formatMessage({
+                  id: "pathology.reporting.loadingPreview",
+                  defaultMessage: "Loading...",
+                })}
+              />
+            ) : (
+              <FormattedMessage
+                id="pathology.reporting.previewReport"
+                defaultMessage="Preview Report"
+              />
+            )}
+          </Button>
         </Column>
       </Grid>
 
@@ -1303,6 +1571,12 @@ function PathologyReportingPage({
             <FormattedMessage
               id="pathology.reporting.tab.equipmentDowntime"
               defaultMessage="Equipment Downtime"
+            />
+          </Tab>
+          <Tab>
+            <FormattedMessage
+              id="pathology.reporting.tab.diagnosticReports"
+              defaultMessage="Diagnostic Reports"
             />
           </Tab>
         </TabList>
@@ -1671,6 +1945,180 @@ function PathologyReportingPage({
               )}
             </div>
           </TabPanel>
+
+          {/* Diagnostic Reports Tab */}
+          <TabPanel>
+            <div style={{ padding: "1rem" }}>
+              <h5 style={{ marginBottom: "0.5rem" }}>
+                <DocumentPdf size={20} style={{ marginRight: "0.5rem" }} />
+                <FormattedMessage
+                  id="pathology.reporting.diagnosticReport.title"
+                  defaultMessage="Patient Diagnostic Report"
+                />
+              </h5>
+              <p style={{ color: "#525252", marginBottom: "1rem" }}>
+                <FormattedMessage
+                  id="pathology.reporting.diagnosticReport.description"
+                  defaultMessage="Select a patient to generate their pathology diagnostic report PDF."
+                />
+              </p>
+              <Grid narrow>
+                <Column lg={8} md={4} sm={4}>
+                  <ComboBox
+                    id="patient-selector"
+                    titleText={intl.formatMessage({
+                      id: "pathology.reporting.selectPatient",
+                      defaultMessage: "Select Patient",
+                    })}
+                    items={patientList}
+                    itemToString={(item) =>
+                      item
+                        ? `${item.firstName || ""} ${item.surname || ""} (${item.nationalId || "N/A"}) - ${item.sampleCount} sample(s)`
+                        : ""
+                    }
+                    onChange={({ selectedItem }) =>
+                      setSelectedPatient(selectedItem)
+                    }
+                    placeholder={intl.formatMessage({
+                      id: "pathology.reporting.selectPatientPlaceholder",
+                      defaultMessage: "Search patients...",
+                    })}
+                    disabled={loadingPatients}
+                  />
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <div
+                    style={{
+                      paddingTop: "1.5rem",
+                      display: "flex",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    <Button
+                      kind="tertiary"
+                      renderIcon={View}
+                      onClick={handlePreviewDiagnosticPdf}
+                      disabled={!selectedPatient || previewLoading}
+                    >
+                      {previewLoading ? (
+                        <InlineLoading
+                          description={intl.formatMessage({
+                            id: "pathology.reporting.loadingPreview",
+                            defaultMessage: "Loading...",
+                          })}
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="pathology.reporting.previewReport"
+                          defaultMessage="Preview Report"
+                        />
+                      )}
+                    </Button>
+                    <Button
+                      kind="primary"
+                      renderIcon={DocumentPdf}
+                      onClick={handleGenerateDiagnosticPdf}
+                      disabled={!selectedPatient || generatingPdf}
+                    >
+                      {generatingPdf ? (
+                        <InlineLoading
+                          description={intl.formatMessage({
+                            id: "pathology.reporting.generatingPdf",
+                            defaultMessage: "Generating...",
+                          })}
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="pathology.reporting.generateDiagnosticPdf"
+                          defaultMessage="Generate PDF"
+                        />
+                      )}
+                    </Button>
+                  </div>
+                </Column>
+              </Grid>
+
+              {loadingPatients && (
+                <InlineLoading
+                  description={intl.formatMessage({
+                    id: "pathology.reporting.loadingPatients",
+                    defaultMessage: "Loading patients...",
+                  })}
+                  style={{ marginTop: "1rem" }}
+                />
+              )}
+
+              {selectedPatient && (
+                <Tile style={{ marginTop: "1rem", padding: "1rem" }}>
+                  <Grid narrow>
+                    <Column lg={4} md={4} sm={4}>
+                      <strong>
+                        <FormattedMessage
+                          id="pathology.reporting.patientName"
+                          defaultMessage="Name"
+                        />
+                      </strong>
+                      <p>
+                        {selectedPatient.firstName} {selectedPatient.surname}
+                      </p>
+                    </Column>
+                    <Column lg={4} md={4} sm={4}>
+                      <strong>
+                        <FormattedMessage
+                          id="pathology.reporting.patientMrn"
+                          defaultMessage="MRN / National ID"
+                        />
+                      </strong>
+                      <p>{selectedPatient.nationalId || "N/A"}</p>
+                    </Column>
+                    <Column lg={4} md={4} sm={4}>
+                      <strong>
+                        <FormattedMessage
+                          id="pathology.reporting.sampleCount"
+                          defaultMessage="Samples"
+                        />
+                      </strong>
+                      <p>{selectedPatient.sampleCount}</p>
+                    </Column>
+                    <Column lg={4} md={4} sm={4}>
+                      <Tag
+                        type={selectedPatient.hasDiagnosis ? "green" : "gray"}
+                      >
+                        {selectedPatient.hasDiagnosis ? (
+                          <FormattedMessage
+                            id="pathology.reporting.diagnosisAvailable"
+                            defaultMessage="Diagnosis Available"
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="pathology.reporting.pendingDiagnosis"
+                            defaultMessage="Pending Diagnosis"
+                          />
+                        )}
+                      </Tag>
+                    </Column>
+                  </Grid>
+                </Tile>
+              )}
+
+              {!loadingPatients && patientList.length === 0 && (
+                <Tile
+                  style={{
+                    textAlign: "center",
+                    padding: "2rem",
+                    marginTop: "1rem",
+                  }}
+                >
+                  <p style={{ color: "#8d8d8d" }}>
+                    <FormattedMessage
+                      id="pathology.reporting.noPatients"
+                      defaultMessage="No patients found. Create samples on the Sample Creation page first."
+                    />
+                  </p>
+                </Tile>
+              )}
+            </div>
+          </TabPanel>
         </TabPanels>
       </Tabs>
 
@@ -1782,6 +2230,75 @@ function PathologyReportingPage({
             }
             rows={3}
           />
+        </div>
+      </Modal>
+
+      {/* Report Preview Modal */}
+      <Modal
+        open={showPreviewModal}
+        modalHeading={
+          previewTitle ||
+          intl.formatMessage(
+            {
+              id: "pathology.reporting.previewModalTitle",
+              defaultMessage: "Report Preview — {patientName}",
+            },
+            {
+              patientName: selectedPatient
+                ? `${selectedPatient.firstName || ""} ${selectedPatient.surname || ""}`.trim()
+                : "",
+            },
+          )
+        }
+        primaryButtonText={intl.formatMessage({
+          id: previewPdfUrl
+            ? "pathology.reporting.downloadPdf"
+            : "pathology.reporting.exportReport",
+          defaultMessage: previewPdfUrl ? "Download PDF" : "Export Report",
+        })}
+        secondaryButtonText={intl.formatMessage({
+          id: "common.close",
+          defaultMessage: "Close",
+        })}
+        onRequestSubmit={handleDownloadFromPreview}
+        onRequestClose={handleClosePreview}
+        size="lg"
+      >
+        <div style={{ height: "70vh" }}>
+          {previewPdfUrl ? (
+            <iframe
+              src={previewPdfUrl}
+              title={intl.formatMessage({
+                id: "pathology.reporting.previewIframeTitle",
+                defaultMessage: "Pathology Report Preview",
+              })}
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+              }}
+            />
+          ) : previewHtml ? (
+            <iframe
+              srcDoc={previewHtml}
+              title={intl.formatMessage({
+                id: "pathology.reporting.metricsPreviewIframeTitle",
+                defaultMessage: "Metrics Report Preview",
+              })}
+              style={{
+                width: "100%",
+                height: "100%",
+                border: "none",
+              }}
+            />
+          ) : (
+            <InlineLoading
+              description={intl.formatMessage({
+                id: "pathology.reporting.loadingPreview",
+                defaultMessage: "Loading...",
+              })}
+            />
+          )}
         </div>
       </Modal>
     </div>
