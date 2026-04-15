@@ -51,5 +51,7 @@
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
 
+  <!-- Patient ID document scanning (OGC-66) -->
+  <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
 </databaseChangeLog>

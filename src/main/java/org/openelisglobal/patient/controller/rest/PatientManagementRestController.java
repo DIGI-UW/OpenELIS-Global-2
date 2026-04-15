@@ -1,6 +1,9 @@
 package org.openelisglobal.patient.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.StaleObjectStateException;
@@ -11,11 +14,14 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
+import org.openelisglobal.patient.action.bean.PatientIdDocumentInfo;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientIdDocumentService;
 import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.patient.valueholder.PatientIdDocument;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.search.service.SearchResultsService;
@@ -26,9 +32,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -46,6 +54,8 @@ public class PatientManagementRestController extends BaseRestController {
     FhirTransformService fhirTransformService;
     @Autowired
     PatientPhotoService photoService;
+    @Autowired
+    PatientIdDocumentService idDocumentService;
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -75,6 +85,14 @@ public class PatientManagementRestController extends BaseRestController {
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
                 photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
+                if (patientInfo.getIdDocuments() != null) {
+                    for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
+                        if (docInfo.getId() == null && docInfo.getData() != null) {
+                            idDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
+                                    docInfo.getDescription());
+                        }
+                    }
+                }
             } catch (LIMSRuntimeException e) {
 
                 if (e.getCause() instanceof StaleObjectStateException) {
@@ -98,6 +116,58 @@ public class PatientManagementRestController extends BaseRestController {
             return ResponseEntity.ok(Map.of("data", ""));
         }
         return ResponseEntity.ok(Map.of("data", photo));
+    }
+
+    @GetMapping("patient-id-documents/{patientId}")
+    @ResponseBody
+    public ResponseEntity<List<Map<String, Object>>> getIdDocuments(@PathVariable String patientId)
+            throws LIMSRuntimeException {
+        List<PatientIdDocument> documents = idDocumentService.getDocumentsByPatientId(patientId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (PatientIdDocument doc : documents) {
+            Map<String, Object> docMap = new HashMap<>();
+            docMap.put("id", doc.getId());
+            docMap.put("thumbnail", "data:" + doc.getDocumentType() + ";base64," + doc.getThumbnailData());
+            docMap.put("category", doc.getDocumentCategory());
+            docMap.put("description", doc.getDescription());
+            docMap.put("lastUpdated", doc.getLastupdated());
+            result.add(docMap);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("patient-id-documents/{patientId}/{documentId}/full")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> getIdDocumentFull(@PathVariable String patientId,
+            @PathVariable Integer documentId) throws LIMSRuntimeException {
+        List<PatientIdDocument> documents = idDocumentService.getDocumentsByPatientId(patientId);
+        for (PatientIdDocument doc : documents) {
+            if (doc.getId().equals(documentId)) {
+                String fullData = "data:" + doc.getDocumentType() + ";base64," + doc.getDocumentData();
+                return ResponseEntity.ok(Map.of("data", fullData));
+            }
+        }
+        return ResponseEntity.ok(Map.of("data", ""));
+    }
+
+    @PutMapping("patient-id-documents/{documentId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> updateIdDocument(@PathVariable Integer documentId,
+            @RequestBody PatientIdDocumentInfo docInfo) throws LIMSRuntimeException {
+        PatientIdDocument updated = idDocumentService.updateDocumentCategory(documentId, docInfo.getCategory(),
+                docInfo.getDescription());
+        if (updated != null) {
+            return ResponseEntity.ok(Map.of("status", "success"));
+        }
+        return ResponseEntity.ok(Map.of("status", "not_found"));
+    }
+
+    @DeleteMapping("patient-id-documents/{documentId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, String>> deleteIdDocument(@PathVariable Integer documentId)
+            throws LIMSRuntimeException {
+        idDocumentService.softDeleteDocument(documentId);
+        return ResponseEntity.ok(Map.of("status", "success"));
     }
 
 }
