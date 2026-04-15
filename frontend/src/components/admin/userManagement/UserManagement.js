@@ -427,7 +427,7 @@ function UserManagement() {
                   <SelectItem
                     key="no-option-available"
                     value=""
-                    text="No options available"
+                    text={intl.formatMessage({ id: "label.no.options.available" })}
                   />
                 )}
               </Select>
