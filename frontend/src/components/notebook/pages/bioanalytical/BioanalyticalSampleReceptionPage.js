@@ -20,7 +20,14 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 import BioanalyticalManifestImportModal from "../../modals/BioanalyticalManifestImportModal";
 import BulkApplyForm from "../../workflow/BulkApplyForm";
 import SampleGrid from "../../workflow/SampleGrid";
-import { Upload, Checkmark, Edit, Chemistry } from "@carbon/react/icons";
+import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
+import {
+  Upload,
+  Checkmark,
+  Edit,
+  Chemistry,
+  DataShare,
+} from "@carbon/react/icons";
 import { postToOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import { usePermissions } from "../../../../hooks/usePermissions";
@@ -56,6 +63,7 @@ function BioanalyticalSampleReceptionPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
@@ -70,6 +78,7 @@ function BioanalyticalSampleReceptionPage({
   // Modal states
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkApplyModalOpen, setIsBulkApplyModalOpen] = useState(false);
+  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
 
   // QC Verification modal state
   const [isQCVerificationModalOpen, setIsQCVerificationModalOpen] =
@@ -803,6 +812,18 @@ function BioanalyticalSampleReceptionPage({
             className="page-actions-bar"
             style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
           >
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={DataShare}
+              onClick={() => setBiorepoImportOpen(true)}
+            >
+              <FormattedMessage
+                id="notebook.bioanalytical.stage1.importFromBiorepo"
+                defaultMessage="Import from Biorepository"
+              />
+            </Button>
+
             <PermissionGate
               roles={Permissions.REGISTER_SAMPLES}
               disabledTooltip={intl.formatMessage({
@@ -1535,6 +1556,31 @@ function BioanalyticalSampleReceptionPage({
         entryId={entryId}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Biorepository Sample Import Modal */}
+      {biorepoImportOpen && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "biorepo.import.title",
+            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
+          })}
+          passiveModal
+          onRequestClose={() => setBiorepoImportOpen(false)}
+          size="lg"
+        >
+          <BiorepoSampleImportPage
+            entryId={entryId}
+            pageData={pageData}
+            progress={progress}
+            onProgressUpdate={() => {
+              setBiorepoImportOpen(false);
+              if (onProgressUpdate) onProgressUpdate();
+            }}
+            notebookId={notebookId}
+          />
+        </Modal>
+      )}
 
       {/* Bulk Apply Metadata Modal */}
       {isBulkApplyModalOpen && hasRealPageId && (

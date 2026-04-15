@@ -34,6 +34,7 @@ import {
   CheckmarkFilled,
   Link as LinkIcon,
   Barcode,
+  DataShare,
 } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
@@ -43,6 +44,7 @@ import MedLabManifestImportModal from "../workflow/MedLabManifestImportModal";
 import LinkPatientModal from "../workflow/LinkPatientModal";
 import LinkOrderModal from "../workflow/LinkOrderModal";
 import BulkLinkOrderModal from "../workflow/BulkLinkOrderModal";
+import BiorepoSampleImportPage from "./common/BiorepoSampleImportPage";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -63,6 +65,7 @@ function SampleCollectionPage({
   progress,
   onProgressUpdate,
   orderEntryPageId,
+  notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -80,6 +83,7 @@ function SampleCollectionPage({
   const [linkPatientModalOpen, setLinkPatientModalOpen] = useState(false);
   const [linkOrderModalOpen, setLinkOrderModalOpen] = useState(false);
   const [bulkLinkOrderModalOpen, setBulkLinkOrderModalOpen] = useState(false);
+  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
   const [sampleForLinking, setSampleForLinking] = useState(null);
   const [samplesForBulkLinking, setSamplesForBulkLinking] = useState([]);
 
@@ -603,17 +607,30 @@ function SampleCollectionPage({
                 defaultMessage="Bulk import samples from a CSV manifest file. Samples will be created with pre-labeled identifiers and can be linked to orders afterward."
               />
             </p>
-            <Button
-              kind="primary"
-              size="md"
-              renderIcon={Upload}
-              onClick={() => setImportModalOpen(true)}
-            >
-              <FormattedMessage
-                id="medlab.page.sampleCollection.importManifest"
-                defaultMessage="Import from Manifest"
-              />
-            </Button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Button
+                kind="secondary"
+                size="md"
+                renderIcon={DataShare}
+                onClick={() => setBiorepoImportOpen(true)}
+              >
+                <FormattedMessage
+                  id="medlab.page.sampleCollection.importFromBiorepo"
+                  defaultMessage="Import from Biorepository"
+                />
+              </Button>
+              <Button
+                kind="primary"
+                size="md"
+                renderIcon={Upload}
+                onClick={() => setImportModalOpen(true)}
+              >
+                <FormattedMessage
+                  id="medlab.page.sampleCollection.importManifest"
+                  defaultMessage="Import from Manifest"
+                />
+              </Button>
+            </div>
           </div>
         </Column>
       </Grid>
@@ -1145,6 +1162,31 @@ function SampleCollectionPage({
           />
         </div>
       </Modal>
+
+      {/* Biorepository Sample Import Modal */}
+      {biorepoImportOpen && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "biorepo.import.title",
+            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
+          })}
+          passiveModal
+          onRequestClose={() => setBiorepoImportOpen(false)}
+          size="lg"
+        >
+          <BiorepoSampleImportPage
+            entryId={entryId}
+            pageData={pageData}
+            progress={progress}
+            onProgressUpdate={() => {
+              setBiorepoImportOpen(false);
+              if (onProgressUpdate) onProgressUpdate();
+            }}
+            notebookId={notebookId}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

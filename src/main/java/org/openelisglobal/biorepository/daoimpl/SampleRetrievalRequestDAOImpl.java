@@ -121,4 +121,13 @@ public class SampleRetrievalRequestDAOImpl extends BaseDAOImpl<SampleRetrievalRe
         BigInteger result = (BigInteger) session.createNativeQuery(sql).getSingleResult();
         return result.intValue();
     }
+
+    @Override
+    public List<SampleRetrievalRequest> findByNotebookEntryId(Integer notebookEntryId) {
+        Session session = entityManager.unwrap(Session.class);
+        String hql = "FROM SampleRetrievalRequest r WHERE r.notebookEntry.id = :notebookEntryId "
+                + "ORDER BY r.requestedTimestamp DESC";
+        return session.createQuery(hql, SampleRetrievalRequest.class).setParameter("notebookEntryId", notebookEntryId)
+                .getResultList();
+    }
 }

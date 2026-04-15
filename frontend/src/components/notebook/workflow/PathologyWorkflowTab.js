@@ -273,7 +273,7 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
 
   // Render Pathology page-specific content based on page order
   const renderPageContent = (page) => {
-    const pageOrder = page.order || 1;
+    const pageOrder = page.order ?? 1;
     const progress = getProgressForPage(page.id);
 
     switch (pageOrder) {

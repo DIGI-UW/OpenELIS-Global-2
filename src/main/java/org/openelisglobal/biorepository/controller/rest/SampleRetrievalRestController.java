@@ -15,6 +15,8 @@ import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.Desti
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.PriorityLevel;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.RequestStatus;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.notebook.service.NotebookEntryService;
+import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.StorageLocationService;
@@ -47,6 +49,9 @@ public class SampleRetrievalRestController extends BaseRestController {
     private SampleRetrievalService retrievalService;
 
     @Autowired
+    private NotebookEntryService notebookEntryService;
+
+    @Autowired
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
 
     @Autowired
@@ -77,6 +82,40 @@ public class SampleRetrievalRestController extends BaseRestController {
                     request.getBioSampleIds(), request.getProjectId(), request.getEthicsApprovalRef(), destType,
                     request.getDestinationDetails(), priority, request.getRequiredByDate(), sysUserId);
 
+            // Set AHRI BR-F-02 form fields and notebook link
+            boolean updated = false;
+            if (request.getNotebookEntryId() != null) {
+                NotebookEntry entry = notebookEntryService.get(request.getNotebookEntryId());
+                if (entry != null) {
+                    retrieval.setNotebookEntry(entry);
+                    updated = true;
+                }
+            }
+            if (request.getRequesterLabUnit() != null) {
+                retrieval.setRequesterLabUnit(request.getRequesterLabUnit());
+                updated = true;
+            }
+            if (request.getRequesterContactInfo() != null) {
+                retrieval.setRequesterContactInfo(request.getRequesterContactInfo());
+                updated = true;
+            }
+            if (request.getIntendedUseDescription() != null) {
+                retrieval.setIntendedUseDescription(request.getIntendedUseDescription());
+                updated = true;
+            }
+            if (request.getSamplesWillBeDestroyed() != null) {
+                retrieval.setSamplesWillBeDestroyed(request.getSamplesWillBeDestroyed());
+                updated = true;
+            }
+            if (request.getEstimatedReturnDate() != null) {
+                retrieval.setEstimatedReturnDate(request.getEstimatedReturnDate());
+                updated = true;
+            }
+            if (updated) {
+                retrieval.setSysUserId(sysUserId);
+                retrievalService.update(retrieval);
+            }
+
             return ResponseEntity.ok(Map.of("id", retrieval.getId(), "requestNumber", retrieval.getRequestNumber(),
                     "status", retrieval.getStatus().name(), "itemCount", retrieval.getTotalItemCount()));
 
@@ -96,6 +135,7 @@ public class SampleRetrievalRestController extends BaseRestController {
      * @param status Comma-separated list of statuses (e.g., "APPROVED,IN_PROGRESS")
      */
     @GetMapping(value = "/requests", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getRequests(@RequestParam(required = false) String status,
             @RequestParam(required = false) Integer projectId,
             @RequestParam(required = false) Integer requestedByUserId) {
@@ -147,6 +187,7 @@ public class SampleRetrievalRestController extends BaseRestController {
      * Get a retrieval request by request number.
      */
     @GetMapping(value = "/requests/by-number/{requestNumber}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getByRequestNumber(@PathVariable("requestNumber") String requestNumber) {
         SampleRetrievalRequest request = retrievalService.getByRequestNumber(requestNumber);
         if (request == null) {
@@ -159,6 +200,7 @@ public class SampleRetrievalRestController extends BaseRestController {
      * Get pending approval requests.
      */
     @GetMapping(value = "/requests/pending", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional(readOnly = true)
     public ResponseEntity<List<Map<String, Object>>> getPendingApproval(@RequestParam(defaultValue = "50") int limit) {
 
         List<SampleRetrievalRequest> requests = retrievalService.getPendingApproval(limit);
@@ -169,6 +211,48 @@ public class SampleRetrievalRestController extends BaseRestController {
         }
 
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get retrieval requests linked to a specific notebook entry.
+     */
+    @GetMapping(value = "/by-entry/{entryId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getByNotebookEntry(@PathVariable("entryId") Integer entryId) {
+        List<SampleRetrievalRequest> requests = retrievalService.getByNotebookEntryId(entryId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (SampleRetrievalRequest request : requests) {
+            result.add(mapRetrievalRequestWithItems(request));
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Link retrieved samples from a retrieval request to a notebook. Called after
+     * approval to auto-import samples into the notebook's sample pool.
+     */
+    @PostMapping(value = "/requests/{id}/link-to-notebook", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> linkToNotebook(@PathVariable("id") Integer id,
+            @RequestBody LinkToNotebookRequest linkRequest, HttpServletRequest httpRequest) {
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
+        }
+
+        try {
+            int linkedCount = retrievalService.linkRetrievedSamplesToNotebook(id, linkRequest.getNotebookId(),
+                    sysUserId);
+            return ResponseEntity.ok(Map.of("linkedCount", linkedCount, "notebookId", linkRequest.getNotebookId()));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to link samples to notebook: " + e.getMessage()));
+        }
     }
 
     /**
@@ -292,6 +376,12 @@ public class SampleRetrievalRestController extends BaseRestController {
             SampleRetrievalRequest request = retrievalService.get(id);
             if (request == null) {
                 return ResponseEntity.notFound().build();
+            }
+
+            long pendingCount = request.getPendingItemCount();
+            if (pendingCount > 0) {
+                return ResponseEntity.badRequest().body(Map.of("error",
+                        "Cannot complete request: " + pendingCount + " item(s) have not been retrieved yet."));
             }
 
             request.setStatus(RequestStatus.COMPLETED);
@@ -583,6 +673,28 @@ public class SampleRetrievalRestController extends BaseRestController {
         if (request.getLastupdated() != null) {
             map.put("lastUpdated", request.getLastupdated().toString());
         }
+        // AHRI BR-F-02 form fields
+        if (request.getNotebookEntry() != null) {
+            map.put("notebookEntryId", request.getNotebookEntry().getId());
+            if (request.getNotebookEntry().getNotebook() != null) {
+                map.put("notebookId", request.getNotebookEntry().getNotebook().getId());
+            }
+        }
+        if (request.getRequesterLabUnit() != null) {
+            map.put("requesterLabUnit", request.getRequesterLabUnit());
+        }
+        if (request.getRequesterContactInfo() != null) {
+            map.put("requesterContactInfo", request.getRequesterContactInfo());
+        }
+        if (request.getIntendedUseDescription() != null) {
+            map.put("intendedUseDescription", request.getIntendedUseDescription());
+        }
+        if (request.getSamplesWillBeDestroyed() != null) {
+            map.put("samplesWillBeDestroyed", request.getSamplesWillBeDestroyed());
+        }
+        if (request.getEstimatedReturnDate() != null) {
+            map.put("estimatedReturnDate", request.getEstimatedReturnDate().toString());
+        }
 
         return map;
     }
@@ -768,6 +880,12 @@ public class SampleRetrievalRestController extends BaseRestController {
         private String destinationDetails;
         private String priorityLevel;
         private LocalDate requiredByDate;
+        private Integer notebookEntryId;
+        private String requesterLabUnit;
+        private String requesterContactInfo;
+        private String intendedUseDescription;
+        private Boolean samplesWillBeDestroyed;
+        private LocalDate estimatedReturnDate;
 
         public String getRequestPurpose() {
             return requestPurpose;
@@ -831,6 +949,54 @@ public class SampleRetrievalRestController extends BaseRestController {
 
         public void setRequiredByDate(LocalDate requiredByDate) {
             this.requiredByDate = requiredByDate;
+        }
+
+        public Integer getNotebookEntryId() {
+            return notebookEntryId;
+        }
+
+        public void setNotebookEntryId(Integer notebookEntryId) {
+            this.notebookEntryId = notebookEntryId;
+        }
+
+        public String getRequesterLabUnit() {
+            return requesterLabUnit;
+        }
+
+        public void setRequesterLabUnit(String requesterLabUnit) {
+            this.requesterLabUnit = requesterLabUnit;
+        }
+
+        public String getRequesterContactInfo() {
+            return requesterContactInfo;
+        }
+
+        public void setRequesterContactInfo(String requesterContactInfo) {
+            this.requesterContactInfo = requesterContactInfo;
+        }
+
+        public String getIntendedUseDescription() {
+            return intendedUseDescription;
+        }
+
+        public void setIntendedUseDescription(String intendedUseDescription) {
+            this.intendedUseDescription = intendedUseDescription;
+        }
+
+        public Boolean getSamplesWillBeDestroyed() {
+            return samplesWillBeDestroyed;
+        }
+
+        public void setSamplesWillBeDestroyed(Boolean samplesWillBeDestroyed) {
+            this.samplesWillBeDestroyed = samplesWillBeDestroyed;
+        }
+
+        public LocalDate getEstimatedReturnDate() {
+            return estimatedReturnDate;
+        }
+
+        public void setEstimatedReturnDate(LocalDate estimatedReturnDate) {
+            this.estimatedReturnDate = estimatedReturnDate;
         }
     }
 
@@ -927,6 +1093,18 @@ public class SampleRetrievalRestController extends BaseRestController {
 
         public void setConditionNotes(String conditionNotes) {
             this.conditionNotes = conditionNotes;
+        }
+    }
+
+    public static class LinkToNotebookRequest {
+        private Integer notebookId;
+
+        public Integer getNotebookId() {
+            return notebookId;
+        }
+
+        public void setNotebookId(Integer notebookId) {
+            this.notebookId = notebookId;
         }
     }
 }

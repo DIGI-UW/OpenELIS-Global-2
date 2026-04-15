@@ -284,6 +284,7 @@ function BioequivalenceWorkflowTab({ notebookId, entryId: propEntryId }) {
             pageData={page}
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
+            notebookId={notebook?.id}
           />
         );
       case 2:

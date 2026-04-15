@@ -307,6 +307,7 @@ function VirologyLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             onSampleUpdate={handleProgressUpdate}
             onSampleStatusChange={() => handleProgressUpdate()}
             isLoading={false}
+            notebookId={notebook?.id}
           />
         );
       case 2:

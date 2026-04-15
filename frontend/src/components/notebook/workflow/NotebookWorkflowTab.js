@@ -345,6 +345,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
             />
           );
         case 2:
@@ -525,6 +526,7 @@ function NotebookWorkflowTab({ notebookId, entryId: propEntryId }) {
               pageData={page}
               progress={progress}
               onProgressUpdate={handleProgressUpdate}
+              notebookId={notebook?.id}
             />
           );
         case 2:

@@ -250,4 +250,26 @@ public interface SampleRetrievalService extends BaseObjectService<SampleRetrieva
      * @return list of overdue items
      */
     List<SampleRetrievalItem> getOverdueItems();
+
+    /**
+     * Find retrieval requests linked to a specific notebook entry.
+     *
+     * @param notebookEntryId the notebook entry ID
+     * @return list of requests ordered by requested timestamp descending
+     */
+    List<SampleRetrievalRequest> getByNotebookEntryId(Integer notebookEntryId);
+
+    /**
+     * Link retrieved samples from a retrieval request to a notebook. Extracts
+     * SampleItem IDs from the request's BioSample items and links them via
+     * NotebookSampleEntryService.
+     *
+     * @param requestId  the retrieval request ID
+     * @param notebookId the notebook ID to link samples to
+     * @param sysUserId  the user performing the linking
+     * @return number of samples linked
+     * @throws IllegalArgumentException if request not found
+     * @throws IllegalStateException    if request is not approved
+     */
+    int linkRetrievedSamplesToNotebook(Integer requestId, Integer notebookId, String sysUserId);
 }
