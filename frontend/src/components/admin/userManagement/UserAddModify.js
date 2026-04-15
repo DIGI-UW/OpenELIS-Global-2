@@ -1251,7 +1251,9 @@ function UserAddModify() {
                         <Checkbox
                           id="no-options-global-roles"
                           value=""
-                          labelText={intl.formatMessage({ id: "label.no.options.available" })}
+                          labelText={intl.formatMessage({
+                            id: "label.no.options.available",
+                          })}
                         />
                       )}
                     </FormGroup>
@@ -1309,7 +1311,9 @@ function UserAddModify() {
                             <SelectItem
                               key="no-option-test-section"
                               value=""
-                              text={intl.formatMessage({ id: "label.no.options.available" })}
+                              text={intl.formatMessage({
+                                id: "label.no.options.available",
+                              })}
                             />
                           )}
                         </Select>
@@ -1391,7 +1395,9 @@ function UserAddModify() {
                             <Checkbox
                               id="no-options-lab-units"
                               value=""
-                              labelText={intl.formatMessage({ id: "label.no.options.available" })}
+                              labelText={intl.formatMessage({
+                                id: "label.no.options.available",
+                              })}
                             />
                           )}
                         </FormGroup>

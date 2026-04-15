@@ -401,9 +401,13 @@ function ProviderMenu() {
         <br />
         <Modal
           open={isAddModalOpen}
-          modalHeading={intl.formatMessage({ id: "provider.modal.add.heading" })}
+          modalHeading={intl.formatMessage({
+            id: "provider.modal.add.heading",
+          })}
           primaryButtonText={intl.formatMessage({ id: "label.button.add" })}
-          secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
           onRequestSubmit={handleAddProvider}
           onRequestClose={closeAddModal}
         >
@@ -471,9 +475,13 @@ function ProviderMenu() {
 
         <Modal
           open={isUpdateModalOpen}
-          modalHeading={intl.formatMessage({ id: "provider.modal.update.heading" })}
+          modalHeading={intl.formatMessage({
+            id: "provider.modal.update.heading",
+          })}
           primaryButtonText={intl.formatMessage({ id: "label.button.update" })}
-          secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
           onRequestSubmit={handleUpdateProvider}
           onRequestClose={closeUpdateModal}
         >

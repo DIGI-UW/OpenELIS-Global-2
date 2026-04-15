@@ -130,8 +130,16 @@ function ManageMethod() {
           open={isAddModalOpen}
           size="sm"
           modalHeading={intl.formatMessage({ id: "method.modal.add.heading" })}
-          primaryButtonText={confirmationStep ? intl.formatMessage({ id: "column.name.accept" }) : intl.formatMessage({ id: "label.button.save" })}
-          secondaryButtonText={confirmationStep ? intl.formatMessage({ id: "column.name.reject" }) : intl.formatMessage({ id: "label.button.cancel" })}
+          primaryButtonText={
+            confirmationStep
+              ? intl.formatMessage({ id: "column.name.accept" })
+              : intl.formatMessage({ id: "label.button.save" })
+          }
+          secondaryButtonText={
+            confirmationStep
+              ? intl.formatMessage({ id: "column.name.reject" })
+              : intl.formatMessage({ id: "label.button.cancel" })
+          }
           onRequestSubmit={handleAddMethod}
           onRequestClose={closeAddModal}
         >

@@ -95,8 +95,10 @@ export const CommonProperties = () => {
                       Math.ceil(Object.keys(commonProperties).length / 2),
                     )
                     .map((key) => {
-                      // Remove the prefix "org.openelisglobal" using regex
-                      let shortKey = key.replace(/^org\.openelisglobal\./, "");
+                      // Remove the prefix "org.openelisglobal" or "org.itech" using regex
+                      let shortKey = key
+                        .replace(/^org\.openelisglobal\./, "")
+                        .replace(/^org\.itech\./, "");
 
                       return (
                         <div
@@ -129,8 +131,10 @@ export const CommonProperties = () => {
                   {Object.keys(commonProperties)
                     .slice(Math.ceil(Object.keys(commonProperties).length / 2))
                     .map((key) => {
-                      // Remove the prefix "org.openelisglobal" using regex
-                      let shortKey = key.replace(/^org\.openelisglobal\./, "");
+                      // Remove the prefix "org.openelisglobal" or "org.itech" using regex
+                      let shortKey = key
+                        .replace(/^org\.openelisglobal\./, "")
+                        .replace(/^org\.itech\./, "");
 
                       return (
                         <div
