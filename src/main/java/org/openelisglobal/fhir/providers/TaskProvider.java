@@ -270,8 +270,8 @@ public class TaskProvider implements IResourceProvider {
     }
 
     private boolean isTerminal(TaskStatus status) {
-        return status == TaskStatus.COMPLETED || status == TaskStatus.REJECTED
-                || status == TaskStatus.FAILED || status == TaskStatus.CANCELLED;
+        return status == TaskStatus.COMPLETED || status == TaskStatus.REJECTED || status == TaskStatus.FAILED
+                || status == TaskStatus.CANCELLED;
     }
 
     private String mapTaskStatusToOrderStatusId(TaskStatus status) {
