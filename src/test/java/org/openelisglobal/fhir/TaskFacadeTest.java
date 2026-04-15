@@ -121,7 +121,39 @@ public class TaskFacadeTest extends BaseWebContextSensitiveTest {
         fhirServlet.service(buildRequest("DELETE", "/Task/" + VALID_ID), response);
 
         assertEquals(204, response.getStatus());
-        assertNotNull("Sample must remain in DB after soft-delete", sampleService.getSampleByFhirUuid(VALID_ID));
+        Sample sample = sampleService.getSampleByFhirUuid(VALID_ID);
+        assertNotNull("Sample must remain in DB after soft-delete", sample);
+        // DB status must be updated to NonConforming (id=12) — CANCELLED maps here
+        assertEquals(statusService.getStatusID(OrderStatus.NonConforming_depricated), sample.getStatusId());
+    }
+
+    @Test
+    public void deleteTask_terminalState_shouldReturn400() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(buildRequest("DELETE", "/Task/" + COMPLETED_ID), response);
+
+        assertEquals(400, response.getStatus());
+        JsonNode json = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
+        // DB record must be untouched — terminal guard fired before any update
+        Sample sample = sampleService.getSampleByFhirUuid(COMPLETED_ID);
+        assertNotNull(sample);
+        assertEquals(statusService.getStatusID(OrderStatus.Finished), sample.getStatusId());
+    }
+
+    @Test
+    public void deleteTask_alreadyCancelled_shouldReturn400() throws Exception {
+        // First cancel it
+        MockHttpServletResponse first = new MockHttpServletResponse();
+        fhirServlet.service(buildRequest("DELETE", "/Task/" + VALID_ID), first);
+        assertEquals(204, first.getStatus());
+
+        // Second cancel must be rejected — CANCELLED is terminal
+        MockHttpServletResponse second = new MockHttpServletResponse();
+        fhirServlet.service(buildRequest("DELETE", "/Task/" + VALID_ID), second);
+        assertEquals(400, second.getStatus());
+        JsonNode json = objectMapper.readTree(second.getContentAsString());
+        assertEquals("OperationOutcome", json.get("resourceType").asText());
     }
 
     @Test

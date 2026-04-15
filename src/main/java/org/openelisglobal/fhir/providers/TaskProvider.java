@@ -36,8 +36,8 @@ import org.springframework.stereotype.Component;
  *         → REJECTED / CANCELLED / FAILED
  * </pre>
  * 
- * Terminal states (COMPLETED, REJECTED, FAILED) are permanent — a completed lab
- * order cannot be re-opened.
+ * Terminal states (COMPLETED, REJECTED, FAILED, CANCELLED) are permanent — once
+ * a lab order reaches a terminal state it cannot be transitioned further.
  *
  * <p>
  * Search uses native DB queries for status and patient filters. Date-only
@@ -121,7 +121,7 @@ public class TaskProvider implements IResourceProvider {
             }
             sample.setStatusId(newStatusId);
             sample.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            sampleService.save(sample);
+            sampleService.update(sample);
 
             LogEvent.logInfo(getClass().getSimpleName(), method,
                     "Task " + theId.getIdPart() + ": " + current.toCode() + " → " + incoming.toCode());
@@ -151,8 +151,19 @@ public class TaskProvider implements IResourceProvider {
                 throw new ResourceNotFoundException("Task/" + theId.getIdPart());
             }
             Task cancelled = fhirTransformService.transformToTask(sample.getId());
-            cancelled.setStatus(TaskStatus.CANCELLED);
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, cancelled, getClass().getSimpleName(), method);
+            if (cancelled == null) {
+                throw new InternalErrorException("Transformation failed for Task/" + theId.getIdPart());
+            }
+            if (isTerminal(cancelled.getStatus())) {
+                throw new InvalidRequestException(
+                        "Cannot cancel a task in terminal state: " + cancelled.getStatus().toCode());
+            }
+            String cancelStatusId = mapTaskStatusToOrderStatusId(TaskStatus.CANCELLED);
+            sample.setStatusId(cancelStatusId);
+            sample.setSysUserId(FhirProviderUtils.getSysUserId(request));
+            sampleService.update(sample);
+            Task updated = fhirTransformService.transformToTask(sample.getId());
+            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, updated, getClass().getSimpleName(), method);
             return FhirProviderUtils.buildDeleteOutcome(theId, "Task");
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
@@ -212,6 +223,8 @@ public class TaskProvider implements IResourceProvider {
             }
             return patientSamples;
         }
+        // TODO: getAll() loads every sample — optimize by passing filters to
+        // SampleService once supported.
         return sampleService.getAll();
     }
 
@@ -242,7 +255,7 @@ public class TaskProvider implements IResourceProvider {
             return false;
         if (current == incoming)
             return true;
-        if (current == TaskStatus.COMPLETED || current == TaskStatus.REJECTED || current == TaskStatus.FAILED) {
+        if (isTerminal(current)) {
             return false;
         }
         if (current == TaskStatus.READY) {
@@ -256,6 +269,11 @@ public class TaskProvider implements IResourceProvider {
         return false;
     }
 
+    private boolean isTerminal(TaskStatus status) {
+        return status == TaskStatus.COMPLETED || status == TaskStatus.REJECTED
+                || status == TaskStatus.FAILED || status == TaskStatus.CANCELLED;
+    }
+
     private String mapTaskStatusToOrderStatusId(TaskStatus status) {
         switch (status) {
         case READY:
@@ -267,6 +285,8 @@ public class TaskProvider implements IResourceProvider {
         case REJECTED:
         case CANCELLED:
         case FAILED:
+            // No Cancelled value in OrderStatus enum — NonConforming is the closest
+            // available.
             return statusService.getStatusID(OrderStatus.NonConforming_depricated);
         default:
             return null;

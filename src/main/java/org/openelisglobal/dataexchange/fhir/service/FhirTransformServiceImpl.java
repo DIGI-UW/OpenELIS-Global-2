@@ -658,13 +658,15 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     /**
-     * Core transformation used by TaskProvider (READ / UPDATE / SEARCH)
-     * and by transformPersistOrderEntryFhirObjects / transformPersistResultValidationFhirObjects.
+     * Core transformation used by TaskProvider (READ / UPDATE / SEARCH) and by
+     * transformPersistOrderEntryFhirObjects /
+     * transformPersistResultValidationFhirObjects.
      *
-     * <p>Produces a complete FHIR R4 Task including status, patient reference,
-     * authored-on date, priority, identifiers, basedOn ServiceRequest links,
-     * output DiagnosticReport links (for finished orders), and partOf chain
-     * for referred tasks.
+     * <p>
+     * Produces a complete FHIR R4 Task including status, patient reference,
+     * authored-on date, priority, identifiers, basedOn ServiceRequest links, output
+     * DiagnosticReport links (for finished orders), and partOf chain for referred
+     * tasks.
      */
     private Task transformToTask(Sample sample) {
         String method = "transformToTask";
@@ -709,32 +711,25 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             }
 
             // Identifiers
-            task.addIdentifier(this.createIdentifier(
-                    fhirConfig.getOeFhirSystem() + "/order_uuid", sample.getFhirUuidAsString()));
+            task.addIdentifier(
+                    this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_uuid", sample.getFhirUuidAsString()));
             if (!GenericValidator.isBlankOrNull(sample.getAccessionNumber())) {
-                task.addIdentifier(this.createIdentifier(
-                        fhirConfig.getOeFhirSystem() + "/order_accessionNumber",
+                task.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_accessionNumber",
                         sample.getAccessionNumber()));
             }
 
             // BasedOn ServiceRequest links + output DiagnosticReport for finished orders
             List<Analysis> analyses = sampleService.getAnalysis(sample);
             for (Analysis analysis : analyses) {
-                task.addBasedOn(this.createReferenceFor(
-                        ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
-                if (sample.getStatusId().equals(
-                        statusService.getStatusID(OrderStatus.Finished))) {
-                    task.addOutput()
-                            .setType(new CodeableConcept()
-                                    .addCoding(new Coding().setCode("reference")))
-                            .setValue(this.createReferenceFor(
-                                    ResourceType.DiagnosticReport,
+                task.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
+                if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
+                    task.addOutput().setType(new CodeableConcept().addCoding(new Coding().setCode("reference")))
+                            .setValue(this.createReferenceFor(ResourceType.DiagnosticReport,
                                     analysis.getFhirUuidAsString()));
                 }
             }
 
-            LogEvent.logDebug(getClass().getSimpleName(), method,
-                    "Transformed Task for sample " + sample.getId());
+            LogEvent.logDebug(getClass().getSimpleName(), method, "Transformed Task for sample " + sample.getId());
             return task;
 
         } catch (Exception e) {
