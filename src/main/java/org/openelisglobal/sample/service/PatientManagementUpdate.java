@@ -169,6 +169,9 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
                 if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
                     // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
                     String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    if (!identityType.matches("ADDRESS_HIERARCHY_\\d+(_TEXT)?")) {
+                        continue;
+                    }
                     persistIdentityType(entry.getValue(), identityType);
                 }
             }

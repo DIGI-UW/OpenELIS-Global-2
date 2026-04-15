@@ -9,8 +9,12 @@ import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.configuration.service.DomainConfigurationHandler;
+import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.valueholder.OrganizationType;
+import org.openelisglobal.patientidentitytype.service.PatientIdentityTypeService;
+import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
+import org.openelisglobal.patientidentitytype.valueholder.PatientIdentityType;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,20 +29,22 @@ import org.springframework.stereotype.Component;
  * Expected CSV format (address-hierarchy-levels.csv):
  *
  * <pre>
- * level,typeName,displayKey,sortOrder,defaultValue
- * 1,Province,address.level.province,1,DKI Jakarta
- * 2,District,address.level.district,2,Kota Jakarta Selatan
- * 3,Sub-District,address.level.subdistrict,3,
- * 4,Village,address.level.village,4,
+ * level,typeName,defaultValue,allowFreeText
+ * 1,Province,DKI Jakarta,false
+ * 2,District,Kota Jakarta Selatan,false
+ * 3,Sub-District,,false
+ * 4,Village,,false
+ * 5,Postal Code,,true
  * </pre>
  *
  * <p>
  * Notes: - First line is the header (required) - level: The hierarchy level
  * number (1 = top level) - typeName: The OrganizationType name to create -
- * displayKey: i18n key for display (optional) - sortOrder: Display order
- * (optional) - defaultValue: Default value name to pre-select for new patients
- * (optional, must match an organization name at this level) - Only processes
- * files ending with "-levels.csv"
+ * defaultValue: Default value name to pre-select for new patients (optional,
+ * must match an organization name at this level) - allowFreeText: If true, the
+ * level renders as a free text input instead of a dropdown; must only be set on
+ * levels with no existing coded Organization records - Only processes files
+ * ending with "-levels.csv"
  */
 @Component
 public class AddressHierarchyConfigurationHandler implements DomainConfigurationHandler {
@@ -49,7 +55,13 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     private OrganizationTypeService organizationTypeService;
 
     @Autowired
+    private OrganizationService organizationService;
+
+    @Autowired
     private SiteInformationService siteInformationService;
+
+    @Autowired
+    private PatientIdentityTypeService patientIdentityTypeService;
 
     @Override
     public String getDomainName() {
@@ -90,9 +102,8 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         // Get column indices
         int levelIndex = findColumnIndex(headers, "level");
         int typeNameIndex = findColumnIndex(headers, "typeName");
-        int displayKeyIndex = findColumnIndex(headers, "displayKey");
-        int sortOrderIndex = findColumnIndex(headers, "sortOrder");
         int defaultValueIndex = findColumnIndex(headers, "defaultValue");
+        int allowFreeTextIndex = findColumnIndex(headers, "allowFreeText");
 
         List<OrganizationType> processedTypes = new ArrayList<>();
         String line;
@@ -106,8 +117,8 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
 
             try {
                 String[] values = parseCsvLine(line);
-                OrganizationType orgType = processCsvLine(values, levelIndex, typeNameIndex, displayKeyIndex,
-                        sortOrderIndex, defaultValueIndex);
+                OrganizationType orgType = processCsvLine(values, levelIndex, typeNameIndex, defaultValueIndex,
+                        allowFreeTextIndex);
                 if (orgType != null) {
                     processedTypes.add(orgType);
                 }
@@ -116,6 +127,8 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
                         "Error processing line " + lineNumber + " in file " + fileName + ": " + e.getMessage());
             }
         }
+
+        PatientIdentityTypeMap.reset();
 
         DisplayListService.getInstance().refreshLists();
 
@@ -177,12 +190,16 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         return -1;
     }
 
-    private OrganizationType processCsvLine(String[] values, int levelIndex, int typeNameIndex, int displayKeyIndex,
-            int sortOrderIndex, int defaultValueIndex) {
+    private OrganizationType processCsvLine(String[] values, int levelIndex, int typeNameIndex, int defaultValueIndex,
+            int allowFreeTextIndex) {
 
         String levelStr = getValueOrEmpty(values, levelIndex);
         String typeName = getValueOrEmpty(values, typeNameIndex);
         String defaultValue = getValueOrEmpty(values, defaultValueIndex);
+        boolean allowFreeText = "true".equalsIgnoreCase(getValueOrEmpty(values, allowFreeTextIndex));
+        if (allowFreeText) {
+            allowFreeText = validateAllowFreeText(typeName, levelStr);
+        }
 
         if (levelStr.isEmpty()) {
             LogEvent.logWarn(this.getClass().getSimpleName(), "processCsvLine", "Skipping row with missing level");
@@ -205,33 +222,78 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
         // Check if organization type already exists
         OrganizationType existingType = organizationTypeService.getOrganizationTypeByName(typeName);
         if (existingType != null) {
-            // Update existing type with level info in description
-            updateOrganizationType(existingType, level, values, displayKeyIndex);
+            updateOrganizationType(existingType, level, allowFreeText);
             organizationTypeService.update(existingType);
             updateSiteInformationLabel(level, typeName);
             updateDefaultValue(level, defaultValue);
+            registerIdentityTypes(level, allowFreeText);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Updated existing organization type: " + typeName + " at level " + level);
             return existingType;
         } else {
-            // Create new organization type
             OrganizationType newType = new OrganizationType();
             newType.setName(typeName);
-            updateOrganizationType(newType, level, values, displayKeyIndex);
+            updateOrganizationType(newType, level, allowFreeText);
             newType.setSysUserId("1");
             String typeId = organizationTypeService.insert(newType);
             newType.setId(typeId);
             updateSiteInformationLabel(level, typeName);
             updateDefaultValue(level, defaultValue);
+            registerIdentityTypes(level, allowFreeText);
             LogEvent.logInfo(this.getClass().getSimpleName(), "processCsvLine",
                     "Created new organization type: " + typeName + " at level " + level);
             return newType;
         }
     }
 
-    private void updateOrganizationType(OrganizationType orgType, int level, String[] values, int displayKeyIndex) {
+    /**
+     * Returns true only if the level has no existing coded Organization records.
+     * allowFreeText must not be set on levels that already have coded values loaded
+     * — doing so would orphan those records and display raw IDs for existing
+     * patients.
+     */
+    private boolean validateAllowFreeText(String typeName, String levelStr) {
+        List<org.openelisglobal.organization.valueholder.Organization> existing = organizationService
+                .getOrganizationsByTypeName("organizationName", typeName);
+        if (existing != null && !existing.isEmpty()) {
+            return false;
+        }
+        return true;
+    }
+
+    private void updateOrganizationType(OrganizationType orgType, int level, boolean allowFreeText) {
         orgType.setHierarchyLevel(level);
+        orgType.setAllowFreeText(allowFreeText);
         orgType.setSysUserId("1");
+    }
+
+    /**
+     * Eagerly registers the patient_identity_type rows for this hierarchy level so
+     * they exist from configuration time rather than being lazily created on first
+     * patient save.
+     */
+    private void registerIdentityTypes(int level, boolean allowFreeText) {
+        // Frontend uses 0-based indices (addressHierarchy_0, addressHierarchy_1...)
+        // which map to ADDRESS_HIERARCHY_0, ADDRESS_HIERARCHY_1, etc.
+        // CSV level numbers are 1-based, so subtract 1.
+        // A level is exclusively coded OR free text — register only the identity type
+        // that will actually be written to.
+        int zeroBasedIndex = level - 1;
+        if (allowFreeText) {
+            ensureIdentityTypeExists("ADDRESS_HIERARCHY_" + zeroBasedIndex + "_TEXT");
+        } else {
+            ensureIdentityTypeExists("ADDRESS_HIERARCHY_" + zeroBasedIndex);
+        }
+    }
+
+    private void ensureIdentityTypeExists(String identityTypeName) {
+        PatientIdentityType existing = patientIdentityTypeService.getNamedIdentityType(identityTypeName);
+        if (existing == null) {
+            PatientIdentityType newType = new PatientIdentityType();
+            newType.setIdentityType(identityTypeName);
+            newType.setSysUserId("1");
+            patientIdentityTypeService.insert(newType);
+        }
     }
 
     private void updateSiteInformationLabel(int level, String typeName) {
