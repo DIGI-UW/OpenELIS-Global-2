@@ -206,8 +206,14 @@ const TestCatalog = () => {
 
   const DataTableComponent = ({ item }) => {
     const headers = [
-      { key: "field", header: "Field" },
-      { key: "value", header: "Value" },
+      {
+        key: "field",
+        header: intl.formatMessage({ id: "testCatalog.header.field" }),
+      },
+      {
+        key: "value",
+        header: intl.formatMessage({ id: "testCatalog.header.value" }),
+      },
     ];
 
     const rows = [
@@ -274,12 +280,30 @@ const TestCatalog = () => {
     ].filter(Boolean);
 
     const limitHeaders = [
-      { key: "gender", header: "Gender" },
-      { key: "ageRange", header: "Age Range" },
-      { key: "normalRange", header: "Normal Range" },
-      { key: "validRange", header: "Valid Range" },
-      { key: "reportingRange", header: "Reporting Range" },
-      { key: "criticalRange", header: "Critical Range" },
+      {
+        key: "gender",
+        header: intl.formatMessage({ id: "testCatalog.header.gender" }),
+      },
+      {
+        key: "ageRange",
+        header: intl.formatMessage({ id: "testCatalog.header.ageRange" }),
+      },
+      {
+        key: "normalRange",
+        header: intl.formatMessage({ id: "testCatalog.header.normalRange" }),
+      },
+      {
+        key: "validRange",
+        header: intl.formatMessage({ id: "testCatalog.header.validRange" }),
+      },
+      {
+        key: "reportingRange",
+        header: intl.formatMessage({ id: "testCatalog.header.reportingRange" }),
+      },
+      {
+        key: "criticalRange",
+        header: intl.formatMessage({ id: "testCatalog.header.criticalRange" }),
+      },
     ];
 
     return (

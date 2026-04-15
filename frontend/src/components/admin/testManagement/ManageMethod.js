@@ -129,15 +129,23 @@ function ManageMethod() {
         <Modal
           open={isAddModalOpen}
           size="sm"
-          modalHeading="Add New Method"
-          primaryButtonText={confirmationStep ? "Accept" : "Save"}
-          secondaryButtonText={confirmationStep ? "Reject" : "Cancel"}
+          modalHeading={intl.formatMessage({ id: "method.modal.add.heading" })}
+          primaryButtonText={
+            confirmationStep
+              ? intl.formatMessage({ id: "column.name.accept" })
+              : intl.formatMessage({ id: "label.button.save" })
+          }
+          secondaryButtonText={
+            confirmationStep
+              ? intl.formatMessage({ id: "column.name.reject" })
+              : intl.formatMessage({ id: "label.button.cancel" })
+          }
           onRequestSubmit={handleAddMethod}
           onRequestClose={closeAddModal}
         >
           <TextInput
             id="englishLabel"
-            labelText="English"
+            labelText={intl.formatMessage({ id: "english.label" })}
             value={englishLabel}
             onChange={(e) => {
               setEnglishLabel(e.target.value);
@@ -145,11 +153,11 @@ function ManageMethod() {
             }}
             required
             invalid={inputError && !englishLabel}
-            invalidText="This field is required"
+            invalidText={intl.formatMessage({ id: "label.field.required" })}
           />
           <TextInput
             id="frenchLabel"
-            labelText="French"
+            labelText={intl.formatMessage({ id: "french.label" })}
             value={frenchLabel}
             onChange={(e) => {
               setFrenchLabel(e.target.value);
@@ -157,7 +165,7 @@ function ManageMethod() {
             }}
             required
             invalid={inputError && !frenchLabel}
-            invalidText="This field is required"
+            invalidText={intl.formatMessage({ id: "label.field.required" })}
           />
           {confirmationStep && (
             <p style={{ color: "#3366B3", marginTop: "1rem" }}>

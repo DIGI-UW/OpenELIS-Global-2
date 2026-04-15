@@ -443,9 +443,13 @@ function AnalyzerTestName() {
         <Modal
           open={isAddModalOpen}
           size="sm"
-          modalHeading="Add Analyzer Test Name"
-          primaryButtonText="Add"
-          secondaryButtonText="Cancel"
+          modalHeading={intl.formatMessage({
+            id: "analyzerTestName.modal.add.heading",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.add" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
           primaryButtonDisabled={analyzerList.length == 0}
           onRequestSubmit={handleAddAnalyzer}
           onRequestClose={closeAddModal}
@@ -491,9 +495,13 @@ function AnalyzerTestName() {
         <Modal
           open={isUpdateModalOpen}
           size="sm"
-          modalHeading="Update AnalyzerTestName"
-          primaryButtonText="Update"
-          secondaryButtonText="Cancel"
+          modalHeading={intl.formatMessage({
+            id: "analyzerTestName.modal.update.heading",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.update" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
           onRequestSubmit={handleUpdateAnalyzer}
           onRequestClose={closeUpdateModal}
         >
@@ -576,16 +584,22 @@ function AnalyzerTestName() {
                   headers={[
                     {
                       key: "select",
-                      header: "select",
+                      header: intl.formatMessage({
+                        id: "admin.page.configuration.formEntryConfigMenu.select",
+                      }),
                     },
                     {
                       key: "analyzerName",
-                      header: "Analyzer - Analyzer test name",
+                      header: intl.formatMessage({
+                        id: "analyzerTestName.header.analyzerName",
+                      }),
                     },
 
                     {
                       key: "actualTestName",
-                      header: "Actual test Name",
+                      header: intl.formatMessage({
+                        id: "label.actualTestName",
+                      }),
                     },
                   ]}
                 >
