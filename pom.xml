@@ -741,8 +741,13 @@
             <url>https://jaspersoft.jfrog.io/jaspersoft/third-party-ce-artifacts/</url>
         </repository>
         <repository>
+            <id>jboss-public</id>
+            <name>JBoss Public Repository</name>
+            <url>https://repository.jboss.org/nexus/repository/public/</url>
+        </repository>
+        <repository>
             <id>shibboleth</id>
-            <!-- openSaml -->
+            <!-- openSaml - note: this repo may return 403, JBoss is preferred -->
             <url>https://build.shibboleth.net/maven/releases/</url>
         </repository>
         <!-- <repository> <id>uwdigi-repo-central</id> <name>DIGI Public Repository</name>
