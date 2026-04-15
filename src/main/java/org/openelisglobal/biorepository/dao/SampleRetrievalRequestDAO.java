@@ -95,4 +95,12 @@ public interface SampleRetrievalRequestDAO extends BaseDAO<SampleRetrievalReques
      * @return next sequence value
      */
     int getNextRequestNumberSequence();
+
+    /**
+     * Find retrieval requests linked to a specific notebook entry.
+     *
+     * @param notebookEntryId the notebook entry ID
+     * @return list of requests ordered by requested timestamp descending
+     */
+    List<SampleRetrievalRequest> findByNotebookEntryId(Integer notebookEntryId);
 }

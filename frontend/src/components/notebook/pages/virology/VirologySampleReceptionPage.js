@@ -6,8 +6,8 @@ import React, {
   useMemo,
   useContext,
 } from "react";
-import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
-import { Upload, Checkmark } from "@carbon/react/icons";
+import { Grid, Column, Button, Tile, Tag, Modal } from "@carbon/react";
+import { Upload, Checkmark, DataShare } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -15,6 +15,7 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import VirologyManifestImportModal from "../../workflow/VirologyManifestImportModal";
+import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
@@ -51,6 +52,7 @@ function VirologySampleReceptionPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -62,6 +64,7 @@ function VirologySampleReceptionPage({
   const [loading, setLoading] = useState(true);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
 
   // Notification helper function
   const notify = useCallback(
@@ -432,6 +435,18 @@ function VirologySampleReceptionPage({
       {/* Action Buttons */}
       <div className="page-actions-bar">
         <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={DataShare}
+          onClick={() => setBiorepoImportOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.virology.importFromBiorepo"
+            defaultMessage="Import from Biorepository"
+          />
+        </Button>
+
+        <Button
           kind="primary"
           size="sm"
           renderIcon={Upload}
@@ -565,6 +580,31 @@ function VirologySampleReceptionPage({
         entryId={entryId}
         onImportSuccess={handleImportSuccess}
       />
+
+      {/* Biorepository Sample Import Modal */}
+      {biorepoImportOpen && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "biorepo.import.title",
+            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
+          })}
+          passiveModal
+          onRequestClose={() => setBiorepoImportOpen(false)}
+          size="lg"
+        >
+          <BiorepoSampleImportPage
+            entryId={entryId}
+            pageData={pageData}
+            progress={progress}
+            onProgressUpdate={() => {
+              setBiorepoImportOpen(false);
+              if (onProgressUpdate) onProgressUpdate();
+            }}
+            notebookId={notebookId}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

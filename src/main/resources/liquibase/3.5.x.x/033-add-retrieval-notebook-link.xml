@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- Add notebook entry link and AHRI BR-F-02 fields to       -->
+    <!-- sample_retrieval_request table. Enables retrieval         -->
+    <!-- requests to originate from any notebook workflow.         -->
+    <!-- ======================================================== -->
+
+    <changeSet id="add-notebook-entry-id-to-retrieval-request" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="sample_retrieval_request" columnName="notebook_entry_id" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add notebook_entry_id FK to link retrieval requests to notebook entries</comment>
+
+        <addColumn tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="notebook_entry_id" type="INTEGER">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addForeignKeyConstraint
+            constraintName="fk_retrieval_request_notebook_entry"
+            baseTableSchemaName="clinlims"
+            baseTableName="sample_retrieval_request"
+            baseColumnNames="notebook_entry_id"
+            referencedTableSchemaName="clinlims"
+            referencedTableName="notebook_entry"
+            referencedColumnNames="id"/>
+
+        <createIndex indexName="idx_retrieval_request_notebook_entry"
+                     tableName="sample_retrieval_request"
+                     schemaName="clinlims">
+            <column name="notebook_entry_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropIndex indexName="idx_retrieval_request_notebook_entry"
+                       tableName="sample_retrieval_request"
+                       schemaName="clinlims"/>
+            <dropForeignKeyConstraint
+                baseTableSchemaName="clinlims"
+                baseTableName="sample_retrieval_request"
+                constraintName="fk_retrieval_request_notebook_entry"/>
+            <dropColumn tableName="sample_retrieval_request"
+                        schemaName="clinlims"
+                        columnName="notebook_entry_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="add-ahri-form-fields-to-retrieval-request" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_retrieval_request" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="sample_retrieval_request" columnName="requester_lab_unit" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Add AHRI BR-F-02 form fields: lab unit, contact info, intended use, destruction flag, return date</comment>
+
+        <addColumn tableName="sample_retrieval_request" schemaName="clinlims">
+            <column name="requester_lab_unit" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="requester_contact_info" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="intended_use_description" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="samples_will_be_destroyed" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="estimated_return_date" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <rollback>
+            <dropColumn tableName="sample_retrieval_request" schemaName="clinlims" columnName="requester_lab_unit"/>
+            <dropColumn tableName="sample_retrieval_request" schemaName="clinlims" columnName="requester_contact_info"/>
+            <dropColumn tableName="sample_retrieval_request" schemaName="clinlims" columnName="intended_use_description"/>
+            <dropColumn tableName="sample_retrieval_request" schemaName="clinlims" columnName="samples_will_be_destroyed"/>
+            <dropColumn tableName="sample_retrieval_request" schemaName="clinlims" columnName="estimated_return_date"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

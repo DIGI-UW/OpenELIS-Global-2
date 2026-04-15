@@ -89,4 +89,11 @@
     <include file="liquibase/3.5.x.x/030-fix-biorepository-approved-sample-type-lastupdated.xml"/>
     <include file="liquibase/3.5.x.x/032-add-next-maintenance-date-to-inventory-item.xml"/>
 
+    <!-- ======================================================== -->
+    <!-- Generic Biorepository Sample Request Form                 -->
+    <!-- Links retrieval requests to notebook entries + AHRI fields -->
+    <!-- ======================================================== -->
+
+    <include file="liquibase/3.5.x.x/033-add-retrieval-notebook-link.xml"/>
+
 </databaseChangeLog>

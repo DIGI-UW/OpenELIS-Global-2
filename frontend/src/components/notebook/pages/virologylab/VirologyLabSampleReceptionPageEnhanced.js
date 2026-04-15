@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
+import { Grid, Column, Button, Tile, Tag, Modal } from "@carbon/react";
 import {
   Upload,
   Edit,
@@ -15,6 +15,7 @@ import {
   Renew,
   CheckmarkFilled,
   Pending,
+  DataShare,
 } from "@carbon/icons-react";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
@@ -26,6 +27,7 @@ import {
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import VirologyLabManifestImportModal from "../../workflow/VirologyLabManifestImportModal";
 import SampleGrid from "../../workflow/SampleGrid";
+import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 
 /**
  * VirologyLabSampleReceptionPage - STAGE 1: Sample Reception & Registration
@@ -53,6 +55,7 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
   onSampleUpdate,
   onSampleStatusChange,
   isLoading = false,
+  notebookId,
 }) => {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
@@ -60,6 +63,7 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
 
   const componentMounted = useRef(false);
   const [isManifestModalOpen, setIsManifestModalOpen] = useState(false);
+  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [pageSamples, setPageSamples] = useState(samples || []);
 
@@ -306,6 +310,17 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={DataShare}
+          onClick={() => setBiorepoImportOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.virologylab.reception.importFromBiorepo"
+            defaultMessage="Import from Biorepository"
+          />
+        </Button>
         <PermissionGate
           roles={Permissions.REGISTER_SAMPLES}
           disabledTooltip={intl.formatMessage({
@@ -565,6 +580,30 @@ export const VirologyLabSampleReceptionPageEnhanced = ({
         entryId={entryId}
         onImportSuccess={handleManifestImport}
       />
+
+      {/* Biorepository Sample Import Modal */}
+      {biorepoImportOpen && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "biorepo.import.title",
+            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
+          })}
+          passiveModal
+          onRequestClose={() => setBiorepoImportOpen(false)}
+          size="lg"
+        >
+          <BiorepoSampleImportPage
+            entryId={entryId}
+            pageData={pageData}
+            onProgressUpdate={() => {
+              setBiorepoImportOpen(false);
+              if (onSampleUpdate) onSampleUpdate();
+            }}
+            notebookId={notebookId}
+          />
+        </Modal>
+      )}
     </div>
   );
 };

@@ -77,4 +77,17 @@ __pycache__/
 .coverage
 htmlcov/
 
-**/cypress/e2e-reports/** 
+**/cypress/e2e-reports/**
+
+# Playwright artifacts
+.playwright-mcp/
+frontend/playwright-report/
+frontend/playwright/
+frontend/test-results/
+
+# Local dev notes / scratch files
+.dev-docs/
+id_file
+
+# Runtime-generated volume data and configuration
+volume/lucene/

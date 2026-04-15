@@ -244,6 +244,73 @@ function ActiveRetrievalsTab({ onActionComplete }) {
     );
   }, []);
 
+  // Retrieve all PENDING items for a request, then complete it
+  const completeRequestWithRetrieval = useCallback(
+    (requestId) =>
+      new Promise((resolve) => {
+        getFromOpenElisServer(
+          `/rest/biorepository/retrieval/requests/${requestId}`,
+          (data) => {
+            if (!data || data.error) {
+              resolve({ error: data?.error || "Failed to load request" });
+              return;
+            }
+
+            const pendingItems = (data.items || []).filter(
+              (item) => item.status === "PENDING",
+            );
+
+            // Retrieve each PENDING item sequentially
+            const retrieveNext = (idx) => {
+              if (idx >= pendingItems.length) {
+                // All items retrieved — now complete the request
+                postToOpenElisServerJsonResponse(
+                  `/rest/biorepository/retrieval/requests/${requestId}/complete`,
+                  "{}",
+                  (completeData) => {
+                    if (completeData && completeData.error) {
+                      resolve({ error: completeData.error });
+                      return;
+                    }
+                    // Link to notebook if the request is tied to one
+                    if (data.notebookId) {
+                      postToOpenElisServerJsonResponse(
+                        `/rest/biorepository/retrieval/requests/${requestId}/link-to-notebook`,
+                        JSON.stringify({ notebookId: data.notebookId }),
+                        () => resolve({ success: true }),
+                      );
+                    } else {
+                      resolve({ success: true });
+                    }
+                  },
+                );
+                return;
+              }
+
+              postToOpenElisServerJsonResponse(
+                `/rest/biorepository/retrieval/items/${pendingItems[idx].id}/retrieve`,
+                JSON.stringify({
+                  conditionAtRelease: "Good",
+                  conditionNotes: null,
+                  temperatureAtRetrieval: null,
+                }),
+                (retrieveData) => {
+                  if (retrieveData && retrieveData.error) {
+                    resolve({ error: retrieveData.error });
+                    return;
+                  }
+                  retrieveNext(idx + 1);
+                },
+              );
+            };
+
+            retrieveNext(0);
+          },
+        );
+      }),
+    [],
+  );
+
   // Handle bulk complete
   const handleBulkComplete = useCallback(() => {
     if (selectedRows.length === 0) return;
@@ -256,28 +323,31 @@ function ActiveRetrievalsTab({ onActionComplete }) {
       const request = activeRequests.find((r) => r.id.toString() === rowId);
       if (!request) return;
 
-      postToOpenElisServerJsonResponse(
-        `/rest/biorepository/retrieval/requests/${request.id}/complete`,
-        "{}",
-        (data) => {
-          if (data && data.error) {
-            failed++;
-          } else {
-            completed++;
-          }
+      completeRequestWithRetrieval(request.id).then((result) => {
+        if (result.error) {
+          failed++;
+        } else {
+          completed++;
+        }
 
-          if (completed + failed === selectedRows.length) {
-            setActionLoading(false);
-            setSelectedRows([]);
-            loadData();
-            if (failed > 0) {
-              setError(`Completed ${completed} request(s). ${failed} failed.`);
-            }
+        if (completed + failed === selectedRows.length) {
+          setActionLoading(false);
+          setSelectedRows([]);
+          loadData();
+          if (failed > 0) {
+            setError(`Completed ${completed} request(s). ${failed} failed.`);
           }
-        },
-      );
+          if (onActionComplete) onActionComplete();
+        }
+      });
     });
-  }, [selectedRows, activeRequests, loadData]);
+  }, [
+    selectedRows,
+    activeRequests,
+    loadData,
+    completeRequestWithRetrieval,
+    onActionComplete,
+  ]);
 
   // Get item status tag (used in work order modal)
   const getItemStatusTag = (status) => {

@@ -1,12 +1,13 @@
 import React, { useState, useCallback, useContext, useEffect } from "react";
-import { Grid, Column, Button, Tile, Tag } from "@carbon/react";
+import { Grid, Column, Button, Tile, Tag, Modal } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import BioequivalenceManifestImportModal from "../../modals/BioequivalenceManifestImportModal";
 import BulkApplyForm from "../../workflow/BulkApplyForm";
 import SampleGrid from "../../workflow/SampleGrid";
-import { Upload, Checkmark, Edit } from "@carbon/react/icons";
+import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
+import { Upload, Checkmark, Edit, DataShare } from "@carbon/react/icons";
 import { postToOpenElisServer } from "../../../utils/Utils";
 import config from "../../../../config.json";
 import { Permissions } from "../../../../constants/roles";
@@ -41,6 +42,7 @@ function BioequivalenceSampleReceptionPage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const intl = useIntl();
   const { setNotificationVisible, addNotification } =
@@ -54,6 +56,7 @@ function BioequivalenceSampleReceptionPage({
   // Modal states
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkApplyModalOpen, setIsBulkApplyModalOpen] = useState(false);
+  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
 
   // Progress tracking
   // Include both PENDING and IN_PROGRESS statuses as "pending" for the workflow
@@ -426,6 +429,18 @@ function BioequivalenceSampleReceptionPage({
             className="page-actions-bar"
             style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
           >
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={DataShare}
+              onClick={() => setBiorepoImportOpen(true)}
+            >
+              <FormattedMessage
+                id="notebook.bioequivalence.stage1.importFromBiorepo"
+                defaultMessage="Import from Biorepository"
+              />
+            </Button>
+
             <PermissionGate
               roles={Permissions.REGISTER_SAMPLES}
               disabledTooltip={intl.formatMessage({
@@ -1113,6 +1128,31 @@ function BioequivalenceSampleReceptionPage({
         entryId={entryId}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Biorepository Sample Import Modal */}
+      {biorepoImportOpen && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "biorepo.import.title",
+            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
+          })}
+          passiveModal
+          onRequestClose={() => setBiorepoImportOpen(false)}
+          size="lg"
+        >
+          <BiorepoSampleImportPage
+            entryId={entryId}
+            pageData={pageData}
+            progress={progress}
+            onProgressUpdate={() => {
+              setBiorepoImportOpen(false);
+              if (onProgressUpdate) onProgressUpdate();
+            }}
+            notebookId={notebookId}
+          />
+        </Modal>
+      )}
 
       {/* Bulk Apply Metadata Modal */}
       {isBulkApplyModalOpen && hasRealPageId && (

@@ -1,11 +1,11 @@
 # OpenELIS Ethiopia — Configuration Guide
 
-The `volume` directory contains the **reference configuration** for the
-OpenELIS Ethiopia deployment. The
+The `volume` directory contains the **reference configuration** for the OpenELIS
+Ethiopia deployment. The
 [openelis-ethiopia-distro](https://github.com/DIGI-UW/openelis-ethiopia-distro)
 repository pulls this structure into its own `configs/` directory, mounts it
-into Docker containers, and that is how the Ethiopian system is configured —
-no source-code changes to OpenELIS itself are needed.
+into Docker containers, and that is how the Ethiopian system is configured — no
+source-code changes to OpenELIS itself are needed.
 
 ---
 
@@ -28,8 +28,8 @@ openelis-ethiopia-distro/
 On `docker-compose up`:
 
 1. Docker pulls the pre-built `itechuw/openelis-global-2` images.
-2. Each `configs/` subdirectory is bind-mounted into the relevant container
-   (see [Docker Volume Mappings](#docker-volume-mappings)).
+2. Each `configs/` subdirectory is bind-mounted into the relevant container (see
+   [Docker Volume Mappings](#docker-volume-mappings)).
 3. On startup the application reads every CSV/JSON under
    `configuration/backend/` and seeds the database — test sections, tests,
    sample types, roles, etc.
@@ -75,22 +75,22 @@ volume/                            ← configs/ in the distro repo
 
 ## Docker Volume Mappings
 
-| Host path (`configs/…`) | Container path | Container |
-|--------------------------|----------------|-----------|
-| `./configuration` | `/var/lib/openelis-global/configuration` | openelis |
-| `./properties` | `/var/lib/openelis-global/` | openelis |
-| `./database` | `/var/lib/postgresql/` | db |
-| `./logs/oeLogs` | `/var/log/openelis-global/` | openelis |
-| `./logs/tomcatLogs` | `/usr/local/tomcat/logs/` | openelis |
-| `./nginx` | `/etc/nginx/` | nginx |
-| `./letsencrypt` | `/etc/letsencrypt/` | certbot |
-| `./plugins` | `/var/lib/openelis-global/plugins/` | openelis |
-| `./programs` | `/var/lib/openelis-global/programs/` | openelis |
-| `./menu` | `/var/lib/openelis-global/menu/` | openelis |
-| `./lucene` | `/var/lib/openelis-global/lucene/` | openelis |
-| `./analyzer` | `/var/lib/openelis-global/analyzer/` | openelis |
-| `./odoo` | `/var/lib/openelis-global/odoo/` | openelis |
-| `./tomcat` | `/usr/local/tomcat/conf/Catalina/localhost/` | openelis |
+| Host path (`configs/…`) | Container path                               | Container |
+| ----------------------- | -------------------------------------------- | --------- |
+| `./configuration`       | `/var/lib/openelis-global/configuration`     | openelis  |
+| `./properties`          | `/var/lib/openelis-global/`                  | openelis  |
+| `./database`            | `/var/lib/postgresql/`                       | db        |
+| `./logs/oeLogs`         | `/var/log/openelis-global/`                  | openelis  |
+| `./logs/tomcatLogs`     | `/usr/local/tomcat/logs/`                    | openelis  |
+| `./nginx`               | `/etc/nginx/`                                | nginx     |
+| `./letsencrypt`         | `/etc/letsencrypt/`                          | certbot   |
+| `./plugins`             | `/var/lib/openelis-global/plugins/`          | openelis  |
+| `./programs`            | `/var/lib/openelis-global/programs/`         | openelis  |
+| `./menu`                | `/var/lib/openelis-global/menu/`             | openelis  |
+| `./lucene`              | `/var/lib/openelis-global/lucene/`           | openelis  |
+| `./analyzer`            | `/var/lib/openelis-global/analyzer/`         | openelis  |
+| `./odoo`                | `/var/lib/openelis-global/odoo/`             | openelis  |
+| `./tomcat`              | `/usr/local/tomcat/conf/Catalina/localhost/` | openelis  |
 
 ---
 
@@ -107,7 +107,8 @@ Files under `configuration/backend/` are picked up at startup by Spring-managed
    (classpath). Files you place on the filesystem (in `configs/`) take
    precedence and override those defaults.
 4. **Force reload** — if you need to reprocess every file regardless of
-   checksums, see [Force-Reloading Configuration](#force-reloading-configuration).
+   checksums, see
+   [Force-Reloading Configuration](#force-reloading-configuration).
 
 ---
 
@@ -153,8 +154,8 @@ org.openelisglobal.freezermonitoring.modbus.poll-interval=PT5M
 ```
 
 **`configs/properties/SystemConfiguration.properties`** — lab identity and UI
-behaviour. All entries are commented out by default; uncomment only the ones
-you need:
+behaviour. All entries are commented out by default; uncomment only the ones you
+need:
 
 ```properties
 SiteName=Ethiopian Public Health Institute
@@ -192,6 +193,7 @@ Bioequivalence Laboratory,Bioequivalence Testing Laboratory Department,Y,14,N,Bi
 ```
 
 Rules:
+
 - `testSectionName` is the unique key referenced everywhere else (tests, roles,
   notebook linkages).
 - `isActive=N` hides a section without deleting historical data.
@@ -248,6 +250,7 @@ Culture & Sensitivity,Microbiology,Swab,,Y,Y,1,,Culture and Sensitivity,Culture 
 ```
 
 Rules:
+
 - `testSection` must exactly match a `testSectionName` from Step 3.
 - `sampleType` must exactly match a `description` from Step 4.
 - `loinc` is optional but recommended for FHIR interoperability.
@@ -256,8 +259,8 @@ Rules:
 
 ### Step 6 — Test ↔ sample-type mappings (`test-sample-types/`)
 
-Also one file per lab section. This defines which sample types each test
-accepts (many-to-many).
+Also one file per lab section. This defines which sample types each test accepts
+(many-to-many).
 
 ```csv
 testName,sampleType
@@ -278,18 +281,19 @@ combination.
 File: `configs/configuration/backend/roles/ethiopia-roles.csv`
 
 See `example-lab-roles.csv` for the column structure. The Ethiopia distro
-defines roles aligned to the lab sections above — e.g. a Hematology
-Technician role scoped to the Hematology section.
+defines roles aligned to the lab sections above — e.g. a Hematology Technician
+role scoped to the Hematology section.
 
 ---
 
 ### Step 8 — Notebook ↔ department linkages (`notebook-departments/`)
 
 Notebooks are created through the Admin UI (Settings → Notebooks). Once they
-exist in the system, link each notebook to its lab department here so that
-users see the right notebook when they log in.
+exist in the system, link each notebook to its lab department here so that users
+see the right notebook when they log in.
 
-File: `configs/configuration/backend/notebook-departments/research-lab-linkages.csv`
+File:
+`configs/configuration/backend/notebook-departments/research-lab-linkages.csv`
 
 Current Ethiopia linkages:
 
@@ -311,12 +315,14 @@ Biorepository Laboratory,Biorepository Laboratory
 ```
 
 Rules:
+
 - Both values are **case-sensitive** and must be exact matches.
 - `notebookTitle` must match the notebook's title in the database.
 - `departmentName` must match a `testSectionName` from Step 3.
 - A notebook can appear in multiple departments — add one row per department.
 
-> See [`configuration/backend/notebook-departments/README.md`](configuration/backend/notebook-departments/README.md)
+> See
+> [`configuration/backend/notebook-departments/README.md`](configuration/backend/notebook-departments/README.md)
 > for troubleshooting SQL queries.
 
 ---
@@ -374,9 +380,9 @@ POSTGRES_INITDB_ARGS="--auth-host=md5"
 
 ### Step 12 — Nginx
 
-Edit `configs/nginx/nginx.conf` and set `server_name` to the Ethiopia
-deployment hostname. For production TLS, use `nginx-prod.conf` and place the
-Let's Encrypt certificates in `configs/letsencrypt/`.
+Edit `configs/nginx/nginx.conf` and set `server_name` to the Ethiopia deployment
+hostname. For production TLS, use `nginx-prod.conf` and place the Let's Encrypt
+certificates in `configs/letsencrypt/`.
 
 Standard proxy routes (do not change):
 
@@ -451,8 +457,8 @@ automatically on startup, but when authoring files keep this order in mind:
 ## Force-Reloading Configuration
 
 After `docker-compose down -v`, checksums are wiped and all files reload
-automatically on the next start. If checksums exist but you still need to
-force a reload:
+automatically on the next start. If checksums exist but you still need to force
+a reload:
 
 ```properties
 # configs/properties/common.properties
@@ -465,23 +471,27 @@ Restart the container, then remove or set back to `false`.
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| Config change ignored after restart | Checksum cached | Set `forcereload=true`, restart, then remove it |
-| Lab section not visible at login | `isActive=N` or name mismatch | Check CSV; `SELECT * FROM test_section;` |
-| Test missing from a sample type | No row in `test-sample-types/` | Add `testName,sampleType` row |
-| Notebook not visible for a user | Missing linkage or user not assigned to section | Check `research-lab-linkages.csv` and user's test section assignment |
-| Analyzer result not mapped | Missing row in `analyzer-test-map.csv` | Add the instrument + test row and restart |
-| Database won't start | Password mismatch | Align `database.env` and `datasource.password` |
-| SSL errors | Wrong cert paths | Verify `ssl_certificate` paths in `nginx.conf` |
-| Menu items missing | File not loaded | Ensure `menu.configuration.autocreate=true` |
+| Symptom                             | Likely cause                                    | Fix                                                                  |
+| ----------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------- |
+| Config change ignored after restart | Checksum cached                                 | Set `forcereload=true`, restart, then remove it                      |
+| Lab section not visible at login    | `isActive=N` or name mismatch                   | Check CSV; `SELECT * FROM test_section;`                             |
+| Test missing from a sample type     | No row in `test-sample-types/`                  | Add `testName,sampleType` row                                        |
+| Notebook not visible for a user     | Missing linkage or user not assigned to section | Check `research-lab-linkages.csv` and user's test section assignment |
+| Analyzer result not mapped          | Missing row in `analyzer-test-map.csv`          | Add the instrument + test row and restart                            |
+| Database won't start                | Password mismatch                               | Align `database.env` and `datasource.password`                       |
+| SSL errors                          | Wrong cert paths                                | Verify `ssl_certificate` paths in `nginx.conf`                       |
+| Menu items missing                  | File not loaded                                 | Ensure `menu.configuration.autocreate=true`                          |
 
 ---
 
 ## Related Documentation
 
-- [`configuration/README.md`](configuration/README.md) — `DomainConfigurationHandler` mechanism
-- [`configuration/backend/test-sections/README.md`](configuration/backend/test-sections/README.md) — Test sections field reference
-- [`configuration/backend/notebook-departments/README.md`](configuration/backend/notebook-departments/README.md) — Notebook linkages and troubleshooting
+- [`configuration/README.md`](configuration/README.md) —
+  `DomainConfigurationHandler` mechanism
+- [`configuration/backend/test-sections/README.md`](configuration/backend/test-sections/README.md)
+  — Test sections field reference
+- [`configuration/backend/notebook-departments/README.md`](configuration/backend/notebook-departments/README.md)
+  — Notebook linkages and troubleshooting
 - [`../AGENTS.md`](../AGENTS.md) — Full project onboarding guide
-- [openelis-ethiopia-distro](https://github.com/DIGI-UW/openelis-ethiopia-distro) — The Ethiopia deployment repository
+- [openelis-ethiopia-distro](https://github.com/DIGI-UW/openelis-ethiopia-distro)
+  — The Ethiopia deployment repository

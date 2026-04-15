@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 
@@ -144,6 +145,27 @@ public class SampleRetrievalRequest extends BaseObject<Integer> {
 
     @OneToMany(mappedBy = "retrievalRequest", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<SampleRetrievalItem> items = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "notebook_entry_id")
+    private NotebookEntry notebookEntry;
+
+    @Size(max = 100)
+    @Column(name = "requester_lab_unit", length = 100)
+    private String requesterLabUnit;
+
+    @Size(max = 255)
+    @Column(name = "requester_contact_info", length = 255)
+    private String requesterContactInfo;
+
+    @Column(name = "intended_use_description", columnDefinition = "TEXT")
+    private String intendedUseDescription;
+
+    @Column(name = "samples_will_be_destroyed")
+    private Boolean samplesWillBeDestroyed;
+
+    @Column(name = "estimated_return_date")
+    private LocalDate estimatedReturnDate;
 
     @Column(name = "sys_user_id", nullable = false, length = 36)
     private String sysUserId;
@@ -321,6 +343,54 @@ public class SampleRetrievalRequest extends BaseObject<Integer> {
     public void removeItem(SampleRetrievalItem item) {
         items.remove(item);
         item.setRetrievalRequest(null);
+    }
+
+    public NotebookEntry getNotebookEntry() {
+        return notebookEntry;
+    }
+
+    public void setNotebookEntry(NotebookEntry notebookEntry) {
+        this.notebookEntry = notebookEntry;
+    }
+
+    public String getRequesterLabUnit() {
+        return requesterLabUnit;
+    }
+
+    public void setRequesterLabUnit(String requesterLabUnit) {
+        this.requesterLabUnit = requesterLabUnit;
+    }
+
+    public String getRequesterContactInfo() {
+        return requesterContactInfo;
+    }
+
+    public void setRequesterContactInfo(String requesterContactInfo) {
+        this.requesterContactInfo = requesterContactInfo;
+    }
+
+    public String getIntendedUseDescription() {
+        return intendedUseDescription;
+    }
+
+    public void setIntendedUseDescription(String intendedUseDescription) {
+        this.intendedUseDescription = intendedUseDescription;
+    }
+
+    public Boolean getSamplesWillBeDestroyed() {
+        return samplesWillBeDestroyed;
+    }
+
+    public void setSamplesWillBeDestroyed(Boolean samplesWillBeDestroyed) {
+        this.samplesWillBeDestroyed = samplesWillBeDestroyed;
+    }
+
+    public LocalDate getEstimatedReturnDate() {
+        return estimatedReturnDate;
+    }
+
+    public void setEstimatedReturnDate(LocalDate estimatedReturnDate) {
+        this.estimatedReturnDate = estimatedReturnDate;
     }
 
     /**

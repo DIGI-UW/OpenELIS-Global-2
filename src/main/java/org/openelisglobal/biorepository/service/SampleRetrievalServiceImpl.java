@@ -16,6 +16,7 @@ import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.Desti
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.PriorityLevel;
 import org.openelisglobal.biorepository.valueholder.SampleRetrievalRequest.RequestStatus;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.notebook.service.NotebookSampleEntryService;
 import org.openelisglobal.project.service.ProjectService;
 import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -48,6 +49,9 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
 
     @Autowired
     private ProjectService projectService;
+
+    @Autowired
+    private NotebookSampleEntryService notebookSampleEntryService;
 
     SampleRetrievalServiceImpl() {
         super(SampleRetrievalRequest.class);
@@ -511,5 +515,36 @@ public class SampleRetrievalServiceImpl extends AuditableBaseObjectServiceImpl<S
     private org.openelisglobal.biorepository.valueholder.SampleTransferRequest findOriginalTransferRequest(
             BioSample bioSample) {
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SampleRetrievalRequest> getByNotebookEntryId(Integer notebookEntryId) {
+        return baseObjectDAO.findByNotebookEntryId(notebookEntryId);
+    }
+
+    @Override
+    @Transactional
+    public int linkRetrievedSamplesToNotebook(Integer requestId, Integer notebookId, String sysUserId) {
+        SampleRetrievalRequest request = get(requestId);
+        if (request == null) {
+            throw new IllegalArgumentException("Retrieval request not found: " + requestId);
+        }
+        if (!request.isApproved()) {
+            throw new IllegalStateException(
+                    "Request must be approved before linking samples. Current status: " + request.getStatus());
+        }
+
+        // Only link items that have been physically retrieved from storage
+        List<Integer> sampleItemIds = request.getItems().stream()
+                .filter(item -> item.getStatus() == SampleRetrievalItem.ItemStatus.RETRIEVED)
+                .map(item -> item.getBioSample().getSampleItem().getId()).filter(id -> id != null).map(Integer::valueOf)
+                .collect(java.util.stream.Collectors.toList());
+
+        if (sampleItemIds.isEmpty()) {
+            return 0;
+        }
+
+        return notebookSampleEntryService.linkSamplesToNotebook(notebookId, sampleItemIds);
     }
 }

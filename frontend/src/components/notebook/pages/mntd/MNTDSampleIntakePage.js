@@ -15,8 +15,15 @@ import {
   ExpandableTile,
   TileAboveTheFoldContent,
   TileBelowTheFoldContent,
+  Modal,
 } from "@carbon/react";
-import { Upload, Checkmark, Printer, Document } from "@carbon/react/icons";
+import {
+  Upload,
+  Checkmark,
+  Printer,
+  Document,
+  DataShare,
+} from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -24,6 +31,7 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import MNTDManifestImportModal from "../../workflow/MNTDManifestImportModal";
+import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -50,6 +58,7 @@ function MNTDSampleIntakePage({
   pageData,
   progress,
   onProgressUpdate,
+  notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -65,6 +74,7 @@ function MNTDSampleIntakePage({
 
   // Modal state for import
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
 
   // Load entry data to get manifest description
   const loadEntryData = useCallback(() => {
@@ -267,6 +277,18 @@ function MNTDSampleIntakePage({
 
       {/* Action Buttons */}
       <div className="page-actions-bar">
+        <Button
+          kind="secondary"
+          size="sm"
+          renderIcon={DataShare}
+          onClick={() => setBiorepoImportOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.mntd.importFromBiorepo"
+            defaultMessage="Import from Biorepository"
+          />
+        </Button>
+
         <Button
           kind="primary"
           size="sm"
@@ -478,6 +500,31 @@ function MNTDSampleIntakePage({
         entryId={entryId}
         onImportSuccess={handleImportSuccess}
       />
+
+      {/* Biorepository Sample Import Modal */}
+      {biorepoImportOpen && (
+        <Modal
+          open
+          modalHeading={intl.formatMessage({
+            id: "biorepo.import.title",
+            defaultMessage: "Biorepository Sample Request / Withdrawal Form",
+          })}
+          passiveModal
+          onRequestClose={() => setBiorepoImportOpen(false)}
+          size="lg"
+        >
+          <BiorepoSampleImportPage
+            entryId={entryId}
+            pageData={pageData}
+            progress={progress}
+            onProgressUpdate={() => {
+              setBiorepoImportOpen(false);
+              if (onProgressUpdate) onProgressUpdate();
+            }}
+            notebookId={notebookId}
+          />
+        </Modal>
+      )}
     </div>
   );
 }
