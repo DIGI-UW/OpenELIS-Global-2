@@ -16,8 +16,16 @@
 
 package org.openelisglobal.plugin;
 
+import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.PluginMenuService;
+
 public abstract class MenuPlugin implements APlugin {
     public boolean connect() {
+        if (PluginMenuService.getInstance() == null) {
+            LogEvent.logError(this.getClass().getName(), "connect",
+                    "PluginMenuService not initialized — Spring bean initialization order issue.");
+            return false;
+        }
         insertMenu();
         return true;
     }

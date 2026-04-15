@@ -26,3 +26,41 @@
   padding-top: 3rem;
   background: var(--cds-background);
 }
+
+body,
+.cds--content,
+.cds--header,
+.cds--header__name,
+.cds--header__menu-item,
+.cds--header__action,
+.cds--side-nav,
+.cds--tile,
+.cds--tabs,
+.cds--tabs__nav-link,
+.cds--data-table,
+.cds--pagination,
+.cds--btn,
+.cds--text-input,
+.cds--search-input,
+.cds--label,
+.cds--tag,
+.cds--modal-container,
+.cds--popover {
+  font-family: var(--oe-font-family);
+}
+
+.cds--header__name,
+.cds--header__menu-item,
+.cds--tabs__nav-link,
+.cds--data-table th,
+.cds--label {
+  font-weight: 600;
+  letter-spacing: normal;
+}
+
+.cds--data-table td,
+.cds--pagination,
+.cds--text-input,
+.cds--search-input {
+  letter-spacing: normal;
+}

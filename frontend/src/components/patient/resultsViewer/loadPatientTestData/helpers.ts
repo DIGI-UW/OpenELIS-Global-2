@@ -10,6 +10,42 @@ import {
 const PAGE_SIZE = 300;
 const CHUNK_PREFETCH_COUNT = 1;
 
+type HttpError = Error & {
+  response?: {
+    status: number;
+    statusText: string;
+  };
+};
+
+type FhirObservationBundle = {
+  total?: number;
+  entry?: Array<{
+    resource: ObsRecord;
+  }>;
+};
+
+const createHttpError = (message: string, response: Response): HttpError => {
+  const error = new Error(message) as HttpError;
+  error.response = {
+    status: response.status,
+    statusText: response.statusText,
+  };
+  return error;
+};
+
+const fetchJsonOrThrow = async <T>(
+  url: string,
+  context: string,
+): Promise<T> => {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw createHttpError(`${context} failed`, response);
+  }
+
+  return response.json() as Promise<T>;
+};
+
 const retrieveFromIterator = <T>(
   iteratorOrIterable: IterableIterator<T>,
   length: number,
@@ -55,7 +91,7 @@ async function getLatestObsUuid(patientUuid: string): Promise<string> {
     _count: "1",
   });
   const result = await request.next().value;
-  return result?.entry?.[0]?.resource?.id;
+  return result?.entry?.[0]?.resource?.id || "";
 }
 
 /**
@@ -85,7 +121,9 @@ export function getUserDataFromCache(
  * Iterator
  * @param queries
  */
-function* fhirObservationRequests(queries: Record<string, string>) {
+function* fhirObservationRequests(
+  queries: Record<string, string>,
+): IterableIterator<Promise<FhirObservationBundle>> {
   const fhirPathname = `${window.openmrsBase}/ws/fhir2/R4/Observation`;
   const path =
     fhirPathname +

@@ -259,4 +259,48 @@ public class DictionaryDAOImpl extends BaseDAOImpl<Dictionary, String> implement
         }
         return null;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Dictionary getDictionaryByGuid(String guid) {
+        String sql = "from Dictionary d where d.guid = :guid and d.isActive = 'Y'";
+        try {
+            Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
+            query.setParameter("guid", guid);
+            return query.uniqueResult();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in getDictionaryByGuid()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Dictionary getDictionaryByLoincCode(String loincCode) {
+        String sql = "from Dictionary d where d.loincCode = :loinc and d.isActive = 'Y'";
+        try {
+            Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
+            query.setParameter("loinc", loincCode);
+            List<Dictionary> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in getDictionaryByLoincCode()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Dictionary getDictionaryByDictEntryIgnoreCase(String name) {
+        String sql = "from Dictionary d where lower(d.dictEntry) = lower(:name) and d.isActive = 'Y'";
+        try {
+            Query<Dictionary> query = entityManager.unwrap(Session.class).createQuery(sql, Dictionary.class);
+            query.setParameter("name", name);
+            List<Dictionary> results = query.list();
+            return results.isEmpty() ? null : results.get(0);
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in getDictionaryByDictEntryIgnoreCase()", e);
+        }
+    }
 }

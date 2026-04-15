@@ -135,4 +135,10 @@ public interface DictionaryDAO extends BaseDAO<Dictionary, String> {
     public boolean duplicateDictionaryExists(Dictionary dictionary);
 
     public boolean isDictionaryFrozen(Dictionary dictionary);
+
+    Dictionary getDictionaryByGuid(String guid);
+
+    Dictionary getDictionaryByLoincCode(String loincCode);
+
+    Dictionary getDictionaryByDictEntryIgnoreCase(String name);
 }

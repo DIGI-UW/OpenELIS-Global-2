@@ -1,8 +1,11 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
@@ -10,6 +13,7 @@ import org.openelisglobal.address.service.OrganizationAddressService;
 import org.openelisglobal.address.valueholder.OrganizationAddress;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
@@ -23,6 +27,11 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.eqa.service.EQAProgramService;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.EQAPriority;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -110,6 +119,12 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ImmunohistochemistrySampleService immunohistochemistrySampleService;
     @Autowired
     private ProgramSampleService programSampleService;
+    @Autowired
+    private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQAProgramService eqaProgramService;
+    @Autowired
+    private BarcodeInfoService barcodeInfoService;
 
     @Transactional
     @Override
@@ -140,6 +155,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         persistProviderData(updateData);
         persistSampleData(updateData);
+        if (updateData.isEqaSample()) {
+            persistSampleEQAData(updateData);
+        }
         persistRequesterData(updateData);
         if (useInitialSampleCondition) {
             persistInitialSampleConditions(updateData);
@@ -240,6 +258,37 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                         + (updateData.getSampleFields() != null ? updateData.getSampleFields().size() : null)
                         + ", sampleItemsTestsCount="
                         + (updateData.getSampleItemsTests() != null ? updateData.getSampleItemsTests().size() : null));
+        if (updateData.getSampleItemsTests() != null && !updateData.getSampleItemsTests().isEmpty()) {
+            SampleTestCollection firstSampleTest = updateData.getSampleItemsTests().getFirst();
+            if (firstSampleTest.gpsLatitude != null && !firstSampleTest.gpsLatitude.trim().isEmpty()) {
+                try {
+                    updateData.getSample().setGpsLatitude(Double.valueOf(firstSampleTest.gpsLatitude));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
+                            "Invalid GPS latitude value: " + firstSampleTest.gpsLatitude);
+                }
+            }
+            if (firstSampleTest.gpsLongitude != null && !firstSampleTest.gpsLongitude.trim().isEmpty()) {
+                try {
+                    updateData.getSample().setGpsLongitude(Double.valueOf(firstSampleTest.gpsLongitude));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
+                            "Invalid GPS longitude value: " + firstSampleTest.gpsLongitude);
+                }
+            }
+            if (firstSampleTest.gpsAccuracy != null && !firstSampleTest.gpsAccuracy.trim().isEmpty()) {
+                try {
+                    updateData.getSample().setGpsAccuracyMeters(Integer.valueOf(firstSampleTest.gpsAccuracy));
+                } catch (NumberFormatException e) {
+                    LogEvent.logWarn(this.getClass().getSimpleName(), "persistSampleData",
+                            "Invalid GPS accuracy value: " + firstSampleTest.gpsAccuracy);
+                }
+            }
+            if (firstSampleTest.gpsCaptureMethod != null && !firstSampleTest.gpsCaptureMethod.trim().isEmpty()) {
+                updateData.getSample().setGpsCaptureMethod(firstSampleTest.gpsCaptureMethod);
+                updateData.getSample().setGpsCaptureTimestamp(new java.sql.Timestamp(System.currentTimeMillis()));
+            }
+        }
 
         updateData.getSample().setFhirUuid(UUID.randomUUID());
         sampleService.insertDataWithAccessionNumber(updateData.getSample());
@@ -267,12 +316,18 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
+        Integer orderLabelQuantity = null;
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
             if (GenericValidator.isBlankOrNull(sampleTestCollection.item.getFhirUuidAsString())) {
                 sampleTestCollection.item.setFhirUuid(UUID.randomUUID());
             }
             String sampleId = sampleItemService.insert(sampleTestCollection.item);
             SampleItem savedItem = sampleItemService.get(sampleId);
+            specimenLabelQuantities.put(savedItem, sampleTestCollection.numSpecimenLabels);
+            if (orderLabelQuantity == null) {
+                orderLabelQuantity = sampleTestCollection.numOrderLabels;
+            }
             if (savedItem.isRejected()) {
                 String rejectReasonId = savedItem.getRejectReasonId();
                 String currentUserId = savedItem.getSysUserId();
@@ -326,6 +381,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
         }
 
+        persistOrderSpecimenBarcodeCounts(updateData.getSample(), orderLabelQuantity, specimenLabelQuantities);
         updateData.buildSampleHuman();
 
         sampleHumanService.insert(updateData.getSampleHuman());
@@ -333,6 +389,59 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (updateData.getElectronicOrder() != null) {
             electronicOrderService.update(updateData.getElectronicOrder());
         }
+    }
+
+    private void persistSampleEQAData(SamplePatientUpdateData updateData) {
+        SampleEQA sampleEQA = new SampleEQA();
+        sampleEQA.setSampleId(Long.parseLong(updateData.getSample().getId()));
+        sampleEQA.setIsEqaSample(true);
+        sampleEQA.setSysUserId(updateData.getCurrentUserId());
+
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaProgramId())) {
+            EQAProgram eqaProgram = eqaProgramService.get(Long.parseLong(updateData.getEqaProgramId()));
+            sampleEQA.setEqaProgram(eqaProgram);
+        }
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaProviderOrganizationId())) {
+            sampleEQA.setEqaProviderOrganizationId(Long.parseLong(updateData.getEqaProviderOrganizationId()));
+        }
+        sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
+        sampleEQA.setEqaParticipantId(updateData.getEqaParticipantId());
+
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
+            java.sql.Date deadlineDate = DateUtil.convertStringDateToSqlDate(updateData.getEqaDeadline());
+            if (deadlineDate != null) {
+                sampleEQA.setEqaDeadline(new Timestamp(deadlineDate.getTime()));
+            }
+        }
+        if (!GenericValidator.isBlankOrNull(updateData.getEqaPriority())) {
+            sampleEQA.setEqaPriority(EQAPriority.valueOf(updateData.getEqaPriority()));
+        }
+
+        sampleEQAService.insert(sampleEQA);
+    }
+
+    void persistOrderSpecimenBarcodeCounts(org.openelisglobal.sample.valueholder.Sample sample, Integer numOrderLabels,
+            Map<SampleItem, Integer> specimenLabelQuantities) {
+        if (sample == null) {
+            return;
+        }
+
+        int normalizedOrderLabels = normalizeLabelQuantity(numOrderLabels);
+        Map<SampleItem, Integer> normalizedSpecimenLabelQuantities = new LinkedHashMap<>();
+        if (specimenLabelQuantities != null) {
+            for (Map.Entry<SampleItem, Integer> entry : specimenLabelQuantities.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                normalizedSpecimenLabelQuantities.put(entry.getKey(), normalizeLabelQuantity(entry.getValue()));
+            }
+        }
+        barcodeInfoService.saveBarcodeInfoForSampleAndSampleItems(sample, normalizedOrderLabels,
+                normalizedSpecimenLabelQuantities);
+    }
+
+    private int normalizeLabelQuantity(Integer quantity) {
+        return quantity != null && quantity > 0 ? quantity : 1;
     }
 
     /*

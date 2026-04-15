@@ -54,8 +54,11 @@ const GenericConfigEdit = ({ menuType, ID }) => {
   const handleMenuItems = (res) => {
     setFormEntryConfig(res);
     if (res.localization) {
-      setTextInputEnglishValue(res.localization.localeValues.en);
-      setTextInputFrenchValue(res.localization.localeValues.fr);
+      // Backend returns Localization entity serialized as:
+      // { id, description, values: { "en": { locale, value }, "fr": { locale, value } } }
+      // NOT localeValues — that was the old HBM shape.
+      setTextInputEnglishValue(res.localization.values?.en?.value ?? "");
+      setTextInputFrenchValue(res.localization.values?.fr?.value ?? "");
     }
     if (res.valueType === "boolean") {
       setRadioValue(res.value);
@@ -96,13 +99,19 @@ const GenericConfigEdit = ({ menuType, ID }) => {
   const handleInputEnglishChange = (event) => {
     const newValue = event.target.value;
     setTextInputEnglishValue(newValue);
+    // Build the values map in the shape the backend Localization entity expects:
+    // { "en": { locale: "en", value: "..." }, "fr": { locale: "fr", value: "..." } }
     updateFormEntryConfig({
       localization: {
         id: FormEntryConfig.localization.id,
         description: FormEntryConfig.localization.description,
-        localeValues: {
-          ...FormEntryConfig.localization.localeValues,
-          en: newValue,
+        values: {
+          ...FormEntryConfig.localization.values,
+          en: {
+            ...(FormEntryConfig.localization.values?.en || {}),
+            locale: "en",
+            value: newValue,
+          },
         },
       },
     });
@@ -115,9 +124,13 @@ const GenericConfigEdit = ({ menuType, ID }) => {
       localization: {
         id: FormEntryConfig.localization.id,
         description: FormEntryConfig.localization.description,
-        localeValues: {
-          ...FormEntryConfig.localization.localeValues,
-          fr: newValue,
+        values: {
+          ...FormEntryConfig.localization.values,
+          fr: {
+            ...(FormEntryConfig.localization.values?.fr || {}),
+            locale: "fr",
+            value: newValue,
+          },
         },
       },
     });

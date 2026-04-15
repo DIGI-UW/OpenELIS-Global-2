@@ -21,6 +21,7 @@ import { AlertDialog, NotificationKinds } from "./common/CustomNotification";
 import UserSessionDetailsContext from "../UserSessionDetailsContext";
 import { ConfigurationContext, NotificationContext } from "./layout/Layout";
 import { navigateTo } from "./utils/Navigation";
+import { getBranding } from "./utils/BrandingUtils";
 
 function Login(props) {
   const { notificationVisible, addNotification, setNotificationVisible } =
@@ -30,6 +31,8 @@ function Login(props) {
   const { userSessionDetails, refresh } = useContext(UserSessionDetailsContext);
   const [submitting, setSubmitting] = useState(false);
   const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
+  const [loginLogoUrl, setLoginLogoUrl] = useState(null);
+  const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
   const firstInput = createRef();
 
   // Auto-redirect to SAML if configured to bypass login page
@@ -58,6 +61,23 @@ function Login(props) {
     firstInput?.current?.focus();
   }, []);
 
+  // Load branding configuration for login logo
+  // Colors are handled by App.js
+  useEffect(() => {
+    getBranding((response) => {
+      if (response) {
+        // Check useHeaderLogoForLogin flag
+        if (response.useHeaderLogoForLogin && response.headerLogoUrl) {
+          setLoginLogoUrl(response.headerLogoUrl);
+          setLogoVersion((prev) => prev + 1);
+        } else if (response.loginLogoUrl) {
+          setLoginLogoUrl(response.loginLogoUrl);
+          setLogoVersion((prev) => prev + 1);
+        }
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (userSessionDetails.authenticated) {
       navigateTo("/");
@@ -69,16 +89,31 @@ function Login(props) {
   };
 
   const loginMessage = () => {
+    // IMPORTANT: use process.env.PUBLIC_URL prefix so the path resolves
+    // correctly at /openelis/login regardless of subpath deployment.
+    const defaultLogoSrc = `${process.env.PUBLIC_URL}/images/openelis_logo_full.png`;
+    const logoSrc = loginLogoUrl
+      ? `${config.serverBaseUrl}${loginLogoUrl}?v=${logoVersion}`
+      : defaultLogoSrc;
+
     return (
       <>
         <Column lg={6} md={0} sm={0} />
         <Column lg={4} md={8} sm={4}>
           <picture>
             <img
-              src={`images/openelis_logo_full.png`}
+              src={logoSrc}
               alt="fullsize logo"
               width="300"
               height="56"
+              style={{ objectFit: "contain" }}
+              onError={(e) => {
+                // Guard against infinite loop: only fall back if not already
+                // showing the default.
+                if (e.target.src !== window.location.origin + defaultLogoSrc) {
+                  e.target.src = defaultLogoSrc;
+                }
+              }}
             />
           </picture>
         </Column>
@@ -160,7 +195,6 @@ function Login(props) {
             type="button"
             renderIcon={HardwareSecurityModule}
             onClick={() => {
-              console.log(url);
               window.location.href = config.serverBaseUrl + "/" + url.value;
             }}
           >
@@ -173,140 +207,145 @@ function Login(props) {
 
   return (
     <>
-      <div data-cy="login-Page-Content" className="loginPageContent">
+      <div
+        data-cy="login-Page-Content"
+        className="loginPageContent oe-loginPageContent"
+      >
         {notificationVisible === true ? <AlertDialog /> : ""}
-        <Grid fullWidth={true}>{loginMessage()}</Grid>
-        <Grid fullWidth={false}>
-          <Column lg={16}>
-            <br />
-            <br />
-          </Column>
-          <Column lg={6} md={0} sm={0} />
-          <Column lg={4} md={8} sm={4}>
-            <Section>
-              {samlRedirectInitiated ? (
-                <Stack gap={5}>
-                  <FormLabel>
-                    <Heading>
-                      <FormattedMessage id="login.title" />
-                    </Heading>
-                  </FormLabel>
-                  <div style={{ textAlign: "center", padding: "2rem" }}>
-                    <Loading
-                      description={props.intl.formatMessage({
-                        id: "login.redirecting.sso",
-                      })}
-                      withOverlay={false}
-                    />
-                    <p style={{ marginTop: "1rem" }}>
-                      <FormattedMessage id="login.redirecting.sso" />
-                    </p>
-                  </div>
-                </Stack>
-              ) : (
-                <Formik
-                  initialValues={{
-                    username: "",
-                    password: "",
-                  }}
-                  onSubmit={(values) => {
-                    doLogin(values);
-                  }}
-                >
-                  {({ isValid, handleChange, handleSubmit }) => (
-                    <Form onSubmit={handleSubmit} onChange={handleChange}>
-                      <Stack gap={5}>
-                        <FormLabel>
-                          <Heading>
-                            <FormattedMessage id="login.title" />
-                          </Heading>
-                        </FormLabel>
-                        {configurationProperties?.useFormLogin == "true" && (
-                          <>
-                            <TextInput
-                              id="loginName"
-                              invalidText={props.intl.formatMessage({
-                                id: "login.msg.username.missing",
-                              })}
-                              labelText={props.intl.formatMessage({
-                                id: "login.msg.username",
-                              })}
-                              hideLabel={true}
-                              placeholder={props.intl.formatMessage({
-                                id: "login.msg.username",
-                              })}
-                              autoComplete="off"
-                              ref={firstInput}
-                            />
-                            <TextInput.PasswordInput
-                              id="password"
-                              invalidText={props.intl.formatMessage({
-                                id: "login.msg.password.missing",
-                              })}
-                              labelText={props.intl.formatMessage({
-                                id: "login.msg.password",
-                              })}
-                              hideLabel={true}
-                              placeholder={props.intl.formatMessage({
-                                id: "login.msg.password",
-                              })}
-                            />
-                            <Stack orientation="horizontal">
-                              <Button
-                                type="submit"
-                                disabled={!isValid}
-                                data-cy="loginButton"
-                              >
-                                <FormattedMessage id="label.button.login" />
-                                <Loading
-                                  small={true}
-                                  withOverlay={false}
-                                  className={submitting ? "show" : "hidden"}
-                                />
-                              </Button>
+        <div className="oe-loginPageCenter">
+          <Grid fullWidth={true}>{loginMessage()}</Grid>
+          <Grid fullWidth={false}>
+            <Column lg={16}>
+              <br />
+              <br />
+            </Column>
+            <Column lg={6} md={0} sm={0} />
+            <Column lg={4} md={8} sm={4}>
+              <Section>
+                {samlRedirectInitiated ? (
+                  <Stack gap={5}>
+                    <FormLabel>
+                      <Heading>
+                        <FormattedMessage id="login.title" />
+                      </Heading>
+                    </FormLabel>
+                    <div style={{ textAlign: "center", padding: "2rem" }}>
+                      <Loading
+                        description={props.intl.formatMessage({
+                          id: "login.redirecting.sso",
+                        })}
+                        withOverlay={false}
+                      />
+                      <p style={{ marginTop: "1rem" }}>
+                        <FormattedMessage id="login.redirecting.sso" />
+                      </p>
+                    </div>
+                  </Stack>
+                ) : (
+                  <Formik
+                    initialValues={{
+                      username: "",
+                      password: "",
+                    }}
+                    onSubmit={(values) => {
+                      doLogin(values);
+                    }}
+                  >
+                    {({ isValid, handleChange, handleSubmit }) => (
+                      <Form onSubmit={handleSubmit} onChange={handleChange}>
+                        <Stack gap={5}>
+                          <FormLabel>
+                            <Heading>
+                              <FormattedMessage id="login.title" />
+                            </Heading>
+                          </FormLabel>
+                          {configurationProperties?.useFormLogin == "true" && (
+                            <>
+                              <TextInput
+                                id="loginName"
+                                invalidText={props.intl.formatMessage({
+                                  id: "login.msg.username.missing",
+                                })}
+                                labelText={props.intl.formatMessage({
+                                  id: "login.msg.username",
+                                })}
+                                hideLabel={true}
+                                placeholder={props.intl.formatMessage({
+                                  id: "login.msg.username",
+                                })}
+                                autoComplete="off"
+                                ref={firstInput}
+                              />
+                              <TextInput.PasswordInput
+                                id="password"
+                                invalidText={props.intl.formatMessage({
+                                  id: "login.msg.password.missing",
+                                })}
+                                labelText={props.intl.formatMessage({
+                                  id: "login.msg.password",
+                                })}
+                                hideLabel={true}
+                                placeholder={props.intl.formatMessage({
+                                  id: "login.msg.password",
+                                })}
+                              />
+                              <Stack orientation="horizontal">
+                                <Button
+                                  type="submit"
+                                  disabled={!isValid}
+                                  data-cy="loginButton"
+                                >
+                                  <FormattedMessage id="label.button.login" />
+                                  <Loading
+                                    small={true}
+                                    withOverlay={false}
+                                    className={submitting ? "show" : "hidden"}
+                                  />
+                                </Button>
 
+                                <Button
+                                  data-cy="changePassword"
+                                  type="button"
+                                  onClick={() => {
+                                    navigateTo("/ChangePasswordLogin");
+                                  }}
+                                >
+                                  <FormattedMessage id="label.button.changepassword" />
+                                </Button>
+                              </Stack>
+                            </>
+                          )}
+                          {configurationProperties?.useSaml == "true" &&
+                            configurationProperties?.useSamlLoginPage !==
+                              "false" && (
                               <Button
-                                data-cy="changePassword"
                                 type="button"
+                                renderIcon={HardwareSecurityModule}
                                 onClick={() => {
-                                  navigateTo("/ChangePasswordLogin");
+                                  // Use full-page redirect instead of popup to avoid popup blockers
+                                  window.location.href =
+                                    config.serverBaseUrl +
+                                    "/LoginPage?useSAML=true&redirect=true";
                                 }}
                               >
-                                <FormattedMessage id="label.button.changepassword" />
+                                <FormattedMessage id="label.button.login.sso" />
                               </Button>
-                            </Stack>
-                          </>
-                        )}
-                        {configurationProperties?.useSaml == "true" &&
-                          configurationProperties?.useSamlLoginPage !==
-                            "false" && (
-                            <Button
-                              type="button"
-                              renderIcon={HardwareSecurityModule}
-                              onClick={() => {
-                                // Use full-page redirect instead of popup to avoid popup blockers
-                                window.location.href =
-                                  config.serverBaseUrl +
-                                  "/LoginPage?useSAML=true&redirect=true";
-                              }}
-                            >
-                              <FormattedMessage id="label.button.login.sso" />
-                            </Button>
-                          )}
-                        {configurationProperties?.useOauth == "true" &&
-                          renderOauthButtons()}
-                      </Stack>
-                    </Form>
-                  )}
-                </Formik>
-              )}
-            </Section>
-          </Column>
-          <Column lg={6} md={0} sm={0} />
-          <Column lg={0} md={0} sm={0}>
-            {loginMessage()}
-          </Column>
-        </Grid>
+                            )}
+                          {configurationProperties?.useOauth == "true" &&
+                            renderOauthButtons()}
+                        </Stack>
+                      </Form>
+                    )}
+                  </Formik>
+                )}
+              </Section>
+            </Column>
+            <Column lg={6} md={0} sm={0} />
+            <Column lg={0} md={0} sm={0}>
+              {loginMessage()}
+            </Column>
+          </Grid>
+        </div>
       </div>
     </>
   );

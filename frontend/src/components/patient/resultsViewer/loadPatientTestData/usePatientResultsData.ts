@@ -5,7 +5,7 @@ import loadPatientData from "./loadPatientData";
 type LoadingState = {
   sortedObs: PatientData;
   loaded: boolean;
-  error: Object | undefined;
+  error: unknown;
 };
 
 const usePatientResultsData = (patientUuid: string): LoadingState => {
@@ -17,14 +17,42 @@ const usePatientResultsData = (patientUuid: string): LoadingState => {
 
   React.useEffect(() => {
     let unmounted = false;
-    if (patientUuid) {
-      const [data, reloadedDataPromise] = loadPatientData(patientUuid);
-      if (!!data) setState({ sortedObs: data, loaded: true, error: undefined });
-      reloadedDataPromise.then((reloadedData) => {
-        if (reloadedData !== data && !unmounted)
-          setState({ sortedObs: reloadedData, loaded: true, error: undefined });
-      });
+
+    if (!patientUuid) {
+      setState({ sortedObs: {}, loaded: true, error: undefined });
+      return () => {
+        unmounted = true;
+      };
     }
+
+    const [data, reloadedDataPromise] = loadPatientData(patientUuid);
+
+    setState({
+      sortedObs: data ?? {},
+      loaded: Boolean(data),
+      error: undefined,
+    });
+
+    reloadedDataPromise
+      .then((reloadedData) => {
+        if (!unmounted) {
+          setState({
+            sortedObs: reloadedData ?? data ?? {},
+            loaded: true,
+            error: undefined,
+          });
+        }
+      })
+      .catch((error) => {
+        if (!unmounted) {
+          setState({
+            sortedObs: data ?? {},
+            loaded: true,
+            error: data ? undefined : error,
+          });
+        }
+      });
+
     return () => {
       unmounted = true;
     };

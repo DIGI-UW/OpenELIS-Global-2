@@ -17,12 +17,22 @@ import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
-import { postToOpenElisServer } from "../utils/Utils";
+import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import config from "../../config.json";
 import { navigateTo } from "../utils/Navigation";
+
+export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
+  if (!queryValue) {
+    return "/AnalyzerResults";
+  }
+
+  return queryMode === "id"
+    ? `/AnalyzerResults?id=${queryValue}`
+    : `/AnalyzerResults?type=${queryValue}`;
+};
 
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -119,20 +129,30 @@ const AnalyserResults = (props) => {
       return;
     }
     setIsSubmitting(true);
-    postToOpenElisServer(
+    postToOpenElisServerFullResponse(
       "/rest/AnalyzerResults",
       JSON.stringify(props.results),
       handleResponse,
     );
   };
-  const handleResponse = (status) => {
+  const handleResponse = async (response) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
     setIsSubmitting(false);
-    if (status == 200) {
+    if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      navigateTo("/AnalyzerResults?type=") + props.type;
+      navigateTo(
+        buildAnalyzerResultsRedirectUrl(
+          props.queryMode,
+          props.queryValue || props.type,
+        ),
+      );
+    } else {
+      const detail = await response.text().catch(() => "");
+      if (detail) {
+        message = message + ": " + detail.substring(0, 200);
+      }
     }
     addNotification({
       kind: kind,
@@ -363,6 +383,15 @@ const AnalyserResults = (props) => {
 
   return (
     <>
+      {props.results?.resultList?.length === 0 && (
+        <div
+          className="orderLegendBody"
+          data-testid="analyzer-results-empty"
+          style={{ marginTop: "20px" }}
+        >
+          <FormattedMessage id="validation.no.records.display" />
+        </div>
+      )}
       {props.results?.resultList?.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
@@ -390,6 +419,7 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isAccepted",
                   );
+                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -407,6 +437,7 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isRejected",
                   );
+                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -424,6 +455,7 @@ const AnalyserResults = (props) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isDeleted",
                   );
+                  if (!checkbox) return;
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(e.target.checked, checkbox.name);
                 });
@@ -508,6 +540,9 @@ const AnalyserResults = (props) => {
             >
               <FormattedMessage id="label.button.save" />
             </Button>
+            {isSubmitting && (
+              <span data-testid="analyzer-results-save-in-progress" />
+            )}
           </Form>
         )}
       </Formik>

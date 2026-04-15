@@ -4,16 +4,63 @@ import config from "../../config.json";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { sampleObject } from "./Index";
 import { FormattedMessage } from "react-intl";
+import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 const OrderSuccessMessage = (props) => {
-  const { orderFormValues, setOrderFormValues, setSamples, setPage } = props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    setSamples,
+    setPage,
+    saveResponse,
+  } = props;
 
-  const handlePrintBarCode = () => {
-    let barcodesPdf =
-      config.serverBaseUrl +
-      `/LabelMakerServlet?labNo=${orderFormValues.sampleOrderItems.labNo}`;
-    window.open(barcodesPdf);
-  };
+  const dialogModel = saveResponse?.postSavePrintDialog;
+  const accessionNumber =
+    dialogModel?.accessionNumber || orderFormValues.sampleOrderItems.labNo;
+
+  // Use the backend-provided printUrl directly. The backend correctly maps
+  // "specimen" → "specimenOrder" (prints all specimens for the order) and
+  // "block"/"slide" → "blockOrder"/"slideOrder". Rebuilding the URL here
+  // with a bare accession number causes a 500 on type=specimen.
+  const printableLabels = (() => {
+    const types =
+      dialogModel?.printableLabelTypes &&
+      dialogModel.printableLabelTypes.length > 0
+        ? dialogModel.printableLabelTypes
+        : [
+            {
+              labelType: "order",
+              quantity: 1,
+              printUrl:
+                config.serverBaseUrl +
+                `/LabelMakerServlet?labNo=${accessionNumber}&type=order`,
+            },
+          ];
+
+    return types.map((item) => {
+      if (typeof item === "string") {
+        // Fallback for plain string entries (legacy / unexpected shape)
+        return {
+          labelType: item,
+          quantity: 1,
+          printUrl:
+            config.serverBaseUrl +
+            `/LabelMakerServlet?labNo=${accessionNumber}&type=${item}`,
+        };
+      }
+      return {
+        labelType: item.labelType,
+        quantity: item.quantity ?? 1,
+        dimensionsMm: item.dimensionsMm || "",
+        // Prepend serverBaseUrl to the relative path the backend returns
+        printUrl: item.printUrl
+          ? config.serverBaseUrl + item.printUrl
+          : config.serverBaseUrl +
+            `/LabelMakerServlet?labNo=${accessionNumber}&type=${item.labelType}`,
+      };
+    });
+  })();
 
   const handleAnotherSiteOrder = () => {
     const siteId = orderFormValues.sampleOrderItems.referringSiteId;
@@ -67,13 +114,10 @@ const OrderSuccessMessage = (props) => {
           <FormattedMessage id="save.success" />
         </h4>
         <Row>
-          <Button
-            data-cy="printBarCode"
-            className=""
-            onClick={handlePrintBarCode}
-          >
-            <FormattedMessage id="print.barcode" />
-          </Button>
+          <PostSavePrintDialog
+            accessionNumber={accessionNumber}
+            printableLabelTypes={printableLabels}
+          />
         </Row>
         <Row>
           {orderFormValues.rememberSiteAndRequester && (

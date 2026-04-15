@@ -27,6 +27,7 @@ import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { ConfigurationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import EQABadge from "../eqa/EQABadge";
 
 export default function Workplan(props) {
   const { configurationProperties } = useContext(ConfigurationContext);
@@ -318,21 +319,26 @@ export default function Workplan(props) {
                               )}
                               <TableCell>
                                 {showAccessionNumber && (
-                                  <Link
-                                    style={{ color: "blue" }}
-                                    href={getFullPath(
-                                      "/result?type=order&doRange=false&source=" +
-                                        sourceTitle +
-                                        "&accessionNumber=" +
-                                        row.accessionNumber,
-                                    )}
-                                  >
-                                    <u>
-                                      {convertAlphaNumLabNumForDisplay(
-                                        row.accessionNumber,
+                                  <>
+                                    <Link
+                                      style={{ color: "blue" }}
+                                      href={getFullPath(
+                                        "/result?type=order&doRange=false&source=" +
+                                          sourceTitle +
+                                          "&accessionNumber=" +
+                                          row.accessionNumber,
                                       )}
-                                    </u>
-                                  </Link>
+                                    >
+                                      <u>
+                                        {convertAlphaNumLabNumForDisplay(
+                                          row.accessionNumber,
+                                        )}
+                                      </u>
+                                    </Link>
+                                    {row.isEqaSample && (
+                                      <EQABadge priority={row.eqaPriority} />
+                                    )}
+                                  </>
                                 )}
                               </TableCell>
                               {subjectOnWorkplan?.toLowerCase() === "true" && (

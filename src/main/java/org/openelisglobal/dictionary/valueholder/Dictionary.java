@@ -21,6 +21,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.common.valueholder.ValueHolder;
 import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.localization.valueholder.Localization;
 
 public class Dictionary extends BaseObject<String> {
@@ -145,6 +146,36 @@ public class Dictionary extends BaseObject<String> {
 
     public void setLocalizedDictionaryName(Localization localizedDictionaryName) {
         this.localizedDictionaryName.setValue(localizedDictionaryName);
+    }
+
+    /**
+     * Override to prioritize database localization over message bundle
+     * (display_key). Order of precedence: 1. Database localization
+     * (localization_value table) 2. Message bundle lookup via nameKey/display_key
+     * 3. dictEntry as final fallback
+     */
+    @Override
+    @JsonIgnore
+    public String getLocalizedName() {
+        // First, try the new database localization system
+        if (localizedDictionaryName != null && localizedDictionaryName.getValue() != null) {
+            String localizedValue = getLocalizedDictionaryName().getLocalizedValue();
+            if (localizedValue != null && !localizedValue.isEmpty()) {
+                return localizedValue;
+            }
+        }
+
+        // Fall back to message bundle lookup via nameKey (display_key column)
+        String nameKey = getNameKey();
+        if (nameKey != null) {
+            String localizedName = MessageUtil.getContextualMessage(nameKey.trim());
+            if (localizedName != null && !localizedName.equals(nameKey.trim())) {
+                return localizedName;
+            }
+        }
+
+        // Final fallback to dictEntry
+        return dictEntry;
     }
 
     @Override

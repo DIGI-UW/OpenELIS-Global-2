@@ -55,7 +55,7 @@ export const fetchPatientData = async (query, callback) => {
 
 export const openPatientResults = (patientId) => {
   if (patientId) {
-    navigateTo("/PatientResults/") + patientId;
+    navigateTo(`/PatientResults?patientId=${patientId}`);
   }
 };
 

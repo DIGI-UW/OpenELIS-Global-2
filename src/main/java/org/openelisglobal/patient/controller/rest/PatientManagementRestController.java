@@ -18,6 +18,7 @@ import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
@@ -68,7 +69,8 @@ public class PatientManagementRestController extends BaseRestController {
         Patient patient = new Patient();
 
         if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION) {
-            preparePatientData(bindingResult, request, patientInfo, patient);
+
+            PatientUtil.preparePatientData(bindingResult, request, patientInfo, patient);
             if (bindingResult.hasErrors()) {
                 try {
                     throw new BindException(bindingResult);

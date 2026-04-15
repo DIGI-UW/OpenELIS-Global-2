@@ -8,6 +8,8 @@ public class OrderDisplayBean {
 
     private String patientId;
 
+    private String patientName;
+
     private String labNumber;
 
     private String testName;
@@ -23,6 +25,10 @@ public class OrderDisplayBean {
     private String testSection;
 
     private int testCount;
+
+    private int pendingResultCount;
+
+    private int pendingValidationCount;
 
     public String getUserFirstName() {
         return userFirstName;
@@ -62,6 +68,14 @@ public class OrderDisplayBean {
 
     public void setPatientId(String patientId) {
         this.patientId = patientId;
+    }
+
+    public String getPatientName() {
+        return patientName;
+    }
+
+    public void setPatientName(String patientName) {
+        this.patientName = patientName;
     }
 
     public String getLabNumber() {
@@ -110,5 +124,21 @@ public class OrderDisplayBean {
 
     public void setTestCount(int testCount) {
         this.testCount = testCount;
+    }
+
+    public int getPendingResultCount() {
+        return pendingResultCount;
+    }
+
+    public void setPendingResultCount(int pendingResultCount) {
+        this.pendingResultCount = pendingResultCount;
+    }
+
+    public int getPendingValidationCount() {
+        return pendingValidationCount;
+    }
+
+    public void setPendingValidationCount(int pendingValidationCount) {
+        this.pendingValidationCount = pendingValidationCount;
     }
 }

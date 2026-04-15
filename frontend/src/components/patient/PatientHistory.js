@@ -31,7 +31,7 @@ const PatientHistory = () => {
 
   const openPatientResults = (patientId) => {
     if (patientId) {
-      navigateTo("/PatientResults/") + patientId;
+      navigateTo(`/PatientResults?patientId=${patientId}`);
     }
   };
 

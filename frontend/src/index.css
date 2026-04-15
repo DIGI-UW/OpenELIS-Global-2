@@ -1,8 +1,28 @@
+:root {
+  --oe-font-family:
+    "Segoe UI", "Noto Sans", "IBM Plex Sans", "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body,
+button,
+input,
+select,
+textarea,
+table,
+th,
+td {
+  font-family: var(--oe-font-family);
+}
+
 body {
   margin: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-family: var(--oe-font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -10,6 +30,19 @@ body {
 code {
   font-family:
     source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+/*
+ * Site Branding - Header Color
+ *
+ * Applies custom header background color. This is a custom property
+ * (not a Carbon token) so we need an explicit rule to apply it.
+ * Doubled selector ensures specificity over Carbon's default.
+ * The value is set on :root at runtime.
+ */
+.cds--header.cds--header {
+  background-color: var(--site-branding-header, #295785);
+  border-bottom: none;
 }
 
 .slide-over-root {

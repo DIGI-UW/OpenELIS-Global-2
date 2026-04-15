@@ -191,9 +191,9 @@ public class AppConfig implements WebMvcConfigurer {
     }
 
     @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        // Here we add our custom-configured HttpMessageConverter
-        converters.add(jacksonMessageConverter());
-        // super.configureMessageConverters(converters);
+    public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+        // Add our custom-configured Jackson converter while keeping default converters
+        // (including ResourceHttpMessageConverter for serving files)
+        converters.add(0, jacksonMessageConverter());
     }
 }

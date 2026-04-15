@@ -1,26 +1,62 @@
 # Tasks: ASTM Analyzer Field Mapping
 
-**Branch**: `004-astm-analyzer-mapping`  
-**Date**: 2025-01-27  
-**Input**: Design documents from `/specs/004-astm-analyzer-mapping/`
+**Current Milestone**: **M4 (Integration + Polish)**  
+**Purpose**: Keep this file concise and actionable for the remaining work
+required to stabilize CI, validate integration, and prepare for manual testing.
 
-**Test Approach**: Test-Driven Development (TDD) - Tests written BEFORE
-implementation
+## Remaining Work (M4)
 
-**Reference Documents**:
+### M4-01: Spec/Plan/Tasks consistency (doc hygiene)
 
-- [OpenELIS Testing Roadmap](.specify/guides/testing-roadmap.md)
-- [AGENTS.md](AGENTS.md) - Project conventions and architecture
-- [Research](research.md) - Technical decisions
-- [Data Model](data-model.md) - Entity definitions
+- [ ] Ensure configuration wording is consistent across artifacts:
+  - Query timeout + bridge settings live in `clinlims.site_information` (see
+    Liquibase 004-010).
+- [ ] Ensure FR-001 test-unit filter wording is behavior-only (no DB-specific
+      operators), consistent with the current persisted model.
 
-## Format: `[ID] [P?] [Story] Description`
+### M4-02: CI hardening + verification
 
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
-- Include exact file paths in descriptions
+- [ ] Run/verify backend build + tests in CI context; fix any remaining
+      ApplicationContext/mapping failures.
+- [ ] Run/verify frontend format + unit tests; fix any Prettier/ESLint failures.
+- [ ] Run targeted Cypress analyzer specs individually (not full suite) and
+      review console logs/screenshots per Constitution V.5.
+
+### M4-03: Integration & manual test readiness
+
+- [ ] Smoke test the end-to-end analyzer workflows (US1–US3) using the M4
+      branch:
+  - Analyzer CRUD
+  - Field mappings (numeric/unit + qualitative)
+  - Error dashboard + reprocessing
+  - Query analyzer (bridge path) with timeout behavior
+- [ ] Confirm menu/navigation integration is correct (Analyzers parent with
+      dashboard + error dashboard + QC placeholders; Field Mappings not in nav).
+
+## M4 Definition of Done (DoD)
+
+- [ ] **CI**: All required GitHub checks pass (backend build/tests + frontend
+      QA).
+- [ ] **Constitution gates**:
+  - Carbon-only UI for new components
+  - i18n: en + fr coverage for analyzer UI strings
+  - Layered architecture respected (no DAO calls from controllers; no
+    `@Transactional` in controllers)
+- [ ] **Docs**: `spec.md`, `plan.md`, `tasks.md` are consistent and concise.
+- [ ] **Manual testing**: Ready to proceed only after CI is green on relevant
+      PRs.
 
 ---
+
+## Archive (Completed / Historical)
+
+The remainder of this file contains the original phase/task breakdown used
+during implementation (M1–M3). It is kept for reference but is not maintained as
+an active checklist.
+
+**Archive note**: This section may contain older wording and outdated
+assumptions. The current, correct configuration approach for this feature is
+SiteInformation (`clinlims.site_information`) keys.
 
 ## Phase 1: Setup & Database Schema
 
@@ -65,8 +101,8 @@ implementation
       `src/main/resources/liquibase/analyzer/004-010-add-query-timeout-config.xml` -
       Insert configuration entries into `clinlims.site_information` (keys
       limited to 32 chars): `analyzer.bridge.url` (default value:
-      "http://astm-http-bridge:8443", description: "ASTM-HTTP Bridge service
-      URL"), `analyzer.query.timeout` (default: "5", description: "Query
+      "http://openelis-analyzer-bridge:8443", description: "ASTM-HTTP Bridge
+      service URL"), `analyzer.query.timeout` (default: "5", description: "Query
       analyzer timeout in minutes"), `analyzer.query.rate.limit` (default: "1",
       description: "Max queries per analyzer per min"), `analyzer.max.fields`
       (default: "500", description: "Max fields returned per query") - Rollback:
@@ -106,12 +142,13 @@ implementation
       `analyzer.lifecycle.stage.maintenance`), Validation Rules
       (`analyzer.validation.rule.type.regex`,
       `analyzer.validation.rule.expression`, `analyzer.validation.rule.test`)
-- [x] T011a [P] Update `dev.docker-compose.yml` to include `astm-http-bridge`
-      and `astm-mock-server` services - Add service definition for
-      `astm-http-bridge` using latest image from `tools/astm-http-bridge` (mount
+- [x] T011a [P] Update `dev.docker-compose.yml` to include
+      `openelis-analyzer-bridge` and `analyzer-mock-server` services - Add
+      service definition for `openelis-analyzer-bridge` using latest image from
+      `tools/openelis-analyzer-bridge` (mount
       `volume/astm-bridge/configuration.yml` for configuration) - Add service
-      definition for `astm-mock-server` using Dockerfile from
-      `tools/astm-mock-server` (expose port 5000 for analyzer simulation) -
+      definition for `analyzer-mock-server` using Dockerfile from
+      `tools/analyzer-mock-server` (expose port 5000 for analyzer simulation) -
       Configure network connectivity to allow OpenELIS → Bridge → Mock Server
       bi-directional communication - Verify services start with
       `docker compose -f dev.docker-compose.yml up -d` and check logs for
@@ -879,50 +916,6 @@ going live
 functional and testable independently. ALL tests from T029-T040 MUST pass before
 proceeding to next phase.
 
-## Implementation Status Summary
-
-**Last Updated**: 2025-01-27  
-**Total Progress**: 188/198 tasks complete (95.0%)  
-**MVP Status**: 100% complete (69/69 core MVP tasks) - MVP scope exceeded with
-additional Phase 4 tasks
-
-**Progress by Phase**:
-
-- Phase 1 (Setup): 11/11 tasks complete (100%) - All setup and migration tasks
-  complete
-- Phase 2 (Foundational): 22/22 tasks complete (100%) - All entities, DAOs, ORM
-  validation complete
-- Phase 3 (User Story 1): 55/55 tasks complete (100%) - All core MVP and
-  enhancement tasks complete
-- Phase 4 (User Story 2): 16/16 tasks complete (100%) - All update workflow,
-  Copy Mappings, Test Mapping, Retirement features complete
-- Phase 5 (User Story 3): 28/28 tasks complete (100%) - All error resolution
-  tasks complete, including E2E tests and performance tests
-- Phase 5.5 (QC Result Processing): 15/15 tasks complete (100%) - All QC
-  processing integration complete
-- Phase 6 (Query Analyzer): 8/9 tasks complete (89%) - T105 implementation
-  created but verification pending (was previously marked complete as stub)
-- Phase 7 (Navigation Integration): 7/7 tasks complete (100%) - All navigation
-  integration and state preservation complete
-- Phase 8 (Polish): 1/11 tasks complete (9%) - T141 (custom field types
-  integration) complete, remaining polish tasks pending
-- Phase 8.5 (System Administration): 2/2 tasks complete (100%) -
-  CustomFieldTypeManagement component exists (T140), page wrapper and route
-  added
-- Phase 9 (Constitution Compliance): 9/9 tasks complete (100%) - All
-  verification tasks complete, documented in
-  checklists/constitution-compliance.md
-
-**Backend Progress**: ~60 tasks complete (estimated)  
-**Frontend Progress**: ~26 tasks complete (estimated)
-
-**Critical Path**: Phase 4 completion (Copy Mappings, Test Mapping, Retirement
-features)  
-**Next Priority**: T079 (visual indicators for draft/active mappings), T076-T077
-(Copy Mappings), T080 (Test Mapping modal)
-
----
-
 ## Phase 4: User Story 2 - Maintain Mappings (Priority: P2)
 
 **Goal**: Administrator can safely update mappings when analyzer vendor adds new
@@ -1686,11 +1679,11 @@ retrieving available data fields from analyzers
       `testCancelQuery_WithJobId_CancelsJob`
 - [x] T103 [P] Integration test for query workflow in
       `src/test/java/org/openelisglobal/analyzer/service/AnalyzerQueryServiceIntegrationTest.java`
-      using @SpringBootTest - Verify AnalyzerQueryService correctly constructs
-      HTTP POST requests to ASTM-HTTP Bridge (URL from
-      `analyzer.astm.bridge.url` config) with `forwardAddress` and `forwardPort`
-      query parameters - Mock Bridge HTTP response (200 + ASTM content) instead
-      of testing raw TCP - Test methods:
+      using BaseWebContextSensitiveTest - Verify AnalyzerQueryService correctly
+      constructs HTTP POST requests to ASTM-HTTP Bridge (URL from
+      SiteInformation `analyzer.bridge.url`) with `forwardAddress` and
+      `forwardPort` query parameters - Mock Bridge HTTP response (200 + ASTM
+      content) instead of testing raw TCP - Test methods:
       `testQueryAnalyzer_WithValidConfig_SendsHTTPToBridge`,
       `testQueryAnalyzer_WithTimeout_HandlesGracefully`,
       `testParseASTMResponse_ExtractsFields`,
@@ -1703,23 +1696,23 @@ retrieving available data fields from analyzers
 - [x] T105 Create AnalyzerQueryServiceImpl in
       `src/main/java/org/openelisglobal/analyzer/service/AnalyzerQueryServiceImpl.java`
       with @Service and @Transactional annotations - **HTTP POST to ASTM-HTTP
-      Bridge** (NOT direct TCP connection): Read Bridge URL from
-      SystemConfiguration key `analyzer.astm.bridge.url` (default:
-      "http://astm-http-bridge:8443"), construct HTTP POST request with query
-      parameters `forwardAddress={analyzerIP}` and `forwardPort={analyzerPort}`,
-      body contains ASTM query message, parse Bridge HTTP response (ASTM content
-      in response body) - Use RestTemplate or WebClient for HTTP communication -
-      Background job pattern: return job ID immediately, poll status endpoint
-      per FR-002 - Read query timeout from SystemConfiguration key
-      `analyzer.query.timeout.minutes` (default: 5 minutes if missing or
-      invalid) per FR-002 specification - Use SystemConfigurationService to
-      lookup timeout value, fallback to 5 minutes if key is missing or contains
-      invalid value (non-numeric, negative, or zero) **VERIFICATION CHECKLIST**
-      (must pass all before marking complete): - [x] Implementation reads Bridge
-      URL from `analyzer.astm.bridge.url` SystemConfiguration - [x] Constructs
-      HTTP POST to Bridge with `forwardAddress` and `forwardPort` query
-      parameters from AnalyzerConfiguration - [x] Sends ASTM query message as
-      HTTP request body - [x] Receives and parses Bridge HTTP response (ASTM
+      Bridge** (NOT direct TCP connection): Read Bridge URL from SiteInformation
+      key `analyzer.bridge.url` (default:
+      "http://openelis-analyzer-bridge:8443"), construct HTTP POST request with
+      query parameters `forwardAddress={analyzerIP}` and
+      `forwardPort={analyzerPort}`, body contains ASTM query message, parse
+      Bridge HTTP response (ASTM content in response body) - Use RestTemplate or
+      WebClient for HTTP communication - Background job pattern: return job ID
+      immediately, poll status endpoint per FR-002 - Read query timeout from
+      SiteInformation key `analyzer.query.timeout` (default: 5 minutes if
+      missing or invalid) per FR-002 specification - Use SiteInformationService
+      to lookup timeout value, fallback to 5 minutes if key is missing or
+      contains invalid value (non-numeric, negative, or zero) **VERIFICATION
+      CHECKLIST** (must pass all before marking complete): - [x] Implementation
+      reads Bridge URL from `analyzer.bridge.url` SiteInformation - [x]
+      Constructs HTTP POST to Bridge with `forwardAddress` and `forwardPort`
+      query parameters from AnalyzerConfiguration - [x] Sends ASTM query message
+      as HTTP request body - [x] Receives and parses Bridge HTTP response (ASTM
       content in response body) - [x] Extracts field identifiers from R (Result)
       records per FR-002 requirement - [x] Parses field metadata: fieldName,
       astmRef, fieldType, unit (handles R-record format:
@@ -1730,9 +1723,9 @@ retrieving available data fields from analyzers
       extracted fields in AnalyzerField entity via AnalyzerFieldService - [x]
       Background job executes asynchronously (returns job ID immediately) - [x]
       Job status updates progress (0% → 100%) with connection logs - [x] Reads
-      timeout from SystemConfiguration (default: 5 minutes if missing/invalid) -
-      [x] Handles HTTP connection errors gracefully (Bridge unreachable,
-      timeout, 4xx/5xx responses) - [ ] Integration test (T103) verifies HTTP
+      timeout from SiteInformation (default: 5 minutes if missing/invalid) - [x]
+      Handles HTTP connection errors gracefully (Bridge unreachable, timeout,
+      4xx/5xx responses) - [ ] Integration test (T103) verifies HTTP
       communication with mocked Bridge response - [ ] Manual test: Query
       analyzer via Bridge to mock server and verify fields appear in UI
 
@@ -1740,14 +1733,13 @@ retrieving available data fields from analyzers
       instead of direct TCP. All verification items complete except integration test and
       manual testing.
 
-- [x] T105a [P] Create default SystemConfiguration entry for
-      `analyzer.query.timeout.minutes` via Liquibase changeset - Location:
+- [x] T105a [P] Create default SiteInformation entries via Liquibase changeset -
+      Location:
       `src/main/resources/liquibase/analyzer/004-010-add-query-timeout-config.xml` -
-      Insert into `system_configuration` table with key
-      `analyzer.query.timeout.minutes`, value `5`, description "Query timeout in
-      minutes for analyzer field queries. If missing or invalid, system uses 5
-      minutes as default (configurable per deployment)" - This ensures the
-      configuration key exists for T105 to read from per FR-002 specification
+      Insert into `clinlims.site_information` keys including:
+      `analyzer.bridge.url` (default `http://openelis-analyzer-bridge:8443`) and
+      `analyzer.query.timeout` (default `5`). These ensure the configuration
+      keys exist for query analyzer behavior per FR-002.
 - [x] T106 Add query endpoints in AnalyzerRestController: POST
       /analyzers/{id}/query (returns job ID), GET
       /analyzers/{id}/query/{jobId}/status (polling endpoint) per FR-002
@@ -1836,7 +1828,15 @@ navigation using unified tab-navigation pattern
 
 - [ ] T117 [P] Add comprehensive error handling and user feedback (success,
       warnings, errors) throughout analyzer mapping UI per FR-014 - Use Carbon
-      Notification components, follow OpenELIS internationalization practices
+      Notification components, follow OpenELIS internationalization practices -
+      **Verification (manual)**: - Exercise at least these flows and confirm a
+      user-visible notification: - Test Connection success/failure - Query
+      Analyzer success/failure - Save mapping success/validation failure -
+      Activate mappings success/conflict - Reprocess success/failure - Confirm
+      browser console has no React warnings/errors during these flows -
+      **Verification (tests)**: - Update at least one Jest test per major page
+      (AnalyzersList, FieldMapping, ErrorDashboard) to assert error/success UI
+      is rendered for a mocked failure/success path
 - [x] T141 [P] Integrate custom field types into AnalyzerField entity and
       FieldMappingPanel component - Extend AnalyzerField entity to support
       custom field types (reference CustomFieldType entity) - Update
@@ -1952,24 +1952,47 @@ configurable rules
       `testTestValidation_WithSampleValue_DisplaysResult`
 
 - [ ] T118 [P] Add loading states and skeleton screens for async operations
-      (query analyzer, test connection, reprocessing)
+      (query analyzer, test connection, reprocessing) - **Verification
+      (manual)**: - Throttle network (DevTools) and confirm loading UI appears
+      within 100ms for each async action - Confirm buttons are disabled while
+      in-flight and re-enabled after completion - **Verification (tests)**: -
+      Add/extend Jest tests to assert loading UI appears while promise is
+      pending
 - [ ] T119 [P] Optimize HQL queries in DAO implementations using JOIN FETCH for
-      eager loading (prevents LazyInitializationException per AGENTS.md)
+      eager loading (prevents LazyInitializationException per AGENTS.md) -
+      **Verification (tests)**: - Add/extend at least one integration test that
+      exercises the controller endpoint and asserts the response includes all
+      required nested data without LazyInitializationException
 - [ ] T120 [P] Add comprehensive logging for analyzer operations (connection
-      tests, query operations, mapping changes, error creation)
+      tests, query operations, mapping changes, error creation) - **Verification
+      (manual)**: - Trigger each operation and confirm logs include: analyzer
+      id, action, outcome, and correlation/job id when applicable
 - [ ] T121 [P] Add input validation and sanitization for all user inputs (IP
-      addresses, port numbers, field names, mapping values)
+      addresses, port numbers, field names, mapping values) - **Verification
+      (manual)**: - Attempt invalid values and confirm inline validation
+      prevents submission - Confirm server rejects invalid payloads with clear
+      error response and UI surfaces it
 - [ ] T122 [P] Add accessibility improvements (ARIA labels, keyboard navigation,
-      screen reader support) for Carbon components
+      screen reader support) for Carbon components - **Verification
+      (manual)**: - Keyboard-only navigation across: Analyzers list table
+      actions, Field Mapping panels, Error Dashboard actions - Confirm key
+      interactive elements have accessible names (no empty button labels)
 - [ ] T123 [P] Add responsive design improvements for mobile devices (<1024px) -
-      Stack panels vertically, optimize table layouts
+      Stack panels vertically, optimize table layouts - **Verification
+      (manual)**: - Test at 1024x900 and 375x812; ensure no horizontal scroll
+      for primary workflows
 - [ ] T124 [P] Add performance optimizations (debouncing search inputs,
-      pagination, lazy loading for large datasets)
+      pagination, lazy loading for large datasets) - **Verification
+      (manual)**: - Confirm search inputs debounce (~300ms) and do not fire
+      per-keystroke requests - **Verification (tests)**: - Add at least one Jest
+      test verifying debounce behavior with fake timers
 - [ ] T125 [P] Update documentation in
       `specs/004-astm-analyzer-mapping/quickstart.md` with step-by-step
       developer guide
 - [ ] T126 Run quickstart.md validation - Verify all scenarios from
-      quickstart.md work end-to-end
+      quickstart.md work end-to-end - **Verification output**: - Record the
+      exact commands run and any deviations in a short note under
+      `specs/004-astm-analyzer-mapping/`
 
 ---
 
@@ -1980,10 +2003,10 @@ configurable rules
 **Reference**: `.specify/memory/constitution.md`
 
 - [x] T127 **Configuration-Driven**: Verify no country-specific code branches
-      introduced - All variations via database configuration
-      (SystemConfiguration, LocalizationConfiguration) - Verification complete:
-      No country-specific branches found, all variations use
-      SystemConfiguration. Documented in `checklists/constitution-compliance.md`
+      introduced - All variations via database configuration (SiteInformation,
+      LocalizationConfiguration) - Verification complete: No country-specific
+      branches found, all variations use SiteInformation. Documented in
+      `checklists/constitution-compliance.md`
 - [x] T128 **Carbon Design System**: Audit UI - confirm @carbon/react used
       exclusively (NO Bootstrap/Tailwind) - Verify Carbon tokens used for
       colors, spacing, typography - Verify Carbon components used: SideNavMenu,
@@ -2007,8 +2030,9 @@ configurable rules
       (JaCoCo), >70% frontend (Jest) - Verify ORM validation tests pass (<5
       seconds) - Verify E2E tests run individually during development -
       Verification complete: Test structure compliant, ORM validation test
-      exists and passes. Coverage reports need to be generated to verify
-      percentages. Documented in `checklists/constitution-compliance.md`
+      exists and passes. Coverage percentage reporting is deferred as a
+      cross-repo/global effort. Documented in
+      `checklists/constitution-compliance.md`
 - [x] T131a **Jest Test Anti-Pattern Fixes**: Address act() warnings in
       AnalyzersList.test.jsx - Issue found: State updates in loadAnalyzers
       callback not wrapped in act() - Fix: Wrap API mock callbacks in act() or
@@ -2208,8 +2232,8 @@ With multiple developers:
 
 ## Task Summary
 
-**Total Tasks**: 215 (updated: added T151a-T153c for unified status field
-migration, T105a, T153a, T182-T196 for Phase 5.5 QC Result Processing)
+**Total Tasks**: 215 (historical; archive section only — not maintained as an
+active checklist)
 
 **Tasks by Phase**:
 
@@ -2234,7 +2258,7 @@ migration, T105a, T153a, T182-T196 for Phase 5.5 QC Result Processing)
   message reprocessing) - **Note**: Added T182-T196 (15 tasks) for FR-021 QC
   result processing integration with 003's QCResultService
 - Phase 6 (Query Analyzer): 9 tasks (2 tests + 7 implementation) - **Note**:
-  Added T105a for SystemConfiguration default entry
+  Added T105a for SiteInformation default entries
 - Phase 7 (Navigation Integration): 7 tasks (2 tests + 5 implementation)
 - Phase 8 (Polish): 11 tasks (includes custom field types integration)
 - Phase 8.5 (System Administration): 2 tasks (CustomFieldTypeManagement UI)

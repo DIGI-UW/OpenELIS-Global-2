@@ -46,8 +46,8 @@ to planning
 ### Requirement Completeness Review
 
 - ✅ All 10 functional requirements are independently testable
-- ✅ 7 success criteria are measurable with specific metrics (150ms, 100%, 4
-  levels, etc.)
+- ✅ 7 success criteria are measurable with experience-focused metrics (smooth
+  animation, 100% persistence, 4 levels deep, etc.)
 - ✅ 6 user stories with 14 acceptance scenarios cover the feature scope
 - ✅ 4 edge cases identified with expected behaviors
 

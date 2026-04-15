@@ -16,6 +16,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 }) => {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === "tablet";
+  const errorStatus = error?.response?.status;
+  const errorMessage = error?.response?.statusText || error?.message || "";
 
   return (
     <Layer>
@@ -24,8 +26,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
           <h4>{headerTitle}</h4>
         </div>
         <p className="errorMessage">
-          {t("error", "Error")} {`${error?.response?.status}: `}
-          {error?.response?.statusText}
+          {t("error", "Error")} {errorStatus ? `${errorStatus}: ` : ""}
+          {errorMessage}
         </p>
         <p className="errorCopy">
           {t(

@@ -47,11 +47,15 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
         localization.setFrench("Salut");
         localization.setEnglish("Hi!");
 
+        String uniqueSuffix = String.valueOf(System.currentTimeMillis());
+        String sampleTypeDescription = "CI SampleType " + uniqueSuffix;
+        String sampleTypeAbbrev = "CI" + uniqueSuffix.substring(uniqueSuffix.length() - 6);
+
         TypeOfSample typeOfSample = new TypeOfSample();
-        typeOfSample.setDescription("Test Sample Type Unique");
+        typeOfSample.setDescription(sampleTypeDescription);
         typeOfSample.setDomain("H");
         typeOfSample.setLastupdated(Timestamp.valueOf("2024-11-01 12:00:00"));
-        typeOfSample.setLocalAbbreviation("Fluids");
+        typeOfSample.setLocalAbbreviation(sampleTypeAbbrev);
 
         SystemModule workPlanModule = new SystemModule();
         workPlanModule.setSystemModuleName("sample_type workPlan");
@@ -109,9 +113,8 @@ public class SampleTypeCreateServiceTest extends BaseWebContextSensitiveTest {
         // index
         // to avoid issues with test isolation and sorting changes
         TypeOfSample createdSample = newTypeOfSamples.stream()
-                .filter(sample -> "Test Sample Type Unique".equals(sample.getDescription())).findFirst().orElse(null);
-        assertNotNull("Newly created TypeOfSample with description 'Test Sample Type Unique' should be found",
-                createdSample);
+                .filter(sample -> sampleTypeDescription.equals(sample.getDescription())).findFirst().orElse(null);
+        assertNotNull("Newly created TypeOfSample should be found", createdSample);
 
         List<SystemModule> newSystemModules = systemModuleService.getAll();
         assertEquals(initialSystemModuleCount + 3, newSystemModules.size());

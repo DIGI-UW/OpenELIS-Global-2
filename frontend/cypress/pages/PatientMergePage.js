@@ -452,8 +452,18 @@ class PatientMergePage {
   }
 
   verifyMergeSuccess() {
-    // After successful merge, wizard should reset or show success
+    // After successful merge, verify success notification and wizard reset
+    // The success notification is shown immediately
     cy.get("div[role='status']").should("be.visible");
+
+    // The wizard resets to step 1 (Patient Selection) after a delay (3s in component)
+    // We increase timeout to account for the component's setTimeout
+    cy.get(this.selectors.progressSteps, { timeout: 5000 })
+      .first()
+      .should("have.class", "cds--progress-step--current");
+
+    // Also verify the patient selection forms are shown (wizard reset)
+    cy.get(".patientSelectionSection").should("be.visible");
     return this;
   }
 

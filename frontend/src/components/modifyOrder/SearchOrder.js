@@ -26,14 +26,14 @@ function SearchOrder() {
 
   const openPatientResults = (patientId) => {
     if (patientId) {
-      navigateTo("/ModifyOrder?patientId=") + patientId;
+      navigateTo("/ModifyOrder?patientId=" + patientId);
     }
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
     var labNumber = accessionNumber ? accessionNumber.split("-")[0] : "";
-    navigateTo("/ModifyOrder?accessionNumber=") + labNumber;
+    navigateTo("/ModifyOrder?accessionNumber=" + labNumber);
   };
 
   return (

@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +32,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -192,9 +194,12 @@ public class PatientDashBoardProvider {
                     orderBean.setId(analysis.getId());
                     Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
                     if (sample != null) {
+                        Patient patient = sampleHumanService.getPatientForSample(sample);
                         orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
                         orderBean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
-                        orderBean.setPatientId(sampleHumanService.getPatientForSample(sample).getNationalId());
+                        orderBean.setPatientId(
+                                patient != null ? StringUtils.defaultString(patient.getNationalId()) : "");
+                        orderBean.setPatientName(getPatientName(patient));
                     }
                     orderBean.setOrderDate(analysis.getStartedDateForDisplay());
                     orderBean.setTestName(analysis.getTest() != null ? analysis.getTest().getLocalizedName() : "");
@@ -208,14 +213,24 @@ public class PatientDashBoardProvider {
         return orderBeanList;
     }
 
-    private List<OrderDisplayBean> convertAnalysesToGroupedOrderBean(List<Analysis> analyses) {
-        List<OrderDisplayBean> groupedOrderBeans = new ArrayList<>();
-        if (analyses == null) {
-            return groupedOrderBeans;
-        }
+    private List<OrderDisplayBean> convertAnalysesToGroupedOrderBean(List<Analysis> pendingResultAnalyses,
+            List<Analysis> pendingValidationAnalyses) {
+        Map<String, OrderDisplayBean> groupedOrders = new LinkedHashMap<>();
 
-        Map<String, OrderDisplayBean> labNumberToBeanMap = new HashMap<>();
-        List<String> labNumberOrder = new ArrayList<>();
+        addAnalysesToGroupedOrders(groupedOrders, pendingResultAnalyses, true);
+        addAnalysesToGroupedOrders(groupedOrders, pendingValidationAnalyses, false);
+
+        groupedOrders.values().forEach(orderBean -> orderBean
+                .setTestCount(orderBean.getPendingResultCount() + orderBean.getPendingValidationCount()));
+
+        return new ArrayList<>(groupedOrders.values());
+    }
+
+    private void addAnalysesToGroupedOrders(Map<String, OrderDisplayBean> groupedOrders, List<Analysis> analyses,
+            boolean pendingResult) {
+        if (analyses == null) {
+            return;
+        }
 
         analyses.forEach(analysis -> {
             if (analysis == null) {
@@ -224,35 +239,47 @@ public class PatientDashBoardProvider {
 
             Sample sample = analysis.getSampleItem() != null ? analysis.getSampleItem().getSample() : null;
             String labNumber = sample != null ? sample.getAccessionNumber() : null;
-
-            // Use analysis id as a fallback key when no lab number is available
             String key = labNumber != null ? labNumber : analysis.getId();
 
-            OrderDisplayBean existingBean = labNumberToBeanMap.get(key);
-            if (existingBean == null) {
-                OrderDisplayBean orderBean = new OrderDisplayBean();
-                orderBean.setId(analysis.getId());
+            OrderDisplayBean orderBean = groupedOrders.computeIfAbsent(key, ignoredKey -> {
+                OrderDisplayBean bean = new OrderDisplayBean();
+                bean.setId(analysis.getId());
 
                 if (sample != null) {
-                    orderBean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
-                    orderBean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
-                    orderBean.setPatientId(sampleHumanService.getPatientForSample(sample).getNationalId());
+                    Patient patient = sampleHumanService.getPatientForSample(sample);
+                    bean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
+                    bean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
+                    bean.setPatientId(patient != null ? StringUtils.defaultString(patient.getNationalId()) : "");
+                    bean.setPatientName(getPatientName(patient));
                 }
 
-                orderBean.setOrderDate(analysis.getStartedDateForDisplay());
-                orderBean.setTestSection(analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
-                orderBean.setTestCount(1);
+                bean.setOrderDate(analysis.getStartedDateForDisplay());
+                bean.setTestSection(analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
+                return bean;
+            });
 
-                labNumberToBeanMap.put(key, orderBean);
-                labNumberOrder.add(key);
+            if (pendingResult) {
+                orderBean.setPendingResultCount(orderBean.getPendingResultCount() + 1);
             } else {
-                existingBean.setTestCount(existingBean.getTestCount() + 1);
+                orderBean.setPendingValidationCount(orderBean.getPendingValidationCount() + 1);
             }
         });
+    }
 
-        labNumberOrder.forEach(key -> groupedOrderBeans.add(labNumberToBeanMap.get(key)));
+    private String getPatientName(Patient patient) {
+        if (patient == null || patient.getPerson() == null) {
+            return "";
+        }
 
-        return groupedOrderBeans;
+        List<String> patientNameParts = new ArrayList<>();
+        if (StringUtils.isNotBlank(patient.getPerson().getLastName())) {
+            patientNameParts.add(patient.getPerson().getLastName().trim());
+        }
+        if (StringUtils.isNotBlank(patient.getPerson().getFirstName())) {
+            patientNameParts.add(patient.getPerson().getFirstName().trim());
+        }
+
+        return String.join(", ", patientNameParts);
     }
 
     private List<OrderDisplayBean> convertAnalysesToUserOrdersBean(List<Analysis> analyses) {
@@ -458,9 +485,11 @@ public class PatientDashBoardProvider {
 
         String requestedPage = request.getParameter("page");
         if (GenericValidator.isBlankOrNull(requestedPage)) {
-            List<Analysis> analyses = analysisService
+            List<Analysis> pendingResultAnalyses = analysisService
                     .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-            orderDisplayBeans = convertAnalysesToGroupedOrderBean(analyses);
+            List<Analysis> pendingValidationAnalyses = analysisService
+                    .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+            orderDisplayBeans = convertAnalysesToGroupedOrderBean(pendingResultAnalyses, pendingValidationAnalyses);
 
             paging.setDatabaseResults(request, response, orderDisplayBeans);
         } else {
@@ -483,9 +512,9 @@ public class PatientDashBoardProvider {
 
         String requestedPage = request.getParameter("page");
         if (GenericValidator.isBlankOrNull(requestedPage)) {
-            List<Analysis> analyses = analysisService
+            List<Analysis> pendingValidationAnalyses = analysisService
                     .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-            orderDisplayBeans = convertAnalysesToGroupedOrderBean(analyses);
+            orderDisplayBeans = convertAnalysesToGroupedOrderBean(new ArrayList<>(), pendingValidationAnalyses);
 
             paging.setDatabaseResults(request, response, orderDisplayBeans);
         } else {

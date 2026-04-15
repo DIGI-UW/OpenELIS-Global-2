@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from "react";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import { injectIntl, FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { StudyReports } from "./study/index";
 import { RoutineReports } from "./routine/Index";
@@ -10,6 +11,7 @@ import { navigateTo } from "../utils/Navigation";
 
 const ReportIndex = () => {
   const intl = useIntl();
+  const location = useLocation();
   const { setNotificationVisible, addNotification, notificationVisible } =
     useContext(NotificationContext);
 
@@ -18,7 +20,7 @@ const ReportIndex = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const paramType = params.get("type");
     const paramReport = params.get("report");
     setType(paramType);
@@ -29,7 +31,7 @@ const ReportIndex = () => {
     } else {
       navigateTo("/");
     }
-  }, []);
+  }, [location.search]);
 
   return (
     <>

@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Heading,
   Grid,
@@ -7,27 +7,21 @@ import {
   Loading,
   Breadcrumb,
   BreadcrumbItem,
-  Tag,
   Button,
 } from "@carbon/react";
-import { useTranslation } from "react-i18next";
 import { EmptyState, ErrorState } from "./commons";
-import { FilterContext, FilterProvider } from "./filter";
-import { useGetManyObstreeData } from "./grouped-timeline";
 import "./results-viewer.styles.scss";
 import { useParams } from "react-router-dom";
-import TreeViewWrapper from "./tree-view";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import config from "../../../config.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientHeader from "../../common/PatientHeader.js";
 import { getFullPath } from "../../utils/Navigation";
-
-interface ResultsViewerProps {
-  basePath: string;
-  patientId?: string;
-  loading?: boolean;
-}
+import PatientSummaryReadonly from "./patient-summary-readonly";
+import usePatientResultsData from "./loadPatientTestData/usePatientResultsData";
+import ReadonlyResultsTable, {
+  flattenPatientResults,
+} from "./readonly-results-table";
 
 interface Patient {
   firstName: string;
@@ -36,10 +30,32 @@ interface Patient {
   birthDateForDisplay: string;
   subjectNumber: string;
   nationalId: string;
-  patientPK: number;
+  patientPK: number | null;
   primaryPhone?: string;
+  streetAddress?: string;
+  city?: string;
+  commune?: string;
+  education?: string;
+  maritialStatus?: string;
+  nationality?: string;
+  healthDistrict?: string;
+  healthRegion?: string;
+  otherNationality?: string;
+  patientContact?: {
+    person?: {
+      firstName?: string;
+      lastName?: string;
+      primaryPhone?: string;
+      email?: string;
+    };
+  };
 }
-const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
+
+interface ResultsViewerProps {
+  patientId?: string;
+}
+
+const RoutedResultsViewer: React.FC = () => {
   const patientObj: Patient = {
     firstName: "",
     lastName: "",
@@ -49,61 +65,44 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
     nationalId: "",
     patientPK: null,
     primaryPhone: "",
+    streetAddress: "",
+    city: "",
+    commune: "",
+    education: "",
+    maritialStatus: "",
+    nationality: "",
+    healthDistrict: "",
+    healthRegion: "",
+    otherNationality: "",
+    patientContact: {
+      person: {
+        firstName: "",
+        lastName: "",
+        primaryPhone: "",
+        email: "",
+      },
+    },
   };
 
-  const { patientId } = useParams();
+  const { patientId } = useParams<{ patientId: string }>();
   const [patient, setPatient] = useState(patientObj);
-
   const componentMounted = useRef(false);
+  const intl = useIntl();
 
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer(
       "/rest/patient-details?patientID=" + patientId,
-      loadPatient,
+      (data) => {
+        if (componentMounted.current) {
+          setPatient(data);
+        }
+      },
     );
     return () => {
       componentMounted.current = false;
     };
   }, [patientId]);
-
-  const loadPatient = (patient) => {
-    if (componentMounted.current) {
-      setPatient(patient);
-    }
-  };
-  const intl = useIntl();
-
-  const { roots, loading, error } = useGetManyObstreeData(patientId);
-
-  const { t } = useTranslation();
-
-  if (error) {
-    return (
-      <ErrorState
-        error={error}
-        headerTitle={t("dataLoadError", "Data Load Error")}
-      />
-    );
-  }
-
-  if (loading) {
-    return (
-      <>
-        <Loading></Loading>
-        <Grid fullWidth={true}>
-          <Column lg={16} md={8} sm={4}>
-            <EmptyState
-              headerTitle={intl.formatMessage({ id: "label.test.results" })}
-              displayText={intl.formatMessage({
-                id: "label.test.resultsData",
-              })}
-            />
-          </Column>
-        </Grid>
-      </>
-    );
-  }
 
   return (
     <>
@@ -124,7 +123,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
           <Section>
             <Section>
               <Heading>
-                <FormattedMessage id="label.page.patientHistory" />
+                <FormattedMessage id="label.test.results" />
               </Heading>
             </Section>
           </Section>
@@ -147,43 +146,28 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
           </PatientHeader>
         </Column>
       </Grid>
-
-      {roots?.length ? (
-        <Grid fullWidth={true} className="orderLegendBody">
-          <Column lg={16} md={8} sm={4}>
-            <FilterProvider roots={loading ? roots : []}>
-              <ResultsViewer
-                patientId={patientId}
-                basePath={config.serverBaseUrl}
-                loading={loading}
-              />
-            </FilterProvider>
-          </Column>
-        </Grid>
-      ) : (
-        <Grid fullWidth={true} className="orderLegendBody">
-          <Column lg={16}>
-            <EmptyState
-              headerTitle={intl.formatMessage({ id: "label.test.results" })}
-              displayText={intl.formatMessage({
-                id: "label.test.resultsData",
-              })}
-            />
-          </Column>
-        </Grid>
-      )}
+      <Grid fullWidth={true}>
+        <Column lg={16} md={8} sm={4}>
+          <PatientSummaryReadonly patient={patient} />
+        </Column>
+      </Grid>
+      <Grid fullWidth={true} className="orderLegendBody">
+        <Column lg={16} md={8} sm={4}>
+          <ResultsViewer patientId={patientId} />
+        </Column>
+      </Grid>
     </>
   );
 };
 
-const ResultsViewer: React.FC<ResultsViewerProps> = ({
-  patientId,
-  basePath,
-}) => {
-  const { t } = useTranslation();
-  const { totalResultsCount } = useContext(FilterContext);
-  const { type, testUuid } = useParams();
+const ResultsViewer: React.FC<ResultsViewerProps> = ({ patientId }) => {
   const intl = useIntl();
+  const { sortedObs, loaded, error } = usePatientResultsData(patientId || "");
+  const flattenedRows = useMemo(
+    () => flattenPatientResults(sortedObs),
+    [sortedObs],
+  );
+  const totalResultsCount = flattenedRows.length;
 
   const handleReportPrint = () => {
     const reportUrl =
@@ -197,10 +181,22 @@ const ResultsViewer: React.FC<ResultsViewerProps> = ({
     window.open(reportUrl, "_blank");
   };
 
+  if (error) {
+    return (
+      <ErrorState
+        error={error}
+        headerTitle={intl.formatMessage({
+          id: "dataLoadError",
+          defaultMessage: "Data Load Error",
+        })}
+      />
+    );
+  }
+
   return (
     <div className="resultsContainer">
       <div className="resultsHeader">
-        <div className="leftSection leftHeaderSection desktopHeading">
+        <div className="resultsHeaderTitle">
           <h4 style={{ flexGrow: 1 }}>{`${intl.formatMessage({
             id: "sidenav.label.results",
           })} ${totalResultsCount ? `(${totalResultsCount})` : ""}`}</h4>
@@ -214,15 +210,18 @@ const ResultsViewer: React.FC<ResultsViewerProps> = ({
         </Button>
       </div>
 
-      <div className="flex">
-        <TreeViewWrapper
-          patientUuid={patientId}
-          basePath={basePath}
-          type={type}
-          expanded={true}
-          testUuid={testUuid}
+      {!loaded && <Loading />}
+
+      {loaded && !flattenedRows.length ? (
+        <EmptyState
+          headerTitle={intl.formatMessage({ id: "label.test.results" })}
+          displayText={intl.formatMessage({
+            id: "label.test.resultsData",
+          })}
         />
-      </div>
+      ) : (
+        <ReadonlyResultsTable loading={!loaded} rows={flattenedRows} />
+      )}
     </div>
   );
 };

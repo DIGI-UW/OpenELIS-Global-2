@@ -1,0 +1,99 @@
+# ASTM LIS2-A2 Sample: Malformed/Invalid Messages
+# Purpose: Test error handling for invalid ASTM format (Edge Case)
+# Reference: specs/004-astm-analyzer-mapping/research.md
+#
+# This file contains intentionally malformed ASTM messages to test:
+# - Protocol error detection
+# - Error logging and dashboard display
+# - Graceful degradation
+#
+# WARNING: These are INVALID messages for testing error handling only
+
+# =============================================================================
+# SCENARIO 1: Missing header record
+# =============================================================================
+P|1||PAT-INVALID-001|NoHeader^Test||M|19900101
+O|1|SAMPLE-INVALID-001^LAB|CBC||20250115150000||||||||||||||||||||
+R|1|^^^WBC|5.5|10^3/μL|N||F|20250115150100
+L|1|N
+
+# =============================================================================
+# SCENARIO 2: Invalid segment identifier
+# =============================================================================
+H|\^&|||Test^Analyzer^V1.0|||||||LIS2-A2|20250115151000
+P|1||PAT-INVALID-002|BadSegment^Test||F|19850101
+X|1|INVALID|SEGMENT|TYPE
+R|1|^^^HGB|14.0|g/dL|N||F|20250115151100
+L|1|N
+
+# =============================================================================
+# SCENARIO 3: Incomplete header (missing required fields)
+# =============================================================================
+H|||||||||||
+P|1||PAT-INVALID-003
+O|1|SAMPLE||
+R|1|^^^GLUCOSE|100
+L|1
+
+# =============================================================================
+# SCENARIO 4: Wrong delimiter usage
+# =============================================================================
+H;^&;;;Test;Analyzer;V1.0;;;;;;;LIS2-A2;20250115152000
+P;1;;PAT-INVALID-004;WrongDelim;Test;;M;19750101
+R;1;;;WBC;6.0;10^3/μL;N;;F;20250115152100
+L;1;N
+
+# =============================================================================
+# SCENARIO 5: Corrupted/truncated message
+# =============================================================================
+H|\^&|||Test^Analyzer^V1.0|||||||LIS2-A2|20250115153000
+P|1||PAT-INVALID-005|Truncated^Test||M|19800101
+O|1|SAMPLE-INVALID-005^LAB|CBC||20250115152500
+R|1|^^^WBC|5.2|10^3/
+
+# =============================================================================
+# SCENARIO 6: Binary garbage (should be rejected)
+# =============================================================================
+\x00\x01\x02\x03\x04\x05GARBAGE_DATA\xFF\xFE\xFD
+
+# =============================================================================
+# SCENARIO 7: Missing terminator record
+# =============================================================================
+H|\^&|||Test^Analyzer^V1.0|||||||LIS2-A2|20250115154000
+P|1||PAT-INVALID-006|NoTerminator^Test||F|19950101
+O|1|SAMPLE-INVALID-006^LAB|CHEM||20250115153500||||||||||||||||||||
+R|1|^^^GLUCOSE|95|mg/dL|N||F|20250115154100
+R|2|^^^CREATININE|0.8|mg/dL|N||F|20250115154100
+
+# =============================================================================
+# SCENARIO 8: Result with no value
+# =============================================================================
+H|\^&|||Test^Analyzer^V1.0|||||||LIS2-A2|20250115155000
+P|1||PAT-INVALID-007|EmptyResult^Test||M|19700101
+O|1|SAMPLE-INVALID-007^LAB|CBC||20250115154500||||||||||||||||||||
+R|1|^^^WBC||10^3/μL|N||F|20250115155100
+R|2|^^^RBC|||N||F|20250115155100
+R|3|^^^HGB|NULL|g/dL|N||F|20250115155100
+L|1|N
+
+# =============================================================================
+# SCENARIO 9: Completely empty/whitespace only
+# =============================================================================
+
+
+   
+
+# =============================================================================
+# SCENARIO 10: Excessive field length
+# =============================================================================
+H|\^&|||VeryLongManufacturerNameThatExceedsReasonableLimitsAndShouldBeTruncatedOrRejectedByTheParser^ExtremelyLongModelNameThatIsAlsoUnreasonablyLongForAnAnalyzerModel^V999.999.999|||||||LIS2-A2|20250115156000
+P|1||PATIENT-ID-THAT-IS-WAY-TOO-LONG-AND-SHOULD-FAIL-VALIDATION-BECAUSE-IDS-HAVE-LENGTH-LIMITS-IN-MOST-SYSTEMS|ThisIsAnExtremelyLongPatientNameThatNoRealSystemWouldEverHaveBecauseItExceedsAllReasonableLimits^AlsoVeryLongFirstName^MiddleNamesAreUsuallyShort||M|19900101
+L|1|N
+
+
+
+
+
+
+
+

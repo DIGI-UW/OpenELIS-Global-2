@@ -37,4 +37,10 @@ public interface DictionaryService extends BaseObjectService<Dictionary, String>
     int getCountSearchedDictionaries(String searchString);
 
     List<Dictionary> getPagesOfSearchedDictionaries(int startingRecNo, String searchString);
+
+    Dictionary getDictionaryByGuid(String guid);
+
+    Dictionary getDictionaryByLoincCode(String loincCode);
+
+    Dictionary getDictionaryByDictEntryIgnoreCase(String name);
 }

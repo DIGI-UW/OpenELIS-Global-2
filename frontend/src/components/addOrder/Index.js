@@ -7,7 +7,11 @@ import "./add-order.scss";
 import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -50,6 +54,7 @@ const Index = () => {
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [saveResponse, setSaveResponse] = useState(null);
   const [incomingOrderNumber, setIncomingOrderNumber] = useState("");
   const globalTestsByIdRef = useRef(null);
   const globalPanelsByIdRef = useRef(null);
@@ -824,9 +829,11 @@ const Index = () => {
     });
   };
 
-  const handlePost = (status) => {
+  const handlePost = (response) => {
     setIsSubmitting(false);
-    if (status === 200) {
+    const responseStatus = response?.statusCode ?? response?.status ?? 200;
+    if (response && !response.error && responseStatus < 400) {
+      setSaveResponse(response);
       if (incomingOrderNumber) {
         postToOpenElisServer(
           "/rest/incoming-orders/" +
@@ -885,6 +892,11 @@ const Index = () => {
       delete payload.sampleOrderItems.questionnaire;
     }
 
+    // readOnly is frontend-only, do not send to backend
+    if (payload.patientProperties && "readOnly" in payload.patientProperties) {
+      delete payload.patientProperties.readOnly;
+    }
+
     // Remove display-only lists that backend does not accept in JSON binding.
     if (payload.patientProperties) {
       delete payload.patientProperties.educationList;
@@ -910,7 +922,7 @@ const Index = () => {
     payload.testSectionList = [];
 
     console.log(JSON.stringify(payload));
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/SamplePatientEntry",
       JSON.stringify(payload),
       handlePost,
@@ -981,7 +993,7 @@ const Index = () => {
             const storagePositionCoordinate =
               storageLocation?.positionCoordinate || "";
 
-            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}'/>`;
+            sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' quantity='${sampleItem.sampleXML.quantity}' uom='${sampleItem.sampleXML.uom}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' numOrderLabels='${sampleItem.sampleXML?.numOrderLabels || 1}' numSpecimenLabels='${sampleItem.sampleXML?.numSpecimenLabels || 1}'/>`;
           }
           if (sampleItem.referralItems.length > 0) {
             const referredInstitutes = Object.keys(sampleItem.referralItems)
@@ -1114,6 +1126,7 @@ const Index = () => {
               <OrderSuccessMessage
                 orderFormValues={orderFormValues}
                 setOrderFormValues={setOrderFormValues}
+                saveResponse={saveResponse}
                 setSamples={setSamples}
                 setPage={setPage}
               />
