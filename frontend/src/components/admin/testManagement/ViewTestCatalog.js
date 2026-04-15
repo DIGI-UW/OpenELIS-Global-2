@@ -25,7 +25,7 @@ import {
   Section,
   Heading,
 } from "@carbon/react";
-import { getFromOpenElisServer } from "../../utils/Utils.js";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb.js";
 import { FormattedMessage, useIntl } from "react-intl";
 

@@ -24,7 +24,7 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
+} from "../../utils/Utils";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },

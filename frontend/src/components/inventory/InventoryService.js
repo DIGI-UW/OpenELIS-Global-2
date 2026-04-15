@@ -9,7 +9,7 @@ import config from "../../config.json";
 /**
  * Inventory API Service
  * Handles all API calls for inventory management (items, lots, storage locations, transactions)
- * Uses Utils.js for consistent CSRF protection and session management
+ * Uses Utils for consistent CSRF protection and session management
  */
 
 const BASE_PATH = "/rest/inventory";

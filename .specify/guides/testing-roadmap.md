@@ -137,7 +137,7 @@ regardless of implementation are scaffolding, not tests.
   `config.serverBaseUrl`, query parameters, and CSRF headers.
 - **F3. No raw fetch() in components.** Use project utilities
   (`getFromOpenElisServer`, `postToOpenElisServer*`, `putToOpenElisServer`,
-  `deleteFromOpenElisServer`). If a utility doesn't exist, add one to Utils.js.
+  `deleteFromOpenElisServer`). If a utility doesn't exist, add one to Utils.ts.
 - **F4. waitFor, not wait.** Import `waitFor` from `@testing-library/dom`. The
   `wait` export is deprecated.
 - **F5. i18n assertions.** Tests for components with user-visible text must

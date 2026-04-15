@@ -25,7 +25,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Formik, Form } from "formik";
 import * as Yup from "yup";
 import { CustomCommonSortableOrderList } from "./../sortableListComponent/SortableList.js";
-import { getFromOpenElisServer } from "../../../utils/Utils.js";
+import { getFromOpenElisServer } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout.js";
 import { extractAgeRangeParts } from "./TestFormData.js";
 

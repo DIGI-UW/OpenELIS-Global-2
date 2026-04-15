@@ -18,7 +18,7 @@ import {
   postToOpenElisServer,
   postToOpenElisServerFormData,
   postToOpenElisServerFullResponse,
-} from "../../../utils/Utils.js";
+} from "../../../utils/Utils";
 import {
   AlertDialog,
   NotificationKinds,

@@ -4,7 +4,7 @@ import { Button, Loading, InlineNotification, Modal } from "@carbon/react";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-} from "../../utils/Utils.js";
+} from "../../utils/Utils";
 import "../../Style.css";
 
 function DatabaseCleaning() {

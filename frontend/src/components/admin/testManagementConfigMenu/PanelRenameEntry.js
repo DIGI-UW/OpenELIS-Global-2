@@ -3,7 +3,7 @@ import { Heading, Button, Grid, Column, Section } from "@carbon/react";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout.js";
 import {
   AlertDialog,

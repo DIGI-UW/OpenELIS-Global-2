@@ -103,7 +103,7 @@ import ExternalConnectionMenu from "./externalConnections/ExternalConnectionMenu
 import ExternalConnectionAddModify from "./externalConnections/ExternalConnectionAddModify";
 import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning.js";
 import { TrashCan } from "@carbon/icons-react";
-import { getFromOpenElisServer } from "../utils/Utils.js";
+import { getFromOpenElisServer } from "../utils/Utils";
 
 function Admin() {
   const intl = useIntl();

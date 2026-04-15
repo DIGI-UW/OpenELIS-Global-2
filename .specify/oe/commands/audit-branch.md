@@ -129,7 +129,7 @@ assertions.
 | M11 | Assert-on-mock-return               | `when\(.*\)\.thenReturn\((\w+)\)` where same identifier appears in `assertEquals` within 5 lines (in test Java files)                                                            | HIGH     | No      |
 | M12 | any() matcher abuse                 | `verify\(.*\)\.\w+\(any\(\)` without `argThat` nearby (in test Java files)                                                                                                       | MEDIUM   | No      |
 | M13 | Missing test assertions             | Test method (`@Test` or `test(` or `it(`) with no `assert`/`expect`/`verify` call in body                                                                                        | HIGH     | No      |
-| M14 | Raw fetch in component              | `fetch\(` in `frontend/src/components/**/*.{js,jsx,ts,tsx}`, excluding `frontend/src/components/utils/Utils.js` (components should use Utils)                                    | HIGH     | No      |
+| M14 | Raw fetch in component              | `fetch\(` in `frontend/src/components/**/*.{js,jsx,ts,tsx}`, excluding `frontend/src/components/utils/Utils.ts` (components should use Utils)                                    | HIGH     | No      |
 | M15 | Deprecated wait import              | `import.*\bwait\b.*from.*testing-library`                                                                                                                                        | MEDIUM   | Yes     |
 | M16 | Render-only Jest test               | `it\(` or `test\(` block with `render(` but no `fireEvent`/`userEvent`/`screen.getBy`/`expect` beyond `toBeInTheDocument`                                                        | MEDIUM   | No      |
 

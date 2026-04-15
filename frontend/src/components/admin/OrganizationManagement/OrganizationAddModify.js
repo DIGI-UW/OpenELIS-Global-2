@@ -22,7 +22,7 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
+} from "../../utils/Utils";
 import {
   ConfigurationContext,
   NotificationContext,

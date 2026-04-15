@@ -27,10 +27,7 @@ import {
   OperationType,
   OperationModel,
 } from "../../formModel/innitialValues/CalculatedValueFormSchema";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-} from "../../utils/Utils.js";
+import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,

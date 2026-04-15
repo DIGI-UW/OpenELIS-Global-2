@@ -32,7 +32,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServer,
   postToOpenElisServerJsonResponse,
-} from "../../utils/Utils.js";
+} from "../../utils/Utils";
 import CustomDatePicker from "../../common/CustomDatePicker.js";
 import AutoComplete from "../../common/AutoComplete.js";
 

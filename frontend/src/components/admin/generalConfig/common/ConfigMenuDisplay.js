@@ -22,7 +22,7 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-} from "../../../utils/Utils.js";
+} from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout.js";
 import {
   AlertDialog,

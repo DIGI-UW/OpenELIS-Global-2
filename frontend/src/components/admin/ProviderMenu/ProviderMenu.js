@@ -25,7 +25,7 @@ import {
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-} from "../../utils/Utils.js";
+} from "../../utils/Utils";
 import {
   ConfigurationContext,
   NotificationContext,
