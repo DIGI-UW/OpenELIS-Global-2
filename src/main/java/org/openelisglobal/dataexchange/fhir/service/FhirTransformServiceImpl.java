@@ -486,6 +486,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         FhirOrderEntryObjects orderEntryObjects = new FhirOrderEntryObjects();
         // TODO should we create a task per service request that is part of this task so
         // we can have the ServiceRequest as the focus in those tasks?
+        // task for entering the order
         Task task = transformToTask(updateData.getSample().getId());
         this.addToOperations(fhirOperations, tempIdGenerator, task);
 
@@ -685,12 +686,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             // Status
             task.setStatus(mapOrderStatusToTaskStatus(sample.getStatusId()));
 
-            // Patient reference (required for ?patient= search)
             Patient patient = sampleHumanService.getPatientForSample(sample);
-            if (patient != null && patient.getFhirUuid() != null) {
-                task.setFor(new Reference("Patient/" + patient.getFhirUuidAsString()));
+            // OGC-356: Environmental samples don't have a patient, so only set the patient
+            // reference if patient exists
+            if (patient != null) {
+                task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
             }
-
             // Authored On — prefer enteredDate, fall back to receivedDate
             if (sample.getEnteredDate() != null) {
                 task.setAuthoredOn(sample.getEnteredDate());
