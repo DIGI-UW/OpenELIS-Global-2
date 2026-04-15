@@ -292,8 +292,7 @@ public class PatientDashBoardProvider {
 
         DashBoardMetrics metrics = new DashBoardMetrics();
         List<Analysis> finalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
-                DateUtil.getNowAsSqlDate(),
-                iStatusService.getStatusID(AnalysisStatus.Finalized));
+                DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.Finalized));
 
         java.sql.Timestamp startTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
@@ -303,59 +302,59 @@ public class PatientDashBoardProvider {
             List<Integer> statusIdList;
             Set<Integer> statusIdSet;
             switch (type) {
-                case ORDERS_IN_PROGRESS:
-                    statusIdList = new ArrayList<>();
-                    statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
-                    metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
-                    break;
-                case ORDERS_READY_FOR_VALIDATION:
-                    statusIdList = new ArrayList<>();
-                    statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance)));
-                    metrics.setOrdersReadyForValidation(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
-                    break;
-                case ORDERS_COMPLETED_TODAY:
-                    statusIdList = new ArrayList<>();
-                    statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
-                    metrics.setOrdersCompletedToday(analysisService
-                            .getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
-                    break;
-                case ORDERS_PATIALLY_COMPLETED_TODAY:
-                    statusIdSet = new HashSet<>();
-                    statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                    statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
-                    metrics.setPatiallyCompletedToday(analysisService
-                            .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
-                    break;
+            case ORDERS_IN_PROGRESS:
+                statusIdList = new ArrayList<>();
+                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
+                metrics.setOrdersInProgress(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
+                break;
+            case ORDERS_READY_FOR_VALIDATION:
+                statusIdList = new ArrayList<>();
+                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance)));
+                metrics.setOrdersReadyForValidation(analysisService.getCountOfAnalysesForStatusIds(statusIdList));
+                break;
+            case ORDERS_COMPLETED_TODAY:
+                statusIdList = new ArrayList<>();
+                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
+                metrics.setOrdersCompletedToday(analysisService
+                        .getCountOfAnalysisCompletedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
+                break;
+            case ORDERS_PATIALLY_COMPLETED_TODAY:
+                statusIdSet = new HashSet<>();
+                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
+                metrics.setPatiallyCompletedToday(analysisService
+                        .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
+                break;
 
-                case ORDERS_ENTERED_BY_USER_TODAY:
-                    statusIdSet = new HashSet<>();
-                    statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                    metrics.setOrderEnterdByUserToday(analysisService
-                            .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
-                    break;
-                case ORDERS_REJECTED_TODAY:
-                    statusIdList = new ArrayList<>();
-                    statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                    metrics.setOrdersRejectedToday(analysisService
-                            .getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
-                    break;
-                case UN_PRINTED_RESULTS:
-                    metrics.setUnPritendResults(unprintedResults(finalizedTodayAnalyses).size());
-                    break;
-                case INCOMING_ORDERS:
-                    List<Integer> estausIds = new ArrayList<>();
-                    estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
-                    estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.NonConforming)));
-                    metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
-                    break;
-                case AVERAGE_TURN_AROUND_TIME:
-                    metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime(finalizedTodayAnalyses));
-                    break;
-                case DELAYED_TURN_AROUND:
-                    metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime(finalizedTodayAnalyses).size());
-                    break;
-                default:
-                    break;
+            case ORDERS_ENTERED_BY_USER_TODAY:
+                statusIdSet = new HashSet<>();
+                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+                metrics.setOrderEnterdByUserToday(analysisService
+                        .getCountOfAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet));
+                break;
+            case ORDERS_REJECTED_TODAY:
+                statusIdList = new ArrayList<>();
+                statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+                metrics.setOrdersRejectedToday(analysisService
+                        .getCountOfAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), statusIdList));
+                break;
+            case UN_PRINTED_RESULTS:
+                metrics.setUnPritendResults(unprintedResults(finalizedTodayAnalyses).size());
+                break;
+            case INCOMING_ORDERS:
+                List<Integer> estausIds = new ArrayList<>();
+                estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
+                estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.NonConforming)));
+                metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
+                break;
+            case AVERAGE_TURN_AROUND_TIME:
+                metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime(finalizedTodayAnalyses));
+                break;
+            case DELAYED_TURN_AROUND:
+                metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime(finalizedTodayAnalyses).size());
+                break;
+            default:
+                break;
             }
         });
 
@@ -401,63 +400,59 @@ public class PatientDashBoardProvider {
         Set<Integer> statusIdSet;
         List<Analysis> analyses;
         List<Analysis> finalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
-                DateUtil.getNowAsSqlDate(),
-                iStatusService.getStatusID(AnalysisStatus.Finalized));
+                DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.Finalized));
         java.sql.Timestamp startTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
         java.sql.Timestamp endTimestamp = DateUtil
                 .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "23:59:59");
         switch (listType) {
-            case ORDERS_IN_PROGRESS:
-                analyses = analysisService
-                        .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                return convertAnalysesToOrderBean(analyses);
-            case ORDERS_READY_FOR_VALIDATION:
-                analyses = analysisService
-                        .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-                return convertAnalysesToOrderBean(analyses);
-            case ORDERS_COMPLETED_TODAY:
-                analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
-                        iStatusService.getStatusID(AnalysisStatus.Finalized));
-                return convertAnalysesToOrderBean(analyses);
-            case ORDERS_PATIALLY_COMPLETED_TODAY:
+        case ORDERS_IN_PROGRESS:
+            analyses = analysisService.getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+            return convertAnalysesToOrderBean(analyses);
+        case ORDERS_READY_FOR_VALIDATION:
+            analyses = analysisService
+                    .getAnalysesForStatusId(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+            return convertAnalysesToOrderBean(analyses);
+        case ORDERS_COMPLETED_TODAY:
+            analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
+                    iStatusService.getStatusID(AnalysisStatus.Finalized));
+            return convertAnalysesToOrderBean(analyses);
+        case ORDERS_PATIALLY_COMPLETED_TODAY:
+            statusIdSet = new HashSet<>();
+            statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+            statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
+            analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
+            return convertAnalysesToOrderBean(analyses);
+        case ORDERS_ENTERED_BY_USER_TODAY:
+            statusIdSet = new HashSet<>();
+            statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
+            analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
+            return convertAnalysesToUserOrdersBean(analyses);
+        case ORDERS_REJECTED_TODAY:
+            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(DateUtil.getNowAsSqlDate(),
+                    DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            return convertAnalysesToOrderBean(analyses);
+        case UN_PRINTED_RESULTS:
+            return convertAnalysesToOrderBean(unprintedResults(finalizedTodayAnalyses));
+        case INCOMING_ORDERS:
+            List<Integer> estausIds = new ArrayList<>();
+            estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
+            estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.NonConforming)));
+            List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(estausIds,
+                    ElectronicOrder.SortOrder.STATUS_ID);
+            return convertElectronicToOrderBean(eOrders);
+        case AVERAGE_TURN_AROUND_TIME:
+            return new ArrayList<>();
+        case DELAYED_TURN_AROUND:
+            return convertAnalysesToOrderBean(analysesWithDelayedTurnAroundTime(finalizedTodayAnalyses));
+        case ORDERS_FOR_USER:
+            if (StringUtils.isNotBlank(systemUserId)) {
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Finalized)));
                 analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
                         statusIdSet);
-                return convertAnalysesToOrderBean(analyses);
-            case ORDERS_ENTERED_BY_USER_TODAY:
-                statusIdSet = new HashSet<>();
-                statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
-                        statusIdSet);
-                return convertAnalysesToUserOrdersBean(analyses);
-            case ORDERS_REJECTED_TODAY:
-                analyses = analysisService.getAnalysisStartedOnRangeByStatusId(DateUtil.getNowAsSqlDate(),
-                        DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.SampleRejected));
-                return convertAnalysesToOrderBean(analyses);
-            case UN_PRINTED_RESULTS:
-                return convertAnalysesToOrderBean(unprintedResults(finalizedTodayAnalyses));
-            case INCOMING_ORDERS:
-                List<Integer> estausIds = new ArrayList<>();
-                estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.Entered)));
-                estausIds.add(Integer.parseInt(iStatusService.getStatusID(ExternalOrderStatus.NonConforming)));
-                List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(estausIds,
-                        ElectronicOrder.SortOrder.STATUS_ID);
-                return convertElectronicToOrderBean(eOrders);
-            case AVERAGE_TURN_AROUND_TIME:
-                return new ArrayList<>();
-            case DELAYED_TURN_AROUND:
-                return convertAnalysesToOrderBean(analysesWithDelayedTurnAroundTime(finalizedTodayAnalyses));
-            case ORDERS_FOR_USER:
-                if (StringUtils.isNotBlank(systemUserId)) {
-                    statusIdSet = new HashSet<>();
-                    statusIdSet.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-                    analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
-                            statusIdSet);
-                    return getUserOrderBeans(analyses, systemUserId);
-                }
+                return getUserOrderBeans(analyses, systemUserId);
+            }
         }
         return new ArrayList<>();
     }
@@ -467,8 +462,7 @@ public class PatientDashBoardProvider {
     public AverageTimeDisplayBean getDasBoardAverageTurnAroundTime() {
         AverageTimeDisplayBean timeBean = new AverageTimeDisplayBean();
         List<Analysis> finalizedTodayAnalyses = analysisService.getAnalysesCompletedOnByStatusId(
-                DateUtil.getNowAsSqlDate(),
-                iStatusService.getStatusID(AnalysisStatus.Finalized));
+                DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.Finalized));
         timeBean.setReceptionToResult(calculateAverageReceptionToResultTime());
         timeBean.setReceptionToValidation(calculateAverageReceptionToValidationTime(finalizedTodayAnalyses));
         timeBean.setResultToValidation(calculateAverageResultToValidationTime(finalizedTodayAnalyses));
