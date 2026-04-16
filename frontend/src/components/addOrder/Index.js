@@ -53,18 +53,7 @@ const Index = () => {
   const [page, setPage] = useState(firstPageNumber);
   const isEQAFromUrl =
     new URLSearchParams(window.location.search).get("isEQA") === "true";
-  const [orderFormValues, setOrderFormValues] = useState(() => {
-    if (isEQAFromUrl) {
-      return {
-        ...SampleOrderFormValues,
-        sampleOrderItems: {
-          ...SampleOrderFormValues.sampleOrderItems,
-          isEQASample: true,
-        },
-      };
-    }
-    return SampleOrderFormValues;
-  });
+  const [orderFormValues, setOrderFormValues] = useState(SampleOrderFormValues);
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -806,10 +795,12 @@ const Index = () => {
             {page === patientInfoPageNumber && (
               <>
                 {(configurationProperties.EQA_ENABLED === "true" ||
+                  isEQAFromUrl ||
                   orderFormValues?.sampleOrderItems?.isEQASample) && (
                   <EQASampleEntry
                     orderFormValues={orderFormValues}
                     setOrderFormValues={setOrderFormValues}
+                    autoEnable={isEQAFromUrl}
                   />
                 )}
                 <PatientInfo

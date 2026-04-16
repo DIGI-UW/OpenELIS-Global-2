@@ -12,6 +12,7 @@ import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
+import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
@@ -656,7 +657,7 @@ export default function App() {
                 <SecureRoute
                   path="/EQAManagement"
                   exact
-                  component={() => <EQAManagementDashboard />}
+                  component={() => <EQAProgramManagement />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
