@@ -43,6 +43,11 @@ import StorageLocationSelector from "../storage/StorageLocationSelector";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
+import InlineNceForm from "../nonconform/common/InlineNceForm";
+import { Warning } from "@carbon/icons-react";
+import ESignatureButton, {
+  SignatureMeaning,
+} from "../esignature/ESignatureButton";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -181,7 +186,22 @@ export function SearchResultForm(props) {
     setPatient(patient);
   };
   useEffect(() => {
-    querySearch(searchFormValues);
+    // Only fire a patient-driven search when no URL accession/date params will
+    // trigger their own authoritative search from the [searchBy] effect. This
+    // prevents a broad (empty-accession) request from overwriting the URL-driven
+    // accession search with stale or wider results.
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrlSearch =
+      urlParams.get("accessionNumber") ||
+      urlParams.get("upperAccessionNumber") ||
+      urlParams.get("collectionDate") ||
+      urlParams.get("recievedDate") ||
+      urlParams.get("selectedTest") ||
+      urlParams.get("selectedSampleStatus") ||
+      urlParams.get("selectedAnalysisStatus");
+    if (!hasUrlSearch) {
+      querySearch(searchFormValues);
+    }
   }, [patient]);
 
   const querySearch = (values) => {
@@ -396,14 +416,6 @@ export function SearchResultForm(props) {
     let upperAccessionNumber = new URLSearchParams(window.location.search).get(
       "upperAccessionNumber",
     );
-    if (accessionNumber) {
-      let searchValues = {
-        ...searchFormValues,
-        accessionNumber: accessionNumber,
-      };
-      setSearchFormValues(searchValues);
-      querySearch(searchValues);
-    }
     if (accessionNumber || upperAccessionNumber) {
       let searchValues = {
         ...searchFormValues,
@@ -811,6 +823,7 @@ export function SearchResults(props) {
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
+  const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
 
   const componentMounted = useRef(false);
 
@@ -1338,16 +1351,14 @@ export function SearchResults(props) {
               sampleAccessionNumber: response.sampleAccessionNumber || "",
             },
           }));
+        } else {
+          // SampleItem may not have location assigned yet
+          console.debug("No location found for SampleItem:", sampleItemId);
+          setSampleLocations((prev) => ({
+            ...prev,
+            [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
+          }));
         }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
-        setSampleLocations((prev) => ({
-          ...prev,
-          [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
-        }));
       },
     );
   };
@@ -1627,6 +1638,31 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
+        {/* Report NCE */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+        </Grid>
+        {nceFormOpenRow === data.id && (
+          <InlineNceForm
+            resultRow={data}
+            onClose={() => setNceFormOpenRow(null)}
+            onSubmitSuccess={() => setNceFormOpenRow(null)}
+          />
+        )}
       </>
     );
   };
@@ -1844,13 +1880,48 @@ export function SearchResults(props) {
     setAcceptAsIs(newAcceptAsIs);
   };
 
-  const handleSave = (values) => {
-    console.debug("handleSave:" + values);
+  const buildSignContext = () => {
+    const results = (props.results && props.results.testResult) || [];
+    const count = results.length;
+    const accessions = [
+      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
+    ];
+    if (accessions.length === 1) {
+      return intl.formatMessage(
+        {
+          id: "esig.context.saveResults",
+          defaultMessage: "Save {count} result(s) for accession {accession}",
+        },
+        {
+          count,
+          accession:
+            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
+        },
+      );
+    }
+    return intl.formatMessage(
+      {
+        id: "esig.context.saveResultsMulti",
+        defaultMessage:
+          "Save {count} result(s) across {accessionCount} accessions",
+      },
+      { count, accessionCount: accessions.length },
+    );
+  };
+
+  const getFirstAnalysisId = () => {
+    const results = (props.results && props.results.testResult) || [];
+    for (const r of results) {
+      if (r.analysisId) return Number(r.analysisId);
+    }
+    return 0;
+  };
+
+  const handleSave = () => {
     if (isSubmitting) {
       return;
     }
     setIsSubmitting(true);
-    values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
@@ -2012,15 +2083,17 @@ export function SearchResults(props) {
                 }
               />
 
-              <Button
-                type="button"
-                id="saveResults"
-                onClick={handleSave}
-                style={{ marginTop: "16px" }}
+              <ESignatureButton
+                meaning={SignatureMeaning.AUTHORED}
+                context={buildSignContext()}
+                recordType="RESULT_BATCH"
+                recordId={getFirstAnalysisId()}
+                onSign={handleSave}
                 disabled={isSubmitting}
+                style={{ marginTop: "16px" }}
               >
                 <FormattedMessage id="label.button.save" />
-              </Button>
+              </ESignatureButton>
             </Form>
           )}
         </Formik>

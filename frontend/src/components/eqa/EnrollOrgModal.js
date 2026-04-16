@@ -12,14 +12,14 @@ const EnrollOrgModal = ({ open, programId, onClose, onSubmit }) => {
   const fetchData = useCallback(() => {
     if (!open) return;
 
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
-      (orgs) => {
-        if (orgs && Array.isArray(orgs)) {
-          setOrganizations(orgs);
-        }
-      },
-    );
+    getFromOpenElisServer("/rest/organization-list", (orgs) => {
+      if (orgs && Array.isArray(orgs)) {
+        const active = orgs
+          .filter((o) => o.isActive === "Y")
+          .map((o) => ({ id: o.id, value: o.organizationName }));
+        setOrganizations(active);
+      }
+    });
 
     if (programId) {
       getFromOpenElisServer(

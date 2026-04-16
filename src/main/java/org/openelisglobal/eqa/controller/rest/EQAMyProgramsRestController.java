@@ -8,10 +8,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
-import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQALabEnrollmentTestMap;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
-import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -31,9 +29,6 @@ public class EQAMyProgramsRestController extends ControllerUtills {
 
     @Autowired
     private EQALabProgramEnrollmentService enrollmentService;
-
-    @Autowired
-    private EQAProgramService eqaProgramService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, Object>>> listMyPrograms() {
@@ -55,20 +50,18 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> createMyProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
-            Number eqaProgramIdNum = (Number) body.get("eqaProgramId");
+            String programName = (String) body.get("programName");
             String provider = (String) body.get("provider");
 
-            if (eqaProgramIdNum == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "EQA Programme is required"));
+            if (programName == null || programName.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Program Name is required"));
             }
             if (provider == null || provider.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Provider is required"));
             }
 
-            EQAProgram eqaProgram = eqaProgramService.get(eqaProgramIdNum.longValue());
-
             EQALabProgramEnrollment enrollment = new EQALabProgramEnrollment();
-            enrollment.setEqaProgram(eqaProgram);
+            enrollment.setProgramName(programName);
             enrollment.setProvider(provider);
             enrollment.setDescription((String) body.get("description"));
             enrollment.setIsActive(body.get("isActive") != null ? (Boolean) body.get("isActive") : true);
@@ -90,20 +83,18 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     public ResponseEntity<?> updateMyProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
-            Number eqaProgramIdNum = (Number) body.get("eqaProgramId");
+            String programName = (String) body.get("programName");
             String provider = (String) body.get("provider");
 
-            if (eqaProgramIdNum == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "EQA Programme is required"));
+            if (programName == null || programName.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Program Name is required"));
             }
             if (provider == null || provider.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Provider is required"));
             }
 
-            EQAProgram eqaProgram = eqaProgramService.get(eqaProgramIdNum.longValue());
-
             EQALabProgramEnrollment updated = new EQALabProgramEnrollment();
-            updated.setEqaProgram(eqaProgram);
+            updated.setProgramName(programName);
             updated.setProvider(provider);
             updated.setDescription((String) body.get("description"));
             updated.setIsActive(body.get("isActive") != null ? (Boolean) body.get("isActive") : true);
@@ -141,8 +132,7 @@ public class EQAMyProgramsRestController extends ControllerUtills {
     private Map<String, Object> toDto(EQALabProgramEnrollment enrollment) {
         Map<String, Object> dto = new HashMap<>();
         dto.put("id", enrollment.getId());
-        dto.put("eqaProgramId", enrollment.getEqaProgram() != null ? enrollment.getEqaProgram().getId() : null);
-        dto.put("programName", enrollment.getEqaProgram() != null ? enrollment.getEqaProgram().getName() : null);
+        dto.put("programName", enrollment.getProgramName());
         dto.put("provider", enrollment.getProvider());
         dto.put("description", enrollment.getDescription());
         dto.put("isActive", enrollment.getIsActive());

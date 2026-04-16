@@ -11,10 +11,6 @@ import org.openelisglobal.eqa.service.EQAProgramEnrollmentService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQAProgramTest;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.organization.valueholder.Organization;
-import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -39,12 +35,6 @@ public class EQAProgramRestController extends ControllerUtills {
     @Autowired
     private EQAProgramEnrollmentService enrollmentService;
 
-    @Autowired
-    private OrganizationService organizationService;
-
-    @Autowired
-    private TestSectionService testSectionService;
-
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     // @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
@@ -56,22 +46,12 @@ public class EQAProgramRestController extends ControllerUtills {
                 return ResponseEntity.badRequest().body(Map.of("error", "Program name is required"));
             }
 
-            Number organizationId = (Number) body.get("organizationId");
-            Number testSectionId = (Number) body.get("testSectionId");
-            String frequency = (String) body.get("frequency");
+            String provider = (String) body.get("provider");
 
             EQAProgram program = new EQAProgram();
             program.setName(name);
             program.setDescription(description);
-            if (organizationId != null) {
-                Organization org = organizationService.get(String.valueOf(organizationId.longValue()));
-                program.setOrganization(org);
-            }
-            if (testSectionId != null) {
-                TestSection ts = testSectionService.get(String.valueOf(testSectionId.longValue()));
-                program.setTestSection(ts);
-            }
-            program.setFrequency(frequency);
+            program.setProvider(provider);
             program.setIsActive(true);
             program.setSysUserId(getSysUserId(request));
 
@@ -127,28 +107,8 @@ public class EQAProgramRestController extends ControllerUtills {
                 program.setDescription((String) body.get("description"));
             }
 
-            if (body.containsKey("organizationId")) {
-                Number orgId = (Number) body.get("organizationId");
-                if (orgId != null) {
-                    Organization org = organizationService.get(String.valueOf(orgId.longValue()));
-                    program.setOrganization(org);
-                } else {
-                    program.setOrganization(null);
-                }
-            }
-
-            if (body.containsKey("testSectionId")) {
-                Number tsId = (Number) body.get("testSectionId");
-                if (tsId != null) {
-                    TestSection ts = testSectionService.get(String.valueOf(tsId.longValue()));
-                    program.setTestSection(ts);
-                } else {
-                    program.setTestSection(null);
-                }
-            }
-
-            if (body.containsKey("frequency")) {
-                program.setFrequency((String) body.get("frequency"));
+            if (body.containsKey("provider")) {
+                program.setProvider((String) body.get("provider"));
             }
 
             if (body.containsKey("isActive")) {
@@ -218,12 +178,7 @@ public class EQAProgramRestController extends ControllerUtills {
         dto.put("id", program.getId());
         dto.put("name", program.getName());
         dto.put("description", program.getDescription());
-        dto.put("organizationId", program.getOrganization() != null ? program.getOrganization().getId() : null);
-        dto.put("providerName",
-                program.getOrganization() != null ? program.getOrganization().getOrganizationName() : null);
-        dto.put("testSectionId", program.getTestSection() != null ? program.getTestSection().getId() : null);
-        dto.put("category", program.getTestSection() != null ? program.getTestSection().getTestSectionName() : null);
-        dto.put("frequency", program.getFrequency());
+        dto.put("provider", program.getProvider());
         dto.put("isActive", program.getIsActive());
         dto.put("fhirUuid", program.getFhirUuid() != null ? program.getFhirUuid().toString() : null);
         dto.put("participantCount", enrollmentService.countActiveEnrollments(program.getId()));

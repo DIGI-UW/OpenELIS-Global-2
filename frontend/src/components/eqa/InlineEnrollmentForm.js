@@ -7,9 +7,6 @@ import {
   Toggle,
   Button,
   FilterableMultiSelect,
-  ComboBox,
-  Select,
-  SelectItem,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -18,11 +15,11 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const intl = useIntl();
   const isEdit = !!enrollment;
 
-  const [eqaProgramId, setEqaProgramId] = useState(
-    enrollment ? String(enrollment.eqaProgramId || "") : "",
+  const [programName, setProgramName] = useState(
+    enrollment ? enrollment.programName || "" : "",
   );
   const [provider, setProvider] = useState(
-    enrollment ? enrollment.provider : "",
+    enrollment ? enrollment.provider || "" : "",
   );
   const [description, setDescription] = useState(
     enrollment ? enrollment.description || "" : "",
@@ -33,71 +30,71 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
   const [selectedLabUnits, setSelectedLabUnits] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
   const [selectedPanels, setSelectedPanels] = useState([]);
+  const [dataReady, setDataReady] = useState(false);
 
-  const [eqaPrograms, setEqaPrograms] = useState([]);
-  const [providers, setProviders] = useState([]);
   const [labUnits, setLabUnits] = useState([]);
   const [tests, setTests] = useState([]);
   const [panels, setPanels] = useState([]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/eqa/programs?activeOnly=true", (data) => {
-      if (data) {
-        setEqaPrograms(data);
-      }
-    });
-    getFromOpenElisServer("/rest/eqa/my-programs/providers", (data) => {
-      if (data) {
-        setProviders(data.map((p) => ({ id: p, text: p })));
-      }
-    });
+    let loaded = 0;
+    const checkReady = () => {
+      loaded++;
+      if (loaded >= 3) setDataReady(true);
+    };
+
     getFromOpenElisServer("/rest/test-sections", (data) => {
       if (data) {
-        setLabUnits(data.map((ts) => ({ id: String(ts.id), text: ts.value })));
+        const items = data.map((ts) => ({
+          id: String(ts.id),
+          text: ts.value,
+        }));
+        setLabUnits(items);
+
+        if (enrollment) {
+          const selected = (enrollment.labUnits || [])
+            .map((lu) => items.find((u) => u.id === String(lu.id)))
+            .filter(Boolean);
+          setSelectedLabUnits(selected);
+        }
       }
+      checkReady();
     });
+
     getFromOpenElisServer("/rest/tests", (data) => {
       if (data) {
-        setTests(data.map((t) => ({ id: String(t.id), text: t.value })));
+        const items = data.map((t) => ({ id: String(t.id), text: t.value }));
+        setTests(items);
+
+        if (enrollment) {
+          const selected = (enrollment.tests || [])
+            .map((t) => items.find((te) => te.id === String(t.id)))
+            .filter(Boolean);
+          setSelectedTests(selected);
+        }
       }
+      checkReady();
     });
+
     getFromOpenElisServer("/rest/panels", (data) => {
       if (data) {
-        setPanels(data.map((p) => ({ id: String(p.id), text: p.value })));
+        const items = data.map((p) => ({ id: String(p.id), text: p.value }));
+        setPanels(items);
+
+        if (enrollment) {
+          const selected = (enrollment.panels || [])
+            .map((p) => items.find((pa) => pa.id === String(p.id)))
+            .filter(Boolean);
+          setSelectedPanels(selected);
+        }
       }
+      checkReady();
     });
   }, []);
 
-  useEffect(() => {
-    if (enrollment && labUnits.length > 0) {
-      const enrollmentLabUnits = (enrollment.labUnits || [])
-        .map((lu) => labUnits.find((u) => u.id === String(lu.id)))
-        .filter(Boolean);
-      setSelectedLabUnits(enrollmentLabUnits);
-    }
-  }, [enrollment, labUnits]);
-
-  useEffect(() => {
-    if (enrollment && tests.length > 0) {
-      const enrollmentTests = (enrollment.tests || [])
-        .map((t) => tests.find((te) => te.id === String(t.id)))
-        .filter(Boolean);
-      setSelectedTests(enrollmentTests);
-    }
-  }, [enrollment, tests]);
-
-  useEffect(() => {
-    if (enrollment && panels.length > 0) {
-      const enrollmentPanels = (enrollment.panels || [])
-        .map((p) => panels.find((pa) => pa.id === String(p.id)))
-        .filter(Boolean);
-      setSelectedPanels(enrollmentPanels);
-    }
-  }, [enrollment, panels]);
-
   const handleSave = () => {
     const payload = {
-      eqaProgramId: eqaProgramId ? Number(eqaProgramId) : null,
+      programName,
       provider,
       description,
       isActive,
@@ -108,7 +105,7 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
     onSave(payload);
   };
 
-  const isValid = eqaProgramId !== "" && provider.trim() !== "";
+  const isValid = programName.trim() !== "" && provider.trim() !== "";
 
   return (
     <div
@@ -129,41 +126,27 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
 
       <Grid condensed>
         <Column lg={5} md={4} sm={4}>
-          <Select
+          <TextInput
             id="enrollment-program-name"
             labelText={intl.formatMessage({
               id: "eqa.enrollment.programName",
             })}
-            value={eqaProgramId}
-            onChange={(e) => setEqaProgramId(e.target.value)}
-          >
-            <SelectItem value="" text="" />
-            {eqaPrograms.map((prog) => (
-              <SelectItem
-                key={prog.id}
-                value={String(prog.id)}
-                text={prog.name}
-              />
-            ))}
-          </Select>
+            value={programName}
+            onChange={(e) => setProgramName(e.target.value)}
+            placeholder={intl.formatMessage({
+              id: "eqa.enrollment.programName.placeholder",
+            })}
+          />
         </Column>
         <Column lg={5} md={4} sm={4}>
-          <ComboBox
+          <TextInput
             id="enrollment-provider"
-            titleText={intl.formatMessage({ id: "eqa.enrollment.provider" })}
-            items={providers}
-            itemToString={(item) => (item ? item.text : "")}
-            onChange={(e) => {
-              if (e.selectedItem) {
-                setProvider(e.selectedItem.text);
-              }
-            }}
-            selectedItem={
-              providers.find((p) => p.text === provider) ||
-              (provider ? { id: provider, text: provider } : null)
-            }
-            allowCustomValue
-            onInputChange={(text) => setProvider(text)}
+            labelText={intl.formatMessage({ id: "eqa.enrollment.provider" })}
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            placeholder={intl.formatMessage({
+              id: "eqa.enrollment.provider.placeholder",
+            })}
           />
         </Column>
         <Column lg={6} md={4} sm={4}>
@@ -179,53 +162,55 @@ const InlineEnrollmentForm = ({ enrollment, onSave, onCancel }) => {
         </Column>
       </Grid>
 
-      <Grid condensed style={{ marginTop: "1rem" }}>
-        <Column lg={5} md={4} sm={4}>
-          <FilterableMultiSelect
-            id="enrollment-lab-units"
-            titleText={intl.formatMessage({
-              id: "eqa.enrollment.labUnits",
-            })}
-            items={labUnits}
-            itemToString={(item) => (item ? item.text : "")}
-            initialSelectedItems={selectedLabUnits}
-            onChange={(e) => setSelectedLabUnits(e.selectedItems)}
-            placeholder={intl.formatMessage({
-              id: "eqa.enrollment.selectLabUnits",
-            })}
-          />
-        </Column>
-        <Column lg={5} md={4} sm={4}>
-          <FilterableMultiSelect
-            id="enrollment-tests"
-            titleText={intl.formatMessage({
-              id: "eqa.enrollment.tests",
-            })}
-            items={tests}
-            itemToString={(item) => (item ? item.text : "")}
-            initialSelectedItems={selectedTests}
-            onChange={(e) => setSelectedTests(e.selectedItems)}
-            placeholder={intl.formatMessage({
-              id: "eqa.enrollment.selectTests",
-            })}
-          />
-        </Column>
-        <Column lg={6} md={4} sm={4}>
-          <FilterableMultiSelect
-            id="enrollment-panels"
-            titleText={intl.formatMessage({
-              id: "eqa.enrollment.panels",
-            })}
-            items={panels}
-            itemToString={(item) => (item ? item.text : "")}
-            initialSelectedItems={selectedPanels}
-            onChange={(e) => setSelectedPanels(e.selectedItems)}
-            placeholder={intl.formatMessage({
-              id: "eqa.enrollment.selectPanels",
-            })}
-          />
-        </Column>
-      </Grid>
+      {dataReady && (
+        <Grid condensed style={{ marginTop: "1rem" }}>
+          <Column lg={5} md={4} sm={4}>
+            <FilterableMultiSelect
+              id="enrollment-lab-units"
+              titleText={intl.formatMessage({
+                id: "eqa.enrollment.labUnits",
+              })}
+              items={labUnits}
+              itemToString={(item) => (item ? item.text : "")}
+              initialSelectedItems={selectedLabUnits}
+              onChange={(e) => setSelectedLabUnits(e.selectedItems)}
+              placeholder={intl.formatMessage({
+                id: "eqa.enrollment.selectLabUnits",
+              })}
+            />
+          </Column>
+          <Column lg={5} md={4} sm={4}>
+            <FilterableMultiSelect
+              id="enrollment-tests"
+              titleText={intl.formatMessage({
+                id: "eqa.enrollment.tests",
+              })}
+              items={tests}
+              itemToString={(item) => (item ? item.text : "")}
+              initialSelectedItems={selectedTests}
+              onChange={(e) => setSelectedTests(e.selectedItems)}
+              placeholder={intl.formatMessage({
+                id: "eqa.enrollment.selectTests",
+              })}
+            />
+          </Column>
+          <Column lg={6} md={4} sm={4}>
+            <FilterableMultiSelect
+              id="enrollment-panels"
+              titleText={intl.formatMessage({
+                id: "eqa.enrollment.panels",
+              })}
+              items={panels}
+              itemToString={(item) => (item ? item.text : "")}
+              initialSelectedItems={selectedPanels}
+              onChange={(e) => setSelectedPanels(e.selectedItems)}
+              placeholder={intl.formatMessage({
+                id: "eqa.enrollment.selectPanels",
+              })}
+            />
+          </Column>
+        </Grid>
+      )}
 
       <div
         style={{

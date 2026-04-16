@@ -12,6 +12,7 @@ import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
+import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
@@ -101,6 +102,14 @@ const ShipmentReport = React.lazy(
 );
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import {
+  OrderProvider,
+  OrderDashboard,
+  OrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+} from "./components/order";
 
 export default function App() {
   const defaultLocale =
@@ -517,6 +526,47 @@ export default function App() {
                   )}
                   role={Roles.RECEPTION}
                 />
+                {/* Decoupled Sample Collection Workflow - NAV-2 */}
+                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                <Route
+                  path="/order"
+                  render={({ match }) => (
+                    <OrderProvider>
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <OrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
@@ -528,6 +578,12 @@ export default function App() {
                   exact
                   component={() => <FindOrder />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NceDashboard"
+                  exact
+                  component={() => <NonConformIndex form="NceDashboard" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/ReportNonConformingEvent"
@@ -601,7 +657,7 @@ export default function App() {
                 <SecureRoute
                   path="/EQAManagement"
                   exact
-                  component={() => <EQAManagementDashboard />}
+                  component={() => <EQAProgramManagement />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute

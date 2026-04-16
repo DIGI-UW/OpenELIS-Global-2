@@ -165,7 +165,7 @@ const EQAOrdersPage = () => {
   }
 
   return (
-    <div className="adminPageContent">
+    <div className="pageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <Grid fullWidth={true}>
