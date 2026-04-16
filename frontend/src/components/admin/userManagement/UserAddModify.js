@@ -1251,7 +1251,9 @@ function UserAddModify() {
                         <Checkbox
                           id="no-options-global-roles"
                           value=""
-                          labelText="No options available"
+                          labelText={intl.formatMessage({
+                            id: "label.no.options.available",
+                          })}
                         />
                       )}
                     </FormGroup>
@@ -1309,13 +1311,16 @@ function UserAddModify() {
                             <SelectItem
                               key="no-option-test-section"
                               value=""
-                              text="No options available"
+                              text={intl.formatMessage({
+                                id: "label.no.options.available",
+                              })}
                             />
                           )}
                         </Select>
                         <br />
                         <Checkbox
                           id={`all-permissions-${key}`}
+                          data-testid={`all-permissions-${(userDataShow?.testSections?.find((s) => s.id === key)?.value || key).replace(/\s+/g, "-")}`}
                           labelText={"All Permissions"}
                           checked={["4", "5", "7", "10"].every(
                             (num) =>
@@ -1390,7 +1395,9 @@ function UserAddModify() {
                             <Checkbox
                               id="no-options-lab-units"
                               value=""
-                              labelText="No options available"
+                              labelText={intl.formatMessage({
+                                id: "label.no.options.available",
+                              })}
                             />
                           )}
                         </FormGroup>

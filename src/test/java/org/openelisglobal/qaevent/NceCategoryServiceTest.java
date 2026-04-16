@@ -42,9 +42,9 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllNceCategories();
         assertNotNull(nceCategoryList);
         assertEquals(5, nceCategoryList.size());
-        assertEquals("1004", nceCategoryList.get(3).getId());
+        assertEquals(Integer.valueOf(1004), nceCategoryList.get(3).getId());
         assertEquals("nce.improper_storage_conditions", nceCategoryList.get(1).getDisplayKey());
-        assertEquals("f", nceCategoryList.get(3).getActive());
+        assertEquals(false, nceCategoryList.get(3).getActive());
     }
 
     @Test
@@ -52,7 +52,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllMatching("lastupdated", Timestamp.valueOf("2025-07-25 10:30:00"));
         assertNotNull(nceCategoryList);
         assertEquals(2, nceCategoryList.size());
-        assertEquals("1003", nceCategoryList.get(1).getId());
+        assertEquals(Integer.valueOf(1003), nceCategoryList.get(1).getId());
     }
 
     @Test
@@ -60,7 +60,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllMatching(propertyValues);
         assertNotNull(nceCategoryList);
         assertEquals(3, nceCategoryList.size());
-        assertEquals("1004", nceCategoryList.get(1).getId());
+        assertEquals(Integer.valueOf(1004), nceCategoryList.get(1).getId());
     }
 
     @Test
@@ -68,7 +68,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllOrdered("id", false);
         assertNotNull(nceCategoryList);
         assertEquals(5, nceCategoryList.size());
-        assertEquals("1005", nceCategoryList.get(4).getId());
+        assertEquals(Integer.valueOf(1005), nceCategoryList.get(4).getId());
     }
 
     @Test
@@ -76,7 +76,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllOrdered(orderProperties, true);
         assertNotNull(nceCategoryList);
         assertEquals(5, nceCategoryList.size());
-        assertEquals("1002", nceCategoryList.get(3).getId());
+        assertEquals(Integer.valueOf(1002), nceCategoryList.get(3).getId());
     }
 
     @Test
@@ -85,7 +85,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
                 true);
         assertNotNull(nceCategoryList);
         assertEquals(1, nceCategoryList.size());
-        assertEquals("1003", nceCategoryList.get(0).getId());
+        assertEquals(Integer.valueOf(1003), nceCategoryList.get(0).getId());
     }
 
     @Test
@@ -94,7 +94,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
                 orderProperties, true);
         assertNotNull(nceCategoryList);
         assertEquals(1, nceCategoryList.size());
-        assertEquals("1003", nceCategoryList.get(0).getId());
+        assertEquals(Integer.valueOf(1003), nceCategoryList.get(0).getId());
     }
 
     @Test
@@ -102,7 +102,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllMatchingOrdered(propertyValues, "id", true);
         assertNotNull(nceCategoryList);
         assertEquals(3, nceCategoryList.size());
-        assertEquals("1002", nceCategoryList.get(2).getId());
+        assertEquals(Integer.valueOf(1002), nceCategoryList.get(2).getId());
     }
 
     @Test
@@ -110,7 +110,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAllMatchingOrdered(propertyValues, orderProperties, false);
         assertNotNull(nceCategoryList);
         assertEquals(3, nceCategoryList.size());
-        assertEquals("1005", nceCategoryList.get(2).getId());
+        assertEquals(Integer.valueOf(1005), nceCategoryList.get(2).getId());
     }
 
     @Test
@@ -183,7 +183,7 @@ public class NceCategoryServiceTest extends BaseWebContextSensitiveTest {
         nceCategoryList = nceCategoryService.getAll();
         assertEquals(5, nceCategoryList.size());
         assertTrue(nceCategoryList.stream().anyMatch(nca -> "Instrument Calibration Error".equals(nca.getName())));
-        NceCategory nceCategory = nceCategoryService.get("1005");
+        NceCategory nceCategory = nceCategoryService.get(1005);
         nceCategoryService.delete(nceCategory);
         List<NceCategory> newNceCategories = nceCategoryService.getAll();
         assertFalse(newNceCategories.stream().anyMatch(nca -> "Instrument Calibration Error".equals(nca.getName())));

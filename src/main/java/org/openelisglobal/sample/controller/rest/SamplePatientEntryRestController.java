@@ -10,11 +10,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.GenericValidator;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.DocumentHelper;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.r4.model.Enumerations.ResourceType;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Task;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
+import org.openelisglobal.barcode.service.BarcodeWorkflowPrintService;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
@@ -52,6 +58,7 @@ import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.OrderPriority;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
 import org.openelisglobal.spring.util.SpringContext;
@@ -79,6 +86,9 @@ import org.springframework.web.servlet.support.RequestContextUtils;
 @Controller
 @RequestMapping(value = "/rest/")
 public class SamplePatientEntryRestController extends BaseSampleEntryController {
+
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory
+            .getLogger(SamplePatientEntryRestController.class);
 
     @Value("${org.openelisglobal.requester.identifier:}")
     private String requestFhirUuid;
@@ -137,8 +147,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "referralItems*.referredResultType", "referralItems*.modified", "referralItems*.inLabResultId",
             "referralItems*.referralReasonId", "referralItems*.referrer", "referralItems*.referredInstituteId",
             "referralItems*.referredSendDate", "referralItems*.referredTestId", "referralItems*.referredReportDate",
-            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions",
-            "sampleOrderItems.programId" };
+            "referralItems*.note", "useReferral", "sampleOrderItems.additionalQuestions", "sampleOrderItems.programId",
+            "orderEntryOnly" };
 
     @Autowired
     private SamplePatientEntryFormValidator formValidator;
@@ -171,6 +181,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private SystemUserService systemUserService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -229,15 +241,33 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
+        // Extract sampleOrder and workflowType early so we can check for environmental
+        // workflow
+        SampleOrderItem sampleOrder = form.getSampleOrderItems();
+        String workflowType = sampleOrder != null ? sampleOrder.getEnvironmentalFieldAsString("workflowType") : null;
+
         formValidator.validate(form, result);
+
+        // OGC-356: For environmental workflow, only check for non-patient validation
+        // errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
         if (result.hasErrors()) {
-            saveErrors(result);
-            setupForm(form, request, "");
+            boolean hasNonPatientErrors = true;
+            if ("environmental".equals(workflowType)) {
+                List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                        .filter(error -> !error.getField().startsWith("patientProperties."))
+                        .collect(Collectors.toList());
+                hasNonPatientErrors = !nonPatientErrors.isEmpty();
+            }
+
+            if (hasNonPatientErrors) {
+                saveErrors(result);
+                return form;
+            }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
-        SampleOrderItem sampleOrder = form.getSampleOrderItems();
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -255,32 +285,71 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
+
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
+
+        // OGC-356: For environmental workflow, don't save patient data
+        if ("environmental".equals(workflowType)) {
+            updateData.setSavePatient(false);
+            updateData.setPatientErrors(new BaseErrors());
+        }
 
         updateData.setAccessionNumber(sampleOrder.getLabNo());
         updateData.setReferringId(sampleOrder.getExternalOrderNumber());
         updateData.setPriority(sampleOrder.getPriority());
         updateData.initProvider(sampleOrder);
+
+        // initSampleData MUST be called before initProgramQuestions so that the sample
+        // object is loaded (for updates) before we try to load the existing
+        // ProgramSample
+        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
+
+        // Now that sample is loaded, we can initialize program questions (which needs
+        // sample.id for updates)
         if (!GenericValidator.isBlankOrNull(sampleOrder.getProgramId())) {
             updateData.initProgramQuestions(sampleOrder.getProgramId(), sampleOrder.getAdditionalQuestions());
         }
-        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
+
         updateData.setPatientEmailNotificationTestIds(form.getPatientEmailNotificationTestIds());
         updateData.setPatientSMSNotificationTestIds(form.getPatientSMSNotificationTestIds());
         updateData.setProviderEmailNotificationTestIds(form.getProviderEmailNotificationTestIds());
         updateData.setProviderSMSNotificationTestIds(form.getProviderSMSNotificationTestIds());
         updateData.setCustomNotificationLogic(form.getCustomNotificationLogic());
+        if (sampleOrder.getIsEQASample()) {
+            updateData.setEqaSample(true);
+            updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
+            updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
+            updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
+            updateData.setEqaPriority(sampleOrder.getEqaPriority());
+        }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
         }
-        updateData.validateSample(result);
-        if (result.hasErrors()) {
+
+        // For decoupled workflow (orderEntryOnly=true), samples are not required
+        // They will be added in a later step (Collect Sample)
+        boolean requireSampleItems = !form.isOrderEntryOnly();
+
+        updateData.validateSample(result, requireSampleItems);
+
+        // OGC-356: For environmental workflow, ignore patient-related validation errors
+        // Environmental samples don't require patient data (gender, nationalId, etc.)
+        boolean hasNonPatientErrors = result.hasErrors();
+        if (hasNonPatientErrors && "environmental".equals(workflowType)) {
+            // Check if all errors are patient-related
+            List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
+                    .filter(error -> !error.getField().startsWith("patientProperties.")).collect(Collectors.toList());
+            hasNonPatientErrors = !nonPatientErrors.isEmpty();
+        }
+
+        if (hasNonPatientErrors) {
             saveErrors(result);
-            setupForm(form, request, "");
+            return form;
         }
 
         try {
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
+            populateWorkflowPrintModels(form, sampleOrder.getLabNo());
             try {
                 SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
                         patientInfo, form);
@@ -289,10 +358,10 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 LogEvent.logError(e);
             }
 
-            if (sampleOrder.getPriority().equals(OrderPriority.STAT)) {
+            if (sampleOrder.getPriority() != null && sampleOrder.getPriority().equals(OrderPriority.STAT)) {
                 List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
-                List<Analysis> analyses = sampleService
-                        .getAnalysis(sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo()));
+                Sample statSample = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+                List<Analysis> analyses = statSample != null ? sampleService.getAnalysis(statSample) : null;
                 String message = MessageUtil.getMessage("notification.order.stat",
                         AlphanumAccessionValidator.convertAlphaNumLabNumForDisplay(sampleOrder.getLabNo()));
                 StringBuffer sb = new StringBuffer(message);
@@ -320,20 +389,21 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             // String fhir_json = fhirTransformService.CreateFhirFromOESample(updateData,
             // patientUpdate, patientInfo, form, request);
         } catch (LIMSRuntimeException e) {
-            // ActionError error;
+            LogEvent.logError("persistData failed with LIMSRuntimeException", e);
             if (e.getCause() instanceof StaleObjectStateException) {
-                // error = new ActionError("errors.OptimisticLockException", null, null);
                 result.reject("errors.OptimisticLockException", "errors.OptimisticLockException");
             } else {
-                LogEvent.logDebug(e);
-                // error = new ActionError("errors.UpdateException", null, null);
+                logger.error("Order save failed for labNo={}", sampleOrder.getLabNo(), e);
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
-            LogEvent.logInfo(this.getClass().getSimpleName(), "samplePatientEntrySave", result.toString());
+            logger.error("SamplePatientEntry errors: {}", result.toString());
+        } catch (Exception e) {
+            logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
+            result.reject("errors.UpdateException", "errors.UpdateException");
 
             // errors.add(ActionMessages.GLOBAL_MESSAGE, error);
-            saveErrors(result);// TODO theses errors are not communicated to the frontend return an error code
-                               // if svae is not successful
+            saveErrors(result); // TODO theses errors are not communicated to the frontend return an error code
+            // if svae is not successful
 
             setupForm(form, request, "");
             request.setAttribute(ALLOW_EDITS_KEY, "false");
@@ -369,6 +439,57 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
 
         return (form);
+    }
+
+    void populateWorkflowPrintModels(SamplePatientEntryForm form, String accessionNumber) {
+        ParsedLabelQuantities labelQuantities = extractLabelQuantities(form.getSampleXML());
+        LabelsSectionForm labelsSection = barcodeWorkflowPrintService.buildLabelsSection(labelQuantities.orderQuantity,
+                labelQuantities.specimenQuantities);
+        PostSavePrintDialogForm postSavePrintDialog = barcodeWorkflowPrintService
+                .buildPostSavePrintDialog(accessionNumber, labelsSection);
+        form.setLabelsSection(labelsSection);
+        form.setPostSavePrintDialog(postSavePrintDialog);
+    }
+
+    ParsedLabelQuantities extractLabelQuantities(String sampleXml) {
+        ParsedLabelQuantities quantities = new ParsedLabelQuantities();
+        if (GenericValidator.isBlankOrNull(sampleXml)) {
+            return quantities;
+        }
+        try {
+            Document sampleDocument = DocumentHelper.parseText(sampleXml);
+            List<org.dom4j.Element> sampleElements = sampleDocument.getRootElement().elements("sample");
+            if (sampleElements != null && !sampleElements.isEmpty()) {
+                org.dom4j.Element firstSample = sampleElements.get(0);
+                quantities.orderQuantity = parseLabelQuantity(firstSample.attributeValue("numOrderLabels"));
+                quantities.specimenQuantities.clear();
+                for (org.dom4j.Element sampleElement : sampleElements) {
+                    quantities.specimenQuantities
+                            .add(parseLabelQuantity(sampleElement.attributeValue("numSpecimenLabels")));
+                }
+            }
+        } catch (DocumentException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "extractLabelQuantities",
+                    "Unable to parse sample XML for label quantities");
+        }
+        return quantities;
+    }
+
+    static class ParsedLabelQuantities {
+        int orderQuantity = 1;
+        List<Integer> specimenQuantities = new java.util.ArrayList<>(List.of(1));
+    }
+
+    private int parseLabelQuantity(String value) {
+        if (GenericValidator.isBlankOrNull(value)) {
+            return 1;
+        }
+        try {
+            int parsed = Integer.parseInt(value);
+            return parsed > 0 ? parsed : 1;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
     }
 
     private void setupForm(SamplePatientEntryForm form, HttpServletRequest request, String externalOrderNumber)

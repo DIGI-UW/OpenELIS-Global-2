@@ -29,6 +29,7 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
 
     DictionaryServiceImpl() {
         super(Dictionary.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -73,6 +74,7 @@ public class DictionaryServiceImpl extends AuditableBaseObjectServiceImpl<Dictio
     @Transactional
     public void delete(Dictionary dictionary) {
         Dictionary oldData = get(dictionary.getId());
+        getBaseObjectDAO().evict(oldData);
         oldData.setIsActive(IActionConstants.NO);
         oldData.setSysUserId(dictionary.getSysUserId());
         updateDelete(oldData);
