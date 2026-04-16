@@ -72,8 +72,15 @@ const QC_CHECKLIST = [
  */
 const DISCREPANCY_TYPES = [
   { id: "MISSING_SAMPLE", label: "Missing Sample" },
+  { id: "WRONG_SAMPLE_IN_POSITION", label: "Wrong Sample In Position" },
   { id: "DAMAGED_LABEL", label: "Damaged/Illegible Label" },
   { id: "MISPLACED_ITEM", label: "Misplaced Item (Wrong Position)" },
+  {
+    id: "EMPTY_POSITION_REGISTERED_OCCUPIED",
+    label: "Empty Position But Registered Occupied",
+  },
+  { id: "LABELING_ERROR", label: "Labeling Error" },
+  { id: "BOX_RACK_MISPLACEMENT", label: "Box/Rack Misplacement" },
   { id: "CONTAINER_DAMAGE", label: "Container Damage" },
   { id: "VOLUME_DISCREPANCY", label: "Volume Discrepancy" },
   { id: "OTHER", label: "Other" },
@@ -114,6 +121,7 @@ function BiorepositoryQCInspectionPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [qcRoundInfo, setQcRoundInfo] = useState(null);
 
   // Bulk apply modal state
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
@@ -293,6 +301,15 @@ function BiorepositoryQCInspectionPage({
         );
         return;
       }
+      if (!bulkApplyValues.remarks.trim()) {
+        setError(
+          intl.formatMessage({
+            id: "biorepository.qc.error.noRemarks",
+            defaultMessage: "Please provide comments for failed QC records.",
+          }),
+        );
+        return;
+      }
     }
 
     setIsBulkApplying(true);
@@ -320,6 +337,8 @@ function BiorepositoryQCInspectionPage({
           ? bulkApplyValues.correctiveAction
           : null,
       remarks: bulkApplyValues.remarks || null,
+      qcBatchId: qcRoundInfo?.qcBatchId || null,
+      expectedCoordinateSnapshot: null,
     };
 
     postToOpenElisServerJsonResponse(
@@ -341,6 +360,7 @@ function BiorepositoryQCInspectionPage({
           setBulkApplyModalOpen(false);
           resetBulkApplyValues();
           setSelectedForBulkApply([]); // Clear captured selection
+          setQcRoundInfo(null);
           loadStoredSamples();
           if (onProgressUpdate) {
             onProgressUpdate();
@@ -360,10 +380,42 @@ function BiorepositoryQCInspectionPage({
   }, [
     selectedForBulkApply,
     bulkApplyValues,
+    qcRoundInfo,
     intl,
     loadStoredSamples,
     onProgressUpdate,
   ]);
+
+  const handleGenerateQCRound = useCallback(() => {
+    setError(null);
+    postToOpenElisServerJsonResponse(
+      `/rest/biorepository/qc-inspection/generate-round`,
+      JSON.stringify({ boxesPerRound: 10, samplesPerBox: 3 }),
+      (response) => {
+        if (response?.error) {
+          setError(response.error);
+          return;
+        }
+        const generatedIds = (response?.samples || [])
+          .map((s) => String(s.bioSampleId))
+          .filter(Boolean);
+        if (generatedIds.length === 0) {
+          setError(
+            intl.formatMessage({
+              id: "biorepository.qc.error.emptyRound",
+              defaultMessage:
+                "No eligible samples were found to generate a QC round.",
+            }),
+          );
+          return;
+        }
+        setQcRoundInfo(response);
+        setSelectedForBulkApply(generatedIds);
+        resetBulkApplyValues();
+        setBulkApplyModalOpen(true);
+      },
+    );
+  }, [intl]);
 
   // Calculate stats
   const totalSamples = samples.length;
@@ -508,6 +560,34 @@ function BiorepositoryQCInspectionPage({
           lowContrast
         />
       )}
+
+      {qcRoundInfo && (
+        <InlineNotification
+          kind="info"
+          title={intl.formatMessage(
+            {
+              id: "biorepository.qc.round.generated",
+              defaultMessage:
+                "QC round {batch} generated: {boxes} box(es), {samples} sample(s).",
+            },
+            {
+              batch: qcRoundInfo.qcBatchId,
+              boxes: qcRoundInfo.boxesSelected || 0,
+              samples: qcRoundInfo.samplesSelected || 0,
+            },
+          )}
+          lowContrast
+        />
+      )}
+
+      <div style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
+        <Button kind="secondary" size="sm" onClick={handleGenerateQCRound}>
+          <FormattedMessage
+            id="biorepository.qc.generateRound"
+            defaultMessage="Generate Random QC Round"
+          />
+        </Button>
+      </div>
 
       {/* Samples Table */}
       <div className="sample-table-section" style={{ marginTop: "1rem" }}>
