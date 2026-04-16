@@ -38,7 +38,8 @@ import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
+import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
+import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
@@ -841,6 +842,12 @@ export function SearchResults(props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
   const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
+  // Storage picker modal state — which analysisId's row currently has the
+  // modal open. Result Entry is the documented "modal exception" in the
+  // LocationPicker refactor: page navigation from a deeply-nested
+  // expandable result row would be jarring, so this site uses
+  // LocationPickerModal instead of LocationPickerPage.
+  const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
 
@@ -1633,32 +1640,94 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage Location Widget - INT-002: Integration point */}
+        {/* Storage Location — Phase 6 of the picker refactor.
+            Result Entry uses the modal variant (documented exception)
+            so page nav from this deeply-nested expanded row doesn't
+            happen. The modal opens when the user clicks the trigger
+            button below. */}
         <Grid style={{ marginTop: "1rem" }}>
           <Column lg={16}>
-            <StorageLocationSelector
-              workflow="results"
-              showQuickFind={true}
-              sampleInfo={{
-                sampleItemId: sampleItemId || null,
-                sampleItemExternalId:
-                  locationData && typeof locationData === "object"
-                    ? locationData.sampleItemExternalId
-                    : null,
-                sampleAccessionNumber: data.accessionNumber,
-                sampleId: sampleItemId || data.accessionNumber, // Use sampleItemId
-                type: data.sampleType || "",
-                status: data.sampleStatus || "Active",
-              }}
-              hierarchicalPath={currentLocationPath}
-              onLocationChange={(locationData) => {
-                handleLocationAssignment(
-                  locationData,
-                  analysisId,
-                  sampleItemId,
-                );
-              }}
-            />
+            <div className="result-entry-storage-section">
+              <div className="result-entry-storage-current">
+                <strong>
+                  <FormattedMessage
+                    id="storage.location.current"
+                    defaultMessage="Storage location"
+                  />
+                  :
+                </strong>{" "}
+                {currentLocationPath || (
+                  <FormattedMessage
+                    id="storage.location.unassigned"
+                    defaultMessage="Unassigned"
+                  />
+                )}
+              </div>
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={() => setStorageModalRow(data.id)}
+              >
+                <FormattedMessage
+                  id={
+                    currentLocationPath
+                      ? "storage.location.move"
+                      : "storage.location.assign"
+                  }
+                  defaultMessage={
+                    currentLocationPath
+                      ? "Move storage location"
+                      : "Assign storage location"
+                  }
+                />
+              </Button>
+              <LocationPickerModal
+                isOpen={storageModalRow === data.id}
+                sample={{
+                  id: sampleItemId || data.accessionNumber,
+                  sampleAccessionNumber: data.accessionNumber,
+                  sampleType: data.sampleType || "",
+                  status: data.sampleStatus || "Active",
+                }}
+                currentLocation={null}
+                onConfirm={({ selection, position, reason, notes }) => {
+                  // Adapt new picker shape → legacy handleLocationAssignment
+                  // input (newLocation with room/device/shelf/rack/box keys
+                  // + positionCoordinate string + conditionNotes).
+                  let positionCoordinate = null;
+                  if (position) {
+                    if (position.mode === "text") {
+                      positionCoordinate =
+                        (position.value || "").trim() || null;
+                    } else if (position.mode === "grid") {
+                      const row = (position.row || "").toString().trim();
+                      const col = (position.column || "").toString().trim();
+                      positionCoordinate = row + col || null;
+                    }
+                  }
+                  const newLocation = {};
+                  LEVEL_ORDER.forEach((lvl) => {
+                    if (selection[lvl]) newLocation[lvl] = selection[lvl];
+                  });
+                  handleLocationAssignment(
+                    {
+                      sample: {
+                        sampleItemId,
+                        sampleAccessionNumber: data.accessionNumber,
+                      },
+                      newLocation,
+                      positionCoordinate,
+                      conditionNotes: notes || "",
+                      reason: reason || null,
+                    },
+                    analysisId,
+                    sampleItemId,
+                  );
+                  setStorageModalRow(null);
+                }}
+                onCancel={() => setStorageModalRow(null)}
+              />
+            </div>
           </Column>
         </Grid>
         {/* Report NCE */}
