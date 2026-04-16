@@ -1,73 +1,41 @@
 import { Page, Locator, expect } from "@playwright/test";
-import {
-  QUICK_TIMEOUT,
-  SHORT_TIMEOUT,
-  UI_TIMEOUT,
-  LONG_TIMEOUT,
-} from "../helpers/timeouts";
+import { SHORT_TIMEOUT, UI_TIMEOUT, LONG_TIMEOUT } from "../helpers/timeouts";
 
 /**
- * Shared Page Object for the `<StorageLocationSelector />` component tree.
+ * Page Object for the StorageLocationSelector component tree, covering both
+ * user modes:
+ *   - Search: click the "Search for location..." combobox to open a tree of
+ *     existing rooms/devices/shelves; click a node to select.
+ *   - Create: click the "Location" / "Add Location" button to switch to
+ *     cascading Room → Device → Shelf → Rack ComboBoxes; type into each
+ *     and either pick an existing option or click "Add new".
  *
- * This selector appears in four places (each represented by its own spec):
- *   1. Storage Dashboard → Sample Items tab (via `LocationManagementModal`)
- *   2. Order workflow → Step 3 "Label & Store" (inline, legacy autocomplete mode)
- *   3. Add Order → Sample Type step (inline, two-tier design)
- *   4. Result Entry → expandable search-result row
+ * Selector strategy follows .specify/guides/playwright-best-practices.md:
+ * semantic role-based selectors first (resilient across Carbon updates),
+ * data-testid only when role selectors don't uniquely identify the element.
  *
- * The selector has two user modes:
- *   - **Search** (default): a tree-view / autocomplete input (`location-filter-dropdown`)
- *     where the user clicks and picks an existing Room → Device → Shelf path.
- *   - **Create** (toggle via "Add Location" button): cascading Carbon ComboBoxes
- *     (`room-combobox`, `device-combobox`, `shelf-combobox`, `rack-combobox`)
- *     that allow inline creation of new hierarchy levels as the user types.
+ * The DOM was verified against testing.openelis-global.org via accessibility
+ * snapshots in test-results/. The most stable landmarks are:
+ *   - role=combobox, name="Search for location..."   — search input
+ *   - role=combobox, name="Room" | "Device" | etc.   — cascading levels
+ *   - role=button,   name="Location"                 — toggle to create mode
+ *   - role=button,   name="Add new"                  — inline-create per level
+ *   - role=button,   name="Add"                      — confirm inline create
+ *   - role=button,   name="Assign" | "Confirm Move"  — confirm modal
  *
- * This POM encapsulates both flows so every site's spec can express the user
- * story without re-deriving selectors.
- *
- * Selector source of truth (lines verified in develop):
- *   - `storage-location-selector`           StorageLocationSelector.jsx:165,188
- *   - `location-management-modal`           LocationManagementModal.jsx:629
- *   - `location-search-and-create`          LocationSearchAndCreate.jsx:497
- *   - `add-location-button` (search→create) LocationSearchAndCreate.jsx:522
- *   - `location-create-container`           LocationSearchAndCreate.jsx:534
- *   - `add-location-create-button` (confirm create) LocationSearchAndCreate.jsx:566
- *   - `location-filter-dropdown`            LocationFilterDropdown.jsx:87
- *   - `location-tree-view`                  LocationTreeView.jsx:171
- *   - `location-autocomplete`               LocationAutocomplete.jsx:74
- *   - `room-combobox` / `device-combobox` / `shelf-combobox` / `rack-combobox`
- *                                            EnhancedCascadingMode.jsx:1487,1580,1665,1754
- *   - `assign-button` / `confirm-move-button` LocationManagementModal.jsx:1001
- *   - `sample-actions-overflow-menu`        SampleActionsOverflowMenu.jsx:60
- *   - `manage-location-menu-item`           SampleActionsOverflowMenu.jsx:68
- *   - `dispose-menu-item`                   SampleActionsOverflowMenu.jsx:76
+ * Construct via `inLocationManagementModal(page)` to scope inside the
+ * "Manage Location" modal (Storage Dashboard, Result Entry), or pass a
+ * custom root locator for inline contexts (Order Label, Add Order Sample).
  */
 export class StorageLocationSelector {
   readonly page: Page;
-  /**
-   * Root of the selector. Scope the POM to a specific instance on the page
-   * (e.g. a modal, a row, or the Order Label form) by passing a root locator.
-   * Defaults to the first `storage-location-selector` on the page.
-   */
   readonly root: Locator;
 
-  constructor(page: Page, root?: Locator) {
+  constructor(page: Page, root: Locator) {
     this.page = page;
-    this.root =
-      root ?? page.locator('[data-testid="storage-location-selector"]').first();
+    this.root = root;
   }
 
-  /**
-   * Scope a POM to the location management modal (used by Storage Dashboard
-   * and Result Entry workflows).
-   *
-   * Important: the modal renders `LocationSearchAndCreate` directly without
-   * wrapping it in the higher-level `StorageLocationSelector` component, so
-   * the `storage-location-selector` testid is NOT inside the modal subtree.
-   * Scope to the modal itself; child locators below resolve correctly because
-   * the search-and-create wrapper, the add-location button, and all the
-   * cascading comboboxes are all descendants of the modal root.
-   */
   static inLocationManagementModal(page: Page): StorageLocationSelector {
     return new StorageLocationSelector(
       page,
@@ -75,120 +43,71 @@ export class StorageLocationSelector {
     );
   }
 
-  // ── Visibility ────────────────────────────────────────────────────────────
-
-  async expectVisible() {
-    await expect(this.root).toBeVisible({ timeout: UI_TIMEOUT });
-  }
-
-  // ── Mode toggles ──────────────────────────────────────────────────────────
-
-  get searchWrapper(): Locator {
-    return this.root.locator('[data-testid="location-search-and-create"]');
-  }
-
-  get createWrapper(): Locator {
-    return this.root.locator('[data-testid="location-create-container"]');
-  }
-
-  /**
-   * Click the "Add Location" button that toggles from search-mode to
-   * cascading-create mode. In the Move Sample modal this button renders with
-   * the text "Location" and a `+` icon.
-   */
-  async clickAddLocation() {
-    const btn = this.root
-      .locator('[data-testid="add-location-button"]')
-      .first();
-    await expect(btn).toBeVisible({ timeout: SHORT_TIMEOUT });
-    await btn.click();
-    await expect(this.createWrapper).toBeVisible({ timeout: UI_TIMEOUT });
-  }
-
   // ── Search flow ───────────────────────────────────────────────────────────
 
   /**
-   * Open the tree-view/autocomplete dropdown that lists existing locations.
-   * Clicks the search input to trigger `isOpen=true` on LocationFilterDropdown.
+   * Open the dropdown by clicking the search input. Carbon's TextInput renders
+   * as role=textbox (the underlying <input>), and LocationFilterDropdown sets
+   * isOpen=true on its onFocus handler.
    */
   async openSearchDropdown() {
-    const filter = this.root
-      .locator('[data-testid="location-filter-dropdown"]')
-      .first();
-    await expect(filter).toBeVisible({ timeout: UI_TIMEOUT });
-    // The filter input itself — click to open the tree view.
-    await filter.locator("input").first().click();
-    // Tree view appears when the input gains focus.
-    await expect(
-      this.page.locator('[data-testid="location-tree-view"]'),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
+    const search = this.root.getByRole("textbox", {
+      name: /search for location/i,
+    });
+    await search.click();
   }
 
-  /**
-   * Type into the search input to trigger autocomplete mode (≥2 chars).
-   */
-  async typeSearch(query: string) {
-    const filter = this.root
-      .locator('[data-testid="location-filter-dropdown"]')
-      .first();
-    await filter.locator("input").first().fill(query);
-    await expect(
-      this.page.locator('[data-testid="location-autocomplete"]'),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
-  }
-
-  /**
-   * Pick a location option by visible text from the tree view or autocomplete.
-   * Works whether the user opened the tree or is mid-search.
-   */
+  /** Click an option in the open tree/autocomplete by visible text. */
   async selectLocationByText(text: string | RegExp) {
-    const option = this.page
-      .locator(
-        '[data-testid="location-tree-view"], [data-testid="location-autocomplete"]',
-      )
-      .getByText(text)
-      .first();
-    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
-    await option.click();
+    await this.page
+      .getByRole("button", { name: text })
+      .or(this.page.getByRole("option", { name: text }))
+      .first()
+      .click({ timeout: UI_TIMEOUT });
   }
 
-  // ── Create flow (cascading ComboBoxes) ────────────────────────────────────
+  // ── Create flow ───────────────────────────────────────────────────────────
+
+  /** Toggle from search to cascading-create mode. */
+  async clickAddLocation() {
+    await this.root
+      .getByRole("button", { name: /^location$/i })
+      .or(this.root.getByRole("button", { name: /^add location$/i }))
+      .first()
+      .click({ timeout: UI_TIMEOUT });
+  }
 
   /**
-   * Fill one level of the cascading create form. Each level (room/device/
-   * shelf/rack) is a Carbon ComboBox that we target via the wrapper's
-   * data-testid. The editable surface is the inner <input> — Carbon doesn't
-   * forward role=combobox to its internal input, so we target by tag.
-   * pressSequentially() triggers Carbon's filter onChange (fill() doesn't —
-   * it batches into one input event the ComboBox doesn't process).
-   * After typing: click the matching option if it appeared, otherwise fall
-   * back to the inline add-new affordance.
+   * Fill one cascading level. Carbon ComboBox: clicks the combobox by
+   * accessible name, types via pressSequentially (Carbon's onChange needs
+   * keystroke events, not single fill). Picks an existing option if the
+   * dropdown shows it, else clicks the "Add new" button to inline-create.
    */
-  private async fillLevelCombobox(
-    level: "room" | "device" | "shelf" | "rack",
+  private async fillLevel(
+    level: "Room" | "Device" | "Shelf" | "Rack",
     name: string,
   ) {
-    const combo = this.createWrapper
-      .locator(`[data-testid="${level}-combobox"]`)
-      .locator("input")
-      .first();
-    await expect(combo).toBeVisible({ timeout: UI_TIMEOUT });
+    const combo = this.root.getByRole("combobox", { name: level, exact: true });
+    await expect(combo).toBeEnabled({ timeout: UI_TIMEOUT });
     await combo.click();
     await combo.pressSequentially(name, { delay: 20 });
+
     const existing = this.page.getByRole("option", { name, exact: true });
     if (await existing.isVisible()) {
       await existing.click();
       return;
     }
-    await this.createWrapper
-      .locator(`[data-testid="add-new-${level}-button"]`)
-      .click();
+    // Inline create — there's one "Add new" button per level row, scoped
+    // to the row by walking up to the level's combobox parent.
+    const row = combo.locator(
+      "xpath=ancestor::*[.//button[normalize-space()='Add new']][1]",
+    );
+    await row.getByRole("button", { name: /^add new$/i }).click();
   }
 
   /**
-   * Fill the cascading create form top-down with either existing or new
-   * names. Pass `{room, device}` at minimum (FR-033a — 2-level floor).
-   * Missing levels are skipped.
+   * Fill the cascading form top-down. Pass `{room, device}` minimum
+   * (FR-033a), optional shelf/rack. Skips levels not provided.
    */
   async fillCascadingCreate(levels: {
     room?: string;
@@ -196,31 +115,23 @@ export class StorageLocationSelector {
     shelf?: string;
     rack?: string;
   }) {
-    if (levels.room) await this.fillLevelCombobox("room", levels.room);
-    if (levels.device) await this.fillLevelCombobox("device", levels.device);
-    if (levels.shelf) await this.fillLevelCombobox("shelf", levels.shelf);
-    if (levels.rack) await this.fillLevelCombobox("rack", levels.rack);
+    if (levels.room) await this.fillLevel("Room", levels.room);
+    if (levels.device) await this.fillLevel("Device", levels.device);
+    if (levels.shelf) await this.fillLevel("Shelf", levels.shelf);
+    if (levels.rack) await this.fillLevel("Rack", levels.rack);
   }
 
-  /**
-   * Confirm the cascading inline creation — clicks the "Add" button inside
-   * the create container.
-   */
+  /** Confirm the inline-create form (the "Add" button at the bottom). */
   async confirmInlineCreate() {
-    const btn = this.createWrapper.locator(
-      '[data-testid="add-location-create-button"]',
-    );
+    const btn = this.root.getByRole("button", { name: /^add$/i });
     await expect(btn).toBeEnabled({ timeout: UI_TIMEOUT });
     await btn.click();
   }
 }
 
 /**
- * Page Object for the `LocationManagementModal` (opens when a user clicks
- * "Manage Location" from the Sample Items overflow menu, or when the Order
- * workflow triggers the two-tier expand modal). Encapsulates the outer modal
- * and the final confirm button — delegate to `StorageLocationSelector` for the
- * inner selector flow.
+ * Wraps the LocationManagementModal — opens via "Manage Location" overflow,
+ * exposes the inner StorageLocationSelector and the modal-level confirm/cancel.
  */
 export class LocationManagementModal {
   readonly page: Page;
@@ -241,52 +152,43 @@ export class LocationManagementModal {
     await expect(this.root).toBeHidden({ timeout: UI_TIMEOUT });
   }
 
-  /**
-   * Click the primary confirm button — either "Assign" (new assignment) or
-   * "Confirm Move" (existing assignment being moved). Both share the same
-   * data-testid at runtime; match either.
-   */
+  /** Click the "Assign" or "Confirm Move" primary action. */
   async confirm() {
-    const btn = this.root.locator(
-      '[data-testid="assign-button"], [data-testid="confirm-move-button"]',
-    );
+    const btn = this.root
+      .getByRole("button", { name: /^assign$/i })
+      .or(this.root.getByRole("button", { name: /^confirm move$/i }));
     await expect(btn).toBeEnabled({ timeout: UI_TIMEOUT });
     await btn.click();
   }
 
   async cancel() {
-    const btn = this.root.locator('button:has-text("Cancel")').first();
-    await btn.click({ timeout: SHORT_TIMEOUT });
+    await this.root.getByRole("button", { name: /^cancel$/i }).click();
   }
 }
 
 /**
- * Helper for Storage Dashboard → Sample Items table. Finds an unassigned row
- * (no location string with ">") and opens its overflow menu → "Manage Location".
+ * Storage Dashboard helper: find an unassigned sample row, click its
+ * "Sample actions" overflow menu → "Manage Location", return the open modal.
  */
 export async function openManageLocationForUnassignedSample(
   page: Page,
 ): Promise<LocationManagementModal> {
   const table = page.locator("table").first();
-  await expect(table).toBeVisible({ timeout: LONG_TIMEOUT });
+  await expect(table.locator("tbody tr").first()).toBeVisible({
+    timeout: LONG_TIMEOUT,
+  });
 
-  // The table mounts before XHR-loaded data renders into rows. Wait for
-  // at least one row before counting — auto-retry handles the data fetch.
   const rows = table.locator("tbody tr");
-  await expect(rows.first()).toBeVisible({ timeout: LONG_TIMEOUT });
   const total = await rows.count();
 
   for (let i = 0; i < total; i++) {
     const row = rows.nth(i);
     const text = (await row.textContent()) ?? "";
-    if (text.includes(">")) continue; // already assigned — skip
+    if (text.includes(">")) continue; // already-assigned rows show "Room > Device > ..."
 
-    // Carbon's <OverflowMenu> renders the trigger AS the testid'd element —
-    // there is no nested <button>. Click the testid directly.
-    await row.locator('[data-testid="sample-actions-overflow-menu"]').click();
+    await row.getByRole("button", { name: /sample actions/i }).click();
     await page
-      .locator('[data-testid="manage-location-menu-item"]')
-      .first()
+      .getByRole("menuitem", { name: /manage location/i })
       .click({ timeout: SHORT_TIMEOUT });
 
     const modal = new LocationManagementModal(page);
@@ -295,13 +197,12 @@ export async function openManageLocationForUnassignedSample(
   }
 
   throw new Error(
-    `No unassigned sample item found in ${total} rows — Track A tests need seed data with at least one sample without a storage location.`,
+    `No unassigned sample item found in ${total} rows — seed at least one ` +
+      `SampleItem without a storage assignment so this regression spec can run.`,
   );
 }
 
-/**
- * Generate a unique location name for create-flow tests so runs don't collide.
- */
+/** Unique name per run so create-flow tests don't collide on retries. */
 export function uniqueLocationName(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}`;
 }
