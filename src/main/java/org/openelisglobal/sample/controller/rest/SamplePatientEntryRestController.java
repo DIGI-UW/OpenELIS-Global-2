@@ -318,9 +318,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (sampleOrder.getIsEQASample()) {
             updateData.setEqaSample(true);
             updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
-            updateData.setEqaProviderOrganizationId(sampleOrder.getEqaProviderOrganizationId());
             updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
-            updateData.setEqaParticipantId(sampleOrder.getEqaParticipantId());
             updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
             updateData.setEqaPriority(sampleOrder.getEqaPriority());
         }
