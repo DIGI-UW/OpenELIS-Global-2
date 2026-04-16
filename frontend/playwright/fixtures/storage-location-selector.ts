@@ -149,88 +149,38 @@ export class StorageLocationSelector {
   // ── Create flow (cascading ComboBoxes) ────────────────────────────────────
 
   /**
-   * In cascading-create mode, choose or type a Room. If the exact value doesn't
-   * exist, the ComboBox's inline-create affordance is triggered via the
-   * `add-new-room-button`.
+   * Fill one level of the cascading create form. Each level (room/device/
+   * shelf/rack) shares the same DOM shape — a ComboBox with input + an
+   * "add-new-<level>-button" sibling. We type via pressSequentially() rather
+   * than fill() because Carbon ComboBox listens to keystroke events; fill()
+   * triggers a single input event that the ComboBox doesn't process for
+   * filtering. After typing, click the matching option if visible, else
+   * fall back to the inline-create affordance.
    */
-  async fillRoomCombobox(name: string) {
+  private async fillLevelCombobox(
+    level: "room" | "device" | "shelf" | "rack",
+    name: string,
+  ) {
     const combo = this.createWrapper
-      .locator('[data-testid="room-combobox"]')
-      .locator("input")
-      .first();
-    await expect(combo).toBeVisible({ timeout: UI_TIMEOUT });
-    await combo.click();
-    // Playwright-preferred input for Carbon ComboBox: real keystrokes, not .fill()
-    await combo.pressSequentially(name, { delay: 20 });
-    // Either pick an existing option or click "Add new".
-    const existing = this.page.getByRole("option", { name, exact: true });
-    if (await existing.isVisible().catch(() => false)) {
-      await existing.click();
-      return;
-    }
-    await this.createWrapper
-      .locator('[data-testid="add-new-room-button"]')
-      .click();
-  }
-
-  async fillDeviceCombobox(name: string) {
-    const combo = this.createWrapper
-      .locator('[data-testid="device-combobox"]')
-      .locator("input")
-      .first();
+      .locator(`[data-testid="${level}-combobox"]`)
+      .getByRole("combobox");
     await expect(combo).toBeVisible({ timeout: UI_TIMEOUT });
     await combo.click();
     await combo.pressSequentially(name, { delay: 20 });
     const existing = this.page.getByRole("option", { name, exact: true });
-    if (await existing.isVisible().catch(() => false)) {
+    if (await existing.isVisible()) {
       await existing.click();
       return;
     }
     await this.createWrapper
-      .locator('[data-testid="add-new-device-button"]')
-      .click();
-  }
-
-  async fillShelfCombobox(name: string) {
-    const combo = this.createWrapper
-      .locator('[data-testid="shelf-combobox"]')
-      .locator("input")
-      .first();
-    await expect(combo).toBeVisible({ timeout: UI_TIMEOUT });
-    await combo.click();
-    await combo.pressSequentially(name, { delay: 20 });
-    const existing = this.page.getByRole("option", { name, exact: true });
-    if (await existing.isVisible().catch(() => false)) {
-      await existing.click();
-      return;
-    }
-    await this.createWrapper
-      .locator('[data-testid="add-new-shelf-button"]')
-      .click();
-  }
-
-  async fillRackCombobox(name: string) {
-    const combo = this.createWrapper
-      .locator('[data-testid="rack-combobox"]')
-      .locator("input")
-      .first();
-    await expect(combo).toBeVisible({ timeout: UI_TIMEOUT });
-    await combo.click();
-    await combo.pressSequentially(name, { delay: 20 });
-    const existing = this.page.getByRole("option", { name, exact: true });
-    if (await existing.isVisible().catch(() => false)) {
-      await existing.click();
-      return;
-    }
-    await this.createWrapper
-      .locator('[data-testid="add-new-rack-button"]')
+      .locator(`[data-testid="add-new-${level}-button"]`)
       .click();
   }
 
   /**
-   * High-level helper: fill the cascading create form top-down with either
-   * existing or new names. Pass `{room, device}` at minimum (FR-033a — 2-level
-   * floor). Missing levels are skipped.
+   * Fill the cascading create form top-down with either existing or new
+   * names. Pass `{room, device}` at minimum (FR-033a — 2-level floor).
+   * Missing levels are skipped.
    */
   async fillCascadingCreate(levels: {
     room?: string;
@@ -238,10 +188,10 @@ export class StorageLocationSelector {
     shelf?: string;
     rack?: string;
   }) {
-    if (levels.room) await this.fillRoomCombobox(levels.room);
-    if (levels.device) await this.fillDeviceCombobox(levels.device);
-    if (levels.shelf) await this.fillShelfCombobox(levels.shelf);
-    if (levels.rack) await this.fillRackCombobox(levels.rack);
+    if (levels.room) await this.fillLevelCombobox("room", levels.room);
+    if (levels.device) await this.fillLevelCombobox("device", levels.device);
+    if (levels.shelf) await this.fillLevelCombobox("shelf", levels.shelf);
+    if (levels.rack) await this.fillLevelCombobox("rack", levels.rack);
   }
 
   /**
