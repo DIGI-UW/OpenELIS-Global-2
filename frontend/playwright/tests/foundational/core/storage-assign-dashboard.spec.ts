@@ -1,88 +1,173 @@
-import { test, expect } from "../../../helpers/test-base";
+import { test, expect, Locator } from "../../../helpers/test-base";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
-import {
-  LocationManagementModal,
-  openManageLocationForUnassignedSample,
-  uniqueLocationName,
-} from "../../../fixtures/storage-location-selector";
 
 /**
- * Track A / Site 1 — Storage Dashboard → Sample Items tab
+ * Phase 5a (RED) — Sample Items page + dedicated Manage Location page.
  *
  * User story:
- *   Admin opens /Storage/samples, finds an unassigned sample item, clicks
- *   the overflow menu → "Manage Location", and either (a) picks an existing
- *   location from the tree/search or (b) creates a new one inline.
+ *   Admin navigates to the new /Storage/sample-items route (replacing the
+ *   old /Storage/samples Tab). On an unassigned row, "Manage Location"
+ *   navigates to /Storage/sample-items/{id}/manage-location — a dedicated
+ *   LocationPickerPage with breadcrumb + page header. The admin picks or
+ *   creates a location, clicks Save, and is navigated back to the list.
  *
- * Why this spec exists:
- *   The equivalent Cypress coverage at frontend/cypress/e2e/storageAssignment.cy.js
- *   has .skip() on every meaningful dropdown test, so CI was green while the
- *   feature was broken. This spec actually exercises the dropdown.
+ * Architecture the spec asserts:
+ *   - SampleItemsPage at /Storage/sample-items (not a Tab in StorageDashboard)
+ *   - ManageLocationPage at /Storage/sample-items/:id/manage-location
+ *     composing the new LocationPickerPage (SearchField + CreateForm)
+ *   - No modal — page navigation replaces LocationManagementModal
  *
- * Seed expectation:
- *   At least one SampleItem without a storage assignment in the test DB.
- *   At least one active Room → Device → Shelf hierarchy ("Room1 > Fridge1 > Shelf1"
- *   on testing.openelis-global.org).
+ * RED expectation (Phase 5a):
+ *   The /Storage/sample-items route does not exist yet — App.js still has
+ *   the /Storage/:tab catch-all pointing at StorageDashboard. This spec
+ *   therefore fails at beforeEach's heading assertion, or at the
+ *   navigation to /manage-location. It goes GREEN in Phase 5b when the
+ *   page extraction lands.
  */
-test.describe("Storage Dashboard — Sample Item location assignment", () => {
+
+/**
+ * Find a sample-item row whose "Storage location" cell is empty (i.e. no
+ * hierarchy path containing ">"). The new SampleItemsPage should render a
+ * <table> with one row per unassigned or assigned sample; assigned rows
+ * show a path like "Room > Device > Shelf".
+ */
+async function findUnassignedRow(page: any): Promise<Locator> {
+  const rows = page.locator("table tbody tr");
+  const total = await rows.count();
+  for (let i = 0; i < total; i++) {
+    const row = rows.nth(i);
+    const text = (await row.textContent()) ?? "";
+    if (text.includes(">")) continue;
+    return row;
+  }
+  throw new Error(
+    `No unassigned sample item found in ${total} rows — seed at least one ` +
+      `SampleItem without a storage assignment so this regression spec can run.`,
+  );
+}
+
+test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/Storage/samples", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/Storage\/samples/, {
+    await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/Storage\/sample-items/, {
       timeout: LONG_TIMEOUT,
     });
-    // Wait for the samples table to render before any row interactions.
-    await expect(page.locator("table").first()).toBeVisible({
+    // The new page has an h1 "Sample Items" (not a Carbon Tab panel) and
+    // a breadcrumb above it. Assert the page header landed before
+    // interacting with the table.
+    await expect(
+      page.getByRole("heading", { level: 1, name: /sample items/i }),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(page.locator("table tbody tr").first()).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
   });
 
-  test("assigns an existing storage location via tree/search", async ({
+  test("navigates to manage-location page and assigns via search", async ({
     page,
   }) => {
-    const modal = await openManageLocationForUnassignedSample(page);
+    const row = await findUnassignedRow(page);
+    await row.getByRole("button", { name: /sample actions/i }).click();
+    await page
+      .getByRole("menuitem", { name: /manage location/i })
+      .click({ timeout: UI_TIMEOUT });
 
-    // User clicks into the search input → tree view opens.
-    await modal.selector.openSearchDropdown();
+    // Navigation to the dedicated picker page, NOT a modal opening.
+    await expect(page).toHaveURL(
+      /\/Storage\/sample-items\/.+\/manage-location/,
+      { timeout: LONG_TIMEOUT },
+    );
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: /assign storage location/i,
+      }),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
 
-    // Pick a location that's known to exist on the test server (Room1 →
-    // Fridge1 → Shelf1 is the default seeded hierarchy). The tree view
-    // renders text labels, so match by visible text rather than id.
-    await modal.selector.selectLocationByText(/Shelf/i);
+    // Use the SearchField to type 2+ chars and pick a pre-seeded location.
+    // The default test fixtures include a "Main Laboratory" room.
+    const search = page.locator("#storage-location-picker-search-input");
+    await search.fill("Main");
+    const option = page.getByRole("option", { name: /main/i }).first();
+    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+    await option.click();
 
-    await modal.confirm();
+    await page
+      .getByRole("button", { name: /^save$/i })
+      .click({ timeout: UI_TIMEOUT });
 
-    // Modal closes on success; the row the user came from now shows a
-    // hierarchical path containing ">".
-    await modal.expectClosed();
-    await expect(page.getByText(/assigned successfully/i).first()).toBeVisible({
+    // Page navigates back to /Storage/sample-items on save.
+    await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
+      timeout: LONG_TIMEOUT,
+    });
+    // The row the user came from now shows a hierarchical path containing ">".
+    await expect(page.getByText(/>/).first()).toBeVisible({
       timeout: UI_TIMEOUT,
     });
   });
 
-  test("creates a new storage location inline and assigns it", async ({
+  test("creates a new storage location inline via cascade and assigns it", async ({
     page,
   }) => {
-    const modal = await openManageLocationForUnassignedSample(page);
+    const row = await findUnassignedRow(page);
+    await row.getByRole("button", { name: /sample actions/i }).click();
+    await page
+      .getByRole("menuitem", { name: /manage location/i })
+      .click({ timeout: UI_TIMEOUT });
 
-    await modal.selector.clickAddLocation();
+    await expect(page).toHaveURL(
+      /\/Storage\/sample-items\/.+\/manage-location/,
+      { timeout: LONG_TIMEOUT },
+    );
 
-    // Cascading comboboxes: reuse an existing Room/Device, type a new Shelf.
-    // FR-033a requires minimum 2 levels (room + device). Names match the
-    // seeded "Main Laboratory > Freezer Unit 1" hierarchy on
-    // testing.openelis-global.org; the shelf is unique-per-run so create
-    // never collides.
-    const newShelf = uniqueLocationName("PWShelf");
-    await modal.selector.fillCascadingCreate({
-      room: "Main Laboratory",
-      device: "Freezer Unit 1",
-      shelf: newShelf,
+    // Toggle from search to cascading-create.
+    await page
+      .getByRole("button", { name: /create new location/i })
+      .click({ timeout: UI_TIMEOUT });
+
+    // Room dropdown: open, select "Main Laboratory" (seeded).
+    const roomTrigger = page
+      .locator("#location-picker-room button.cds--list-box__field")
+      .first();
+    await roomTrigger.click();
+    await page
+      .getByRole("option", { name: /main laboratory/i })
+      .first()
+      .click({ timeout: UI_TIMEOUT });
+
+    // Device dropdown: seeded device under that room.
+    const deviceTrigger = page
+      .locator("#location-picker-device button.cds--list-box__field")
+      .first();
+    await expect(deviceTrigger).toBeEnabled({ timeout: UI_TIMEOUT });
+    await deviceTrigger.click();
+    await page
+      .getByRole("option", { name: /freezer/i })
+      .first()
+      .click({ timeout: UI_TIMEOUT });
+
+    // Inline-create a new Shelf under the selected Room > Device.
+    const shelfRow = page
+      .locator("#location-picker-shelf")
+      .locator("xpath=ancestor::*[contains(@class,'create-row')][1]");
+    await shelfRow
+      .getByRole("button", { name: /add new/i })
+      .click({ timeout: UI_TIMEOUT });
+
+    const uniqueShelf = `PWShelf-${Date.now().toString(36)}`;
+    await page.locator("#location-picker-inline-create-name").fill(uniqueShelf);
+    await page
+      .getByRole("button", { name: /^create$/i })
+      .click({ timeout: UI_TIMEOUT });
+
+    await page
+      .getByRole("button", { name: /^save$/i })
+      .click({ timeout: UI_TIMEOUT });
+
+    await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
+      timeout: LONG_TIMEOUT,
     });
-
-    await modal.selector.confirmInlineCreate();
-    await modal.confirm();
-
-    await modal.expectClosed();
-    await expect(page.getByText(/assigned successfully/i).first()).toBeVisible({
+    await expect(page.getByText(new RegExp(uniqueShelf))).toBeVisible({
       timeout: UI_TIMEOUT,
     });
   });
