@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      OGC-253 follow-up: Register sample-storage tables in reference_tables so that
+      History rows written by the storage services are recognized by the audit-trail
+      infrastructure (AuditTrailServiceImpl#saveHistory resolves reference_table_id
+      via a name lookup and drops the write if keep_history != 'Y').
+
+      Entity-to-table name casing here MUST match @Table(name=...) in the JPA entities
+      because getReferenceTableByName performs a case-sensitive lookup:
+        StorageRoom                → "STORAGE_ROOM"
+        StorageDevice              → "STORAGE_DEVICE"
+        StorageShelf               → "STORAGE_SHELF"
+        StorageRack                → "storage_rack"        (lower-case in entity)
+        StorageBox                 → "storage_box"         (lower-case in entity)
+        SampleStorageAssignment    → "SAMPLE_STORAGE_ASSIGNMENT"
+        SampleStorageMovement      → "SAMPLE_STORAGE_MOVEMENT"
+    -->
+    <changeSet id="register-storage-audit-trail" author="ogc-253">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.reference_tables WHERE name = 'STORAGE_ROOM';
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Register storage hierarchy and sample-movement tables in reference_tables
+            to enable automatic audit trailing via the OpenELIS history table. Closes
+            the OGC-253 gap where storage CRUD, sample assignments, and movements
+            produced no audit records.
+        </comment>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="STORAGE_ROOM"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="STORAGE_DEVICE"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="STORAGE_SHELF"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="storage_rack"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="storage_box"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="SAMPLE_STORAGE_ASSIGNMENT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <insert schemaName="clinlims" tableName="reference_tables">
+            <column name="id" valueSequenceNext="reference_tables_seq"/>
+            <column name="name" value="SAMPLE_STORAGE_MOVEMENT"/>
+            <column name="keep_history" value="Y"/>
+            <column name="is_hl7_encoded" value="N"/>
+        </insert>
+
+        <rollback>
+            <delete schemaName="clinlims" tableName="reference_tables">
+                <where>
+                    name IN ('STORAGE_ROOM', 'STORAGE_DEVICE', 'STORAGE_SHELF',
+                             'storage_rack', 'storage_box',
+                             'SAMPLE_STORAGE_ASSIGNMENT', 'SAMPLE_STORAGE_MOVEMENT')
+                </where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

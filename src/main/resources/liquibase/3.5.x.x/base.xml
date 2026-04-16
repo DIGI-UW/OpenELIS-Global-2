@@ -54,4 +54,7 @@
   <!-- Patient ID document scanning (OGC-66) -->
   <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
+  <!-- OGC-253 follow-up: register storage + sample-movement tables for audit trail -->
+  <include relativeToChangelogFile="true" file="005-register-storage-audit-trail.xml"/>
+
 </databaseChangeLog>
