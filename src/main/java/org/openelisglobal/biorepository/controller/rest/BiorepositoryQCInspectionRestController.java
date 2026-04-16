@@ -135,7 +135,7 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
                     request.getBioSampleIds(), request.getInspectorName(), inspectionDate, request.isSamplePresent(),
                     request.isLabelIntegrity(), request.isContainerIntegrity(), request.isVolumeAppearanceAcceptable(),
                     request.isCorrectPosition(), request.getDiscrepancyType(), request.getCorrectiveAction(),
-                    request.getRemarks(), sysUserId);
+                    request.getRemarks(), request.getQcBatchId(), request.getExpectedCoordinateSnapshot(), sysUserId);
 
             List<Map<String, Object>> result = new ArrayList<>();
             for (BiorepositoryQCInspection inspection : inspections) {
@@ -149,6 +149,60 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to create QC inspections: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Generate a random QC round (N boxes x M samples per box) from current stored
+     * inventory.
+     */
+    @PostMapping(value = "/generate-round", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> generateQCRound(@RequestBody(required = false) GenerateQCRoundRequest request,
+            HttpServletRequest httpRequest) {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
+        }
+
+        int boxesPerRound = request != null ? request.getBoxesPerRound() : 10;
+        int samplesPerBox = request != null ? request.getSamplesPerBox() : 3;
+        Long seed = request != null ? request.getSeed() : null;
+
+        try {
+            Map<String, Object> generated = qcInspectionService.generateRandomQCRound(boxesPerRound, samplesPerBox,
+                    seed, sysUserId);
+            return ResponseEntity.ok(generated);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to generate QC round: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Apply corrective action for a failed QC inspection and capture coordinate
+     * audit details.
+     */
+    @PostMapping(value = "/{inspectionId}/corrective-action", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> applyCorrectiveAction(@PathVariable("inspectionId") Integer inspectionId,
+            @RequestBody CorrectiveActionRequest request, HttpServletRequest httpRequest) {
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
+        }
+
+        if (request == null || request.getReason() == null || request.getReason().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Corrective reason is required"));
+        }
+
+        try {
+            Map<String, Object> result = qcInspectionService.applyCorrectiveAction(inspectionId,
+                    request.getObservedCoordinate(), request.getCorrectedCoordinate(), request.getReason(), sysUserId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to apply corrective action: " + e.getMessage()));
         }
     }
 
@@ -214,6 +268,12 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         if (inspection.getRemarks() != null) {
             map.put("remarks", inspection.getRemarks());
         }
+        if (inspection.getQcBatchId() != null) {
+            map.put("qcBatchId", inspection.getQcBatchId());
+        }
+        if (inspection.getExpectedCoordinateSnapshot() != null) {
+            map.put("expectedCoordinateSnapshot", inspection.getExpectedCoordinateSnapshot());
+        }
 
         return map;
     }
@@ -232,6 +292,8 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         private String discrepancyType;
         private String correctiveAction;
         private String remarks;
+        private String qcBatchId;
+        private String expectedCoordinateSnapshot;
 
         // Getters and setters
         public List<Integer> getBioSampleIds() {
@@ -320,6 +382,82 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
 
         public void setRemarks(String remarks) {
             this.remarks = remarks;
+        }
+
+        public String getQcBatchId() {
+            return qcBatchId;
+        }
+
+        public void setQcBatchId(String qcBatchId) {
+            this.qcBatchId = qcBatchId;
+        }
+
+        public String getExpectedCoordinateSnapshot() {
+            return expectedCoordinateSnapshot;
+        }
+
+        public void setExpectedCoordinateSnapshot(String expectedCoordinateSnapshot) {
+            this.expectedCoordinateSnapshot = expectedCoordinateSnapshot;
+        }
+    }
+
+    public static class GenerateQCRoundRequest {
+        private int boxesPerRound = 10;
+        private int samplesPerBox = 3;
+        private Long seed;
+
+        public int getBoxesPerRound() {
+            return boxesPerRound;
+        }
+
+        public void setBoxesPerRound(int boxesPerRound) {
+            this.boxesPerRound = boxesPerRound;
+        }
+
+        public int getSamplesPerBox() {
+            return samplesPerBox;
+        }
+
+        public void setSamplesPerBox(int samplesPerBox) {
+            this.samplesPerBox = samplesPerBox;
+        }
+
+        public Long getSeed() {
+            return seed;
+        }
+
+        public void setSeed(Long seed) {
+            this.seed = seed;
+        }
+    }
+
+    public static class CorrectiveActionRequest {
+        private String observedCoordinate;
+        private String correctedCoordinate;
+        private String reason;
+
+        public String getObservedCoordinate() {
+            return observedCoordinate;
+        }
+
+        public void setObservedCoordinate(String observedCoordinate) {
+            this.observedCoordinate = observedCoordinate;
+        }
+
+        public String getCorrectedCoordinate() {
+            return correctedCoordinate;
+        }
+
+        public void setCorrectedCoordinate(String correctedCoordinate) {
+            this.correctedCoordinate = correctedCoordinate;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public void setReason(String reason) {
+            this.reason = reason;
         }
     }
 }
