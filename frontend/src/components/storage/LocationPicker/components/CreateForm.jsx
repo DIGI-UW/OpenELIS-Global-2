@@ -37,42 +37,57 @@ import {
  */
 
 // Maps from the picker's level keys to the corresponding REST endpoint
-// segments and the parent-id query param the GET endpoint expects.
+// segments and the parent-id params the backend uses. Note the backend
+// is inconsistent on naming:
+//   - GET list params are "{parent}Id" (roomId, deviceId, …)
+//   - POST body parent params are "parent{Parent}Id" (parentRoomId, …)
+//   - Identifier field is "name" for Room/Device, "label" for Shelf/Rack/Box
+// Both mappings are expressed in this table.
 const LEVELS = [
   {
     key: "room",
     label: "Room",
     endpoint: "rooms",
     parentLevel: null,
-    parentParam: null,
+    listParam: null,
+    createParam: null,
+    createField: "name",
   },
   {
     key: "device",
     label: "Device",
     endpoint: "devices",
     parentLevel: "room",
-    parentParam: "roomId",
+    listParam: "roomId",
+    createParam: "parentRoomId",
+    createField: "name",
   },
   {
     key: "shelf",
     label: "Shelf",
     endpoint: "shelves",
     parentLevel: "device",
-    parentParam: "deviceId",
+    listParam: "deviceId",
+    createParam: "parentDeviceId",
+    createField: "label",
   },
   {
     key: "rack",
     label: "Rack",
     endpoint: "racks",
     parentLevel: "shelf",
-    parentParam: "shelfId",
+    listParam: "shelfId",
+    createParam: "parentShelfId",
+    createField: "label",
   },
   {
     key: "box",
     label: "Box",
     endpoint: "boxes",
     parentLevel: "rack",
-    parentParam: "rackId",
+    listParam: "rackId",
+    createParam: "parentRackId",
+    createField: "label",
   },
 ];
 
@@ -89,7 +104,7 @@ export default function CreateForm({ selection, onLevelChange }) {
   // Cascading fetch: when a parent's selection changes, refetch the
   // dependent level's options. The picker reducer guarantees the parent
   // selection only changes when a higher-level value is set/cleared.
-  LEVELS.forEach(({ key, endpoint, parentLevel, parentParam }) => {
+  LEVELS.forEach(({ key, endpoint, parentLevel, listParam }) => {
     const parentValue = parentLevel ? selection[parentLevel] : null;
     const parentId = parentValue ? parentValue.id : null;
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -102,7 +117,7 @@ export default function CreateForm({ selection, onLevelChange }) {
         return;
       }
       const url = parentLevel
-        ? `/rest/storage/${endpoint}?${parentParam}=${parentId}`
+        ? `/rest/storage/${endpoint}?${listParam}=${parentId}`
         : `/rest/storage/${endpoint}`;
       getFromOpenElisServer(url, (response) => {
         setOptions((prev) => ({
@@ -120,19 +135,25 @@ export default function CreateForm({ selection, onLevelChange }) {
     if (!inlineCreate || !inlineCreate.name.trim()) return;
     const { level, name } = inlineCreate;
     const meta = LEVELS.find((l) => l.key === level);
-    const body = { name: name.trim(), active: true };
+    // Map to the right backend field — Room/Device use `name`,
+    // Shelf/Rack/Box use `label` (see LEVELS.createField).
+    const body = { [meta.createField]: name.trim(), active: true };
     // Devices/shelves/racks/boxes need their parent id; the picker
     // disables the "Add new" button until the parent is selected so we
-    // can rely on it being present here.
+    // can rely on it being present here. Backend uses `parent{Parent}Id`
+    // for POST bodies (distinct from GET's `{parent}Id` query param).
     if (meta.parentLevel) {
-      body[meta.parentParam] = selection[meta.parentLevel].id;
+      body[meta.createParam] = selection[meta.parentLevel].id;
     }
     postToOpenElisServerJsonResponse(
       `/rest/storage/${meta.endpoint}`,
       JSON.stringify(body),
       (response) => {
         if (response && response.id) {
-          onLevelChange(level, { id: response.id, name: response.name });
+          onLevelChange(level, {
+            id: response.id,
+            name: response.name || response.label,
+          });
           setInlineCreate(null);
         }
       },
