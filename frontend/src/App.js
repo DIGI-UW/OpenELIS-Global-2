@@ -17,6 +17,8 @@ import DevicesPage from "./components/storage/pages/DevicesPage";
 import ShelvesPage from "./components/storage/pages/ShelvesPage";
 import RacksPage from "./components/storage/pages/RacksPage";
 import BoxesPage from "./components/storage/pages/BoxesPage";
+import EditLocationPage from "./components/storage/pages/EditLocationPage";
+import EditBoxPage from "./components/storage/pages/EditBoxPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
@@ -761,6 +763,56 @@ export default function App() {
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/rooms/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="room" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/devices/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="device" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/shelves/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="shelf" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/racks/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="rack" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/boxes/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditBoxPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/inventory"

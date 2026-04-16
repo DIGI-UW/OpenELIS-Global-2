@@ -79,6 +79,7 @@ export default function ShelvesPage() {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
+      editHref={(shelf) => `/Storage/shelves/${shelf.id}/edit`}
     />
   );
 }

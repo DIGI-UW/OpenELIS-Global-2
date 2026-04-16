@@ -89,6 +89,7 @@ export default function BoxesPage() {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
+      editHref={(box) => `/Storage/boxes/${box.id}/edit`}
     />
   );
 }

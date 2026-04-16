@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   DataTable,
   Table,
@@ -45,6 +45,7 @@ export default function StorageResourcePage({
   setPage,
   pageSize,
   setPageSize,
+  editHref,
 }) {
   const location = useLocation();
 
@@ -60,7 +61,26 @@ export default function StorageResourcePage({
     refreshKey,
   });
 
-  const rows = useMemo(() => (items || []).map(mapRow), [items, mapRow]);
+  const rows = useMemo(() => {
+    const mapped = (items || []).map(mapRow);
+    if (!editHref) return mapped;
+    return mapped.map((row, idx) => {
+      const rawItem = items[idx];
+      return {
+        ...row,
+        actions: (
+          <Link to={editHref(rawItem)}>
+            <FormattedMessage id="label.edit" defaultMessage="Edit" />
+          </Link>
+        ),
+      };
+    });
+  }, [items, mapRow, editHref]);
+
+  const effectiveHeaders = useMemo(() => {
+    if (!editHref) return headers;
+    return [...headers, { key: "actions", header: "" }];
+  }, [headers, editHref]);
 
   return (
     <div className="storage-resource-page">
@@ -69,7 +89,7 @@ export default function StorageResourcePage({
 
       {loading && <Loading small withOverlay={false} />}
 
-      <DataTable rows={rows} headers={headers} isSortable>
+      <DataTable rows={rows} headers={effectiveHeaders} isSortable>
         {({
           rows: r,
           headers: h,

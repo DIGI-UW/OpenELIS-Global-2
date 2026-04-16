@@ -80,6 +80,7 @@ export default function DevicesPage() {
       setPage={setPage}
       pageSize={pageSize}
       setPageSize={setPageSize}
+      editHref={(device) => `/Storage/devices/${device.id}/edit`}
     />
   );
 }
