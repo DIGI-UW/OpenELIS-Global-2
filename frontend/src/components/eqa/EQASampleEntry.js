@@ -53,23 +53,18 @@ const blankPatientDefaults = {
   readOnly: false,
 };
 
-const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
+const EQASampleEntry = ({
+  orderFormValues,
+  setOrderFormValues,
+  autoEnable = false,
+}) => {
   const intl = useIntl();
 
   const isEQA = orderFormValues?.sampleOrderItems?.isEQASample || false;
-  const initializedRef = useRef(false);
-
-  // Auto-trigger toggle logic when isEQA is set externally (e.g. ?isEQA=true URL param)
-  useEffect(() => {
-    if (isEQA && !initializedRef.current) {
-      initializedRef.current = true;
-      handleEQAToggle(true);
-    }
-  }, [isEQA]);
+  const autoTriggered = useRef(false);
 
   const handleEQAToggle = (checked) => {
     if (checked) {
-      // Search for an existing NULL placeholder patient to reuse
       const searchUrl =
         "/rest/patient-search-results?" +
         "lastName=" +
@@ -88,14 +83,13 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
         );
 
         if (existingPatient) {
-          // Reuse existing NULL patient
           getFromOpenElisServer(
             "/rest/patient-details?patientID=" + existingPatient.patientID,
             (patientDetails) => {
-              setOrderFormValues({
-                ...orderFormValues,
+              setOrderFormValues((prev) => ({
+                ...prev,
                 sampleOrderItems: {
-                  ...orderFormValues.sampleOrderItems,
+                  ...prev.sampleOrderItems,
                   isEQASample: true,
                 },
                 patientUpdateStatus: "UPDATE",
@@ -104,41 +98,46 @@ const EQASampleEntry = ({ orderFormValues, setOrderFormValues }) => {
                   patientUpdateStatus: "UPDATE",
                   readOnly: true,
                 },
-              });
+              }));
             },
           );
         } else {
-          // No existing NULL patient — create a new one
-          setOrderFormValues({
-            ...orderFormValues,
+          setOrderFormValues((prev) => ({
+            ...prev,
             sampleOrderItems: {
-              ...orderFormValues.sampleOrderItems,
+              ...prev.sampleOrderItems,
               isEQASample: true,
             },
             patientProperties: {
               ...eqaPatientDefaults,
               patientUpdateStatus: "ADD",
             },
-          });
+          }));
         }
       });
     } else {
-      setOrderFormValues({
-        ...orderFormValues,
+      setOrderFormValues((prev) => ({
+        ...prev,
         sampleOrderItems: {
-          ...orderFormValues.sampleOrderItems,
+          ...prev.sampleOrderItems,
           isEQASample: false,
           eqaProgramId: "",
-          eqaProviderOrganizationId: "",
           eqaProviderSampleId: "",
-          eqaParticipantId: "",
           eqaDeadline: "",
           eqaPriority: "STANDARD",
         },
         patientProperties: blankPatientDefaults,
-      });
+      }));
     }
   };
+
+  // When autoEnable (from ?isEQA=true URL), trigger the toggle once on mount
+  useEffect(() => {
+    if (autoEnable && !autoTriggered.current) {
+      autoTriggered.current = true;
+      handleEQAToggle(true);
+    }
+  }, [autoEnable]);
 
   return (
     <Grid fullWidth={true}>

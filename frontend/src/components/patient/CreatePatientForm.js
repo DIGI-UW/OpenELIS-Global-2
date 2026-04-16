@@ -38,6 +38,7 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+import IdentificationDocuments from "./IdentificationDocuments";
 
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
@@ -1546,6 +1547,20 @@ function CreatePatientForm(props) {
                           </Field>
                         </Column>
                       </Grid>
+                    </AccordionItem>
+                    <AccordionItem
+                      title={intl.formatMessage({
+                        id: "patient.idDoc.title",
+                      })}
+                    >
+                      <IdentificationDocuments
+                        patientId={props.selectedPatient?.patientPK || null}
+                        pendingDocuments={values.idDocuments || []}
+                        onDocumentsChange={(docs) =>
+                          setFieldValue("idDocuments", docs)
+                        }
+                        disabled={!!props.disabled}
+                      />
                     </AccordionItem>
                   </Accordion>
                 </Column>
