@@ -34,7 +34,12 @@ interface Patient {
   birthDateForDisplay: string;
   subjectNumber: string;
   nationalId: string;
-  patientPK: number;
+  patientPK: number | null;
+}
+interface RouteParams {
+  patientId: string;
+  type?: string;
+  testUuid?: string;
 }
 const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
   const patientObj: Patient = {
@@ -47,7 +52,7 @@ const RoutedResultsViewer: React.FC<ResultsViewerProps> = () => {
     patientPK: null,
   };
 
-  const { patientId } = useParams();
+  const { patientId } = useParams<RouteParams>();
   const [patient, setPatient] = useState(patientObj);
 
   const componentMounted = useRef(false);
@@ -177,7 +182,7 @@ const ResultsViewer: React.FC<ResultsViewerProps> = ({
 }) => {
   const { t } = useTranslation();
   const { totalResultsCount } = useContext(FilterContext);
-  const { type, testUuid } = useParams();
+  const { type, testUuid } = useParams<RouteParams>();
   const intl = useIntl();
   return (
     <div className="resultsContainer">
