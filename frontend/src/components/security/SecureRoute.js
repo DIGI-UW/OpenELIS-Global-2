@@ -33,9 +33,7 @@ function SecureRoute(props) {
   useEffect(() => {
     setLoading(!errorLoadingSessionDetails && isCheckingLogin());
     if (userSessionDetails.authenticated) {
-      console.info("Authenticated");
       if (hasPermission(userSessionDetails)) {
-        console.info("Access Allowed");
         if (
           configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN === "true" &&
           !userSessionDetails.loginLabUnit &&
@@ -94,18 +92,15 @@ function SecureRoute(props) {
 
   const onIdle = () => {
     setStillThereOpen(false);
-    console.debug("idleTimer now idle");
     logout();
   };
 
   const onActive = () => {
     setStillThereOpen(false);
-    console.debug("idleTimer now active");
   };
 
   const onPrompt = () => {
     setStillThereOpen(true);
-    console.debug("idleTimer now prompting");
   };
 
   const { activate } = useIdleTimer({

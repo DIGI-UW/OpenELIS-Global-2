@@ -200,7 +200,6 @@ const Validation = (props) => {
   };
 
   const handleDatePickerChange = (date, rowId) => {
-    console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
     jpSet(form, "resultList[" + rowId + "].sentDate_", d);

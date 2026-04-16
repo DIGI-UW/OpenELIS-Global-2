@@ -154,7 +154,6 @@ export default function App() {
         );
         if (response.status === 200) {
           const jsonResp = await response.json();
-          console.debug(JSON.stringify(jsonResp));
           if (jsonResp.authenticated) {
             localStorage.setItem("CSRF", jsonResp.csrf);
           }

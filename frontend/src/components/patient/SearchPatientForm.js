@@ -63,12 +63,9 @@ function SearchPatientForm(props) {
   const [prevlastName, setPrevlastName] = useState("");
 
   const handlePatientImport = (patientId) => {
-    console.log("Import button clicked, patientId:", patientId);
-
     const patientSelected = patientSearchResults.find(
       (patient) => patient.patientID === patientId,
     );
-    console.log("Patient selected:", patientSelected);
 
     if (!patientSelected) {
       addNotification({
@@ -107,8 +104,6 @@ function SearchPatientForm(props) {
         },
       },
     };
-
-    console.log("Data to send:", dataToSend);
 
     postToOpenElisServer(
       "/rest/PatientManagement",
