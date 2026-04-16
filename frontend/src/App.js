@@ -1013,7 +1013,7 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   component={() => <AuditTrailReportIndex />}
-                  role={Roles.REPORTS}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/TATReport"
