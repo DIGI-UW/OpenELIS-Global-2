@@ -607,6 +607,24 @@ function BiorepositoryQCInspectionPage({
     return samples.filter((s) => selected.has(String(s.id)));
   }, [qcRoundInfo, samples, showSelectedOnly]);
 
+  const storagePathExample = useMemo(() => {
+    const sampleWithPath = samples.find(
+      (s) => s.locationPath && s.locationPath.trim(),
+    );
+    if (!sampleWithPath) {
+      return null;
+    }
+    const path = sampleWithPath.locationPath.trim();
+    const segments = path.split(/\s*>\s*/).filter(Boolean);
+    if (segments.length === 0) {
+      return null;
+    }
+    return {
+      path,
+      depth: segments.length,
+    };
+  }, [samples]);
+
   return (
     <div className="biorepository-qc-inspection-page">
       {/* Page Header */}
@@ -701,6 +719,25 @@ function BiorepositoryQCInspectionPage({
               boxes: qcRoundInfo.boxesSelected || 0,
               samples: qcRoundInfo.samplesSelected || 0,
             },
+          )}
+          lowContrast
+        />
+      )}
+
+      {storagePathExample && (
+        <InlineNotification
+          kind="info"
+          title={intl.formatMessage({
+            id: "biorepository.qc.storagePathFormat.title",
+            defaultMessage: "Storage location structure (physical path)",
+          })}
+          subtitle={intl.formatMessage(
+            {
+              id: "biorepository.qc.storagePathFormat.subtitle",
+              defaultMessage:
+                "Locations are shown as a hierarchy like: {example}. The QC round list will also include a position (e.g., A1) when available.",
+            },
+            { example: storagePathExample.path },
           )}
           lowContrast
         />
@@ -931,7 +968,7 @@ function BiorepositoryQCInspectionPage({
                                 );
                               }
                               if (cell.info.header === "lastQCInspection") {
-                                if (!sample.lastQCInspection) {
+                                if (!sample?.lastQCInspection) {
                                   return (
                                     <TableCell key={cell.id}>
                                       <Tag type="gray">Never Inspected</Tag>
