@@ -27,7 +27,8 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import StorageLocationSelector from "../../storage/StorageLocationSelector/StorageLocationSelector";
+import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
+import { LEVEL_ORDER } from "../../storage/LocationPicker/useLocationPicker";
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
@@ -785,12 +786,46 @@ const OrderLabel = () => {
           </div>
         )}
 
-        {/* Storage Location Selector - inline mode (dropdown/autocomplete) */}
-        <StorageLocationSelector
-          mode="autocomplete"
-          onLocationChange={handleLocationChange}
-          enableInlineCreation={false}
-          optional={true}
+        {/* Storage Location — Phase 8 of the picker refactor.
+            This was the LAST caller of the legacy
+            StorageLocationSelector mode="autocomplete" path. After
+            this migration, the legacy components are dead code
+            (removed in Phase 12 cleanup).
+
+            OrderLabel persists the selection locally (assignedStorage
+            map by sample index) and POSTs /assign or /move once the
+            user clicks Save on the larger form. */}
+        <LocationPickerInline
+          onChange={(state) => {
+            // Collapse the new picker's {selection, position} shape
+            // into the legacy handleLocationChange(location) contract:
+            //   { id, type, hierarchicalPath, positionCoordinate }
+            let deepest = null;
+            const path = [];
+            LEVEL_ORDER.forEach((lvl) => {
+              if (state.selection[lvl]) {
+                deepest = { type: lvl, value: state.selection[lvl] };
+                path.push(state.selection[lvl].name);
+              }
+            });
+            if (!deepest) return;
+            let positionCoordinate = "";
+            if (state.position) {
+              if (state.position.mode === "text") {
+                positionCoordinate = (state.position.value || "").trim();
+              } else if (state.position.mode === "grid") {
+                const row = (state.position.row || "").toString().trim();
+                const col = (state.position.column || "").toString().trim();
+                positionCoordinate = row + col;
+              }
+            }
+            handleLocationChange({
+              id: deepest.value.id,
+              type: deepest.type,
+              hierarchicalPath: path.join(" > "),
+              positionCoordinate,
+            });
+          }}
         />
 
         {/* Condition Notes */}
