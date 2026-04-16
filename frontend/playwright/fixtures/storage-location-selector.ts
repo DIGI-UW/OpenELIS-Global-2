@@ -60,12 +60,18 @@ export class StorageLocationSelector {
   /**
    * Scope a POM to the location management modal (used by Storage Dashboard
    * and Result Entry workflows).
+   *
+   * Important: the modal renders `LocationSearchAndCreate` directly without
+   * wrapping it in the higher-level `StorageLocationSelector` component, so
+   * the `storage-location-selector` testid is NOT inside the modal subtree.
+   * Scope to the modal itself; child locators below resolve correctly because
+   * the search-and-create wrapper, the add-location button, and all the
+   * cascading comboboxes are all descendants of the modal root.
    */
   static inLocationManagementModal(page: Page): StorageLocationSelector {
-    const modal = page.locator('[data-testid="location-management-modal"]');
     return new StorageLocationSelector(
       page,
-      modal.locator('[data-testid="storage-location-selector"]'),
+      page.locator('[data-testid="location-management-modal"]'),
     );
   }
 
@@ -150,12 +156,13 @@ export class StorageLocationSelector {
 
   /**
    * Fill one level of the cascading create form. Each level (room/device/
-   * shelf/rack) shares the same DOM shape — a ComboBox with input + an
-   * "add-new-<level>-button" sibling. We type via pressSequentially() rather
-   * than fill() because Carbon ComboBox listens to keystroke events; fill()
-   * triggers a single input event that the ComboBox doesn't process for
-   * filtering. After typing, click the matching option if visible, else
-   * fall back to the inline-create affordance.
+   * shelf/rack) is a Carbon ComboBox that we target via the wrapper's
+   * data-testid. The editable surface is the inner <input> — Carbon doesn't
+   * forward role=combobox to its internal input, so we target by tag.
+   * pressSequentially() triggers Carbon's filter onChange (fill() doesn't —
+   * it batches into one input event the ComboBox doesn't process).
+   * After typing: click the matching option if it appeared, otherwise fall
+   * back to the inline add-new affordance.
    */
   private async fillLevelCombobox(
     level: "room" | "device" | "shelf" | "rack",
@@ -163,7 +170,8 @@ export class StorageLocationSelector {
   ) {
     const combo = this.createWrapper
       .locator(`[data-testid="${level}-combobox"]`)
-      .getByRole("combobox");
+      .locator("input")
+      .first();
     await expect(combo).toBeVisible({ timeout: UI_TIMEOUT });
     await combo.click();
     await combo.pressSequentially(name, { delay: 20 });
@@ -262,7 +270,10 @@ export async function openManageLocationForUnassignedSample(
   const table = page.locator("table").first();
   await expect(table).toBeVisible({ timeout: LONG_TIMEOUT });
 
+  // The table mounts before XHR-loaded data renders into rows. Wait for
+  // at least one row before counting — auto-retry handles the data fetch.
   const rows = table.locator("tbody tr");
+  await expect(rows.first()).toBeVisible({ timeout: LONG_TIMEOUT });
   const total = await rows.count();
 
   for (let i = 0; i < total; i++) {
@@ -270,10 +281,9 @@ export async function openManageLocationForUnassignedSample(
     const text = (await row.textContent()) ?? "";
     if (text.includes(">")) continue; // already assigned — skip
 
-    await row
-      .locator('[data-testid="sample-actions-overflow-menu"] button')
-      .first()
-      .click();
+    // Carbon's <OverflowMenu> renders the trigger AS the testid'd element —
+    // there is no nested <button>. Click the testid directly.
+    await row.locator('[data-testid="sample-actions-overflow-menu"]').click();
     await page
       .locator('[data-testid="manage-location-menu-item"]')
       .first()

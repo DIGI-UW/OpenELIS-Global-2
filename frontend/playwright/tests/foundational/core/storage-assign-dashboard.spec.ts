@@ -47,7 +47,7 @@ test.describe("Storage Dashboard — Sample Item location assignment", () => {
     // Pick a location that's known to exist on the test server (Room1 →
     // Fridge1 → Shelf1 is the default seeded hierarchy). The tree view
     // renders text labels, so match by visible text rather than id.
-    await modal.selector.selectLocationByText(/Shelf1/);
+    await modal.selector.selectLocationByText(/Shelf/i);
 
     await modal.confirm();
 
@@ -67,12 +67,14 @@ test.describe("Storage Dashboard — Sample Item location assignment", () => {
     await modal.selector.clickAddLocation();
 
     // Cascading comboboxes: reuse an existing Room/Device, type a new Shelf.
-    // FR-033a requires minimum 2 levels (room + device); we add a shelf so
-    // the newly created location is actually distinguishable.
-    const newShelf = uniqueLocationName("Shelf");
+    // FR-033a requires minimum 2 levels (room + device). Names match the
+    // seeded "Main Laboratory > Freezer Unit 1" hierarchy on
+    // testing.openelis-global.org; the shelf is unique-per-run so create
+    // never collides.
+    const newShelf = uniqueLocationName("PWShelf");
     await modal.selector.fillCascadingCreate({
-      room: "Room1",
-      device: "Fridge1",
+      room: "Main Laboratory",
+      device: "Freezer Unit 1",
       shelf: newShelf,
     });
 

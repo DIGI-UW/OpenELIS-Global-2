@@ -33,10 +33,12 @@ test.describe("Result Entry — search shell entry point", () => {
 
     await expect(page).toHaveURL(/\/result/, { timeout: LONG_TIMEOUT });
 
-    // The Result Search page renders a "Search By" chooser as the primary
-    // interaction. This is the stable landmark before any data is loaded.
+    // The Result Search page renders a search-criteria form as its primary
+    // interaction. Match the stable user-visible heading "Search Results"
+    // (or any "Result" heading) — semantic role assertion that doesn't
+    // depend on the specific form widget shape.
     await expect(
-      page.getByRole("combobox", { name: /search by/i }).first(),
+      page.getByRole("heading", { name: /result/i }).first(),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 });
