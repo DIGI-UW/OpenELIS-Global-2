@@ -16,6 +16,9 @@
              'sideNav.title.tatreport', true
       WHERE NOT EXISTS (
         SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports_tatreport'
+      )
+      AND EXISTS (
+        SELECT 1 FROM clinlims.menu WHERE element_id = 'menu_reports'
       );
     </sql>
   </changeSet>
