@@ -2,6 +2,15 @@ package org.openelisglobal.biorepository.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -190,9 +199,55 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
     @Override
     @Transactional(readOnly = true)
     public byte[] exportDashboardToPDF() throws IOException {
-        // Simplified PDF implementation - return JSON for now
-        // TODO: Implement proper PDF generation with iText or PDFBox if needed
-        return exportDashboardToJSON();
+        Map<String, Object> dashboardData = aggregateDashboardMetrics();
+
+        List<String[]> rows = new ArrayList<>();
+        Map<String, Object> capacity = (Map<String, Object>) dashboardData.get("storageCapacity");
+        Map<String, Object> aging = (Map<String, Object>) dashboardData.get("sampleAging");
+        Map<String, Object> qc = (Map<String, Object>) dashboardData.get("qcCompliance");
+        Map<String, Object> retrieval = (Map<String, Object>) dashboardData.get("retrievalStats");
+
+        if (capacity != null) {
+            rows.add(
+                    new String[] { "Storage Capacity", "Total Devices", String.valueOf(capacity.get("totalDevices")) });
+            rows.add(new String[] { "Storage Capacity", "Total Samples Stored",
+                    String.valueOf(capacity.get("totalSamplesStored")) });
+            rows.add(new String[] { "Storage Capacity", "Pending Storage",
+                    String.valueOf(capacity.get("pendingStorage")) });
+            rows.add(new String[] { "Storage Capacity", "Average Utilization %",
+                    String.valueOf(capacity.get("averageUtilization")) });
+        }
+        if (aging != null) {
+            rows.add(new String[] { "Sample Aging", "Total Active Samples", String.valueOf(aging.get("total")) });
+            rows.add(new String[] { "Sample Aging", "Expiring within 30 days",
+                    String.valueOf(aging.get("expiring30Days")) });
+            rows.add(new String[] { "Sample Aging", "Expiring within 60 days",
+                    String.valueOf(aging.get("expiring60Days")) });
+            rows.add(new String[] { "Sample Aging", "Expiring within 90 days",
+                    String.valueOf(aging.get("expiring90Days")) });
+            rows.add(new String[] { "Sample Aging", "Expired Samples", String.valueOf(aging.get("expired")) });
+        }
+        if (qc != null) {
+            rows.add(new String[] { "QC Compliance", "Total Inspections", String.valueOf(qc.get("totalInspections")) });
+            rows.add(new String[] { "QC Compliance", "Passed Inspections",
+                    String.valueOf(qc.get("passedInspections")) });
+            rows.add(new String[] { "QC Compliance", "Failed Inspections",
+                    String.valueOf(qc.get("failedInspections")) });
+            rows.add(new String[] { "QC Compliance", "Compliance Rate %", String.valueOf(qc.get("complianceRate")) });
+        }
+        if (retrieval != null) {
+            rows.add(new String[] { "Retrieval Statistics", "Total Requests",
+                    String.valueOf(retrieval.get("totalRequests")) });
+            rows.add(new String[] { "Retrieval Statistics", "Pending Requests",
+                    String.valueOf(retrieval.get("pendingRequests")) });
+            rows.add(new String[] { "Retrieval Statistics", "Rejected Requests",
+                    String.valueOf(retrieval.get("rejectedRequests")) });
+            rows.add(new String[] { "Retrieval Statistics", "Completed Requests",
+                    String.valueOf(retrieval.get("completedRequests")) });
+        }
+
+        return generatePdfTable("Biorepository Dashboard Metrics", new String[] { "Category", "Metric", "Value" },
+                rows);
     }
 
     // ==================== Audit Trail Exports ====================
@@ -377,9 +432,23 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
     @Transactional(readOnly = true)
     public byte[] exportAuditTrailToPDF(String sampleExternalId, CustodyAction action, Integer custodianId,
             Timestamp startDate, Timestamp endDate) throws IOException {
-        // Simplified PDF implementation - return JSON for now
-        // TODO: Implement proper PDF generation with iText or PDFBox if needed
-        return exportAuditTrailToJSON(sampleExternalId, action, custodianId, startDate, endDate);
+        List<ChainOfCustodyLog> logs = custodyService.searchCustodyLogs(sampleExternalId, action, custodianId,
+                startDate, endDate, 0, Integer.MAX_VALUE);
+
+        List<String[]> rows = new ArrayList<>();
+        for (ChainOfCustodyLog log : logs) {
+            rows.add(new String[] { log.getActionTimestamp() != null ? log.getActionTimestamp().toString() : "",
+                    log.getSampleItem() != null && log.getSampleItem().getExternalId() != null
+                            ? log.getSampleItem().getExternalId()
+                            : "",
+                    log.getCustodyAction() != null ? log.getCustodyAction().name() : "",
+                    log.getFromLocation() != null ? log.getFromLocation() : "",
+                    log.getToLocation() != null ? log.getToLocation() : "",
+                    log.getNotes() != null ? log.getNotes() : "" });
+        }
+
+        return generatePdfTable("Biorepository Chain Of Custody",
+                new String[] { "Timestamp", "Sample", "Action", "From", "To", "Notes" }, rows);
     }
 
     // ==================== Helper Methods ====================
@@ -439,5 +508,38 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
         if (style != null) {
             cell.setCellStyle(style);
         }
+    }
+
+    private byte[] generatePdfTable(String title, String[] headers, List<String[]> rows) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4.rotate(), 24, 24, 24, 24);
+        try {
+            PdfWriter.getInstance(document, output);
+            document.open();
+            document.add(new Paragraph(title, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14)));
+            document.add(new Paragraph(" "));
+
+            PdfPTable table = new PdfPTable(headers.length);
+            table.setWidthPercentage(100f);
+            for (String header : headers) {
+                PdfPCell cell = new PdfPCell(new Phrase(header, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10)));
+                table.addCell(cell);
+            }
+
+            for (String[] row : rows) {
+                for (int i = 0; i < headers.length; i++) {
+                    String value = i < row.length && row[i] != null ? row[i] : "";
+                    table.addCell(new Phrase(value, FontFactory.getFont(FontFactory.HELVETICA, 9)));
+                }
+            }
+            document.add(table);
+        } catch (DocumentException e) {
+            throw new IOException("Failed to generate PDF export", e);
+        } finally {
+            if (document.isOpen()) {
+                document.close();
+            }
+        }
+        return output.toByteArray();
     }
 }
