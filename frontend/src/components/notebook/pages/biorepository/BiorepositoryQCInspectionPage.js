@@ -3,6 +3,7 @@ import {
   Grid,
   Column,
   Button,
+  ButtonSet,
   Tile,
   InlineNotification,
   Modal,
@@ -11,6 +12,7 @@ import {
   TextInput,
   Checkbox,
   Dropdown,
+  Toggle,
   DataTable,
   TableContainer,
   Table,
@@ -122,6 +124,7 @@ function BiorepositoryQCInspectionPage({
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [qcRoundInfo, setQcRoundInfo] = useState(null);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   // Bulk apply modal state
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
@@ -412,10 +415,74 @@ function BiorepositoryQCInspectionPage({
         setQcRoundInfo(response);
         setSelectedForBulkApply(generatedIds);
         resetBulkApplyValues();
-        setBulkApplyModalOpen(true);
+        setShowSelectedOnly(true);
       },
     );
   }, [intl]);
+
+  const clearQCRound = useCallback(() => {
+    setQcRoundInfo(null);
+    setShowSelectedOnly(false);
+    setSelectedForBulkApply([]);
+  }, []);
+
+  const openBulkApplyForRound = useCallback(() => {
+    if (!qcRoundInfo?.samples?.length) {
+      return;
+    }
+    const ids = qcRoundInfo.samples
+      .map((s) => String(s.bioSampleId))
+      .filter(Boolean);
+    setSelectedForBulkApply(ids);
+    resetBulkApplyValues();
+    setBulkApplyModalOpen(true);
+  }, [qcRoundInfo]);
+
+  const downloadQCRoundCSV = useCallback(() => {
+    if (!qcRoundInfo?.samples?.length) {
+      return;
+    }
+    const headers = [
+      "qcBatchId",
+      "boxKey",
+      "locationPath",
+      "position",
+      "bioSampleId",
+      "sampleItemId",
+      "externalId",
+      "accessionNumber",
+    ];
+    const escape = (value) => {
+      const str = value === null || value === undefined ? "" : String(value);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/\"/g, '""')}"`;
+      }
+      return str;
+    };
+    const rows = qcRoundInfo.samples.map((s) => [
+      qcRoundInfo.qcBatchId || "",
+      s.boxKey || "",
+      s.locationPath || "",
+      s.expectedCoordinate || "",
+      s.bioSampleId || "",
+      s.sampleItemId || "",
+      s.externalId || "",
+      s.accessionNumber || "",
+    ]);
+    const csv =
+      `${headers.join(",")}\n` +
+      rows.map((r) => r.map(escape).join(",")).join("\n") +
+      "\n";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `biorepository-qc-round-${qcRoundInfo.qcBatchId || "round"}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, [qcRoundInfo]);
 
   // Calculate stats
   const totalSamples = samples.length;
@@ -480,6 +547,65 @@ function BiorepositoryQCInspectionPage({
       }),
     },
   ];
+
+  const qcRoundRows = useMemo(() => {
+    if (!qcRoundInfo?.samples) {
+      return [];
+    }
+    return qcRoundInfo.samples.map((s, idx) => ({
+      id: `${s.bioSampleId || "sample"}-${idx}`,
+      locationPath: s.locationPath || "—",
+      position: s.expectedCoordinate || "—",
+      accessionNumber: s.accessionNumber || "—",
+      externalId: s.externalId || "—",
+    }));
+  }, [qcRoundInfo]);
+
+  const qcRoundHeaders = useMemo(
+    () => [
+      {
+        key: "locationPath",
+        header: intl.formatMessage({
+          id: "biorepository.qc.round.location",
+          defaultMessage: "Expected Location (physical path)",
+        }),
+      },
+      {
+        key: "position",
+        header: intl.formatMessage({
+          id: "biorepository.qc.round.position",
+          defaultMessage: "Position",
+        }),
+      },
+      {
+        key: "accessionNumber",
+        header: intl.formatMessage({
+          id: "biorepository.qc.round.sampleNumber",
+          defaultMessage: "Sample Number",
+        }),
+      },
+      {
+        key: "externalId",
+        header: intl.formatMessage({
+          id: "biorepository.qc.round.sampleId",
+          defaultMessage: "Sample ID",
+        }),
+      },
+    ],
+    [intl],
+  );
+
+  const displayedSamples = useMemo(() => {
+    if (!qcRoundInfo || !showSelectedOnly) {
+      return samples;
+    }
+    const selected = new Set(
+      (qcRoundInfo.samples || [])
+        .map((s) => String(s.bioSampleId))
+        .filter(Boolean),
+    );
+    return samples.filter((s) => selected.has(String(s.id)));
+  }, [qcRoundInfo, samples, showSelectedOnly]);
 
   return (
     <div className="biorepository-qc-inspection-page">
@@ -580,14 +706,106 @@ function BiorepositoryQCInspectionPage({
         />
       )}
 
-      <div style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
-        <Button kind="secondary" size="sm" onClick={handleGenerateQCRound}>
-          <FormattedMessage
-            id="biorepository.qc.generateRound"
-            defaultMessage="Generate Random QC Round"
-          />
-        </Button>
+      <div style={{ marginTop: "1rem", marginBottom: "0.75rem" }}>
+        <ButtonSet>
+          <Button kind="secondary" size="sm" onClick={handleGenerateQCRound}>
+            <FormattedMessage
+              id="biorepository.qc.generateRound"
+              defaultMessage="Generate Random QC Round"
+            />
+          </Button>
+          {qcRoundInfo && (
+            <>
+              <Button kind="primary" size="sm" onClick={openBulkApplyForRound}>
+                <FormattedMessage
+                  id="biorepository.qc.round.bulkApply"
+                  defaultMessage="Bulk apply QC to round"
+                />
+              </Button>
+              <Button kind="tertiary" size="sm" onClick={downloadQCRoundCSV}>
+                <FormattedMessage
+                  id="biorepository.qc.round.downloadCsv"
+                  defaultMessage="Download QC list (CSV)"
+                />
+              </Button>
+              <Button kind="ghost" size="sm" onClick={clearQCRound}>
+                <FormattedMessage
+                  id="biorepository.qc.round.clear"
+                  defaultMessage="Clear round"
+                />
+              </Button>
+            </>
+          )}
+        </ButtonSet>
       </div>
+
+      {qcRoundInfo && (
+        <div style={{ marginBottom: "1rem" }}>
+          <Toggle
+            id="qc-round-show-selected-only"
+            labelText={intl.formatMessage({
+              id: "biorepository.qc.round.showSelectedOnly",
+              defaultMessage: "Show only selected round samples in table",
+            })}
+            toggled={showSelectedOnly}
+            onToggle={(toggled) => setShowSelectedOnly(Boolean(toggled))}
+          />
+        </div>
+      )}
+
+      {qcRoundInfo && qcRoundRows.length > 0 && (
+        <div style={{ marginTop: "0.5rem" }}>
+          <DataTable rows={qcRoundRows} headers={qcRoundHeaders}>
+            {({
+              rows,
+              headers,
+              getTableProps,
+              getHeaderProps,
+              getRowProps,
+            }) => (
+              <TableContainer
+                title={intl.formatMessage({
+                  id: "biorepository.qc.round.selected.title",
+                  defaultMessage:
+                    "Selected QC round list (what to check physically)",
+                })}
+                description={intl.formatMessage(
+                  {
+                    id: "biorepository.qc.round.selected.subtitle",
+                    defaultMessage:
+                      "Go to the expected location and verify the sample is present at the position listed.",
+                  },
+                  {},
+                )}
+              >
+                <Table {...getTableProps()}>
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((header) => (
+                        <TableHeader
+                          key={header.key}
+                          {...getHeaderProps({ header })}
+                        >
+                          {header.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        {row.cells.map((cell) => (
+                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </DataTable>
+        </div>
+      )}
 
       {/* Samples Table */}
       <div className="sample-table-section" style={{ marginTop: "1rem" }}>
@@ -612,7 +830,7 @@ function BiorepositoryQCInspectionPage({
           />
         ) : (
           <DataTable
-            rows={samples.map((sample) => ({
+            rows={displayedSamples.map((sample) => ({
               id: sample.id.toString(),
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType,
@@ -690,7 +908,7 @@ function BiorepositoryQCInspectionPage({
                     </TableHead>
                     <TableBody>
                       {rows.map((row) => {
-                        const sample = samples.find(
+                        const sample = displayedSamples.find(
                           (s) => s.id.toString() === row.id,
                         );
                         return (
