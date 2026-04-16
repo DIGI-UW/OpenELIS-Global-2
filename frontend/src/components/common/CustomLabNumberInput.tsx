@@ -3,16 +3,16 @@ import { TextInput } from "@carbon/react";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { ConfigurationContext } from "../layout/Layout";
 
-export interface CustomLabNumberInputProps {
+export interface CustomLabNumberInputProps
+  extends Omit<React.ComponentPropsWithoutRef<"input">, "onChange"> {
   id?: string;
   name?: string;
   value?: string;
   labelText?: React.ReactNode;
   onChange?: (
-    e: React.ChangeEvent<HTMLInputElement> | any,
+    e: React.ChangeEvent<HTMLInputElement>,
     formattedValue?: string,
   ) => void;
-  [key: string]: any; // Allow any additional props typical for TextInput
 }
 
 const CustomLabNumberInput: React.FC<CustomLabNumberInputProps> = ({
