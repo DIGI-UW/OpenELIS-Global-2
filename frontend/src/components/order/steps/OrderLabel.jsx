@@ -250,8 +250,10 @@ const OrderLabel = () => {
   };
 
   /**
-   * Handle location change from StorageLocationSelector
-   * Stores selection locally - actual API call happens on Save
+   * Handle location change from the LocationPicker.
+   * Stores selection locally; the actual /assign or /move API call
+   * happens later in savePendingStorageAssignments() when the user
+   * submits the order form.
    */
   const handleLocationChange = (location) => {
     if (location) {

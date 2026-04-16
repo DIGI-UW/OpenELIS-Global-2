@@ -67,7 +67,8 @@ import { sampleObject } from "../addOrder/Index";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { SearchResults } from "../resultPage/SearchResultForm";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
+import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
+import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
 import GenericSampleOrder from "../genericSample/GenericSampleOrder";
 import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
@@ -1941,32 +1942,65 @@ const NoteBookInstanceEntryForm = () => {
                                     </Column>
                                   </>
                                 )}
-                                {/* Storage Location Widget */}
+                                {/* Storage Location — Phase 11 of the picker
+                                    refactor. NoteBook entry is a linear form,
+                                    so the inline picker variant fits better
+                                    than a modal (unlike Site 4 Result Entry
+                                    which is inside a deeply-nested expand
+                                    row). */}
                                 <Column lg={16} md={8} sm={4}>
                                   <br />
-                                  <StorageLocationSelector
-                                    workflow="results"
-                                    showQuickFind={true}
-                                    sampleInfo={{
-                                      sampleItemId:
-                                        sample.sampleItemId || sample.id,
-                                      sampleItemExternalId:
-                                        sample.externalId || null,
-                                      sampleAccessionNumber:
-                                        sample.accessionNumber || "",
-                                      sampleId:
-                                        sample.sampleItemId || sample.id,
-                                      type: sample.sampleType || "",
-                                      status: sample.sampleStatus || "Active",
-                                    }}
-                                    hierarchicalPath={
-                                      sampleLocations[
-                                        sample.sampleItemId || sample.id
-                                      ]?.locationPath || ""
-                                    }
-                                    onLocationChange={(locationData) => {
+                                  <div className="notebook-storage-current">
+                                    <strong>Storage location:</strong>{" "}
+                                    {sampleLocations[
+                                      sample.sampleItemId || sample.id
+                                    ]?.locationPath || "Unassigned"}
+                                  </div>
+                                  <LocationPickerInline
+                                    onChange={(state) => {
+                                      // Adapt new picker state → legacy
+                                      // handleLocationAssignment input shape.
+                                      const newLocation = {};
+                                      LEVEL_ORDER.forEach((lvl) => {
+                                        if (state.selection[lvl])
+                                          newLocation[lvl] =
+                                            state.selection[lvl];
+                                      });
+                                      // Require at least device-level; the
+                                      // backend rejects room-only.
+                                      if (!newLocation.device) return;
+                                      let positionCoordinate = "";
+                                      if (state.position) {
+                                        if (state.position.mode === "text") {
+                                          positionCoordinate = (
+                                            state.position.value || ""
+                                          ).trim();
+                                        } else if (
+                                          state.position.mode === "grid"
+                                        ) {
+                                          const row = (state.position.row || "")
+                                            .toString()
+                                            .trim();
+                                          const col = (
+                                            state.position.column || ""
+                                          )
+                                            .toString()
+                                            .trim();
+                                          positionCoordinate = row + col;
+                                        }
+                                      }
                                       handleLocationAssignment(
-                                        locationData,
+                                        {
+                                          sample: {
+                                            sampleItemId:
+                                              sample.sampleItemId || sample.id,
+                                            sampleAccessionNumber:
+                                              sample.accessionNumber || "",
+                                          },
+                                          newLocation,
+                                          positionCoordinate,
+                                          conditionNotes: state.notes || "",
+                                        },
                                         sample.sampleItemId || sample.id,
                                       );
                                     }}
