@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,9 @@ public class EQALabProgramEnrollmentServiceTest {
 
     @Mock
     private EQALabProgramEnrollmentDAO enrollmentDAO;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private EQALabProgramEnrollmentServiceImpl service;

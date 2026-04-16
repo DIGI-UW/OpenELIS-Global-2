@@ -54,4 +54,7 @@
   <!-- Patient ID document scanning (OGC-66) -->
   <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
+  <!-- Default nationality configuration for patient entry -->
+  <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
+
 </databaseChangeLog>
