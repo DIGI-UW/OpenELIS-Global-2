@@ -45,6 +45,7 @@ const AddOrder = (props) => {
   const [siteNames, setSiteNames] = useState([]);
   const [innitialized, setInnitialized] = useState(false);
   const [departments, setDepartments] = useState([]);
+  // Removed separate consentData state - using orderFormValues instead
 
   useEffect(() => {
     componentMounted.current = true;
@@ -361,6 +362,38 @@ const AddOrder = (props) => {
       ...orderFormValues,
       rememberSiteAndRequester: checked,
     });
+  }
+
+  function handleConsentCheckBox(e) {
+    let checked = false;
+    if (e.currentTarget.checked) {
+      checked = true;
+    }
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentProvided: checked,
+        // Clear reference number if unchecking consent
+        consentReferenceNo: checked ? orderFormValues.sampleOrderItems.consentReferenceNo : "",
+      },
+    });
+    setChanged({
+      ...changed,
+      "sampleOrderItems.consentProvided": true,
+      "sampleOrderItems.consentReferenceNo": true
+    });
+  }
+
+  function handleConsentReferenceChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentReferenceNo: e.target.value,
+      },
+    });
+    setChanged({ ...changed, "sampleOrderItems.consentReferenceNo": true });
   }
 
   useEffect(() => {
@@ -907,6 +940,8 @@ const AddOrder = (props) => {
               {" "}
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
+
+            {/* Remember Site and Requester + Informed Consent Row */}
             <Column lg={8} md={4} sm={4}>
               <Checkbox
                 labelText={
@@ -916,6 +951,37 @@ const AddOrder = (props) => {
                 onChange={handleRememberCheckBox}
               />
             </Column>
+            <Column lg={8} md={4} sm={4}>
+              <Checkbox
+                labelText="Patient has provided signed consent"
+                id="consentProvided"
+                checked={orderFormValues.sampleOrderItems.consentProvided}
+                onChange={handleConsentCheckBox}
+              />
+            </Column>
+
+            {/* Conditional Consent Reference Number Field */}
+            {orderFormValues.sampleOrderItems.consentProvided && (
+              <>
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    name="consentReferenceNo"
+                    labelText="Consent Form Reference No. (optional)"
+                    placeholder="Enter consent form reference number"
+                    value={orderFormValues.sampleOrderItems.consentReferenceNo}
+                    onChange={handleConsentReferenceChange}
+                    id="consentReferenceNoId"
+                  />
+                </Column>
+              </>
+            )}
           </Grid>
         </div>
         <div className="orderLegendBody">

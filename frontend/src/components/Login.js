@@ -32,6 +32,7 @@ function Login(props) {
   const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
   const [loginLogoUrl, setLoginLogoUrl] = useState(null);
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
+  const [userIsActive, setUserIsActive] = useState(false); // Track if user is actively typing
   const firstInput = createRef();
 
   // Auto-redirect to SAML if configured to bypass login page
@@ -59,12 +60,23 @@ function Login(props) {
   useEffect(() => {
     firstInput?.current?.focus();
 
+    // Only check login status periodically if user is not actively typing
     const interval = setInterval(() => {
-      checkLogin();
-    }, 1000 * 3);
+      if (!userIsActive) {
+        checkLogin();
+      }
+    }, 1000 * 10); // Increased to 10 seconds to be less disruptive
 
-    return () => clearInterval(interval); // clear your interval to prevent memory leaks.
-  }, []);
+    // Reset user activity after a period of inactivity
+    const activityTimeout = setTimeout(() => {
+      setUserIsActive(false);
+    }, 5000); // Consider user inactive after 5 seconds
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(activityTimeout);
+    };
+  }, [userIsActive]);
 
   // Load branding configuration for login logo
   // Colors are handled by App.js
@@ -248,7 +260,7 @@ function Login(props) {
                       password: "",
                     }}
                     onSubmit={(values) => {
-                      doLogin(values);
+                      // First try to establish session, then login
                       fetch(config.serverBaseUrl + "/LoginPage", {
                         //includes the browser sessionId in the Header for Authentication on the backend server
                         credentials: "include",
@@ -258,7 +270,10 @@ function Login(props) {
                         .then(() => {
                           doLogin(values);
                         })
-                        .catch(() => {});
+                        .catch(() => {
+                          // If session establishment fails, try login anyway
+                          doLogin(values);
+                        });
                     }}
                   >
                     {({ isValid, handleChange, handleSubmit }) => (
@@ -285,6 +300,12 @@ function Login(props) {
                                 })}
                                 autoComplete="off"
                                 ref={firstInput}
+                                onFocus={() => setUserIsActive(true)}
+                                onBlur={() => {
+                                  // Set user as inactive after a short delay when they leave the field
+                                  setTimeout(() => setUserIsActive(false), 2000);
+                                }}
+                                onChange={() => setUserIsActive(true)}
                               />
                               <TextInput.PasswordInput
                                 id="password"
@@ -298,6 +319,12 @@ function Login(props) {
                                 placeholder={props.intl.formatMessage({
                                   id: "login.msg.password",
                                 })}
+                                onFocus={() => setUserIsActive(true)}
+                                onBlur={() => {
+                                  // Set user as inactive after a short delay when they leave the field
+                                  setTimeout(() => setUserIsActive(false), 2000);
+                                }}
+                                onChange={() => setUserIsActive(true)}
                               />
                               <Stack orientation="horizontal">
                                 <Button

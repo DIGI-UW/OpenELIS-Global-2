@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Informed Consent Capture for Sample Collection -->
+    <changeSet id="OGC-557-2026-04-17-1" author="herbertYiga">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="sample" columnName="consent_provided"/>
+            </not>
+        </preConditions>
+
+        <!-- Add informed consent columns to sample table -->
+        <addColumn tableName="sample">
+            <column name="consent_provided" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample">
+            <column name="consent_reference_no" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <!-- Add index for consent queries -->
+        <createIndex tableName="sample" indexName="idx_sample_consent_provided">
+            <column name="consent_provided"/>
+        </createIndex>
+
+        <!-- Rollback -->
+        <rollback>
+            <dropIndex tableName="sample" indexName="idx_sample_consent_provided"/>
+            <dropColumn tableName="sample" columnName="consent_reference_no"/>
+            <dropColumn tableName="sample" columnName="consent_provided"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="herbertYiga" id="OGC-557-2026-04-17-2">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'informedConsentRequired'; </sqlCheck>
+        </preConditions>
+        <comment>add informed consent required configuration to site information</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="informedConsentRequired" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, informed consent is required for sample collection" />
+            <column name="value" value="false" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.patient.informed.consent" />
+            <column name="group" value="0" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -70,6 +70,8 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String gpsCaptureMethod;
     private Timestamp gpsCaptureTimestamp;
     private Boolean storageSkipped = false;
+    private Boolean consentProvided = false;
+    private String consentReferenceNo;
 
     // testing one-to-many
     // this is for HSE I and II - ability to enter up to two projects
@@ -465,6 +467,22 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setStorageSkipped(Boolean storageSkipped) {
         this.storageSkipped = storageSkipped;
+    }
+
+    public Boolean getConsentProvided() {
+        return consentProvided;
+    }
+
+    public void setConsentProvided(Boolean consentProvided) {
+        this.consentProvided = consentProvided;
+    }
+
+    public String getConsentReferenceNo() {
+        return consentReferenceNo;
+    }
+
+    public void setConsentReferenceNo(String consentReferenceNo) {
+        this.consentReferenceNo = consentReferenceNo;
     }
 
     public String getGpsCoordinatesDisplay() {

@@ -16,6 +16,7 @@ import {
 } from "../api/sampleTypeRequestApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import InformedConsentSection from "./sections/InformedConsentSection";
 import "../order-workflow.scss";
 
 /**
@@ -62,6 +63,15 @@ const OrderCollect = () => {
   // Pending sample type requests from Step 1
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+
+  // Informed consent data
+  const [consentData, setConsentData] = useState({
+    consentProvided: false,
+    consentNotes: "",
+    consentDate: "",
+    consentWitness: "",
+    alternativeConsentMethod: false,
+  });
 
   // Fetch sample types and UOMs on mount
   useEffect(() => {
@@ -160,11 +170,12 @@ const OrderCollect = () => {
     }
   }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
 
-  // Validate that at least one sample with a sample type is present
+  // Validate that at least one sample with a sample type is present and informed consent is provided
   const canProceed =
     samples &&
     samples.length > 0 &&
-    samples.some((sample) => sample.sampleTypeId);
+    samples.some((sample) => sample.sampleTypeId) &&
+    consentData.consentProvided;
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
@@ -203,6 +214,10 @@ const OrderCollect = () => {
       });
       setNotificationVisible(true);
     }
+  };
+
+  const handleConsentChange = (updatedConsent) => {
+    setConsentData(updatedConsent);
   };
 
   return (
@@ -245,7 +260,14 @@ const OrderCollect = () => {
           isReadOnly={isReadOnly && !isEditMode}
         />
 
-        {/* Section 2: Samples Collection */}
+        {/* Section 2: Informed Consent */}
+        <InformedConsentSection
+          consentData={consentData}
+          onConsentChange={handleConsentChange}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        {/* Section 3: Samples Collection */}
         <SamplesCollectionSection
           samples={samples}
           setSamples={setSamples}

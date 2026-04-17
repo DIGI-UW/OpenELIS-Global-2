@@ -239,6 +239,13 @@ public class SampleOrderItem implements Serializable {
     private String eqaDeadline;
     private String eqaPriority;
 
+    // Informed consent fields
+    private boolean consentProvided;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String consentReferenceNo;
+
     // for display
     private List<IdValuePair> priorityList;
 
@@ -705,5 +712,21 @@ public class SampleOrderItem implements Serializable {
             return (String) value;
         }
         return value.toString();
+    }
+
+    public boolean getConsentProvided() {
+        return consentProvided;
+    }
+
+    public void setConsentProvided(boolean consentProvided) {
+        this.consentProvided = consentProvided;
+    }
+
+    public String getConsentReferenceNo() {
+        return consentReferenceNo;
+    }
+
+    public void setConsentReferenceNo(String consentReferenceNo) {
+        this.consentReferenceNo = consentReferenceNo;
     }
 }
