@@ -949,7 +949,7 @@ const AddOrder = (props) => {
             <Column lg={8} md={4} sm={4}>
               <Checkbox
                 labelText={
-                  <FormattedMessage id="order.consent.provided.label" />
+                  <FormattedMessage id="label.informedConsent.consentGiven" />
                 }
                 id="consentGiven"
                 checked={orderFormValues.sampleOrderItems.consentGiven}
@@ -971,10 +971,10 @@ const AddOrder = (props) => {
                   <TextInput
                     name="consentFormReference"
                     labelText={intl.formatMessage({
-                      id: "order.consent.referenceNo.label",
+                      id: "label.informedConsent.formReference",
                     })}
                     placeholder={intl.formatMessage({
-                      id: "order.consent.referenceNo.placeholder",
+                      id: "placeholder.informedConsent.formReference",
                     })}
                     value={
                       orderFormValues.sampleOrderItems.consentFormReference
