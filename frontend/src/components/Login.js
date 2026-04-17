@@ -274,22 +274,7 @@ function Login(props) {
                       username: "",
                       password: "",
                     }}
-                    onSubmit={(values) => {
-                      // First try to establish session, then login
-                      fetch(config.serverBaseUrl + "/LoginPage", {
-                        //includes the browser sessionId in the Header for Authentication on the backend server
-                        credentials: "include",
-                        method: "GET",
-                      })
-                        .then((response) => response.status)
-                        .then(() => {
-                          doLogin(values);
-                        })
-                        .catch(() => {
-                          // If session establishment fails, try login anyway
-                          doLogin(values);
-                        });
-                    }}
+                    onSubmit={(values) => doLogin(values)}
                   >
                     {({ isValid, handleChange, handleSubmit }) => (
                       <Form onSubmit={handleSubmit} onChange={handleChange}>
