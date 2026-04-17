@@ -190,7 +190,14 @@ function consentCheckboxLabel(page: Page): Locator {
 }
 
 function consentReferenceInput(page: Page): Locator {
-  return page.locator("input#consentFormReference");
+  // AddOrder.js renders with id="consentFormReferenceId" + name="consentFormReference".
+  // ConsentAccordionSection renders with id="consentFormReference".
+  // Match any of the three to stay flow-agnostic.
+  return page
+    .locator(
+      'input#consentFormReferenceId, input#consentFormReference, input[name="consentFormReference"]',
+    )
+    .first();
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
