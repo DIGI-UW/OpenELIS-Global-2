@@ -304,14 +304,18 @@ public class BarcodeLabelMaker {
 
             // individual specimen case
         } else if ("specimen".equals(type)) {
-            String specimenNumber = labNo.substring(labNo.lastIndexOf(".") + 1);
-            labNo = labNo.substring(0, labNo.lastIndexOf("."));
+            int separatorIndex = labNo.lastIndexOf(".");
+            String specimenNumber = separatorIndex >= 0 ? labNo.substring(separatorIndex + 1) : null;
+            if (separatorIndex >= 0) {
+                labNo = labNo.substring(0, separatorIndex);
+            }
             Sample sample = sampleService.getSampleByAccessionNumber(labNo);
             List<SampleItem> sampleItemList = sampleItemService.getSampleItemsBySampleIdAndStatus(sample.getId(),
                     getEnteredStatusSampleList());
             for (SampleItem sampleItem : sampleItemList) {
-                // get only the sample item matching the specimen number
-                if (sampleItem.getSortOrder().equals(specimenNumber)) {
+                // when no specimen number was supplied, print labels for every sample item;
+                // otherwise only for the matching sort order
+                if (specimenNumber == null || sampleItem.getSortOrder().equals(specimenNumber)) {
                     SpecimenLabel specLabel = new SpecimenLabel(sampleService.getPatient(sample), sample, sampleItem,
                             labNo);
                     int requestedQuantity = BarcodeConfigUtil.parseIntSafe(quantity, 1);

@@ -347,64 +347,78 @@ const EQAOrdersPage = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {tableRows.map((row) => (
-                      <TableRow key={row.id} {...getRowProps({ row })}>
-                        {row.cells.map((cell) => {
-                          if (cell.info.header === "status") {
+                    {tableRows.map((row) => {
+                      const accessionNumber =
+                        orders.find((o) => String(o.id) === row.id)
+                          ?.labNumber || "";
+                      return (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          {row.cells.map((cell) => {
+                            if (cell.info.header === "status") {
+                              return (
+                                <TableCell key={cell.id}>
+                                  <Tag
+                                    type={STATUS_TAG_MAP[cell.value] || "gray"}
+                                    size="sm"
+                                  >
+                                    {intl.formatMessage({
+                                      id: `eqa.status.${(cell.value || "").toLowerCase().replace("_", "")}`,
+                                      defaultMessage: cell.value,
+                                    })}
+                                  </Tag>
+                                </TableCell>
+                              );
+                            }
+                            if (cell.info.header === "priority") {
+                              return (
+                                <TableCell key={cell.id}>
+                                  <Tag
+                                    type={
+                                      PRIORITY_TAG_MAP[cell.value] || "gray"
+                                    }
+                                    size="sm"
+                                  >
+                                    {intl.formatMessage({
+                                      id: `eqa.priority.${(cell.value || "").toLowerCase()}`,
+                                      defaultMessage: cell.value,
+                                    })}
+                                  </Tag>
+                                </TableCell>
+                              );
+                            }
                             return (
-                              <TableCell key={cell.id}>
-                                <Tag
-                                  type={STATUS_TAG_MAP[cell.value] || "gray"}
-                                  size="sm"
-                                >
-                                  {intl.formatMessage({
-                                    id: `eqa.status.${(cell.value || "").toLowerCase().replace("_", "")}`,
-                                    defaultMessage: cell.value,
-                                  })}
-                                </Tag>
-                              </TableCell>
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
                             );
-                          }
-                          if (cell.info.header === "priority") {
-                            return (
-                              <TableCell key={cell.id}>
-                                <Tag
-                                  type={PRIORITY_TAG_MAP[cell.value] || "gray"}
-                                  size="sm"
-                                >
-                                  {intl.formatMessage({
-                                    id: `eqa.priority.${(cell.value || "").toLowerCase()}`,
-                                    defaultMessage: cell.value,
-                                  })}
-                                </Tag>
-                              </TableCell>
-                            );
-                          }
-                          return (
-                            <TableCell key={cell.id}>{cell.value}</TableCell>
-                          );
-                        })}
-                        <TableCell>
-                          <OverflowMenu flipped>
-                            <OverflowMenuItem
-                              itemText={intl.formatMessage({
-                                id: "eqa.action.viewOrder",
-                              })}
-                            />
-                            <OverflowMenuItem
-                              itemText={intl.formatMessage({
-                                id: "eqa.action.enterResults",
-                              })}
-                            />
-                            <OverflowMenuItem
-                              itemText={intl.formatMessage({
-                                id: "eqa.action.viewResults",
-                              })}
-                            />
-                          </OverflowMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          })}
+                          <TableCell>
+                            <OverflowMenu flipped>
+                              <OverflowMenuItem
+                                itemText={intl.formatMessage({
+                                  id: "eqa.action.viewOrder",
+                                })}
+                                disabled={!accessionNumber}
+                                onClick={() =>
+                                  history.push(
+                                    `/ModifyOrder?accessionNumber=${encodeURIComponent(accessionNumber)}`,
+                                  )
+                                }
+                              />
+                              <OverflowMenuItem
+                                itemText={intl.formatMessage({
+                                  id: "eqa.action.enterViewResults",
+                                })}
+                                disabled={!accessionNumber}
+                                onClick={() =>
+                                  history.push(
+                                    `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(accessionNumber)}`,
+                                  )
+                                }
+                              />
+                            </OverflowMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

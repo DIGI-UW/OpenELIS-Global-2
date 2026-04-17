@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/programs")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired

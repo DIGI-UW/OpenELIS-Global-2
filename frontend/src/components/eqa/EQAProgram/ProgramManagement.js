@@ -38,9 +38,10 @@ import SystemSettingsTab from "./SystemSettingsTab";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
+  { label: "banner.menu.eqa.mgmt", link: "" },
   {
-    label: "sidenav.label.admin.eqaProgram",
-    link: "/MasterListsPage/eqaProgram",
+    label: "eqa.management.programs.title",
+    link: "/EQAManagement",
   },
 ];
 

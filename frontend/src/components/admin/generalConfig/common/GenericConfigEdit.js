@@ -154,10 +154,23 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     }
   };
 
+  const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
+
   const handleFileUpload = (event) => {
     const files = event.target.files;
 
     const file = files[0];
+    if (!file) {
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      showAlertMessage(
+        intl.formatMessage({ id: "admin.config.logo.error.fileTooLarge" }),
+        NotificationKinds.error,
+      );
+      event.target.value = "";
+      return;
+    }
     setFile(file);
 
     const reader = new FileReader();
@@ -285,17 +298,28 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                     </Column>
                     <Column lg={3} md={6} sm={3}>
                       {!removeImage && (
-                        <FileUploader
-                          buttonLabel="Choose file"
-                          buttonKind="primary"
-                          size="sm"
-                          filenameStatus="edit"
-                          accept={[".jpg", ".png", ".gif"]}
-                          multiple={false}
-                          disabled={false}
-                          iconDescription="Delete file"
-                          onChange={handleFileUpload}
-                        />
+                        <>
+                          <FileUploader
+                            buttonLabel="Choose file"
+                            buttonKind="primary"
+                            size="sm"
+                            filenameStatus="edit"
+                            accept={[".jpg", ".png", ".gif"]}
+                            multiple={false}
+                            disabled={false}
+                            iconDescription="Delete file"
+                            onChange={handleFileUpload}
+                          />
+                          <p
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "#525252",
+                              marginTop: "0.25rem",
+                            }}
+                          >
+                            <FormattedMessage id="admin.config.logo.formats" />
+                          </p>
+                        </>
                       )}
                     </Column>
                   </Grid>
