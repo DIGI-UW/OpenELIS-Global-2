@@ -53,23 +53,4 @@
         </rollback>
     </changeSet>
 
-    <changeSet author="herbertYiga" id="OGC-557-2026-04-17-2">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'informedConsentRequired'; </sqlCheck>
-        </preConditions>
-        <comment>add informed consent required configuration to site information</comment>
-        <insert schemaName="clinlims" tableName="site_information">
-            <column name="id" valueSequenceNext="site_information_seq" />
-            <column name="name" value="informedConsentRequired" />
-            <column name="lastupdated" valueComputed="${now}" />
-            <column name="description" value="If true, informed consent is required for sample collection" />
-            <column name="value" value="false" />
-            <column name="encrypted" value="false" />
-            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
-            <column name="value_type" value="boolean" />
-            <column name="instruction_key" value="instructions.patient.informed.consent" />
-            <column name="group" value="0" />
-        </insert>
-    </changeSet>
-
 </databaseChangeLog>

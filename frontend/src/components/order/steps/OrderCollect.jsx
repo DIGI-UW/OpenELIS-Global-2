@@ -4,7 +4,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { Stack, InlineNotification } from "@carbon/react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
+import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -54,8 +54,6 @@ const OrderCollect = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
-  const { configurationProperties } = useContext(ConfigurationContext);
-
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
   const [isLoadingSampleTypes, setIsLoadingSampleTypes] = useState(true);
@@ -78,7 +76,12 @@ const OrderCollect = () => {
   // Initialize consent data from orderData (for edit scenarios)
   useEffect(() => {
     if (orderData?.sampleOrderItems) {
-      const { consentProvided, consentReferenceNo, consentRecordedAt, consentRecordedBy } = orderData.sampleOrderItems;
+      const {
+        consentProvided,
+        consentReferenceNo,
+        consentRecordedAt,
+        consentRecordedBy,
+      } = orderData.sampleOrderItems;
       if (consentProvided !== undefined) {
         setConsentData({
           consentProvided: consentProvided || false,
@@ -88,7 +91,10 @@ const OrderCollect = () => {
         });
       }
     }
-  }, [orderData?.sampleOrderItems?.consentProvided, orderData?.sampleOrderItems?.consentReferenceNo]);
+  }, [
+    orderData?.sampleOrderItems?.consentProvided,
+    orderData?.sampleOrderItems?.consentReferenceNo,
+  ]);
 
   // Fetch sample types and UOMs on mount
   useEffect(() => {
@@ -187,13 +193,9 @@ const OrderCollect = () => {
     }
   }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
 
-  // Validate that at least one sample with a sample type is present and informed consent (if required)
-  const consentRequired =
-    configurationProperties?.informedConsentRequired === "true";
-  const canProceed =
-    samples?.length > 0 &&
-    samples.some((s) => s.sampleTypeId) &&
-    (!consentRequired || consentData.consentProvided);
+  // Validate that at least one sample with a sample type is present.
+  // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
+  const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
@@ -245,7 +247,7 @@ const OrderCollect = () => {
         consentProvided: updatedConsent.consentProvided,
         consentReferenceNo: updatedConsent.consentReferenceNo,
         // Note: consentRecordedAt and consentRecordedBy are auto-populated by backend
-      }
+      },
     });
   };
 
