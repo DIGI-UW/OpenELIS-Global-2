@@ -43,36 +43,48 @@ async function gotoSamplePatientEntry(page: Page): Promise<void> {
   });
 }
 
-async function selectAnyPatient(page: Page): Promise<void> {
-  // Use the "Search" tab if visible, fill any value that returns results.
-  const searchTabBtn = page.locator('[data-cy="searchPatientTabButton"]');
-  if (await searchTabBtn.isVisible()) {
-    await searchTabBtn.click();
-  }
+async function createTestPatient(page: Page): Promise<void> {
+  // Use the "New Patient" tab — self-contained, does not depend on seeded
+  // patient data in the test DB. The foundational test DB seeds providers,
+  // organizations, sample types, and tests (per e2e-foundational-data.sql)
+  // but not patients, so search returns no results.
+  const newPatientBtn = page.locator('[data-cy="newPatientTabButton"]');
+  await expect(newPatientBtn).toBeVisible({ timeout: UI_TIMEOUT });
+  await newPatientBtn.click();
 
-  const lastName = page.locator("input#lastName");
-  await expect(lastName).toBeVisible({ timeout: UI_TIMEOUT });
-  await lastName.fill("a");
-
-  const searchBtn = page.locator(
-    '[data-cy="searchPatientButton"], button#local_search',
-  );
-  await searchBtn.click();
-
-  const firstRadio = page.locator('[data-cy="radioButton"]').first();
-  await expect(firstRadio).toBeVisible({ timeout: UI_TIMEOUT });
-  await firstRadio.locator("xpath=..").locator("label").click();
-
-  // Wait for the form to hydrate
   const patientForm = page
     .locator(
       '[data-cy="patientSelectionReady"], [data-cy="patientSelectionPending"]',
     )
     .first();
   await expect(patientForm).toBeVisible({ timeout: LONG_TIMEOUT });
-  await expect(patientForm.locator("input#lastName")).not.toHaveValue("", {
-    timeout: UI_TIMEOUT,
-  });
+
+  // Fill the minimum fields required to proceed past the patient step.
+  const uniqueSuffix = `${Date.now()}`;
+  const lastName = patientForm.locator("input#lastName");
+  await expect(lastName).toBeVisible({ timeout: UI_TIMEOUT });
+  await lastName.fill(`Test${uniqueSuffix.slice(-6)}`);
+
+  const firstName = patientForm.locator("input#firstName");
+  await firstName.fill("Consent");
+
+  const nationalId = patientForm.locator("input#nationalId");
+  if (await nationalId.isVisible()) {
+    await nationalId.fill(`NID-${uniqueSuffix}`);
+    await nationalId.press("Tab");
+  }
+
+  // Gender: click the first gender radio label (Carbon hides the input)
+  const maleLabel = page.locator('label[for="radio-1"]');
+  if (await maleLabel.isVisible()) {
+    await maleLabel.click();
+  }
+
+  const birthDate = patientForm.locator("input#date-picker-default-id");
+  if (await birthDate.isVisible()) {
+    await birthDate.fill("13/03/1990");
+    await birthDate.press("Tab");
+  }
 }
 
 async function fillMinimumOrderFields(page: Page): Promise<void> {
@@ -186,7 +198,7 @@ function consentReferenceInput(page: Page): Locator {
 test.describe("OGC-557 — informed consent capture", () => {
   test.beforeEach(async ({ page }) => {
     await gotoSamplePatientEntry(page);
-    await selectAnyPatient(page);
+    await createTestPatient(page);
     await clickNext(page); // patient -> sample step
     await fillMinimumOrderFields(page);
     await clickNext(page); // sample -> order details step
