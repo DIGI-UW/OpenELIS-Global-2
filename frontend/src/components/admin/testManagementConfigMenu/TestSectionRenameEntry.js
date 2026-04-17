@@ -21,7 +21,7 @@ let breadcrumbs = [
     link: "/MasterListsPage/testManagementConfigMenu",
   },
   {
-    label: "configuration.type.rename",
+    label: "configuration.testSection.rename",
     link: "/MasterListsPage/TestSectionRenameEntry",
   },
 ];
@@ -200,7 +200,7 @@ function TestSectionRenameEntry() {
             <Column lg={16} md={8} sm={4}>
               <Section>
                 <Heading>
-                  <FormattedMessage id="configuration.type.rename" />
+                  <FormattedMessage id="configuration.testSection.rename" />
                 </Heading>
               </Section>
             </Column>

@@ -1095,6 +1095,12 @@ export function SearchResults(props) {
           <div className="sampleInfo">
             <br></br>
             {testName}
+            {row.unitsOfMeasure && (
+              <>
+                <br></br>
+                {row.unitsOfMeasure}
+              </>
+            )}
             <br></br>
             {sampleType}
           </div>

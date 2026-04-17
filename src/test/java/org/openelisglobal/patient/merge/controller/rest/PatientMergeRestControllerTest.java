@@ -54,9 +54,10 @@ public class PatientMergeRestControllerTest extends BaseWebContextSensitiveTest 
         // Load system user dataset for audit
         executeDataSetWithStateManagement("testdata/system-user.xml");
 
-        // Set up authenticated session with Global Admin user (system_user id=1)
+        // Set up authenticated session with user id=1. Patient merge requires the
+        // Reception role; system-user.xml grants it via system_user_role role_id=100.
         UserSessionData userSessionData = new UserSessionData();
-        userSessionData.setSytemUserId(1); // Admin user from system-user.xml (note: typo in API)
+        userSessionData.setSytemUserId(1);
         mockSession = new MockHttpSession();
         mockSession.setAttribute(IActionConstants.USER_SESSION_DATA, userSessionData);
 

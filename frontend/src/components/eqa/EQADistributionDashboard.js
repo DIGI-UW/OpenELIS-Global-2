@@ -27,6 +27,13 @@ import {
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
+import PageBreadCrumb from "../common/PageBreadCrumb";
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "banner.menu.eqa.mgmt", link: "" },
+  { label: "eqa.distribution.dashboard.title", link: "/EQADistribution" },
+];
 
 const STATUS_TAG_MAP = {
   DRAFT: { color: "gray", label: "draft" },
@@ -217,6 +224,7 @@ const EQADistributionDashboard = () => {
 
   return (
     <div style={{ padding: "1rem" }}>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <h2>{intl.formatMessage({ id: "eqa.distribution.dashboard.title" })}</h2>
       <p style={{ color: "#525252", marginBottom: "1.5rem" }}>
         {intl.formatMessage({ id: "eqa.distribution.dashboard.subtitle" })}
