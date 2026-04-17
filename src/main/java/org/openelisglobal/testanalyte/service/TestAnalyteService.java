@@ -4,7 +4,9 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface TestAnalyteService extends BaseObjectService<TestAnalyte, String> {
     TestAnalyte getData(TestAnalyte testAnalyte);
 

@@ -322,7 +322,7 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
     private String getRoleForAuthority(String string) {
         Optional<Role> sysRole = roleService.getMatch("name", string);
         if (sysRole.isPresent()) {
-            return sysRole.get().getId();
+            return String.valueOf(sysRole.get().getId());
         }
         LogEvent.logWarn(this.getClass().getSimpleName(), "getRoleForAuthority",
                 "could not find a role for the authority: " + string);
@@ -332,11 +332,10 @@ public class CustomSSOAuthenticationSuccessHandler extends SavedRequestAwareAuth
     private Set<String> getPermittedForms(int systemUserId) {
         Set<String> allPermittedPages = new HashSet<>();
 
-        List<String> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
 
-        for (String roleId : roleIds) {
-            Set<String> permittedPagesForRole = permissionModuleService
-                    .getAllPermittedPagesFromAgentId(Integer.parseInt(roleId));
+        for (Integer roleId : roleIds) {
+            Set<String> permittedPagesForRole = permissionModuleService.getAllPermittedPagesFromAgentId(roleId);
             allPermittedPages.addAll(permittedPagesForRole);
         }
 

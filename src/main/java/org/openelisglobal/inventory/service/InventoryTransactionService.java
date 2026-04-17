@@ -5,27 +5,32 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface InventoryTransactionService extends BaseObjectService<InventoryTransaction, Long> {
 
     /**
      * Get transactions by lot ID
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     List<InventoryTransaction> getByLotId(Long lotId);
 
     /**
      * Get transactions by transaction type
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     List<InventoryTransaction> getByTransactionType(TransactionType transactionType);
 
     /**
      * Get transactions within a date range
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     List<InventoryTransaction> getByDateRange(Timestamp startDate, Timestamp endDate);
 
     /**
      * Get transactions by reference (e.g., test result ID)
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     List<InventoryTransaction> getByReference(Long referenceId, String referenceType);
 
     /**
@@ -42,6 +47,7 @@ public interface InventoryTransactionService extends BaseObjectService<Inventory
      * @param sysUserId       The user performing the action
      * @return The created transaction
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     InventoryTransaction recordTransaction(Long lotId, TransactionType transactionType, Double quantityChange,
             Double quantityAfter, Long referenceId, String referenceType, String notes, String sysUserId);
 }

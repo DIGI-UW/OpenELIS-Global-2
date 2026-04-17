@@ -1,6 +1,7 @@
 package org.openelisglobal.shipment.service;
 
 import java.io.ByteArrayOutputStream;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for generating PDF manifests for shipping boxes Contains detailed
@@ -15,5 +16,6 @@ public interface ManifestPDFService {
      * @return ByteArrayOutputStream containing the PDF
      * @throws IllegalArgumentException if box not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     ByteArrayOutputStream generateManifestPDF(String boxId);
 }

@@ -194,7 +194,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
                     .getNumberedListWithLeadingBlank(DisplayListService.ListType.REJECTION_REASONS));
 
             // load testSections for drop down
-            String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
+            String resultsRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RESULTS).getId());
             List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
             newForm.setTestSections(testSections);
             newForm.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
@@ -375,7 +375,7 @@ public class LogbookResultsController extends LogbookResultsBaseController {
             }
         }
 
-        String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
+        String resultsRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RESULTS).getId());
         List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
         form.setTestSections(testSections);
         form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));

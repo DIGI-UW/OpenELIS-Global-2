@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for reprocessing analyzer errors
@@ -9,6 +10,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
  * Provides methods for reprocessing failed analyzer messages after mappings are
  * created.
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface AnalyzerReprocessingService {
 
     /**

@@ -79,7 +79,7 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
         isVariableTypeOfSample = VARIABLE_SAMPLE_TYPE_ID.equals(sampleType);
         StringBuilder xml = new StringBuilder();
 
-        String receptionRoleId = roleService.getRoleByName(Constants.ROLE_RECEPTION).getId();
+        String receptionRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RECEPTION).getId());
         UserSessionData usd = (UserSessionData) request.getSession().getAttribute(IActionConstants.USER_SESSION_DATA);
         List<IdValuePair> testSections = userService.getUserTestSections(String.valueOf(usd.getSystemUserId()),
                 receptionRoleId);

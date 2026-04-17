@@ -3,6 +3,7 @@ package org.openelisglobal.shipment.service;
 import java.util.List;
 import org.openelisglobal.shipment.valueholder.Shipment;
 import org.openelisglobal.shipment.valueholder.ShipmentStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ShipmentService {
 
@@ -12,6 +13,7 @@ public interface ShipmentService {
      * @param id Shipment ID
      * @return Shipment or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     Shipment getShipmentById(Integer id);
 
     /**
@@ -20,6 +22,7 @@ public interface ShipmentService {
      * @param shippingBoxId Shipping box ID
      * @return Shipment or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     Shipment getShipmentByShippingBoxId(Integer shippingBoxId);
 
     /**
@@ -28,6 +31,7 @@ public interface ShipmentService {
      * @param trackingNumber Tracking number
      * @return Shipment or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     Shipment getShipmentByTrackingNumber(String trackingNumber);
 
     /**
@@ -36,6 +40,7 @@ public interface ShipmentService {
      * @param status Shipment status
      * @return List of shipments
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<Shipment> getShipmentsByStatus(ShipmentStatus status);
 
     /**
@@ -44,6 +49,7 @@ public interface ShipmentService {
      * @param courier Courier name
      * @return List of shipments
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<Shipment> getShipmentsByCourier(String courier);
 
     /**
@@ -52,6 +58,7 @@ public interface ShipmentService {
      * @param shipment Shipment to create
      * @return Created Shipment with ID
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     Shipment createShipment(Shipment shipment);
 
     /**
@@ -60,6 +67,7 @@ public interface ShipmentService {
      * @param shipment Shipment to update
      * @return Updated Shipment
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     Shipment updateShipment(Shipment shipment);
 
     /**
@@ -69,6 +77,7 @@ public interface ShipmentService {
      * @param newStatus New status
      * @return Updated Shipment
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     Shipment updateShipmentStatus(Integer id, ShipmentStatus newStatus);
 
     /**
@@ -76,5 +85,6 @@ public interface ShipmentService {
      *
      * @param id Shipment ID
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     void deleteShipment(Integer id);
 }

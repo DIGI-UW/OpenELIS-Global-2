@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerError;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for AnalyzerError operations
@@ -24,6 +25,7 @@ public interface AnalyzerErrorService {
      * @param rawMessage   Raw ASTM message (for reprocessing)
      * @return The ID of the created error record
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     String createError(Analyzer analyzer, AnalyzerError.ErrorType errorType, AnalyzerError.Severity severity,
             String errorMessage, String rawMessage);
 
@@ -33,6 +35,7 @@ public interface AnalyzerErrorService {
      * @param errorId The ID of the error to acknowledge
      * @param userId  The ID of the user acknowledging the error
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     void acknowledgeError(String errorId, String userId);
 
     /**
@@ -41,6 +44,7 @@ public interface AnalyzerErrorService {
      * @param errorId The ID of the error to reprocess
      * @return true if reprocessing succeeded, false otherwise
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean reprocessError(String errorId);
 
     /**
@@ -49,6 +53,7 @@ public interface AnalyzerErrorService {
      * @param errorId The ID of the error to retrieve
      * @return The error, or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerError getErrorById(String errorId);
 
     /**
@@ -63,6 +68,7 @@ public interface AnalyzerErrorService {
      * @param endDate    Optional end date filter
      * @return List of matching errors
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerError> getErrorsByFilters(String analyzerId, AnalyzerError.ErrorType errorType,
             AnalyzerError.Severity severity, AnalyzerError.ErrorStatus status, java.util.Date startDate,
             java.util.Date endDate);
@@ -72,5 +78,6 @@ public interface AnalyzerErrorService {
      *
      * @return Map with keys: totalErrors, unacknowledged, critical, last24Hours
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     java.util.Map<String, Long> getErrorStatistics();
 }

@@ -15,7 +15,9 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
 public interface SampleService extends BaseObjectService<Sample, String> {
     void getData(Sample sample);
 
@@ -50,6 +52,7 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     List<Sample> getSamplesByAccessionRange(String minAccession, String maxAccession);
 
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     boolean insertDataWithAccessionNumber(Sample sample);
 
     void getSampleByAccessionNumber(Sample sample);
@@ -62,6 +65,7 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     List<Sample> getSamplesForPatient(String patientID);
 
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     String generateAccessionNumberAndInsert(Sample sample);
 
     Organization getOrganizationRequester(Sample sample, String orgTypeId);
@@ -98,6 +102,7 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     SampleAdditionalField getSampleAdditionalFieldForSample(String sampleId, AdditionalFieldName fieldName);
 
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     SampleAdditionalField saveSampleAdditionalField(SampleAdditionalField sampleAdditionalField);
 
     String getSampleStatusForDisplay(Sample sample);

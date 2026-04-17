@@ -105,12 +105,13 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
             sysModsByUrl = filterParamMatches(request, sysModsByUrl);
         }
         if (sysModsByUrl.isEmpty() && REQUIRE_MODULE) {
-            // SECURITY NOTE: REST endpoints without SystemModuleUrl DB entries are
-            // auto-allowed for any authenticated user. Admin-only controllers are
-            // protected via @PreAuthorize("hasRole('ADMIN')") (added in PR #2794).
-            // Full per-role module mappings are a future enhancement.
+            // REST endpoints with no SystemModuleUrl entry are denied by default.
+            // Access control for REST endpoints is handled by @PreAuthorize annotations
+            // using privilege authorities (PRIV_*) loaded at login. An unregistered
+            // REST path reaching here means it has no module mapping — deny it so
+            // that @PreAuthorize is the sole gate (closes the auto-allow gap).
             if (isRestFullPath()) {
-                return true;
+                return false;
             }
             LogEvent.logWarn("ModuleAuthenticationInterceptor", "hasPermissionForUrl()",
                     "This page has no modules assigned to it");
@@ -144,11 +145,10 @@ public class ModuleAuthenticationInterceptor implements HandlerInterceptor {
     private Set<String> getPermittedForms(int systemUserId) {
         Set<String> allPermittedPages = new HashSet<>();
 
-        List<String> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
 
-        for (String roleId : roleIds) {
-            Set<String> permittedPagesForRole = permissionModuleService
-                    .getAllPermittedPagesFromAgentId(Integer.parseInt(roleId));
+        for (Integer roleId : roleIds) {
+            Set<String> permittedPagesForRole = permissionModuleService.getAllPermittedPagesFromAgentId(roleId);
             allPermittedPages.addAll(permittedPagesForRole);
         }
 

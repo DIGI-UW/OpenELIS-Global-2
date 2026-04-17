@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for mapping validation operations
@@ -10,6 +11,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
  * 
  * Provides validation metrics and analysis for analyzer field mappings
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface MappingValidationService {
 
     /**

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Deactivates legacy role aliases after user assignments have been
+      migrated in changeset 012-006.
+
+      Roles are set active=false rather than deleted to preserve FK integrity
+      in audit tables and historical records. They will no longer appear in
+      the role assignment UI or be returned by active-role queries.
+
+      Roles deactivated:
+        - Results entry    (alias for Results — migrated in 012-006)
+        - Validator        (alias for Validation — migrated in 012-006)
+        - Results Admin    (alias for Results — migrated in 012-006)
+        - Inventory mgr    (unused — active=false already in some deployments)
+    -->
+
+    <changeSet author="openelis" id="012-007-deactivate-legacy-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Deactivate legacy role aliases: Results entry, Validator, Results Admin, Inventory mgr</comment>
+        <sql>
+            UPDATE clinlims.system_role
+            SET active = false
+            WHERE name IN ('Results entry', 'Validator', 'Results Admin', 'Inventory mgr');
+        </sql>
+        <rollback>
+            <sql>
+                UPDATE clinlims.system_role
+                SET active = true
+                WHERE name IN ('Results entry', 'Validator', 'Results Admin', 'Inventory mgr');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

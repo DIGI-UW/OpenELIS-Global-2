@@ -3,7 +3,9 @@ package org.openelisglobal.coldstorage.service;
 import java.math.BigDecimal;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.coldstorage.event.FreezerTemperatureThresholdViolatedEvent;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
 public interface FreezerAlertService {
 
     /**

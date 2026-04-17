@@ -578,8 +578,8 @@ public class ResultUtil {
         if (userModuleService.isUserAdmin(request)) {
             return false;
         }
-        List<String> roleIds = userRoleService.getRoleIdsForUser(ControllerUtills.getSysUserId(request));
-        return !roleIds.contains(RESULT_EDIT_ROLE_ID);
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(ControllerUtills.getSysUserId(request));
+        return !roleIds.contains(Integer.valueOf(RESULT_EDIT_ROLE_ID));
     }
 
     public static Patient getPatient(Sample sample) {

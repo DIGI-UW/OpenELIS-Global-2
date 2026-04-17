@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.openelisglobal.common.service.CrossDomainService;
 
+@CrossDomainService(callers = "analyzer plugin SPI — implemented by external plugins")
 public interface BidirectionalAnalyzer {
 
     List<LISAction> getSupportedLISActions();

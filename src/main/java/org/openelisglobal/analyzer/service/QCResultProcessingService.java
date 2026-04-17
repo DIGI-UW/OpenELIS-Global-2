@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for processing QC results received via the FHIR import
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
  * (REQUIRED propagation) so that both the staging {@code AnalyzerResults} row
  * and the {@code QCResult} row are committed atomically.
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface QCResultProcessingService {
 
     /**

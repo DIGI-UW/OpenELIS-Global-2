@@ -75,6 +75,14 @@
 
   <!-- Custom Notes + Target Disease Programme patient form fields -->
   <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
+  <!-- Privilege-Based RBAC (Phase 1): schema, seed data, parent chains, legacy cleanup -->
+  <include relativeToChangelogFile="true" file="012-001-create-system-privilege.xml"/>
+  <include relativeToChangelogFile="true" file="012-002-create-system-role-privilege.xml"/>
+  <include relativeToChangelogFile="true" file="012-003-seed-privileges.xml"/>
+  <include relativeToChangelogFile="true" file="012-004-seed-role-privilege-mappings.xml"/>
+  <include relativeToChangelogFile="true" file="012-005-set-role-parent-chains.xml"/>
+  <include relativeToChangelogFile="true" file="012-006-migrate-legacy-role-assignments.xml"/>
+  <include relativeToChangelogFile="true" file="012-007-deactivate-legacy-roles.xml"/>
 
   <!-- OGC-651 (LO-03-01): specimen detail freetext columns on sample_item -->
   <include relativeToChangelogFile="true" file="020-add-specimen-detail-columns.xml"/>

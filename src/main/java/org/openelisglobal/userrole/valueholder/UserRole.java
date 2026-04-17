@@ -49,7 +49,7 @@ public class UserRole extends BaseObject<UserRolePK> {
         return compoundId == null ? null : compoundId.getSystemUserId();
     }
 
-    public void setRoleId(String roleId) {
+    public void setRoleId(Integer roleId) {
         uniqueIdentifyer = null;
         compoundId.setRoleId(roleId);
     }
@@ -70,7 +70,7 @@ public class UserRole extends BaseObject<UserRolePK> {
         this.roleName = roleName;
     }
 
-    public String getRoleId() {
+    public Integer getRoleId() {
         return compoundId == null ? null : compoundId.getRoleId();
     }
 

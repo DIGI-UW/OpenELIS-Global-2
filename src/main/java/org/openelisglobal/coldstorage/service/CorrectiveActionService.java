@@ -6,6 +6,7 @@ import org.openelisglobal.coldstorage.valueholder.CorrectiveAction;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionStatus;
 import org.openelisglobal.coldstorage.valueholder.CorrectiveActionType;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface CorrectiveActionService extends BaseObjectService<CorrectiveAction, Long> {
 
@@ -19,6 +20,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param createdByUserId User ID who created the action
      * @return Created corrective action
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     CorrectiveAction createCorrectiveAction(Long freezerId, CorrectiveActionType actionType, String description,
             Integer createdByUserId);
 
@@ -31,6 +33,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param updatedByUserId User ID who updated the action
      * @return Updated corrective action
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     CorrectiveAction updateCorrectiveActionStatus(Long actionId, CorrectiveActionStatus newStatus,
             Integer updatedByUserId);
 
@@ -42,6 +45,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param updatedByUserId User ID who updated the action
      * @return Updated corrective action
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     CorrectiveAction updateCorrectiveActionDescription(Long actionId, String description, Integer updatedByUserId);
 
     /**
@@ -52,6 +56,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param completionNotes   Notes describing the completion
      * @return Updated corrective action
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     CorrectiveAction completeCorrectiveAction(Long actionId, Integer completedByUserId, String completionNotes);
 
     /**
@@ -62,6 +67,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param retractionReason  Reason for retraction
      * @return Updated corrective action
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     CorrectiveAction retractCorrectiveAction(Long actionId, Integer retractedByUserId, String retractionReason);
 
     /**
@@ -70,6 +76,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param status Status filter
      * @return List of corrective actions
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     List<CorrectiveAction> getCorrectiveActionsByStatus(CorrectiveActionStatus status);
 
     /**
@@ -78,6 +85,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param freezerId Device (freezer) ID
      * @return List of corrective actions
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     List<CorrectiveAction> getCorrectiveActionsByFreezerId(Long freezerId);
 
     /**
@@ -87,6 +95,7 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      * @param endDate   End date
      * @return List of corrective actions
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     List<CorrectiveAction> getCorrectiveActionsByDateRange(OffsetDateTime startDate, OffsetDateTime endDate);
 
     /**
@@ -94,5 +103,6 @@ public interface CorrectiveActionService extends BaseObjectService<CorrectiveAct
      *
      * @return List of all corrective actions
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     List<CorrectiveAction> getAllCorrectiveActions();
 }

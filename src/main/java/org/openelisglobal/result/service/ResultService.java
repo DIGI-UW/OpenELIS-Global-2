@@ -8,7 +8,9 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface ResultService extends BaseObjectService<Result, String> {
     void getData(Result result);
 

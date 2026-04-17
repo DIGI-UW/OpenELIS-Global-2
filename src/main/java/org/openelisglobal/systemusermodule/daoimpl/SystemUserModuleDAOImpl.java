@@ -16,7 +16,6 @@
 package org.openelisglobal.systemusermodule.daoimpl;
 
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.hibernate.Session;
@@ -147,30 +146,27 @@ public class SystemUserModuleDAOImpl extends BaseDAOImpl<SystemUserModule, Strin
     @Override
     public boolean duplicateSystemUserModuleExists(SystemUserModule systemUserModule) throws LIMSRuntimeException {
         try {
+            List<SystemUserModule> list;
 
-            List<SystemUserModule> list = new ArrayList<>();
-
-            String sql = "from SystemUserModule s where s.systemUser.id = :param and s.systemModule.id = :param2"
-                    + " and s.id != :param3";
-            Query<SystemUserModule> query = entityManager.unwrap(Session.class).createQuery(sql,
-                    SystemUserModule.class);
-            query.setParameter("param", systemUserModule.getSystemUser().getId());
-            query.setParameter("param2", systemUserModule.getSystemModule().getId());
-
-            String systemUserModuleId = "0";
-            if (!StringUtil.isNullorNill(systemUserModule.getId())) {
-                systemUserModuleId = systemUserModule.getId();
-            }
-            query.setParameter("param3", systemUserModuleId);
-
-            list = query.list();
-
-            if (list.size() > 0) {
-                return true;
+            if (StringUtil.isNullorNill(systemUserModule.getId())) {
+                String sql = "from SystemUserModule s where s.systemUser = :user and s.systemModule = :module";
+                jakarta.persistence.TypedQuery<SystemUserModule> query = entityManager.createQuery(sql,
+                        SystemUserModule.class);
+                query.setParameter("user", systemUserModule.getSystemUser());
+                query.setParameter("module", systemUserModule.getSystemModule());
+                list = query.getResultList();
             } else {
-                return false;
+                String sql = "from SystemUserModule s where s.systemUser = :user and s.systemModule = :module"
+                        + " and s.id != :moduleId";
+                jakarta.persistence.TypedQuery<SystemUserModule> query = entityManager.createQuery(sql,
+                        SystemUserModule.class);
+                query.setParameter("user", systemUserModule.getSystemUser());
+                query.setParameter("module", systemUserModule.getSystemModule());
+                query.setParameter("moduleId", systemUserModule.getId());
+                list = query.getResultList();
             }
 
+            return list.size() > 0;
         } catch (RuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);

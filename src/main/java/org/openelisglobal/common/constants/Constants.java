@@ -21,6 +21,8 @@ public class Constants {
     public static final String ROLE_REPORTS = "Reports";
     public static final String ROLE_PATHOLOGIST = "Pathologist";
     public static final String ROLE_EQA_COORDINATOR = "EQA Coordinator";
+    public static final String ROLE_ANALYSER_IMPORT = "Analyser Import";
+    public static final String ROLE_CYTOPATHOLOGIST = "Cytopathologist";
     // roles groups
     public static final String GLOBAL_ROLES_GROUP = "Global Roles";
     public static final String LAB_ROLES_GROUP = "Lab Unit Roles";

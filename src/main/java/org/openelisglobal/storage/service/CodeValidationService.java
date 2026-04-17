@@ -1,5 +1,7 @@
 package org.openelisglobal.storage.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 /**
  * Service for validating codes for storage locations Validates format, length,
  * and uniqueness
@@ -14,6 +16,7 @@ public interface CodeValidationService {
      * @param code The code to validate
      * @return Validation result with normalized code and error message
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     CodeValidationResult validateFormat(String code);
 
     /**
@@ -22,6 +25,7 @@ public interface CodeValidationService {
      * @param code The code to validate
      * @return Validation result
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     CodeValidationResult validateLength(String code);
 
     /**
@@ -37,6 +41,7 @@ public interface CodeValidationService {
      *                   uniqueness check)
      * @return Validation result
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     CodeValidationResult validateUniqueness(String code, String context, String locationId, String parentId);
 
     /**
@@ -45,5 +50,6 @@ public interface CodeValidationService {
      * @param code The code to uppercase
      * @return Uppercased code
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String autoUppercase(String code);
 }

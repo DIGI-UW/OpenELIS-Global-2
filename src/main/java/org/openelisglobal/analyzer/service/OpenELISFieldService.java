@@ -2,11 +2,12 @@ package org.openelisglobal.analyzer.service;
 
 import org.openelisglobal.analyzer.form.OpenELISFieldForm;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for creating OpenELIS fields inline from the analyzer
  * mapping interface.
- * 
+ *
  * Supports creation of TEST, PANEL, RESULT, ORDER, SAMPLE, QC, METADATA, UNIT
  * entities.
  */
@@ -19,6 +20,7 @@ public interface OpenELISFieldService {
      * @return The ID of the created field
      * @throws LIMSRuntimeException if validation fails or creation fails
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     String createField(OpenELISFieldForm form) throws LIMSRuntimeException;
 
     /**
@@ -27,6 +29,7 @@ public interface OpenELISFieldService {
      * @param form The form containing field data to validate
      * @return true if the field is unique, false otherwise
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     boolean validateFieldUniqueness(OpenELISFieldForm form);
 
     /**
@@ -36,5 +39,6 @@ public interface OpenELISFieldService {
      * @param entityType The entity type (TEST, PANEL, etc.)
      * @return A map containing field data, or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     java.util.Map<String, Object> getFieldById(String fieldId, OpenELISFieldForm.EntityType entityType);
 }

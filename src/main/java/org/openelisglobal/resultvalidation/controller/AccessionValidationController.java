@@ -52,7 +52,7 @@ public class AccessionValidationController extends BaseController {
     public AccessionValidationController(RoleService roleService) {
         Role editRole = roleService.getRoleByName("Results modifier");
         if (editRole != null) {
-            RESULT_EDIT_ROLE_ID = editRole.getId();
+            RESULT_EDIT_ROLE_ID = String.valueOf(editRole.getId());
         } else {
             RESULT_EDIT_ROLE_ID = null;
         }
