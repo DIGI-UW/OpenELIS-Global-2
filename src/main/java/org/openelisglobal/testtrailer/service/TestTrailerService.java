@@ -3,7 +3,9 @@ package org.openelisglobal.testtrailer.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testtrailer.valueholder.TestTrailer;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface TestTrailerService extends BaseObjectService<TestTrailer, String> {
     void getData(TestTrailer testTrailer);
 

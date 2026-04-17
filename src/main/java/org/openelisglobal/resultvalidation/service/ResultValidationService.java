@@ -10,9 +10,11 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ResultValidationService {
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     void persistdata(List<Result> deletableList, List<Analysis> analysisUpdateList, ArrayList<Result> resultUpdateList,
             List<AnalysisItem> resultItemList, ArrayList<Sample> sampleUpdateList, ArrayList<Note> noteUpdateList,
             IResultSaveService resultSaveService, List<IResultUpdate> updaters, String sysUserId);

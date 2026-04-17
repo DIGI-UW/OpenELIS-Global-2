@@ -6,6 +6,7 @@ import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertNotificationPayload;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.notification.dao.NotificationConfigOptionDAO;
@@ -28,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@CrossDomainService(callers = "alert dispatch — internal infrastructure")
 public class AlertNotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(AlertNotificationService.class);

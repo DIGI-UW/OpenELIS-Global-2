@@ -63,19 +63,19 @@ public class MethodCreateServiceTest extends BaseWebContextSensitiveTest {
         validationModule.setDescription("Validation module");
 
         RoleModule workPlanResultModule = new RoleModule();
-        workPlanResultModule.setRole(roleService.get("701"));
+        workPlanResultModule.setRole(roleService.get(701));
         workPlanResultModule.setSystemModule(workPlanModule);
         workPlanResultModule.setNameKey("workplan");
         workPlanResultModule.setLastupdated(Timestamp.valueOf("2025-07-15 10:32:00"));
 
         RoleModule resultResultModule = new RoleModule();
-        resultResultModule.setRole(roleService.get("702"));
+        resultResultModule.setRole(roleService.get(702));
         resultResultModule.setSystemModule(resultModule);
         resultResultModule.setNameKey("resultEntry");
         resultResultModule.setLastupdated(Timestamp.valueOf("2025-07-15 10:32:00"));
 
         RoleModule validationValidationModule = new RoleModule();
-        validationValidationModule.setRole(roleService.get("703"));
+        validationValidationModule.setRole(roleService.get(703));
         validationValidationModule.setSystemModule(validationModule);
         validationValidationModule.setNameKey("validation");
         validationValidationModule.setLastupdated(Timestamp.valueOf("2025-07-15 10:32:00"));

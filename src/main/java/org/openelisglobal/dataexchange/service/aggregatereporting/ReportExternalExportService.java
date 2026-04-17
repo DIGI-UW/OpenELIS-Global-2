@@ -3,8 +3,10 @@ package org.openelisglobal.dataexchange.service.aggregatereporting;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 
+@CrossDomainService(callers = "aggregate reporting pipeline — internal infrastructure")
 public interface ReportExternalExportService extends BaseObjectService<ReportExternalExport, String> {
 
     Timestamp getLastCollectedTimestamp();

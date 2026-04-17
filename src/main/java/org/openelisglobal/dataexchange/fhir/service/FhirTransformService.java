@@ -20,6 +20,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
@@ -40,6 +41,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.valueholder.Test;
 
+@CrossDomainService(callers = "FHIR pipeline, order entry, result entry, patient management")
 public interface FhirTransformService {
 
     void transformPersistPatient(PatientManagementInfo patientInfo, boolean isCreate)

@@ -54,7 +54,7 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
     public AccessionResultsRestController(RoleService roleService) {
         Role editRole = roleService.getRoleByName("Results");
         if (editRole != null) {
-            RESULT_EDIT_ROLE_ID = editRole.getId();
+            RESULT_EDIT_ROLE_ID = String.valueOf(editRole.getId());
         } else {
             RESULT_EDIT_ROLE_ID = null;
         }
@@ -130,9 +130,9 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
             return false;
         }
 
-        List<String> roleIds = userRoleService.getRoleIdsForUser(getSysUserId(request));
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(getSysUserId(request));
 
-        return !roleIds.contains(RESULT_EDIT_ROLE_ID);
+        return !roleIds.contains(Integer.valueOf(RESULT_EDIT_ROLE_ID));
     }
 
     @Override

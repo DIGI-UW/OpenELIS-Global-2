@@ -180,7 +180,7 @@ public class LoginPageController extends BaseController {
             if (principal instanceof UserDetails) {
                 setLabunitRolesForExistingUserFromDB(session);
                 Set<String> roles = new HashSet<>();
-                for (String roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
+                for (Integer roleId : userRoleService.getRoleIdsForUser(session.getUserId())) {
                     roles.add(roleService.getRoleById(roleId).getName().trim());
                 }
                 session.setRoles(roles);
@@ -237,11 +237,11 @@ public class LoginPageController extends BaseController {
             if (userLabUnits.contains(ALL_LAB_UNITS)) {
                 roleMaps.stream().filter(map -> map.getLabUnit().equals(ALL_LAB_UNITS))
                         .forEach(map -> userLabRolesMap.put(map.getLabUnit(), map.getRoles().stream()
-                                .map(r -> roleService.getRoleById(r).getName().trim()).collect(Collectors.toList())));
+                                .map(r -> roleService.getRoleByName(r).getName().trim()).collect(Collectors.toList())));
             } else {
                 for (LabUnitRoleMap map : roleMaps) {
                     userLabRolesMap.put(testSectionService.get(map.getLabUnit()).getLocalizedName(),
-                            map.getRoles().stream().map(r -> roleService.getRoleById(r).getName().trim())
+                            map.getRoles().stream().map(r -> roleService.getRoleByName(r).getName().trim())
                                     .collect(Collectors.toList()));
                 }
             }

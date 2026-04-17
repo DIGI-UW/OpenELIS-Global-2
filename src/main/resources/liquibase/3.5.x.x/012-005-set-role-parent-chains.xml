@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Base roles ship FLAT — grouping_parent between base roles is NOT set here.
+
+      Inheritance is opt-in by implementors: a deployment that needs a composite
+      role (e.g., "Receptionist with result view") creates a new role via the
+      CSV config system or a deployment-specific Liquibase changeset, sets
+      grouping_parent to the desired base role, and adds the extra privileges
+      in system_role_privilege. The privilege resolution service then walks the
+      parent chain for that derived role only.
+
+      This changeset does one thing only: fix a pre-existing spelling error
+      introduced by the cytology migration (2.8.x.x/cytology.xml).
+    -->
+
+    <changeSet author="openelis" id="012-005a-fix-cytopathologist-spelling">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'CytoPathologist'
+            </sqlCheck>
+        </preConditions>
+        <comment>Fix Cytopathologist spelling: CytoPathologist -> Cytopathologist</comment>
+        <update tableName="system_role" schemaName="clinlims">
+            <column name="name" value="Cytopathologist"/>
+            <where>name = 'CytoPathologist'</where>
+        </update>
+        <rollback>
+            <update tableName="system_role" schemaName="clinlims">
+                <column name="name" value="CytoPathologist"/>
+                <where>name = 'Cytopathologist'</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

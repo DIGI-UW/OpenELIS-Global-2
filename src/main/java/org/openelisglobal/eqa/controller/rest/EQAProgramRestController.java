@@ -14,7 +14,6 @@ import org.openelisglobal.eqa.valueholder.EQAProgramTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,7 +25,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/programs")
-@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQAProgramRestController extends ControllerUtills {
 
     @Autowired
@@ -36,7 +34,6 @@ public class EQAProgramRestController extends ControllerUtills {
     private EQAProgramEnrollmentService enrollmentService;
 
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> createProgram(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         try {
             String name = (String) body.get("name");
@@ -88,7 +85,6 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> updateProgram(HttpServletRequest request, @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         try {
@@ -141,7 +137,6 @@ public class EQAProgramRestController extends ControllerUtills {
     }
 
     @PutMapping(value = "/{id}/tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    // @PreAuthorize("hasRole('Global Administrator')")
     public ResponseEntity<?> updateTestAssignments(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         try {
             programService.get(id);

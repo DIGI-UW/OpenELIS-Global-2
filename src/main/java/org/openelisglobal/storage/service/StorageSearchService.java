@@ -2,11 +2,12 @@ package org.openelisglobal.storage.service;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for Storage Search operations. Provides tab-specific search
  * functionality per FR-064 and FR-064a (Phase 3.1 in plan.md).
- * 
+ *
  * All searches use case-insensitive partial/substring matching with OR logic
  * (matches any of the specified fields).
  */
@@ -22,6 +23,7 @@ public interface StorageSearchService {
      *         sampleItemExternalId, sampleAccessionNumber, type, status, location,
      *         assignedBy, date
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> searchSamples(String query);
 
     /**
@@ -30,6 +32,7 @@ public interface StorageSearchService {
      * @param query Search term (case-insensitive partial match)
      * @return List of matching rooms as Maps with all data resolved (API format)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> searchRooms(String query);
 
     /**
@@ -39,6 +42,7 @@ public interface StorageSearchService {
      * @param query Search term (case-insensitive partial match)
      * @return List of matching devices as Maps with all data resolved (API format)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> searchDevices(String query);
 
     /**
@@ -47,6 +51,7 @@ public interface StorageSearchService {
      * @param query Search term (case-insensitive partial match)
      * @return List of matching shelves as Maps with all data resolved (API format)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> searchShelves(String query);
 
     /**
@@ -55,5 +60,6 @@ public interface StorageSearchService {
      * @param query Search term (case-insensitive partial match)
      * @return List of matching racks as Maps with all data resolved (API format)
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> searchRacks(String query);
 }

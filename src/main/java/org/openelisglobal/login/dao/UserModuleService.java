@@ -15,11 +15,13 @@ package org.openelisglobal.login.dao;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * @author Hung Nguyen (Hung.Nguyen@health.state.mn.us)
  */
 // this should not be a dao, and should instead be a service layer
+@CrossDomainService(callers = "module permission resolution, auth infrastructure — cross-domain")
 public interface UserModuleService {
 
     public boolean isSessionExpired(HttpServletRequest request) throws LIMSRuntimeException;
