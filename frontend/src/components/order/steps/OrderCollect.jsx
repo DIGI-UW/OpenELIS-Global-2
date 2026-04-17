@@ -4,7 +4,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { Stack, InlineNotification } from "@carbon/react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
 import { useOrderContext } from "../OrderContext";
-import { NotificationContext } from "../../layout/Layout";
+import { NotificationContext, ConfigurationContext } from "../../layout/Layout";
 import {
   AlertDialog,
   NotificationKinds,
@@ -52,6 +52,8 @@ const OrderCollect = () => {
 
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+
+  const { configurationProperties } = useContext(ConfigurationContext);
 
   // Sample types from API
   const [sampleTypes, setSampleTypes] = useState([]);
@@ -170,12 +172,13 @@ const OrderCollect = () => {
     }
   }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
 
-  // Validate that at least one sample with a sample type is present and informed consent is provided
+  // Validate that at least one sample with a sample type is present and informed consent (if required)
+  const consentRequired =
+    configurationProperties?.informedConsentRequired === "true";
   const canProceed =
-    samples &&
-    samples.length > 0 &&
-    samples.some((sample) => sample.sampleTypeId) &&
-    consentData.consentProvided;
+    samples?.length > 0 &&
+    samples.some((s) => s.sampleTypeId) &&
+    (!consentRequired || consentData.consentProvided);
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(

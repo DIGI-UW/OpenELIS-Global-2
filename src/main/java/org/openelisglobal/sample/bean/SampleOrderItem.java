@@ -240,11 +240,15 @@ public class SampleOrderItem implements Serializable {
     private String eqaPriority;
 
     // Informed consent fields
-    private boolean consentProvided;
+    private Boolean consentProvided;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
     private String consentReferenceNo;
+
+    // Audit fields for consent (read-only, populated by service layer)
+    private String consentRecordedAt;
+    private String consentRecordedBy;
 
     // for display
     private List<IdValuePair> priorityList;
@@ -714,11 +718,11 @@ public class SampleOrderItem implements Serializable {
         return value.toString();
     }
 
-    public boolean getConsentProvided() {
+    public Boolean getConsentProvided() {
         return consentProvided;
     }
 
-    public void setConsentProvided(boolean consentProvided) {
+    public void setConsentProvided(Boolean consentProvided) {
         this.consentProvided = consentProvided;
     }
 
@@ -728,5 +732,21 @@ public class SampleOrderItem implements Serializable {
 
     public void setConsentReferenceNo(String consentReferenceNo) {
         this.consentReferenceNo = consentReferenceNo;
+    }
+
+    public String getConsentRecordedAt() {
+        return consentRecordedAt;
+    }
+
+    public void setConsentRecordedAt(String consentRecordedAt) {
+        this.consentRecordedAt = consentRecordedAt;
+    }
+
+    public String getConsentRecordedBy() {
+        return consentRecordedBy;
+    }
+
+    public void setConsentRecordedBy(String consentRecordedBy) {
+        this.consentRecordedBy = consentRecordedBy;
     }
 }

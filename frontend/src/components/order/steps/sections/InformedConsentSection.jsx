@@ -3,15 +3,11 @@ import { useIntl, FormattedMessage } from "react-intl";
 import {
   FormGroup,
   Checkbox,
-  TextArea,
   TextInput,
-  DatePicker,
-  DatePickerInput,
   Column,
   Grid,
   Heading,
   InlineNotification,
-  Toggle,
 } from "@carbon/react";
 
 /**
@@ -35,10 +31,9 @@ const InformedConsentSection = ({
 
   const {
     consentProvided = false,
-    consentNotes = "",
-    consentDate = "",
-    consentWitness = "",
-    alternativeConsentMethod = false,
+    consentReferenceNo = "",
+    consentRecordedAt = "",
+    consentRecordedBy = "",
   } = consentData;
 
   const handleConsentChange = (field, value) => {
@@ -46,15 +41,6 @@ const InformedConsentSection = ({
       ...consentData,
       [field]: value,
     };
-
-    // Auto-populate consent date when consent is provided
-    if (field === "consentProvided" && value) {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      updatedConsent.consentDate = `${yyyy}-${mm}-${dd}`;
-    }
 
     // Show warning if consent is withdrawn
     if (field === "consentProvided" && !value) {
@@ -110,43 +96,26 @@ const InformedConsentSection = ({
               }
               disabled={isReadOnly}
             />
-
-            {/* Alternative consent method toggle */}
-            <div style={{ marginTop: "1rem" }}>
-              <Toggle
-                id="alternativeConsentMethod"
-                labelText={intl.formatMessage({
-                  id: "collect.informedConsent.alternativeMethod",
-                  defaultMessage:
-                    "Alternative consent method used (verbal, witness required)",
-                })}
-                toggled={alternativeConsentMethod}
-                onToggle={(value) =>
-                  handleConsentChange("alternativeConsentMethod", value)
-                }
-                disabled={isReadOnly}
-              />
-            </div>
           </FormGroup>
         </Column>
 
-        {/* Consent witness field - shown when alternative method is used */}
-        {alternativeConsentMethod && (
+        {/* Consent reference number field - optional */}
+        {consentProvided && (
           <Column lg={8} md={4} sm={4}>
             <div style={{ marginTop: "1rem" }}>
               <TextInput
-                id="consentWitness"
+                id="consentReferenceNo"
                 labelText={intl.formatMessage({
-                  id: "collect.informedConsent.witness",
-                  defaultMessage: "Witness Name/ID",
+                  id: "collect.informedConsent.referenceNo",
+                  defaultMessage: "Consent Reference Number (Optional)",
                 })}
                 placeholder={intl.formatMessage({
-                  id: "collect.informedConsent.witness.placeholder",
-                  defaultMessage: "Enter witness name or ID",
+                  id: "collect.informedConsent.referenceNo.placeholder",
+                  defaultMessage: "Enter consent form or reference number",
                 })}
-                value={consentWitness}
+                value={consentReferenceNo}
                 onChange={(e) =>
-                  handleConsentChange("consentWitness", e.target.value)
+                  handleConsentChange("consentReferenceNo", e.target.value)
                 }
                 disabled={isReadOnly}
               />
@@ -154,68 +123,29 @@ const InformedConsentSection = ({
           </Column>
         )}
 
-        {/* Consent notes/comments */}
-        <Column lg={16} md={8} sm={4}>
-          <div style={{ marginTop: "1rem" }}>
-            <TextArea
-              id="consentNotes"
-              labelText={intl.formatMessage({
-                id: "collect.informedConsent.notes",
-                defaultMessage: "Consent Notes/Comments (Optional)",
-              })}
-              placeholder={intl.formatMessage({
-                id: "collect.informedConsent.notes.placeholder",
-                defaultMessage:
-                  "Additional information about consent process, patient concerns, etc.",
-              })}
-              value={consentNotes}
-              onChange={(e) =>
-                handleConsentChange("consentNotes", e.target.value)
-              }
-              disabled={isReadOnly}
-              rows={3}
-            />
-          </div>
-        </Column>
-
-        {/* Consent date - auto-populated but editable */}
-        {consentProvided && (
-          <Column lg={8} md={4} sm={4}>
-            <div style={{ marginTop: "1rem" }}>
-              <DatePicker
-                datePickerType="single"
-                dateFormat="Y-m-d"
-                maxDate={new Date()}
-                value={consentDate || undefined}
-                onChange={(dates) => {
-                  const d = dates && dates[0];
-                  const iso = d
-                    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-                    : "";
-                  handleConsentChange("consentDate", iso);
-                }}
-              >
-                <DatePickerInput
-                  id="consentDate"
-                  labelText={
-                    <>
-                      <FormattedMessage
-                        id="collect.informedConsent.date"
-                        defaultMessage="Consent Date"
-                      />
-                      <span className="helper-inline">
-                        {" "}
-                        <FormattedMessage
-                          id="collect.informedConsent.date.helper"
-                          defaultMessage="(auto-filled when consent is provided)"
-                        />
-                      </span>
-                    </>
-                  }
-                  placeholder="YYYY-MM-DD"
-                  disabled={isReadOnly}
-                />
-              </DatePicker>
+        {/* Consent audit information - read-only */}
+        {consentProvided && consentRecordedAt && (
+          <Column lg={16} md={8} sm={4}>
+            <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
+              <p style={{ margin: 0, fontSize: "0.875rem", color: "#525252" }}>
+                <strong>
+                  <FormattedMessage
+                    id="collect.informedConsent.auditInfo"
+                    defaultMessage="Consent recorded:"
+                  />
+                </strong>{" "}
+                {consentRecordedAt}
+                {consentRecordedBy && (
+                  <>
+                    {" "}
+                    <FormattedMessage
+                      id="collect.informedConsent.auditBy"
+                      defaultMessage="by user"
+                    />{" "}
+                    {consentRecordedBy}
+                  </>
+                )}
+              </p>
             </div>
           </Column>
         )}

@@ -26,6 +26,18 @@
             </column>
         </addColumn>
 
+        <addColumn tableName="sample">
+            <column name="consent_recorded_at" type="TIMESTAMP">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addColumn tableName="sample">
+            <column name="consent_recorded_by" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="fk_sample_consent_recorded_by" references="system_user(id)"/>
+            </column>
+        </addColumn>
+
         <!-- Add index for consent queries -->
         <createIndex tableName="sample" indexName="idx_sample_consent_provided">
             <column name="consent_provided"/>
@@ -34,6 +46,8 @@
         <!-- Rollback -->
         <rollback>
             <dropIndex tableName="sample" indexName="idx_sample_consent_provided"/>
+            <dropColumn tableName="sample" columnName="consent_recorded_by"/>
+            <dropColumn tableName="sample" columnName="consent_recorded_at"/>
             <dropColumn tableName="sample" columnName="consent_reference_no"/>
             <dropColumn tableName="sample" columnName="consent_provided"/>
         </rollback>

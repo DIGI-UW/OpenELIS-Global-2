@@ -72,6 +72,8 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private Boolean storageSkipped = false;
     private Boolean consentProvided = false;
     private String consentReferenceNo;
+    private Timestamp consentRecordedAt;
+    private String consentRecordedBy;
 
     // testing one-to-many
     // this is for HSE I and II - ability to enter up to two projects
@@ -483,6 +485,22 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setConsentReferenceNo(String consentReferenceNo) {
         this.consentReferenceNo = consentReferenceNo;
+    }
+
+    public Timestamp getConsentRecordedAt() {
+        return consentRecordedAt;
+    }
+
+    public void setConsentRecordedAt(Timestamp consentRecordedAt) {
+        this.consentRecordedAt = consentRecordedAt;
+    }
+
+    public String getConsentRecordedBy() {
+        return consentRecordedBy;
+    }
+
+    public void setConsentRecordedBy(String consentRecordedBy) {
+        this.consentRecordedBy = consentRecordedBy;
     }
 
     public String getGpsCoordinatesDisplay() {
