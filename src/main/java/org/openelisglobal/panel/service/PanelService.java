@@ -4,7 +4,9 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_PANEL_VIEW')")
 public interface PanelService extends BaseObjectService<Panel, String> {
 
     void getData(Panel panel);

@@ -7,7 +7,9 @@ import org.openelisglobal.microbiology.form.MicroWhonetFilterOptionsForm;
 import org.openelisglobal.microbiology.form.MicroWhonetPreviewForm;
 import org.openelisglobal.reports.action.implementation.reportBeans.WHONETCSVRoutineColumnBuilder.WHONetRow;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
 public interface WHONetReportService {
 
     List<SampleItem> getAntimicrobialEntries(Date lowDate, Date highDate);

@@ -5,7 +5,9 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface TestResultService extends BaseObjectService<TestResult, String> {
     void getData(TestResult testResult);
 

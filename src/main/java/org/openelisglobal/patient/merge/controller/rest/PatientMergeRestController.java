@@ -37,6 +37,13 @@ public class PatientMergeRestController extends BaseRestController {
     @Autowired
     private UserRoleService userRoleService;
 
+    private String globalAdminRoleId;
+
+    @PostConstruct
+    private void initialize() {
+        globalAdminRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId());
+    }
+
     /**
      * Checks if the current user has Reception role (required for patient merge).
      *
@@ -48,7 +55,9 @@ public class PatientMergeRestController extends BaseRestController {
         if (loggedInUserId == null) {
             return false;
         }
-        return userRoleService.userInRole(loggedInUserId, Constants.ROLE_RECEPTION);
+
+        List<Integer> rolesForLoggedInUser = userRoleService.getRoleIdsForUser(loggedInUserId);
+        return rolesForLoggedInUser.contains(Integer.valueOf(globalAdminRoleId));
     }
 
     /**

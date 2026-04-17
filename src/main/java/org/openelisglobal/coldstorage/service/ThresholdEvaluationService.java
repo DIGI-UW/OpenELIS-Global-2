@@ -5,9 +5,11 @@ import java.time.OffsetDateTime;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.openelisglobal.coldstorage.valueholder.ThresholdProfile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ThresholdEvaluationService {
 
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     ThresholdProfile resolveActiveProfile(Freezer freezer, OffsetDateTime timestamp);
 
     /**
@@ -15,6 +17,7 @@ public interface ThresholdEvaluationService {
      * context to look up reading history against). Kept for callers that only need
      * a single-reading classification.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     FreezerReading.Status evaluateStatus(BigDecimal temperature, BigDecimal humidity, ThresholdProfile profile);
 
     /**

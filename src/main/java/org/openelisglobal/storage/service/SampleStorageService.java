@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.storage.valueholder.StorageRack;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for sample storage assignment and movement operations
@@ -13,6 +14,7 @@ public interface SampleStorageService {
     /**
      * Calculate rack capacity and return warning if threshold exceeded
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     CapacityWarning calculateCapacity(StorageRack rack);
 
     /**
@@ -22,6 +24,7 @@ public interface SampleStorageService {
      * @return List of maps, each containing: id, sampleItemId,
      *         sampleAccessionNumber, type, status, location, assignedBy, date
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> getAllSamplesWithAssignments();
 
     /**
@@ -38,6 +41,7 @@ public interface SampleStorageService {
      * @return Map containing assignmentId, hierarchicalPath, assignedDate, and
      *         shelfCapacityWarning if applicable
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> assignSampleItemWithLocation(String sampleItemId, String locationId,
             String locationType, String positionCoordinate, String notes);
 
@@ -54,12 +58,15 @@ public interface SampleStorageService {
      * @param reason             Optional reason for movement
      * @return Movement ID
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes);
 
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
 
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     /**
      * Dispose a SampleItem. The audit emission for the global audit trail rides on
      * {@code SampleItemService.update} (AuditableBaseObject path), so the caller
@@ -110,6 +117,7 @@ public interface SampleStorageService {
      * @return Map with location details including hierarchicalPath, or empty map if
      *         not assigned
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
 
     /**
@@ -118,6 +126,7 @@ public interface SampleStorageService {
      * @param pageable Pagination parameters (page number, page size, sorting)
      * @return Page of SampleStorageAssignment entities
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     org.springframework.data.domain.Page<org.openelisglobal.storage.valueholder.SampleStorageAssignment> getSampleAssignments(
             org.springframework.data.domain.Pageable pageable);
 

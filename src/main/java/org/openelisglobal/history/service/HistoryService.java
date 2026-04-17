@@ -5,7 +5,9 @@ import java.util.List;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
 public interface HistoryService extends BaseObjectService<History, String> {
 
     List<History> getHistoryByRefIdAndRefTableId(String Id, String Table) throws LIMSRuntimeException;

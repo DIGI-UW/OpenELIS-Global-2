@@ -5,7 +5,9 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.reports.tat.bean.TATCalculationMode;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
 public interface TATCalculationService {
 
     /**

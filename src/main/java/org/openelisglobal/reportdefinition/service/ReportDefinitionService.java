@@ -16,6 +16,7 @@ package org.openelisglobal.reportdefinition.service;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.reportdefinition.valueholder.ReportDefinition;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for ReportDefinition CRUD operations.
@@ -30,6 +31,7 @@ public interface ReportDefinitionService extends BaseObjectService<ReportDefinit
      *
      * @return list of active report definitions
      */
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     List<ReportDefinition> getActiveDefinitions();
 
     /**
@@ -38,6 +40,7 @@ public interface ReportDefinitionService extends BaseObjectService<ReportDefinit
      * @param category report category
      * @return list of report definitions matching the category
      */
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     List<ReportDefinition> getDefinitionsByCategory(String category);
 
     /**
@@ -46,5 +49,6 @@ public interface ReportDefinitionService extends BaseObjectService<ReportDefinit
      * @param reportType report type
      * @return the active definition or null
      */
+    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     ReportDefinition getActiveByReportType(String reportType);
 }
