@@ -1,14 +1,15 @@
 import React from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
-  FormGroup,
+  Accordion,
+  AccordionItem,
   Checkbox,
   TextInput,
-  Column,
-  Grid,
-  Heading,
-  InlineNotification,
+  Tag,
+  Tile,
+  Stack,
 } from "@carbon/react";
+import { UserAvatar, Time } from "@carbon/icons-react";
 
 /**
  * ConsentAccordionSection - Informed consent capture per OGC-557 FRS v1.1.
@@ -16,9 +17,11 @@ import {
  * Exported for reuse in Add Order, Edit Order, and the Sample Collection Wizard.
  *
  * Features:
+ * - Carbon Accordion section, expanded by default (FR-1-001..FR-1-003)
+ * - Teal "Consent Recorded" Tag in header when consent is given (FR-1-004)
  * - Consent acknowledgment checkbox (advisory per FR-5-001/FR-5-002)
- * - Optional consent form reference number
- * - Read-only audit info once consent is recorded server-side
+ * - Optional consent form reference number, revealed when checkbox checked
+ * - Read-only audit Tile once consent is recorded server-side
  *
  * Spec: https://github.com/DIGI-UW/openelis-work/blob/main/designs/sample-collection/informed-consent.md
  */
@@ -44,65 +47,70 @@ export const ConsentAccordionSection = ({
     });
   };
 
+  const sectionTitle = intl.formatMessage({
+    id: "heading.informedConsent.sectionTitle",
+    defaultMessage: "Informed Consent",
+  });
+  const statusTagLabel = intl.formatMessage({
+    id: "label.informedConsent.statusTag",
+    defaultMessage: "Consent Recorded",
+  });
+
   return (
-    <div className="informed-consent-section">
-      <Heading size="compact-02">
-        <FormattedMessage
-          id="collect.informedConsent.title"
-          defaultMessage="Informed Consent"
-        />
-      </Heading>
-
-      {/* Warning when consent is not provided */}
-      {!consentGiven && (
-        <InlineNotification
-          kind="warning"
-          title={intl.formatMessage({
-            id: "collect.informedConsent.warning.title",
-            defaultMessage: "Consent required",
-          })}
-          subtitle={intl.formatMessage({
-            id: "collect.informedConsent.warning.message",
-            defaultMessage:
-              "Sample collection requires informed consent from the patient or authorized representative.",
-          })}
-          hideCloseButton
-          lowContrast
-        />
-      )}
-
-      <Grid>
-        <Column lg={16} md={8} sm={4}>
-          <FormGroup legendText="">
-            {/* Primary consent checkbox */}
-            <Checkbox
-              id="consentGiven"
-              labelText={intl.formatMessage({
-                id: "collect.informedConsent.provided",
-                defaultMessage:
-                  "I confirm that informed consent has been obtained from the patient or their authorized representative for the collection and testing of this sample.",
-              })}
-              checked={consentGiven}
-              onChange={(_, { checked }) =>
-                handleConsentChange("consentGiven", checked)
+    <Accordion>
+      <AccordionItem
+        open
+        title={
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
+            {sectionTitle}
+            {consentGiven && (
+              <Tag kind="teal" size="sm">
+                {statusTagLabel}
+              </Tag>
+            )}
+          </span>
+        }
+      >
+        <Stack gap={5}>
+          <Checkbox
+            id="consentGiven"
+            labelText={intl.formatMessage({
+              id: "label.informedConsent.consentGiven",
+              defaultMessage: "Patient has provided signed consent",
+            })}
+            checked={consentGiven}
+            onChange={(_, { checked }) => {
+              // Clearing the checkbox clears the reference per FR-3-002
+              if (!checked) {
+                onConsentChange({
+                  ...consentData,
+                  consentGiven: false,
+                  consentFormReference: "",
+                });
+              } else {
+                handleConsentChange("consentGiven", true);
               }
-              disabled={isReadOnly}
-            />
-          </FormGroup>
-        </Column>
+            }}
+            disabled={isReadOnly}
+          />
 
-        {/* Consent reference number field - optional */}
-        {consentGiven && (
-          <Column lg={8} md={4} sm={4} className="consent-field">
+          {/* Reference number field — revealed only when checkbox is checked (FR-3-001) */}
+          {consentGiven && (
             <TextInput
               id="consentFormReference"
               labelText={intl.formatMessage({
-                id: "collect.informedConsent.referenceNo",
-                defaultMessage: "Consent Reference Number (Optional)",
+                id: "label.informedConsent.formReference",
+                defaultMessage: "Consent Form Reference No.",
               })}
               placeholder={intl.formatMessage({
-                id: "collect.informedConsent.referenceNo.placeholder",
-                defaultMessage: "Enter consent form or reference number",
+                id: "placeholder.informedConsent.formReference",
+                defaultMessage: "e.g. CF-2026-00123",
               })}
               maxLength={100}
               value={consentFormReference}
@@ -110,38 +118,54 @@ export const ConsentAccordionSection = ({
                 handleConsentChange("consentFormReference", e.target.value)
               }
               disabled={isReadOnly}
+              style={{ maxWidth: "400px" }}
             />
-          </Column>
-        )}
+          )}
 
-        {/* Consent audit information - read-only */}
-        {consentGiven && consentRecordedAt && (
-          <Column lg={16} md={8} sm={4} className="consent-field">
-            <div className="consent-audit">
-              <p>
-                <strong>
-                  <FormattedMessage
-                    id="collect.informedConsent.auditInfo"
-                    defaultMessage="Consent recorded:"
-                  />
-                </strong>{" "}
-                {consentRecordedAt}
-                {consentRecordedBy && (
-                  <>
-                    {" "}
-                    <FormattedMessage
-                      id="collect.informedConsent.auditBy"
-                      defaultMessage="by user"
-                    />{" "}
-                    {consentRecordedBy}
-                  </>
-                )}
+          {/* Read-only audit Tile — shown when editing an order with previously recorded consent (FR-4-004) */}
+          {consentGiven && consentRecordedAt && (
+            <Tile>
+              <p className="consent-audit-heading">
+                <FormattedMessage
+                  id="heading.informedConsent.auditRecord"
+                  defaultMessage="Consent Audit Record"
+                />
               </p>
-            </div>
-          </Column>
-        )}
-      </Grid>
-    </div>
+              <Stack gap={3}>
+                {consentRecordedBy && (
+                  <Stack orientation="horizontal" gap={3}>
+                    <UserAvatar size={16} />
+                    <span>
+                      <strong>
+                        <FormattedMessage
+                          id="label.informedConsent.recordedBy"
+                          defaultMessage="Recorded by"
+                        />
+                        :
+                      </strong>{" "}
+                      {consentRecordedBy}
+                    </span>
+                  </Stack>
+                )}
+                <Stack orientation="horizontal" gap={3}>
+                  <Time size={16} />
+                  <span>
+                    <strong>
+                      <FormattedMessage
+                        id="label.informedConsent.recordedAt"
+                        defaultMessage="Recorded on"
+                      />
+                      :
+                    </strong>{" "}
+                    {consentRecordedAt}
+                  </span>
+                </Stack>
+              </Stack>
+            </Tile>
+          )}
+        </Stack>
+      </AccordionItem>
+    </Accordion>
   );
 };
 
