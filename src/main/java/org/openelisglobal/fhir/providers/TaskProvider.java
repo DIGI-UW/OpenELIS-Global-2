@@ -13,10 +13,8 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.Task.TaskStatus;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.StatusService.OrderStatus;
-import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.dataexchange.fhir.service.TaskFhirService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
@@ -55,9 +53,7 @@ public class TaskProvider implements IResourceProvider {
     @Autowired
     private FhirTransformService fhirTransformService;
     @Autowired
-    private FhirPersistanceService fhirPersistenceService;
-    @Autowired
-    private IStatusService statusService;
+    private TaskFhirService taskFhirService;
 
     @Override
     public Class<? extends IBaseResource> getResourceType() {
@@ -69,14 +65,7 @@ public class TaskProvider implements IResourceProvider {
         String method = "readTask";
         try {
             FhirProviderUtils.validateIdParam(theId, "Task", getClass().getSimpleName(), method);
-            Sample sample = sampleService.getSampleByFhirUuid(theId.getIdPart());
-            if (sample == null) {
-                throw new ResourceNotFoundException("Task/" + theId.getIdPart());
-            }
-            Task task = fhirTransformService.transformToTask(sample.getId());
-            if (task == null) {
-                throw new InternalErrorException("Transformation failed for Task/" + theId.getIdPart());
-            }
+            Task task = taskFhirService.getTaskByFhirId(theId.getIdPart());
             LogEvent.logInfo(getClass().getSimpleName(), method, "Read Task: " + theId.getIdPart());
             return task;
         } catch (ResourceNotFoundException | InvalidRequestException e) {
@@ -95,39 +84,12 @@ public class TaskProvider implements IResourceProvider {
             if (fhirTask == null) {
                 throw new InvalidRequestException("Task body is required");
             }
-            Sample sample = sampleService.getSampleByFhirUuid(theId.getIdPart());
-            if (sample == null) {
-                throw new ResourceNotFoundException("Task/" + theId.getIdPart());
-            }
             TaskStatus incoming = fhirTask.getStatus();
-            if (incoming == null) {
-                throw new InvalidRequestException("Task.status is required");
-            }
-            Task currentTask = fhirTransformService.transformToTask(sample.getId());
-            if (currentTask == null) {
-                throw new InternalErrorException("Could not read current Task state for " + theId.getIdPart());
-            }
-            TaskStatus current = currentTask.getStatus();
-
-            if (!isValidTransition(current, incoming)) {
-                LogEvent.logWarn(getClass().getSimpleName(), method,
-                        "Rejected transition: " + current.toCode() + " → " + incoming.toCode());
-                throw new InvalidRequestException(
-                        "Invalid status transition: " + current.toCode() + " → " + incoming.toCode());
-            }
-            String newStatusId = mapTaskStatusToOrderStatusId(incoming);
-            if (newStatusId == null) {
-                throw new InvalidRequestException("Unsupported Task status: " + incoming.toCode());
-            }
-            sample.setStatusId(newStatusId);
-            sample.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            sampleService.update(sample);
-
+            Task currentTask = taskFhirService.getTaskByFhirId(theId.getIdPart());
+            Task updated = taskFhirService.updateTaskStatus(theId.getIdPart(), incoming,
+                    FhirProviderUtils.getSysUserId(request));
             LogEvent.logInfo(getClass().getSimpleName(), method,
-                    "Task " + theId.getIdPart() + ": " + current.toCode() + " → " + incoming.toCode());
-
-            Task updated = fhirTransformService.transformToTask(sample.getId());
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, updated, getClass().getSimpleName(), method);
+                    "Task " + theId.getIdPart() + ": " + currentTask.getStatus().toCode() + " → " + incoming.toCode());
             return FhirProviderUtils.buildUpdateOutcome(updated);
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
@@ -146,24 +108,7 @@ public class TaskProvider implements IResourceProvider {
         String method = "deleteTask";
         try {
             FhirProviderUtils.validateIdParam(theId, "Task", getClass().getSimpleName(), method);
-            Sample sample = sampleService.getSampleByFhirUuid(theId.getIdPart());
-            if (sample == null) {
-                throw new ResourceNotFoundException("Task/" + theId.getIdPart());
-            }
-            Task cancelled = fhirTransformService.transformToTask(sample.getId());
-            if (cancelled == null) {
-                throw new InternalErrorException("Transformation failed for Task/" + theId.getIdPart());
-            }
-            if (isTerminal(cancelled.getStatus())) {
-                throw new InvalidRequestException(
-                        "Cannot cancel a task in terminal state: " + cancelled.getStatus().toCode());
-            }
-            String cancelStatusId = mapTaskStatusToOrderStatusId(TaskStatus.CANCELLED);
-            sample.setStatusId(cancelStatusId);
-            sample.setSysUserId(FhirProviderUtils.getSysUserId(request));
-            sampleService.update(sample);
-            Task updated = fhirTransformService.transformToTask(sample.getId());
-            FhirProviderUtils.syncToFhirStore(fhirPersistenceService, updated, getClass().getSimpleName(), method);
+            taskFhirService.cancelTask(theId.getIdPart(), FhirProviderUtils.getSysUserId(request));
             return FhirProviderUtils.buildDeleteOutcome(theId, "Task");
         } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
@@ -236,59 +181,6 @@ public class TaskProvider implements IResourceProvider {
             return matches.isEmpty() ? null : matches.get(0).getId();
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn(getClass().getSimpleName(), "resolvePatientDbId", "Invalid UUID: " + fhirUuid);
-            return null;
-        }
-    }
-
-    /**
-     * Permitted transitions:
-     * 
-     * <pre>
-     *   READY      → INPROGRESS, REJECTED, CANCELLED, FAILED
-     *   INPROGRESS → COMPLETED,  REJECTED, CANCELLED, FAILED
-     *   any        → same state  (idempotent)
-     *   COMPLETED / REJECTED / FAILED → (terminal, no further transitions)
-     * </pre>
-     */
-    private boolean isValidTransition(TaskStatus current, TaskStatus incoming) {
-        if (current == null || incoming == null)
-            return false;
-        if (current == incoming)
-            return true;
-        if (isTerminal(current)) {
-            return false;
-        }
-        if (current == TaskStatus.READY) {
-            return incoming == TaskStatus.INPROGRESS || incoming == TaskStatus.REJECTED || incoming == TaskStatus.FAILED
-                    || incoming == TaskStatus.CANCELLED;
-        }
-        if (current == TaskStatus.INPROGRESS) {
-            return incoming == TaskStatus.COMPLETED || incoming == TaskStatus.REJECTED || incoming == TaskStatus.FAILED
-                    || incoming == TaskStatus.CANCELLED;
-        }
-        return false;
-    }
-
-    private boolean isTerminal(TaskStatus status) {
-        return status == TaskStatus.COMPLETED || status == TaskStatus.REJECTED || status == TaskStatus.FAILED
-                || status == TaskStatus.CANCELLED;
-    }
-
-    private String mapTaskStatusToOrderStatusId(TaskStatus status) {
-        switch (status) {
-        case READY:
-            return statusService.getStatusID(OrderStatus.Entered);
-        case INPROGRESS:
-            return statusService.getStatusID(OrderStatus.Started);
-        case COMPLETED:
-            return statusService.getStatusID(OrderStatus.Finished);
-        case REJECTED:
-        case CANCELLED:
-        case FAILED:
-            // No Cancelled value in OrderStatus enum — NonConforming is the closest
-            // available.
-            return statusService.getStatusID(OrderStatus.NonConforming_depricated);
-        default:
             return null;
         }
     }
