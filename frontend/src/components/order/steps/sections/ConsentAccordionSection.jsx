@@ -26,6 +26,10 @@ import { UserAvatar, Time } from "@carbon/icons-react";
  * Spec: https://github.com/DIGI-UW/openelis-work/blob/main/designs/sample-collection/informed-consent.md
  */
 
+// FRS §10 + BR-005: alphanumeric, hyphens, and spaces only.
+const FORM_REF_MAX_LENGTH = 100;
+const FORM_REF_PATTERN = /^[a-zA-Z0-9\- ]*$/;
+
 export const ConsentAccordionSection = ({
   consentData = {},
   onConsentChange,
@@ -39,6 +43,27 @@ export const ConsentAccordionSection = ({
     consentRecordedAt = "",
     consentRecordedBy = "",
   } = consentData;
+
+  const validateFormRef = (value) => {
+    if (!value) return null;
+    if (value.length > FORM_REF_MAX_LENGTH) {
+      return intl.formatMessage({
+        id: "error.informedConsent.formReferenceMaxLength",
+        defaultMessage:
+          "Consent form reference must be 100 characters or fewer",
+      });
+    }
+    if (!FORM_REF_PATTERN.test(value)) {
+      return intl.formatMessage({
+        id: "error.informedConsent.formReferenceInvalidChars",
+        defaultMessage:
+          "Only letters, numbers, hyphens, and spaces are allowed",
+      });
+    }
+    return null;
+  };
+
+  const formRefError = validateFormRef(consentFormReference);
 
   const handleConsentChange = (field, value) => {
     onConsentChange({
@@ -112,11 +137,13 @@ export const ConsentAccordionSection = ({
                 id: "placeholder.informedConsent.formReference",
                 defaultMessage: "e.g. CF-2026-00123",
               })}
-              maxLength={100}
+              maxLength={FORM_REF_MAX_LENGTH}
               value={consentFormReference}
               onChange={(e) =>
                 handleConsentChange("consentFormReference", e.target.value)
               }
+              invalid={!!formRefError}
+              invalidText={formRefError || ""}
               disabled={isReadOnly}
               style={{ maxWidth: "400px" }}
             />

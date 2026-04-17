@@ -245,7 +245,11 @@ public class SampleOrderItem implements Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
-    @Size(max = 100, groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+    @Size(max = 100, message = "{error.informedConsent.formReferenceMaxLength}", groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+            SampleEditForm.SampleEdit.class })
+    @Pattern(regexp = "^[a-zA-Z0-9\\- ]*$", message = "{error.informedConsent.formReferenceInvalidChars}", groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
             SampleEditForm.SampleEdit.class })
     private String consentFormReference;
 
