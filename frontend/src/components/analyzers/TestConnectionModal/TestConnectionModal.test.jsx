@@ -65,10 +65,16 @@ const createMockAnalyzer = (overrides = {}) => ({
 
 describe("TestConnectionModal", () => {
   const mockOnClose = jest.fn();
+  // user-event v14 uses internal delays that hang with fake timers unless
+  // we tell it how to advance them.  Create a fresh instance per-test in
+  // beforeEach so the advanceTimers function always refers to the active
+  // fake-timer installation.
+  let user;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
+    user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
   });
 
   afterEach(() => {
@@ -146,7 +152,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click test button
     const testButton = screen.getByTestId("test-connection-test-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     // Assert: Verify testConnection was called with analyzer ID
     expect(testConnection).toHaveBeenCalledWith("1000", expect.any(Function));
@@ -170,7 +176,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click test button
     const testButton = screen.getByTestId("test-connection-test-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     // Assert: Verify error tag is displayed
     await waitFor(() => {
@@ -204,7 +210,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click test button
     const testButton = screen.getByTestId("test-connection-test-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     // Fast-forward timers for progress animation
     act(() => {
@@ -239,7 +245,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click test button
     const testButton = screen.getByTestId("test-connection-test-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     // Fast-forward timers
     act(() => {
@@ -271,7 +277,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click close button
     const closeButton = screen.getByTestId("test-connection-close-button");
-    await userEvent.click(closeButton);
+    await user.click(closeButton);
 
     // Assert: Verify onClose was called
     expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -298,7 +304,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click test button to generate logs
     const testButton = screen.getByTestId("test-connection-test-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     // Fast-forward timers
     act(() => {
@@ -337,7 +343,7 @@ describe("TestConnectionModal", () => {
 
     // Act: Click test button to change state
     const testButton = screen.getByTestId("test-connection-test-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     act(() => {
       jest.advanceTimersByTime(2000);

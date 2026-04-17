@@ -13,7 +13,7 @@
 // ========== IMPORTS ==========
 
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -69,8 +69,10 @@ describe("ColorPickerSection", () => {
       />,
     );
 
+    // getByLabelText(/primary color/i) returns the HTML5 <input type="color">
+    // which doesn't support userEvent.type(). Use fireEvent.change instead.
     const colorInput = screen.getByLabelText(/primary color/i);
-    await userEvent.type(colorInput, "#ff0000");
+    fireEvent.change(colorInput, { target: { value: "#ff0000" } });
 
     expect(onChange).toHaveBeenCalled();
   });
@@ -90,9 +92,10 @@ describe("ColorPickerSection", () => {
       />,
     );
 
-    const colorInput = screen.getByLabelText(/primary color/i);
-    fireEvent.change(colorInput, { target: { value: "" } });
-    await userEvent.type(colorInput, "#00ff00");
+    // Target the Carbon TextInput via its placeholder instead of the
+    // HTML5 color picker (which doesn't support clear/type).
+    const textInput = screen.getByPlaceholderText(/#0f62fe or blue/i);
+    fireEvent.change(textInput, { target: { value: "#00ff00" } });
 
     expect(onChange).toHaveBeenCalled();
   });
@@ -115,9 +118,10 @@ describe("ColorPickerSection", () => {
       />,
     );
 
-    const colorInput = screen.getByLabelText(/primary color/i);
-    fireEvent.change(colorInput, { target: { value: "" } });
-    await userEvent.type(colorInput, "rebeccapurple");
+    // Target the Carbon TextInput via its placeholder instead of the
+    // HTML5 color picker (which doesn't support clear/type).
+    const textInput = screen.getByPlaceholderText(/#0f62fe or blue/i);
+    fireEvent.change(textInput, { target: { value: "rebeccapurple" } });
 
     // Should call onChange with the named color
     expect(onChange).toHaveBeenCalled();

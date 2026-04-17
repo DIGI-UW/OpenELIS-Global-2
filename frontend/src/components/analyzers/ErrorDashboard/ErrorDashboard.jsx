@@ -32,7 +32,7 @@ import {
   Dropdown,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
@@ -43,7 +43,7 @@ import "./ErrorDashboard.css";
 
 const ErrorDashboard = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const location = useLocation();
   const searchTimeoutRef = useRef(null);
 
@@ -199,10 +199,13 @@ const ErrorDashboard = () => {
     } else {
       params.delete("search");
     }
-    history.replace({
-      pathname: location.pathname,
-      search: params.toString(),
-    });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString(),
+      },
+      { replace: true },
+    );
 
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -227,10 +230,13 @@ const ErrorDashboard = () => {
     } else {
       params.delete(filterName);
     }
-    history.replace({
-      pathname: location.pathname,
-      search: params.toString(),
-    });
+    navigate(
+      {
+        pathname: location.pathname,
+        search: params.toString(),
+      },
+      { replace: true },
+    );
 
     loadErrors(newFilters);
   };

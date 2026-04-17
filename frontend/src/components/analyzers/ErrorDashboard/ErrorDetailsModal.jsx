@@ -19,12 +19,12 @@ import {
   AccordionItem,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import "./ErrorDetailsModal.css";
 
 const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [logsExpanded, setLogsExpanded] = useState(false);
 
   if (!error) return null;
@@ -243,7 +243,7 @@ const ErrorDetailsModal = ({ error, open, onClose, onAcknowledge }) => {
               const analyzerId = error.analyzerId || error.analyzer?.id;
               if (analyzerId) {
                 handleClose();
-                history.push(`/analyzers/${analyzerId}/mappings`);
+                navigate(`/analyzers/${analyzerId}/mappings`);
               }
             }}
             data-testid="error-details-create-mapping"

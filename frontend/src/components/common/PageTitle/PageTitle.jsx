@@ -15,13 +15,13 @@ import React from "react";
 import { Button } from "@carbon/react";
 import { ArrowLeft } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import "./PageTitle.css";
 
 const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
 
   const handleBack = () => {
     if (onBack) {
@@ -30,12 +30,12 @@ const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
       // Navigate to parent breadcrumb if available
       const parentBreadcrumb = breadcrumbs[breadcrumbs.length - 2];
       if (parentBreadcrumb && parentBreadcrumb.link) {
-        history.push(parentBreadcrumb.link);
+        navigate(parentBreadcrumb.link);
       } else {
-        history.goBack();
+        navigate(-1);
       }
     } else {
-      history.goBack();
+      navigate(-1);
     }
   };
 
@@ -69,7 +69,7 @@ const PageTitle = ({ breadcrumbs, showBackArrow, onBack, subtitle }) => {
                 {crumb.link ? (
                   <button
                     className="page-title-breadcrumb-link"
-                    onClick={() => history.push(crumb.link)}
+                    onClick={() => navigate(crumb.link)}
                     data-testid={`breadcrumb-link-${index}`}
                   >
                     {crumb.label}

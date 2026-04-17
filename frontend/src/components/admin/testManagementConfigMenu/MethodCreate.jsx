@@ -1,0 +1,98 @@
+import React, { useContext, useState, useEffect, useRef } from "react";
+import {
+  Form,
+  Heading,
+  Button,
+  Loading,
+  Grid,
+  Column,
+  Section,
+  DataTable,
+  Table,
+  TableHead,
+  TableRow,
+  TableBody,
+  TableHeader,
+  TableCell,
+  TableSelectRow,
+  TableSelectAll,
+  TableContainer,
+  Pagination,
+  Search,
+  Select,
+  SelectItem,
+  Stack,
+} from "@carbon/react";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServer,
+  postToOpenElisServerFormData,
+  postToOpenElisServerFullResponse,
+  postToOpenElisServerJsonResponse,
+} from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
+import {
+  AlertDialog,
+  NotificationKinds,
+} from "../../common/CustomNotification";
+import { FormattedMessage, useIntl } from "react-intl";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+import CustomCheckBox from "../../common/CustomCheckBox";
+import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
+  {
+    label: "master.lists.page.test.management",
+    link: "/MasterListsPage/testManagementConfigMenu",
+  },
+  {
+    label: "configuration.testUnit.manage",
+    link: "/MasterListsPage/MethodManagement",
+  },
+  {
+    label: "configuration.method.create",
+    link: "/MasterListsPage/MethodCreate",
+  },
+];
+
+function MethodCreate() {
+  const intl = useIntl();
+  const { notificationVisible, setNotificationVisible, addNotification } =
+    useContext(NotificationContext);
+
+  const componentMounted = useRef(false);
+
+  return (
+    <>
+      {notificationVisible === true ? <AlertDialog /> : ""}
+      <div className="adminPageContent">
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage id="banner.menu.patientEdit" />
+              </Heading>
+            </Section>
+          </Column>
+        </Grid>
+        <br />
+        <hr />
+        <br />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage id="configuration.method.create" />
+              </Heading>
+            </Section>
+          </Column>
+        </Grid>
+      </div>
+    </>
+  );
+}
+
+export default MethodCreate;

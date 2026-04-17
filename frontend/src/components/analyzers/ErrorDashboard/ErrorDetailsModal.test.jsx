@@ -12,7 +12,15 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-// No mocks needed - component is self-contained
+// Mock react-router-dom
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/" }),
+  useParams: () => ({}),
+}));
+
+// No other mocks needed - component is self-contained
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 

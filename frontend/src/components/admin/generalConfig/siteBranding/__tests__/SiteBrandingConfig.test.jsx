@@ -44,7 +44,7 @@ import {
 import userEvent from "@testing-library/user-event";
 
 // 4. jest-dom matchers
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
@@ -55,7 +55,7 @@ import { BrowserRouter } from "react-router-dom";
 // Context
 import { NotificationContext } from "../../../../layout/Layout";
 
-// Mock react-router-dom useHistory
+// Mock react-router-dom useNavigate
 const mockHistory = {
   push: jest.fn(),
   replace: jest.fn(),
@@ -64,7 +64,7 @@ const mockHistory = {
 
 jest.mock("react-router-dom", () => ({
   ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
+  useNavigate: () => mockHistory,
 }));
 
 // 7. Component under test

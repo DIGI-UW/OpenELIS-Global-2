@@ -20,7 +20,7 @@ import {
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import { useHistory } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
 import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
@@ -32,7 +32,7 @@ import "./AnalyzersList.css";
 
 const AnalyzersList = () => {
   const intl = useIntl();
-  const history = useHistory();
+  const navigate = useNavigate();
   const searchTimeoutRef = useRef(null);
 
   const [analyzers, setAnalyzers] = useState([]);
@@ -160,7 +160,7 @@ const AnalyzersList = () => {
       } else {
         params.delete("search");
       }
-      history.replace({ search: params.toString() });
+      navigate({ search: params.toString() }, { replace: true });
     }, 300);
   };
 
@@ -174,7 +174,7 @@ const AnalyzersList = () => {
     } else {
       params.delete(filterName);
     }
-    history.replace({ search: params.toString() });
+    navigate({ search: params.toString() }, { replace: true });
   };
 
   const headers = [
@@ -525,7 +525,7 @@ const AnalyzersList = () => {
                                     })}
                                     onClick={() => {
                                       if (analyzer?.id) {
-                                        history.push(
+                                        navigate(
                                           `/analyzers/${analyzer.id}/mappings`,
                                         );
                                       }

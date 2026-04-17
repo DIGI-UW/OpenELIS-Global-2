@@ -5,6 +5,14 @@ import { IntlProvider } from "react-intl";
 import { BrowserRouter } from "react-router-dom";
 import PageTitle from "./PageTitle";
 
+// Mock react-router-dom
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: "/" }),
+  useParams: () => ({}),
+}));
+
 // Mock messages
 const messages = {
   "page.breadcrumb.separator": ">",

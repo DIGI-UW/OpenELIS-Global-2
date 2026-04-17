@@ -5,7 +5,7 @@ import messages from "../../../languages/en.json";
 import EQAOrdersPage from "../EQAOrdersPage";
 
 jest.mock("react-router-dom", () => ({
-  useHistory: () => ({
+  useNavigate: () => ({
     push: jest.fn(),
   }),
 }));
