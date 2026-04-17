@@ -1,28 +1,36 @@
 /**
- * Phase 1c (RED) — SearchField component tests.
- *
- * SearchField is the picker's flat type-ahead input. The user types a
- * query; after a brief debounce we hit the existing
- * `/rest/storage/locations/search?q=` endpoint (verified to return a
- * pre-composed `hierarchicalPath` per result); results render in a
- * listbox; clicking a result fires `onSelect` with the picked location.
- *
- * The component is presentational + lightweight async (debounced fetch).
- * It owns no selection state — it dispatches via callbacks back to the
- * picker reducer.
+ * SearchField tests — debounced type-ahead against
+ * /rest/storage/locations/search. The endpoint returns a pre-composed
+ * `hierarchicalPath` per result; clicking a result fires onSelect.
  */
 
 import React from "react";
 import {
-  render,
+  render as rtlRender,
   screen,
   fireEvent,
   waitFor,
   act,
 } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { IntlProvider } from "react-intl";
 import SearchField from "./SearchField";
 import * as Utils from "../../../utils/Utils";
+
+// SearchField uses useIntl for its labelText/placeholder, so every
+// render needs an IntlProvider ancestor. Override both render and the
+// result's rerender so call sites don't need to wrap anything.
+const withIntl = (ui) => (
+  <IntlProvider locale="en" messages={{}}>
+    {ui}
+  </IntlProvider>
+);
+const render = (ui, options) => {
+  const result = rtlRender(withIntl(ui), options);
+  const originalRerender = result.rerender;
+  result.rerender = (newUi) => originalRerender(withIntl(newUi));
+  return result;
+};
 
 jest.mock("../../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),

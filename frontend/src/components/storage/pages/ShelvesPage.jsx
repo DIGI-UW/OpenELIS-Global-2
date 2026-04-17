@@ -2,9 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
-/**
- * ShelvesPage — /Storage/shelves. Read-only in Phase 9; Edit in Phase 10.
- */
+/** ShelvesPage — /Storage/shelves. List of shelves with per-row Edit. */
 export default function ShelvesPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);

@@ -1,45 +1,28 @@
 import { useReducer } from "react";
 
 /**
- * useLocationPicker — single source of truth for the storage location
- * picker's UI state. Replaces the 26-useState / 14-useEffect / manual-
- * re-render-counter mess in the legacy EnhancedCascadingMode.jsx +
- * LocationManagementModal.jsx with one pure reducer.
+ * Reducer + hook for the storage location picker.
  *
- * State shape (verbatim from /Users/pmanko/.claude/plans/foamy-sleeping-thacker.md):
- *
- *   Container = { id, name }
- *   Selection = { room?, device?, shelf?, rack?, box? }   // 5 container levels
- *   Position  = { mode: 'text', value }
- *             | { mode: 'grid', row, column }
- *             | null                                        // optional, any level
+ * State shape:
+ *   Container  = { id, name }
+ *   Selection  = { room?, device?, shelf?, rack?, box? }
+ *   Position   = { mode: 'text', value }
+ *              | { mode: 'grid', row, column }
+ *              | null
  *   PickerMode = 'search' | 'create'
  *
- *   State {
- *     mode: PickerMode,
- *     selection: Selection,
- *     position: Position,
- *     searchQuery: string,
- *     searchResults: LocationSearchResult[],
- *     initialAssignment: { selection, position } | null,    // movement context
- *     reason?: string,
- *     notes?: string,
- *     capacityWarning?: string,
- *   }
+ *   State { mode, selection, position, searchQuery, searchResults,
+ *           initialAssignment, reason, notes, capacityWarning }
  *
- * Position is a property of the assignment, NOT a hierarchy level.
- * Always optional, always available regardless of which level is the
- * deepest selected — the user picks free text or row × column.
+ * Position is a property of the assignment, not a hierarchy level;
+ * it is always optional. Users toggle between free text and row × column.
  *
- * Hierarchy invariant: setting (or clearing) a level clears all DESCENDANT
- * levels. Selecting Room=A clears any previously-selected device/shelf/rack/
- * box that belonged to a different Room. This is the cascading semantics —
- * applied uniformly in the reducer rather than scattered across 14
- * useEffects with stale-closure bugs.
+ * Cascading invariant: setting or clearing a level clears all descendant
+ * levels (set room → device/shelf/rack/box cleared). Applied uniformly in
+ * the reducer so SET_LEVEL is the only place the rule lives.
  */
 
-// Order matters — children come after their parents. Used by SET_LEVEL to
-// figure out which descendants to clear.
+// Children come after parents. SET_LEVEL uses this to clear descendants.
 export const LEVEL_ORDER = ["room", "device", "shelf", "rack", "box"];
 
 export const initialState = {

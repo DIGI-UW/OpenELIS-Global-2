@@ -21,19 +21,13 @@ import useStorageTableData from "../hooks/useStorageTableData";
  * StorageResourcePage — shared shell for the five per-resource storage
  * pages (Rooms, Devices, Shelves, Racks, Boxes).
  *
- * Replaces the five identical-in-spirit Tab panels that lived inside
- * the 4,902-line StorageDashboard.jsx. Each concrete page is a thin
- * wrapper that passes the right config:
+ * Each concrete page is a thin wrapper that passes the right config:
  *   - listUrl: backend endpoint (e.g. /rest/storage/rooms)
- *   - nameField: 'name' (Room, Device) or 'label' (Shelf, Rack, Box) —
- *     the backend's identifier-field naming is inconsistent
- *   - parentLabel?: display the parent hierarchy (e.g., "Main Lab >
- *     Freezer 1" for a Shelf row)
- *
- * Phase 9 scope: read-only tables to serve the new URLs and unblock
- * the clean-cutover from /Storage/:tab. Per-row Edit/Delete actions
- * arrive in Phase 10 (EditLocationPage / EditBoxPage) + Phase 12
- * cleanup. Add/Dispose buttons similarly deferred.
+ *   - nameField: 'name' for Room/Device, 'label' for Shelf/Rack/Box
+ *     (backend identifier-field naming is inconsistent)
+ *   - parentLabel?: optional parent-hierarchy column header
+ *   - editHref?: builder `(row) => "/Storage/.../edit"` to render a
+ *     per-row Edit link
  */
 export default function StorageResourcePage({
   crumbs,

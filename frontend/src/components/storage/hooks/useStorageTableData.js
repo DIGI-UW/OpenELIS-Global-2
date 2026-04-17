@@ -5,17 +5,17 @@ import { getFromOpenElisServer } from "../../utils/Utils";
  * useStorageTableData — shared paginated-table fetch for the per-resource
  * storage pages (SampleItemsPage, RoomsPage, DevicesPage, etc.).
  *
- * Replaces the inline pagination + search plumbing scattered across
- * StorageDashboard.jsx (4,902 LoC). Each page passes:
- *   - listUrl   : GET endpoint for the paginated list (e.g. '/rest/storage/sample-items')
- *   - searchUrl : GET endpoint for a full-text search (e.g. '/rest/storage/sample-items/search')
+ * Each page passes:
+ *   - listUrl   : GET endpoint for the paginated list
+ *                 (e.g. '/rest/storage/sample-items')
+ *   - searchUrl : GET endpoint for full-text search
+ *                 (e.g. '/rest/storage/sample-items/search')
  *
- * The backend endpoints used by the storage pages return either:
- *   - an array (legacy format) → wrapped as { items, totalItems }
- *   - { items, totalItems|totalElements } (OGC-150 paginated format)
- * Both shapes are normalized here so the callers see a single contract.
+ * Backend endpoints return either an array or
+ * { items, totalItems | totalElements }. Both shapes are normalized
+ * here so callers see one contract.
  *
- * @returns {Object} { items, totalItems, loading, error, refetch, refreshToken }
+ * @returns {Object} { items, totalItems, loading, error, refetch }
  */
 export default function useStorageTableData({
   listUrl,

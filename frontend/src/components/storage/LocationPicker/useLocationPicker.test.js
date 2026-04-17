@@ -1,31 +1,6 @@
 /**
- * Phase 1a (RED) — Reducer tests for useLocationPicker.
- *
- * These tests assert every state transition of the picker's useReducer in
- * isolation. The reducer is a pure function — no DOM, no React, no API.
- * That's the point: by extracting all the picker state into one reducer,
- * we eliminate the family of bugs that came from useState bloat in the
- * legacy EnhancedCascadingMode.jsx (26 useStates, 14 useEffects, manual
- * locationUpdateTrigger re-render counter). State transitions are now
- * testable as data → data assertions.
- *
- * The plan's State + Action shapes (verbatim from /Users/pmanko/.claude/plans/foamy-sleeping-thacker.md):
- *
- *   type Container = { id: number; name: string };
- *   type Selection = { room?, device?, shelf?, rack?, box? };
- *   type Position =
- *     | { mode: 'text'; value: string }
- *     | { mode: 'grid'; row: string; column: string }
- *     | null;
- *   type PickerMode = 'search' | 'create';
- *   type State = {
- *     mode, selection, position, searchQuery, searchResults,
- *     initialAssignment, reason?, notes?, capacityWarning?
- *   };
- *
- * Actions:
- *   SET_LEVEL, SET_POSITION, SET_MODE, SET_SEARCH_QUERY,
- *   SET_SEARCH_RESULTS, SET_REASON, SET_NOTES, PRELOAD
+ * Reducer tests for useLocationPicker — every state transition asserted
+ * as data → data, no DOM, no React, no API.
  */
 
 import { reducer, initialState, createInitialState } from "./useLocationPicker";

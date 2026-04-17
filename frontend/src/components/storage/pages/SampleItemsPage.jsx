@@ -19,21 +19,11 @@ import SampleActionsContainer from "../SampleStorage/SampleActionsContainer";
 import useStorageTableData from "../hooks/useStorageTableData";
 
 /**
- * SampleItemsPage — dedicated page at /Storage/sample-items replacing the
- * legacy /Storage/samples Tab in StorageDashboard.
+ * SampleItemsPage — /Storage/sample-items.
  *
- * Responsibilities (Phase 5b scope — kept minimal):
- *   - Breadcrumb: Storage > Sample Items
- *   - h1 page header
- *   - Search input (client-side triggers server search)
- *   - Paginated DataTable of sample items
- *   - Per-row overflow menu ("Manage Location" navigates to
- *     /Storage/sample-items/:id/manage-location — no modal)
- *
- * Not in Phase 5b (tracked for future phases):
- *   - Advanced filters (location, status, date)
- *   - Dispose flow (stays as small modal; wired in Phase 10/12)
- *   - Metrics strip (moves to StorageDashboard's decomposed landing)
+ * Breadcrumb + h1 + search + paginated DataTable of sample items.
+ * Per-row overflow menu navigates to
+ * /Storage/sample-items/:id/manage-location.
  */
 export default function SampleItemsPage() {
   const history = useHistory();
@@ -126,8 +116,8 @@ export default function SampleItemsPage() {
   };
 
   const handleDispose = () => {
-    // Dispose stays as a modal (spec-exempt short confirm); wiring in Phase 10.
-    // For Phase 5b we leave the menu item in place but no-op it.
+    // Dispose stays as a short-confirm modal; wiring is a follow-up.
+    // The menu item renders but is a no-op for now.
   };
 
   const rows = useMemo(() => {

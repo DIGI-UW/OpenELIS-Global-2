@@ -842,11 +842,7 @@ export function SearchResults(props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
   const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
-  // Storage picker modal state — which analysisId's row currently has the
-  // modal open. Result Entry is the documented "modal exception" in the
-  // LocationPicker refactor: page navigation from a deeply-nested
-  // expandable result row would be jarring, so this site uses
-  // LocationPickerModal instead of LocationPickerPage.
+  // Which analysisId's storage-picker modal is open (one at a time).
   const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
@@ -1640,11 +1636,10 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage Location — Phase 6 of the picker refactor.
-            Result Entry uses the modal variant (documented exception)
-            so page nav from this deeply-nested expanded row doesn't
-            happen. The modal opens when the user clicks the trigger
-            button below. */}
+        {/* Storage location — modal variant. This row is inside a
+            deeply-nested expand, so page navigation would be jarring;
+            the picker opens in a modal when the trigger below is
+            clicked. */}
         <Grid style={{ marginTop: "1rem" }}>
           <Column lg={16}>
             <div className="result-entry-storage-section">

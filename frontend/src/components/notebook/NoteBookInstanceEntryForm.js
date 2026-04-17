@@ -1942,12 +1942,11 @@ const NoteBookInstanceEntryForm = () => {
                                     </Column>
                                   </>
                                 )}
-                                {/* Storage Location — Phase 11 of the picker
-                                    refactor. NoteBook entry is a linear form,
-                                    so the inline picker variant fits better
-                                    than a modal (unlike Site 4 Result Entry
-                                    which is inside a deeply-nested expand
-                                    row). */}
+                                {/* Storage location — inline variant
+                                    fits here because notebook entry is a
+                                    linear form (unlike result entry,
+                                    which uses the modal variant inside
+                                    its expandable row). */}
                                 <Column lg={16} md={8} sm={4}>
                                   <br />
                                   <div className="notebook-storage-current">

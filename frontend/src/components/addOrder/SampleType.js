@@ -616,14 +616,11 @@ const SampleType = (props) => {
           </div>
         )}
 
-        {/* Storage Location — Phase 7 of the picker refactor.
-            AddOrder Sample Type uses the inline picker variant (no
-            modal, no dedicated page) because storage selection is
-            part of the larger sample-type form being filled out.
-            NOTE: In order entry, SampleItems are created after Sample
-            is saved, so the selection here is a preference persisted
-            into sampleXml.storageLocation and applied to the
-            first/default SampleItem once it's created. */}
+        {/* Storage location — inline variant (part of the larger
+            sample-type form). SampleItems are created after Sample
+            save, so this selection is a preference persisted into
+            sampleXml.storageLocation and applied to the first
+            SampleItem once it exists. */}
         <div className="inlineDiv">
           <LocationPickerInline
             initialSelection={

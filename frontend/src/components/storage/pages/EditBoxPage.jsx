@@ -19,7 +19,7 @@ import config from "../../../config.json";
  *
  * Boxes have grid-layout fields (rows × columns + capacityLimit) that
  * don't fit the generic EditLocationPage shell, so they get their own
- * page. Replaces the 383-line EditBoxModal — removed in Phase 12.
+ * page.
  *
  * Backend form is StorageBoxForm { label, code, parentRackId,
  * capacityLimit, rows, columns, active }.

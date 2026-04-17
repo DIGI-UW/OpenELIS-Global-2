@@ -32,13 +32,14 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
       : {},
   );
 
-  // Forward state changes to the host form
+  // Forward meaningful state changes to the host form. Only selection
+  // and position are relevant to the caller — omitting the full `state`
+  // object from deps avoids spamming onChange on every keystroke or
+  // mode toggle.
   useEffect(() => {
     if (onChange) onChange(state);
-    // The host only cares about selection + position changes, but
-    // including the whole state is simpler than sub-selecting and
-    // matches the "controlled output" pattern.
-  }, [state.selection, state.position, onChange, state]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.selection, state.position, onChange]);
 
   const setLevel = (level, value) =>
     dispatch({ type: "SET_LEVEL", level, value });

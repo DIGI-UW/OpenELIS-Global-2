@@ -7,19 +7,16 @@ import { LEVEL_ORDER } from "../LocationPicker/useLocationPicker";
 import useSampleStorage from "../hooks/useSampleStorage";
 
 /**
- * ManageLocationPage — route /Storage/sample-items/:id/manage-location.
+ * ManageLocationPage — /Storage/sample-items/:id/manage-location.
  *
- * Wraps the new LocationPickerPage in a data-loading shell. The sample
- * data is passed via router state from SampleItemsPage (no separate
- * GET endpoint needed — SampleItemsPage has already fetched the list
- * row). If the user deep-linked here, we fall back to a minimal sample
- * object using the URL id.
+ * Wraps <LocationPickerPage> in a data-loading shell. The sample data
+ * is passed via router state from SampleItemsPage (no separate GET
+ * endpoint — the list already fetched it). On deep-link we fall back
+ * to a minimal sample object using the URL id.
  *
- * Save path: POST /rest/storage/sample-items/{assign|move} then navigate
- * back to /Storage/sample-items?t={now} so the list refetches and shows
- * the updated row.
- *
- * Replaces LocationManagementModal (1,010 LoC) for Site 1.
+ * On save: POST /rest/storage/sample-items/{assign|move}, then
+ * navigate back to /Storage/sample-items?t={now} so the list refetches
+ * and shows the updated row.
  */
 export default function ManageLocationPage() {
   const { id } = useParams();

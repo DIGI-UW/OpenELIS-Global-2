@@ -3,9 +3,9 @@ import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
 /**
- * BoxesPage — /Storage/boxes. Read-only in Phase 9; Edit lands in
- * Phase 10 via a separate EditBoxPage (boxes have grid layout editing
- * that doesn't fit the generic EditLocationPage shell).
+ * BoxesPage — /Storage/boxes. List of boxes with per-row Edit.
+ * Edit uses a dedicated EditBoxPage (boxes have grid-layout fields
+ * that don't fit the generic EditLocationPage shell).
  */
 export default function BoxesPage() {
   const intl = useIntl();

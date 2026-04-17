@@ -1,19 +1,8 @@
 /**
- * Phase 3e (RED) — LocationPickerPage tests.
+ * LocationPickerPage tests — full-page shell for the
+ * /Storage/sample-items/:id/manage-location route.
  *
- * Page shell wraps the picker in a full-page layout for the new
- * /Storage/sample-items/:id/manage-location route. Same picker as Inline
- * and Modal; different chrome:
- *
- *   - Page header (h1) + breadcrumb (passed in from caller)
- *   - Sample info section
- *   - Optional current-location summary (movement context)
- *   - Mode-toggle picker
- *   - Reason (movement only) + Notes
- *   - Cancel + Save buttons
- *
- * onSave (vs Modal's onConfirm) returns the payload AND the caller is
- * expected to navigate away (back to /Storage/sample-items) on success.
+ * onSave returns the picker payload; the caller navigates away on success.
  */
 
 import React from "react";

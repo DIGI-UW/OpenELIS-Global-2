@@ -1,24 +1,11 @@
 /**
- * Phase 3c (RED) — LocationPickerModal tests.
+ * LocationPickerModal tests — Carbon ComposedModal shell.
  *
- * Modal shell wraps the picker in a Carbon ComposedModal for the
- * documented modal-exception sites (Result Entry's expandable row,
- * Notebook entry).
+ * Title flips based on `currentLocation`:
+ *   null/undefined → "Assign Storage Location"
+ *   present        → "Move Sample"
  *
- * Title flips based on currentLocation:
- *   - null/undefined → "Assign Storage Location"
- *   - present       → "Move Sample"
- *
- * Layout (top to bottom):
- *   - Sample info (sampleId / accession / type / status)
- *   - Current location section (when present)
- *   - Mode toggle + SearchField/CreateForm (the picker)
- *   - Position input (text/grid toggle)
- *   - Reason field (movement only)
- *   - Notes field (always)
- *   - Cancel + Confirm buttons
- *
- * onConfirm receives the full payload: { selection, position, reason, notes }
+ * onConfirm payload: { selection, position, reason, notes }.
  */
 
 import React from "react";
@@ -32,6 +19,32 @@ jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
   postToOpenElisServerJsonResponse: jest.fn(),
 }));
+
+// Replace Carbon's ComposedModal with a plain div. The real component
+// installs a focus-trap MutationObserver via a React portal, which jsdom
+// cannot tear down cleanly — tests then leave open handles and Jest
+// hangs waiting for the event loop to empty. Here we only care about
+// the modal's *contract* (renders when `open`, shows title, body,
+// footer), not its portal/focus-trap implementation.
+jest.mock("@carbon/react", () => {
+  const actual = jest.requireActual("@carbon/react");
+  return {
+    ...actual,
+    ComposedModal: ({ open, children, onClose }) =>
+      open ? (
+        <div role="dialog" data-testid="mock-composed-modal">
+          {children}
+        </div>
+      ) : null,
+    ModalHeader: ({ title }) => (
+      <header>
+        <h2>{title}</h2>
+      </header>
+    ),
+    ModalBody: ({ children }) => <div>{children}</div>,
+    ModalFooter: ({ children }) => <footer>{children}</footer>,
+  };
+});
 
 const renderWithIntl = (component) =>
   render(

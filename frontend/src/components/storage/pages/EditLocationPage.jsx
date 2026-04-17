@@ -17,14 +17,12 @@ import config from "../../../config.json";
  * EditLocationPage — /Storage/{rooms|devices|shelves|racks}/:id/edit
  *
  * Generic edit page for the four container levels that share a simple
- * form shape (box editing has grid-layout fields and lives in its own
- * EditBoxPage). Per-type differences:
- *   - Room:   name, code, description, active
- *   - Device: name, code, parentRoomId, active
- *   - Shelf:  label, code, parentDeviceId, active
- *   - Rack:   label, code, parentShelfId, active
- *
- * Replaces the 1,251-line EditLocationModal — removed in Phase 12.
+ * form shape. Boxes use EditBoxPage because they add grid-layout
+ * fields. Per-type payload:
+ *   Room:   { name, code, description, active }
+ *   Device: { name, code, parentRoomId, active }
+ *   Shelf:  { label, code, parentDeviceId, active }
+ *   Rack:   { label, code, parentShelfId, active }
  */
 
 const TYPE_META = {

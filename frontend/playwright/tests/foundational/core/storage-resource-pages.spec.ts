@@ -2,16 +2,13 @@ import { test, expect } from "../../../helpers/test-base";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * Phase 9 — Storage resource pages smoke.
+ * Storage resource pages smoke.
  *
- * Five per-resource pages replace the Tab panels that lived inside
- * the 4,902-line StorageDashboard. Each renders a read-only table
- * at its dedicated URL; Edit/Add/Delete actions land in Phase 10+.
- *
- * Phase 9 scope: prove the routes resolve to the right page + the
- * shared StorageResourcePage shell renders breadcrumb, h1, and
- * a <table>. Keeps the regression surface small — any row/column
- * detail is reserved for richer specs once Edit actions exist.
+ * Five per-resource pages (Rooms/Devices/Shelves/Racks/Boxes) render
+ * a read-only table at their canonical /Storage/{resource} URL. This
+ * spec proves the route resolves + the shared StorageResourcePage
+ * shell renders breadcrumb, h1, and a <table>. Row/column detail is
+ * left for richer specs.
  */
 
 const PAGES = [
@@ -42,7 +39,7 @@ const PAGES = [
   },
 ];
 
-test.describe("Storage resource pages (Phase 9)", () => {
+test.describe("Storage resource pages", () => {
   for (const page of PAGES) {
     test(`renders ${page.path} with breadcrumb, h1, and table`, async ({
       page: p,

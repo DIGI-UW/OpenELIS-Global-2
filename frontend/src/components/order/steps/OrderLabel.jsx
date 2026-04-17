@@ -788,15 +788,10 @@ const OrderLabel = () => {
           </div>
         )}
 
-        {/* Storage Location — Phase 8 of the picker refactor.
-            This was the LAST caller of the legacy
-            StorageLocationSelector mode="autocomplete" path. After
-            this migration, the legacy components are dead code
-            (removed in Phase 12 cleanup).
-
-            OrderLabel persists the selection locally (assignedStorage
-            map by sample index) and POSTs /assign or /move once the
-            user clicks Save on the larger form. */}
+        {/* Storage location. Selection is held locally in
+            assignedStorage (keyed by sample index); the actual
+            /assign or /move POST fires when the user saves the order
+            form — see savePendingStorageAssignments. */}
         <LocationPickerInline
           onChange={(state) => {
             // Collapse the new picker's {selection, position} shape

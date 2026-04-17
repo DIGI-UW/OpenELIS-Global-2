@@ -1,23 +1,12 @@
 /**
- * Phase 2a (RED) — CreateForm component tests.
+ * CreateForm tests — 5-level cascading dropdowns + inline create.
  *
- * Carbon-correct patterns applied:
- *   - Wrap render in <IntlProvider> (Carbon uses react-intl internally;
- *     matches the existing LocationFilterDropdown.test.jsx pattern in
- *     this repo).
- *   - Carbon @carbon/react 1.15 Dropdown does NOT expose role=combobox
- *     on its trigger — the trigger is a plain <button>. Use
- *     getByLabelText('Room') (associates via the rendered <label for=...>).
- *   - Carbon's `disabled` prop sets aria-disabled="true", NOT the native
- *     disabled attribute. Assert via toHaveAttribute('aria-disabled', ...)
- *     not toBeDisabled().
- *
- * CreateForm renders the 5-level cascading-dropdown UI (Room → Device →
- * Shelf → Rack → Box) plus an inline "Create new {level}" affordance per
- * level. The component is presentational + lightweight async (one fetch
- * per level when its parent is selected). Selection state lives in the
- * useLocationPicker reducer; CreateForm receives `selection` prop and
- * fires `onLevelChange(level, value)` callbacks.
+ * Carbon @carbon/react 1.15 notes:
+ *   - Dropdown trigger is a <button>, not role=combobox. Use
+ *     getByLabelText('Room').
+ *   - `disabled` prop sets aria-disabled="true", not the native
+ *     attribute. Assert with toHaveAttribute('aria-disabled', ...).
+ *   - Render inside an IntlProvider; Carbon uses react-intl internally.
  */
 
 import React from "react";

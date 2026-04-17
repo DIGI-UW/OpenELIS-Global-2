@@ -2,24 +2,16 @@ import { test, expect } from "../../../helpers/test-base";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * Phase 8 — Site 2 (Order Label & Store).
+ * Order workflow — Label & Store storage picker smoke.
  *
- * OrderLabel.jsx now uses LocationPickerInline (the new picker's
- * inline shell), replacing the legacy StorageLocationSelector
- * mode="autocomplete" path. This was the last caller of the legacy
- * mode= path — after Phase 12 the legacy components are deleted.
+ * Precondition: the deep-linked order must already be at Step 3
+ * (Label & Store). If it's earlier, OrderContext redirects away and
+ * the picker won't render; in that case this test runs `test.skip()`
+ * with a clear precondition message.
  *
- * Precondition for the picker-visibility assertion: the deep-linked
- * order must already be at Step 3 (Label & Store). If the order is
- * still at Step 1 (Enter Order) or Step 2, the router redirects away
- * and the picker won't render. That's pre-existing OrderContext
- * behavior, unrelated to the picker refactor. If the test
- * environment has no order at Step 3, this test runs `test.skip()`
- * with a clear precondition message — not a silent pass.
- *
- * Seed lookup: /rest/home-dashboard/ORDERS_IN_PROGRESS. If the
- * endpoint returns no orders at all, this spec fails with an
- * actionable diagnostic.
+ * Seed lookup: /rest/home-dashboard/ORDERS_IN_PROGRESS. If that
+ * endpoint returns no orders, the test fails with an actionable
+ * diagnostic rather than silently passing.
  */
 
 async function findInProgressLabNumber(
@@ -33,7 +25,7 @@ async function findInProgressLabNumber(
   return data?.displayItems?.[0]?.labNumber ?? null;
 }
 
-test.describe("Order workflow — Label & Store storage picker (Phase 8)", () => {
+test.describe("Order workflow — Label & Store storage picker", () => {
   test("renders the new LocationPickerInline when the order is at Step 3", async ({
     page,
     request,
@@ -51,9 +43,7 @@ test.describe("Order workflow — Label & Store storage picker (Phase 8)", () =>
     );
 
     // If the order isn't at Step 3, OrderContext routes us to Step 1
-    // ("Enter Order"). That's a pre-existing behavior (filed as the
-    // BUG-2 follow-up in the Phase 0 cherry-pick commit). Skip the
-    // picker assertion with a clear reason.
+    // ("Enter Order"). Skip the picker assertion with a clear reason.
     const stepHeading = await page
       .getByRole("heading", { level: 2 })
       .first()

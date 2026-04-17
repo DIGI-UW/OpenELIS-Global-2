@@ -1,12 +1,7 @@
 /**
- * Phase 4a (RED) — BreadcrumbNav tests.
- *
- * Small reusable wrapper around Carbon's Breadcrumb that:
- *   - Takes a `crumbs` array: [{ label, href }, ...]
- *   - Renders each crumb as a clickable link
- *   - Marks the LAST crumb as the current page (non-clickable)
- *   - Uses react-router-dom Link for client-side navigation (so back/
- *     forward stays SPA, no full-page reload)
+ * BreadcrumbNav tests — wrapper around Carbon's Breadcrumb that
+ * renders a `crumbs` array, links each ancestor via react-router-dom
+ * `Link`, and marks the last crumb as the current page.
  */
 
 import React from "react";

@@ -2,10 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
-/**
- * DevicesPage — /Storage/devices. Read-only in Phase 9; Edit action
- * lands in Phase 10.
- */
+/** DevicesPage — /Storage/devices. List of devices with per-row Edit. */
 export default function DevicesPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);

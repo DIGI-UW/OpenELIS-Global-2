@@ -2,29 +2,25 @@ import { test, expect } from "../../../helpers/test-base";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * Phase 5b — Sample Items page + dedicated Manage Location page.
+ * Sample Items page + dedicated Manage Location page.
  *
- * User story:
- *   Admin navigates to /Storage/sample-items and on an unassigned row
- *   clicks Manage Location → dedicated LocationPickerPage at
- *   /Storage/sample-items/{id}/manage-location. They pick or create
- *   a location, click Save, and are navigated back.
+ * User story: admin navigates to /Storage/sample-items, clicks Manage
+ * Location on an unassigned row → LocationPickerPage at
+ * /Storage/sample-items/{id}/manage-location. They pick or create a
+ * location, click Save, and are navigated back.
  *
- * Why known sample IDs instead of "find first unassigned row"?
- *   The sample-items LIST endpoint has a pre-existing resolver bug
- *   where some assigned rows return `location=''`, making the text-
- *   based "unassigned" heuristic unreliable. The refactor fixtures
- *   reserve 10051 (E2E-TUBE-1) as a known-unassigned tube; we use
- *   that ID directly so the spec is deterministic and independent of
- *   the list endpoint's bug. See `sample_storage_assignment` DB query
- *   for ground truth: `SELECT si.id FROM sample_item si LEFT JOIN
- *   sample_storage_assignment ssa ON ssa.sample_item_id = si.id WHERE
- *   ssa.id IS NULL`.
+ * The spec uses known fixture IDs (10051 / 10072) instead of scanning
+ * for an unassigned row — the list endpoint's hierarchy resolver can
+ * return `location=''` for some assigned rows, making a text heuristic
+ * unreliable. Ground truth for unassigned items:
+ *   SELECT si.id FROM sample_item si
+ *   LEFT JOIN sample_storage_assignment ssa
+ *     ON ssa.sample_item_id = si.id
+ *   WHERE ssa.id IS NULL;
  *
- * Backend assignment constraint (enforced by DB check constraint
- * `chk_location_type_valid`): location_type must be one of 'device',
- * 'shelf', 'rack', 'box' — NOT 'room'. The spec picks a device-level
- * result ("Freezer Unit 1").
+ * The DB check constraint `chk_location_type_valid` rejects
+ * `location_type = 'room'`, so the spec picks a device-level result
+ * ("Freezer Unit 1").
  */
 
 // Each test consumes one unassigned sample_item per run — after the

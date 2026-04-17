@@ -1,18 +1,7 @@
 /**
- * Phase 3a (RED) — LocationPickerInline tests.
- *
- * The Inline shell is the thinnest of the three picker variants. It's
- * embedded directly within a host form (OrderLabel, AddOrder Sample Type).
- * No modal chrome, no breadcrumb, no confirm/cancel — just the picker UI:
- *
- *   - Mode toggle (Search ↔ Create new location)
- *   - When mode=search: <SearchField />
- *   - When mode=create: <CreateForm />
- *   - Optional: a compact summary of the current selection (hierarchical
- *     path string) so the host form sees what was picked
- *
- * The host calls onChange(selection) when the picker's selection changes,
- * giving the host a single value to persist with the rest of the form.
+ * LocationPickerInline tests — mode toggle between SearchField and
+ * CreateForm, plus a compact selection summary. Host receives state
+ * changes via onChange.
  */
 
 import React from "react";

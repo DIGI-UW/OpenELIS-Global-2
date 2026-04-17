@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Dropdown, Button, Modal, TextInput } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
+import { useIntl, FormattedMessage } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
@@ -9,25 +10,18 @@ import {
 /**
  * CreateForm — 5-level cascading dropdown UI for the LocationPicker.
  *
- * Replaces the 1837-line EnhancedCascadingMode.jsx (26 useState, 14
- * useEffect, custom downshift overrides, 4 boolean flag families × 4 levels).
+ * Local state:
+ *   - options: { room, device, shelf, rack, box } — API-fetched lists per level
+ *   - inlineCreate: { level, name } | null — one open inline-create dialog
  *
- * State held in this component:
- *   - options: { room, device, shelf, rack, box } — the API-fetched lists
- *   - inlineCreate: { level, name, isOpen } — small modal state for one
- *     inline-create dialog at a time
+ * Selection state lives in the parent's reducer (props.selection +
+ * props.onLevelChange). SET_LEVEL handles the cascading-clear invariant.
  *
- * Selection state lives in the picker's reducer (props.selection +
- * props.onLevelChange callback). The reducer's SET_LEVEL handles the
- * cascading-clear invariant (descendants drop when a parent changes).
+ * All 5 dropdowns are always rendered; descendants are disabled until
+ * their parent is selected. If a selected rack has no boxes, the Box
+ * dropdown is simply empty.
  *
- * Per the locked-in design (plan §"Design decisions locked in" #5):
- *   - All 5 dropdowns ALWAYS rendered
- *   - Descendants disabled until parent is selected (UI feedback)
- *   - Box dropdown is enabled when Rack is selected; if the rack has no
- *     boxes, the dropdown is simply empty and the user moves on
- *
- * Endpoints (no backend changes per plan):
+ * Endpoints:
  *   GET  /rest/storage/rooms
  *   GET  /rest/storage/devices?roomId={id}
  *   GET  /rest/storage/shelves?deviceId={id}
@@ -36,17 +30,15 @@ import {
  *   POST /rest/storage/{rooms|devices|shelves|racks|boxes}
  */
 
-// Maps from the picker's level keys to the corresponding REST endpoint
-// segments and the parent-id params the backend uses. Note the backend
-// is inconsistent on naming:
-//   - GET list params are "{parent}Id" (roomId, deviceId, …)
-//   - POST body parent params are "parent{Parent}Id" (parentRoomId, …)
-//   - Identifier field is "name" for Room/Device, "label" for Shelf/Rack/Box
-// Both mappings are expressed in this table.
+// Backend naming inconsistency captured here so callers don't branch:
+//   - GET list parent param: "{parent}Id"   (e.g. roomId, deviceId)
+//   - POST body parent field: "parent{Parent}Id" (e.g. parentRoomId)
+//   - Identifier field: "name" for Room/Device, "label" for Shelf/Rack/Box
 const LEVELS = [
   {
     key: "room",
     label: "Room",
+    labelId: "storage.nav.room",
     endpoint: "rooms",
     parentLevel: null,
     listParam: null,
@@ -56,6 +48,7 @@ const LEVELS = [
   {
     key: "device",
     label: "Device",
+    labelId: "storage.nav.device",
     endpoint: "devices",
     parentLevel: "room",
     listParam: "roomId",
@@ -65,6 +58,7 @@ const LEVELS = [
   {
     key: "shelf",
     label: "Shelf",
+    labelId: "storage.nav.shelf",
     endpoint: "shelves",
     parentLevel: "device",
     listParam: "deviceId",
@@ -74,6 +68,7 @@ const LEVELS = [
   {
     key: "rack",
     label: "Rack",
+    labelId: "storage.nav.rack",
     endpoint: "racks",
     parentLevel: "shelf",
     listParam: "shelfId",
@@ -83,6 +78,7 @@ const LEVELS = [
   {
     key: "box",
     label: "Box",
+    labelId: "storage.nav.box",
     endpoint: "boxes",
     parentLevel: "rack",
     listParam: "rackId",
@@ -92,6 +88,7 @@ const LEVELS = [
 ];
 
 export default function CreateForm({ selection, onLevelChange }) {
+  const intl = useIntl();
   const [options, setOptions] = useState({
     room: [],
     device: [],
@@ -162,16 +159,26 @@ export default function CreateForm({ selection, onLevelChange }) {
 
   return (
     <div className="storage-location-picker-create-form">
-      {LEVELS.map(({ key, label, parentLevel }) => {
+      {LEVELS.map(({ key, label, labelId, parentLevel }) => {
         const parentValue = parentLevel ? selection[parentLevel] : true;
         const enabled = parentValue != null;
         const items = options[key] || [];
+        const levelLabel = intl.formatMessage({
+          id: labelId,
+          defaultMessage: label,
+        });
         return (
           <div key={key} className="storage-location-picker-create-row">
             <Dropdown
               id={`location-picker-${key}`}
-              titleText={label}
-              label={`Select ${label.toLowerCase()}`}
+              titleText={levelLabel}
+              label={intl.formatMessage(
+                {
+                  id: "storage.picker.select",
+                  defaultMessage: "Select {level}",
+                },
+                { level: levelLabel.toLowerCase() },
+              )}
               items={items}
               itemToString={(item) =>
                 item ? item.name || item.label || "" : ""
@@ -197,7 +204,10 @@ export default function CreateForm({ selection, onLevelChange }) {
               disabled={!enabled}
               onClick={() => setInlineCreate({ level: key, name: "" })}
             >
-              Add new
+              <FormattedMessage
+                id="storage.picker.addNew"
+                defaultMessage="Add new"
+              />
             </Button>
           </div>
         );
@@ -206,18 +216,40 @@ export default function CreateForm({ selection, onLevelChange }) {
       {inlineCreate && (
         <Modal
           open
-          modalHeading={`Create new ${LEVELS.find(
-            (l) => l.key === inlineCreate.level,
-          ).label.toLowerCase()}`}
-          primaryButtonText="Create"
-          secondaryButtonText="Cancel"
+          modalHeading={intl.formatMessage(
+            {
+              id: "storage.picker.inlineCreate.heading",
+              defaultMessage: "Create new {level}",
+            },
+            {
+              level: intl
+                .formatMessage({
+                  id: LEVELS.find((l) => l.key === inlineCreate.level).labelId,
+                  defaultMessage: LEVELS.find(
+                    (l) => l.key === inlineCreate.level,
+                  ).label,
+                })
+                .toLowerCase(),
+            },
+          )}
+          primaryButtonText={intl.formatMessage({
+            id: "label.button.create",
+            defaultMessage: "Create",
+          })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+            defaultMessage: "Cancel",
+          })}
           onRequestSubmit={handleCreate}
           onRequestClose={() => setInlineCreate(null)}
           onSecondarySubmit={() => setInlineCreate(null)}
         >
           <TextInput
             id="location-picker-inline-create-name"
-            labelText="Name"
+            labelText={intl.formatMessage({
+              id: "label.name",
+              defaultMessage: "Name",
+            })}
             value={inlineCreate.name}
             onChange={(e) =>
               setInlineCreate({ ...inlineCreate, name: e.target.value })

@@ -2,11 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
-/**
- * RoomsPage — /Storage/rooms. Replaces the Rooms Tab in the
- * legacy StorageDashboard. Read-only list in Phase 9; Edit action
- * lands in Phase 10 via /Storage/rooms/:id/edit → EditLocationPage.
- */
+/** RoomsPage — /Storage/rooms. List of rooms with per-row Edit. */
 export default function RoomsPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);

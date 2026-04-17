@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { TextInput } from "@carbon/react";
+import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 
 /**
@@ -32,15 +33,20 @@ export default function SearchField({
   onResultsChange,
   onSelect,
 }) {
+  const intl = useIntl();
   const debounceRef = useRef(null);
 
   useEffect(() => {
-    // Reset any pending fetch when the query changes
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
     }
     if (!query || query.length < MIN_QUERY_LENGTH) {
+      // Clear stale results only if non-empty. Calling
+      // onResultsChange unconditionally would loop: the parent
+      // re-renders, passes a new onResultsChange identity, this
+      // effect re-fires, and so on.
+      if (results.length > 0) onResultsChange([]);
       return undefined;
     }
     debounceRef.current = setTimeout(() => {
@@ -57,14 +63,21 @@ export default function SearchField({
         debounceRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, onResultsChange]);
 
   return (
     <div className="storage-location-picker-search">
       <TextInput
         id="storage-location-picker-search-input"
-        labelText="Search for a storage location"
-        placeholder="Type 2+ characters to search…"
+        labelText={intl.formatMessage({
+          id: "storage.search.location.label",
+          defaultMessage: "Search for a storage location",
+        })}
+        placeholder={intl.formatMessage({
+          id: "storage.search.location.placeholder",
+          defaultMessage: "Type 2+ characters to search…",
+        })}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
       />

@@ -9,16 +9,11 @@ import "./StorageDashboard.css";
 /**
  * StorageDashboard — /Storage landing page.
  *
- * Phase 9 + 12 decomposition: this file was 4,902 lines juggling six
- * tab panels, modal state, pagination, search, and assignment wiring.
- * That entire stack is now in the per-resource pages under pages/
- * and the LocationPicker/ subsystem. What's left here is the landing:
- * a metrics overview + navigation tiles to the six resource pages.
- *
- * The Sample Items, Rooms, Devices, Shelves, Racks, and Boxes views
- * all live at their own URLs; click a tile to jump there. This page
- * is the right place for users who hit /Storage from the sidenav and
- * want an at-a-glance view before navigating into a specific resource.
+ * Shows a storage-locations metric summary plus navigation tiles to
+ * the six per-resource pages (Sample Items, Rooms, Devices, Shelves,
+ * Racks, Boxes). Each resource has its own URL; this landing is for
+ * users arriving via the sidenav who want an at-a-glance view before
+ * drilling in.
  */
 const RESOURCES = [
   {

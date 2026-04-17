@@ -2,9 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useIntl } from "react-intl";
 import StorageResourcePage, { ActiveTag } from "./StorageResourcePage";
 
-/**
- * RacksPage — /Storage/racks. Read-only in Phase 9; Edit in Phase 10.
- */
+/** RacksPage — /Storage/racks. List of racks with per-row Edit. */
 export default function RacksPage() {
   const intl = useIntl();
   const [page, setPage] = useState(1);

@@ -14,17 +14,15 @@ import CreateForm from "./components/CreateForm";
 
 /**
  * LocationPickerModal — wraps the picker in a Carbon ComposedModal for
- * sites where page navigation would be jarring (Result Entry's
- * expandable row, Notebook entry — the documented "modal exception"
- * sites in the locked-in design).
+ * sites where page navigation would be jarring (e.g. a deeply-nested
+ * expandable row).
  *
  * Layout: sample info → optional current-location → mode-toggle picker
  * → reason (movement only) → notes → Cancel/Confirm footer.
  *
- * onConfirm receives a payload: { selection, position, reason, notes }
- * The caller is responsible for translating that into the appropriate
- * REST call (assign vs. move vs. dispose) — the modal is workflow-
- * agnostic.
+ * onConfirm receives { selection, position, reason, notes }; the caller
+ * translates that into the appropriate REST call. The modal is
+ * workflow-agnostic.
  */
 export default function LocationPickerModal({
   isOpen,
