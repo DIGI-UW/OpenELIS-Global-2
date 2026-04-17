@@ -5,7 +5,7 @@
  * browser session — same path as the React UI. No direct database access.
  */
 import { Page } from "@playwright/test";
-import { createSampleOrder } from "./create-sample-order";
+import { createSampleOrder } from "./seed-tat-data";
 
 export interface EsigTestData {
   accessionNumber: string;
