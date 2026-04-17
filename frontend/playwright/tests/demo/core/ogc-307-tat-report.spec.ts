@@ -1,42 +1,52 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import { createCompleteSample } from "../../../helpers/seed-tat-data";
+import {
+  completeAnalysisChains,
+  HARNESS_LANE_ACCESSIONS,
+} from "../../../helpers/seed-tat-data";
 import { seedHolidays } from "../../../helpers/seed-calendar-data";
-import type { SampleConfig } from "../../../helpers/seed-tat-data";
 
-const TEST_SAMPLES: SampleConfig[] = [
-  {
-    labNo: "TAT-E2E-001",
-    receivedDate: "2026-03-01",
-    receivedTime: "08:00",
-    priority: "routine",
-  },
-  {
-    labNo: "TAT-E2E-002",
-    receivedDate: "2026-03-05",
-    receivedTime: "14:30",
-    priority: "stat",
-  },
-  {
-    labNo: "TAT-E2E-003",
-    receivedDate: "2026-03-10",
-    receivedTime: "10:00",
-    priority: "routine",
-  },
-];
+/**
+ * Guard assertion: fail loudly when the TAT Report is empty.
+ *
+ * Rationale: the Summary tab renders "Insufficient data" tiles when no
+ * rows match the filter (TATSummaryTab.js:100-101). If the seed failed
+ * and this text is on the page, the test must fail — not record an
+ * empty video like the previous iteration did.
+ */
+async function assertReportHasData(page: Page): Promise<void> {
+  // Wait for either the populated stat cards or the empty state — both
+  // are terminal. Then fail if we landed in the empty state.
+  await expect(
+    page.getByText(/Total Results|Insufficient data/).first(),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Insufficient data")).toHaveCount(0);
+}
 
 test.describe("OGC-307: TAT Report (US2-US5)", () => {
-  // API-based setup: create 3 complete samples + seed holidays
-  // beforeAll creates data once for all tests in this describe block
+  // Force all 4 user stories onto a single worker in sequence.
+  // Rationale: `test.beforeAll` runs once per worker, not once per
+  // describe. The seed mutates shared fixture accessions (13 rows in
+  // NotStarted status → validated); if multiple workers run beforeAll
+  // concurrently, the second worker's POST hits analyses that have
+  // already transitioned and the server returns HTTP 500. Serial mode
+  // gives us exactly one seed call for all four tests.
+  test.describe.configure({ mode: "serial" });
+
+  // Seed once: run result entry + validation through the full app flow
+  // against existing fixture accessions, populating the milestone
+  // timestamps the TAT Report needs. Also seed holidays for Working
+  // Time calculations.
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
       storageState: "playwright/.auth/user.json",
     });
     const page = await context.newPage();
+    // Navigate first so the browser context has an authenticated session
+    // (JSESSIONID + CSRF in localStorage) before issuing REST calls.
+    await page.goto("/");
 
-    for (const sample of TEST_SAMPLES) {
-      await createCompleteSample(page, sample);
-    }
+    await completeAnalysisChains(page, HARNESS_LANE_ACCESSIONS);
     await seedHolidays(page, 2026);
 
     await page.close();
@@ -72,12 +82,17 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       await demo.pause(1500);
     });
 
-    await test.step("US2.3 — Generate report", async () => {
+    await test.step("US2.3 — Generate report shows populated data", async () => {
       await page.locator('[data-testid="generate-report-button"]').click();
-      await expect(
-        page.getByText(/Total Results|No results found/).first(),
-      ).toBeVisible({ timeout: 15_000 });
-      await demo.evidence("US2.3-report-generated");
+      await assertReportHasData(page);
+      // Stat tile for Total Results must render with a numeric count.
+      const totalTile = page
+        .locator(".cds--tile")
+        .filter({ hasText: "Total Results" })
+        .first();
+      await expect(totalTile).toBeVisible();
+      await expect(totalTile).toContainText(/\d/);
+      await demo.evidence("US2.3-report-generated-with-data");
       await demo.pause(3000);
     });
 
@@ -101,7 +116,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     });
   });
 
-  test("US3 — Detail List tab", async ({ page }, testInfo) => {
+  test("US3 — Detail List tab has rows", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     const demo = createDemoPresentation(page, testInfo);
 
@@ -115,20 +130,28 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     await test.step("Navigate and generate report", async () => {
       await page.goto("/TATReport");
       await page.locator('[data-testid="generate-report-button"]').click();
-      await expect(
-        page.getByText(/Total Results|No results found/).first(),
-      ).toBeVisible({ timeout: 15_000 });
+      await assertReportHasData(page);
     });
 
-    await test.step("US3.1 — Switch to Detail List tab", async () => {
+    await test.step("US3.1 — Switch to Detail List tab and verify rows", async () => {
       await page.locator('[data-testid="tab-detail"]').click();
       await expect(page.locator('[data-testid="tab-detail"]')).toHaveAttribute(
         "aria-selected",
         "true",
         { timeout: 5_000 },
       );
+      // Data-bearing: at least 1 detail row must render (we seeded 13).
+      // NOTE: `data-testid="tab-detail"` is on the Carbon <Tab> button; the
+      // table lives in the sibling <TabPanel>. Use the active tabpanel
+      // (Carbon hides inactive panels with `hidden`) as the scope.
+      const activePanel = page.locator('[role="tabpanel"]:not([hidden])');
+      await expect(activePanel.locator("table tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
+      const rowCount = await activePanel.locator("table tbody tr").count();
+      expect(rowCount).toBeGreaterThanOrEqual(1);
       await demo.pause(2000);
-      await demo.evidence("US3.1-detail-list-tab");
+      await demo.evidence("US3.1-detail-list-populated");
     });
   });
 
@@ -146,9 +169,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     await test.step("Navigate and generate report", async () => {
       await page.goto("/TATReport");
       await page.locator('[data-testid="generate-report-button"]').click();
-      await expect(
-        page.getByText(/Total Results|No results found/).first(),
-      ).toBeVisible({ timeout: 15_000 });
+      await assertReportHasData(page);
     });
 
     await test.step("US4.1 — Switch to Trends tab", async () => {
@@ -172,9 +193,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     await test.step("Navigate and generate report", async () => {
       await page.goto("/TATReport");
       await page.locator('[data-testid="generate-report-button"]').click();
-      await expect(
-        page.getByText(/Total Results|No results found/).first(),
-      ).toBeVisible({ timeout: 15_000 });
+      await assertReportHasData(page);
     });
 
     await test.step("US5.1 — Verify export menu exists", async () => {
