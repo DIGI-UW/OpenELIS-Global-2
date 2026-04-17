@@ -160,11 +160,7 @@ public abstract class CSVRoutineColumnBuilder {
             testResultsByTestName = new HashMap<>();
             List<TestResult> allTestResults = testResultService.getAllTestResults();
             for (TestResult testResult : allTestResults) {
-                Test test = testResult.getTest();
-                if (test != null && test.getId() != null) {
-                    test = testService.get(test.getId());
-                }
-                String key = TestServiceImpl.getLocalizedTestNameWithType(test);
+                String key = TestServiceImpl.getLocalizedTestNameWithType(testResult.getTest());
                 testResultsByTestName.put(key, testResult);
             }
         }
