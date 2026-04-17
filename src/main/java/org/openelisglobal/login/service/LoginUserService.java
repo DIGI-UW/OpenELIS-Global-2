@@ -3,8 +3,10 @@ package org.openelisglobal.login.service;
 import java.util.Optional;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.login.valueholder.LoginUser;
 
+@CrossDomainService(callers = "authentication — public login flow, no privilege model applies")
 public interface LoginUserService extends BaseObjectService<LoginUser, Integer> {
 
     String DEFAULT_ADMIN_USER_NAME = "admin";

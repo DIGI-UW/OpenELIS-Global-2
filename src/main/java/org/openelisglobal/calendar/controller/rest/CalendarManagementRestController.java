@@ -26,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,7 +67,6 @@ public class CalendarManagementRestController extends BaseRestController {
         return ResponseEntity.ok(response);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/holidays")
     public ResponseEntity<Map<String, Object>> createHoliday(@RequestBody Map<String, Object> body,
             HttpServletRequest request) {
@@ -86,7 +84,6 @@ public class CalendarManagementRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/holidays/{id}")
     public ResponseEntity<Map<String, Object>> updateHoliday(@PathVariable Integer id,
             @RequestBody Map<String, Object> body, HttpServletRequest request) {
@@ -108,7 +105,6 @@ public class CalendarManagementRestController extends BaseRestController {
         }
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/holidays/{id}")
     public ResponseEntity<Void> deleteHoliday(@PathVariable Integer id, HttpServletRequest request) {
         requireAuthenticatedUser(request);
@@ -122,7 +118,6 @@ public class CalendarManagementRestController extends BaseRestController {
 
     // ========== CSV Import/Export ==========
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping(value = "/holidays/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> importHolidays(@RequestParam("file") MultipartFile file,
             @RequestParam(required = false) Integer year, HttpServletRequest request) throws IOException {
@@ -178,7 +173,6 @@ public class CalendarManagementRestController extends BaseRestController {
         return ResponseEntity.ok(Map.of("weekendDays", weekendDays));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/weekends")
     public ResponseEntity<Map<String, Object>> updateWeekends(@RequestBody Map<String, Object> body,
             HttpServletRequest request) {

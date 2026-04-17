@@ -136,8 +136,10 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
         try {
             Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("moduleId", moduleId);
-            query.setParameter("roleId", roleId);
+            // systemModule.id is String in Java but numeric in DB — pass as Integer
+            query.setParameter("moduleId", Integer.parseInt(moduleId));
+            // role.id is Integer in Java
+            query.setParameter("roleId", Integer.parseInt(roleId));
             List<RoleModule> modules = query.list();
             return modules.isEmpty() ? new RoleModule() : modules.get(0);
         } catch (HibernateException e) {
@@ -155,27 +157,25 @@ public class RoleModuleDAOImpl extends BaseDAOImpl<RoleModule, String> implement
 
     @Override
     public boolean duplicateRoleModuleExists(RoleModule roleModule) throws LIMSRuntimeException {
-
         try {
-
             List<RoleModule> list;
 
-            String sql = "from RoleModule s where s.role.id = :param and s.systemModule.id = :param2 and s.id !="
-                    + " :param3";
-            Query<RoleModule> query = entityManager.unwrap(Session.class).createQuery(sql, RoleModule.class);
-            query.setParameter("param", roleModule.getRole().getId());
-            query.setParameter("param2", roleModule.getSystemModule().getId());
-
-            String systemUserModuleId = "0";
-            if (!StringUtil.isNullorNill(roleModule.getId())) {
-                systemUserModuleId = roleModule.getId();
+            if (StringUtil.isNullorNill(roleModule.getId())) {
+                String sql = "from RoleModule s where s.role = :role and s.systemModule = :module";
+                jakarta.persistence.TypedQuery<RoleModule> query = entityManager.createQuery(sql, RoleModule.class);
+                query.setParameter("role", roleModule.getRole());
+                query.setParameter("module", roleModule.getSystemModule());
+                list = query.getResultList();
+            } else {
+                String sql = "from RoleModule s where s.role = :role and s.systemModule = :module and s.id != :moduleId";
+                jakarta.persistence.TypedQuery<RoleModule> query = entityManager.createQuery(sql, RoleModule.class);
+                query.setParameter("role", roleModule.getRole());
+                query.setParameter("module", roleModule.getSystemModule());
+                query.setParameter("moduleId", roleModule.getId());
+                list = query.getResultList();
             }
-            query.setParameter("param3", systemUserModuleId);
-
-            list = query.list();
 
             return list.size() > 0;
-
         } catch (RuntimeException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in duplicateRoleModuleExists()", e);

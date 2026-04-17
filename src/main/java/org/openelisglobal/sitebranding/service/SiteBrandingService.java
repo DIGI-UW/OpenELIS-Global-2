@@ -3,6 +3,7 @@ package org.openelisglobal.sitebranding.service;
 import java.io.IOException;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sitebranding.valueholder.SiteBranding;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for SiteBranding entity
@@ -17,6 +18,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * 
      * @return SiteBranding entity with current or default values
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     SiteBranding getBranding();
 
     /**
@@ -25,6 +27,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param branding SiteBranding entity to save
      * @return Saved SiteBranding entity
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_MANAGE')")
     SiteBranding saveBranding(SiteBranding branding);
 
     /**
@@ -38,6 +41,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @deprecated Validation is now permissive; this method returns true for any
      *             non-empty string
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     boolean validateColor(String color);
 
     /**
@@ -46,6 +50,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param file MultipartFile to validate
      * @return true if valid, false otherwise
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     boolean validateLogoFile(org.springframework.web.multipart.MultipartFile file);
 
     /**
@@ -56,6 +61,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @return Full filesystem path to uploaded file
      * @throws IOException if file cannot be saved
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_MANAGE')")
     String uploadLogo(org.springframework.web.multipart.MultipartFile file, LogoType type) throws IOException;
 
     /**
@@ -64,6 +70,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param type LogoType
      * @return URL path to logo or null if default should be used
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_VIEW')")
     String getLogoUrl(LogoType type);
 
     /**
@@ -72,6 +79,7 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * @param type LogoType (HEADER, LOGIN, or FAVICON)
      * @throws IOException if file cannot be deleted
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_MANAGE')")
     void removeLogo(LogoType type) throws IOException;
 
     /**
@@ -80,5 +88,6 @@ public interface SiteBrandingService extends BaseObjectService<SiteBranding, Int
      * 
      * @throws IOException if files cannot be deleted
      */
+    @PreAuthorize("hasAuthority('PRIV_BRANDING_MANAGE')")
     void resetToDefaults() throws IOException;
 }

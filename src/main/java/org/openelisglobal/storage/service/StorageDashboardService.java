@@ -6,6 +6,7 @@ import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
 import org.openelisglobal.storage.valueholder.StorageShelf;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for Storage Dashboard filtering operations. Provides
@@ -20,6 +21,7 @@ public interface StorageDashboardService {
      * @param status   Status filter (active, disposed, etc.)
      * @return Filtered list of samples matching both criteria
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<Map<String, Object>> filterSamples(String location, String status);
 
     /**
@@ -28,6 +30,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of rooms matching status
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<StorageRoom> filterRooms(Boolean activeStatus);
 
     /**
@@ -36,6 +39,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of rooms as Maps with all data resolved
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<Map<String, Object>> filterRoomsForAPI(Boolean activeStatus);
 
     /**
@@ -46,6 +50,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of devices matching all three criteria
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<StorageDevice> filterDevices(StorageDevice.DeviceType deviceType, Integer roomId, Boolean activeStatus);
 
     /**
@@ -56,6 +61,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of devices as Maps with all data resolved
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<Map<String, Object>> filterDevicesForAPI(StorageDevice.DeviceType deviceType, Integer roomId,
             Boolean activeStatus);
 
@@ -67,6 +73,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of shelves matching all three criteria
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<StorageShelf> filterShelves(Integer deviceId, Integer roomId, Boolean activeStatus);
 
     /**
@@ -78,6 +85,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of shelves as Maps with all data resolved
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<Map<String, Object>> filterShelvesForAPI(Integer deviceId, Integer roomId, Boolean activeStatus);
 
     /**
@@ -89,6 +97,7 @@ public interface StorageDashboardService {
      * @param activeStatus true for active, false for inactive
      * @return Filtered list of racks matching all four criteria
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_MANAGE')")
     List<StorageRack> filterRacks(Integer roomId, Integer shelfId, Integer deviceId, Boolean activeStatus);
 
     /**
@@ -100,6 +109,7 @@ public interface StorageDashboardService {
      * @param activeStatus Optional active status filter
      * @return List of racks as Maps with roomId column included
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     List<Map<String, Object>> getRacksForAPI(Integer roomId, Integer shelfId, Integer deviceId, Boolean activeStatus);
 
     /**
@@ -110,5 +120,6 @@ public interface StorageDashboardService {
      * @return Map with keys: "rooms", "devices", "shelves", "racks" and integer
      *         count values
      */
+    @PreAuthorize("hasAuthority('PRIV_STORAGE_VIEW')")
     Map<String, Integer> getLocationCountsByType();
 }

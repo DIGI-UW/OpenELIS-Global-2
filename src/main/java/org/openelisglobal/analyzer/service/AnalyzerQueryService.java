@@ -1,7 +1,9 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface AnalyzerQueryService {
     /**
      * Start an asynchronous query job for an analyzer. Returns a jobId immediately.

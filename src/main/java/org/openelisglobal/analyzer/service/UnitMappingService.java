@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.UnitMapping;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for UnitMapping operations
@@ -10,6 +11,7 @@ import org.openelisglobal.common.service.BaseObjectService;
  * Provides business logic for managing unit mappings with: - Conversion factor
  * validation (required when units don't match) - Unit mismatch handling
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface UnitMappingService extends BaseObjectService<UnitMapping, String> {
 
     /**

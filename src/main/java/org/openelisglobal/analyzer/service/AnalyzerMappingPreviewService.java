@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for analyzer mapping preview operations
@@ -10,6 +11,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping;
  * Provides stateless preview operations for testing field mappings with sample
  * ASTM messages
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface AnalyzerMappingPreviewService {
 
     /**

@@ -16,6 +16,13 @@
         <class>org.openelisglobal.security.converter.EncryptionConverter</class>
 
         <!-- entities -->
+        <!-- Role + permission module cluster (migrated from HBM) -->
+        <class>org.openelisglobal.role.valueholder.Role</class>
+        <class>org.openelisglobal.systemmodule.valueholder.SystemModule</class>
+        <class>org.openelisglobal.systemmodule.valueholder.SystemModuleParam</class>
+        <class>org.openelisglobal.systemmodule.valueholder.SystemModuleUrl</class>
+        <class>org.openelisglobal.systemusermodule.valueholder.RoleModule</class>
+        <class>org.openelisglobal.systemusermodule.valueholder.SystemUserModule</class>
         <class>org.openelisglobal.localization.valueholder.Localization</class>
         <class>org.openelisglobal.localization.valueholder.LocalizationValue</class>
         <class>org.openelisglobal.localization.valueholder.SupportedLocale</class>

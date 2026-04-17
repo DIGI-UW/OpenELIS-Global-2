@@ -3,7 +3,9 @@ package org.openelisglobal.analyzer.service;
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 
+@CrossDomainService(callers = "analyzer import pipeline — internal infrastructure")
 public interface AnalyzerPendingCodeService extends BaseObjectService<AnalyzerPendingCode, String> {
     List<AnalyzerPendingCode> findByAnalyzerId(String analyzerId);
 

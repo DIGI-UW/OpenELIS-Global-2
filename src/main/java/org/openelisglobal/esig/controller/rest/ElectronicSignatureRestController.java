@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -61,7 +60,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * @return the created signature record
      */
     @PostMapping(value = "/sign", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> executeSignature(@RequestBody SignatureRequest request, HttpServletRequest httpRequest) {
 
         try {
@@ -121,7 +119,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * @return the created certification record
      */
     @PostMapping(value = "/certify", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> certifyUser(@RequestBody CertificationRequest request, HttpServletRequest httpRequest) {
 
         try {
@@ -161,7 +158,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * their own certification status.
      */
     @GetMapping(value = "/certified/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> isUserCertified(@PathVariable String username) {
         String authenticatedUser = getAuthenticatedUsername();
         if (authenticatedUser == null || !authenticatedUser.equals(username)) {
@@ -184,7 +180,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * records contain signer identity and IP metadata.
      */
     @GetMapping(value = "/signatures", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getSignaturesForRecord(@RequestParam String recordType, @RequestParam Long recordId) {
 
         List<ElectronicSignature> signatures = electronicSignatureService.getSignaturesForRecord(recordType, recordId);
@@ -200,7 +195,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * Get signing session status for the current user.
      */
     @GetMapping(value = "/session-status/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getSessionStatus(@PathVariable String username) {
         String authenticatedUser = getAuthenticatedUsername();
         if (authenticatedUser == null || !authenticatedUser.equals(username)) {
@@ -222,7 +216,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * Get all certifications (admin).
      */
     @GetMapping(value = "/admin/certifications", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAllCertifications() {
         List<EsigFirstUseCertification> certifications = electronicSignatureService.getAllCertifications();
 
@@ -233,7 +226,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * Revoke a user's certification (admin).
      */
     @DeleteMapping(value = "/admin/certifications/{username}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> revokeCertification(@PathVariable String username) {
         try {
             String adminUser = getAuthenticatedUsername();
@@ -253,7 +245,6 @@ public class ElectronicSignatureRestController extends BaseRestController {
      * Check if e-signatures are enabled.
      */
     @GetMapping(value = "/enabled", produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> isEsigEnabled() {
         Map<String, Object> response = new HashMap<>();
         response.put("enabled", electronicSignatureService.isEsigEnabled());

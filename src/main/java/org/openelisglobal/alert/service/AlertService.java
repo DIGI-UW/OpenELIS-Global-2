@@ -7,6 +7,7 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface AlertService extends BaseObjectService<Alert, Long> {
 
@@ -30,6 +31,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param contextDataJson JSON string with type-specific data
      * @return Created or updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert createAlert(AlertType alertType, String entityType, Long entityId, AlertSeverity severity, String message,
             String contextDataJson);
 
@@ -43,6 +45,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param userId  User ID who acknowledged the alert
      * @return Updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
     Alert acknowledgeAlert(Long alertId, Integer userId);
 
     /**
@@ -56,6 +59,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param resolutionNotes Notes describing how the alert was resolved
      * @return Updated alert
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     Alert resolveAlert(Long alertId, Integer userId, String resolutionNotes);
 
     /**
@@ -65,6 +69,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param entityId   Entity ID
      * @return List of alerts for the entity
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     List<Alert> getAlertsByEntity(String entityType, Long entityId);
 
     /**
@@ -74,6 +79,7 @@ public interface AlertService extends BaseObjectService<Alert, Long> {
      * @param entityId   Entity ID
      * @return Count of active alerts
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     Long countActiveAlertsForEntity(String entityType, Long entityId);
 
     /**

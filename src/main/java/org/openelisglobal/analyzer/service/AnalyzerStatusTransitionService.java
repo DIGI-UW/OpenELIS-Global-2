@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * Service for event-driven analyzer status transitions
@@ -15,6 +16,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
  * Each method validates prerequisites, updates status, logs audit trail, and
  * publishes status change event.
  */
+@CrossDomainService(callers = "analyzer state machine — internal infrastructure")
 public interface AnalyzerStatusTransitionService {
 
     /**

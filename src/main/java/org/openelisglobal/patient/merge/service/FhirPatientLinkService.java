@@ -1,6 +1,7 @@
 package org.openelisglobal.patient.merge.service;
 
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for managing FHIR Patient link relationships during patient merge
@@ -11,6 +12,7 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingExcepti
  * @see <a href="https://www.hl7.org/fhir/patient.html#link">FHIR
  *      Patient.link</a>
  */
+@PreAuthorize("hasAuthority('PRIV_PATIENT_EDIT')")
 public interface FhirPatientLinkService {
 
     /**

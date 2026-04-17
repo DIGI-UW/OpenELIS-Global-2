@@ -18,6 +18,7 @@ import java.util.Optional;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for managing AnalyzerType entities.
@@ -35,6 +36,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      * @param name The type name (e.g., "HoribaMicros60")
      * @return The AnalyzerType or null if not found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerType getAnalyzerTypeByName(String name);
 
     /**
@@ -43,6 +45,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      * @param pluginClassName Fully qualified class name of the plugin
      * @return Optional containing the AnalyzerType if found
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Optional<AnalyzerType> getByPluginClassName(String pluginClassName);
 
     /**
@@ -50,6 +53,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      *
      * @return List of active AnalyzerType entities
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerType> getAllActiveTypes();
 
     /**
@@ -57,6 +61,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      *
      * @return List of generic plugin AnalyzerType entities
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerType> getGenericPluginTypes();
 
     /**
@@ -65,6 +70,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      * @param identifier The identifier string to match (e.g., from ASTM header)
      * @return Optional containing the matching AnalyzerType
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Optional<AnalyzerType> findMatchingType(String identifier);
 
     /**
@@ -74,6 +80,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      *
      * @return List of AnalyzerType entities with initialized instances
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerType> getAllWithInitializedInstances();
 
     /**
@@ -93,6 +100,7 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      * @param analyzerTypeId The ID of the analyzer type
      * @return List of Analyzer instances of this type
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<Analyzer> getInstancesForType(String analyzerTypeId);
 
     /**
@@ -101,5 +109,6 @@ public interface AnalyzerTypeService extends BaseObjectService<AnalyzerType, Str
      * @param analyzerType The analyzer type
      * @return The created or existing default Analyzer instance
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Analyzer getOrCreateDefaultInstance(AnalyzerType analyzerType);
 }

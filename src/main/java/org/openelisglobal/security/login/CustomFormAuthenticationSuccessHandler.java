@@ -184,11 +184,10 @@ public class CustomFormAuthenticationSuccessHandler extends SavedRequestAwareAut
     private Set<String> getPermittedForms(int systemUserId) {
         Set<String> allPermittedPages = new HashSet<>();
 
-        List<String> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
+        List<Integer> roleIds = userRoleService.getRoleIdsForUser(Integer.toString(systemUserId));
 
-        for (String roleId : roleIds) {
-            Set<String> permittedPagesForRole = permissionModuleService
-                    .getAllPermittedPagesFromAgentId(Integer.parseInt(roleId));
+        for (Integer roleId : roleIds) {
+            Set<String> permittedPagesForRole = permissionModuleService.getAllPermittedPagesFromAgentId(roleId);
             allPermittedPages.addAll(permittedPagesForRole);
         }
 

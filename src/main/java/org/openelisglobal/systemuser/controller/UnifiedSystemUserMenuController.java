@@ -284,9 +284,9 @@ public class UnifiedSystemUserMenuController extends BaseMenuController<UnifiedS
         }
 
         for (SystemUser systemUser : systemUsers) {
-            List<String> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
+            List<Integer> roleIds = userRoleService.getRoleIdsForUser(systemUser.getId());
 
-            for (String roleId : roleIds) {
+            for (Integer roleId : roleIds) {
                 UserRole userRole = new UserRole();
                 userRole.setSystemUserId(systemUser.getId());
                 userRole.setRoleId(roleId);

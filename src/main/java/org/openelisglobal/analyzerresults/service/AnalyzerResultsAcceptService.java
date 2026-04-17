@@ -2,6 +2,7 @@ package org.openelisglobal.analyzerresults.service;
 
 import java.util.List;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * Orchestrates the "accept analyzer results" workflow: extracts actionable
@@ -12,6 +13,7 @@ import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
  * Extracted from AnalyzerResultsController so that business logic lives in the
  * service layer where it belongs.
  */
+@CrossDomainService(callers = "analyzer import pipeline, result entry — cross-domain")
 public interface AnalyzerResultsAcceptService {
 
     /**

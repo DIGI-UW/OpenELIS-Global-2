@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for copying analyzer field mappings
@@ -10,6 +11,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
  * with: - Conflict resolution (overwrite, merge) - Type compatibility
  * validation - Transaction rollback on failure
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface AnalyzerMappingCopyService {
 
     /**

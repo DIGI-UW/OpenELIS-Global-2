@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelis" id="012-003-seed-privileges">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_privilege
+            </sqlCheck>
+        </preConditions>
+        <comment>Seed all atomic privilege definitions for privilege-based RBAC</comment>
+
+        <!-- ==================== ORDERS ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="order:create"/>
+            <column name="description" value="Create new orders and register samples"/>
+            <column name="category" value="orders"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="order:view"/>
+            <column name="description" value="View existing orders and their status"/>
+            <column name="category" value="orders"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="order:edit"/>
+            <column name="description" value="Edit existing orders"/>
+            <column name="category" value="orders"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="order:cancel"/>
+            <column name="description" value="Cancel existing orders"/>
+            <column name="category" value="orders"/>
+        </insert>
+
+        <!-- ==================== RESULTS ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="result:view"/>
+            <column name="description" value="View test results and workplans"/>
+            <column name="category" value="results"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="result:enter"/>
+            <column name="description" value="Enter test results"/>
+            <column name="category" value="results"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="result:modify"/>
+            <column name="description" value="Modify previously entered results"/>
+            <column name="category" value="results"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="result:validate"/>
+            <column name="description" value="Validate and approve test results"/>
+            <column name="category" value="results"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="result:pathology-sign-off"/>
+            <column name="description" value="Pathologist sign-off on results"/>
+            <column name="category" value="results"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="result:cytopathology-sign-off"/>
+            <column name="description" value="Cytopathologist sign-off on results"/>
+            <column name="category" value="results"/>
+        </insert>
+
+        <!-- ==================== PATIENTS ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="patient:view"/>
+            <column name="description" value="View patient demographics and history"/>
+            <column name="category" value="patients"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="patient:create"/>
+            <column name="description" value="Register new patients"/>
+            <column name="category" value="patients"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="patient:edit"/>
+            <column name="description" value="Edit patient demographic information"/>
+            <column name="category" value="patients"/>
+        </insert>
+
+        <!-- ==================== REPORTS ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="report:run"/>
+            <column name="description" value="Run and view reports"/>
+            <column name="category" value="reports"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="report:export"/>
+            <column name="description" value="Export report data"/>
+            <column name="category" value="reports"/>
+        </insert>
+
+        <!-- ==================== NCE (Non-Conforming Events) ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="nce:view"/>
+            <column name="description" value="View non-conforming events and dashboard"/>
+            <column name="category" value="nce"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="nce:create"/>
+            <column name="description" value="Report new non-conforming events"/>
+            <column name="category" value="nce"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="nce:edit"/>
+            <column name="description" value="Edit non-conforming events and corrective actions"/>
+            <column name="category" value="nce"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="nce:assign"/>
+            <column name="description" value="Assign non-conforming events to users"/>
+            <column name="category" value="nce"/>
+        </insert>
+
+        <!-- ==================== ANALYZER ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="analyzer:import"/>
+            <column name="description" value="Import results from analyzers"/>
+            <column name="category" value="analyzer"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="analyzer:configure"/>
+            <column name="description" value="Configure analyzer settings and mappings"/>
+            <column name="category" value="analyzer"/>
+        </insert>
+
+        <!-- ==================== CONFIGURATION (admin-level write actions) ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="user:manage"/>
+            <column name="description" value="Create and manage user accounts and role assignments"/>
+            <column name="category" value="user"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="system:configure"/>
+            <column name="description" value="Manage system-wide configuration and settings"/>
+            <column name="category" value="system"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="test:configure"/>
+            <column name="description" value="Manage test definitions, panels, and test sections"/>
+            <column name="category" value="test"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="report:configure"/>
+            <column name="description" value="Create and manage report templates and configuration"/>
+            <column name="category" value="report"/>
+        </insert>
+
+        <!-- ==================== AUDIT ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="audit:view"/>
+            <column name="description" value="View audit trail logs"/>
+            <column name="category" value="audit"/>
+        </insert>
+
+        <!-- ==================== SHIPMENT ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="shipment:view"/>
+            <column name="description" value="View sample shipments"/>
+            <column name="category" value="shipment"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="shipment:create"/>
+            <column name="description" value="Create new sample shipments"/>
+            <column name="category" value="shipment"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="shipment:edit"/>
+            <column name="description" value="Edit existing sample shipments"/>
+            <column name="category" value="shipment"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="shipment:delete"/>
+            <column name="description" value="Delete sample shipments"/>
+            <column name="category" value="shipment"/>
+        </insert>
+
+        <!-- ==================== EQA ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="eqa:view"/>
+            <column name="description" value="View EQA programs and results"/>
+            <column name="category" value="eqa"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="eqa:manage"/>
+            <column name="description" value="Manage EQA programs, samples, and reporting"/>
+            <column name="category" value="eqa"/>
+        </insert>
+
+        <!-- ==================== ALERT ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="alert:view"/>
+            <column name="description" value="View system alerts"/>
+            <column name="category" value="alert"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="alert:manage"/>
+            <column name="description" value="Create, acknowledge, and resolve alerts"/>
+            <column name="category" value="alert"/>
+        </insert>
+
+        <!-- ==================== BARCODE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="barcode:view"/>
+            <column name="description" value="View barcode configuration and labels"/>
+            <column name="category" value="barcode"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="barcode:manage"/>
+            <column name="description" value="Manage barcode configuration and labels"/>
+            <column name="category" value="barcode"/>
+        </insert>
+
+        <!-- ==================== CALENDAR ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="calendar:view"/>
+            <column name="description" value="View holidays and weekend configuration"/>
+            <column name="category" value="calendar"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="calendar:manage"/>
+            <column name="description" value="Manage holidays and weekend configuration"/>
+            <column name="category" value="calendar"/>
+        </insert>
+
+        <!-- ==================== COLD STORAGE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="coldstorage:view"/>
+            <column name="description" value="View freezer readings, reports, and thresholds"/>
+            <column name="category" value="coldstorage"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="coldstorage:manage"/>
+            <column name="description" value="Manage freezers, readings, thresholds, and corrective actions"/>
+            <column name="category" value="coldstorage"/>
+        </insert>
+
+        <!-- ==================== DICTIONARY ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="dictionary:view"/>
+            <column name="description" value="View dictionary entries and categories"/>
+            <column name="category" value="dictionary"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="dictionary:manage"/>
+            <column name="description" value="Manage dictionary entries and categories"/>
+            <column name="category" value="dictionary"/>
+        </insert>
+
+        <!-- ==================== EXTERNAL CONNECTIONS ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="extconnection:view"/>
+            <column name="description" value="View external connection configurations"/>
+            <column name="category" value="extconnection"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="extconnection:manage"/>
+            <column name="description" value="Manage external connection configurations and authentication"/>
+            <column name="category" value="extconnection"/>
+        </insert>
+
+        <!-- ==================== INVENTORY ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="inventory:view"/>
+            <column name="description" value="View inventory items, lots, and stock levels"/>
+            <column name="category" value="inventory"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="inventory:manage"/>
+            <column name="description" value="Manage inventory items, lots, transactions, and storage"/>
+            <column name="category" value="inventory"/>
+        </insert>
+
+        <!-- ==================== LOCALIZATION ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="localization:view"/>
+            <column name="description" value="View translations and supported locales"/>
+            <column name="category" value="localization"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="localization:manage"/>
+            <column name="description" value="Manage translations and supported locales"/>
+            <column name="category" value="localization"/>
+        </insert>
+
+        <!-- ==================== NOTEBOOK ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="notebook:view"/>
+            <column name="description" value="View notebooks and notebook samples"/>
+            <column name="category" value="notebook"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="notebook:manage"/>
+            <column name="description" value="Manage notebooks and notebook samples"/>
+            <column name="category" value="notebook"/>
+        </insert>
+
+        <!-- ==================== NOTIFICATION ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="notification:view"/>
+            <column name="description" value="View notification configuration"/>
+            <column name="category" value="notification"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="notification:manage"/>
+            <column name="description" value="Manage notification configuration"/>
+            <column name="category" value="notification"/>
+        </insert>
+
+        <!-- ==================== ORGANIZATION ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="organization:view"/>
+            <column name="description" value="View organization data"/>
+            <column name="category" value="organization"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="organization:manage"/>
+            <column name="description" value="Import and export organization data"/>
+            <column name="category" value="organization"/>
+        </insert>
+
+        <!-- ==================== PROGRAM ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="program:view"/>
+            <column name="description" value="View program definitions"/>
+            <column name="category" value="program"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="program:manage"/>
+            <column name="description" value="Manage program definitions"/>
+            <column name="category" value="program"/>
+        </insert>
+
+        <!-- ==================== BRANDING ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="branding:view"/>
+            <column name="description" value="View site branding and logos"/>
+            <column name="category" value="branding"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="branding:manage"/>
+            <column name="description" value="Manage site branding and upload logos"/>
+            <column name="category" value="branding"/>
+        </insert>
+
+        <!-- ==================== REFERRAL ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="referral:view"/>
+            <column name="description" value="View referrals and referral items"/>
+            <column name="category" value="referral"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="referral:manage"/>
+            <column name="description" value="Manage referrals and referral sets"/>
+            <column name="category" value="referral"/>
+        </insert>
+
+        <!-- ==================== SITE INFORMATION ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="siteinfo:view"/>
+            <column name="description" value="Read site configuration values (site name, FHIR URLs, etc.)"/>
+            <column name="category" value="siteinfo"/>
+        </insert>
+
+        <!-- ==================== PROVIDER ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="provider:view"/>
+            <column name="description" value="View providers (clinicians and requesters)"/>
+            <column name="category" value="provider"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="provider:manage"/>
+            <column name="description" value="Create and manage providers"/>
+            <column name="category" value="provider"/>
+        </insert>
+
+        <!-- ==================== STORAGE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="storage:view"/>
+            <column name="description" value="View sample storage locations and dashboard"/>
+            <column name="category" value="storage"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="storage:manage"/>
+            <column name="description" value="Manage sample storage locations, labels, and barcodes"/>
+            <column name="category" value="storage"/>
+        </insert>
+
+        <!-- ==================== TEST CALCULATION ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="testcalc:view"/>
+            <column name="description" value="View calculated test definitions"/>
+            <column name="category" value="testcalc"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="testcalc:manage"/>
+            <column name="description" value="Manage calculated test definitions and formulas"/>
+            <column name="category" value="testcalc"/>
+        </insert>
+
+        <!-- ==================== ROLE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="role:view"/>
+            <column name="description" value="View role definitions (read during login and auth)"/>
+            <column name="category" value="role"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="role:manage"/>
+            <column name="description" value="Create and manage role definitions"/>
+            <column name="category" value="role"/>
+        </insert>
+
+        <!-- ==================== SYSTEM USER ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="system_user:view"/>
+            <column name="description" value="View system user accounts (read during login and workflows)"/>
+            <column name="category" value="system_user"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="system_user:manage"/>
+            <column name="description" value="Create and manage system user accounts"/>
+            <column name="category" value="system_user"/>
+        </insert>
+
+        <!-- ==================== USER ROLE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="user_role:view"/>
+            <column name="description" value="View user-role assignments (read during auth and workflows)"/>
+            <column name="category" value="user_role"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="user_role:manage"/>
+            <column name="description" value="Manage user-role assignments"/>
+            <column name="category" value="user_role"/>
+        </insert>
+
+        <!-- ==================== SAMPLE REQUESTER ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="sample_requester:view"/>
+            <column name="description" value="View sample requester (clinician/organization who requested the sample)"/>
+            <column name="category" value="sample_requester"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="sample_requester:manage"/>
+            <column name="description" value="Manage sample requester records"/>
+            <column name="category" value="sample_requester"/>
+        </insert>
+
+        <!-- ==================== PANEL ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="panel:view"/>
+            <column name="description" value="View panel definitions and their constituent tests"/>
+            <column name="category" value="panel"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="panel:manage"/>
+            <column name="description" value="Create and manage panel definitions"/>
+            <column name="category" value="panel"/>
+        </insert>
+
+        <!-- ==================== ANALYTE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="analyte:view"/>
+            <column name="description" value="View analyte definitions (measurable substances)"/>
+            <column name="category" value="analyte"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="analyte:manage"/>
+            <column name="description" value="Manage analyte definitions"/>
+            <column name="category" value="analyte"/>
+        </insert>
+
+        <!-- ==================== METHOD ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="method:view"/>
+            <column name="description" value="View testing method definitions"/>
+            <column name="category" value="method"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="method:manage"/>
+            <column name="description" value="Manage testing method definitions"/>
+            <column name="category" value="method"/>
+        </insert>
+
+        <!-- ==================== SAMPLE TYPE ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="sample_type:view"/>
+            <column name="description" value="View specimen/sample type definitions"/>
+            <column name="category" value="sample_type"/>
+        </insert>
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="sample_type:manage"/>
+            <column name="description" value="Manage specimen/sample type definitions"/>
+            <column name="category" value="sample_type"/>
+        </insert>
+
+        <!-- ==================== SAMPLE STATUS ==================== -->
+        <insert tableName="system_privilege" schemaName="clinlims">
+            <column name="name" value="sample_status:view"/>
+            <column name="description" value="View sample status codes and transitions"/>
+            <column name="category" value="sample_status"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="system_privilege" schemaName="clinlims">
+                <where>1=1</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

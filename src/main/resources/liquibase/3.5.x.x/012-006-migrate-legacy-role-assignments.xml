@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      Migrates user assignments from legacy role aliases to their canonical replacements:
+        'Results entry'  -> 'Results'
+        'Validator'      -> 'Validation'
+        'Results Admin'  -> 'Results'
+
+      Handles both global assignments (system_user_role) and
+      department-scoped assignments (lab_roles).
+
+      De-duplicate guard: each INSERT is wrapped in a NOT EXISTS check to
+      prevent unique constraint violations where a user already has the
+      canonical role alongside the legacy alias.
+    -->
+
+    <changeSet author="openelis" id="012-006a-migrate-results-entry-global">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_user_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results entry' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Migrate system_user_role: Results entry -> Results</comment>
+        <sql>
+            INSERT INTO clinlims.system_user_role (system_user_id, role_id)
+            SELECT sur.system_user_id,
+                   (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+            FROM clinlims.system_user_role sur
+            WHERE sur.role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results entry')
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_user_role x
+                  WHERE x.system_user_id = sur.system_user_id
+                    AND x.role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+              );
+
+            DELETE FROM clinlims.system_user_role
+            WHERE role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results entry');
+        </sql>
+        <rollback>
+            <!-- Rollback not possible without original data — log only -->
+            <sql>SELECT 1; -- rollback not supported for data migrations</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-006b-migrate-validator-global">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_user_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Validator' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Migrate system_user_role: Validator -> Validation</comment>
+        <sql>
+            INSERT INTO clinlims.system_user_role (system_user_id, role_id)
+            SELECT sur.system_user_id,
+                   (SELECT id FROM clinlims.system_role WHERE name = 'Validation')
+            FROM clinlims.system_user_role sur
+            WHERE sur.role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Validator')
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_user_role x
+                  WHERE x.system_user_id = sur.system_user_id
+                    AND x.role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Validation')
+              );
+
+            DELETE FROM clinlims.system_user_role
+            WHERE role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Validator');
+        </sql>
+        <rollback>
+            <sql>SELECT 1; -- rollback not supported for data migrations</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-006c-migrate-results-admin-global">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_user_role" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results Admin' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Migrate system_user_role: Results Admin -> Results</comment>
+        <sql>
+            INSERT INTO clinlims.system_user_role (system_user_id, role_id)
+            SELECT sur.system_user_id,
+                   (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+            FROM clinlims.system_user_role sur
+            WHERE sur.role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results Admin')
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.system_user_role x
+                  WHERE x.system_user_id = sur.system_user_id
+                    AND x.role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+              );
+
+            DELETE FROM clinlims.system_user_role
+            WHERE role_id = (SELECT id FROM clinlims.system_role WHERE name = 'Results Admin');
+        </sql>
+        <rollback>
+            <sql>SELECT 1; -- rollback not supported for data migrations</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-006d-migrate-results-entry-lab-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_roles" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Results entry' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Migrate lab_roles: Results entry -> Results</comment>
+        <sql>
+            UPDATE clinlims.lab_roles
+            SET role = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+            WHERE role = (SELECT id FROM clinlims.system_role WHERE name = 'Results entry')
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.lab_roles x
+                  WHERE x.lab_unit_role_map_id = clinlims.lab_roles.lab_unit_role_map_id
+                    AND x.role = (SELECT id FROM clinlims.system_role WHERE name = 'Results')
+              );
+
+            DELETE FROM clinlims.lab_roles
+            WHERE role = (SELECT id FROM clinlims.system_role WHERE name = 'Results entry');
+        </sql>
+        <rollback>
+            <sql>SELECT 1; -- rollback not supported for data migrations</sql>
+        </rollback>
+    </changeSet>
+
+    <changeSet author="openelis" id="012-006e-migrate-validator-lab-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="lab_roles" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Validator' LIMIT 1
+            </sqlCheck>
+        </preConditions>
+        <comment>Migrate lab_roles: Validator -> Validation</comment>
+        <sql>
+            UPDATE clinlims.lab_roles
+            SET role = (SELECT id FROM clinlims.system_role WHERE name = 'Validation')
+            WHERE role = (SELECT id FROM clinlims.system_role WHERE name = 'Validator')
+              AND NOT EXISTS (
+                  SELECT 1 FROM clinlims.lab_roles x
+                  WHERE x.lab_unit_role_map_id = clinlims.lab_roles.lab_unit_role_map_id
+                    AND x.role = (SELECT id FROM clinlims.system_role WHERE name = 'Validation')
+              );
+
+            DELETE FROM clinlims.lab_roles
+            WHERE role = (SELECT id FROM clinlims.system_role WHERE name = 'Validator');
+        </sql>
+        <rollback>
+            <sql>SELECT 1; -- rollback not supported for data migrations</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

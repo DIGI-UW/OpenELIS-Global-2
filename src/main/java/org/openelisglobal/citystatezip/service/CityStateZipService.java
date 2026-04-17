@@ -3,7 +3,9 @@ package org.openelisglobal.citystatezip.service;
 import java.util.List;
 import org.openelisglobal.citystatezip.valueholder.CityStateZip;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
 public interface CityStateZipService extends BaseObjectService<CityStateZip, String> {
     CityStateZip getState(CityStateZip cityStateZip);
 

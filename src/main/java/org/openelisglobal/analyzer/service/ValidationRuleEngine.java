@@ -2,6 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * ValidationRuleEngine interface - Stateless validation engine for custom field
@@ -12,6 +13,7 @@ import org.openelisglobal.analyzer.valueholder.ValidationRuleConfiguration;
  * field mapping configuration.
  * 
  */
+@PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
 public interface ValidationRuleEngine {
     /**
      * Evaluate a validation rule against a value

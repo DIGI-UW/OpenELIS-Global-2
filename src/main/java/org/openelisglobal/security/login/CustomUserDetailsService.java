@@ -6,8 +6,11 @@ import java.util.List;
 import java.util.Set;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.constants.Privileges;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.privilege.service.PrivilegeService;
+import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.userrole.service.UserRoleService;
@@ -34,6 +37,9 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired
     RoleService roleService;
 
+    @Autowired
+    PrivilegeService privilegeService;
+
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String loginName) {
@@ -51,13 +57,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         Set<String> authorityNames = new LinkedHashSet<>();
 
         if (user != null && user.getSystemUserId() > 0) {
-            List<String> roleIds = userRoleService.getRoleIdsForUser(String.valueOf(user.getSystemUserId()));
+            List<Integer> roleIds = userRoleService.getRoleIdsForUser(String.valueOf(user.getSystemUserId()));
             if (roleIds != null) {
-                for (String roleId : roleIds) {
-                    if (roleId == null || roleId.trim().isEmpty()) {
+                for (Integer roleId : roleIds) {
+                    if (roleId == null) {
                         continue;
                     }
-                    Role role = roleService.getRoleById(roleId.trim());
+                    Role role = roleService.getRoleById(roleId);
                     if (role != null && role.getName() != null && !role.getName().trim().isEmpty()) {
                         addAuthoritiesForRole(role.getName(), authorityNames);
                     }
@@ -67,6 +73,23 @@ public class CustomUserDetailsService implements UserDetailsService {
 
         if (user != null && IActionConstants.YES.equalsIgnoreCase(user.getIsAdmin())) {
             addAuthoritiesForRole(Constants.ROLE_GLOBAL_ADMIN, authorityNames);
+        }
+
+        // Load resolved privileges as PRIV_ authorities
+        if (user != null && user.getSystemUserId() > 0) {
+            Set<String> resolvedPrivileges = privilegeService
+                    .getAllPrivilegesForUser(String.valueOf(user.getSystemUserId()));
+            if (resolvedPrivileges.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {
+                // Global Admin gets every privilege — load all from DB
+                List<Privilege> allPrivileges = privilegeService.getAllPrivileges();
+                for (Privilege p : allPrivileges) {
+                    authorityNames.add("PRIV_" + p.getName().toUpperCase().replaceAll("[^A-Z0-9]+", "_"));
+                }
+            } else {
+                for (String priv : resolvedPrivileges) {
+                    authorityNames.add("PRIV_" + priv.toUpperCase().replaceAll("[^A-Z0-9]+", "_"));
+                }
+            }
         }
 
         List<GrantedAuthority> authorities = new ArrayList<>();

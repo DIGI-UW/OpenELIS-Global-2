@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import java.util.Map;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * Service for FILE analyzer configuration.
@@ -10,6 +11,7 @@ import java.util.Map;
  * service writes profile-driven config to the Analyzer entity and registers
  * FILE analyzers with the bridge.
  */
+@CrossDomainService(callers = "analyzer file import pipeline — internal infrastructure")
 public interface FileImportService {
 
     /**

@@ -3,8 +3,10 @@ package org.openelisglobal.dataexchange.fhir.service;
 import java.util.List;
 import java.util.UUID;
 import org.hl7.fhir.r4.model.ResourceType;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.dataexchange.fhir.service.FhirApiWorkFlowServiceImpl.ReferralResultsImportObjects;
 
+@CrossDomainService(callers = "FHIR data exchange pipeline — internal infrastructure")
 public interface FhirApiWorkflowService {
 
     void processWorkflow(ResourceType resourceType);

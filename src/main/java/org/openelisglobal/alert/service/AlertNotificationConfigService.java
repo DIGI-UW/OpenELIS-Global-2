@@ -1,6 +1,7 @@
 package org.openelisglobal.alert.service;
 
 import java.util.Map;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface AlertNotificationConfigService {
 
@@ -11,6 +12,7 @@ public interface AlertNotificationConfigService {
      *         smsNotificationsEnabled (Boolean) - escalationEnabled (Boolean) -
      *         escalationDelayMinutes (Integer) - supervisorEmail (String)
      */
+    @PreAuthorize("hasAuthority('PRIV_ALERT_VIEW')")
     Map<String, Object> getAlertNotificationConfig();
 
     /**
@@ -18,6 +20,7 @@ public interface AlertNotificationConfigService {
      *
      * @param config    Map containing configuration values
      * @param sysUserId Acting user id, stamped on NotificationConfigOption /
+    @PreAuthorize("hasAuthority('PRIV_ALERT_MANAGE')")
      *                  SiteInformation entities so the audit-trail row emitted by
      *                  AuditableBaseObjectServiceImpl can resolve a valid
      *                  system_user. Must reference an existing row in

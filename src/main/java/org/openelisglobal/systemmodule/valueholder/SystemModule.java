@@ -13,19 +13,47 @@
  */
 package org.openelisglobal.systemmodule.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * @author Hung Nguyen (Hung.Nguyen@health.state.mn.us)
  */
+@Entity
+@Table(name = "system_module", schema = "clinlims")
 public class SystemModule extends BaseObject<String> {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "system_module_seq_gen")
+    @SequenceGenerator(name = "system_module_seq_gen", sequenceName = "system_module_seq", schema = "clinlims", allocationSize = 1)
+    @Convert(converter = StringToIntegerConverter.class)
+    @Column(name = "id")
     private String id;
+
+    @Column(name = "name", length = 32)
     private String systemModuleName;
+
+    @Column(name = "description", length = 80)
     private String description;
+
+    @Column(name = "has_select_flag", length = 1)
     private String hasSelectFlag;
+
+    @Column(name = "has_add_flag", length = 1)
     private String hasAddFlag;
+
+    @Column(name = "has_update_flag", length = 1)
     private String hasUpdateFlag;
+
+    @Column(name = "has_delete_flag", length = 1)
     private String hasDeleteFlag;
 
     public SystemModule() {

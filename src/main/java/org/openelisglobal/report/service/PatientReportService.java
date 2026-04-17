@@ -1,6 +1,7 @@
 package org.openelisglobal.report.service;
 
 import org.openelisglobal.report.ReportingData;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for generating patient-centered report data.
@@ -20,5 +21,6 @@ public interface PatientReportService {
      * @return reporting data for the patient, or {@code null} if the patient does
      *         not exist
      */
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
     ReportingData buildPatientResultsReport(String patientId, String sysUserId);
 }
