@@ -375,13 +375,15 @@ const AddOrder = (props) => {
         ...orderFormValues.sampleOrderItems,
         consentProvided: checked,
         // Clear reference number if unchecking consent
-        consentReferenceNo: checked ? orderFormValues.sampleOrderItems.consentReferenceNo : "",
+        consentReferenceNo: checked
+          ? orderFormValues.sampleOrderItems.consentReferenceNo
+          : "",
       },
     });
     setChanged({
       ...changed,
       "sampleOrderItems.consentProvided": true,
-      "sampleOrderItems.consentReferenceNo": true
+      "sampleOrderItems.consentReferenceNo": true,
     });
   }
 
@@ -953,7 +955,9 @@ const AddOrder = (props) => {
             </Column>
             <Column lg={8} md={4} sm={4}>
               <Checkbox
-                labelText="Patient has provided signed consent"
+                labelText={
+                  <FormattedMessage id="order.consent.provided.label" />
+                }
                 id="consentProvided"
                 checked={orderFormValues.sampleOrderItems.consentProvided}
                 onChange={handleConsentCheckBox}
@@ -973,11 +977,16 @@ const AddOrder = (props) => {
                 <Column lg={8} md={4} sm={4}>
                   <TextInput
                     name="consentReferenceNo"
-                    labelText="Consent Form Reference No. (optional)"
-                    placeholder="Enter consent form reference number"
+                    labelText={intl.formatMessage({
+                      id: "order.consent.referenceNo.label",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "order.consent.referenceNo.placeholder",
+                    })}
                     value={orderFormValues.sampleOrderItems.consentReferenceNo}
                     onChange={handleConsentReferenceChange}
                     id="consentReferenceNoId"
+                    maxLength={100}
                   />
                 </Column>
               </>

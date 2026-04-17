@@ -4,6 +4,9 @@ import {
   FormGroup,
   Checkbox,
   TextArea,
+  TextInput,
+  DatePicker,
+  DatePickerInput,
   Column,
   Grid,
   Heading,
@@ -102,7 +105,9 @@ const InformedConsentSection = ({
                   "I confirm that informed consent has been obtained from the patient or their authorized representative for the collection and testing of this sample.",
               })}
               checked={consentProvided}
-              onChange={(value) => handleConsentChange("consentProvided", value)}
+              onChange={(_, { checked }) =>
+                handleConsentChange("consentProvided", checked)
+              }
               disabled={isReadOnly}
             />
 
@@ -112,10 +117,13 @@ const InformedConsentSection = ({
                 id="alternativeConsentMethod"
                 labelText={intl.formatMessage({
                   id: "collect.informedConsent.alternativeMethod",
-                  defaultMessage: "Alternative consent method used (verbal, witness required)",
+                  defaultMessage:
+                    "Alternative consent method used (verbal, witness required)",
                 })}
                 toggled={alternativeConsentMethod}
-                onToggle={(value) => handleConsentChange("alternativeConsentMethod", value)}
+                onToggle={(value) =>
+                  handleConsentChange("alternativeConsentMethod", value)
+                }
                 disabled={isReadOnly}
               />
             </div>
@@ -126,22 +134,20 @@ const InformedConsentSection = ({
         {alternativeConsentMethod && (
           <Column lg={8} md={4} sm={4}>
             <div style={{ marginTop: "1rem" }}>
-              <label htmlFor="consentWitness" className="cds--label">
-                <FormattedMessage
-                  id="collect.informedConsent.witness"
-                  defaultMessage="Witness Name/ID"
-                />
-              </label>
-              <input
+              <TextInput
                 id="consentWitness"
-                className="cds--text-input"
-                type="text"
+                labelText={intl.formatMessage({
+                  id: "collect.informedConsent.witness",
+                  defaultMessage: "Witness Name/ID",
+                })}
                 placeholder={intl.formatMessage({
                   id: "collect.informedConsent.witness.placeholder",
                   defaultMessage: "Enter witness name or ID",
                 })}
                 value={consentWitness}
-                onChange={(e) => handleConsentChange("consentWitness", e.target.value)}
+                onChange={(e) =>
+                  handleConsentChange("consentWitness", e.target.value)
+                }
                 disabled={isReadOnly}
               />
             </div>
@@ -159,10 +165,13 @@ const InformedConsentSection = ({
               })}
               placeholder={intl.formatMessage({
                 id: "collect.informedConsent.notes.placeholder",
-                defaultMessage: "Additional information about consent process, patient concerns, etc.",
+                defaultMessage:
+                  "Additional information about consent process, patient concerns, etc.",
               })}
               value={consentNotes}
-              onChange={(e) => handleConsentChange("consentNotes", e.target.value)}
+              onChange={(e) =>
+                handleConsentChange("consentNotes", e.target.value)
+              }
               disabled={isReadOnly}
               rows={3}
             />
@@ -173,28 +182,40 @@ const InformedConsentSection = ({
         {consentProvided && (
           <Column lg={8} md={4} sm={4}>
             <div style={{ marginTop: "1rem" }}>
-              <label htmlFor="consentDate" className="cds--label">
-                <FormattedMessage
-                  id="collect.informedConsent.date"
-                  defaultMessage="Consent Date"
+              <DatePicker
+                datePickerType="single"
+                dateFormat="Y-m-d"
+                maxDate={new Date()}
+                value={consentDate || undefined}
+                onChange={(dates) => {
+                  const d = dates && dates[0];
+                  const iso = d
+                    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+                    : "";
+                  handleConsentChange("consentDate", iso);
+                }}
+              >
+                <DatePickerInput
+                  id="consentDate"
+                  labelText={
+                    <>
+                      <FormattedMessage
+                        id="collect.informedConsent.date"
+                        defaultMessage="Consent Date"
+                      />
+                      <span className="helper-inline">
+                        {" "}
+                        <FormattedMessage
+                          id="collect.informedConsent.date.helper"
+                          defaultMessage="(auto-filled when consent is provided)"
+                        />
+                      </span>
+                    </>
+                  }
+                  placeholder="YYYY-MM-DD"
+                  disabled={isReadOnly}
                 />
-                <span className="helper-inline">
-                  {" "}
-                  <FormattedMessage
-                    id="collect.informedConsent.date.helper"
-                    defaultMessage="(auto-filled when consent is provided)"
-                  />
-                </span>
-              </label>
-              <input
-                id="consentDate"
-                className="cds--text-input"
-                type="date"
-                value={consentDate}
-                onChange={(e) => handleConsentChange("consentDate", e.target.value)}
-                disabled={isReadOnly}
-                max={new Date().toISOString().split('T')[0]}
-              />
+              </DatePicker>
             </div>
           </Column>
         )}
