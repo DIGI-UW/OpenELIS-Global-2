@@ -39,16 +39,13 @@ const CreateDistribution = () => {
         setPrograms(data);
       }
     });
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
-      (data) => {
-        if (data && Array.isArray(data)) {
-          setOrganizations(
-            data.map((o) => ({ id: String(o.id), name: o.value })),
-          );
-        }
-      },
-    );
+    getFromOpenElisServer("/rest/organization-list", (data) => {
+      if (data && Array.isArray(data)) {
+        setOrganizations(
+          data.map((o) => ({ id: String(o.id), name: o.organizationName })),
+        );
+      }
+    });
   }, []);
 
   const handleSubmit = () => {

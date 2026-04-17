@@ -52,10 +52,18 @@ const GenericConfigEdit = ({ menuType, ID }) => {
   }, [menuType, ID]);
 
   const handleMenuItems = (res) => {
+    if (!res) {
+      setIsLoading(false);
+      return;
+    }
     setFormEntryConfig(res);
     if (res.localization) {
-      setTextInputEnglishValue(res.localization.localeValues.en);
-      setTextInputFrenchValue(res.localization.localeValues.fr);
+      setTextInputEnglishValue(
+        res.localization.english || res.localization.localeValues?.en || "",
+      );
+      setTextInputFrenchValue(
+        res.localization.french || res.localization.localeValues?.fr || "",
+      );
     }
     if (res.valueType === "boolean") {
       setRadioValue(res.value);
@@ -98,12 +106,8 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     setTextInputEnglishValue(newValue);
     updateFormEntryConfig({
       localization: {
-        id: FormEntryConfig.localization.id,
-        description: FormEntryConfig.localization.description,
-        localeValues: {
-          ...FormEntryConfig.localization.localeValues,
-          en: newValue,
-        },
+        ...FormEntryConfig.localization,
+        english: newValue,
       },
     });
   };
@@ -113,12 +117,8 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     setTextInputFrenchValue(newValue);
     updateFormEntryConfig({
       localization: {
-        id: FormEntryConfig.localization.id,
-        description: FormEntryConfig.localization.description,
-        localeValues: {
-          ...FormEntryConfig.localization.localeValues,
-          fr: newValue,
-        },
+        ...FormEntryConfig.localization,
+        french: newValue,
       },
     });
   };

@@ -144,27 +144,19 @@ export default function App() {
   }, []);
 
   const getUserSessionDetails = async () => {
-    let counter = 0;
-    while (counter < 10) {
+    const maxRetries = 10;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(
-          config.serverBaseUrl + `/session`,
-          //includes the browser sessionId in the Header for Authentication on the backend server
-          { credentials: "include" },
-        );
+        const response = await fetch(config.serverBaseUrl + `/session`, {
+          credentials: "include",
+        });
         if (response.status === 200) {
           const jsonResp = await response.json();
           console.debug(JSON.stringify(jsonResp));
           if (jsonResp.authenticated) {
             localStorage.setItem("CSRF", jsonResp.csrf);
           }
-          if (
-            !Object.keys(jsonResp).every(
-              (key) => jsonResp[key] === userSessionDetails[key],
-            )
-          ) {
-            setUserSessionDetails(jsonResp);
-          }
+          setUserSessionDetails(jsonResp);
           setErrorLoadingSessionDetails(false);
           return jsonResp;
         } else {
@@ -174,7 +166,9 @@ export default function App() {
         }
       } catch (error) {
         console.error(error);
-        if (counter === 10) {
+        if (attempt < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else {
           const options = {
             title: "System Error",
             message: "Error : " + error.message,
@@ -192,10 +186,8 @@ export default function App() {
           confirmAlert(options);
         }
       }
-      ++counter;
     }
     setErrorLoadingSessionDetails(true);
-    return userSessionDetails;
   };
 
   const logout = () => {
@@ -372,7 +364,6 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/admin"
-                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -484,7 +475,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrder").default;
                     return <GenericSampleOrder />;
                   }}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/GenericSample/Edit"
@@ -494,7 +485,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrderEdit").default;
                     return <GenericSampleOrderEdit />;
                   }}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/GenericSample/Import"
@@ -504,7 +495,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrderImport").default;
                     return <GenericSampleOrderImport />;
                   }}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
@@ -1022,7 +1013,7 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   component={() => <AuditTrailReportIndex />}
-                  role={Roles.REPORTS}
+                  role={Roles.GLOBAL_ADMIN}
                 />
                 <SecureRoute
                   path="/TATReport"
