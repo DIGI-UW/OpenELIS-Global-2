@@ -936,14 +936,15 @@ public class SamplePatientUpdateData {
      */
     private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
         Boolean consentProvided = sampleOrder.getConsentProvided();
+        String consentReferenceNo = sampleOrder.getConsentReferenceNo();
 
         if (Boolean.TRUE.equals(consentProvided)) {
             // Consent provided - set fields and audit trail
             sample.setConsentProvided(true);
-            sample.setConsentReferenceNo(sampleOrder.getConsentReferenceNo());
+            sample.setConsentReferenceNo(consentReferenceNo);
 
             // Auto-populate audit fields (ignore any client-supplied values)
-            sample.setConsentRecordedAt(DateUtil.getNowAsTimestamp());
+            sample.setConsentRecordedAt(new java.sql.Timestamp(System.currentTimeMillis()));
             sample.setConsentRecordedBy(currentUserId);
         } else {
             // Consent withdrawn or not provided - clear all fields

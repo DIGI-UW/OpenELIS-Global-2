@@ -48,6 +48,7 @@ const OrderCollect = () => {
     assignTestToSample,
     removeTestFromSample,
     updateSampleCollectionDetails,
+    setOrderData,
   } = useOrderContext();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -69,11 +70,25 @@ const OrderCollect = () => {
   // Informed consent data
   const [consentData, setConsentData] = useState({
     consentProvided: false,
-    consentNotes: "",
-    consentDate: "",
-    consentWitness: "",
-    alternativeConsentMethod: false,
+    consentReferenceNo: "",
+    consentRecordedAt: "",
+    consentRecordedBy: "",
   });
+
+  // Initialize consent data from orderData (for edit scenarios)
+  useEffect(() => {
+    if (orderData?.sampleOrderItems) {
+      const { consentProvided, consentReferenceNo, consentRecordedAt, consentRecordedBy } = orderData.sampleOrderItems;
+      if (consentProvided !== undefined) {
+        setConsentData({
+          consentProvided: consentProvided || false,
+          consentReferenceNo: consentReferenceNo || "",
+          consentRecordedAt: consentRecordedAt || "",
+          consentRecordedBy: consentRecordedBy || "",
+        });
+      }
+    }
+  }, [orderData?.sampleOrderItems?.consentProvided, orderData?.sampleOrderItems?.consentReferenceNo]);
 
   // Fetch sample types and UOMs on mount
   useEffect(() => {
@@ -221,6 +236,17 @@ const OrderCollect = () => {
 
   const handleConsentChange = (updatedConsent) => {
     setConsentData(updatedConsent);
+
+    // Sync consent data with orderData.sampleOrderItems for backend persistence
+    setOrderData({
+      ...orderData,
+      sampleOrderItems: {
+        ...orderData.sampleOrderItems,
+        consentProvided: updatedConsent.consentProvided,
+        consentReferenceNo: updatedConsent.consentReferenceNo,
+        // Note: consentRecordedAt and consentRecordedBy are auto-populated by backend
+      }
+    });
   };
 
   return (
