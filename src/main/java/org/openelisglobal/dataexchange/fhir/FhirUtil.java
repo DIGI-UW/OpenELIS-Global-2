@@ -178,44 +178,64 @@ public class FhirUtil implements FhirClientFetcher {
         }
     }
 
-    public static String buildSampleXml(ServiceRequest sr, List<Test> tests, SampleItem sampleItem) {
-        String date = DateUtil.getCurrentDateAsText();
+public static String buildSampleXml(List<Test> tests, SampleItem sampleItem, String sampleItemId) {
 
-        StringBuilder testIds = new StringBuilder();
-        StringBuilder sectionMap = new StringBuilder();
-        StringBuilder sampleTypeMap = new StringBuilder();
+    String date = DateUtil.getCurrentDateAsText();
 
-        if (sampleItem.getTypeOfSample() == null) {
-            throw new RuntimeException("SampleItem missing typeOfSample");
-        }
+    StringBuilder testIds = new StringBuilder();
+    StringBuilder sectionMap = new StringBuilder();
+    StringBuilder sampleTypeMap = new StringBuilder();
 
-        String sampleTypeId = sampleItem.getTypeOfSample().getId();
-
-        for (int i = 0; i < tests.size(); i++) {
-            Test test = tests.get(i);
-            String testId = test.getId();
-
-            if (test.getTestSection() == null) {
-                throw new RuntimeException("Test " + testId + " has no section configured");
-            }
-
-            String sectionId = test.getTestSection().getId();
-
-            // --- Build strings ---
-            testIds.append(testId);
-            sectionMap.append(testId).append(":").append(sectionId);
-            sampleTypeMap.append(testId).append(":").append(sampleTypeId);
-
-            if (i < tests.size() - 1) {
-                testIds.append(",");
-                sectionMap.append(",");
-                sampleTypeMap.append(",");
-            }
-        }
-
-        return "<samples>" + "<sample " + "sampleID=\"" + sampleTypeId + "\" " + "tests=\"" + testIds + "\" "
-                + "panels=\"\" " + "testSectionMap=\"" + sectionMap + "\" " + "testSampleTypeMap=\"" + sampleTypeMap
-                + "\" " + "date=\"" + date + "\" " + "time=\"00:00\" " + "receivedDate=\"" + date + "\" "
-                + "receivedTime=\"00:00\" " + "/>" + "</samples>";
+    if (sampleItem.getTypeOfSample() == null) {
+        throw new RuntimeException("SampleItem missing typeOfSample");
     }
+
+    String sampleTypeId = sampleItem.getTypeOfSample().getId();
+
+    for (int i = 0; i < tests.size(); i++) {
+        Test test = tests.get(i);
+        String testId = test.getId();
+
+        if (test.getTestSection() == null) {
+            throw new RuntimeException("Test " + testId + " has no section configured");
+        }
+
+        String sectionId = test.getTestSection().getId();
+
+        // --- Build strings ---
+        testIds.append(testId);
+        sectionMap.append(testId).append(":").append(sectionId);
+        sampleTypeMap.append(testId).append(":").append(sampleTypeId);
+
+        if (i < tests.size() - 1) {
+            testIds.append(",");
+            sectionMap.append(",");
+            sampleTypeMap.append(",");
+        }
+    }
+
+    StringBuilder xml = new StringBuilder();
+
+    xml.append("<samples>");
+    xml.append("<sample ");
+
+    xml.append("sampleID=\"").append(sampleTypeId).append("\" ");
+    xml.append("tests=\"").append(testIds).append("\" ");
+    xml.append("panels=\"\" ");
+    xml.append("testSectionMap=\"").append(sectionMap).append("\" ");
+    xml.append("testSampleTypeMap=\"").append(sampleTypeMap).append("\" ");
+    xml.append("date=\"").append(date).append("\" ");
+    xml.append("time=\"00:00\" ");
+    xml.append("receivedDate=\"").append(date).append("\" ");
+    xml.append("receivedTime=\"00:00\" ");
+
+    if (!GenericValidator.isBlankOrNull(sampleItemId)) {
+        xml.append("sampleItemId=\"").append(sampleItemId).append("\" ");
+    }
+
+    xml.append("/>");
+    xml.append("</samples>");
+
+    return xml.toString();
+}
 }

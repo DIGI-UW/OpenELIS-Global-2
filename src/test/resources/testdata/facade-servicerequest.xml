@@ -53,8 +53,8 @@
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
     <status_of_sample id="1"
-        description="Sample Description 1" code="1" status_type="ANALYSIS"
-        lastupdated="2025-03-18" name="Technical Acceptance" />
+        description="This test has not yet been done" code="1" status_type="ANALYSIS"
+        lastupdated="2025-03-18" name="Not Tested" />
     <status_of_sample id="3"
         description="The sample has been entered into the system" code="1"
         status_type="ORDER" lastupdated="2025-03-18" name="Testing Started" />
@@ -103,14 +103,14 @@
         street_address="123 Health St" state="NY"
         fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93287"
         internet_address="www.globalhealth.org" clia_num="CLIA12345"
-        pws_id="PWS123" local_abbrev="1" code="GHG001" />
+        pws_id="PWS123" local_abbrev="1" code="GHG001" is_active="Y" />
     <organization id="4" lastupdated="2024-06-04 12:00:00.0"
         name="Health Services Ltd" city="Los Angeles" zip_code="90001"
         short_name="HSL" multiple_unit="LA Unit"
         street_address="456 Medical Rd" state="CA"
         fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93288"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002" />
+        pws_d="PWS456" local_abbrev="2" code="HSL002"  is_active="Y"/>
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -224,18 +224,94 @@
         system_user_id="2" is_supervisor="false"
         lastupdated="2025-07-06 08:00:00.000" non_user_name="External Doctor" />
 
-    <!-- Person -->
+
+    <patient_identity_type id="9"
+        identity_type="NATIONAL" description="Patient ID Number"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <patient_identity_type id="17"
+        identity_type="NATIONALITY" description="Nationality"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <patient_identity_type id="18"
+        identity_type="OTHER NATIONALITY" description="Country of Residence"
+        lastupdated="2023-01-01 00:00:00" />
+
+    <!-- Address Parts -->
+    <address_part id="1" part_name="phone" display_order="1"
+        display_key="phone_key" />
+
+    <address_part id="2" part_name="email" display_order="2"
+        display_key="email_key" />
+
+    <address_part id="3" part_name="commune" display_order="3"
+        display_key="commune_key" />
+
     <person id="1" last_name="Doe" first_name="John"
-        lastupdated="2023-11-01 12:00:00" />
-    <person id="2" last_name="Jane" first_name="Georgia"
-        lastupdated="2023-11-01 12:00:00" />
+        middle_name="Joddy" city="Kampala" state="Kampala Metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
 
-    <person id="3" last_name="Patric" first_name="Vicent"
-        lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+    <person id="3" last_name="Kukki" first_name="Faith"
+        middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
+        country="USA" work_phone="10000002" home_phone="8000003"
+        cell_phone="0000001" primary_phone="10000002" fax="0002"
+        email="siannah@gmail.com" lastupdated="2023-11-01 12:00:00" />
+
+    <person_address person_id="1" address_part_id="1"
+        type="P" value="12345678" />
+
+    <person_address person_id="1" address_part_id="2"
+        type="S" value="joe@gmail.com" />
+
+    <person_address person_id="1" address_part_id="3"
+        type="T" value="Tulla" />
+
+    <patient id="1" person_id="1" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX456"
+        school_attend="Makerere College" birth_place="Mulago"
+        fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04635"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+
+    <patient id="2" person_id="2" race="black" gender="F"
+        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
+        national_id="56789" ethnicity="A" external_id="EX123"
+        school_attend="Merryland College" birth_place="Nevada"
+        fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04636"
+        entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
+
+    <patient id="3" person_id="3" race="black" gender="M"
+        birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
+        national_id="1234" ethnicity="U" external_id="EX432"
+        school_attend="Makerere College" birth_place="Kawempe"
+        fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04637"
+        entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
+
+    <patient_identity id="1" identity_type_id="9"
+        patient_id="1" identity_data="334-422-A"
+        lastupdated="2023-11-01 12:00:02" />
+
+    <patient_identity id="2" identity_type_id="17"
+        patient_id="1" identity_data="Ugandan"
+        lastupdated="2023-11-01 12:00:02" />
+
+    <patient_identity id="3" identity_type_id="18"
+        patient_id="1" identity_data="USA" lastupdated="2023-11-01 12:00:02" />
 
 
-    <patient id="1" person_id="1" lastupdated="2023-11-01 12:00:00"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440001" />
+    <patient_contact id="1" patient_id="1" person_id="1"
+        lastupdated="2025-06-22 11:30:00" />
+
+    <patient_contact id="2" patient_id="3" person_id="3"
+        lastupdated="2024-06-10 11:45:00" />
 
     <patient id="2" person_id="2" lastupdated="2023-11-01 12:00:00"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
@@ -287,6 +363,18 @@
         dict_entry="Free sample request form or vice versa. Please submit another sample."
         local_Abbrev="DE1" dictionary_category_id="1" sort_order="1"
         lastUpdated="2023-11-01 12:00:00" />
+
+    <sample_barcode_info id="1"
+    sample_id="1"
+    print_order_num="1"
+    printed_order_count="0"
+    last_updated="2025-04-13 05:00:00" />
+
+<sample_barcode_info id="2"
+    sample_id="2"
+    print_order_num="2"
+    printed_order_count="0"
+    last_updated="2025-04-13 05:00:00" />
 
 
 

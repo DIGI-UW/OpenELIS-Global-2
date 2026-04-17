@@ -10,7 +10,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
-import jakarta.validation.Valid;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
@@ -32,7 +31,6 @@ public class SampleItemBarcodeInfo extends BaseObject<Integer> {
     @Column(name = "id")
     private Integer id;
 
-    @Valid
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "sample_item_id", referencedColumnName = "id")
     private SampleItem sampleItem;
