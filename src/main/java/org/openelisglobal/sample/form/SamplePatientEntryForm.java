@@ -92,6 +92,7 @@ public class SamplePatientEntryForm extends BaseForm {
     private Boolean warning = false;
 
     private boolean useReferral;
+    private boolean allowPatientImageUpload = true;
 
     /**
      * Flag for decoupled workflow: if true, samples are not required. This allows
@@ -291,6 +292,14 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setUseReferral(boolean useReferral) {
         this.useReferral = useReferral;
+    }
+
+    public boolean getAllowPatientImageUpload() {
+        return allowPatientImageUpload;
+    }
+
+    public void setAllowPatientImageUpload(boolean allowPatientImageUpload) {
+        this.allowPatientImageUpload = allowPatientImageUpload;
     }
 
     public List<IdValuePair> getRejectReasonList() {

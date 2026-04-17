@@ -811,6 +811,28 @@ function CreatePatientForm(props) {
                         </Section>
                       </Section>
                     </Section>
+                  </Section>
+                </FormLabel>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                {" "}
+                <br></br>
+              </Column>
+              <Column lg={16} md={8} sm={4}>
+                <PatientImageSelector
+                  value={values.photo}
+                  onChange={(photo) => handlePhotoChange(photo, setFieldValue)}
+                  required={false}
+                  allowPatientImageUpload={
+                    configurationProperties.ALLOW_PATIENT_IMAGE_UPLOAD !==
+                    "false"
+                  }
+                />
+              </Column>
+              <Column lg={8} md={4} sm={4}>
+                <Field name="subjectNumber">
+                  {({ field }) => (
+                    <>
                   </FormLabel>
                 </Column>
                 <Column lg={16} md={8} sm={4}>

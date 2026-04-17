@@ -10,6 +10,7 @@ const PatientImageSelector = ({
   onChange,
   label = "",
   required = false,
+  allowPatientImageUpload = true,
   disabled = false,
 }) => {
   const intl = useIntl();
@@ -72,6 +73,7 @@ const PatientImageSelector = ({
         onClose={() => setIsModalOpen(false)}
         onImageSelect={handleImageSelect}
         currentImage={value}
+        allowPatientImageUpload={allowPatientImageUpload}
       />
 
       <Modal
