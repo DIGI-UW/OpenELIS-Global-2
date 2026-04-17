@@ -16,7 +16,7 @@ import {
 } from "../api/sampleTypeRequestApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
-import InformedConsentSection from "./sections/InformedConsentSection";
+import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 
 /**
@@ -67,8 +67,8 @@ const OrderCollect = () => {
 
   // Informed consent data
   const [consentData, setConsentData] = useState({
-    consentProvided: false,
-    consentReferenceNo: "",
+    consentGiven: false,
+    consentFormReference: "",
     consentRecordedAt: "",
     consentRecordedBy: "",
   });
@@ -77,23 +77,23 @@ const OrderCollect = () => {
   useEffect(() => {
     if (orderData?.sampleOrderItems) {
       const {
-        consentProvided,
-        consentReferenceNo,
+        consentGiven,
+        consentFormReference,
         consentRecordedAt,
         consentRecordedBy,
       } = orderData.sampleOrderItems;
-      if (consentProvided !== undefined) {
+      if (consentGiven !== undefined) {
         setConsentData({
-          consentProvided: consentProvided || false,
-          consentReferenceNo: consentReferenceNo || "",
+          consentGiven: consentGiven || false,
+          consentFormReference: consentFormReference || "",
           consentRecordedAt: consentRecordedAt || "",
           consentRecordedBy: consentRecordedBy || "",
         });
       }
     }
   }, [
-    orderData?.sampleOrderItems?.consentProvided,
-    orderData?.sampleOrderItems?.consentReferenceNo,
+    orderData?.sampleOrderItems?.consentGiven,
+    orderData?.sampleOrderItems?.consentFormReference,
   ]);
 
   // Fetch sample types and UOMs on mount
@@ -244,8 +244,8 @@ const OrderCollect = () => {
       ...orderData,
       sampleOrderItems: {
         ...orderData.sampleOrderItems,
-        consentProvided: updatedConsent.consentProvided,
-        consentReferenceNo: updatedConsent.consentReferenceNo,
+        consentGiven: updatedConsent.consentGiven,
+        consentFormReference: updatedConsent.consentFormReference,
         // Note: consentRecordedAt and consentRecordedBy are auto-populated by backend
       },
     });
@@ -292,7 +292,7 @@ const OrderCollect = () => {
         />
 
         {/* Section 2: Informed Consent */}
-        <InformedConsentSection
+        <ConsentAccordionSection
           consentData={consentData}
           onConsentChange={handleConsentChange}
           isReadOnly={isReadOnly && !isEditMode}

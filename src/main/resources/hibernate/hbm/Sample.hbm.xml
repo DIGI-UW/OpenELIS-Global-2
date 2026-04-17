@@ -99,9 +99,9 @@
             column="gps_capture_timestamp" type="java.sql.Timestamp" />
         <property name="storageSkipped" column="storage_skipped"
             type="java.lang.Boolean" />
-        <property name="consentProvided" column="consent_provided"
+        <property name="consentGiven" column="consent_provided"
             type="java.lang.Boolean" />
-        <property name="consentReferenceNo"
+        <property name="consentFormReference"
             column="consent_reference_no" type="java.lang.String" length="100" />
         <property name="consentRecordedAt"
             column="consent_recorded_at" type="java.sql.Timestamp" />

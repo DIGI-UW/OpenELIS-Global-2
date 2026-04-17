@@ -70,8 +70,8 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
     private String gpsCaptureMethod;
     private Timestamp gpsCaptureTimestamp;
     private Boolean storageSkipped = false;
-    private Boolean consentProvided = false;
-    private String consentReferenceNo;
+    private Boolean consentGiven = false;
+    private String consentFormReference;
     private Timestamp consentRecordedAt;
     private String consentRecordedBy;
 
@@ -471,20 +471,20 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
         this.storageSkipped = storageSkipped;
     }
 
-    public Boolean getConsentProvided() {
-        return consentProvided;
+    public Boolean getConsentGiven() {
+        return consentGiven;
     }
 
-    public void setConsentProvided(Boolean consentProvided) {
-        this.consentProvided = consentProvided;
+    public void setConsentGiven(Boolean consentGiven) {
+        this.consentGiven = consentGiven;
     }
 
-    public String getConsentReferenceNo() {
-        return consentReferenceNo;
+    public String getConsentFormReference() {
+        return consentFormReference;
     }
 
-    public void setConsentReferenceNo(String consentReferenceNo) {
-        this.consentReferenceNo = consentReferenceNo;
+    public void setConsentFormReference(String consentFormReference) {
+        this.consentFormReference = consentFormReference;
     }
 
     public Timestamp getConsentRecordedAt() {

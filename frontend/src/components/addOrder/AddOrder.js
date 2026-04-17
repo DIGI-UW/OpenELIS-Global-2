@@ -366,17 +366,17 @@ const AddOrder = (props) => {
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        consentProvided: checked,
+        consentGiven: checked,
         // Clear reference number if unchecking consent
-        consentReferenceNo: checked
-          ? orderFormValues.sampleOrderItems.consentReferenceNo
+        consentFormReference: checked
+          ? orderFormValues.sampleOrderItems.consentFormReference
           : "",
       },
     });
     setChanged({
       ...changed,
-      "sampleOrderItems.consentProvided": true,
-      "sampleOrderItems.consentReferenceNo": true,
+      "sampleOrderItems.consentGiven": true,
+      "sampleOrderItems.consentFormReference": true,
     });
   }
 
@@ -385,10 +385,10 @@ const AddOrder = (props) => {
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        consentReferenceNo: e.target.value,
+        consentFormReference: e.target.value,
       },
     });
-    setChanged({ ...changed, "sampleOrderItems.consentReferenceNo": true });
+    setChanged({ ...changed, "sampleOrderItems.consentFormReference": true });
   }
 
   useEffect(() => {
@@ -951,14 +951,14 @@ const AddOrder = (props) => {
                 labelText={
                   <FormattedMessage id="order.consent.provided.label" />
                 }
-                id="consentProvided"
-                checked={orderFormValues.sampleOrderItems.consentProvided}
+                id="consentGiven"
+                checked={orderFormValues.sampleOrderItems.consentGiven}
                 onChange={handleConsentCheckBox}
               />
             </Column>
 
             {/* Conditional Consent Reference Number Field */}
-            {orderFormValues.sampleOrderItems.consentProvided && (
+            {orderFormValues.sampleOrderItems.consentGiven && (
               <>
                 <Column lg={16} md={8} sm={3}>
                   {" "}
@@ -969,16 +969,18 @@ const AddOrder = (props) => {
                 </Column>
                 <Column lg={8} md={4} sm={4}>
                   <TextInput
-                    name="consentReferenceNo"
+                    name="consentFormReference"
                     labelText={intl.formatMessage({
                       id: "order.consent.referenceNo.label",
                     })}
                     placeholder={intl.formatMessage({
                       id: "order.consent.referenceNo.placeholder",
                     })}
-                    value={orderFormValues.sampleOrderItems.consentReferenceNo}
+                    value={
+                      orderFormValues.sampleOrderItems.consentFormReference
+                    }
                     onChange={handleConsentReferenceChange}
-                    id="consentReferenceNoId"
+                    id="consentFormReferenceId"
                     maxLength={100}
                   />
                 </Column>

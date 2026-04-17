@@ -11,16 +11,19 @@ import {
 } from "@carbon/react";
 
 /**
- * InformedConsentSection - Informed consent capture for sample collection
+ * ConsentAccordionSection - Informed consent capture per OGC-557 FRS v1.1.
+ *
+ * Exported for reuse in Add Order, Edit Order, and the Sample Collection Wizard.
  *
  * Features:
- * - Consent acknowledgment checkbox
- * - Optional consent reference number
- * - Warning when consent is not provided
+ * - Consent acknowledgment checkbox (advisory per FR-5-001/FR-5-002)
+ * - Optional consent form reference number
  * - Read-only audit info once consent is recorded server-side
+ *
+ * Spec: https://github.com/DIGI-UW/openelis-work/blob/main/designs/sample-collection/informed-consent.md
  */
 
-const InformedConsentSection = ({
+export const ConsentAccordionSection = ({
   consentData = {},
   onConsentChange,
   isReadOnly = false,
@@ -28,8 +31,8 @@ const InformedConsentSection = ({
   const intl = useIntl();
 
   const {
-    consentProvided = false,
-    consentReferenceNo = "",
+    consentGiven = false,
+    consentFormReference = "",
     consentRecordedAt = "",
     consentRecordedBy = "",
   } = consentData;
@@ -51,7 +54,7 @@ const InformedConsentSection = ({
       </Heading>
 
       {/* Warning when consent is not provided */}
-      {!consentProvided && (
+      {!consentGiven && (
         <InlineNotification
           kind="warning"
           title={intl.formatMessage({
@@ -73,15 +76,15 @@ const InformedConsentSection = ({
           <FormGroup legendText="">
             {/* Primary consent checkbox */}
             <Checkbox
-              id="consentProvided"
+              id="consentGiven"
               labelText={intl.formatMessage({
                 id: "collect.informedConsent.provided",
                 defaultMessage:
                   "I confirm that informed consent has been obtained from the patient or their authorized representative for the collection and testing of this sample.",
               })}
-              checked={consentProvided}
+              checked={consentGiven}
               onChange={(_, { checked }) =>
-                handleConsentChange("consentProvided", checked)
+                handleConsentChange("consentGiven", checked)
               }
               disabled={isReadOnly}
             />
@@ -89,10 +92,10 @@ const InformedConsentSection = ({
         </Column>
 
         {/* Consent reference number field - optional */}
-        {consentProvided && (
+        {consentGiven && (
           <Column lg={8} md={4} sm={4} className="consent-field">
             <TextInput
-              id="consentReferenceNo"
+              id="consentFormReference"
               labelText={intl.formatMessage({
                 id: "collect.informedConsent.referenceNo",
                 defaultMessage: "Consent Reference Number (Optional)",
@@ -102,9 +105,9 @@ const InformedConsentSection = ({
                 defaultMessage: "Enter consent form or reference number",
               })}
               maxLength={100}
-              value={consentReferenceNo}
+              value={consentFormReference}
               onChange={(e) =>
-                handleConsentChange("consentReferenceNo", e.target.value)
+                handleConsentChange("consentFormReference", e.target.value)
               }
               disabled={isReadOnly}
             />
@@ -112,7 +115,7 @@ const InformedConsentSection = ({
         )}
 
         {/* Consent audit information - read-only */}
-        {consentProvided && consentRecordedAt && (
+        {consentGiven && consentRecordedAt && (
           <Column lg={16} md={8} sm={4} className="consent-field">
             <div className="consent-audit">
               <p>
@@ -142,4 +145,4 @@ const InformedConsentSection = ({
   );
 };
 
-export default InformedConsentSection;
+export default ConsentAccordionSection;

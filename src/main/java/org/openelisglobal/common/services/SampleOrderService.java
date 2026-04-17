@@ -203,8 +203,8 @@ public class SampleOrderService {
                         + " " + DateUtil.convertTimestampToStringTime(sample.getConsentRecordedAt()));
             }
             sampleOrder.setConsentRecordedBy(sample.getConsentRecordedBy());
-            sampleOrder.setConsentProvided(sample.getConsentProvided());
-            sampleOrder.setConsentReferenceNo(sample.getConsentReferenceNo());
+            sampleOrder.setConsentGiven(sample.getConsentGiven());
+            sampleOrder.setConsentFormReference(sample.getConsentFormReference());
 
             sampleOrder.setReadOnly(readOnly);
         }
