@@ -19,6 +19,14 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import PageBreadCrumb from "../../common/PageBreadCrumb";
+
+const breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "banner.menu.eqa.mgmt", link: "" },
+  { label: "eqa.distribution.dashboard.title", link: "/EQADistribution" },
+  { label: "eqa.distribution.create", link: "/EQADistribution/create" },
+];
 
 const CreateDistribution = () => {
   const intl = useIntl();
@@ -39,14 +47,30 @@ const CreateDistribution = () => {
         setPrograms(data);
       }
     });
-    getFromOpenElisServer("/rest/organization-list", (data) => {
-      if (data && Array.isArray(data)) {
-        setOrganizations(
-          data.map((o) => ({ id: String(o.id), name: o.organizationName })),
-        );
-      }
-    });
   }, []);
+
+  useEffect(() => {
+    if (!programId) {
+      setOrganizations([]);
+      setSelectedOrgs([]);
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/eqa/programs/${programId}/enrollments`,
+      (data) => {
+        if (data && Array.isArray(data)) {
+          const activeEnrolled = data
+            .filter((e) => e.status === "Active" && e.organizationId != null)
+            .map((e) => ({
+              id: String(e.organizationId),
+              name: e.organizationName || String(e.organizationId),
+            }));
+          setOrganizations(activeEnrolled);
+          setSelectedOrgs([]);
+        }
+      },
+    );
+  }, [programId]);
 
   const handleSubmit = () => {
     const payload = JSON.stringify({
@@ -85,6 +109,7 @@ const CreateDistribution = () => {
 
   return (
     <div className="create-distribution" style={{ padding: "1rem" }}>
+      <PageBreadCrumb breadcrumbs={breadcrumbs} />
       {notification && (
         <InlineNotification
           kind={notification.kind}
@@ -192,8 +217,15 @@ const CreateDistribution = () => {
               itemToString={(item) => (item ? item.name || item.id : "")}
               onChange={({ selectedItems }) => setSelectedOrgs(selectedItems)}
               selectionFeedback="top-after-reopen"
-              disabled={created}
+              disabled={created || organizations.length === 0}
             />
+            {organizations.length === 0 && (
+              <p style={{ color: "#da1e28", marginTop: "0.5rem" }}>
+                {intl.formatMessage({
+                  id: "eqa.distribution.participants.none",
+                })}
+              </p>
+            )}
             {selectedOrgs.length > 0 && selectedOrgs.length < 2 && (
               <p style={{ color: "#da1e28", marginTop: "0.5rem" }}>
                 {intl.formatMessage({

@@ -46,6 +46,8 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -164,6 +166,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private PatientService patientService;
 
     @Autowired
     private ElectronicOrderService electronicOrderService;
@@ -285,6 +290,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
+
+        if (sampleOrder.getIsEQASample()) {
+            Patient existingEqaPatient = patientService.getPatientByNationalId("NULL");
+            if (existingEqaPatient != null) {
+                patientInfo.setPatientPK(existingEqaPatient.getId());
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+            }
+        }
 
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 

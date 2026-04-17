@@ -92,10 +92,10 @@ const EQASampleEntry = ({
                   ...prev.sampleOrderItems,
                   isEQASample: true,
                 },
-                patientUpdateStatus: "UPDATE",
+                patientUpdateStatus: "NO_ACTION",
                 patientProperties: {
                   ...patientDetails,
-                  patientUpdateStatus: "UPDATE",
+                  patientUpdateStatus: "NO_ACTION",
                   readOnly: true,
                 },
               }));

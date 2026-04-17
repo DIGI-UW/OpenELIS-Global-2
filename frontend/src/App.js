@@ -631,49 +631,49 @@ export default function App() {
                   path="/Alerts"
                   exact
                   component={() => <AlertsDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAOrders"
                   exact
                   component={() => <EQAOrdersPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAMyPrograms"
                   exact
                   component={() => <MyProgramsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAManagement"
                   exact
                   component={() => <EQAProgramManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAResults"
                   exact
                   component={() => <EQAResultsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAParticipants"
                   exact
                   component={() => <EQAParticipantsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQADistribution/create"
                   exact
                   component={() => <CreateDistribution />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQADistribution"
                   exact
                   component={() => <EQADistributionDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/Storage"
@@ -761,7 +761,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/:id/mappings"
@@ -773,7 +773,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/errors"
@@ -785,7 +785,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/custom-field-types"
@@ -797,7 +797,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/types"
@@ -809,7 +809,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc"
@@ -821,7 +821,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/alerts"
@@ -833,7 +833,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/corrective-actions"
@@ -845,7 +845,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/PatientHistory"
@@ -857,7 +857,7 @@ export default function App() {
                   path="/PatientMerge"
                   exact
                   component={() => <PatientMerge />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/GenericSample/Results"
