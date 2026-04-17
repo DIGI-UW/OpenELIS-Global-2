@@ -275,15 +275,23 @@ const Validation = (props) => {
             )}
           </>
         );
-      case "testName":
+      case "testName": {
+        const unitsOnly = row.units ? row.units.split(" (")[0].trim() : "";
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
             <br></br>
             {testName}
+            {unitsOnly && (
+              <>
+                <br></br>
+                {unitsOnly}
+              </>
+            )}
             <br></br>
             {sampleType}
           </div>
         );
+      }
 
       case "save":
         return (
