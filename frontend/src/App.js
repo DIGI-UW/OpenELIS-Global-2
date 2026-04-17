@@ -80,6 +80,7 @@ const RoutedResultsViewer = React.lazy(
   () => import("./components/patient/resultsViewer/results-viewer.tsx"),
 );
 import EOrderPage from "./components/eOrder/Index";
+import SampleEntryByProject from "./components/SampleEntryByProject/Index";
 import RoutineIndex from "./components/reports/routine/Index.js";
 import StudyIndex from "./components/reports/study/index.js";
 import ReportIndex from "./components/reports/Index.js";
@@ -557,6 +558,12 @@ export default function App() {
                       </Switch>
                     </OrderProvider>
                   )}
+                />
+                <SecureRoute
+                  path="/SampleEntryByProject"
+                  exact
+                  component={() => <SampleEntryByProject />}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/ModifyOrder"
