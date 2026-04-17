@@ -45,7 +45,6 @@ const AddOrder = (props) => {
   const [siteNames, setSiteNames] = useState([]);
   const [innitialized, setInnitialized] = useState(false);
   const [departments, setDepartments] = useState([]);
-  // Removed separate consentData state - using orderFormValues instead
 
   useEffect(() => {
     componentMounted.current = true;
@@ -354,10 +353,7 @@ const AddOrder = (props) => {
   };
 
   function handleRememberCheckBox(e) {
-    let checked = false;
-    if (e.currentTarget.checked) {
-      checked = true;
-    }
+    const checked = e.currentTarget.checked;
     setOrderFormValues({
       ...orderFormValues,
       rememberSiteAndRequester: checked,
@@ -365,10 +361,7 @@ const AddOrder = (props) => {
   }
 
   function handleConsentCheckBox(e) {
-    let checked = false;
-    if (e.currentTarget.checked) {
-      checked = true;
-    }
+    const checked = e.currentTarget.checked;
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {

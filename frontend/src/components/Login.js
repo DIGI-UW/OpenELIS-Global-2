@@ -1,4 +1,5 @@
 import React, {
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -40,7 +41,7 @@ function Login(props) {
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
   const userIsActiveRef = useRef(false); // Track if user is actively typing without triggering re-renders
   const activityResetTimerRef = useRef(null);
-  const markUserActive = () => {
+  const markUserActive = useCallback(() => {
     userIsActiveRef.current = true;
     if (activityResetTimerRef.current) {
       clearTimeout(activityResetTimerRef.current);
@@ -48,7 +49,7 @@ function Login(props) {
     activityResetTimerRef.current = setTimeout(() => {
       userIsActiveRef.current = false;
     }, 5000);
-  };
+  }, []);
   const firstInput = createRef();
 
   // Auto-redirect to SAML if configured to bypass login page

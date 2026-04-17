@@ -101,10 +101,10 @@
             type="java.lang.Boolean" />
         <property name="consentProvided" column="consent_provided"
             type="java.lang.Boolean" />
-        <property name="consentReferenceNo" column="consent_reference_no"
-            type="java.lang.String" length="100" />
-        <property name="consentRecordedAt" column="consent_recorded_at"
-            type="java.sql.Timestamp" />
+        <property name="consentReferenceNo"
+            column="consent_reference_no" type="java.lang.String" length="100" />
+        <property name="consentRecordedAt"
+            column="consent_recorded_at" type="java.sql.Timestamp" />
         <property name="consentRecordedBy"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="consent_recorded_by" precision="10" scale="0" />

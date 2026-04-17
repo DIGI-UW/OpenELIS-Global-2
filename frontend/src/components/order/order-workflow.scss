@@ -1398,6 +1398,9 @@
 
 /* ==========================================================================
    Informed Consent Section
+   ==========================================================================
+   Carbon handles checkbox, toggle, text-input, and label styling — don't
+   re-style internals here. Only container + purpose-built classes below.
    ========================================================================== */
 .informed-consent-section {
   background-color: var(--cds-layer);
@@ -1406,56 +1409,25 @@
   padding: 1.5rem;
   margin-bottom: 1rem;
 
-  .cds--heading--compact-02 {
-    margin-bottom: 1rem;
-    font-weight: 600;
-    color: var(--cds-text-primary);
+  .consent-field {
+    margin-block-start: 1rem;
   }
 
-  .cds--inline-notification {
-    margin-bottom: 1.5rem;
-  }
+  .consent-audit {
+    padding: 1rem;
+    background-color: var(--cds-layer-02);
+    border-radius: 4px;
 
-  .cds--checkbox-label::before {
-    border-color: var(--cds-border-strong);
-  }
-
-  .cds--checkbox:checked + .cds--checkbox-label::before {
-    background-color: var(--oe-teal);
-    border-color: var(--oe-teal);
-  }
-
-  .cds--toggle {
-    margin-top: 1rem;
-  }
-
-  .cds--text-input,
-  .cds--text-area {
-    min-height: 32px; /* WCAG touch target */
+    p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--cds-text-secondary);
+    }
   }
 
   .helper-inline {
     font-size: 0.75rem;
     color: var(--cds-text-helper);
     font-style: italic;
-  }
-
-  .cds--label {
-    font-weight: 500;
-    color: var(--cds-text-secondary);
-    margin-bottom: 0.5rem;
-  }
-
-  /* Focus states for accessibility */
-  .cds--checkbox:focus + .cds--checkbox-label::before,
-  .cds--toggle__switch:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: 2px;
-  }
-
-  .cds--text-input:focus,
-  .cds--text-area:focus {
-    outline: 2px solid var(--cds-focus);
-    outline-offset: 2px;
   }
 }

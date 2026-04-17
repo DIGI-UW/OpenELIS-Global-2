@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   FormGroup,
@@ -15,9 +15,9 @@ import {
  *
  * Features:
  * - Consent acknowledgment checkbox
- * - Optional consent notes/comments
+ * - Optional consent reference number
  * - Warning when consent is not provided
- * - Integration with sample collection workflow
+ * - Read-only audit info once consent is recorded server-side
  */
 
 const InformedConsentSection = ({
@@ -27,8 +27,6 @@ const InformedConsentSection = ({
 }) => {
   const intl = useIntl();
 
-  const [showWarning, setShowWarning] = useState(false);
-
   const {
     consentProvided = false,
     consentReferenceNo = "",
@@ -37,19 +35,10 @@ const InformedConsentSection = ({
   } = consentData;
 
   const handleConsentChange = (field, value) => {
-    const updatedConsent = {
+    onConsentChange({
       ...consentData,
       [field]: value,
-    };
-
-    // Show warning if consent is withdrawn
-    if (field === "consentProvided" && !value) {
-      setShowWarning(true);
-    } else {
-      setShowWarning(false);
-    }
-
-    onConsentChange(updatedConsent);
+    });
   };
 
   return (
@@ -62,7 +51,7 @@ const InformedConsentSection = ({
       </Heading>
 
       {/* Warning when consent is not provided */}
-      {(!consentProvided || showWarning) && (
+      {!consentProvided && (
         <InlineNotification
           kind="warning"
           title={intl.formatMessage({
@@ -101,33 +90,32 @@ const InformedConsentSection = ({
 
         {/* Consent reference number field - optional */}
         {consentProvided && (
-          <Column lg={8} md={4} sm={4}>
-            <div style={{ marginTop: "1rem" }}>
-              <TextInput
-                id="consentReferenceNo"
-                labelText={intl.formatMessage({
-                  id: "collect.informedConsent.referenceNo",
-                  defaultMessage: "Consent Reference Number (Optional)",
-                })}
-                placeholder={intl.formatMessage({
-                  id: "collect.informedConsent.referenceNo.placeholder",
-                  defaultMessage: "Enter consent form or reference number",
-                })}
-                value={consentReferenceNo}
-                onChange={(e) =>
-                  handleConsentChange("consentReferenceNo", e.target.value)
-                }
-                disabled={isReadOnly}
-              />
-            </div>
+          <Column lg={8} md={4} sm={4} className="consent-field">
+            <TextInput
+              id="consentReferenceNo"
+              labelText={intl.formatMessage({
+                id: "collect.informedConsent.referenceNo",
+                defaultMessage: "Consent Reference Number (Optional)",
+              })}
+              placeholder={intl.formatMessage({
+                id: "collect.informedConsent.referenceNo.placeholder",
+                defaultMessage: "Enter consent form or reference number",
+              })}
+              maxLength={100}
+              value={consentReferenceNo}
+              onChange={(e) =>
+                handleConsentChange("consentReferenceNo", e.target.value)
+              }
+              disabled={isReadOnly}
+            />
           </Column>
         )}
 
         {/* Consent audit information - read-only */}
         {consentProvided && consentRecordedAt && (
-          <Column lg={16} md={8} sm={4}>
-            <div style={{ marginTop: "1rem", padding: "1rem", backgroundColor: "#f4f4f4", borderRadius: "4px" }}>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#525252" }}>
+          <Column lg={16} md={8} sm={4} className="consent-field">
+            <div className="consent-audit">
+              <p>
                 <strong>
                   <FormattedMessage
                     id="collect.informedConsent.auditInfo"

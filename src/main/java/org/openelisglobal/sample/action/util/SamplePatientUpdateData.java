@@ -929,10 +929,10 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * Update consent fields with proper audit trail.
-     * When consent is provided (true), auto-populate audit fields with current timestamp and user.
-     * When consent is withdrawn (false/null), clear all consent fields.
-     * Client-supplied audit values are ignored for security.
+     * Update consent fields with proper audit trail. When consent is provided
+     * (true), auto-populate audit fields with current timestamp and user. When
+     * consent is withdrawn (false/null), clear all consent fields. Client-supplied
+     * audit values are ignored for security.
      */
     private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
         Boolean consentProvided = sampleOrder.getConsentProvided();

@@ -199,7 +199,8 @@ public class SampleOrderService {
 
             // Map consent audit fields (read-only)
             if (sample.getConsentRecordedAt() != null) {
-                sampleOrder.setConsentRecordedAt(DateUtil.convertTimestampToStringDate(sample.getConsentRecordedAt()) + " " + DateUtil.convertTimestampToStringTime(sample.getConsentRecordedAt()));
+                sampleOrder.setConsentRecordedAt(DateUtil.convertTimestampToStringDate(sample.getConsentRecordedAt())
+                        + " " + DateUtil.convertTimestampToStringTime(sample.getConsentRecordedAt()));
             }
             sampleOrder.setConsentRecordedBy(sample.getConsentRecordedBy());
             sampleOrder.setConsentProvided(sample.getConsentProvided());
