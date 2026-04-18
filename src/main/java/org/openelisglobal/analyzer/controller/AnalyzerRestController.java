@@ -22,10 +22,12 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
+import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.FileImportService;
+import org.openelisglobal.analyzer.service.QcRuleDto;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -85,6 +87,9 @@ public class AnalyzerRestController extends BaseRestController {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    private AnalyzerQcRuleService analyzerQcRuleService;
 
     @Autowired
     private AnalyzerErrorService analyzerErrorService;
@@ -561,7 +566,7 @@ public class AnalyzerRestController extends BaseRestController {
     }
 
     /**
-     * POST /rest/analyzer/analyzers/{id}/delete Soft-delete an analyzer.
+     * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
      *
      * <p>
      * Always performs a soft delete: sets status to DELETED and active to false.
@@ -691,6 +696,10 @@ public class AnalyzerRestController extends BaseRestController {
         // dashboard. Jackson serializes Timestamp as epoch millis; the frontend
         // formats with toLocaleDateString().
         map.put("lastModified", analyzer.getLastupdated());
+
+        // FR-15: Active QC rules for bridge consumption
+        List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(analyzer.getId());
+        map.put("qcRules", qcRules);
 
         return map;
     }

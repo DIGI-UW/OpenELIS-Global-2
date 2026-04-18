@@ -48,7 +48,15 @@
   "configDefaults": {
     "connectionRole": "SERVER",
     "aggregationMode": "PER_MESSAGE",
-    "qcRules": [],
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ],
     "extractionOverrides": {},
     "flagMappings": {},
     "transforms": {}

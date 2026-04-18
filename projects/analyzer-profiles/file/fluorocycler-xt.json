@@ -29,6 +29,13 @@
   "configDefaults": {
     "fileFormat": "ODS",
     "hasHeader": true,
-    "sheetIndex": 0
+    "sheetIndex": 0,
+    "qcRules": [
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Positive", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Negative", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "Standard", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C+", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "C-", "isActive": true, "sortOrder": 5 }
+    ]
   }
 }

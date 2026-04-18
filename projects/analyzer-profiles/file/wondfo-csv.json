@@ -50,7 +50,14 @@
     "fileFormat": "CSV",
     "delimiter": ";",
     "hasHeader": true,
-    "skipRows": 1
+    "skipRows": 1,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 }
+    ]
   },
   "parsing_notes": {
     "metadata_row": "Row 0 is a metadata line containing instrument serial number. Skipped via skipRows=1.",
