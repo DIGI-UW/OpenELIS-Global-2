@@ -1455,9 +1455,19 @@ export function SearchResults(props) {
           : "/rest/storage/sample-items/assign",
         JSON.stringify(assignmentData),
         (response) => {
-          if (response && response.success) {
+          const isSuccess =
+            response &&
+            !response.error &&
+            !response.message &&
+            (response.assignmentId ||
+              response.movementId ||
+              response.hierarchicalPath ||
+              response.newHierarchicalPath);
+
+          if (isSuccess) {
             // Update local state with location path
-            const locationPath = response.hierarchicalPath || "";
+            const locationPath =
+              response.newHierarchicalPath || response.hierarchicalPath || "";
             const storedData = sampleLocations[analysisId];
             setSampleLocations((prev) => ({
               ...prev,
@@ -1473,6 +1483,18 @@ export function SearchResults(props) {
                 defaultMessage: "Location assigned successfully",
               }),
               kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+          } else {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message:
+                response?.message ||
+                intl.formatMessage({
+                  id: "storage.location.assigned.error",
+                  defaultMessage: "Failed to assign location",
+                }),
+              kind: NotificationKinds.error,
             });
             setNotificationVisible(true);
           }

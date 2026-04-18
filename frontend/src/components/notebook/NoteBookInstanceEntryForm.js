@@ -1002,9 +1002,19 @@ const NoteBookInstanceEntryForm = () => {
         JSON.stringify(assignmentData),
         async (response) => {
           const body = await response.json();
-          if (response.status === 200 && body.success) {
+          const isSuccess =
+            response.ok &&
+            !body.error &&
+            !body.message &&
+            (body.assignmentId ||
+              body.movementId ||
+              body.hierarchicalPath ||
+              body.newHierarchicalPath);
+
+          if (isSuccess) {
             // Update local state with location path
-            const locationPath = body.hierarchicalPath || "";
+            const locationPath =
+              body.newHierarchicalPath || body.hierarchicalPath || "";
             const storedData = sampleLocations[sampleItemId];
             setSampleLocations((prev) => ({
               ...prev,
@@ -1020,6 +1030,18 @@ const NoteBookInstanceEntryForm = () => {
                 defaultMessage: "Location assigned successfully",
               }),
               kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+          } else {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message:
+                body?.message ||
+                intl.formatMessage({
+                  id: "storage.location.assigned.error",
+                  defaultMessage: "Failed to assign location",
+                }),
+              kind: NotificationKinds.error,
             });
             setNotificationVisible(true);
           }
