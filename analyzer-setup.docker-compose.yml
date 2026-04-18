@@ -13,7 +13,7 @@
 #   docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml logs -f
 #
 # Services:
-#   - astm-simulator: Mock ASTM analyzer (HEMATOLOGY) at 172.20.1.100:5000
+#   - analyzer-mock: Mock ASTM analyzer (HEMATOLOGY) at 172.20.1.100:5000
 #   - openelis-analyzer-bridge: HTTP/ASTM protocol bridge at 172.20.1.101:12001
 #
 # Test Analyzers in Database:
@@ -24,11 +24,11 @@ services:
   # ASTM LIS2-A2 Mock Server
   # Simulates a laboratory analyzer for connection testing and field queries
   # ============================================================================
-  astm-simulator:
+  analyzer-mock:
     build:
       context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
-    container_name: openelis-astm-simulator
+    container_name: openelis-analyzer-mock
     ports:
       - "5000:5000"
     volumes:
@@ -49,7 +49,7 @@ services:
       start_period: 10s
     restart: unless-stopped
     labels:
-      - "com.openelis.service=astm-simulator"
+      - "com.openelis.service=analyzer-mock"
       - "com.openelis.purpose=testing"
 
   # ============================================================================
@@ -103,7 +103,7 @@ services:
       default:
         ipv4_address: 172.20.1.101
     depends_on:
-      astm-simulator:
+      analyzer-mock:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/app/healthcheck.sh"]

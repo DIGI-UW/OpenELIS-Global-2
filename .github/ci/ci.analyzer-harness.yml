@@ -1,27 +1,21 @@
 services:
-  astm-simulator:
+  analyzer-mock:
     build:
       context: ./tools/analyzer-mock-server
       dockerfile: Dockerfile
-    image: openelis-astm-simulator.ci
-    container_name: openelis-astm-simulator
-    # Harness lane accession (HARN-GX-*) — main repo copy so CI does not depend on
-    # analyzer-mock-server submodule revision for Playwright expectations.
+    image: openelis-analyzer-mock.ci
+    container_name: openelis-analyzer-mock
     volumes:
-      - ./projects/analyzer-harness/e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5000:9600"
       - "8085:8080"
-      - "5380:5380"
-      - "6001:6001"
-      - "6002:6002"
     environment:
-      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm"}'
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
-      - MOCK_CONTAINER_NAME=openelis-astm-simulator
+      - MOCK_CONTAINER_NAME=openelis-analyzer-mock
     command: >
       python -u server.py
       --port 9600
@@ -69,7 +63,7 @@ services:
       # TEST-ONLY: disables hostname verification for self-signed harness certs
       - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
-      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
+      - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=analyzer-mock
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
       - ORG_ITECH_AHB_MLLP_ENABLED=true
       - ORG_ITECH_AHB_MLLP_PORT=2575
@@ -88,7 +82,6 @@ services:
     volumes:
       - ./projects/analyzer-profiles:/data/analyzer-profiles:ro
       - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro
-      - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     networks:
       - default
       - analyzer-net

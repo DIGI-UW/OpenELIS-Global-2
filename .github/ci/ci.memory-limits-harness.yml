@@ -8,7 +8,7 @@ services:
         limits:
           memory: 512M
 
-  astm-simulator:
+  analyzer-mock:
     deploy:
       resources:
         limits:
