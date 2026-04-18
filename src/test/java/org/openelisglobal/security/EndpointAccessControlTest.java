@@ -39,8 +39,8 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * <p>
  * Uses lightweight stub controllers that carry only the {@code @PreAuthorize}
  * annotation under test — no real service dependencies, no deep autowiring.
- * This keeps the Spring context minimal and avoids cascading PermissionModuleService
- * / UserModuleService dependency chains.
+ * This keeps the Spring context minimal and avoids cascading
+ * PermissionModuleService / UserModuleService dependency chains.
  */
 @WebAppConfiguration
 @ContextConfiguration(classes = { EndpointAccessControlTest.TestConfig.class })
@@ -105,9 +105,17 @@ public class EndpointAccessControlTest extends SecuritySliceMockMvcTest {
             this.requiredPrivilege = requiredPrivilege;
         }
 
-        String category() { return category; }
-        String path() { return path; }
-        String requiredPrivilege() { return requiredPrivilege; }
+        String category() {
+            return category;
+        }
+
+        String path() {
+            return path;
+        }
+
+        String requiredPrivilege() {
+            return requiredPrivilege;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -153,8 +161,7 @@ public class EndpointAccessControlTest extends SecuritySliceMockMvcTest {
 
         @Bean
         SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                    .httpBasic(Customizer.withDefaults())
+            http.authorizeHttpRequests(auth -> auth.anyRequest().authenticated()).httpBasic(Customizer.withDefaults())
                     .csrf(csrf -> csrf.disable());
             return http.build();
         }

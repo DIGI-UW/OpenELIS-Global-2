@@ -122,10 +122,11 @@ depend on this.
       reference guard (should not infinite loop)
       `src/test/java/org/openelisglobal/privilege/service/PrivilegeServiceImplTest.java`
 
-- [x] T017 Write unit test asserting the auto-allow gap is closed — subclass
-      overrides `hasPermission()` → false, verifies REST paths receive HTTP 401
-      JSON (not a redirect). Renamed to `*Test` for Maven Surefire pickup.
-      `src/test/java/org/openelisglobal/interceptor/ModuleAuthenticationInterceptorTest.java`
+- [ ] T017 Write unit test asserting the auto-allow gap is closed — needs a real
+      integration test with module service wired up, verifying that an
+      unregistered REST path is denied (not auto-allowed). Previous subclass
+      stub was deleted as it only tested the trivially-true deny branch, not the
+      actual hasPermission() logic.
 
 **Checkpoint**: Unit tests green. Integration test for auto-allow denial passes.
 A `Validation` user's `GrantedAuthority` set at login includes
