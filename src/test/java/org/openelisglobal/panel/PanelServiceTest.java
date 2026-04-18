@@ -10,6 +10,8 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -152,5 +154,50 @@ public class PanelServiceTest extends BaseWebContextSensitiveTest {
         Panel fetchedPanel = panelService.getPanelByName("Dataset Panel 1");
         assertNotNull("Duplicate panel description should be detected", fetchedPanel);
         assertEquals("Existing panel should be returned", existingPanel.getId(), fetchedPanel.getId());
+    }
+
+    /**
+     * TEST 1: Insert duplicate panel name should throw exception
+     * <p>
+     * FIX: Set localization on panels before insert
+     *
+     * @throws LIMSDuplicateRecordException when duplicate name exists
+     */
+    /**
+     * TEST 2: Insert panel with duplicate description should throw exception
+     * <p>
+     * FIX: Set localization on new panel before insert
+     *
+     * @throws LIMSDuplicateRecordException when duplicate description exists
+     */
+    @Test(expected = LIMSDuplicateRecordException.class)
+    public void insert_shouldThrowException_whenDuplicatePanelDescriptionExists() throws Exception {
+        // STEP 1: Get existing panel
+        Panel existingPanel = panelService.getPanelByName("Dataset Panel 1");
+        assertNotNull("Panel should exist", existingPanel);
+        Localization localization = existingPanel.getLocalization();
+        assertNotNull("Localization should exist", localization);
+
+        // STEP 2: Create new panel with same description
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("Unique Panel Name");
+        newPanel.setDescription(existingPanel.getDescription()); // Same description
+        newPanel.setLocalization(localization); // SET LOCALIZATION
+
+        // Should throw LIMSDuplicateRecordException
+        panelService.insert(newPanel);
+    }
+
+    /**
+     * TEST 3: Get panel by non-existent ID should return null
+     * <p>
+     * CORRECT - No changes needed
+     */
+    @Test
+    public void getPanelById_shouldReturnNull_whenIdDoesNotExist() {
+        String missingPanelId = "-1";
+        Panel panel = panelService.getPanelById(missingPanelId);
+
+        assertNull("Should return null for non-existent ID", panel);
     }
 }

@@ -128,3 +128,4 @@ e2e-evidence-*.zip
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
+GSOC_ANALYSIS/
