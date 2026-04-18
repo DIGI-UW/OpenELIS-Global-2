@@ -9,47 +9,47 @@
     <changeSet id="OGC-557-2026-04-17-1" author="herbertYiga">
         <preConditions onFail="MARK_RAN">
             <not>
-                <columnExists tableName="sample" columnName="consent_provided"/>
+                <columnExists schemaName="clinlims" tableName="sample" columnName="consent_provided"/>
             </not>
         </preConditions>
 
         <!-- Add informed consent columns to sample table -->
-        <addColumn tableName="sample">
+        <addColumn schemaName="clinlims" tableName="sample">
             <column name="consent_provided" type="BOOLEAN">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
 
-        <addColumn tableName="sample">
+        <addColumn schemaName="clinlims" tableName="sample">
             <column name="consent_reference_no" type="VARCHAR(100)">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
 
-        <addColumn tableName="sample">
+        <addColumn schemaName="clinlims" tableName="sample">
             <column name="consent_recorded_at" type="TIMESTAMP">
                 <constraints nullable="true"/>
             </column>
         </addColumn>
 
-        <addColumn tableName="sample">
+        <addColumn schemaName="clinlims" tableName="sample">
             <column name="consent_recorded_by" type="NUMERIC(10)">
                 <constraints nullable="true" foreignKeyName="fk_sample_consent_recorded_by" references="system_user(id)"/>
             </column>
         </addColumn>
 
         <!-- Add index for consent queries -->
-        <createIndex tableName="sample" indexName="idx_sample_consent_provided">
+        <createIndex schemaName="clinlims" tableName="sample" indexName="idx_sample_consent_provided">
             <column name="consent_provided"/>
         </createIndex>
 
         <!-- Rollback -->
         <rollback>
-            <dropIndex tableName="sample" indexName="idx_sample_consent_provided"/>
-            <dropColumn tableName="sample" columnName="consent_recorded_by"/>
-            <dropColumn tableName="sample" columnName="consent_recorded_at"/>
-            <dropColumn tableName="sample" columnName="consent_reference_no"/>
-            <dropColumn tableName="sample" columnName="consent_provided"/>
+            <dropIndex schemaName="clinlims" tableName="sample" indexName="idx_sample_consent_provided"/>
+            <dropColumn schemaName="clinlims" tableName="sample" columnName="consent_recorded_by"/>
+            <dropColumn schemaName="clinlims" tableName="sample" columnName="consent_recorded_at"/>
+            <dropColumn schemaName="clinlims" tableName="sample" columnName="consent_reference_no"/>
+            <dropColumn schemaName="clinlims" tableName="sample" columnName="consent_provided"/>
         </rollback>
     </changeSet>
 
