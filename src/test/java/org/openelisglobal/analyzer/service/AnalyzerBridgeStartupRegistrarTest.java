@@ -9,7 +9,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,7 +16,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.FileImportConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 
@@ -58,37 +56,39 @@ public class AnalyzerBridgeStartupRegistrarTest {
 
     @Test
     public void shouldRegisterFileAnalyzerOnStartup() {
-        FileImportConfiguration cfg = new FileImportConfiguration();
-        cfg.setImportDirectory("/data/analyzer-imports/quantstudio");
-        cfg.setFilePattern("*.csv");
+        // Set unified FILE fields directly on Analyzer entity
+        analyzer.setImportDirectory("/data/analyzer-imports/quantstudio");
+        analyzer.setFilePattern("*.csv");
+        analyzer.setFileFormat("CSV");
+        analyzer.setDelimiter(",");
+        analyzer.setSkipRows(0);
 
         when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
-        when(fileImportService.getByAnalyzerId(2009)).thenReturn(Optional.of(cfg));
-        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any())).thenReturn(true);
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
 
-        // onStartup dispatches async — use timeout to wait for completion
         registrar.onStartup(rootContextRefreshedEvent());
 
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
-                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"), eq(Map.of()));
+                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"), eq(Map.of()), eq("CSV"), eq(","), eq(0));
     }
 
     @Test
     public void shouldRegisterFileAnalyzerWithColumnMappings() {
-        FileImportConfiguration cfg = new FileImportConfiguration();
-        cfg.setImportDirectory("/data/analyzer-imports/quantstudio");
-        cfg.setFilePattern("*.xlsx");
-        cfg.setColumnMappings(Map.of("Sample Name", "sampleId", "CT", "result"));
+        analyzer.setImportDirectory("/data/analyzer-imports/quantstudio");
+        analyzer.setFilePattern("*.xlsx");
+        analyzer.setFileFormat("EXCEL");
+        analyzer.setColumnMappings(Map.of("Sample Name", "sampleId", "CT", "result"));
 
         when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
-        when(fileImportService.getByAnalyzerId(2009)).thenReturn(Optional.of(cfg));
-        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any())).thenReturn(true);
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(true);
 
         registrar.onStartup(rootContextRefreshedEvent());
 
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
                 eq("/data/analyzer-imports/quantstudio"), eq("*.xlsx"),
-                eq(Map.of("Sample Name", "sampleId", "CT", "result")));
+                eq(Map.of("Sample Name", "sampleId", "CT", "result")), eq("EXCEL"), any(), any());
     }
 
     @Test
@@ -97,9 +97,8 @@ public class AnalyzerBridgeStartupRegistrarTest {
 
         registrar.onStartup(rootContextRefreshedEvent());
 
-        // Allow async work to complete, then verify no registration happened
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerFile(any(), any(), any(), any(),
-                any());
+                any(), any(), any(), any());
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerTcp(any(), any(), any(), any(),
                 any());
     }

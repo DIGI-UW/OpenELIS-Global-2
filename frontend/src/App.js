@@ -12,6 +12,7 @@ import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
+import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
 import EQADistributionDashboard from "./components/eqa/EQADistributionDashboard";
 import CreateDistribution from "./components/eqa/EQADistribution/CreateDistribution";
 import EQAOrdersPage from "./components/eqa/EQAOrdersPage";
@@ -62,6 +63,7 @@ import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
 import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
+import TATReport from "./components/reports/tat";
 import StudyValidation from "./components/validation/Index";
 const AnalyserResultIndex = React.lazy(
   () => import("./components/analyserResults/Index"),
@@ -100,6 +102,14 @@ const ShipmentReport = React.lazy(
 );
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
+import {
+  OrderProvider,
+  OrderDashboard,
+  OrderEnter,
+  OrderCollect,
+  OrderLabel,
+  OrderQA,
+} from "./components/order";
 
 export default function App() {
   const defaultLocale =
@@ -134,27 +144,19 @@ export default function App() {
   }, []);
 
   const getUserSessionDetails = async () => {
-    let counter = 0;
-    while (counter < 10) {
+    const maxRetries = 10;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(
-          config.serverBaseUrl + `/session`,
-          //includes the browser sessionId in the Header for Authentication on the backend server
-          { credentials: "include" },
-        );
+        const response = await fetch(config.serverBaseUrl + `/session`, {
+          credentials: "include",
+        });
         if (response.status === 200) {
           const jsonResp = await response.json();
           console.debug(JSON.stringify(jsonResp));
           if (jsonResp.authenticated) {
             localStorage.setItem("CSRF", jsonResp.csrf);
           }
-          if (
-            !Object.keys(jsonResp).every(
-              (key) => jsonResp[key] === userSessionDetails[key],
-            )
-          ) {
-            setUserSessionDetails(jsonResp);
-          }
+          setUserSessionDetails(jsonResp);
           setErrorLoadingSessionDetails(false);
           return jsonResp;
         } else {
@@ -164,7 +166,9 @@ export default function App() {
         }
       } catch (error) {
         console.error(error);
-        if (counter === 10) {
+        if (attempt < maxRetries - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else {
           const options = {
             title: "System Error",
             message: "Error : " + error.message,
@@ -182,10 +186,8 @@ export default function App() {
           confirmAlert(options);
         }
       }
-      ++counter;
     }
     setErrorLoadingSessionDetails(true);
-    return userSessionDetails;
   };
 
   const logout = () => {
@@ -362,7 +364,6 @@ export default function App() {
                 />
                 <SecureRoute
                   path="/admin"
-                  exact
                   component={() => <Admin />}
                   role={Roles.GLOBAL_ADMIN}
                 />
@@ -474,7 +475,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrder").default;
                     return <GenericSampleOrder />;
                   }}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/GenericSample/Edit"
@@ -484,7 +485,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrderEdit").default;
                     return <GenericSampleOrderEdit />;
                   }}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/GenericSample/Import"
@@ -494,7 +495,7 @@ export default function App() {
                       require("./components/genericSample/GenericSampleOrderImport").default;
                     return <GenericSampleOrderImport />;
                   }}
-                  role=""
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/FreezerMonitoring"
@@ -516,6 +517,47 @@ export default function App() {
                   )}
                   role={Roles.RECEPTION}
                 />
+                {/* Decoupled Sample Collection Workflow - NAV-2 */}
+                {/* Use Route with render to wrap all /order/* paths in shared OrderProvider */}
+                <Route
+                  path="/order"
+                  render={({ match }) => (
+                    <OrderProvider>
+                      <Switch>
+                        <SecureRoute
+                          path={`${match.path}`}
+                          exact
+                          component={() => <OrderDashboard />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/enter`}
+                          exact
+                          component={() => <OrderEnter />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/collect`}
+                          exact
+                          component={() => <OrderCollect />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/label`}
+                          exact
+                          component={() => <OrderLabel />}
+                          role={Roles.RECEPTION}
+                        />
+                        <SecureRoute
+                          path={`${match.path}/qa`}
+                          exact
+                          component={() => <OrderQA />}
+                          role={Roles.RECEPTION}
+                        />
+                      </Switch>
+                    </OrderProvider>
+                  )}
+                />
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
@@ -527,6 +569,12 @@ export default function App() {
                   exact
                   component={() => <FindOrder />}
                   role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/NceDashboard"
+                  exact
+                  component={() => <NonConformIndex form="NceDashboard" />}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
                 />
                 <SecureRoute
                   path="/ReportNonConformingEvent"
@@ -583,49 +631,49 @@ export default function App() {
                   path="/Alerts"
                   exact
                   component={() => <AlertsDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAOrders"
                   exact
                   component={() => <EQAOrdersPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAMyPrograms"
                   exact
                   component={() => <MyProgramsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAManagement"
                   exact
-                  component={() => <EQAManagementDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  component={() => <EQAProgramManagement />}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAResults"
                   exact
                   component={() => <EQAResultsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQAParticipants"
                   exact
                   component={() => <EQAParticipantsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQADistribution/create"
                   exact
                   component={() => <CreateDistribution />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/EQADistribution"
                   exact
                   component={() => <EQADistributionDashboard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                  role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
                   path="/Storage"
@@ -713,7 +761,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/:id/mappings"
@@ -725,7 +773,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/errors"
@@ -737,7 +785,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/custom-field-types"
@@ -749,7 +797,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/types"
@@ -761,7 +809,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc"
@@ -773,7 +821,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/alerts"
@@ -785,7 +833,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/analyzers/qc/corrective-actions"
@@ -797,7 +845,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.LAB_SUPERVISOR}
+                  role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
                   path="/PatientHistory"
@@ -809,7 +857,7 @@ export default function App() {
                   path="/PatientMerge"
                   exact
                   component={() => <PatientMerge />}
-                  role={Roles.GLOBAL_ADMIN}
+                  role={Roles.RECEPTION}
                 />
                 <SecureRoute
                   path="/GenericSample/Results"
@@ -965,6 +1013,12 @@ export default function App() {
                   path="/AuditTrailReport"
                   exact
                   component={() => <AuditTrailReportIndex />}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/TATReport"
+                  exact
+                  component={() => <TATReport />}
                   role={Roles.REPORTS}
                 />
                 <SecureRoute

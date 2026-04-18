@@ -39,6 +39,7 @@ public class SiteInformationServiceImpl extends AuditableBaseObjectServiceImpl<S
 
     public SiteInformationServiceImpl() {
         super(SiteInformation.class);
+        this.auditTrailLog = true;
     }
 
     @Override

@@ -6,12 +6,12 @@ import {
   SelectItem,
   Stack,
   TextInput,
-  TimePicker,
   Column,
   Grid,
 } from "@carbon/react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import CustomDatePicker from "../common/CustomDatePicker";
+import CustomTimePicker from "../common/CustomTimePicker";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { priorities } from "../data/orderOptions";
@@ -183,12 +183,12 @@ const AddOrder = (props) => {
     });
   }
 
-  function handleReceivedTime(e) {
+  function handleReceivedTime(time) {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        receivedTime: e.target.value,
+        receivedTime: time,
       },
     });
   }
@@ -578,7 +578,7 @@ const AddOrder = (props) => {
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <TimePicker
+              <CustomTimePicker
                 id="order_receivedTime"
                 labelText={intl.formatMessage({ id: "order.reception.time" })}
                 onChange={handleReceivedTime}

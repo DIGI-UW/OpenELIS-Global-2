@@ -74,14 +74,14 @@ const ParticipantsTab = ({ programs }) => {
   }, [selectedProgramId]);
 
   const fetchOrganizations = useCallback(() => {
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
-      (data) => {
-        if (data && Array.isArray(data)) {
-          setOrganizations(data);
-        }
-      },
-    );
+    getFromOpenElisServer("/rest/organization-list", (data) => {
+      if (data && Array.isArray(data)) {
+        const active = data
+          .filter((o) => o.isActive === "Y")
+          .map((o) => ({ id: o.id, value: o.organizationName }));
+        setOrganizations(active);
+      }
+    });
   }, []);
 
   useEffect(() => {
