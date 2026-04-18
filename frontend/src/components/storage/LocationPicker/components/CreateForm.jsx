@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Dropdown, Button, Modal, TextInput } from "@carbon/react";
+import {
+  Dropdown,
+  Button,
+  Modal,
+  TextInput,
+  InlineNotification,
+} from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
@@ -96,6 +102,17 @@ export default function CreateForm({ selection, onLevelChange }) {
     box: [],
   });
   const [inlineCreate, setInlineCreate] = useState(null); // { level, name } | null
+  const [createError, setCreateError] = useState(null);
+
+  const openInlineCreate = (level) => {
+    setCreateError(null);
+    setInlineCreate({ level, name: "" });
+  };
+
+  const closeInlineCreate = () => {
+    setCreateError(null);
+    setInlineCreate(null);
+  };
 
   const setLevelOptions = (key, values) => {
     setOptions((prev) => ({
@@ -195,9 +212,17 @@ export default function CreateForm({ selection, onLevelChange }) {
         id: response.id,
         name: response.name || response.label,
       });
-      setInlineCreate(null);
+      closeInlineCreate();
     } catch (error) {
-      console.error(error);
+      // Keep the modal open so the user can correct the input and retry. The
+      // message is already user-facing (see useCreateLocation).
+      setCreateError(
+        error?.message ||
+          intl.formatMessage({
+            id: "storage.picker.inlineCreate.error",
+            defaultMessage: "Failed to create location",
+          }),
+      );
     }
   };
 
@@ -246,7 +271,7 @@ export default function CreateForm({ selection, onLevelChange }) {
               size="sm"
               renderIcon={Add}
               disabled={!enabled}
-              onClick={() => setInlineCreate({ level: key, name: "" })}
+              onClick={() => openInlineCreate(key)}
             >
               <FormattedMessage
                 id="storage.picker.addNew"
@@ -285,9 +310,22 @@ export default function CreateForm({ selection, onLevelChange }) {
             defaultMessage: "Cancel",
           })}
           onRequestSubmit={handleCreate}
-          onRequestClose={() => setInlineCreate(null)}
-          onSecondarySubmit={() => setInlineCreate(null)}
+          onRequestClose={closeInlineCreate}
+          onSecondarySubmit={closeInlineCreate}
         >
+          {createError && (
+            <InlineNotification
+              kind="error"
+              role="alert"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "storage.picker.inlineCreate.error.title",
+                defaultMessage: "Could not create location",
+              })}
+              subtitle={createError}
+            />
+          )}
           <TextInput
             id="location-picker-inline-create-name"
             labelText={intl.formatMessage({

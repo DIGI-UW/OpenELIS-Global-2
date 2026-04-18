@@ -193,4 +193,94 @@ describe("CreateForm — inline create", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(onLevelChange).not.toHaveBeenCalled();
   });
+
+  it("surfaces a Carbon InlineNotification when the backend rejects the create", async () => {
+    mockRoomsApi([]);
+    // Simulate backend rejection: useCreateLocation treats a body without `id`
+    // as a failure and rejects with the server-provided message.
+    Utils.postToOpenElisServerJsonResponse.mockImplementation(
+      (url, body, cb) => {
+        cb({ error: "Duplicate name 'Main Lab'" });
+      },
+    );
+    const onLevelChange = jest.fn();
+    renderWithIntl(<CreateForm selection={{}} onLevelChange={onLevelChange} />);
+    fireEvent.click(screen.getAllByRole("button", { name: /add new/i })[0]);
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Main Lab" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    });
+    await waitFor(() => {
+      // Modal stays open on error so the user can retry or correct.
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      // Carbon InlineNotification with kind="error" renders role=alert. This
+      // disambiguates from Dropdown's hidden a11y live region (role=status).
+      const notification = screen.getByRole("alert");
+      expect(notification).toHaveTextContent(/Duplicate name/i);
+    });
+    expect(onLevelChange).not.toHaveBeenCalled();
+  });
+
+  it("clears the error when the user edits the name and retries successfully", async () => {
+    mockRoomsApi([]);
+    let callCount = 0;
+    Utils.postToOpenElisServerJsonResponse.mockImplementation(
+      (url, body, cb) => {
+        callCount += 1;
+        if (callCount === 1) {
+          cb({ error: "Duplicate name" });
+        } else {
+          cb({ id: 42, name: "Fresh Lab", active: true });
+        }
+      },
+    );
+    const onLevelChange = jest.fn();
+    renderWithIntl(<CreateForm selection={{}} onLevelChange={onLevelChange} />);
+    fireEvent.click(screen.getAllByRole("button", { name: /add new/i })[0]);
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Main Lab" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    });
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Fresh Lab" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    });
+    await waitFor(() => {
+      expect(onLevelChange).toHaveBeenCalledWith("room", {
+        id: 42,
+        name: "Fresh Lab",
+      });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("clears the error when the user cancels and reopens the dialog", async () => {
+    mockRoomsApi([]);
+    Utils.postToOpenElisServerJsonResponse.mockImplementation(
+      (url, body, cb) => {
+        cb({ error: "Duplicate name" });
+      },
+    );
+    renderWithIntl(<CreateForm selection={{}} onLevelChange={jest.fn()} />);
+    fireEvent.click(screen.getAllByRole("button", { name: /add new/i })[0]);
+    fireEvent.change(screen.getByLabelText(/^name$/i), {
+      target: { value: "Main Lab" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    });
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /add new/i })[0]);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });
