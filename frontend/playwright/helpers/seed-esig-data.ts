@@ -3,8 +3,6 @@
  *
  * Creates sample orders via the OpenELIS REST API using the authenticated
  * browser session — same path as the React UI. No direct database access.
- *
- * Modeled on seed-tat-data.ts.
  */
 import { Page } from "@playwright/test";
 import { createSampleOrder } from "./seed-tat-data";
