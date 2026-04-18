@@ -16,22 +16,39 @@
   ],
   "column_mapping": {
     "Serial Number": "deviceSerialNumber",
+    "SerialNumber": "deviceSerialNumber",
     "Sample Number": "sampleId",
+    "SampleNumber": "sampleId",
+    "Sample ID": "sampleId",
     "Test Name": "testCode",
+    "TestName": "testCode",
     "Result": "result",
     "Unit": "unit",
     "Reference Range": "referenceRange",
+    "ReferenceRange": "referenceRange",
     "Date/Time": "dateTime",
+    "Date Time": "dateTime",
     "Reagent Lot": "reagentLot",
+    "ReagentLot": "reagentLot",
     "QC Status": "qcStatus"
   },
   "default_test_mappings": [
-    { "test_code": "TSH", "test_name_hint": "Thyroid Stimulating Hormone", "loinc": "11580-8", "unit": "mIU/L" },
-    { "test_code": "β-hCG", "test_name_hint": "Beta-Human Chorionic Gonadotropin", "loinc": "21198-7", "unit": "mIU/mL" }
+    {
+      "test_code": "TSH",
+      "test_name_hint": "Thyroid Stimulating Hormone",
+      "loinc": "11580-8",
+      "unit": "mIU/L"
+    },
+    {
+      "test_code": "β-hCG",
+      "test_name_hint": "Beta-Human Chorionic Gonadotropin",
+      "loinc": "21198-7",
+      "unit": "mIU/mL"
+    }
   ],
   "configDefaults": {
     "fileFormat": "CSV",
-    "delimiter": ",",
+    "delimiter": ";",
     "hasHeader": true,
     "skipRows": 1
   },
