@@ -21,6 +21,7 @@
     "WellPosition": "position",
     "SampleID": "sampleId",
     "Abs": "result",
+    "Interpretation": "interpretation",
     "TestCode": "testCode"
   },
   "locale_support": {
