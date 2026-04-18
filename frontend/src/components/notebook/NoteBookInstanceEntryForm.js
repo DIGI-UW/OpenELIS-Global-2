@@ -72,6 +72,7 @@ import {
   getDeepestLocationSelection,
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
+import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAssignmentResponse";
 import GenericSampleOrder from "../genericSample/GenericSampleOrder";
 import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
@@ -1002,14 +1003,7 @@ const NoteBookInstanceEntryForm = () => {
         JSON.stringify(assignmentData),
         async (response) => {
           const body = await response.json();
-          const isSuccess =
-            response.ok &&
-            !body.error &&
-            !body.message &&
-            (body.assignmentId ||
-              body.movementId ||
-              body.hierarchicalPath ||
-              body.newHierarchicalPath);
+          const isSuccess = response.ok && isStorageAssignmentSuccess(body);
 
           if (isSuccess) {
             // Update local state with location path

@@ -43,6 +43,7 @@ import {
   getDeepestLocationSelection,
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
+import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAssignmentResponse";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
@@ -1455,14 +1456,7 @@ export function SearchResults(props) {
           : "/rest/storage/sample-items/assign",
         JSON.stringify(assignmentData),
         (response) => {
-          const isSuccess =
-            response &&
-            !response.error &&
-            !response.message &&
-            (response.assignmentId ||
-              response.movementId ||
-              response.hierarchicalPath ||
-              response.newHierarchicalPath);
+          const isSuccess = isStorageAssignmentSuccess(response);
 
           if (isSuccess) {
             // Update local state with location path
