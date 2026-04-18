@@ -166,6 +166,60 @@ describe("LocationPickerModal", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  it("clears stale state (mode, notes, reason) when closed and reopened", () => {
+    const Wrap = ({ isOpen, currentLocation }) => (
+      <IntlProvider locale="en" messages={{}}>
+        <LocationPickerModal
+          isOpen={isOpen}
+          sample={mockSample}
+          currentLocation={currentLocation}
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+        />
+      </IntlProvider>
+    );
+    const { rerender } = render(
+      <Wrap
+        isOpen
+        currentLocation={{
+          selection: { room: { id: 1, name: "Main Lab" } },
+          position: null,
+        }}
+      />,
+    );
+
+    // Dirty the state: switch to create mode, type a reason + notes.
+    fireEvent.click(
+      screen.getByRole("button", { name: /create new location/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/reason for move/i), {
+      target: { value: "freezer failure" },
+    });
+    fireEvent.change(screen.getByLabelText(/^notes$/i), {
+      target: { value: "moved urgently" },
+    });
+
+    // Close and reopen with the same currentLocation.
+    rerender(<Wrap isOpen={false} />);
+    rerender(
+      <Wrap
+        isOpen
+        currentLocation={{
+          selection: { room: { id: 1, name: "Main Lab" } },
+          position: null,
+        }}
+      />,
+    );
+
+    // Mode is back to search (the create-mode trigger is visible again).
+    expect(
+      screen.getByRole("button", { name: /create new location/i }),
+    ).toBeInTheDocument();
+    // Reason and notes are empty.
+    expect(screen.getByLabelText(/reason for move/i)).toHaveValue("");
+    expect(screen.getByLabelText(/^notes$/i)).toHaveValue("");
+  });
+
   it("Confirm button passes the picker payload to onConfirm", () => {
     Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.startsWith("/rest/storage/rooms"))

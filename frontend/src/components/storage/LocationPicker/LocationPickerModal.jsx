@@ -43,17 +43,22 @@ export default function LocationPickerModal({
     currentLocation ? { initialAssignment: currentLocation } : {},
   );
 
-  // Reset picker state when the modal opens (so a previous open's state
-  // doesn't leak into a new sample's flow). Only re-init when isOpen
-  // transitions to true.
+  // Reset picker state when the modal opens (so a previous open's mode,
+  // search query, reason, notes, etc. don't leak into the new flow). Then
+  // preload selection/position from currentLocation for movement contexts.
+  // Only re-init when isOpen transitions to true.
   useEffect(() => {
     if (!isOpen) return;
-    dispatch({
-      type: "PRELOAD",
-      selection: currentLocation?.selection || {},
-      position: currentLocation?.position || null,
-    });
-    // dispatch is stable from useReducer; no need to include
+    dispatch({ type: "RESET", initialAssignment: currentLocation || null });
+    if (currentLocation) {
+      dispatch({
+        type: "PRELOAD",
+        selection: currentLocation.selection || {},
+        position: currentLocation.position || null,
+      });
+    }
+    // dispatch is stable from useReducer; currentLocation intentionally
+    // omitted — we only want to reset on the isOpen rising edge.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 

@@ -274,4 +274,61 @@ describe("useLocationPicker reducer", () => {
       expect(before).toEqual(beforeSnapshot);
     });
   });
+
+  describe("RESET (modal reopen / clean slate)", () => {
+    // The modal re-uses the same useLocationPicker hook across opens. Without
+    // RESET, a previous open's stale mode / searchQuery / searchResults /
+    // reason / notes would leak into the next open.
+    it("returns every field to initialState", () => {
+      const dirty = {
+        ...initialState,
+        mode: "create",
+        selection: { room: { id: 1, name: "Main Lab" } },
+        position: { mode: "text", value: "back left" },
+        searchQuery: "freezer",
+        searchResults: [{ id: 5, type: "device", name: "Freezer 1" }],
+        reason: "old reason",
+        notes: "old notes",
+        capacityWarning: { kind: "shelf", over: 1 },
+      };
+      const next = reducer(dirty, { type: "RESET" });
+      expect(next.mode).toBe("search");
+      expect(next.selection).toEqual({});
+      expect(next.position).toBeNull();
+      expect(next.searchQuery).toBe("");
+      expect(next.searchResults).toEqual([]);
+      expect(next.reason).toBe("");
+      expect(next.notes).toBe("");
+      expect(next.capacityWarning).toBeNull();
+    });
+
+    it("preserves the hook's original initialAssignment by default", () => {
+      const assignment = {
+        selection: { room: { id: 1, name: "Main Lab" } },
+        position: null,
+      };
+      const dirty = {
+        ...initialState,
+        initialAssignment: assignment,
+        reason: "dirty",
+      };
+      const next = reducer(dirty, { type: "RESET" });
+      expect(next.initialAssignment).toEqual(assignment);
+      expect(next.reason).toBe("");
+    });
+
+    it("overrides initialAssignment when the action provides one", () => {
+      const prev = { selection: {}, position: null };
+      const nextAssignment = {
+        selection: { room: { id: 2, name: "Other Lab" } },
+        position: { mode: "text", value: "x" },
+      };
+      const state = { ...initialState, initialAssignment: prev };
+      const next = reducer(state, {
+        type: "RESET",
+        initialAssignment: nextAssignment,
+      });
+      expect(next.initialAssignment).toEqual(nextAssignment);
+    });
+  });
 });

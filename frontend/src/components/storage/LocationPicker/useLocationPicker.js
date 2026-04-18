@@ -110,6 +110,17 @@ export function reducer(state, action) {
         position: action.position,
       };
 
+    case "RESET": {
+      // Clean slate on modal reopen. Preserves the hook's original
+      // initialAssignment unless the action explicitly replaces it, so the
+      // "is-movement" snapshot captured at hook init survives a reset.
+      const nextAssignment =
+        action.initialAssignment !== undefined
+          ? action.initialAssignment
+          : state.initialAssignment;
+      return { ...initialState, initialAssignment: nextAssignment };
+    }
+
     default:
       return state;
   }
