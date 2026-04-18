@@ -190,7 +190,7 @@ export default function LocationPickerPage({
             id: "storage.move.reason.label",
             defaultMessage: "Reason for Move",
           })}
-          value={state.reason || ""}
+          value={state.reason}
           onChange={(e) =>
             dispatch({ type: "SET_REASON", reason: e.target.value })
           }
@@ -220,7 +220,7 @@ export default function LocationPickerPage({
           id: "storage.picker.notes",
           defaultMessage: "Notes",
         })}
-        value={state.notes || ""}
+        value={state.notes}
         onChange={(e) => dispatch({ type: "SET_NOTES", notes: e.target.value })}
       />
 

@@ -32,6 +32,9 @@ export const initialState = {
   searchQuery: "",
   searchResults: [],
   initialAssignment: null,
+  reason: "",
+  notes: "",
+  capacityWarning: null,
 };
 
 /**

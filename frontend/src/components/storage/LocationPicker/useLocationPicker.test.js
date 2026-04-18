@@ -16,6 +16,16 @@ describe("useLocationPicker reducer", () => {
       expect(initialState.initialAssignment).toBeNull();
     });
 
+    it("initializes every documented field so controlled inputs never see undefined", () => {
+      // The docstring on useLocationPicker declares reason/notes/capacityWarning
+      // as part of the state shape. initialState must match the contract so
+      // consumers can read state.reason/state.notes directly without
+      // `|| ""` fallbacks and without React controlled/uncontrolled warnings.
+      expect(initialState.reason).toBe("");
+      expect(initialState.notes).toBe("");
+      expect(initialState.capacityWarning).toBeNull();
+    });
+
     it("createInitialState merges in an initialAssignment for movement context", () => {
       const initialAssignment = {
         selection: {
