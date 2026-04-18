@@ -364,10 +364,11 @@ public class SamplePatientUpdateData {
         }
 
         // Set domain based on workflow type (OGC-356)
-        // Environmental samples use "E" domain, clinical/human samples use "H" domain
         String workflowType = sampleOrder.getEnvironmentalFieldAsString("workflowType");
         if ("environmental".equals(workflowType)) {
             sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.environmental"));
+        } else if ("vector".equals(workflowType)) {
+            sample.setDomain("V");
         } else {
             sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
         }
@@ -653,6 +654,9 @@ public class SamplePatientUpdateData {
 
         // Add environmental workflow observations (OGC-356)
         addEnvironmentalObservations(sampleOrder, observationHistoryService);
+
+        // Add vector surveillance observations
+        addVectorObservations(sampleOrder, observationHistoryService);
     }
 
     /**
@@ -729,6 +733,58 @@ public class SamplePatientUpdateData {
                 ValueType.LITERAL);
         createObservation(getStringValue(envFields, "contactPhone"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_CONTACT_PHONE),
+                ValueType.LITERAL);
+    }
+
+    private void addVectorObservations(SampleOrderItem sampleOrder,
+            ObservationHistoryService observationHistoryService) {
+        if (sampleOrder.getEnvironmentalFields() == null || sampleOrder.getEnvironmentalFields().isEmpty()) {
+            return;
+        }
+        if (!"vector".equals(sampleOrder.getEnvironmentalFieldAsString("workflowType"))) {
+            return;
+        }
+
+        java.util.Map<String, Object> envFields = sampleOrder.getEnvironmentalFields();
+
+        createObservation(getStringValue(envFields, "workflowType"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_WORKFLOW_TYPE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecOrganismGroupId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_ORGANISM_GROUP_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecSpeciesId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SPECIES_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecLifecycleStage"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_LIFECYCLE_STAGE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecTrapTypeId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TRAP_TYPE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecPoolingMethod"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_POOLING_METHOD),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecPoolCount"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_POOL_COUNT),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecSamplesPerPool"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_SAMPLES_PER_POOL),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecPathogensOfInterest"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_PATHOGENS_OF_INTEREST),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecCollectionSiteId"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_ID),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecCollectionSiteName"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_NAME),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecGpsLatitude"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LATITUDE),
+                ValueType.LITERAL);
+        createObservation(getStringValue(envFields, "vecGpsLongitude"),
+                observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LONGITUDE),
                 ValueType.LITERAL);
     }
 

@@ -42,7 +42,15 @@ public class ObservationHistoryServiceImpl extends AuditableBaseObjectServiceImp
         ENV_SITE_TYPE("envSiteType"), ENV_SITE_SUBTYPE("envSiteSubtype"),
         ENV_ENVIRONMENTAL_ZONE("envEnvironmentalZone"), ENV_REGULATORY_REFERENCE("envRegulatoryReference"),
         ENV_COLLECTION_METHOD("envCollectionMethod"), ENV_CONTACT_PERSON("envContactPerson"),
-        ENV_CONTACT_PHONE("envContactPhone");
+        ENV_CONTACT_PHONE("envContactPhone"),
+        // Vector surveillance observation types
+        VS_WORKFLOW_TYPE("vecWorkflowType"), VS_ORGANISM_GROUP_ID("vecOrganismGroupId"),
+        VS_SPECIES_ID("vecSpeciesId"), VS_LIFECYCLE_STAGE("vecLifecycleStage"),
+        VS_TRAP_TYPE_ID("vecTrapTypeId"), VS_POOLING_METHOD("vecPoolingMethod"),
+        VS_POOL_COUNT("vecPoolCount"), VS_SAMPLES_PER_POOL("vecSamplesPerPool"),
+        VS_PATHOGENS_OF_INTEREST("vecPathogensOfInterest"), VS_COLLECTION_SITE_ID("vecCollectionSiteId"),
+        VS_COLLECTION_SITE_NAME("vecCollectionSiteName"), VS_GPS_LATITUDE("vecGpsLatitude"),
+        VS_GPS_LONGITUDE("vecGpsLongitude");
 
         private String dbName;
 
