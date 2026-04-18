@@ -1,3 +1,12 @@
+> **STATUS: Historical — completed 2026-04 (bannered 2026-04-18)**. All M1A,
+> M1B, M2, M3, M4 milestones shipped. `ExcelAnalyzerReader` is in the plugins
+> submodule; GenericFile is a peer of GenericASTM/GenericHL7; all FILE analyzers
+> (FluoroCycler, Tecan, Multiskan, Wondfo, QuantStudio, GeneXpert-CSV) flow
+> through the generic-file path.
+>
+> - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`
+
 # Implementation Plan: File Stream Alignment — GenericFile Coordination
 
 ## 2026-03-18 Ownership Override (014 Remediation)

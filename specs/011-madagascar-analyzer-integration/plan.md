@@ -1,3 +1,13 @@
+> **STATUS: Historical (bannered 2026-04-18)** — MVP delivered. This plan (dated
+> 2026-01-22 with "contract deadline 2026-02-28", M0–M21 milestones,
+> RS232-via-bridge, Cypress 12.x as E2E) is superseded. Current state:
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+>   (2026-03-26)
+> - **Delivery tracking:** Jira OGC-\* + per-PR commits, not this plan
+> - **Test harness:** `projects/analyzer-harness/seed-analyzers.sh` +
+>   `ci-parity-test.sh`
+
 # Implementation Plan: Madagascar Analyzer Integration
 
 **Branch**: `feat/011-madagascar-analyzer-integration` | **Date**: 2026-01-22 |

@@ -1,3 +1,9 @@
+> **STATUS: Historical (bannered 2026-04-18)** — task list tied to the retired
+> January 2026 plan. Current delivery is tracked via Jira OGC-\* tickets and
+> per-PR commits, not this document.
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+
 # Tasks: Madagascar Analyzer Integration
 
 **Feature**: 011-madagascar-analyzer-integration **Input**: Design documents

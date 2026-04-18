@@ -1,3 +1,13 @@
+> **STATUS: Historical (bannered 2026-04-18)** — kept for context; do NOT use as
+> live source of truth. The fleet and architecture narrative below (12-analyzer
+> matrix, RS232 bridge, contract-deadline framing) describes pre-March 2026
+> planning. Current state:
+>
+> - **Canonical roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Live analyzer seed:** `projects/analyzer-harness/seed-analyzers.sh`
+> - **Live profile set:** `projects/analyzer-profiles/{astm,hl7,file}/*.json`
+>   (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror)
+
 # Feature Specification: Madagascar Analyzer Integration
 
 **Feature Branch**: `spec/011-madagascar-analyzer-integration` **Created**:

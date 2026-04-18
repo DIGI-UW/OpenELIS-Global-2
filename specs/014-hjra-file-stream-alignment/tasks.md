@@ -1,3 +1,9 @@
+> **STATUS: Historical — completed 2026-04 (bannered 2026-04-18)**. Tied to the
+> 1-shot M1A→M4 sequencing plan; all milestones shipped. Delivery is tracked via
+> Jira OGC-\* and per-PR commits.
+>
+> - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+
 # Tasks: File Stream Alignment — GenericFile Coordination
 
 **Input**: Design documents from `specs/014-hjra-file-stream-alignment/`
