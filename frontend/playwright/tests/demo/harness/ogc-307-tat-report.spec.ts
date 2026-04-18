@@ -34,9 +34,16 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
   test.describe.configure({ mode: "serial" });
 
   // Seed once: run result entry + validation through the full app flow
-  // against existing fixture accessions, populating the milestone
-  // timestamps the TAT Report needs. Also seed holidays for Working
-  // Time calculations.
+  // against the 13 fixture accessions in HARNESS_LANE_ACCESSIONS,
+  // populating the milestone timestamps the TAT Report queries. Also
+  // seed holidays for Working Time calculations.
+  //
+  // Fixture dependency: `analyzer-harness-lane-data.sql` must be loaded
+  // (via `load-test-fixtures.sh --analyzers=full`). That's why this
+  // spec lives under `tests/demo/harness/` — the `playwright-harness`
+  // CI job (fixture_mode: harness) is the only environment where those
+  // accessions exist in NotStarted status. Locally, `reset-env.sh
+  // --full-reset` in `projects/analyzer-harness/` loads the same set.
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
       storageState: "playwright/.auth/user.json",
