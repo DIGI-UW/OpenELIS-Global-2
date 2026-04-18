@@ -144,25 +144,24 @@ export default function SearchField({
         >
           {results.map((result, index) => {
             const optionId = `storage-location-search-option-${index}`;
-            const isSelected =
+            const isSelected = Boolean(
               deepestSelectedLevel &&
-              result.type === deepestSelectedLevel &&
-              String(result.id) === selectedResultId;
+                result.type === deepestSelectedLevel &&
+                String(result.id) === selectedResultId,
+            );
+            // Canonical ARIA 1.2 combobox pattern: the input is the
+            // sole keyboard tab stop; list options are not tab-reachable.
+            // Navigation is via arrow keys on the input, selection is
+            // surfaced via aria-activedescendant. Mouse users get onClick.
             return (
               <li
                 id={optionId}
                 key={`${result.type || "loc"}-${result.id || index}-${index}`}
                 role="option"
                 aria-selected={isSelected}
-                tabIndex={0}
+                tabIndex={-1}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => onSelect(result)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelect(result);
-                  }
-                }}
               >
                 {result.hierarchicalPath || result.name}
               </li>

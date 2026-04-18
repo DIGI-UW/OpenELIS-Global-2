@@ -348,6 +348,76 @@ describe("SearchField", () => {
     expect(onSelect).toHaveBeenCalledWith(result);
   });
 
+  it("uses tabIndex=-1 on every option (canonical ARIA combobox: input is sole tab stop)", () => {
+    render(
+      <SearchField
+        query="Lab"
+        results={[
+          {
+            id: 5,
+            type: "device",
+            name: "Freezer 1",
+            hierarchicalPath: "Main Lab > Freezer 1",
+          },
+          { id: 1, type: "room", name: "Main Lab" },
+        ]}
+        onQueryChange={jest.fn()}
+        onResultsChange={jest.fn()}
+        onSelect={jest.fn()}
+      />,
+    );
+    const options = screen.getAllByRole("option");
+    expect(options).toHaveLength(2);
+    options.forEach((option) => {
+      expect(option).toHaveAttribute("tabindex", "-1");
+    });
+  });
+
+  it("renders aria-selected=false on every option when no selection is set", () => {
+    render(
+      <SearchField
+        query="Lab"
+        results={[
+          { id: 1, type: "room", name: "Main Lab" },
+          { id: 2, type: "room", name: "Secondary Lab" },
+        ]}
+        onQueryChange={jest.fn()}
+        onResultsChange={jest.fn()}
+        onSelect={jest.fn()}
+      />,
+    );
+    screen.getAllByRole("option").forEach((option) => {
+      expect(option).toHaveAttribute("aria-selected", "false");
+    });
+  });
+
+  it("renders duplicate-ish results without React key collisions", () => {
+    // Two results with no id → without a trailing-index key fragment,
+    // both would render with the same React key. Regression guard for
+    // comment 3096884902 (key collision).
+    const warn = jest.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <SearchField
+        query="Lab"
+        results={[
+          { type: "room", name: "First Unnamed" },
+          { type: "room", name: "Second Unnamed" },
+        ]}
+        onQueryChange={jest.fn()}
+        onResultsChange={jest.fn()}
+        onSelect={jest.fn()}
+      />,
+    );
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    const keyWarning = warn.mock.calls.find(
+      ([msg]) =>
+        typeof msg === "string" &&
+        msg.includes("Each child in a list should have a unique"),
+    );
+    expect(keyWarning).toBeUndefined();
+    warn.mockRestore();
+  });
+
   it("renders no listbox when results is empty (no stale UI)", () => {
     render(
       <SearchField
