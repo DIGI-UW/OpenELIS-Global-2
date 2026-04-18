@@ -15,9 +15,21 @@ import type { Page } from "@playwright/test";
  *     visually-hidden; .check()/getByLabel().check() fails actionability)
  */
 
+/**
+ * Backend enforces MAX_CODE_LENGTH = 10 in CodeValidationServiceImpl and
+ * storage_room.code is VARCHAR(10) (Liquibase 012-update-code-column-length).
+ * Pattern is ^[A-Z0-9][A-Z0-9_-]*$ after server-side uppercase normalization.
+ * 2-char prefix + 6-char base36 slice = 8 chars, well under the cap and
+ * still unique per-millisecond.
+ */
+function makeShortCode(prefix: string): string {
+  const slice = Date.now().toString(36).slice(-6).toUpperCase();
+  return `${prefix}${slice}`;
+}
+
 async function createRoom(page: Page, suffix: string) {
   const roomName = `PW Room ${suffix}`;
-  const roomCode = `PR-${suffix}`;
+  const roomCode = makeShortCode("PR");
 
   await test.step(`create room "${roomName}"`, async () => {
     await page.goto("/Storage/rooms/new", { waitUntil: "domcontentloaded" });

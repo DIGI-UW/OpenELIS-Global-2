@@ -21,11 +21,14 @@ async function findInProgressLabNumber(
   const response = await request.get(
     "/api/OpenELIS-Global/rest/home-dashboard/ORDERS_IN_PROGRESS",
   );
+  // Explicit status assertion (not response.ok() — see
+  // .specify/guides/playwright-best-practices.md). This is a seed-lookup
+  // precondition; UI assertions below are the real pass/fail.
   expect(
-    response.ok(),
-    `ORDERS_IN_PROGRESS endpoint returned ${response.status()} — ` +
-      "API must be reachable and authenticated before running this spec",
-  ).toBe(true);
+    response.status(),
+    "ORDERS_IN_PROGRESS endpoint must be reachable and authenticated " +
+      "before running this spec",
+  ).toBeLessThan(400);
 
   const data = await response.json();
   const lab = data?.displayItems?.[0]?.labNumber as string | undefined;

@@ -18,6 +18,17 @@ import type { Page } from "@playwright/test";
  *   - dialog-scoped lookups for modals
  */
 
+/**
+ * Backend enforces MAX_CODE_LENGTH = 10 in CodeValidationServiceImpl and
+ * storage_box.code is VARCHAR(10) (same constraint as rooms/devices/etc).
+ * Pattern is ^[A-Z0-9][A-Z0-9_-]*$ after server-side uppercase normalization.
+ * 2-char prefix + 6-char base36 slice = 8 chars, well under the cap.
+ */
+function makeShortCode(prefix: string): string {
+  const slice = Date.now().toString(36).slice(-6).toUpperCase();
+  return `${prefix}${slice}`;
+}
+
 async function selectFirstRack(page: Page) {
   const rackField = page.locator("#box-add-rack button.cds--list-box__field");
   await expect(rackField).toBeVisible();
@@ -39,7 +50,7 @@ async function createBox(
   preset = "8x12 (96-well plate)",
 ) {
   const boxLabel = `PW Box ${suffix}`;
-  const boxCode = `PB-${suffix}`;
+  const boxCode = makeShortCode("PB");
 
   await test.step(`create box "${boxLabel}"`, async () => {
     await page.goto("/Storage/boxes/new", { waitUntil: "domcontentloaded" });
@@ -83,7 +94,7 @@ test.describe("Storage CRUD — Boxes", () => {
   test("add box flow with custom dimensions", async ({ page }) => {
     const suffix = `${Date.now().toString(36)}-custom`;
     const boxLabel = `PW Box ${suffix}`;
-    const boxCode = `PC-${suffix}`;
+    const boxCode = makeShortCode("PC");
 
     await test.step("fill out form with custom rows/columns", async () => {
       await page.goto("/Storage/boxes/new", { waitUntil: "domcontentloaded" });
