@@ -25,8 +25,8 @@ public class PrivilegeDAOImpl extends BaseDAOImpl<Privilege, Integer> implements
             return Collections.emptyList();
         }
         Session session = entityManager.unwrap(Session.class);
-        Query<Privilege> query = session.createQuery("SELECT p FROM Privilege p "
-                + "JOIN RolePrivilege rp ON rp.privilege.id = p.id " + "WHERE rp.roleId = :roleId AND p.active = true",
+        Query<Privilege> query = session.createQuery(
+                "SELECT rp.privilege FROM RolePrivilege rp WHERE rp.roleId = :roleId AND rp.privilege.active = true",
                 Privilege.class);
         query.setParameter("roleId", roleId);
         return query.list();
