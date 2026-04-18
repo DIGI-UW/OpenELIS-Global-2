@@ -38,6 +38,14 @@ type FileImportHarnessScenario = {
   readonly mockTemplate: string;
   readonly demoTitle: string;
   readonly demoSubtitle: string;
+  /**
+   * Admin-declared test code for upload path (production parity). Set for
+   * analyzers whose fixture files have no per-row test-code column —
+   * matches the testCode field a lab tech fills in the bridge admin
+   * upload UI. When set, the test uses the bridge `/admin/upload` flow
+   * instead of a direct watched-dir drop.
+   */
+  readonly uploadTestCode?: string;
 };
 
 type MockFileResult = {
@@ -78,6 +86,11 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     mockTemplate: "hain_fluorocycler",
     demoTitle: "FluoroCycler XT File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
+    // FluoroCycler real files carry no per-row test-code column — the lab
+    // tech declares VIH-1 in the bridge admin upload UI. Mirror that by
+    // routing this scenario through the upload path instead of a direct
+    // watched-dir drop.
+    uploadTestCode: "VIH-1",
   },
   {
     analyzerName: "Wondfo Finecare FS-205",
@@ -122,20 +135,67 @@ function fileImportTimeoutMs(): number {
 }
 
 /**
- * Ask the mock server to drop a fixture file into the bridge watched folder
- * and return the parsed metadata (accessions + results).
+ * Ask the mock server to deliver the fixture file and return parsed metadata
+ * (accessions + results).
+ *
+ * Two modes:
+ *   1. Watched-dir drop (default): mock copies fixture into the analyzer's
+ *      watched folder. Works when the file carries per-row test codes.
+ *   2. Bridge upload (when scenario.uploadTestCode is set): mock multipart-
+ *      POSTs the fixture to bridge /admin/upload with the admin-declared
+ *      test code, matching the real lab-tech workflow.
  */
 async function dropFixtureViaMock(
+  page: Page,
   scenario: FileImportHarnessScenario,
 ): Promise<MockFileResponse> {
-  const targetDir = `/data/analyzer-imports/${scenario.importDirSafeName}/incoming`;
+  const body: Record<string, unknown> = {};
+
+  if (scenario.uploadTestCode) {
+    // Production-parity path: look up OE-registered analyzer id by name
+    // (matches the seeded non-Demo name, e.g. "FluoroCycler XT"), then ask
+    // the mock to upload via the bridge with that id + testCode.
+    const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
+      /\/$/,
+      "",
+    );
+    const resp = await page.request.get(
+      `${baseUrl}/api/OpenELIS-Global/rest/analyzer/analyzers`,
+    );
+    if (!resp.ok()) {
+      throw new Error(
+        `Analyzer list fetch failed: ${resp.status()} — cannot resolve id for ${scenario.analyzerName}`,
+      );
+    }
+    const json = (await resp.json()) as
+      | Array<{ id: string; name: string }>
+      | { analyzers?: Array<{ id: string; name: string }> };
+    await resp.dispose();
+    const list = Array.isArray(json) ? json : (json.analyzers ?? []);
+    const match = list.find((a) => a.name === scenario.analyzerName);
+    if (!match) {
+      throw new Error(
+        `No analyzer named ${JSON.stringify(scenario.analyzerName)} found. ` +
+          `Available: ${list
+            .map((a) => a.name)
+            .slice(0, 10)
+            .join(", ")}`,
+      );
+    }
+    body.bridge_upload = {
+      analyzer_id: match.id,
+      test_code: scenario.uploadTestCode,
+    };
+  } else {
+    body.target_dir = `/data/analyzer-imports/${scenario.importDirSafeName}/incoming`;
+  }
 
   const response = await fetch(
     `${MOCK_API_URL}/simulate/file/${scenario.mockTemplate}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target_dir: targetDir }),
+      body: JSON.stringify(body),
     },
   );
 
@@ -214,7 +274,7 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
         2,
         "Mock server drops a fixture file into the watched folder",
       );
-      const mockResponse = await dropFixtureViaMock(scenario);
+      const mockResponse = await dropFixtureViaMock(page, scenario);
       const expectedResults = mockResponse.metadata.results;
 
       await presentation.pause(1_000);
