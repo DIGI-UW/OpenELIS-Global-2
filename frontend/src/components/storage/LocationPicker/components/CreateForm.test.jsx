@@ -10,7 +10,8 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import CreateForm from "./CreateForm";
@@ -154,7 +155,7 @@ describe("CreateForm — inline create", () => {
     expect(screen.getByLabelText(/^name$/i)).toBeInTheDocument();
   });
 
-  it("POSTs to the level endpoint and dispatches the new option on submit", () => {
+  it("POSTs to the level endpoint and dispatches the new option on submit", async () => {
     mockRoomsApi([]);
     Utils.postToOpenElisServerJsonResponse.mockImplementation(
       (url, body, cb) => {
@@ -167,15 +168,19 @@ describe("CreateForm — inline create", () => {
     fireEvent.change(screen.getByLabelText(/^name$/i), {
       target: { value: "New Room" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
-    expect(Utils.postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
-      "/rest/storage/rooms",
-      expect.stringContaining("New Room"),
-      expect.any(Function),
-    );
-    expect(onLevelChange).toHaveBeenCalledWith("room", {
-      id: 99,
-      name: "New Room",
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^create$/i }));
+    });
+    await waitFor(() => {
+      expect(Utils.postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
+        "/rest/storage/rooms",
+        expect.stringContaining("New Room"),
+        expect.any(Function),
+      );
+      expect(onLevelChange).toHaveBeenCalledWith("room", {
+        id: 99,
+        name: "New Room",
+      });
     });
   });
 

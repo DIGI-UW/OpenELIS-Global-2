@@ -1,5 +1,25 @@
 import { test, expect } from "../../../helpers/test-base";
 
+async function pickDisposableSample(page) {
+  const rows = page.locator("tbody tr");
+  const rowCount = await rows.count();
+  expect(
+    rowCount,
+    "Sample Items table should contain at least one row",
+  ).toBeGreaterThan(0);
+
+  for (let i = 0; i < rowCount; i += 1) {
+    const row = rows.nth(i);
+    const rowText = await row.textContent();
+    if (!/Disposed/i.test(rowText || "")) {
+      const sampleItemId = (await row.locator("td").nth(0).innerText()).trim();
+      return { row, sampleItemId };
+    }
+  }
+
+  throw new Error("No non-disposed sample row available for disposal test");
+}
+
 test.describe("Storage Dispose", () => {
   test("dispose sample item from overflow menu", async ({ page }) => {
     await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
@@ -7,12 +27,7 @@ test.describe("Storage Dispose", () => {
       page.getByRole("heading", { name: "Sample Items", exact: true }),
     ).toBeVisible();
 
-    const overflowMenu = page.locator(
-      '[data-testid="sample-actions-overflow-menu"]',
-    );
-    test.skip((await overflowMenu.count()) === 0, "No sample items available");
-
-    const sampleRow = page.locator("tbody tr").first();
+    const { row: sampleRow, sampleItemId } = await pickDisposableSample(page);
     await sampleRow
       .locator('[data-testid="sample-actions-overflow-menu"]')
       .click();
@@ -27,5 +42,8 @@ test.describe("Storage Dispose", () => {
     await page.getByRole("button", { name: "Confirm Disposal" }).click();
 
     await expect(page.locator('[data-testid="dispose-modal"]')).toBeHidden();
+    const disposedRow = page.locator("tbody tr", { hasText: sampleItemId });
+    await expect(disposedRow).toBeVisible();
+    await expect(disposedRow.getByText("Disposed")).toBeVisible();
   });
 });

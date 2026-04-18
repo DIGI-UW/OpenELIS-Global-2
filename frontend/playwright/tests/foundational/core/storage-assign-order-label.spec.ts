@@ -6,8 +6,8 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  *
  * Precondition: the deep-linked order must already be at Step 3
  * (Label & Store). If it's earlier, OrderContext redirects away and
- * the picker won't render; in that case this test runs `test.skip()`
- * with a clear precondition message.
+ * the picker won't render — that should fail this test so CI surfaces
+ * the data/flow mismatch.
  *
  * Seed lookup: /rest/home-dashboard/ORDERS_IN_PROGRESS. If that
  * endpoint returns no orders, the test fails with an actionable
@@ -43,18 +43,17 @@ test.describe("Order workflow — Label & Store storage picker", () => {
     );
 
     // If the order isn't at Step 3, OrderContext routes us to Step 1
-    // ("Enter Order"). Skip the picker assertion with a clear reason.
+    // ("Enter Order"). This is a real precondition failure.
     const stepHeading = await page
       .getByRole("heading", { level: 2 })
       .first()
       .textContent({ timeout: UI_TIMEOUT });
-    test.skip(
-      !/label.*store/i.test(stepHeading ?? ""),
-      `Order ${labNumber} is at "${stepHeading?.trim()}" (not Step 3 ` +
-        "Label & Store). Seed an order past Steps 1-2 to exercise the picker.",
-    );
+    expect(
+      stepHeading ?? "",
+      `Order ${labNumber} must be at Step 3 (Label & Store), ` +
+        `received "${stepHeading?.trim()}".`,
+    ).toMatch(/label.*store/i);
 
-    // Order IS at Label & Store → the new picker must be present.
     await expect(
       page.locator("#storage-location-picker-search-input"),
     ).toBeVisible({ timeout: LONG_TIMEOUT });

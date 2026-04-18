@@ -9,27 +9,31 @@ import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
  * /Storage/sample-items/{id}/manage-location. They pick or create a
  * location, click Save, and are navigated back.
  *
- * The spec uses known fixture IDs (10051 / 10072) instead of scanning
- * for an unassigned row — the list endpoint's hierarchy resolver can
- * return `location=''` for some assigned rows, making a text heuristic
- * unreliable. Ground truth for unassigned items:
- *   SELECT si.id FROM sample_item si
- *   LEFT JOIN sample_storage_assignment ssa
- *     ON ssa.sample_item_id = si.id
- *   WHERE ssa.id IS NULL;
- *
- * The DB check constraint `chk_location_type_valid` rejects
- * `location_type = 'room'`, so the spec picks a device-level result
- * ("Freezer Unit 1").
+ * This spec no longer hardcodes fixture IDs. It starts from the current
+ * table state, opens Manage Location from row actions, and validates
+ * outcomes through visible UI state.
  */
 
-// Each test consumes one unassigned sample_item per run — after the
-// test asserts success, the DB state permanently flips that item to
-// "assigned". Running the spec twice against the same DB without
-// `load-test-fixtures.sh --reset` in between is expected to fail.
-// Using distinct IDs per test so parallel execution doesn't collide.
-const ASSIGN_SEARCH_SAMPLE_ITEM_ID = "10051";
-const ASSIGN_CASCADE_SAMPLE_ITEM_ID = "10072";
+async function openManageLocationFromRow(page, rowIndex = 0) {
+  await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
+  await expect(
+    page.getByRole("heading", { level: 1, name: /sample items/i }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+
+  const rows = page.locator("table tbody tr");
+  const rowCount = await rows.count();
+  expect(
+    rowCount,
+    "Expected at least one sample row to open Manage Location",
+  ).toBeGreaterThan(0);
+
+  const row = rows.nth(Math.min(rowIndex, rowCount - 1));
+  await row.locator('[data-testid="sample-actions-overflow-menu"]').click();
+  await page.getByRole("menuitem", { name: /manage location/i }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: /assign storage location/i }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+}
 
 test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   test("lists sample items with header and table rendered", async ({
@@ -54,13 +58,7 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   test("assigns a device-level location via search on the dedicated page", async ({
     page,
   }) => {
-    await page.goto(
-      `/Storage/sample-items/${ASSIGN_SEARCH_SAMPLE_ITEM_ID}/manage-location`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await expect(
-      page.getByRole("heading", { level: 1, name: /assign storage location/i }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await openManageLocationFromRow(page, 0);
 
     // Pick a device (backend rejects room-level — DB check constraint).
     const search = page.locator("#storage-location-picker-search-input");
@@ -87,13 +85,7 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   test("creates a new shelf inline via cascade and assigns it", async ({
     page,
   }) => {
-    await page.goto(
-      `/Storage/sample-items/${ASSIGN_CASCADE_SAMPLE_ITEM_ID}/manage-location`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await expect(
-      page.getByRole("heading", { level: 1, name: /assign storage location/i }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await openManageLocationFromRow(page, 1);
 
     await page
       .getByRole("button", { name: /create new location/i })

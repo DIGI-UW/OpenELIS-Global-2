@@ -20,7 +20,7 @@ import { Add } from "@carbon/icons-react";
 import { FormattedMessage } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import useStorageTableData from "../hooks/useStorageTableData";
-import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasRole, Roles } from "../../utils/Utils";
 
 /**
