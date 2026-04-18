@@ -78,8 +78,15 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
     @Override
     @Transactional(readOnly = true)
     public Double getTotalCurrentQuantity(Long itemId) {
-        Integer total = inventoryLotDAO.getTotalCurrentQuantity(itemId);
-        return total != null ? total.doubleValue() : 0.0;
+        Double total = inventoryLotDAO.getTotalCurrentQuantity(itemId);
+        return total != null ? total : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getTotalUsableQuantity(Long itemId) {
+        Double total = inventoryLotDAO.getTotalUsableQuantity(itemId);
+        return total != null ? total : 0.0;
     }
 
     @Override

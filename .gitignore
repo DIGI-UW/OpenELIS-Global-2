@@ -125,6 +125,9 @@ frontend/e2e-evidence/
 e2e-evidence-*.zip
 
 # Miscellaneous dev artifacts
+<<<<<<< HEAD
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
+tools/astm-http-bridge/
+tools/astm-mock-server/

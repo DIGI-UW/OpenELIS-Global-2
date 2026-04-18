@@ -46,8 +46,8 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAvailableLotsByItemFEFO_shouldReturnLotsInFEFOOrder() {
-        // test-lot-2 expires 2025-06-30 (earlier)
-        // test-lot-1 expires 2025-12-31 (later)
+        // test-lot-2 expires 2030-06-30 (earlier)
+        // test-lot-1 expires 2030-12-31 (later)
         List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(1L);
 
         assertNotNull("Lots should not be null", lots);
@@ -56,6 +56,48 @@ public class InventoryLotServiceIT extends BaseWebContextSensitiveTest {
         // First lot should expire earliest
         assertEquals("First lot should be earliest expiring", "LOT-2025-002", lots.get(0).getLotNumber());
         assertEquals("Second lot should expire later", "LOT-2025-001", lots.get(1).getLotNumber());
+    }
+
+    @Test
+    public void getAvailableLotsByItemFEFO_shouldExcludeExpiredLots() {
+        InventoryLot expiredLot = inventoryLotService.get(2L);
+        expiredLot.setExpirationDate(Timestamp.valueOf("2000-01-01 00:00:00"));
+        inventoryLotService.update(expiredLot);
+
+        List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(1L);
+
+        assertEquals("Only non-expired lots should be returned", 1, lots.size());
+        assertEquals("Remaining usable lot should be LOT-2025-001", "LOT-2025-001", lots.get(0).getLotNumber());
+    }
+
+    @Test
+    public void getTotalCurrentQuantity_shouldReturnPhysicalStockAcrossActiveLots() {
+        InventoryLot firstLot = inventoryLotService.get(1L);
+        InventoryLot secondLot = inventoryLotService.get(2L);
+
+        firstLot.setQcStatus(QCStatus.FAILED);
+        inventoryLotService.update(firstLot);
+
+        secondLot.setCurrentQuantity(0.75);
+        inventoryLotService.update(secondLot);
+
+        assertEquals("Total current quantity should preserve decimals without applying usability filters",
+                Double.valueOf(100.75), inventoryLotService.getTotalCurrentQuantity(1L));
+    }
+
+    @Test
+    public void getTotalUsableQuantity_shouldIncludeOnlyUsableFractionalStock() {
+        InventoryLot firstLot = inventoryLotService.get(1L);
+        InventoryLot secondLot = inventoryLotService.get(2L);
+
+        firstLot.setQcStatus(QCStatus.FAILED);
+        inventoryLotService.update(firstLot);
+
+        secondLot.setCurrentQuantity(0.75);
+        inventoryLotService.update(secondLot);
+
+        assertEquals("Only FEFO-eligible stock should be summed with decimal precision", Double.valueOf(0.75),
+                inventoryLotService.getTotalUsableQuantity(1L));
     }
 
     @Test

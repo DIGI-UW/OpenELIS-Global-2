@@ -17,6 +17,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> implements InventoryLotDAO {
 
+    private static final String EFFECTIVE_EXPIRATION_HQL = "case "
+            + "when l.expirationDate is null then l.calculatedExpiryAfterOpening "
+            + "when l.calculatedExpiryAfterOpening is null then l.expirationDate "
+            + "when l.calculatedExpiryAfterOpening < l.expirationDate then l.calculatedExpiryAfterOpening "
+            + "else l.expirationDate end";
+
+    private static final String EFFECTIVE_EXPIRATION_SQL = "COALESCE(LEAST(expiration_date, calculated_expiry_after_opening), "
+            + "expiration_date, calculated_expiry_after_opening)";
+
+    private static final String USABLE_LOT_FILTER_HQL = "l.inventoryItem.id = :itemId "
+            + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
+            + "AND l.currentQuantity > 0 " + "AND (" + EFFECTIVE_EXPIRATION_HQL + " is null OR "
+            + EFFECTIVE_EXPIRATION_HQL + " >= :now)";
+
     public InventoryLotDAOImpl() {
         super(InventoryLot.class);
     }
@@ -38,22 +52,16 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
     @Transactional(readOnly = true)
     public List<InventoryLot> getAvailableLotsByItemFEFO(Long itemId) throws LIMSRuntimeException {
         try {
-            // CRITICAL: FEFO (First Expired, First Out) query
-            // Returns lots sorted by earliest expiration date first
-            // Only includes lots that are:
-            // - ACTIVE or IN_USE status
-            // - QC status PASSED
-            // - Have quantity available (currentQuantity > 0)
-            String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
-                    + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
-                    + "AND l.currentQuantity > 0 "
-                    + "ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST";
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            String hql = "FROM InventoryLot l WHERE " + USABLE_LOT_FILTER_HQL + " ORDER BY " + EFFECTIVE_EXPIRATION_HQL
+                    + " ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
             query.setParameter("itemId", itemId);
             query.setParameter("activeStatus", LotStatus.ACTIVE.name());
             query.setParameter("inUseStatus", LotStatus.IN_USE.name());
             query.setParameter("passedStatus", QCStatus.PASSED.name());
+            query.setParameter("now", now);
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting available lots by item (FEFO)", e);
@@ -173,16 +181,39 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException {
+    public Double getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException {
         try {
             String sql = "SELECT COALESCE(SUM(current_quantity), 0.0) FROM clinlims.inventory_lot "
-                    + "WHERE inventory_item_id = ?1 " + "AND status IN ('ACTIVE', 'IN_USE')";
+                    + "WHERE inventory_item_id = ?1 "
+                    + "AND status IN ('ACTIVE', 'IN_USE')";
 
             Number result = (Number) entityManager.createNativeQuery(sql).setParameter(1, itemId).getSingleResult();
 
-            return result != null ? result.intValue() : 0;
+            return result != null ? result.doubleValue() : 0.0;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting total current quantity", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getTotalUsableQuantity(Long itemId) throws LIMSRuntimeException {
+        try {
+            String sql = "SELECT COALESCE(SUM(current_quantity), 0.0) FROM clinlims.inventory_lot "
+                    + "WHERE inventory_item_id = ?1 "
+                    + "AND status IN ('ACTIVE', 'IN_USE') "
+                    + "AND qc_status = 'PASSED' "
+                    + "AND current_quantity > 0 "
+                    + "AND (" + EFFECTIVE_EXPIRATION_SQL + " IS NULL OR " + EFFECTIVE_EXPIRATION_SQL + " >= ?2)";
+
+            Number result = (Number) entityManager.createNativeQuery(sql)
+                    .setParameter(1, itemId)
+                    .setParameter(2, new Timestamp(System.currentTimeMillis()))
+                    .getSingleResult();
+
+            return result != null ? result.doubleValue() : 0.0;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting total usable quantity", e);
         }
     }
 
