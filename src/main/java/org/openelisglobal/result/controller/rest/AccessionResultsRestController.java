@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping(value = "/rest/")
 public class AccessionResultsRestController extends LogbookResultsBaseController {
 
-    private final String RESULT_EDIT_ROLE_ID;
+    private final Integer RESULT_EDIT_ROLE_ID;
 
     @Autowired
     private SampleService sampleService;
@@ -53,11 +53,7 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
 
     public AccessionResultsRestController(RoleService roleService) {
         Role editRole = roleService.getRoleByName("Results");
-        if (editRole != null) {
-            RESULT_EDIT_ROLE_ID = String.valueOf(editRole.getId());
-        } else {
-            RESULT_EDIT_ROLE_ID = null;
-        }
+        RESULT_EDIT_ROLE_ID = editRole != null ? editRole.getId() : null;
     }
 
     @GetMapping(value = "accession-results", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -132,7 +128,7 @@ public class AccessionResultsRestController extends LogbookResultsBaseController
 
         List<Integer> roleIds = userRoleService.getRoleIdsForUser(getSysUserId(request));
 
-        return !roleIds.contains(Integer.valueOf(RESULT_EDIT_ROLE_ID));
+        return RESULT_EDIT_ROLE_ID == null || !roleIds.contains(RESULT_EDIT_ROLE_ID);
     }
 
     @Override
