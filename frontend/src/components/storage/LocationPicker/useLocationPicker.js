@@ -110,6 +110,18 @@ export function reducer(state, action) {
         position: action.position,
       };
 
+    case "REPLACE_SELECTION":
+      // Wholesale selection replacement — drops ancestors AND descendants
+      // so picking a flat search result can't leave an inconsistent
+      // mix-and-match (e.g. Room A + Device B). Omitting `position`
+      // clears it, because a position is always relative to the deepest
+      // container in the selection.
+      return {
+        ...state,
+        selection: { ...action.selection },
+        position: action.position !== undefined ? action.position : null,
+      };
+
     case "RESET": {
       // Clean slate on modal reopen. Preserves the hook's original
       // initialAssignment unless the action explicitly replaces it, so the

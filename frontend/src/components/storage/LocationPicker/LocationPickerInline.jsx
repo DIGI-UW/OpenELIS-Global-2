@@ -2,11 +2,12 @@ import React, { useEffect } from "react";
 import { Button, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
+import useLocationPicker from "./useLocationPicker";
 import {
   selectionToHierarchicalPath,
   positionToCoordinate,
 } from "./locationSelectionMapper";
+import { searchResultToReplaceAction } from "./searchResultToAction";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
 
@@ -50,16 +51,12 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
   const setLevel = (level, value) =>
     dispatch({ type: "SET_LEVEL", level, value });
 
+  // Flat search returns a single leaf; replacing the whole selection
+  // keeps the state consistent (no stale ancestors from a different
+  // branch of the hierarchy).
   const handleSearchSelect = (result) => {
-    // The flat search returns one location node; the picker doesn't know
-    // its parents from this payload alone. The simplest mapping: set the
-    // single level the result belongs to (using the result's `type`),
-    // letting the user fill in deeper levels via the create-mode cascade
-    // if needed. This trades a click for not pummelling the API to walk
-    // the parent chain on every selection.
-    if (result && result.type && LEVEL_ORDER.includes(result.type)) {
-      setLevel(result.type, { id: result.id, name: result.name });
-    }
+    const action = searchResultToReplaceAction(result);
+    if (action) dispatch(action);
   };
 
   const summary = selectionToHierarchicalPath(state.selection);

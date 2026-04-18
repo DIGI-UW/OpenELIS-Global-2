@@ -275,6 +275,72 @@ describe("useLocationPicker reducer", () => {
     });
   });
 
+  describe("REPLACE_SELECTION (search-result pick)", () => {
+    // The bug: SET_LEVEL keeps ancestor selections untouched. Picking a
+    // device from a flat search whose parent is a different room leaves
+    // the previous room + the new device selected (inconsistent state).
+    // REPLACE_SELECTION is the atomic alternative.
+    it("replaces the entire selection when a search result is picked", () => {
+      const stale = {
+        ...initialState,
+        selection: {
+          room: { id: 1, name: "Main Lab" },
+          device: { id: 5, name: "Freezer 1" },
+          shelf: { id: 9, name: "Shelf A" },
+        },
+      };
+      const next = reducer(stale, {
+        type: "REPLACE_SELECTION",
+        selection: { device: { id: 99, name: "Different Freezer" } },
+      });
+      expect(next.selection).toEqual({
+        device: { id: 99, name: "Different Freezer" },
+      });
+      expect(next.selection.room).toBeUndefined();
+      expect(next.selection.shelf).toBeUndefined();
+    });
+
+    it("clears position when not supplied", () => {
+      const stale = {
+        ...initialState,
+        selection: { room: { id: 1, name: "Main Lab" } },
+        position: { mode: "text", value: "back corner" },
+      };
+      const next = reducer(stale, {
+        type: "REPLACE_SELECTION",
+        selection: { room: { id: 2, name: "Other Lab" } },
+      });
+      expect(next.position).toBeNull();
+    });
+
+    it("sets position when supplied", () => {
+      const stale = {
+        ...initialState,
+        selection: { room: { id: 1, name: "Main Lab" } },
+      };
+      const pos = { mode: "grid", row: 3, column: 4 };
+      const next = reducer(stale, {
+        type: "REPLACE_SELECTION",
+        selection: { box: { id: 50, name: "Box 50" } },
+        position: pos,
+      });
+      expect(next.position).toEqual(pos);
+    });
+
+    it("does not mutate the previous state", () => {
+      const before = {
+        ...initialState,
+        selection: { room: { id: 1, name: "Main Lab" } },
+      };
+      const snap = JSON.parse(JSON.stringify(before));
+      reducer(before, {
+        type: "REPLACE_SELECTION",
+        selection: { device: { id: 5, name: "Freezer 1" } },
+      });
+      expect(before).toEqual(snap);
+    });
+  });
+
   describe("RESET (modal reopen / clean slate)", () => {
     // The modal re-uses the same useLocationPicker hook across opens. Without
     // RESET, a previous open's stale mode / searchQuery / searchResults /

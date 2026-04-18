@@ -2,11 +2,12 @@ import React from "react";
 import { Button, TextArea, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
-import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
+import useLocationPicker from "./useLocationPicker";
 import {
   selectionToHierarchicalPath,
   positionToCoordinate,
 } from "./locationSelectionMapper";
+import { searchResultToReplaceAction } from "./searchResultToAction";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
 
@@ -42,10 +43,12 @@ export default function LocationPickerPage({
   const setLevel = (level, value) =>
     dispatch({ type: "SET_LEVEL", level, value });
 
+  // Flat search returns a single leaf; replacing the whole selection
+  // keeps the state consistent (no stale ancestors from a different
+  // branch of the hierarchy).
   const handleSearchSelect = (result) => {
-    if (result && result.type && LEVEL_ORDER.includes(result.type)) {
-      setLevel(result.type, { id: result.id, name: result.name });
-    }
+    const action = searchResultToReplaceAction(result);
+    if (action) dispatch(action);
   };
 
   const handleSave = () => {
