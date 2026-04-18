@@ -59,7 +59,7 @@ describe("SearchField", () => {
         onSelect={jest.fn()}
       />,
     );
-    expect(screen.getByRole("textbox")).toHaveValue("freezer");
+    expect(screen.getByRole("combobox")).toHaveValue("freezer");
   });
 
   it("calls onQueryChange when the user types", () => {
@@ -73,10 +73,62 @@ describe("SearchField", () => {
         onSelect={jest.fn()}
       />,
     );
-    fireEvent.change(screen.getByRole("textbox"), {
+    fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "Lab" },
     });
     expect(onQueryChange).toHaveBeenCalledWith("Lab");
+  });
+
+  it("ignores stale search responses after a newer query is issued", () => {
+    const onResultsChange = jest.fn();
+    const callbacks = [];
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
+      callbacks.push(cb);
+    });
+
+    const { rerender } = render(
+      <SearchField
+        query="Free"
+        results={[]}
+        onQueryChange={jest.fn()}
+        onResultsChange={onResultsChange}
+        onSelect={jest.fn()}
+      />,
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    rerender(
+      <SearchField
+        query="Shelf"
+        results={[]}
+        onQueryChange={jest.fn()}
+        onResultsChange={onResultsChange}
+        onSelect={jest.fn()}
+      />,
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(callbacks).toHaveLength(2);
+
+    act(() => {
+      callbacks[0]([{ id: 1, type: "device", name: "Old Result" }]);
+    });
+    expect(onResultsChange).not.toHaveBeenCalledWith([
+      { id: 1, type: "device", name: "Old Result" },
+    ]);
+
+    act(() => {
+      callbacks[1]([{ id: 2, type: "rack", name: "Latest Result" }]);
+    });
+    expect(onResultsChange).toHaveBeenCalledWith([
+      { id: 2, type: "rack", name: "Latest Result" },
+    ]);
   });
 
   it("does not fire the search API for queries shorter than 2 chars", () => {
@@ -217,6 +269,60 @@ describe("SearchField", () => {
     expect(
       screen.getByRole("option", { name: "Main Lab" }),
     ).toBeInTheDocument();
+  });
+
+  it("sets aria-selected from current picker selection", () => {
+    render(
+      <SearchField
+        query="Free"
+        results={[
+          { id: 11, type: "device", name: "Freezer 1" },
+          { id: 12, type: "device", name: "Freezer 2" },
+        ]}
+        selectedSelection={{
+          room: { id: 1, name: "Main Lab" },
+          device: { id: 12, name: "Freezer 2" },
+        }}
+        onQueryChange={jest.fn()}
+        onResultsChange={jest.fn()}
+        onSelect={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "Freezer 2" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("option", { name: "Freezer 1" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("supports arrow keys plus Enter selection from active descendant", () => {
+    const onSelect = jest.fn();
+    render(
+      <SearchField
+        query="Main"
+        results={[
+          { id: 1, type: "room", name: "Main Lab" },
+          { id: 2, type: "room", name: "Secondary Lab" },
+        ]}
+        onQueryChange={jest.fn()}
+        onResultsChange={jest.fn()}
+        onSelect={onSelect}
+      />,
+    );
+
+    const input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelect).toHaveBeenCalledWith({
+      id: 2,
+      type: "room",
+      name: "Secondary Lab",
+    });
   });
 
   it("calls onSelect with the picked result on click", () => {

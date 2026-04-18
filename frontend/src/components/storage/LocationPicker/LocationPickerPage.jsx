@@ -108,6 +108,7 @@ export default function LocationPickerPage({
                 dispatch({ type: "SET_SEARCH_RESULTS", results: r })
               }
               onSelect={handleSearchSelect}
+              selectedSelection={state.selection}
             />
             <Button
               kind="ghost"

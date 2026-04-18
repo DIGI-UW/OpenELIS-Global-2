@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { TextInput } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { LEVEL_ORDER } from "../useLocationPicker";
 
 /**
  * SearchField — flat type-ahead input for the LocationPicker.
@@ -32,11 +33,37 @@ export default function SearchField({
   onQueryChange,
   onResultsChange,
   onSelect,
+  selectedSelection = {},
 }) {
   const intl = useIntl();
   const debounceRef = useRef(null);
+  const requestIdRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  const deepestSelectedLevel = LEVEL_ORDER.reduce((deepest, level) => {
+    if (selectedSelection[level]?.id) return level;
+    return deepest;
+  }, null);
+  const selectedResultId = deepestSelectedLevel
+    ? String(selectedSelection[deepestSelectedLevel].id)
+    : null;
 
   useEffect(() => {
+    if (results.length === 0) {
+      setActiveIndex(-1);
+      return;
+    }
+    const selectedIndex = results.findIndex(
+      (result) =>
+        deepestSelectedLevel &&
+        result.type === deepestSelectedLevel &&
+        String(result.id) === selectedResultId,
+    );
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  }, [results, deepestSelectedLevel, selectedResultId]);
+
+  useEffect(() => {
+    const requestId = ++requestIdRef.current;
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       debounceRef.current = null;
@@ -53,6 +80,9 @@ export default function SearchField({
       getFromOpenElisServer(
         `/rest/storage/locations/search?q=${encodeURIComponent(query)}`,
         (response) => {
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
           onResultsChange(Array.isArray(response) ? response : []);
         },
       );
@@ -80,26 +110,64 @@ export default function SearchField({
         })}
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
+        role="combobox"
+        aria-controls="storage-location-picker-search-results"
+        aria-expanded={results.length > 0}
+        aria-activedescendant={
+          activeIndex >= 0
+            ? `storage-location-search-option-${activeIndex}`
+            : undefined
+        }
+        onKeyDown={(e) => {
+          if (results.length === 0) return;
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActiveIndex((prev) => Math.min(prev + 1, results.length - 1));
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActiveIndex((prev) => Math.max(prev - 1, 0));
+            return;
+          }
+          if ((e.key === "Enter" || e.key === " ") && activeIndex >= 0) {
+            e.preventDefault();
+            onSelect(results[activeIndex]);
+          }
+        }}
       />
       {results.length > 0 && (
-        <ul role="listbox" className="storage-location-picker-search-results">
-          {results.map((result) => (
-            <li
-              key={`${result.type || "loc"}-${result.id}`}
-              role="option"
-              aria-selected={false}
-              tabIndex={0}
-              onClick={() => onSelect(result)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSelect(result);
-                }
-              }}
-            >
-              {result.hierarchicalPath || result.name}
-            </li>
-          ))}
+        <ul
+          id="storage-location-picker-search-results"
+          role="listbox"
+          className="storage-location-picker-search-results"
+        >
+          {results.map((result, index) => {
+            const optionId = `storage-location-search-option-${index}`;
+            const isSelected =
+              deepestSelectedLevel &&
+              result.type === deepestSelectedLevel &&
+              String(result.id) === selectedResultId;
+            return (
+              <li
+                id={optionId}
+                key={`${result.type || "loc"}-${result.id || index}-${index}`}
+                role="option"
+                aria-selected={isSelected}
+                tabIndex={0}
+                onMouseEnter={() => setActiveIndex(index)}
+                onClick={() => onSelect(result)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(result);
+                  }
+                }}
+              >
+                {result.hierarchicalPath || result.name}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

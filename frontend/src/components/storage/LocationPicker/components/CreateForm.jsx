@@ -98,35 +98,83 @@ export default function CreateForm({ selection, onLevelChange }) {
   });
   const [inlineCreate, setInlineCreate] = useState(null); // { level, name } | null
 
-  // Cascading fetch: when a parent's selection changes, refetch the
-  // dependent level's options. The picker reducer guarantees the parent
-  // selection only changes when a higher-level value is set/cleared.
-  LEVELS.forEach(({ key, endpoint, parentLevel, listParam }) => {
-    const parentValue = parentLevel ? selection[parentLevel] : null;
-    const parentId = parentValue ? parentValue.id : null;
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useEffect(() => {
-      if (parentLevel && parentId == null) {
-        // No parent selected → no options for this level
-        setOptions((prev) =>
-          prev[key].length === 0 ? prev : { ...prev, [key]: [] },
-        );
-        return;
-      }
-      const url = parentLevel
-        ? `/rest/storage/${endpoint}?${listParam}=${parentId}`
-        : `/rest/storage/${endpoint}`;
-      getFromOpenElisServer(url, (response) => {
-        setOptions((prev) => ({
-          ...prev,
-          [key]: Array.isArray(response) ? response : [],
-        }));
-      });
-      // Listing only the IDs that drive this level's fetch — selection
-      // identity changes are debounced into a stable id-derived dep.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [parentId]);
-  });
+  const setLevelOptions = (key, values) => {
+    setOptions((prev) => ({
+      ...prev,
+      [key]: Array.isArray(values) ? values : [],
+    }));
+  };
+
+  // Room options have no parent dependency.
+  useEffect(() => {
+    getFromOpenElisServer("/rest/storage/rooms", (response) => {
+      setLevelOptions("room", response);
+    });
+  }, []);
+
+  const roomId = selection.room?.id || null;
+  useEffect(() => {
+    if (roomId == null) {
+      setOptions((prev) =>
+        prev.device.length === 0 ? prev : { ...prev, device: [] },
+      );
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/storage/devices?roomId=${roomId}`,
+      (response) => {
+        setLevelOptions("device", response);
+      },
+    );
+  }, [roomId]);
+
+  const deviceId = selection.device?.id || null;
+  useEffect(() => {
+    if (deviceId == null) {
+      setOptions((prev) =>
+        prev.shelf.length === 0 ? prev : { ...prev, shelf: [] },
+      );
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/storage/shelves?deviceId=${deviceId}`,
+      (response) => {
+        setLevelOptions("shelf", response);
+      },
+    );
+  }, [deviceId]);
+
+  const shelfId = selection.shelf?.id || null;
+  useEffect(() => {
+    if (shelfId == null) {
+      setOptions((prev) =>
+        prev.rack.length === 0 ? prev : { ...prev, rack: [] },
+      );
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/storage/racks?shelfId=${shelfId}`,
+      (response) => {
+        setLevelOptions("rack", response);
+      },
+    );
+  }, [shelfId]);
+
+  const rackId = selection.rack?.id || null;
+  useEffect(() => {
+    if (rackId == null) {
+      setOptions((prev) =>
+        prev.box.length === 0 ? prev : { ...prev, box: [] },
+      );
+      return;
+    }
+    getFromOpenElisServer(
+      `/rest/storage/boxes?rackId=${rackId}`,
+      (response) => {
+        setLevelOptions("box", response);
+      },
+    );
+  }, [rackId]);
 
   const handleCreate = () => {
     if (!inlineCreate || !inlineCreate.name.trim()) return;
