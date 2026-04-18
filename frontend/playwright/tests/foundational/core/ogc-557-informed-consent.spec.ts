@@ -201,6 +201,23 @@ async function postOrder(
   return { ...result, parsed };
 }
 
+/**
+ * Build a verbose error message from a failing POST. Surfaces:
+ *   - HTTP status
+ *   - Spring's `errors` array (BindingResult violations) if present
+ *   - Up to 3 KB of the raw response body
+ *
+ * The default 200-char truncation hides Spring's BindingResult, which
+ * sits at the end of the form JSON. This helper makes CI logs actionable.
+ */
+function formatErr(label: string, result: PostResult): string {
+  const errs =
+    (result.parsed as { errors?: unknown })?.errors ??
+    (result.parsed as { fieldErrors?: unknown })?.fieldErrors;
+  const errsStr = errs ? `\n  errors: ${JSON.stringify(errs)}` : "";
+  return `${label} POST /rest/SamplePatientEntry returned ${result.status}${errsStr}\n  body[0..3000]: ${result.body.substring(0, 3000)}`;
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 test.describe("OGC-557 — informed consent (API-driven)", () => {
@@ -211,10 +228,7 @@ test.describe("OGC-557 — informed consent (API-driven)", () => {
       consentGiven: true,
       consentFormReference: "CF-2026-00123",
     });
-    expect(
-      result.ok,
-      `POST /rest/SamplePatientEntry returned ${result.status}: ${result.body.substring(0, 200)}`,
-    ).toBe(true);
+    expect(result.ok, formatErr("FR-4-001", result)).toBe(true);
     // Response is the saved form; the labNo round-trips
     const labNo = (result.parsed as { sampleOrderItems?: { labNo?: string } })
       ?.sampleOrderItems?.labNo;
@@ -227,10 +241,7 @@ test.describe("OGC-557 — informed consent (API-driven)", () => {
     const result = await postOrder(page, {
       consentGiven: false,
     });
-    expect(
-      result.ok,
-      `POST should accept unchecked consent — got ${result.status}: ${result.body.substring(0, 200)}`,
-    ).toBe(true);
+    expect(result.ok, formatErr("FR-5-001", result)).toBe(true);
   });
 
   test("§10/BR-005: invalid characters in consentFormReference are rejected", async ({
