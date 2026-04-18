@@ -167,7 +167,7 @@ Exact CI step sequence the script must mirror (from reusable workflow lines
 3. Readiness: `curl -k -s -f https://localhost/`,
    `curl -k -s -f https://localhost:8442/actuator/health`,
    `curl -s -f http://localhost:8085/health` (each with 120s timeout).
-4. `./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify`
+4. `./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify`
 5. `bash projects/analyzer-harness/seed-analyzers.sh` with
    `BASE_URL=https://localhost`, `TEST_USER`, `TEST_PASS`,
    `DB_CONTAINER=openelisglobal-database`.

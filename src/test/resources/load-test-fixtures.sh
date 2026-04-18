@@ -4,19 +4,18 @@
 # Single unified script for loading ALL E2E test fixtures
 # Supports both Docker and direct psql connections
 #
-# Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--analyzers=MODE]
+# Usage: ./load-test-fixtures.sh [--reset] [--no-verify] [--profile=PROFILE]
 #
-# Analyzer modes (--analyzers=MODE):
-#   full     - Analyzer type safety net + cleanup + type linking (default)
-#   minimal  - analyzer-minimal.sql only (3 generic types, no cleanup)
-#   none     - Skip all analyzer fixtures (storage/patient only)
+# Fixture profiles (--profile=PROFILE):
+#   harness  - Core fixtures + analyzer cleanup + HARN-* lane fixtures (default)
+#   core     - Foundational + storage fixtures + minimal analyzer safety net + core demo patient
 #
 # Files loaded (in order):
 #   1. e2e-foundational-data.sql - Providers, Organizations (base data for ALL tests)
-#   2. Analyzer fixtures (depends on --analyzers= mode)
+#   2. Profile fixtures (core/harness specific)
 #   3. storage-e2e.xml (DBUnit XML) - Storage hierarchy + E2E test data
 #      Converted to SQL on-demand (*.generated.sql files never committed)
-#   4. fixtures/analyzer-harness-lane-data.sql - Only when --analyzers=full (HARN-* demo accessions)
+#   4. fixtures/analyzer-harness-lane-data.sql - Only for --profile=harness (HARN-* demo accessions)
 
 set -e
 
@@ -25,12 +24,13 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
 FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
+CORE_DEMO_PATIENT_SQL="$SCRIPT_DIR/fixtures/core-demo-patient.sql"
 ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
 VERIFY=true
-ANALYZER_MODE="full"
+PROFILE="harness"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -43,18 +43,18 @@ while [[ $# -gt 0 ]]; do
             VERIFY=false
             shift
             ;;
-        --analyzers=*)
-            ANALYZER_MODE="${1#*=}"
-            if [[ ! "$ANALYZER_MODE" =~ ^(minimal|full|none)$ ]]; then
-                echo "ERROR: Invalid analyzer mode: $ANALYZER_MODE"
-                echo "Valid modes: minimal, full, none"
+        --profile=*)
+            PROFILE="${1#*=}"
+            if [[ ! "$PROFILE" =~ ^(core|harness)$ ]]; then
+                echo "ERROR: Invalid fixture profile: $PROFILE"
+                echo "Valid profiles: core, harness"
                 exit 1
             fi
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--reset] [--no-verify] [--analyzers=minimal|full|none]"
+            echo "Usage: $0 [--reset] [--no-verify] [--profile=core|harness]"
             exit 1
             ;;
     esac
@@ -65,7 +65,7 @@ echo "Loading Test Fixtures"
 echo "======================================"
 echo ""
 echo "Foundational SQL: $FOUNDATIONAL_SQL_FILE"
-echo "Analyzer mode: $ANALYZER_MODE"
+echo "Fixture profile: $PROFILE"
 echo "Storage fixtures: DBUnit XML -> Generated SQL (on-demand)"
 if [ "$RESET" = true ]; then
     echo "Reset: Enabled (will reset test data before loading)"
@@ -326,28 +326,22 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
     echo ""
 }
 
-# Load analyzer fixtures based on --analyzers= mode
-load_analyzer_fixtures() {
-    case "$ANALYZER_MODE" in
-        none)
-            echo "Analyzer mode: none (skipping all analyzer fixtures)"
-            echo ""
-            ;;
-        minimal)
-            # 3 generic analyzer types (ASTM, HL7, File) — safety net for plugin loader
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
-            ;;
-        full)
-            # 3 generic analyzer types + cleanup + deactivation of non-generic types
-            load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
+# Load profile fixtures based on --profile
+load_profile_fixtures() {
+    # Core baseline shared by both profiles
+    load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
+    load_sql_file "$CORE_DEMO_PATIENT_SQL" "core-demo-patient.sql (core add-order patient fixture)" "fatal"
 
-            # Clean up stale E2E/legacy analyzers + deactivate non-generic types
-            if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
-                load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (cleanup + dashboard deactivation)"
-            fi
-            ;;
-    esac
+    # Analyzer cleanup/deactivation is part of both lanes today.
+    if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
+        load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (cleanup + dashboard deactivation)"
+    fi
+
+    if [ "$PROFILE" = "harness" ]; then
+        load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
+    fi
 }
+
 
 # Verification function
 verify_fixtures() {
@@ -495,16 +489,11 @@ fi
 # 1. Load foundational data (providers, organizations)
 load_sql_file "$FOUNDATIONAL_SQL_FILE" "foundational fixtures (providers, organizations)" "fatal"
 
-# 2. Load analyzer fixtures (based on --analyzers= mode)
-load_analyzer_fixtures
+# 2. Load profile fixtures
+load_profile_fixtures
 
 # 3. Load storage hierarchy + E2E test data via generated SQL
 load_sql_file "$STORAGE_SQL" "storage fixtures (generated SQL)" "fatal"
-
-# 4. Isolated analyzer harness demo accessions (HARN-*) — requires storage patients/types
-if [ "$ANALYZER_MODE" = "full" ]; then
-    load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
-fi
 
 normalize_sequences
 
