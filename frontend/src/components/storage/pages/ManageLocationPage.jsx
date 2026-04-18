@@ -4,6 +4,10 @@ import { useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import LocationPickerPage from "../LocationPicker/LocationPickerPage";
 import { LEVEL_ORDER } from "../LocationPicker/useLocationPicker";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../LocationPicker/locationSelectionMapper";
 import useSampleStorage from "../hooks/useSampleStorage";
 
 /**
@@ -66,27 +70,16 @@ export default function ManageLocationPage() {
   };
 
   const handleSave = async ({ selection, position, reason, notes }) => {
-    // Deepest selected level wins — the backend assign/move endpoints
-    // expect one locationId + locationType pair (not a hierarchy).
-    let deepest = null;
-    for (const lvl of LEVEL_ORDER) {
-      if (selection[lvl]) deepest = { type: lvl, value: selection[lvl] };
-    }
-    if (!deepest || deepest.type === "room") {
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
+    if (!deepest) {
       setError("Select a device, shelf, rack, or box before saving");
       return;
     }
-
-    let positionCoordinate = null;
-    if (position) {
-      if (position.mode === "text") {
-        positionCoordinate = (position.value || "").trim() || null;
-      } else if (position.mode === "grid") {
-        const row = (position.row || "").toString().trim();
-        const col = (position.column || "").toString().trim();
-        positionCoordinate = row + col || null;
-      }
-    }
+    const positionCoordinate = positionToCoordinate(position, {
+      emptyValue: null,
+    });
 
     const payload = {
       sampleItemId: sample.sampleItemId || sample.id || id,

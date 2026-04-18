@@ -68,7 +68,10 @@ import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFor
 import { SearchResults } from "../resultPage/SearchResultForm";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
-import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
 import GenericSampleOrder from "../genericSample/GenericSampleOrder";
 import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
@@ -956,8 +959,12 @@ const NoteBookInstanceEntryForm = () => {
 
   // Handle location assignment for a sample
   const handleLocationAssignment = async (locationData, sampleItemId) => {
-    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-    const newLocation = locationData?.newLocation || locationData;
+    // locationData format: { sample, selection, reason?, conditionNotes?, positionCoordinate? }
+    const selection =
+      locationData?.selection || locationData?.newLocation || {};
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
 
     // Use sampleItemId from parameter or stored location data
     const actualSampleItemId =
@@ -969,10 +976,10 @@ const NoteBookInstanceEntryForm = () => {
         ? sampleLocations[sampleItemId].sampleItemId
         : null);
 
-    if (!actualSampleItemId || !newLocation) {
+    if (!actualSampleItemId || !deepest) {
       console.error("Missing SampleItem ID or location for assignment", {
         sampleItemId: actualSampleItemId,
-        newLocation,
+        selection,
       });
       return;
     }
@@ -981,18 +988,11 @@ const NoteBookInstanceEntryForm = () => {
       // Call assignment API with SampleItem ID
       const assignmentData = {
         sampleItemId: actualSampleItemId,
-        locationId:
-          newLocation.rack?.id ||
-          newLocation.shelf?.id ||
-          newLocation.device?.id,
-        locationType: newLocation.rack
-          ? "rack"
-          : newLocation.shelf
-            ? "shelf"
-            : "device",
+        locationId: String(deepest.value.id),
+        locationType: deepest.type,
         positionCoordinate:
           locationData.positionCoordinate ||
-          newLocation.position?.coordinate ||
+          positionToCoordinate(locationData.position) ||
           "",
         notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
       };
@@ -1957,36 +1957,13 @@ const NoteBookInstanceEntryForm = () => {
                                   </div>
                                   <LocationPickerInline
                                     onChange={(state) => {
-                                      // Adapt new picker state → legacy
-                                      // handleLocationAssignment input shape.
-                                      const newLocation = {};
-                                      LEVEL_ORDER.forEach((lvl) => {
-                                        if (state.selection[lvl])
-                                          newLocation[lvl] =
-                                            state.selection[lvl];
-                                      });
-                                      // Require at least device-level; the
-                                      // backend rejects room-only.
-                                      if (!newLocation.device) return;
-                                      let positionCoordinate = "";
-                                      if (state.position) {
-                                        if (state.position.mode === "text") {
-                                          positionCoordinate = (
-                                            state.position.value || ""
-                                          ).trim();
-                                        } else if (
-                                          state.position.mode === "grid"
-                                        ) {
-                                          const row = (state.position.row || "")
-                                            .toString()
-                                            .trim();
-                                          const col = (
-                                            state.position.column || ""
-                                          )
-                                            .toString()
-                                            .trim();
-                                          positionCoordinate = row + col;
-                                        }
+                                      if (
+                                        !getDeepestLocationSelection(
+                                          state.selection,
+                                          { requireAssignable: true },
+                                        )
+                                      ) {
+                                        return;
                                       }
                                       handleLocationAssignment(
                                         {
@@ -1996,8 +1973,12 @@ const NoteBookInstanceEntryForm = () => {
                                             sampleAccessionNumber:
                                               sample.accessionNumber || "",
                                           },
-                                          newLocation,
-                                          positionCoordinate,
+                                          selection: state.selection,
+                                          position: state.position,
+                                          positionCoordinate:
+                                            positionToCoordinate(
+                                              state.position,
+                                            ),
                                           conditionNotes: state.notes || "",
                                         },
                                         sample.sampleItemId || sample.id,

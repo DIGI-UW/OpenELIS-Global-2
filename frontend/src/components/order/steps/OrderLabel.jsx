@@ -28,7 +28,11 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
-import { LEVEL_ORDER } from "../../storage/LocationPicker/useLocationPicker";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+  selectionToHierarchicalPath,
+} from "../../storage/LocationPicker/locationSelectionMapper";
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
@@ -794,33 +798,15 @@ const OrderLabel = () => {
             form — see savePendingStorageAssignments. */}
         <LocationPickerInline
           onChange={(state) => {
-            // Collapse the new picker's {selection, position} shape
-            // into the legacy handleLocationChange(location) contract:
-            //   { id, type, hierarchicalPath, positionCoordinate }
-            let deepest = null;
-            const path = [];
-            LEVEL_ORDER.forEach((lvl) => {
-              if (state.selection[lvl]) {
-                deepest = { type: lvl, value: state.selection[lvl] };
-                path.push(state.selection[lvl].name);
-              }
+            const deepest = getDeepestLocationSelection(state.selection, {
+              requireAssignable: true,
             });
             if (!deepest) return;
-            let positionCoordinate = "";
-            if (state.position) {
-              if (state.position.mode === "text") {
-                positionCoordinate = (state.position.value || "").trim();
-              } else if (state.position.mode === "grid") {
-                const row = (state.position.row || "").toString().trim();
-                const col = (state.position.column || "").toString().trim();
-                positionCoordinate = row + col;
-              }
-            }
             handleLocationChange({
               id: deepest.value.id,
               type: deepest.type,
-              hierarchicalPath: path.join(" > "),
-              positionCoordinate,
+              hierarchicalPath: selectionToHierarchicalPath(state.selection),
+              positionCoordinate: positionToCoordinate(state.position),
             });
           }}
         />

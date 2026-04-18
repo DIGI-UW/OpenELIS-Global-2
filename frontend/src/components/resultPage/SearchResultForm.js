@@ -39,7 +39,10 @@ import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
 import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
-import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
@@ -1389,15 +1392,18 @@ export function SearchResults(props) {
     );
   };
 
-  // Handle location assignment/movement.
-  // Uses SampleItem ID from stored location data or from locationData.
+  // Handle location assignment/movement using shared location mapping rules.
   const handleLocationAssignment = async (
     locationData,
     analysisId,
     sampleItemId,
   ) => {
-    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-    const newLocation = locationData?.newLocation || locationData;
+    // locationData format: { sample, selection, reason?, conditionNotes?, positionCoordinate? }
+    const selection =
+      locationData?.selection || locationData?.newLocation || {};
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
 
     // Use sampleItemId from parameter or stored location data
     const actualSampleItemId =
@@ -1409,10 +1415,10 @@ export function SearchResults(props) {
         ? sampleLocations[analysisId].sampleItemId
         : null);
 
-    if (!actualSampleItemId || !newLocation) {
+    if (!actualSampleItemId || !deepest) {
       console.error("Missing SampleItem ID or location for assignment", {
         sampleItemId: actualSampleItemId,
-        newLocation,
+        selection,
       });
       return;
     }
@@ -1430,18 +1436,11 @@ export function SearchResults(props) {
       // Call assignment or movement API with SampleItem ID
       const assignmentData = {
         sampleItemId: actualSampleItemId,
-        locationId:
-          newLocation.rack?.id ||
-          newLocation.shelf?.id ||
-          newLocation.device?.id,
-        locationType: newLocation.rack
-          ? "rack"
-          : newLocation.shelf
-            ? "shelf"
-            : "device",
+        locationId: String(deepest.value.id),
+        locationType: deepest.type,
         positionCoordinate:
           locationData.positionCoordinate ||
-          newLocation.position?.coordinate ||
+          positionToCoordinate(locationData.position) ||
           "",
         notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
       };
@@ -1699,26 +1698,7 @@ export function SearchResults(props) {
                   sampleType: data.sampleType || "",
                   status: data.sampleStatus || "Active",
                 }}
-                currentLocation={null}
                 onConfirm={({ selection, position, reason, notes }) => {
-                  // Adapt new picker shape → legacy handleLocationAssignment
-                  // input (newLocation with room/device/shelf/rack/box keys
-                  // + positionCoordinate string + conditionNotes).
-                  let positionCoordinate = null;
-                  if (position) {
-                    if (position.mode === "text") {
-                      positionCoordinate =
-                        (position.value || "").trim() || null;
-                    } else if (position.mode === "grid") {
-                      const row = (position.row || "").toString().trim();
-                      const col = (position.column || "").toString().trim();
-                      positionCoordinate = row + col || null;
-                    }
-                  }
-                  const newLocation = {};
-                  LEVEL_ORDER.forEach((lvl) => {
-                    if (selection[lvl]) newLocation[lvl] = selection[lvl];
-                  });
                   handleLocationAssignment(
                     {
                       sample: {
@@ -1727,8 +1707,11 @@ export function SearchResults(props) {
                       },
                       isMovement: Boolean(currentLocationPath),
                       currentLocationPath,
-                      newLocation,
-                      positionCoordinate,
+                      selection,
+                      position,
+                      positionCoordinate: positionToCoordinate(position, {
+                        emptyValue: null,
+                      }),
                       conditionNotes: notes || "",
                       reason: reason || null,
                     },
@@ -1737,7 +1720,6 @@ export function SearchResults(props) {
                   );
                   setStorageModalRow(null);
                 }}
-                onCancel={() => setStorageModalRow(null)}
                 currentLocation={
                   currentLocationPath
                     ? {
@@ -1755,6 +1737,7 @@ export function SearchResults(props) {
                       }
                     : null
                 }
+                onCancel={() => setStorageModalRow(null)}
               />
             </div>
           </Column>
