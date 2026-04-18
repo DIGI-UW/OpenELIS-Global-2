@@ -24,8 +24,6 @@ import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleT
 import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType.SampleCategory;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.BiosafetyLevel;
-import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType;
-import org.openelisglobal.biorepository.valueholder.BiorepositoryApprovedSampleType.SampleCategory;
 import org.openelisglobal.biorepository.valueholder.RetentionPolicy;
 import org.openelisglobal.biorepository.valueholder.Shipment;
 import org.openelisglobal.common.rest.BaseRestController;
@@ -1325,14 +1323,18 @@ public class BioSampleRestController extends BaseRestController {
         nameOrId = nameOrId.trim();
         String normalizedInput = normalizeSampleTypeLabel(nameOrId);
 
-        // Try to find by ID first
-        try {
-            TypeOfSample byId = typeOfSampleService.get(nameOrId);
-            if (byId != null) {
-                return byId;
+        // Only query by ID when input is numeric.
+        // Passing labels (e.g. "Plasma") to ID lookup can poison the transaction
+        // on some Hibernate/user-type paths.
+        if (nameOrId.matches("^\\d+$")) {
+            try {
+                TypeOfSample byId = typeOfSampleService.get(nameOrId);
+                if (byId != null) {
+                    return byId;
+                }
+            } catch (Exception e) {
+                // Fall through to name-based lookup.
             }
-        } catch (Exception e) {
-            // Not a valid ID, try by name
         }
 
         // Try to find by description (name)

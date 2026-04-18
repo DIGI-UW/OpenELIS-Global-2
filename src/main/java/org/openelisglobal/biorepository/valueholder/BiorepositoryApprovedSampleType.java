@@ -28,7 +28,7 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
  */
 @Entity
 @Table(name = "biorepository_approved_sample_type", schema = "clinlims")
-@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
+@AttributeOverride(name = "lastupdated", column = @Column(name = "last_updated"))
 public class BiorepositoryApprovedSampleType extends BaseObject<Integer> {
 
     /**
