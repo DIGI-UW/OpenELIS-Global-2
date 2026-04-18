@@ -91,8 +91,11 @@ async function buildOrderForm(
     patientProperties: {
       patientPK: "",
       patientUpdateStatus: "ADD",
+      // Static names match seed-tat-data; the site's @ValidName(LAST_NAME)
+      // charset rejects digits, so uniqueness comes from nationalId/subjectNumber
+      // rather than from the last-name suffix.
       firstName: "Consent",
-      lastName: `Test${uniqueId.slice(-6)}`,
+      lastName: "Testpatient",
       gender: "M",
       birthDateForDisplay: "01/01/1990",
       nationalId: uniqueId,
