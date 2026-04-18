@@ -1256,7 +1256,6 @@ public class StorageLocationRestController extends BaseRestController {
                     return parentDevice == null || !Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage());
                 });
             }
-
             // Filter by active status if specified
             if (active != null) {
                 boxes.removeIf(b -> !active.equals(b.getActive()));
