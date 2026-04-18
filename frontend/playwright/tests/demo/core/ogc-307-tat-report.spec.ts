@@ -1,10 +1,14 @@
 import { test, expect, Page } from "@playwright/test";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import {
-  completeAnalysisChains,
-  HARNESS_LANE_ACCESSIONS,
-} from "../../../helpers/seed-tat-data";
+import { createAndCompleteAccessions } from "../../../helpers/seed-tat-data";
 import { seedHolidays } from "../../../helpers/seed-calendar-data";
+
+/**
+ * Number of fresh accessions the spec seeds in beforeAll. Test assertions
+ * only require ≥1 populated row; 3 makes the histogram + breakdown in the
+ * demo video look populated while keeping beforeAll under ~15s.
+ */
+const SEEDED_ACCESSION_COUNT = 3;
 
 /**
  * Guard assertion: fail loudly when the TAT Report is empty.
@@ -24,26 +28,20 @@ async function assertReportHasData(page: Page): Promise<void> {
 }
 
 test.describe("OGC-307: TAT Report (US2-US5)", () => {
-  // Force all 4 user stories onto a single worker in sequence.
-  // Rationale: `test.beforeAll` runs once per worker, not once per
-  // describe. The seed mutates shared fixture accessions (13 rows in
-  // NotStarted status → validated); if multiple workers run beforeAll
-  // concurrently, the second worker's POST hits analyses that have
-  // already transitioned and the server returns HTTP 500. Serial mode
-  // gives us exactly one seed call for all four tests.
+  // Force all 4 user stories onto a single worker in sequence so beforeAll
+  // fires exactly once. Playwright runs beforeAll per-worker, not per-describe.
   test.describe.configure({ mode: "serial" });
 
-  // Seed once: run result entry + validation through the full app flow
-  // against the 13 fixture accessions in HARNESS_LANE_ACCESSIONS,
-  // populating the milestone timestamps the TAT Report queries. Also
-  // seed holidays for Working Time calculations.
+  // Seed once: create N fresh accessions and run each through the full app
+  // flow (create order → enter results → validate), populating the milestone
+  // timestamps the TAT Report queries. Also seed holidays for Working Time
+  // calculations.
   //
-  // Fixture dependency: `analyzer-harness-lane-data.sql` must be loaded
-  // (via `load-test-fixtures.sh --analyzers=full`). That's why this
-  // spec lives under `tests/demo/harness/` — the `playwright-harness`
-  // CI job (fixture_mode: harness) is the only environment where those
-  // accessions exist in NotStarted status. Locally, `reset-env.sh
-  // --full-reset` in `projects/analyzer-harness/` loads the same set.
+  // Self-contained: uses the REST API end-to-end. No pre-loaded SQL fixtures
+  // required — works in both the core-mode and harness-mode Playwright CI
+  // jobs. This depends on OGC-584 (silent-200-no-persist fix in
+  // SamplePatientEntryRestController) landing in the same PR so createSampleOrder
+  // actually persists.
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({
       storageState: "playwright/.auth/user.json",
@@ -53,7 +51,7 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
     // (JSESSIONID + CSRF in localStorage) before issuing REST calls.
     await page.goto("/");
 
-    await completeAnalysisChains(page, HARNESS_LANE_ACCESSIONS);
+    await createAndCompleteAccessions(page, SEEDED_ACCESSION_COUNT);
     await seedHolidays(page, 2026);
 
     await page.close();

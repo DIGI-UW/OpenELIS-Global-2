@@ -206,6 +206,42 @@ export async function completeAnalysisChains(
 }
 
 /**
+ * Provision fresh accessions via `createSampleOrder` and run the full
+ * analysis chain on each (enter results + validate). Returns the
+ * generated accession numbers.
+ *
+ * Works in any environment with foundational fixtures loaded, including
+ * the core-mode Playwright CI job that runs specs under
+ * `tests/demo/core/`. Unlike `completeAnalysisChains(page,
+ * HARNESS_LANE_ACCESSIONS)` it does not require pre-loaded HARN lane
+ * fixtures — the spec becomes self-contained.
+ *
+ * Each accession ends up with `released_date` populated, which is what
+ * the TAT Report queries.
+ */
+export async function createAndCompleteAccessions(
+  page: Page,
+  count: number,
+): Promise<string[]> {
+  const accessionNumbers: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const accession = await createSampleOrder(page, {
+      labNo: "",
+      receivedDate: "",
+      receivedTime: "",
+    });
+    if (!accession) {
+      throw new Error(
+        `createAndCompleteAccessions: createSampleOrder returned no accession at index ${i} of ${count}`,
+      );
+    }
+    await completeAnalysisChain(page, accession);
+    accessionNumbers.push(accession);
+  }
+  return accessionNumbers;
+}
+
+/**
  * Fixture accessions seeded by `analyzer-harness-lane-data.sql`.
  * 13 samples, each with 1 analysis in NotStarted status.
  */
@@ -280,6 +316,13 @@ export async function createSampleOrder(
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const yyyy = now.getFullYear();
   const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
+  // nextVisitDate must be strictly in the future (@ValidDate(FUTURE) on the form).
+  // Using today as in the UI's default behavior triggers HTTP 400. Pick tomorrow.
+  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tdd = String(tomorrowDate.getDate()).padStart(2, "0");
+  const tmm = String(tomorrowDate.getMonth() + 1).padStart(2, "0");
+  const tyyyy = tomorrowDate.getFullYear();
+  const tomorrow = useMDY ? `${tmm}/${tdd}/${tyyyy}` : `${tdd}/${tmm}/${tyyyy}`;
   const time =
     receivedTime ||
     `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -349,7 +392,7 @@ export async function createSampleOrder(
       requestDate: today,
       receivedDateForDisplay: today,
       receivedTime: time,
-      nextVisitDate: today,
+      nextVisitDate: tomorrow,
       requesterSampleID: "",
       referringPatientNumber: "",
       referringSiteId: "9000100",
