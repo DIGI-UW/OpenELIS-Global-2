@@ -2,10 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Dropdown, Button, Modal, TextInput } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl, FormattedMessage } from "react-intl";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
-} from "../../../utils/Utils";
+import { getFromOpenElisServer } from "../../../utils/Utils";
+import useCreateLocation from "../../pages/hooks/useCreateLocation";
 
 /**
  * CreateForm — 5-level cascading dropdown UI for the LocationPicker.
@@ -89,6 +87,7 @@ const LEVELS = [
 
 export default function CreateForm({ selection, onLevelChange }) {
   const intl = useIntl();
+  const createLocation = useCreateLocation();
   const [options, setOptions] = useState({
     room: [],
     device: [],
@@ -176,7 +175,7 @@ export default function CreateForm({ selection, onLevelChange }) {
     );
   }, [rackId]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!inlineCreate || !inlineCreate.name.trim()) return;
     const { level, name } = inlineCreate;
     const meta = LEVELS.find((l) => l.key === level);
@@ -190,19 +189,16 @@ export default function CreateForm({ selection, onLevelChange }) {
     if (meta.parentLevel) {
       body[meta.createParam] = selection[meta.parentLevel].id;
     }
-    postToOpenElisServerJsonResponse(
-      `/rest/storage/${meta.endpoint}`,
-      JSON.stringify(body),
-      (response) => {
-        if (response && response.id) {
-          onLevelChange(level, {
-            id: response.id,
-            name: response.name || response.label,
-          });
-          setInlineCreate(null);
-        }
-      },
-    );
+    try {
+      const response = await createLocation(meta.endpoint, body);
+      onLevelChange(level, {
+        id: response.id,
+        name: response.name || response.label,
+      });
+      setInlineCreate(null);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (

@@ -1,7 +1,10 @@
-import React, { useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useContext, useMemo } from "react";
+import { Link, useHistory, useLocation } from "react-router-dom";
 import {
+  Button,
   DataTable,
+  OverflowMenu,
+  OverflowMenuItem,
   Table,
   TableBody,
   TableCell,
@@ -13,9 +16,12 @@ import {
   Tag,
   Loading,
 } from "@carbon/react";
+import { Add } from "@carbon/icons-react";
 import { FormattedMessage } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import useStorageTableData from "../hooks/useStorageTableData";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../../utils/Utils";
 
 /**
  * StorageResourcePage — shared shell for the five per-resource storage
@@ -40,8 +46,13 @@ export default function StorageResourcePage({
   pageSize,
   setPageSize,
   editHref,
+  addHref,
+  onDeleteRequested,
 }) {
+  const history = useHistory();
   const location = useLocation();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const isGlobalAdmin = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
 
   const refreshKey = useMemo(
     () => new URLSearchParams(location.search).get("t") || "initial",
@@ -57,29 +68,76 @@ export default function StorageResourcePage({
 
   const rows = useMemo(() => {
     const mapped = (items || []).map(mapRow);
-    if (!editHref) return mapped;
     return mapped.map((row, idx) => {
       const rawItem = items[idx];
-      return {
-        ...row,
-        actions: (
+      const nextRow = { ...row };
+      if (editHref) {
+        nextRow.actions = (
           <Link to={editHref(rawItem)}>
             <FormattedMessage id="label.edit" defaultMessage="Edit" />
           </Link>
-        ),
+        );
+      }
+      if (editHref || (isGlobalAdmin && onDeleteRequested)) {
+        nextRow.menuActions = (
+          <OverflowMenu
+            size="sm"
+            ariaLabel="Row actions"
+            data-testid={`storage-row-actions-${rawItem?.id}`}
+          >
+            {editHref && (
+              <OverflowMenuItem
+                itemText={
+                  <FormattedMessage id="label.edit" defaultMessage="Edit" />
+                }
+                onClick={() => history.push(editHref(rawItem))}
+              />
+            )}
+            {isGlobalAdmin && onDeleteRequested && (
+              <OverflowMenuItem
+                isDelete
+                itemText={
+                  <FormattedMessage id="label.delete" defaultMessage="Delete" />
+                }
+                onClick={() => onDeleteRequested(rawItem)}
+              />
+            )}
+          </OverflowMenu>
+        );
+      }
+      return {
+        ...nextRow,
       };
     });
-  }, [items, mapRow, editHref]);
+  }, [items, mapRow, editHref, history, isGlobalAdmin, onDeleteRequested]);
 
   const effectiveHeaders = useMemo(() => {
-    if (!editHref) return headers;
-    return [...headers, { key: "actions", header: "" }];
-  }, [headers, editHref]);
+    const nextHeaders = [...headers];
+    if (editHref) {
+      nextHeaders.push({ key: "actions", header: "" });
+    }
+    if (editHref || (isGlobalAdmin && onDeleteRequested)) {
+      nextHeaders.push({ key: "menuActions", header: "" });
+    }
+    return nextHeaders;
+  }, [headers, editHref, isGlobalAdmin, onDeleteRequested]);
 
   return (
     <div className="storage-resource-page">
       <BreadcrumbNav crumbs={crumbs} />
       <h1>{heading}</h1>
+
+      {addHref && isGlobalAdmin && (
+        <div style={{ margin: "1rem 0" }}>
+          <Button
+            kind="primary"
+            renderIcon={Add}
+            onClick={() => history.push(addHref)}
+          >
+            <FormattedMessage id="label.add" defaultMessage="Add" />
+          </Button>
+        </div>
+      )}
 
       {loading && <Loading small withOverlay={false} />}
 
@@ -123,7 +181,7 @@ export default function StorageResourcePage({
         <Pagination
           page={page}
           pageSize={pageSize}
-          pageSizes={[10, 25, 50, 100]}
+          pageSizes={[25, 50, 100]}
           totalItems={totalItems}
           onChange={({ page: p, pageSize: s }) => {
             setPage(p);

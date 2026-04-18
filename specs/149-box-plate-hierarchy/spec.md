@@ -78,6 +78,17 @@ Positions are **not persistent database entities**. Instead:
 - Flexible assignment: Samples can be assigned to device, shelf, rack, or box
   levels with optional position coordinates
 
+## Clarifications
+
+### Session 2026-04-18
+
+- **Add Box entry point clarification:** Box creation is routed through the
+  Boxes resource page toolbar (`/Storage/boxes/new`) rather than a rack-embedded
+  action.
+- **Delete behavior clarification:** Box deletion uses non-cascade delete
+  validation consistent with backend behavior (`DELETE /rest/storage/boxes/{id}`
+  without cascade summary endpoint).
+
 ## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Configure Box within Rack (Priority: P1)

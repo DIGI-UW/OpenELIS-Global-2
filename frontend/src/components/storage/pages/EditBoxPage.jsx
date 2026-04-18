@@ -11,8 +11,10 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
-import { getFromOpenElisServer } from "../../utils/Utils";
-import config from "../../../config.json";
+import {
+  getFromOpenElisServer,
+  putToOpenElisServerFullResponse,
+} from "../../utils/Utils";
 
 /**
  * EditBoxPage — /Storage/boxes/:id/edit
@@ -95,18 +97,21 @@ export default function EditBoxPage() {
     };
 
     try {
-      const response = await fetch(
-        `${config.serverBaseUrl}/rest/storage/boxes/${id}`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": localStorage.getItem("CSRF"),
-          },
-          body: JSON.stringify(payload),
-        },
-      );
+      const response = await new Promise((resolve) => {
+        putToOpenElisServerFullResponse(
+          `/rest/storage/boxes/${encodeURIComponent(String(id))}`,
+          JSON.stringify(payload),
+          (res) => resolve(res),
+        );
+      });
+      if (!response) {
+        throw new Error(
+          intl.formatMessage({
+            id: "storage.edit.error.saveFailed",
+            defaultMessage: "Save failed",
+          }),
+        );
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(

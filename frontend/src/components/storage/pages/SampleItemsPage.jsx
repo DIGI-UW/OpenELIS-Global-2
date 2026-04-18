@@ -16,7 +16,9 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import BreadcrumbNav from "../components/BreadcrumbNav";
 import SampleActionsContainer from "../SampleStorage/SampleActionsContainer";
+import DisposeSampleModal from "../SampleStorage/DisposeSampleModal";
 import useStorageTableData from "../hooks/useStorageTableData";
+import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 
 /**
  * SampleItemsPage — /Storage/sample-items.
@@ -32,6 +34,7 @@ export default function SampleItemsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
+  const [disposeTarget, setDisposeTarget] = useState(null);
 
   // URL-driven refresh: when the Manage Location page navigates back with
   // a `?t=<timestamp>` query, this changes and triggers a refetch.
@@ -115,9 +118,36 @@ export default function SampleItemsPage() {
     });
   };
 
-  const handleDispose = () => {
-    // Dispose stays as a short-confirm modal; wiring is a follow-up.
-    // The menu item renders but is a no-op for now.
+  const refreshList = () => {
+    history.replace({
+      pathname: location.pathname,
+      search: `?t=${Date.now()}`,
+    });
+  };
+
+  const handleDispose = (sample) => {
+    setDisposeTarget(sample);
+  };
+
+  const handleConfirmDispose = ({ sample, reason, method, notes }) => {
+    const payload = {
+      sampleItemId: String(
+        sample?.sampleItemExternalId || sample?.sampleItemId || "",
+      ),
+      reason,
+      method,
+      notes: notes || null,
+    };
+    postToOpenElisServerJsonResponse(
+      "/rest/storage/sample-items/dispose",
+      JSON.stringify(payload),
+      (response) => {
+        if (response && !response.error && !response.statusCode) {
+          setDisposeTarget(null);
+          refreshList();
+        }
+      },
+    );
   };
 
   const rows = useMemo(() => {
@@ -242,7 +272,7 @@ export default function SampleItemsPage() {
           data-testid="sample-items-pagination"
           page={page}
           pageSize={pageSize}
-          pageSizes={[10, 25, 50, 100]}
+          pageSizes={[25, 50, 100]}
           totalItems={totalItems}
           onChange={({ page: p, pageSize: s }) => {
             setPage(p);
@@ -250,6 +280,25 @@ export default function SampleItemsPage() {
           }}
         />
       )}
+
+      <DisposeSampleModal
+        open={Boolean(disposeTarget)}
+        sample={disposeTarget}
+        currentLocation={
+          disposeTarget
+            ? {
+                path:
+                  disposeTarget.location ||
+                  intl.formatMessage({
+                    id: "storage.location.unassigned",
+                    defaultMessage: "Unassigned",
+                  }),
+              }
+            : null
+        }
+        onClose={() => setDisposeTarget(null)}
+        onConfirm={handleConfirmDispose}
+      />
     </div>
   );
 }
