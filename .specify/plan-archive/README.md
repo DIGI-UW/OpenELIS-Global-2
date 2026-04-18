@@ -45,7 +45,15 @@ place with a pointer to the canonical live source rather than archived.
 
 ## Pending follow-up
 
-Once PR #3372 merges, the four file-import-profile iteration plans
-(`madagascar-file-import-profile-alignment-{v2,v3,v4}.md`) will also belong
-here. Only v5 + the base `madagascar-file-import-profile-alignment.md` should
-remain live.
+Once PR #3372 merges, two additional cleanups belong to this branch's
+follow-up-to-follow-up:
+
+- Archive `madagascar-file-import-profile-alignment-{v2,v3,v4}.md` under
+  `specs/011-madagascar-analyzer-integration/plans/` (they only exist on the PR
+  #3372 branch right now). Only v5 + the base
+  `madagascar-file-import-profile-alignment.md` should remain live.
+- Fix the empty `catch (PatternSyntaxException ignored) {}` at
+  `src/main/java/org/openelisglobal/analyzerimport/action/AnalyzerFhirImportController.java`
+  (added in PR #3372) — replace with a `LogEvent.logWarn` matching the
+  class-local logger pattern, so malformed user-config regexes are observable.
+  This was flagged M9 HIGH by /audit-branch.
