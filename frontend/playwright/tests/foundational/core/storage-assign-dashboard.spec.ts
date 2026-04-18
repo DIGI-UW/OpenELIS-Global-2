@@ -1,20 +1,28 @@
 import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * Sample Items page + dedicated Manage Location page.
  *
  * User story: admin navigates to /Storage/sample-items, clicks Manage
- * Location on an unassigned row → LocationPickerPage at
+ * Location on a row → LocationPickerPage at
  * /Storage/sample-items/{id}/manage-location. They pick or create a
  * location, click Save, and are navigated back.
  *
- * This spec no longer hardcodes fixture IDs. It starts from the current
- * table state, opens Manage Location from row actions, and validates
- * outcomes through visible UI state.
+ * Fixture precondition: the environment must contain at least one
+ * sample item, and a device named "Freezer Unit 1" under a room
+ * named "Main Laboratory". If either is missing these tests fail
+ * loudly so CI surfaces the data/flow mismatch rather than silently
+ * skipping.
+ *
+ * Selector strategy follows .specify/guides/playwright-best-practices.md:
+ *   - getByRole with a strict accessible name (no blind .first())
+ *   - option lookups scoped to their listbox
+ *   - data-testid retained only where the project anchors stable hooks
  */
 
-async function openManageLocationFromRow(page, rowIndex = 0) {
+async function openManageLocationFromRow(page: Page, rowIndex = 0) {
   await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
   await expect(
     page.getByRole("heading", { level: 1, name: /sample items/i }),
@@ -24,7 +32,8 @@ async function openManageLocationFromRow(page, rowIndex = 0) {
   const rowCount = await rows.count();
   expect(
     rowCount,
-    "Expected at least one sample row to open Manage Location",
+    "Expected at least one sample row to open Manage Location — " +
+      "seed sample items before exercising this flow.",
   ).toBeGreaterThan(0);
 
   const row = rows.nth(Math.min(rowIndex, rowCount - 1));
@@ -46,13 +55,15 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: /sample items/i }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(page.locator("table tbody tr").first()).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-    // Breadcrumb with Storage > Sample Items
-    const nav = page.getByRole("navigation", { name: /breadcrumb/i });
-    await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link", { name: /^storage$/i })).toBeVisible();
+
+    const rows = page.locator("table tbody tr");
+    await expect(rows.first()).toBeVisible({ timeout: LONG_TIMEOUT });
+
+    const breadcrumb = page.getByRole("navigation", { name: /breadcrumb/i });
+    await expect(breadcrumb).toBeVisible();
+    await expect(
+      breadcrumb.getByRole("link", { name: /^storage$/i }),
+    ).toBeVisible();
   });
 
   test("assigns a device-level location via search on the dedicated page", async ({
@@ -60,26 +71,32 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   }) => {
     await openManageLocationFromRow(page, 0);
 
-    // Pick a device (backend rejects room-level — DB check constraint).
-    const search = page.locator("#storage-location-picker-search-input");
-    await search.fill("Freezer");
-    const option = page
-      .getByRole("option", { name: /freezer unit 1/i })
-      .first();
-    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
-    await option.click();
+    await test.step("search for Freezer Unit 1 and select the device result", async () => {
+      // Backend rejects room-level assignments (DB check constraint), so
+      // the test selects a device-level option.
+      await page
+        .locator("#storage-location-picker-search-input")
+        .fill("Freezer");
 
-    await page
-      .getByRole("button", { name: /^save$/i })
-      .click({ timeout: UI_TIMEOUT });
-
-    await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
-      timeout: LONG_TIMEOUT,
+      const option = page.getByRole("option", {
+        name: /freezer unit 1/i,
+      });
+      await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+      await option.click();
     });
-    // List page re-rendered — the header is back.
-    await expect(
-      page.getByRole("heading", { level: 1, name: /sample items/i }),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
+
+    await test.step("save and verify navigation back", async () => {
+      await page
+        .getByRole("button", { name: /^save$/i })
+        .click({ timeout: UI_TIMEOUT });
+
+      await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(
+        page.getByRole("heading", { level: 1, name: /sample items/i }),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+    });
   });
 
   test("creates a new shelf inline via cascade and assigns it", async ({
@@ -87,51 +104,53 @@ test.describe("Sample Items page — Manage Location (dedicated page)", () => {
   }) => {
     await openManageLocationFromRow(page, 1);
 
-    await page
-      .getByRole("button", { name: /create new location/i })
-      .click({ timeout: UI_TIMEOUT });
+    await test.step("open cascade view", async () => {
+      await page
+        .getByRole("button", { name: /create new location/i })
+        .click({ timeout: UI_TIMEOUT });
+    });
 
-    // Room → Main Laboratory
-    const roomTrigger = page
-      .locator("#location-picker-room button.cds--list-box__field")
-      .first();
-    await roomTrigger.click();
-    await page
-      .getByRole("option", { name: /main laboratory/i })
-      .first()
-      .click({ timeout: UI_TIMEOUT });
+    await test.step("choose room → device", async () => {
+      const roomScope = page.locator("#location-picker-room");
+      await roomScope.locator("button.cds--list-box__field").click();
+      await roomScope
+        .getByRole("option", { name: /main laboratory/i })
+        .click({ timeout: UI_TIMEOUT });
 
-    // Device → Freezer Unit 1
-    const deviceTrigger = page
-      .locator("#location-picker-device button.cds--list-box__field")
-      .first();
-    await expect(deviceTrigger).toBeEnabled({ timeout: UI_TIMEOUT });
-    await deviceTrigger.click();
-    await page
-      .getByRole("option", { name: /freezer unit 1/i })
-      .first()
-      .click({ timeout: UI_TIMEOUT });
+      const deviceScope = page.locator("#location-picker-device");
+      const deviceTrigger = deviceScope.locator("button.cds--list-box__field");
+      await expect(deviceTrigger).toBeEnabled({ timeout: UI_TIMEOUT });
+      await deviceTrigger.click();
+      await deviceScope
+        .getByRole("option", { name: /freezer unit 1/i })
+        .click({ timeout: UI_TIMEOUT });
+    });
 
-    // Inline-create a unique Shelf under the selected Device.
-    const shelfRow = page
-      .locator("#location-picker-shelf")
-      .locator("xpath=ancestor::*[contains(@class,'create-row')][1]");
-    await shelfRow
-      .getByRole("button", { name: /add new/i })
-      .click({ timeout: UI_TIMEOUT });
+    await test.step("inline-create a unique shelf under the selected device", async () => {
+      const shelfRow = page
+        .locator("#location-picker-shelf")
+        .locator("xpath=ancestor::*[contains(@class,'create-row')][1]");
+      await shelfRow
+        .getByRole("button", { name: /add new/i })
+        .click({ timeout: UI_TIMEOUT });
 
-    const uniqueShelf = `PWShelf-${Date.now().toString(36)}`;
-    await page.locator("#location-picker-inline-create-name").fill(uniqueShelf);
-    await page
-      .getByRole("button", { name: /^create$/i })
-      .click({ timeout: UI_TIMEOUT });
+      const uniqueShelf = `PWShelf-${Date.now().toString(36)}`;
+      await page
+        .locator("#location-picker-inline-create-name")
+        .fill(uniqueShelf);
+      await page
+        .getByRole("button", { name: /^create$/i })
+        .click({ timeout: UI_TIMEOUT });
+    });
 
-    await page
-      .getByRole("button", { name: /^save$/i })
-      .click({ timeout: UI_TIMEOUT });
+    await test.step("save and verify navigation back", async () => {
+      await page
+        .getByRole("button", { name: /^save$/i })
+        .click({ timeout: UI_TIMEOUT });
 
-    await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
-      timeout: LONG_TIMEOUT,
+      await expect(page).toHaveURL(/\/Storage\/sample-items(\?.*)?$/, {
+        timeout: LONG_TIMEOUT,
+      });
     });
   });
 });
