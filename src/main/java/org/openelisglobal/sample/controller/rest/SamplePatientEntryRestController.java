@@ -143,7 +143,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "sampleOrderItems.paymentOptionSelection", "sampleOrderItems.billingReferenceNumber",
             "sampleOrderItems.testLocationCode", "sampleOrderItems.otherLocationCode",
             "sampleOrderItems.contactTracingIndexName", "sampleOrderItems.contactTracingIndexRecordNumber",
-            "sampleOrderItems.priority",
+            "sampleOrderItems.consentGiven", "sampleOrderItems.consentFormReference", "sampleOrderItems.priority",
             //
             "currentDate", "sampleOrderItems.newRequesterName", "sampleOrderItems.externalOrderNumber",
             // referral

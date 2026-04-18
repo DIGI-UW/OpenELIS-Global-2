@@ -53,6 +53,9 @@
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
 
+  <!-- Informed Consent Capture (OGC-557) -->
+  <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>
+
   <!-- Patient ID document scanning (OGC-66) -->
   <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
 
