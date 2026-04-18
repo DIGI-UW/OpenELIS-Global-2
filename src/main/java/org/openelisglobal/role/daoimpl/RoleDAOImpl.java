@@ -101,7 +101,7 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, Integer> implements RoleDAO {
             query.setMaxResults(endingRecNo - 1);
 
             list = query.list();
-        } catch (RuntimeException e) {
+        } catch (NumberFormatException | HibernateException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in Role getPageOfRoles()", e);
         }
