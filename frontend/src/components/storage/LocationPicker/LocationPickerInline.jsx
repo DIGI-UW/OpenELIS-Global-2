@@ -3,6 +3,10 @@ import { Button, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
+import {
+  selectionToHierarchicalPath,
+  positionToCoordinate,
+} from "./locationSelectionMapper";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
 
@@ -58,13 +62,8 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
     }
   };
 
-  const summary = LEVEL_ORDER.map((lvl) => state.selection[lvl]?.name)
-    .filter(Boolean)
-    .join(" > ");
-  const positionValue =
-    state.position?.mode === "grid"
-      ? `${state.position?.row || ""}${state.position?.column || ""}`
-      : state.position?.value || "";
+  const summary = selectionToHierarchicalPath(state.selection);
+  const positionValue = positionToCoordinate(state.position);
 
   return (
     <div className="storage-location-picker-inline">
