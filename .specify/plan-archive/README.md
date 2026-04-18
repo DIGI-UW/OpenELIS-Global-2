@@ -57,3 +57,7 @@ follow-up-to-follow-up:
   (added in PR #3372) — replace with a `LogEvent.logWarn` matching the
   class-local logger pattern, so malformed user-config regexes are observable.
   This was flagged M9 HIGH by /audit-branch.
+- H1 narrating-comment prune on the PR-#3372-authored files (backend services +
+  harness scripts). Scope: comments where the adjacent statement exactly does
+  what the comment says. Preserve comments that add constraint/invariant/why
+  context.
