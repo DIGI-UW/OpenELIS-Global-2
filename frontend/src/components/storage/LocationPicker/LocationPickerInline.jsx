@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Button } from "@carbon/react";
+import { Button, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
 import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
 import SearchField from "./components/SearchField";
@@ -59,6 +59,10 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
   const summary = LEVEL_ORDER.map((lvl) => state.selection[lvl]?.name)
     .filter(Boolean)
     .join(" > ");
+  const positionValue =
+    state.position?.mode === "grid"
+      ? `${state.position?.row || ""}${state.position?.column || ""}`
+      : state.position?.value || "";
 
   return (
     <div className="storage-location-picker-inline">
@@ -100,6 +104,19 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
           </Button>
         </>
       )}
+      <TextInput
+        id="storage-location-picker-inline-position"
+        labelText="Position (optional)"
+        value={positionValue}
+        onChange={(e) =>
+          dispatch({
+            type: "SET_POSITION",
+            position: e.target.value
+              ? { mode: "text", value: e.target.value }
+              : null,
+          })
+        }
+      />
     </div>
   );
 }

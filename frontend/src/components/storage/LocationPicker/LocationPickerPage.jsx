@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, TextArea } from "@carbon/react";
+import { Button, TextArea, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
 import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
 import SearchField from "./components/SearchField";
@@ -54,6 +54,10 @@ export default function LocationPickerPage({
   const summary = LEVEL_ORDER.map((lvl) => state.selection[lvl]?.name)
     .filter(Boolean)
     .join(" > ");
+  const positionValue =
+    state.position?.mode === "grid"
+      ? `${state.position?.row || ""}${state.position?.column || ""}`
+      : state.position?.value || "";
 
   const currentSummary = currentLocation
     ? LEVEL_ORDER.map((lvl) => currentLocation.selection?.[lvl]?.name)
@@ -139,6 +143,20 @@ export default function LocationPickerPage({
           }
         />
       )}
+
+      <TextInput
+        id="storage-location-picker-page-position"
+        labelText="Position (optional)"
+        value={positionValue}
+        onChange={(e) =>
+          dispatch({
+            type: "SET_POSITION",
+            position: e.target.value
+              ? { mode: "text", value: e.target.value }
+              : null,
+          })
+        }
+      />
 
       <TextArea
         id="storage-location-picker-page-notes"

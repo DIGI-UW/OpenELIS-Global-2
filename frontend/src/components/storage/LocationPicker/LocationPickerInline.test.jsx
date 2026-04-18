@@ -33,7 +33,9 @@ describe("LocationPickerInline", () => {
   it("renders in search mode by default", () => {
     renderWithIntl(<LocationPickerInline onChange={jest.fn()} />);
     // Search mode renders the SearchField (a textbox)
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/search for a storage location/i),
+    ).toBeInTheDocument();
     // No CreateForm dropdowns visible
     expect(document.querySelector("#location-picker-room")).toBeNull();
   });
@@ -56,7 +58,9 @@ describe("LocationPickerInline", () => {
     expect(document.querySelector("#location-picker-room")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /back to search/i }));
     expect(document.querySelector("#location-picker-room")).toBeNull();
-    expect(screen.getByRole("textbox")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/search for a storage location/i),
+    ).toBeInTheDocument();
   });
 
   it("shows the selected hierarchical path when a selection is set", () => {
