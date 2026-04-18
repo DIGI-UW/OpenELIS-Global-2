@@ -77,6 +77,30 @@ describe("LocationPickerInline", () => {
     expect(screen.getByText(/Main Lab > Freezer 1/)).toBeInTheDocument();
   });
 
+  it("does not fire onChange when only the parent re-renders with a new callback identity", () => {
+    const onChange = jest.fn();
+    function Parent({ counter }) {
+      // Inline arrow ⇒ a fresh callback identity every render. If Inline's
+      // effect depended on `onChange`, the effect would re-fire on every
+      // render and onChange would get N extra calls.
+      return (
+        <IntlProvider locale="en" messages={{}}>
+          <LocationPickerInline
+            onChange={(state) => onChange(state, counter)}
+          />
+        </IntlProvider>
+      );
+    }
+    const { rerender } = render(<Parent counter={1} />);
+    const initialCallCount = onChange.mock.calls.length;
+    rerender(<Parent counter={2} />);
+    rerender(<Parent counter={3} />);
+    rerender(<Parent counter={4} />);
+    // No selection/position change between renders ⇒ onChange should
+    // not have been invoked any additional times.
+    expect(onChange.mock.calls.length).toBe(initialCallCount);
+  });
+
   it("calls onChange whenever the selection changes", () => {
     const onChange = jest.fn();
     Utils.getFromOpenElisServer.mockImplementation((url, cb) => {

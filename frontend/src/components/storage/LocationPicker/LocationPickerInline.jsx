@@ -8,6 +8,7 @@ import {
   positionToCoordinate,
 } from "./locationSelectionMapper";
 import { searchResultToReplaceAction } from "./searchResultToAction";
+import useLatestCallback from "./useLatestCallback";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
 
@@ -40,13 +41,16 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
   );
 
   // Forward meaningful state changes to the host form. Only selection
-  // and position are relevant to the caller — omitting the full `state`
-  // object from deps avoids spamming onChange on every keystroke or
-  // mode toggle.
+  // and position are relevant to the caller. onChange is routed through
+  // a ref (useLatestCallback) so inline arrow callbacks in the parent
+  // don't retrigger this effect on every render — the effect fires
+  // strictly when selection or position changes.
+  const onChangeRef = useLatestCallback(onChange);
   useEffect(() => {
-    if (onChange) onChange(state);
+    const cb = onChangeRef.current;
+    if (cb) cb(state);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.selection, state.position, onChange]);
+  }, [state.selection, state.position]);
 
   const setLevel = (level, value) =>
     dispatch({ type: "SET_LEVEL", level, value });
