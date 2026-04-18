@@ -58,7 +58,9 @@ export default function LocationPickerPage({
   const currentSummary = currentLocation
     ? LEVEL_ORDER.map((lvl) => currentLocation.selection?.[lvl]?.name)
         .filter(Boolean)
-        .join(" > ")
+        .join(" > ") ||
+      currentLocation.hierarchicalPath ||
+      ""
     : "";
 
   return (

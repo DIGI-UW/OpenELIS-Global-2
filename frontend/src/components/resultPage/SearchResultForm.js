@@ -1389,8 +1389,8 @@ export function SearchResults(props) {
     );
   };
 
-  // Handle location assignment
-  // Uses SampleItem ID from stored location data or from locationData
+  // Handle location assignment/movement.
+  // Uses SampleItem ID from stored location data or from locationData.
   const handleLocationAssignment = async (
     locationData,
     analysisId,
@@ -1417,8 +1417,17 @@ export function SearchResults(props) {
       return;
     }
 
+    const isMovement =
+      locationData?.isMovement ||
+      Boolean(locationData?.currentLocationPath) ||
+      Boolean(
+        sampleLocations[analysisId] &&
+          typeof sampleLocations[analysisId] === "object" &&
+          sampleLocations[analysisId].locationPath,
+      );
+
     try {
-      // Call assignment API with SampleItem ID
+      // Call assignment or movement API with SampleItem ID
       const assignmentData = {
         sampleItemId: actualSampleItemId,
         locationId:
@@ -1436,9 +1445,15 @@ export function SearchResults(props) {
           "",
         notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
       };
+      if (isMovement) {
+        assignmentData.reason =
+          locationData.reason || "Reassignment from result entry workflow";
+      }
 
       postToOpenElisServerJsonResponse(
-        "/rest/storage/sample-items/assign",
+        isMovement
+          ? "/rest/storage/sample-items/move"
+          : "/rest/storage/sample-items/assign",
         JSON.stringify(assignmentData),
         (response) => {
           if (response && response.success) {
@@ -1710,6 +1725,8 @@ export function SearchResults(props) {
                         sampleItemId,
                         sampleAccessionNumber: data.accessionNumber,
                       },
+                      isMovement: Boolean(currentLocationPath),
+                      currentLocationPath,
                       newLocation,
                       positionCoordinate,
                       conditionNotes: notes || "",
@@ -1721,6 +1738,23 @@ export function SearchResults(props) {
                   setStorageModalRow(null);
                 }}
                 onCancel={() => setStorageModalRow(null)}
+                currentLocation={
+                  currentLocationPath
+                    ? {
+                        selection: {},
+                        hierarchicalPath: currentLocationPath,
+                        position:
+                          locationData &&
+                          typeof locationData === "object" &&
+                          locationData.positionCoordinate
+                            ? {
+                                mode: "text",
+                                value: locationData.positionCoordinate,
+                              }
+                            : null,
+                      }
+                    : null
+                }
               />
             </div>
           </Column>

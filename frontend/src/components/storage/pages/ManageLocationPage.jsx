@@ -41,7 +41,8 @@ export default function ManageLocationPage() {
 
   const currentLocation = (() => {
     const hasAnyLevel = LEVEL_ORDER.some((lvl) => sample[`${lvl}Id`]);
-    if (!hasAnyLevel) return null;
+    const locationPath = sample.location || sample.hierarchicalPath || "";
+    if (!hasAnyLevel && !locationPath) return null;
     const selection = {};
     LEVEL_ORDER.forEach((lvl) => {
       if (sample[`${lvl}Id`]) {
@@ -53,6 +54,7 @@ export default function ManageLocationPage() {
     });
     return {
       selection,
+      hierarchicalPath: locationPath,
       position: sample.positionCoordinate
         ? { mode: "text", value: sample.positionCoordinate }
         : null,
@@ -70,8 +72,8 @@ export default function ManageLocationPage() {
     for (const lvl of LEVEL_ORDER) {
       if (selection[lvl]) deepest = { type: lvl, value: selection[lvl] };
     }
-    if (!deepest) {
-      setError("Select at least a Room before saving");
+    if (!deepest || deepest.type === "room") {
+      setError("Select a device, shelf, rack, or box before saving");
       return;
     }
 
