@@ -74,7 +74,12 @@ export default function ManageLocationPage() {
       requireAssignable: true,
     });
     if (!deepest) {
-      setError("Select a device, shelf, rack, or box before saving");
+      setError(
+        intl.formatMessage({
+          id: "storage.manageLocation.error.selectTarget",
+          defaultMessage: "Select a device, shelf, rack, or box before saving",
+        }),
+      );
       return;
     }
     const positionCoordinate = positionToCoordinate(position, {
@@ -97,7 +102,13 @@ export default function ManageLocationPage() {
       }
       navigateBack();
     } catch (e) {
-      setError(e.message || "Save failed");
+      setError(
+        e.message ||
+          intl.formatMessage({
+            id: "storage.manageLocation.error.saveFailed",
+            defaultMessage: "Save failed",
+          }),
+      );
     }
   };
 

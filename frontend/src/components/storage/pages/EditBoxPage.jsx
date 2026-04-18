@@ -51,7 +51,14 @@ export default function EditBoxPage() {
           active: response.active !== false,
         });
       } else {
-        setError(response?.error || response?.message || "Failed to load box");
+        setError(
+          response?.error ||
+            response?.message ||
+            intl.formatMessage({
+              id: "storage.editbox.error.loadBox",
+              defaultMessage: "Failed to load box",
+            }),
+        );
       }
       setLoading(false);
     });
@@ -103,12 +110,25 @@ export default function EditBoxPage() {
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(
-          body.message || `Save failed (HTTP ${response.status})`,
+          body.message ||
+            intl.formatMessage(
+              {
+                id: "storage.edit.error.saveHttp",
+                defaultMessage: "Save failed (HTTP {status})",
+              },
+              { status: response.status },
+            ),
         );
       }
       navigateBack();
     } catch (e) {
-      setError(e.message || "Save failed");
+      setError(
+        e.message ||
+          intl.formatMessage({
+            id: "storage.edit.error.saveFailed",
+            defaultMessage: "Save failed",
+          }),
+      );
     } finally {
       setSaving(false);
     }
@@ -142,7 +162,12 @@ export default function EditBoxPage() {
     return (
       <div className="storage-edit-page">
         <BreadcrumbNav crumbs={crumbs} />
-        <InlineLoading description="Loading…" />
+        <InlineLoading
+          description={intl.formatMessage({
+            id: "label.loading",
+            defaultMessage: "Loading...",
+          })}
+        />
       </div>
     );
   }
@@ -151,7 +176,14 @@ export default function EditBoxPage() {
     return (
       <div className="storage-edit-page">
         <BreadcrumbNav crumbs={crumbs} />
-        <InlineNotification kind="error" title="Error" subtitle={error} />
+        <InlineNotification
+          kind="error"
+          title={intl.formatMessage({
+            id: "label.error",
+            defaultMessage: "Error",
+          })}
+          subtitle={error}
+        />
       </div>
     );
   }
@@ -167,7 +199,14 @@ export default function EditBoxPage() {
       </h1>
 
       {error && (
-        <InlineNotification kind="error" title="Error" subtitle={error} />
+        <InlineNotification
+          kind="error"
+          title={intl.formatMessage({
+            id: "label.error",
+            defaultMessage: "Error",
+          })}
+          subtitle={error}
+        />
       )}
 
       <div className="storage-edit-page-form" style={{ maxWidth: "32rem" }}>
@@ -195,7 +234,10 @@ export default function EditBoxPage() {
             id: "storage.nav.rack",
             defaultMessage: "Rack",
           })}
-          label="Select rack"
+          label={intl.formatMessage({
+            id: "storage.editbox.selectRack",
+            defaultMessage: "Select rack",
+          })}
           items={rackOptions}
           itemToString={(item) => (item ? item.label || item.name || "" : "")}
           selectedItem={

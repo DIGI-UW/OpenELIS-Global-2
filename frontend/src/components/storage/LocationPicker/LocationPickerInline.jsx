@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Button, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
+import { useIntl } from "react-intl";
 import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
@@ -21,6 +22,7 @@ import CreateForm from "./components/CreateForm";
  * the mode and forwards select-events to the reducer.
  */
 export default function LocationPickerInline({ initialSelection, onChange }) {
+  const intl = useIntl();
   const [state, dispatch] = useLocationPicker(
     initialSelection
       ? {
@@ -89,7 +91,10 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
             renderIcon={Add}
             onClick={() => dispatch({ type: "SET_MODE", mode: "create" })}
           >
-            Create new location
+            {intl.formatMessage({
+              id: "storage.picker.createNewLocation",
+              defaultMessage: "Create new location",
+            })}
           </Button>
         </>
       ) : (
@@ -101,13 +106,19 @@ export default function LocationPickerInline({ initialSelection, onChange }) {
             renderIcon={Search}
             onClick={() => dispatch({ type: "SET_MODE", mode: "search" })}
           >
-            Back to search
+            {intl.formatMessage({
+              id: "storage.picker.backToSearch",
+              defaultMessage: "Back to search",
+            })}
           </Button>
         </>
       )}
       <TextInput
         id="storage-location-picker-inline-position"
-        labelText="Position (optional)"
+        labelText={intl.formatMessage({
+          id: "storage.picker.position.optional",
+          defaultMessage: "Position (optional)",
+        })}
         value={positionValue}
         onChange={(e) =>
           dispatch({

@@ -1,6 +1,7 @@
 import React from "react";
 import { Button, TextArea, TextInput } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
+import { useIntl } from "react-intl";
 import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
@@ -28,6 +29,7 @@ export default function LocationPickerPage({
   onSave,
   onCancel,
 }) {
+  const intl = useIntl();
   const isMovement = !!currentLocation;
   const [state, dispatch] = useLocationPicker(
     currentLocation ? { initialAssignment: currentLocation } : {},
@@ -70,29 +72,70 @@ export default function LocationPickerPage({
   return (
     <div className="storage-location-picker-page">
       {breadcrumb}
-      <h1>{isMovement ? "Move Sample" : "Assign Storage Location"}</h1>
+      <h1>
+        {intl.formatMessage({
+          id: isMovement
+            ? "storage.picker.heading.moveSample"
+            : "storage.picker.heading.assignLocation",
+          defaultMessage: isMovement
+            ? "Move Sample"
+            : "Assign Storage Location",
+        })}
+      </h1>
 
       <section className="storage-location-picker-page-sample-info">
-        <h4>Sample</h4>
+        <h4>
+          {intl.formatMessage({
+            id: "storage.picker.sample.heading",
+            defaultMessage: "Sample",
+          })}
+        </h4>
         <dl>
-          <dt>Accession</dt>
+          <dt>
+            {intl.formatMessage({
+              id: "storage.picker.sample.accession",
+              defaultMessage: "Accession",
+            })}
+          </dt>
           <dd>{sample.sampleAccessionNumber}</dd>
-          <dt>Type</dt>
+          <dt>
+            {intl.formatMessage({
+              id: "storage.picker.sample.type",
+              defaultMessage: "Type",
+            })}
+          </dt>
           <dd>{sample.sampleType}</dd>
-          <dt>Status</dt>
+          <dt>
+            {intl.formatMessage({
+              id: "storage.picker.sample.status",
+              defaultMessage: "Status",
+            })}
+          </dt>
           <dd>{sample.status}</dd>
         </dl>
       </section>
 
       {currentSummary && (
         <section className="storage-location-picker-page-current">
-          <h4>Current location</h4>
+          <h4>
+            {intl.formatMessage({
+              id: "storage.picker.currentLocation",
+              defaultMessage: "Current location",
+            })}
+          </h4>
           <p>{currentSummary}</p>
         </section>
       )}
 
       <section className="storage-location-picker-page-picker">
-        <h4>{isMovement ? "New location" : "Storage location"}</h4>
+        <h4>
+          {intl.formatMessage({
+            id: isMovement
+              ? "storage.picker.newLocation"
+              : "storage.picker.storageLocation",
+            defaultMessage: isMovement ? "New location" : "Storage location",
+          })}
+        </h4>
         {summary && (
           <div className="storage-location-picker-page-summary">{summary}</div>
         )}
@@ -116,7 +159,10 @@ export default function LocationPickerPage({
               renderIcon={Add}
               onClick={() => dispatch({ type: "SET_MODE", mode: "create" })}
             >
-              Create new location
+              {intl.formatMessage({
+                id: "storage.picker.createNewLocation",
+                defaultMessage: "Create new location",
+              })}
             </Button>
           </>
         ) : (
@@ -128,7 +174,10 @@ export default function LocationPickerPage({
               renderIcon={Search}
               onClick={() => dispatch({ type: "SET_MODE", mode: "search" })}
             >
-              Back to search
+              {intl.formatMessage({
+                id: "storage.picker.backToSearch",
+                defaultMessage: "Back to search",
+              })}
             </Button>
           </>
         )}
@@ -137,7 +186,10 @@ export default function LocationPickerPage({
       {isMovement && (
         <TextArea
           id="storage-location-picker-page-reason"
-          labelText="Reason for move"
+          labelText={intl.formatMessage({
+            id: "storage.move.reason.label",
+            defaultMessage: "Reason for Move",
+          })}
           value={state.reason || ""}
           onChange={(e) =>
             dispatch({ type: "SET_REASON", reason: e.target.value })
@@ -147,7 +199,10 @@ export default function LocationPickerPage({
 
       <TextInput
         id="storage-location-picker-page-position"
-        labelText="Position (optional)"
+        labelText={intl.formatMessage({
+          id: "storage.picker.position.optional",
+          defaultMessage: "Position (optional)",
+        })}
         value={positionValue}
         onChange={(e) =>
           dispatch({
@@ -161,17 +216,20 @@ export default function LocationPickerPage({
 
       <TextArea
         id="storage-location-picker-page-notes"
-        labelText="Notes"
+        labelText={intl.formatMessage({
+          id: "storage.picker.notes",
+          defaultMessage: "Notes",
+        })}
         value={state.notes || ""}
         onChange={(e) => dispatch({ type: "SET_NOTES", notes: e.target.value })}
       />
 
       <div className="storage-location-picker-page-actions">
         <Button kind="secondary" onClick={onCancel}>
-          Cancel
+          {intl.formatMessage({ id: "label.cancel", defaultMessage: "Cancel" })}
         </Button>
         <Button kind="primary" onClick={handleSave}>
-          Save
+          {intl.formatMessage({ id: "label.save", defaultMessage: "Save" })}
         </Button>
       </div>
     </div>

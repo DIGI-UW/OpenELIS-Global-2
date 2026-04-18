@@ -39,6 +39,7 @@ const TYPE_META = {
     parentField: "parentRoomId",
     parentEndpoint: "rooms",
     parentLabel: "Room",
+    parentLabelId: "storage.nav.room",
   },
   shelf: {
     nameField: "label",
@@ -46,6 +47,7 @@ const TYPE_META = {
     parentField: "parentDeviceId",
     parentEndpoint: "devices",
     parentLabel: "Device",
+    parentLabelId: "storage.nav.device",
   },
   rack: {
     nameField: "label",
@@ -53,6 +55,7 @@ const TYPE_META = {
     parentField: "parentShelfId",
     parentEndpoint: "shelves",
     parentLabel: "Shelf",
+    parentLabelId: "storage.nav.shelf",
   },
 };
 
@@ -86,7 +89,12 @@ export default function EditLocationPage({ type }) {
           });
         } else {
           setError(
-            response?.error || response?.message || "Failed to load location",
+            response?.error ||
+              response?.message ||
+              intl.formatMessage({
+                id: "storage.edit.error.loadLocation",
+                defaultMessage: "Failed to load location",
+              }),
           );
         }
         setLoading(false);
@@ -145,12 +153,25 @@ export default function EditLocationPage({ type }) {
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(
-          body.message || `Save failed (HTTP ${response.status})`,
+          body.message ||
+            intl.formatMessage(
+              {
+                id: "storage.edit.error.saveHttp",
+                defaultMessage: "Save failed (HTTP {status})",
+              },
+              { status: response.status },
+            ),
         );
       }
       navigateBack();
     } catch (e) {
-      setError(e.message || "Save failed");
+      setError(
+        e.message ||
+          intl.formatMessage({
+            id: "storage.edit.error.saveFailed",
+            defaultMessage: "Save failed",
+          }),
+      );
     } finally {
       setSaving(false);
     }
@@ -185,7 +206,12 @@ export default function EditLocationPage({ type }) {
     return (
       <div className="storage-edit-page">
         <BreadcrumbNav crumbs={crumbs} />
-        <InlineLoading description="Loading…" />
+        <InlineLoading
+          description={intl.formatMessage({
+            id: "label.loading",
+            defaultMessage: "Loading...",
+          })}
+        />
       </div>
     );
   }
@@ -194,7 +220,14 @@ export default function EditLocationPage({ type }) {
     return (
       <div className="storage-edit-page">
         <BreadcrumbNav crumbs={crumbs} />
-        <InlineNotification kind="error" title="Error" subtitle={error} />
+        <InlineNotification
+          kind="error"
+          title={intl.formatMessage({
+            id: "label.error",
+            defaultMessage: "Error",
+          })}
+          subtitle={error}
+        />
       </div>
     );
   }
@@ -211,7 +244,14 @@ export default function EditLocationPage({ type }) {
       </h1>
 
       {error && (
-        <InlineNotification kind="error" title="Error" subtitle={error} />
+        <InlineNotification
+          kind="error"
+          title={intl.formatMessage({
+            id: "label.error",
+            defaultMessage: "Error",
+          })}
+          subtitle={error}
+        />
       )}
 
       <div className="storage-edit-page-form" style={{ maxWidth: "32rem" }}>
@@ -251,8 +291,17 @@ export default function EditLocationPage({ type }) {
         {meta.parentField && (
           <Dropdown
             id="storage-edit-parent"
-            titleText={meta.parentLabel}
-            label={`Select ${meta.parentLabel?.toLowerCase()}`}
+            titleText={intl.formatMessage({
+              id: meta.parentLabelId,
+              defaultMessage: meta.parentLabel,
+            })}
+            label={intl.formatMessage(
+              {
+                id: "storage.edit.selectParent",
+                defaultMessage: "Select {parent}",
+              },
+              { parent: meta.parentLabel?.toLowerCase() },
+            )}
             items={parentOptions}
             itemToString={(item) => (item ? item.name || item.label || "" : "")}
             selectedItem={

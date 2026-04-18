@@ -9,6 +9,7 @@ import {
   TextArea,
 } from "@carbon/react";
 import { Search, Add } from "@carbon/icons-react";
+import { useIntl } from "react-intl";
 import useLocationPicker, { LEVEL_ORDER } from "./useLocationPicker";
 import SearchField from "./components/SearchField";
 import CreateForm from "./components/CreateForm";
@@ -32,6 +33,7 @@ export default function LocationPickerModal({
   onConfirm,
   onCancel,
 }) {
+  const intl = useIntl();
   const isMovement = !!currentLocation;
   const [state, dispatch] = useLocationPicker(
     currentLocation ? { initialAssignment: currentLocation } : {},
@@ -88,30 +90,69 @@ export default function LocationPickerModal({
   return (
     <ComposedModal open={isOpen} onClose={onCancel}>
       <ModalHeader
-        title={isMovement ? "Move Sample" : "Assign Storage Location"}
+        title={intl.formatMessage({
+          id: isMovement
+            ? "storage.picker.heading.moveSample"
+            : "storage.picker.heading.assignLocation",
+          defaultMessage: isMovement
+            ? "Move Sample"
+            : "Assign Storage Location",
+        })}
       />
       <ModalBody>
         <section className="storage-location-picker-modal-sample-info">
-          <h4>Sample</h4>
+          <h4>
+            {intl.formatMessage({
+              id: "storage.picker.sample.heading",
+              defaultMessage: "Sample",
+            })}
+          </h4>
           <dl>
-            <dt>Accession</dt>
+            <dt>
+              {intl.formatMessage({
+                id: "storage.picker.sample.accession",
+                defaultMessage: "Accession",
+              })}
+            </dt>
             <dd>{sample.sampleAccessionNumber}</dd>
-            <dt>Type</dt>
+            <dt>
+              {intl.formatMessage({
+                id: "storage.picker.sample.type",
+                defaultMessage: "Type",
+              })}
+            </dt>
             <dd>{sample.sampleType}</dd>
-            <dt>Status</dt>
+            <dt>
+              {intl.formatMessage({
+                id: "storage.picker.sample.status",
+                defaultMessage: "Status",
+              })}
+            </dt>
             <dd>{sample.status}</dd>
           </dl>
         </section>
 
         {currentSummary && (
           <section className="storage-location-picker-modal-current">
-            <h4>Current location</h4>
+            <h4>
+              {intl.formatMessage({
+                id: "storage.picker.currentLocation",
+                defaultMessage: "Current location",
+              })}
+            </h4>
             <p>{currentSummary}</p>
           </section>
         )}
 
         <section className="storage-location-picker-modal-picker">
-          <h4>{isMovement ? "New location" : "Storage location"}</h4>
+          <h4>
+            {intl.formatMessage({
+              id: isMovement
+                ? "storage.picker.newLocation"
+                : "storage.picker.storageLocation",
+              defaultMessage: isMovement ? "New location" : "Storage location",
+            })}
+          </h4>
           {summary && (
             <div className="storage-location-picker-modal-summary">
               {summary}
@@ -137,7 +178,10 @@ export default function LocationPickerModal({
                 renderIcon={Add}
                 onClick={() => dispatch({ type: "SET_MODE", mode: "create" })}
               >
-                Create new location
+                {intl.formatMessage({
+                  id: "storage.picker.createNewLocation",
+                  defaultMessage: "Create new location",
+                })}
               </Button>
             </>
           ) : (
@@ -152,7 +196,10 @@ export default function LocationPickerModal({
                 renderIcon={Search}
                 onClick={() => dispatch({ type: "SET_MODE", mode: "search" })}
               >
-                Back to search
+                {intl.formatMessage({
+                  id: "storage.picker.backToSearch",
+                  defaultMessage: "Back to search",
+                })}
               </Button>
             </>
           )}
@@ -161,7 +208,10 @@ export default function LocationPickerModal({
         {isMovement && (
           <TextArea
             id="storage-location-picker-modal-reason"
-            labelText="Reason for move"
+            labelText={intl.formatMessage({
+              id: "storage.move.reason.label",
+              defaultMessage: "Reason for Move",
+            })}
             value={state.reason || ""}
             onChange={(e) =>
               dispatch({ type: "SET_REASON", reason: e.target.value })
@@ -171,7 +221,10 @@ export default function LocationPickerModal({
 
         <TextInput
           id="storage-location-picker-modal-position"
-          labelText="Position (optional)"
+          labelText={intl.formatMessage({
+            id: "storage.picker.position.optional",
+            defaultMessage: "Position (optional)",
+          })}
           value={positionValue}
           onChange={(e) =>
             dispatch({
@@ -185,7 +238,10 @@ export default function LocationPickerModal({
 
         <TextArea
           id="storage-location-picker-modal-notes"
-          labelText="Notes"
+          labelText={intl.formatMessage({
+            id: "storage.picker.notes",
+            defaultMessage: "Notes",
+          })}
           value={state.notes || ""}
           onChange={(e) =>
             dispatch({ type: "SET_NOTES", notes: e.target.value })
@@ -194,10 +250,13 @@ export default function LocationPickerModal({
       </ModalBody>
       <ModalFooter>
         <Button kind="secondary" onClick={onCancel}>
-          Cancel
+          {intl.formatMessage({ id: "label.cancel", defaultMessage: "Cancel" })}
         </Button>
         <Button kind="primary" onClick={handleConfirm}>
-          Confirm
+          {intl.formatMessage({
+            id: "label.confirm",
+            defaultMessage: "Confirm",
+          })}
         </Button>
       </ModalFooter>
     </ComposedModal>

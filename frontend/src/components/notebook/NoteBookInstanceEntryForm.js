@@ -1972,10 +1972,21 @@ const NoteBookInstanceEntryForm = () => {
                                 <Column lg={16} md={8} sm={4}>
                                   <br />
                                   <div className="notebook-storage-current">
-                                    <strong>Storage location:</strong>{" "}
+                                    <strong>
+                                      <FormattedMessage
+                                        id="storage.location.current"
+                                        defaultMessage="Storage location"
+                                      />
+                                      :
+                                    </strong>{" "}
                                     {sampleLocations[
                                       sample.sampleItemId || sample.id
-                                    ]?.locationPath || "Unassigned"}
+                                    ]?.locationPath || (
+                                      <FormattedMessage
+                                        id="storage.location.unassigned"
+                                        defaultMessage="Unassigned"
+                                      />
+                                    )}
                                   </div>
                                   <LocationPickerInline
                                     onChange={(state) => {
