@@ -635,14 +635,17 @@ export default function GenericSampleOrder({
                     labelText={
                       <FormattedMessage
                         id="sample.quantity.label"
-                        defaultMessage="Quantity"
+                        defaultMessage="Quantity (must be positive number)"
                       />
                     }
                     type="number"
+                    min="0"
                     value={defaultForm.quantity}
-                    onChange={(e) =>
-                      updateDefaultField("quantity", e.target.value)
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val !== "" && Number(val) < 0) return;
+                      updateDefaultField("quantity", val);
+                    }}
                   />
                 </Column>
               )}
