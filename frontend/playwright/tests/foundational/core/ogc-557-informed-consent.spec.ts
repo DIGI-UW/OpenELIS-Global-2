@@ -47,12 +47,15 @@ async function buildOrderForm(
   const configProps = await dateFormatRes.json();
   const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
   const useMDY = dateLocale.startsWith("en");
+  // UTC-based so the test is deterministic regardless of the runner's local
+  // timezone. Server defaults to UTC (see docker-compose TZ); aligning the
+  // client here prevents "today/yesterday" flips near midnight.
   const now = new Date();
-  const dd = String(now.getDate()).padStart(2, "0");
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = now.getUTCFullYear();
   const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
-  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const time = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
   const uniqueId = String(Date.now());
 
   // Generate accession number via the same endpoint the React UI uses.
