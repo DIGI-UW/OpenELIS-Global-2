@@ -17,6 +17,8 @@ import org.openelisglobal.notifications.entity.Notification;
 import org.openelisglobal.notifications.entity.NotificationSubscriptions;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.http.HttpStatus;
@@ -32,6 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest")
 @RestController
 public class NotificationRestController extends BaseRestController {
+
+    private static final Logger logger = LoggerFactory.getLogger(NotificationRestController.class);
 
     private final NotificationDAO notificationDAO;
     private final SystemUserService systemUserService;
@@ -145,10 +149,23 @@ public class NotificationRestController extends BaseRestController {
 
     @PutMapping("/notification/markasread/{id}")
     public ResponseEntity<?> markNotificationAsRead(@PathVariable String id) {
-        Notification notification = notificationDAO.getNotificationById(Long.parseLong(id));
+        final Long notificationId;
+        try {
+            notificationId = Long.parseLong(id);
+        } catch (NumberFormatException e) {
+            logger.warn("Invalid notification id: {}", id);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Invalid notification id"));
+        }
+
+        Notification notification = notificationDAO.getNotificationById(notificationId);
+        if (notification == null) {
+            logger.warn("Notification not found for id: {}", notificationId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Notification not found"));
+        }
+
         notification.setReadAt(OffsetDateTime.now());
         notificationDAO.updateNotification(notification);
-        return ResponseEntity.ok().body("Notification updated successfully");
+        return ResponseEntity.ok(Map.of("message", "Notification updated successfully"));
     }
 
     @PutMapping("/notification/markasread/all")

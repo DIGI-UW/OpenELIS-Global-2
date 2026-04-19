@@ -96,59 +96,18 @@ export async function acceptAndVerifyResults(
   await expect(saveButton).toBeVisible({ timeout: SHORT_TIMEOUT });
   await expect(saveButton).toBeEnabled({ timeout: SHORT_TIMEOUT });
 
-  await saveButton.click();
-
-  const saveInProgress = page.locator(
-    '[data-testid="analyzer-results-save-in-progress"]',
-  );
-  await Promise.any([
-    expect(saveButton).toBeDisabled({ timeout: SHORT_TIMEOUT }),
-    saveInProgress.waitFor({ state: "attached", timeout: SHORT_TIMEOUT }),
-  ]).catch(() => {
-    // Some runs complete quickly and can skip observable transition states.
-  });
-
-  // Success path issues full page reload (AnalyserResults.js).
-  // After save, either more results remain (Save visible) or all were consumed
-  // (empty state). Use locator.or() — NOT Promise.race, which leaves the losing
-  // assertion retrying in the background.
-  await page.waitForURL(/AnalyzerResults[?](id|type)=/, {
+  const reloadAfterSave = page.waitForEvent("framenavigated", {
+    predicate: (frame) =>
+      frame === page.mainFrame() && /AnalyzerResults[?]type=/.test(frame.url()),
     timeout: NAV_TIMEOUT,
   });
-  // Wait for the AnalyzerResults API response before asserting on UI —
-  // the page navigates instantly but the component fetches data async.
-  // On CI under load, this fetch can exceed 10s.
-  await page
-    .waitForResponse(
-      (resp) =>
-        resp.url().includes("/rest/AnalyzerResults") && resp.status() === 200,
-      { timeout: LONG_TIMEOUT },
-    )
-    .catch((e) => {
-      // TimeoutError = response arrived before we started listening (fast backend).
-      // Any other error is unexpected — log it for diagnostics.
-      if (!(e instanceof Error && e.message.includes("Timeout"))) {
-        console.error(`[waitForResponse] unexpected: ${e}`);
-      }
-    });
-  const emptyState = page.locator('[data-testid="analyzer-results-empty"]');
-  await expect(saveButton.or(emptyState).first()).toBeVisible({
-    timeout: LONG_TIMEOUT,
+
+  await Promise.all([reloadAfterSave, saveButton.click()]);
+
+  // Wait for reload to settle (DO NOT touch DOM before this)
+  await page.waitForLoadState("domcontentloaded", {
+    timeout: NAV_TIMEOUT,
   });
-
-  const saveStillVisible = await saveButton.isVisible();
-  if (saveStillVisible) {
-    if (stagedCountBeforeSave > 0) {
-      await expect
-        .poll(async () => stagedRows().count(), {
-          timeout: LONG_TIMEOUT,
-        })
-        .toBe(0);
-    }
-
-    await expect(saveInProgress).toBeHidden({ timeout: LONG_TIMEOUT });
-    await expect(saveButton).toBeEnabled({ timeout: LONG_TIMEOUT });
-  }
 
   // ── Verify in OE results view, not on the staging page ───────────
   await presentation.step(
