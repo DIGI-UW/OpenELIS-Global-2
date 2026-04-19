@@ -265,13 +265,16 @@ For E2E testing, integration testing, and manual testing, load test fixtures:
 
 ```bash
 # Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --reset
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
 
 # Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --no-verify
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 ```
 
 **Note**: The unified loader script provides dependency checks, verification,

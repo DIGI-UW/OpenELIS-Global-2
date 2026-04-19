@@ -108,7 +108,7 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("shows FILE info tile when FILE plugin is selected", async () => {
+  test("shows FILE import settings when FILE plugin is selected", async () => {
     const fileAnalyzer = {
       id: "test-2",
       name: "Test FILE Analyzer",
@@ -123,10 +123,21 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
 
     await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
 
-    // FILE info tile should be visible
-    const fileTile = screen.queryByTestId("analyzer-form-file-protocol-info");
-    expect(fileTile).toBeInTheDocument();
-    expect(fileTile).toHaveTextContent(/File Import Protocol/i);
+    // FILE import settings section should be visible (Section 3b in
+    // AnalyzerForm) — format dropdown, import directory, file pattern,
+    // and column mappings.
+    expect(
+      screen.queryByTestId("analyzer-form-file-format-dropdown"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-import-directory-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-file-pattern-input"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("analyzer-form-column-mappings-input"),
+    ).toBeInTheDocument();
   });
 
   test("shows connection fields when ASTM plugin is selected", async () => {

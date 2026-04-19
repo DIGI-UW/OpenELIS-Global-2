@@ -192,9 +192,9 @@ else
     export DB_HOST="${DB_HOST:-localhost}"
 
     if [ "$FULL_RESET" = true ]; then
-        ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+        ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
     else
-        ./src/test/resources/load-test-fixtures.sh --analyzers=full --reset --no-verify
+        ./src/test/resources/load-test-fixtures.sh --profile=harness --reset --no-verify
     fi
 
     # Seed 4 harness analyzers via REST API (parity with CI and /restart-analyzer-harness)

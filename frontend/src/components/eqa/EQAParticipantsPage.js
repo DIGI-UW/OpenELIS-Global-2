@@ -64,14 +64,14 @@ const EQAParticipantsPage = () => {
         setPrograms(data.filter((p) => p.isActive));
       }
     });
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
-      (data) => {
-        if (data && Array.isArray(data)) {
-          setOrganizations(data);
-        }
-      },
-    );
+    getFromOpenElisServer("/rest/organization-list", (data) => {
+      if (data && Array.isArray(data)) {
+        const active = data
+          .filter((o) => o.isActive === "Y")
+          .map((o) => ({ id: o.id, value: o.organizationName }));
+        setOrganizations(active);
+      }
+    });
   }, []);
 
   const fetchEnrollments = useCallback(() => {
@@ -180,7 +180,7 @@ const EQAParticipantsPage = () => {
   }));
 
   return (
-    <div className="adminPageContent">
+    <div className="pageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <Grid fullWidth={true}>

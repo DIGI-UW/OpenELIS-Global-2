@@ -248,6 +248,7 @@ const SampleType = (props) => {
   };
 
   const triggerPanelCheckBoxChange = (isChecked, testIds) => {
+    if (!testIds) return;
     const testIdsList = testIds.split(",").map((id) => id.trim());
     testIdsList.map((testId) => {
       let testIndex = findTestIndex(testId);
@@ -325,7 +326,7 @@ const SampleType = (props) => {
   };
 
   useEffect(() => {
-    if (props.sample.referralItems.length > 0 && referralReasons.length > 0) {
+    if (props.sample.referralItems?.length > 0 && referralReasons.length > 0) {
       setRequestTestReferral(props.sample.requestReferralEnabled);
       setReferralRequests(props.sample.referralItems);
     }
@@ -446,7 +447,7 @@ const SampleType = (props) => {
   }, []);
 
   const fetchUomCreate = (res) => {
-    if (componentMounted.current) {
+    if (componentMounted.current && res) {
       setUomList(res.existingUomList || []);
     }
   };

@@ -52,6 +52,8 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private Timestamp collectionDate;
     private String statusId;
     private String collector;
+    private String collectionConditions;
+    private Timestamp receivedDate;
     private boolean rejected = false;
     private String rejectReasonId;
     private boolean voided = false;
@@ -232,6 +234,22 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setCollector(String collector) {
         this.collector = collector;
+    }
+
+    public String getCollectionConditions() {
+        return collectionConditions;
+    }
+
+    public void setCollectionConditions(String collectionConditions) {
+        this.collectionConditions = collectionConditions;
+    }
+
+    public Timestamp getReceivedDate() {
+        return receivedDate;
+    }
+
+    public void setReceivedDate(Timestamp receivedDate) {
+        this.receivedDate = receivedDate;
     }
 
     @Override

@@ -502,7 +502,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
         // analyzer_field, analyzer_field_mapping, serial_port_configuration,
-        // file_import_configuration, analyzer_plugin_config,
+        // analyzer_plugin_config,
         // analyzer_pending_code, analyzer_experiment
 
         // Delete the analyzer — DB cascades config tables automatically

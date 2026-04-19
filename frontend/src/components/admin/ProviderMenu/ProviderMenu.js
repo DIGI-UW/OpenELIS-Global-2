@@ -401,9 +401,13 @@ function ProviderMenu() {
         <br />
         <Modal
           open={isAddModalOpen}
-          modalHeading="Add Provider"
-          primaryButtonText="Add"
-          secondaryButtonText="Cancel"
+          modalHeading={intl.formatMessage({
+            id: "provider.modal.add.heading",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.add" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
           onRequestSubmit={handleAddProvider}
           onRequestClose={closeAddModal}
         >
@@ -454,7 +458,7 @@ function ProviderMenu() {
           <Dropdown
             className="dropdown-list"
             id="isActive"
-            titleText="Active"
+            titleText={intl.formatMessage({ id: "label.active" })}
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
             itemToString={(item) => (item ? item.value : "")}
@@ -471,9 +475,13 @@ function ProviderMenu() {
 
         <Modal
           open={isUpdateModalOpen}
-          modalHeading="Update Provider"
-          primaryButtonText="Update"
-          secondaryButtonText="Cancel"
+          modalHeading={intl.formatMessage({
+            id: "provider.modal.update.heading",
+          })}
+          primaryButtonText={intl.formatMessage({ id: "label.button.update" })}
+          secondaryButtonText={intl.formatMessage({
+            id: "label.button.cancel",
+          })}
           onRequestSubmit={handleUpdateProvider}
           onRequestClose={closeUpdateModal}
         >
@@ -522,7 +530,7 @@ function ProviderMenu() {
           />
           <Dropdown
             id="isActive"
-            titleText="Active"
+            titleText={intl.formatMessage({ id: "label.active" })}
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
             itemToString={(item) => (item ? item.value : "")}

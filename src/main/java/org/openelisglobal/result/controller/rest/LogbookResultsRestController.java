@@ -24,6 +24,7 @@ import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.registration.ResultUpdateRegister;
 import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -264,9 +265,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                     tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber,
                             upperRangeAccessionNumber, doRange, finished);
                 } else {
+                    resultsLoadUtility.addIncludedAnalysisStatus(AnalysisStatus.Finalized);
+                    resultsLoadUtility.addIncludedSampleStatus(OrderStatus.Finished);
                     resultsLoadUtility.setLockCurrentResults(
                             ResultUtil.modifyResultsRoleBased() && ResultUtil.userNotInRole(request));
-                    // Keep React accession search aligned with legacy /AccessionResults behavior.
                     tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
                             "getUnfinishedTestResultItemsByAccession returned " + tests.size() + " tests for labNumber "

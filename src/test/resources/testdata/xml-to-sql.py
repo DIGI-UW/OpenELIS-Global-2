@@ -9,7 +9,7 @@ Usage:
 Example:
     python3 xml-to-sql.py storage-e2e.xml storage-e2e.generated.sql
 
-This script is used by load-test-fixtures.sh to generate SQL on-demand from
+This script is used by load-test-fixtures.sh (--profile=core|harness) to generate SQL on-demand from
 authoritative DBUnit XML datasets. The generated SQL files are never committed
 to git (see .gitignore).
 """

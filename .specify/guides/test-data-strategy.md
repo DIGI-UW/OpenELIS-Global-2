@@ -8,6 +8,7 @@ integration, and E2E tests in OpenELIS Global 2.
 
 - **Unified fixture loader (canonical entry point)**:
   - Script: `src/test/resources/load-test-fixtures.sh`
+    (`--profile=core|harness`)
   - Overview: `src/test/resources/FIXTURE_LOADER_README.md`
 - **DBUnit datasets** (for DB-backed tests and E2E baseline data):
   - Location: `src/test/resources/testdata/*.xml`

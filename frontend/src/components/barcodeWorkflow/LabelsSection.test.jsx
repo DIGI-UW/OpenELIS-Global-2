@@ -72,9 +72,9 @@ describe("LabelsSection component", () => {
     expect(screen.getByText("Running total: 6")).toBeInTheDocument();
   });
 
-  test("calls onChange with updated model when quantity changes", () => {
+  test("calls onChange with updated model when increment button clicked", () => {
     const onChange = jest.fn();
-    render(
+    const { container } = render(
       <LabelsSection
         orderQuantity={2}
         specimenQuantities={[1]}
@@ -82,13 +82,22 @@ describe("LabelsSection component", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Order labels"), {
-      target: { value: "4" },
-    });
+    // Click the increment (up) button on the order labels NumberInput
+    const incrementButton = container.querySelector(
+      "#labels-order .cds--number__control-btn.up-icon",
+    );
+    if (incrementButton) {
+      fireEvent.click(incrementButton);
+    } else {
+      // Fallback: fire change event directly
+      fireEvent.change(screen.getByLabelText("Order labels"), {
+        target: { value: "3" },
+      });
+    }
 
     expect(onChange).toHaveBeenCalled();
     const lastModel = onChange.mock.calls[onChange.mock.calls.length - 1][0];
-    expect(lastModel.orderRow.quantities.order).toBe(4);
-    expect(lastModel.runningTotal).toBe(5);
+    expect(lastModel.orderRow.quantities.order).toBe(3);
+    expect(lastModel.runningTotal).toBe(4);
   });
 });
