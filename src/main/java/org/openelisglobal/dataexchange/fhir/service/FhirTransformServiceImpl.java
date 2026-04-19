@@ -124,6 +124,7 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.action.util.SampleUtil;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
@@ -1036,17 +1037,14 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
                     if (serviceRequest.hasCode()) {
                         List<Test> testsToOrder = new ArrayList<>();
-                        for (Coding coding : serviceRequest.getCode().getCoding()) {
-                            if ("http://loinc.org".equalsIgnoreCase(coding.getSystem())) {
-                                List<Test> foundTests = testService.getTestsByLoincCode(coding.getCode());
-                                if (foundTests != null) {
-                                    testsToOrder.addAll(foundTests);
-                                }
-                            }
+
+                        List<Test> resolved = resolveTestsFromServiceRequest(serviceRequest);
+                        if (resolved != null && !resolved.isEmpty()) {
+                            testsToOrder.addAll(resolved);
                         }
 
                         if (!testsToOrder.isEmpty()) {
-                            String xml = FhirUtil.buildSampleXml( testsToOrder, sampleItem,sampleItem.getId());
+                            String xml = SampleUtil.buildSampleXml(testsToOrder, sampleItem, sampleItem.getId());
 
                             SampleAddService sampleAddService = new SampleAddService(xml, sysuserId, sample,
                                     DateUtil.getCurrentDateAsText());
@@ -2315,351 +2313,327 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
         fhirPersistanceService.createUpdateFhirResourcesInFhirStore(fhirOperations);
     }
+
     @Override
-    public List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(
-        ServiceRequest serviceRequest,
-        String sysUserId) {
-    
-    List<SampleEditItem> items = new ArrayList<>();
-    
-    if (serviceRequest == null) {
-        return items;
-    }
-    
-    // Get existing analysis from ServiceRequest ID
-    Analysis existingAnalysis = null;
-    if (serviceRequest.hasId() && serviceRequest.getIdElement() != null) {
-        String analysisUuid = serviceRequest.getIdElement().getIdPart();
-        try {
-            List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
-            if (!analyses.isEmpty()) {
-                existingAnalysis = analyses.get(0);
-            }
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(e);
+    public List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(ServiceRequest serviceRequest,
+            String sysUserId) {
+
+        List<SampleEditItem> items = new ArrayList<>();
+
+        if (serviceRequest == null) {
+            return items;
         }
-    }
-    
-    // Get sample item from ServiceRequest specimen
-    SampleItem sampleItem = null;
-    if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
-        for (Reference reference : serviceRequest.getSpecimen()) {
-            String specimenUUID = reference.getReferenceElement().getIdPart();
+
+        // Get existing analysis from ServiceRequest ID
+        Analysis existingAnalysis = null;
+        if (serviceRequest.hasId() && serviceRequest.getIdElement() != null) {
+            String analysisUuid = serviceRequest.getIdElement().getIdPart();
             try {
-                sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
-                if (sampleItem != null) {
-                    break;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    // Get requested test from LOINC code
-    Test requestedTest = null;
-    if (serviceRequest.hasCode()) {
-       requestedTest = findTestFromServiceRequest(serviceRequest);
-    }
-    
-    // Build edit item for existing analysis if available
-    if (existingAnalysis != null && existingAnalysis.getTest() != null) {
-        SampleEditItem existingItem = new SampleEditItem();
-        
-        // Set from analysis
-        existingItem.setAnalysisId(existingAnalysis.getId());
-        existingItem.setTestId(existingAnalysis.getTest().getId());
-        existingItem.setTestName(existingAnalysis.getTest().getLocalizedName());
-        existingItem.setId(existingAnalysis.getTest().getId());
-        existingItem.setSortOrder(existingAnalysis.getTest().getSortOrder());
-        
-        // Set from sample item
-        if (sampleItem != null) {
-            existingItem.setSampleItemId(sampleItem.getId());
-            if (sampleItem.getTypeOfSample() != null) {
-                existingItem.setSampleType(sampleItem.getTypeOfSample().getLocalizedName());
-            }
-            if (sampleItem.getSample() != null) {
-                existingItem.setAccessionNumber(sampleItem.getSample().getAccessionNumber());
-            }
-        } else if (existingAnalysis.getSampleItem() != null) {
-            existingItem.setSampleItemId(existingAnalysis.getSampleItem().getId());
-            if (existingAnalysis.getSampleItem().getTypeOfSample() != null) {
-                existingItem.setSampleType(existingAnalysis.getSampleItem().getTypeOfSample().getLocalizedName());
-            }
-            if (existingAnalysis.getSampleItem().getSample() != null) {
-                existingItem.setAccessionNumber(existingAnalysis.getSampleItem().getSample().getAccessionNumber());
-            }
-        }
-        
-        // Set status
-        IStatusService statusService = SpringContext.getBean(IStatusService.class);
-        if (existingAnalysis.getStatusId() != null) {
-            existingItem.setStatus(statusService.getStatusNameFromId(existingAnalysis.getStatusId()));
-            existingItem.setHasResults(!statusService.matches(existingAnalysis.getStatusId(), AnalysisStatus.NotStarted));
-            
-            boolean canCancel = !statusService.matches(existingAnalysis.getStatusId(), AnalysisStatus.Canceled)
-                    && statusService.matches(existingAnalysis.getStatusId(), AnalysisStatus.NotStarted);
-            existingItem.setCanCancel(canCancel);
-        }
-        
-        // Check if test matches requested test
-        if (requestedTest != null && !existingAnalysis.getTest().getId().equals(requestedTest.getId())) {
-            existingItem.setCanceled(true);
-            existingItem.setAdd(false);
-        } else {
-            existingItem.setCanceled(false);
-            existingItem.setAdd(false);
-        }
-        
-        existingItem.setRemoveSample(false);
-        existingItem.setSampleItemChanged(false);
-        
-        items.add(existingItem);
-    }
-    
-    // Add new test if different from existing
-    if (requestedTest != null && (existingAnalysis == null || 
-            !existingAnalysis.getTest().getId().equals(requestedTest.getId()))) {
-        
-        SampleEditItem newItem = new SampleEditItem();
-        newItem.setTestId(requestedTest.getId());
-        newItem.setTestName(requestedTest.getLocalizedName());
-        newItem.setId(requestedTest.getId());
-        newItem.setAdd(true);
-        newItem.setCanceled(false);
-        newItem.setSortOrder(requestedTest.getSortOrder());
-        
-        // Set sample item ID if available
-        if (sampleItem != null) {
-            newItem.setSampleItemId(sampleItem.getId());
-            if (sampleItem.getTypeOfSample() != null) {
-                newItem.setSampleType(sampleItem.getTypeOfSample().getLocalizedName());
-            }
-            if (sampleItem.getSample() != null) {
-                newItem.setAccessionNumber(sampleItem.getSample().getAccessionNumber());
-            }
-        }
-        
-        // Set default status for new test
-        IStatusService statusService = SpringContext.getBean(IStatusService.class);
-        newItem.setStatus(statusService.getStatusNameFromId(
-            statusService.getStatusID(AnalysisStatus.NotStarted)));
-        newItem.setHasResults(false);
-        newItem.setCanCancel(true);
-        newItem.setRemoveSample(false);
-        newItem.setSampleItemChanged(false);
-        
-        items.add(newItem);
-    }
-    
-    return items;
-}
-@Override
-public SampleOrderItem buildSampleOrderItemFromServiceRequest(
-        ServiceRequest serviceRequest,
-        String sysUserId) {
-    
-    SampleOrderItem orderItem = new SampleOrderItem();
-    
-    if (serviceRequest == null) {
-        return orderItem;
-    }
-    
-    // 1. Get analysis from ServiceRequest ID
-    Analysis analysis = null;
-    if (serviceRequest.hasId() && serviceRequest.getIdElement() != null) {
-        String analysisUuid = serviceRequest.getIdElement().getIdPart();
-        try {
-            List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
-            if (!analyses.isEmpty()) {
-                analysis = analyses.get(0);
-            }
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
-    
-    // 2. Get sample and sampleItem from ServiceRequest specimen
-    Sample sample = null;
-    SampleItem sampleItem = null;
-    
-    if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
-        for (Reference reference : serviceRequest.getSpecimen()) {
-            String specimenUUID = reference.getReferenceElement().getIdPart();
-            try {
-                sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
-                if (sampleItem != null && sampleItem.getSample() != null) {
-                    sample = sampleItem.getSample();
-                    break;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-    
-    // If sample not found from specimen, try to get from analysis
-    if (sample == null && analysis != null && analysis.getSampleItem() != null) {
-        sampleItem = analysis.getSampleItem();
-        sample = sampleItem.getSample();
-    }
-    
-    // Set sample identification
-    if (sample != null) {
-        orderItem.setSampleId(sample.getId());
-        orderItem.setLabNo(sample.getAccessionNumber());
-    }
-    
-    // Set specimen/requester sample ID from ServiceRequest
-    if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
-        String specimenUUID = serviceRequest.getSpecimenFirstRep().getReferenceElement().getIdPart();
-        orderItem.setRequesterSampleID(specimenUUID);
-    }
-    
-    // Set dates from ServiceRequest
-    if (serviceRequest.hasAuthoredOn()) {
-        orderItem.setRequestDate(DateUtil.formatDateAsText(serviceRequest.getAuthoredOn()));
-    }
-    
-    // Set received date (use current date if not available)
-    if (sample != null && sample.getReceivedDateForDisplay() != null) {
-        orderItem.setReceivedDateForDisplay(sample.getReceivedDateForDisplay());
-        orderItem.setReceivedTime(sample.getReceivedTimeForDisplay());
-    } else {
-        orderItem.setReceivedDateForDisplay(DateUtil.getCurrentDateAsText());
-        orderItem.setReceivedTime("00:00");
-    }
-    
-    // Set priority from ServiceRequest or from sample
-    if (serviceRequest.hasPriority()) {
-        ServiceRequest.ServiceRequestPriority fhirPriority = serviceRequest.getPriority();
-        OrderPriority priority = null;
-        
-        if (ServiceRequest.ServiceRequestPriority.STAT.equals(fhirPriority)) {
-            priority = OrderPriority.STAT;
-        } else if (ServiceRequest.ServiceRequestPriority.URGENT.equals(fhirPriority)
-                || ServiceRequest.ServiceRequestPriority.ASAP.equals(fhirPriority)) {
-            priority = OrderPriority.TIMED;
-        } else {
-            priority = OrderPriority.ROUTINE;
-        }
-        
-        orderItem.setPriority(priority);
-    } else if (sample != null && sample.getPriority() != null) {
-        orderItem.setPriority(sample.getPriority());
-    } else {
-        orderItem.setPriority(OrderPriority.ROUTINE);
-    }
-    
-    // Set provider/requester from ServiceRequest
-    if (serviceRequest.hasRequester() && serviceRequest.getRequester().hasReference()) {
-        String requesterUUID = serviceRequest.getRequester().getReferenceElement().getIdPart();
-        try {
-            Provider provider = providerService.getProviderByFhirId(UUID.fromString(requesterUUID));
-            if (provider != null) {
-                orderItem.setProviderId(provider.getId());
-                if (provider.getPerson() != null) {
-                    orderItem.setProviderPersonId(provider.getPerson().getId());
-                    orderItem.setProviderFirstName(provider.getPerson().getFirstName());
-                    orderItem.setProviderLastName(provider.getPerson().getLastName());
-                    orderItem.setProviderWorkPhone(provider.getPerson().getWorkPhone());
-                    orderItem.setProviderFax(provider.getPerson().getFax());
-                    orderItem.setProviderEmail(provider.getPerson().getEmail());
-                }
-            }
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-        }
-    } else if (analysis != null && analysis.getSampleItem() != null) {
-        SampleHuman curentSampleHuman = new SampleHuman();
-        curentSampleHuman.setSampleId(analysis.getSampleItem().getSample().getId());
-        // Try to get provider from existing sample human
-        SampleHuman sampleHuman = sampleHumanService.getDataBySample(curentSampleHuman);
-        if (sampleHuman != null && sampleHuman.getProviderId() != null) {
-            Provider provider = providerService.get(sampleHuman.getProviderId());
-            if (provider != null) {
-                orderItem.setProviderId(provider.getId());
-                if (provider.getPerson() != null) {
-                    orderItem.setProviderPersonId(provider.getPerson().getId());
-                    orderItem.setProviderFirstName(provider.getPerson().getFirstName());
-                    orderItem.setProviderLastName(provider.getPerson().getLastName());
-                }
-            }
-        }
-    }
-    
-    // Set location/organization from ServiceRequest
-    if (serviceRequest.hasLocationReference()) {
-        Reference locationRef = serviceRequest.getLocationReferenceFirstRep();
-        if (locationRef.hasReference()) {
-            String locationUUID = locationRef.getReferenceElement().getIdPart();
-            try {
-                Organization organization = organizationService.getOrganizationByFhirId(locationUUID);
-                if (organization != null) {
-                    orderItem.setReferringSiteId(organization.getId());
-                    orderItem.setReferringSiteName(organization.getOrganizationName());
-                    orderItem.setReferringSiteCode(organization.getCode());
+                List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
+                if (!analyses.isEmpty()) {
+                    existingAnalysis = analyses.get(0);
                 }
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(e);
             }
         }
-    }
-    
-    // Set status from analysis
-    if (analysis != null && analysis.getStatusId() != null) {
-        IStatusService statusService = SpringContext.getBean(IStatusService.class);
-        boolean isReadOnly = !statusService.matches(analysis.getStatusId(), AnalysisStatus.NotStarted);
-        orderItem.setReadOnly(isReadOnly);
-    }
-    
-    // Set modified flag (false for new order items, true for updates)
-    orderItem.setModified(analysis != null);
-    
-    return orderItem;
-}
 
-// Helper method with one LOINC method and one Name method (both return lists)
-private Test findTestFromServiceRequest(ServiceRequest serviceRequest) {
-    if (!serviceRequest.hasCode() || !serviceRequest.getCode().hasCoding()) {
-        return null;
-    }
-    
-    for (Coding coding : serviceRequest.getCode().getCoding()) {
-        
-        // METHOD 1: Try by LOINC code
-        if ("http://loinc.org".equalsIgnoreCase(coding.getSystem()) && coding.hasCode()) {
-            List<Test> tests = testService.getTestsByLoincCode(coding.getCode());
-            if (tests != null && !tests.isEmpty()) {
-                Test foundTest = tests.get(0);
-                LogEvent.logInfo(this.getClass().getSimpleName(), "findTestFromServiceRequest", 
-                    "Found test by LOINC: " + coding.getCode() + " -> " + foundTest.getDescription());
-                return foundTest;
+        // Get sample item from ServiceRequest specimen
+        SampleItem sampleItem = null;
+        if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
+            for (Reference reference : serviceRequest.getSpecimen()) {
+                String specimenUUID = reference.getReferenceElement().getIdPart();
+                try {
+                    sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
+                    if (sampleItem != null) {
+                        break;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
-        
-        // METHOD 2: Try by display name (localized name)
-        if (coding.hasDisplay() && !GenericValidator.isBlankOrNull(coding.getDisplay())) {
-            List<Test> tests = testService.getTestsByName(coding.getDisplay());
-            
-            // Filter for active tests
-            if (tests != null && !tests.isEmpty()) {
-                // First try to find active test
-                Test foundTest = tests.stream()
-                    .filter(t -> "Y".equals(t.getIsActive()))
-                    .findFirst()
-                    .orElse(tests.get(0)); // fallback to first if none active
-                
-                LogEvent.logInfo(this.getClass().getSimpleName(), "findTestFromServiceRequest", 
-                    "Found test by name: " + coding.getDisplay() + " -> " + foundTest.getDescription());
-                return foundTest;
+
+        Test requestedTest = null;
+        if (serviceRequest.hasCode()) {
+            List<Test> foundTests = resolveTestsFromServiceRequest(serviceRequest);
+            requestedTest = foundTests.get(0);
+        }
+
+        // Build edit item for existing analysis if available
+        if (existingAnalysis != null && existingAnalysis.getTest() != null) {
+            SampleEditItem existingItem = new SampleEditItem();
+
+            // Set from analysis
+            existingItem.setAnalysisId(existingAnalysis.getId());
+            existingItem.setTestId(existingAnalysis.getTest().getId());
+            existingItem.setTestName(existingAnalysis.getTest().getLocalizedName());
+            existingItem.setId(existingAnalysis.getTest().getId());
+            existingItem.setSortOrder(existingAnalysis.getTest().getSortOrder());
+
+            // Set from sample item
+            if (sampleItem != null) {
+                existingItem.setSampleItemId(sampleItem.getId());
+                if (sampleItem.getTypeOfSample() != null) {
+                    existingItem.setSampleType(sampleItem.getTypeOfSample().getLocalizedName());
+                }
+                if (sampleItem.getSample() != null) {
+                    existingItem.setAccessionNumber(sampleItem.getSample().getAccessionNumber());
+                }
+            } else if (existingAnalysis.getSampleItem() != null) {
+                existingItem.setSampleItemId(existingAnalysis.getSampleItem().getId());
+                if (existingAnalysis.getSampleItem().getTypeOfSample() != null) {
+                    existingItem.setSampleType(existingAnalysis.getSampleItem().getTypeOfSample().getLocalizedName());
+                }
+                if (existingAnalysis.getSampleItem().getSample() != null) {
+                    existingItem.setAccessionNumber(existingAnalysis.getSampleItem().getSample().getAccessionNumber());
+                }
+            }
+
+            // Set status
+            IStatusService statusService = SpringContext.getBean(IStatusService.class);
+            if (existingAnalysis.getStatusId() != null) {
+                existingItem.setStatus(statusService.getStatusNameFromId(existingAnalysis.getStatusId()));
+                existingItem.setHasResults(
+                        !statusService.matches(existingAnalysis.getStatusId(), AnalysisStatus.NotStarted));
+
+                boolean canCancel = !statusService.matches(existingAnalysis.getStatusId(), AnalysisStatus.Canceled)
+                        && statusService.matches(existingAnalysis.getStatusId(), AnalysisStatus.NotStarted);
+                existingItem.setCanCancel(canCancel);
+            }
+
+            // Check if test matches requested test
+            if (requestedTest != null && !existingAnalysis.getTest().getId().equals(requestedTest.getId())) {
+                existingItem.setCanceled(true);
+                existingItem.setAdd(false);
+            } else {
+                existingItem.setCanceled(false);
+                existingItem.setAdd(false);
+            }
+
+            existingItem.setRemoveSample(false);
+            existingItem.setSampleItemChanged(false);
+
+            items.add(existingItem);
+        }
+
+        // Add new test if different from existing
+        if (requestedTest != null
+                && (existingAnalysis == null || !existingAnalysis.getTest().getId().equals(requestedTest.getId()))) {
+
+            SampleEditItem newItem = new SampleEditItem();
+            newItem.setTestId(requestedTest.getId());
+            newItem.setTestName(requestedTest.getLocalizedName());
+            newItem.setId(requestedTest.getId());
+            newItem.setAdd(true);
+            newItem.setCanceled(false);
+            newItem.setSortOrder(requestedTest.getSortOrder());
+
+            // Set sample item ID if available
+            if (sampleItem != null) {
+                newItem.setSampleItemId(sampleItem.getId());
+                if (sampleItem.getTypeOfSample() != null) {
+                    newItem.setSampleType(sampleItem.getTypeOfSample().getLocalizedName());
+                }
+                if (sampleItem.getSample() != null) {
+                    newItem.setAccessionNumber(sampleItem.getSample().getAccessionNumber());
+                }
+            }
+
+            // Set default status for new test
+            IStatusService statusService = SpringContext.getBean(IStatusService.class);
+            newItem.setStatus(statusService.getStatusNameFromId(statusService.getStatusID(AnalysisStatus.NotStarted)));
+            newItem.setHasResults(false);
+            newItem.setCanCancel(true);
+            newItem.setRemoveSample(false);
+            newItem.setSampleItemChanged(false);
+
+            items.add(newItem);
+        }
+
+        return items;
+    }
+
+    @Override
+    public SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId) {
+
+        SampleOrderItem orderItem = new SampleOrderItem();
+
+        if (serviceRequest == null) {
+            return orderItem;
+        }
+
+        Analysis analysis = null;
+        if (serviceRequest.hasId() && serviceRequest.getIdElement() != null) {
+            String analysisUuid = serviceRequest.getIdElement().getIdPart();
+            try {
+                List<Analysis> analyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
+                if (!analyses.isEmpty()) {
+                    analysis = analyses.get(0);
+                }
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(e);
             }
         }
-    }
-    
-    return null;
-}
 
+        Sample sample = null;
+        SampleItem sampleItem = null;
+
+        if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
+            for (Reference reference : serviceRequest.getSpecimen()) {
+                String specimenUUID = reference.getReferenceElement().getIdPart();
+                try {
+                    sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
+                    if (sampleItem != null && sampleItem.getSample() != null) {
+                        sample = sampleItem.getSample();
+                        break;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if (sample == null && analysis != null && analysis.getSampleItem() != null) {
+            sampleItem = analysis.getSampleItem();
+            sample = sampleItem.getSample();
+        }
+
+        if (sample != null) {
+            orderItem.setSampleId(sample.getId());
+            orderItem.setLabNo(sample.getAccessionNumber());
+        }
+
+        // Set specimen/requester sample ID from ServiceRequest
+        if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
+            String specimenUUID = serviceRequest.getSpecimenFirstRep().getReferenceElement().getIdPart();
+            orderItem.setRequesterSampleID(specimenUUID);
+        }
+
+        if (serviceRequest.hasAuthoredOn()) {
+            orderItem.setRequestDate(DateUtil.formatDateAsText(serviceRequest.getAuthoredOn()));
+        }
+
+        if (sample != null && sample.getReceivedDateForDisplay() != null) {
+            orderItem.setReceivedDateForDisplay(sample.getReceivedDateForDisplay());
+            orderItem.setReceivedTime(sample.getReceivedTimeForDisplay());
+        } else {
+            orderItem.setReceivedDateForDisplay(DateUtil.getCurrentDateAsText());
+            orderItem.setReceivedTime("00:00");
+        }
+
+        if (serviceRequest.hasPriority()) {
+            ServiceRequest.ServiceRequestPriority fhirPriority = serviceRequest.getPriority();
+            OrderPriority priority = null;
+
+            if (ServiceRequest.ServiceRequestPriority.STAT.equals(fhirPriority)) {
+                priority = OrderPriority.STAT;
+            } else if (ServiceRequest.ServiceRequestPriority.URGENT.equals(fhirPriority)
+                    || ServiceRequest.ServiceRequestPriority.ASAP.equals(fhirPriority)) {
+                priority = OrderPriority.TIMED;
+            } else {
+                priority = OrderPriority.ROUTINE;
+            }
+
+            orderItem.setPriority(priority);
+        } else if (sample != null && sample.getPriority() != null) {
+            orderItem.setPriority(sample.getPriority());
+        } else {
+            orderItem.setPriority(OrderPriority.ROUTINE);
+        }
+
+        if (serviceRequest.hasRequester() && serviceRequest.getRequester().hasReference()) {
+            String requesterUUID = serviceRequest.getRequester().getReferenceElement().getIdPart();
+            try {
+                Provider provider = providerService.getProviderByFhirId(UUID.fromString(requesterUUID));
+                if (provider != null) {
+                    orderItem.setProviderId(provider.getId());
+                    if (provider.getPerson() != null) {
+                        orderItem.setProviderPersonId(provider.getPerson().getId());
+                        orderItem.setProviderFirstName(provider.getPerson().getFirstName());
+                        orderItem.setProviderLastName(provider.getPerson().getLastName());
+                        orderItem.setProviderWorkPhone(provider.getPerson().getWorkPhone());
+                        orderItem.setProviderFax(provider.getPerson().getFax());
+                        orderItem.setProviderEmail(provider.getPerson().getEmail());
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            }
+        } else if (analysis != null && analysis.getSampleItem() != null) {
+            SampleHuman curentSampleHuman = new SampleHuman();
+            curentSampleHuman.setSampleId(analysis.getSampleItem().getSample().getId());
+            SampleHuman sampleHuman = sampleHumanService.getDataBySample(curentSampleHuman);
+            if (sampleHuman != null && sampleHuman.getProviderId() != null) {
+                Provider provider = providerService.get(sampleHuman.getProviderId());
+                if (provider != null) {
+                    orderItem.setProviderId(provider.getId());
+                    if (provider.getPerson() != null) {
+                        orderItem.setProviderPersonId(provider.getPerson().getId());
+                        orderItem.setProviderFirstName(provider.getPerson().getFirstName());
+                        orderItem.setProviderLastName(provider.getPerson().getLastName());
+                    }
+                }
+            }
+        }
+
+        if (serviceRequest.hasLocationReference()) {
+            Reference locationRef = serviceRequest.getLocationReferenceFirstRep();
+            if (locationRef.hasReference()) {
+                String locationUUID = locationRef.getReferenceElement().getIdPart();
+                try {
+                    Organization organization = organizationService.getOrganizationByFhirId(locationUUID);
+                    if (organization != null) {
+                        orderItem.setReferringSiteId(organization.getId());
+                        orderItem.setReferringSiteName(organization.getOrganizationName());
+                        orderItem.setReferringSiteCode(organization.getCode());
+                    }
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException(e);
+                }
+            }
+        }
+
+        if (analysis != null && analysis.getStatusId() != null) {
+            IStatusService statusService = SpringContext.getBean(IStatusService.class);
+            boolean isReadOnly = !statusService.matches(analysis.getStatusId(), AnalysisStatus.NotStarted);
+            orderItem.setReadOnly(isReadOnly);
+        }
+
+        orderItem.setModified(analysis != null);
+
+        return orderItem;
+    }
+
+    public List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest) {
+        List<Test> resolvedTests = new ArrayList<>();
+
+        if (serviceRequest == null || !serviceRequest.hasCode() || !serviceRequest.getCode().hasCoding()) {
+            return resolvedTests;
+        }
+
+        serviceRequest.getCode().getCoding().forEach(coding -> {
+
+            if ("http://loinc.org".equalsIgnoreCase(coding.getSystem()) && coding.hasCode()) {
+
+                List<Test> loincTests = testService.getTestsByLoincCode(coding.getCode());
+
+                if (loincTests != null && !loincTests.isEmpty()) {
+                    resolvedTests.addAll(loincTests);
+                }
+            }
+            if (coding.hasDisplay() && !GenericValidator.isBlankOrNull(coding.getDisplay())) {
+
+                List<Test> nameTests = testService.getTestsByName(coding.getDisplay());
+
+                if (nameTests != null && !nameTests.isEmpty()) {
+                    resolvedTests.addAll(nameTests.stream().filter(t -> "Y".equals(t.getIsActive())).toList());
+                }
+            }
+        });
+
+        return resolvedTests.stream().collect(Collectors.collectingAndThen(
+                Collectors.toMap(Test::getId, t -> t, (a, b) -> a), m -> new ArrayList<>(m.values())));
+    }
 
 }

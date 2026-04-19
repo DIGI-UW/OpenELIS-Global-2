@@ -53,8 +53,8 @@
         active_begin="2013-11-01" active_end="2013-12-01"
         lastupdated="2023-10-01 12:00:00" />
     <status_of_sample id="1"
-        description="This test has not yet been done" code="1" status_type="ANALYSIS"
-        lastupdated="2025-03-18" name="Not Tested" />
+        description="This test has not yet been done" code="1"
+        status_type="ANALYSIS" lastupdated="2025-03-18" name="Not Tested" />
     <status_of_sample id="3"
         description="The sample has been entered into the system" code="1"
         status_type="ORDER" lastupdated="2025-03-18" name="Testing Started" />
@@ -110,7 +110,7 @@
         street_address="456 Medical Rd" state="CA"
         fhir_uuid="68438220-5cef-44c4-9e6f-9f88e6b93288"
         internet_address="www.healthservices.com" clia_num="CLIA54321"
-        pws_d="PWS456" local_abbrev="2" code="HSL002"  is_active="Y"/>
+        pws_d="PWS456" local_abbrev="2" code="HSL002" is_active="Y" />
 
     <test_section id="1" name="TB"
         description="SectionDescription1" org_id="3" is_external="N"
@@ -364,17 +364,13 @@
         local_Abbrev="DE1" dictionary_category_id="1" sort_order="1"
         lastUpdated="2023-11-01 12:00:00" />
 
-    <sample_barcode_info id="1"
-    sample_id="1"
-    print_order_num="1"
-    printed_order_count="0"
-    last_updated="2025-04-13 05:00:00" />
+    <sample_barcode_info id="1" sample_id="1"
+        print_order_num="1" printed_order_count="0"
+        last_updated="2025-04-13 05:00:00" />
 
-<sample_barcode_info id="2"
-    sample_id="2"
-    print_order_num="2"
-    printed_order_count="0"
-    last_updated="2025-04-13 05:00:00" />
+    <sample_barcode_info id="2" sample_id="2"
+        print_order_num="2" printed_order_count="0"
+        last_updated="2025-04-13 05:00:00" />
 
 
 

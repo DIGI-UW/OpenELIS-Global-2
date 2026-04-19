@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.List;
 import org.apache.commons.validator.GenericValidator;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -23,12 +22,8 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.util.EntityUtils;
 import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.ServiceRequest;
 import org.itech.fhir.dataexport.core.service.FhirClientFetcher;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -177,65 +172,4 @@ public class FhirUtil implements FhirClientFetcher {
             httpRequest.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + encoding);
         }
     }
-
-public static String buildSampleXml(List<Test> tests, SampleItem sampleItem, String sampleItemId) {
-
-    String date = DateUtil.getCurrentDateAsText();
-
-    StringBuilder testIds = new StringBuilder();
-    StringBuilder sectionMap = new StringBuilder();
-    StringBuilder sampleTypeMap = new StringBuilder();
-
-    if (sampleItem.getTypeOfSample() == null) {
-        throw new RuntimeException("SampleItem missing typeOfSample");
-    }
-
-    String sampleTypeId = sampleItem.getTypeOfSample().getId();
-
-    for (int i = 0; i < tests.size(); i++) {
-        Test test = tests.get(i);
-        String testId = test.getId();
-
-        if (test.getTestSection() == null) {
-            throw new RuntimeException("Test " + testId + " has no section configured");
-        }
-
-        String sectionId = test.getTestSection().getId();
-
-        // --- Build strings ---
-        testIds.append(testId);
-        sectionMap.append(testId).append(":").append(sectionId);
-        sampleTypeMap.append(testId).append(":").append(sampleTypeId);
-
-        if (i < tests.size() - 1) {
-            testIds.append(",");
-            sectionMap.append(",");
-            sampleTypeMap.append(",");
-        }
-    }
-
-    StringBuilder xml = new StringBuilder();
-
-    xml.append("<samples>");
-    xml.append("<sample ");
-
-    xml.append("sampleID=\"").append(sampleTypeId).append("\" ");
-    xml.append("tests=\"").append(testIds).append("\" ");
-    xml.append("panels=\"\" ");
-    xml.append("testSectionMap=\"").append(sectionMap).append("\" ");
-    xml.append("testSampleTypeMap=\"").append(sampleTypeMap).append("\" ");
-    xml.append("date=\"").append(date).append("\" ");
-    xml.append("time=\"00:00\" ");
-    xml.append("receivedDate=\"").append(date).append("\" ");
-    xml.append("receivedTime=\"00:00\" ");
-
-    if (!GenericValidator.isBlankOrNull(sampleItemId)) {
-        xml.append("sampleItemId=\"").append(sampleItemId).append("\" ");
-    }
-
-    xml.append("/>");
-    xml.append("</samples>");
-
-    return xml.toString();
-}
 }

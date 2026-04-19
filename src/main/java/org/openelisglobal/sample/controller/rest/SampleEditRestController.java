@@ -17,7 +17,6 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
@@ -39,7 +38,6 @@ import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.form.SampleEditForm.SampleEdit;
 import org.openelisglobal.sample.service.SampleEditService;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.validator.SampleEditFormValidator;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -60,7 +58,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -236,7 +233,7 @@ public class SampleEditRestController extends BaseSampleEntryController {
             } else {
                 // updatedSample = updateAccessionNumberInSample(form);
             }
-            updatedSample = sampleUtil.updateAccessionNumberInSample(form,ControllerUtills.getSysUserId(request));
+            updatedSample = sampleUtil.updateAccessionNumberInSample(form, ControllerUtills.getSysUserId(request));
         }
 
         try {
@@ -435,12 +432,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
             possibleTestList.addAll(typeOfTestSampleItemList);
         }
     }
-
-
-
-
-
-
 
     private static class SampleEditItemComparator implements Comparator<SampleEditItem> {
 
