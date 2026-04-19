@@ -24,7 +24,6 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
 FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
-CORE_DEMO_PATIENT_SQL="$SCRIPT_DIR/fixtures/core-demo-patient.sql"
 ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
@@ -50,6 +49,16 @@ while [[ $# -gt 0 ]]; do
                 echo "Valid profiles: core, harness"
                 exit 1
             fi
+            shift
+            ;;
+        --analyzers=*)
+            # TRANSITIONAL COMPAT — remove in follow-up PR after develop's YAML
+            # is updated to use --profile. GitHub workflow_run resolves YAML
+            # against the default branch, so during the prereq PR's own CI
+            # run the stale develop YAML still invokes this script with the
+            # old flag. Accept it for one merge cycle, then drop.
+            echo "WARNING: --analyzers is deprecated; mapping to --profile=harness for transition."
+            PROFILE="harness"
             shift
             ;;
         *)
@@ -330,7 +339,10 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
 load_profile_fixtures() {
     # Core baseline shared by both profiles
     load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
-    load_sql_file "$CORE_DEMO_PATIENT_SQL" "core-demo-patient.sql (core add-order patient fixture)" "fatal"
+    # NOTE: The demo patient John TEST-Smith / E2E-PAT-001 is provided by
+    # testdata/storage-e2e.xml (patient id 1000). Do not also load it from
+    # a separate SQL fixture — the external_id/national_id columns are
+    # unique and a duplicate insert would conflict.
 
     # Analyzer cleanup/deactivation is part of both lanes today.
     if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
