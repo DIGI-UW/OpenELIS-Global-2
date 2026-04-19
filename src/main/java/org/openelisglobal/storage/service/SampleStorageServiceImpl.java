@@ -130,11 +130,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            // Store actual status ID for filtering (OGC-150: supports all status types from
-            // dropdown)
-            // Frontend dropdown loads all status types and filters by ID
-            // Default to "active" if no status ID (backward compatibility)
-            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
+            // Spec 001 API contract: status is an enum of "active" | "disposed"
+            // (specs/001-sample-storage/contracts/storage-api.json:862,885).
+            // Derive from the DB status ID via statusService rather than leaking the raw
+            // ID.
+            map.put("status",
+                    sampleItem.getStatusId() != null && statusService.matches(sampleItem.getStatusId(),
+                            org.openelisglobal.common.services.StatusService.SampleStatus.Disposed) ? "disposed"
+                                    : "active");
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
