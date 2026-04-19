@@ -44,9 +44,9 @@ All Playwright tests run through a single parameterized reusable workflow
 (`e2e-playwright-reusable.yml`), called twice by the orchestrator
 (`e2e-authoritative-reusable.yml`):
 
-| Call               | Compose Files                                 | Projects                                | Fixtures                                 |
-| ------------------ | --------------------------------------------- | --------------------------------------- | ---------------------------------------- |
-| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`   |
+| Call               | Compose Files                                 | Projects                                | Fixtures                                  |
+| ------------------ | --------------------------------------------- | --------------------------------------- | ----------------------------------------- |
+| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`    |
 | Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 Both follow the same pattern: **test-shards → merge-reports → gate**. Each
