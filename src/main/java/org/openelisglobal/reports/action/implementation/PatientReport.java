@@ -588,11 +588,34 @@ public abstract class PatientReport extends Report {
                 data.setResult(getAugmentedResult(data, result));
                 data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
                 data.setAlerts(getResultFlag(result, null, data));
+                data.setResultIndicator(computeResultIndicator(result, data));
             }
         }
 
         data.setParentResult(currentAnalysis.getParentResult());
         data.setConclusion(currentConclusion);
+    }
+
+    private String computeResultIndicator(Result result, ClinicalPatientData data) {
+        try {
+            if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())
+                    && !GenericValidator.isBlankOrNull(result.getValue())) {
+                if (result.getMinNormal() != null && result.getMaxNormal() != null
+                        && (result.getMinNormal() != 0.0 || result.getMaxNormal() != 0.0)) {
+                    double value = Double.parseDouble(result.getValue(true));
+                    if (value < result.getMinNormal()) {
+                        return MessageUtil.getMessage("report.status.low");
+                    } else if (value > result.getMaxNormal()) {
+                        return MessageUtil.getMessage("report.status.high");
+                    } else {
+                        return MessageUtil.getMessage("report.status.normal");
+                    }
+                }
+            }
+        } catch (NumberFormatException e) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "computeResultIndicator", e.getMessage());
+        }
+        return "";
     }
 
     protected void setReferredOutResult(ClinicalPatientData data) {
