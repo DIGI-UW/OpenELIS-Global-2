@@ -66,8 +66,12 @@ http {
         location /api/ {
             proxy_pass https://oe.openelis.org:8443/api/;
             proxy_redirect off;
-            proxy_ssl_verify off;
+            proxy_ssl_verify on;
             proxy_ssl_server_name on;
+            proxy_ssl_trusted_certificate /etc/nginx/certs/ca.crt;
+            proxy_ssl_verify_depth 2;
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
+            proxy_ssl_ciphers HIGH:!aNULL:!MD5:!RC4;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -78,8 +82,12 @@ http {
         location /rest/ {
             proxy_pass https://oe.openelis.org:8443/rest/;
             proxy_redirect off;
-            proxy_ssl_verify off;
+            proxy_ssl_verify on;
             proxy_ssl_server_name on;
+            proxy_ssl_trusted_certificate /etc/nginx/certs/ca.crt;
+            proxy_ssl_verify_depth 2;
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
+            proxy_ssl_ciphers HIGH:!aNULL:!MD5:!RC4;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -114,8 +122,12 @@ http {
         location /api/ {
             proxy_pass https://oe.openelis.org:8443/api/;
             proxy_redirect off;
-            proxy_ssl_verify off;
+            proxy_ssl_verify on;
             proxy_ssl_server_name on;
+            proxy_ssl_trusted_certificate /etc/nginx/certs/ca.crt;
+            proxy_ssl_verify_depth 2;
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
+            proxy_ssl_ciphers HIGH:!aNULL:!MD5:!RC4;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -126,8 +138,12 @@ http {
         location /rest/ {
             proxy_pass https://oe.openelis.org:8443/rest/;
             proxy_redirect off;
-            proxy_ssl_verify off;
+            proxy_ssl_verify on;
             proxy_ssl_server_name on;
+            proxy_ssl_trusted_certificate /etc/nginx/certs/ca.crt;
+            proxy_ssl_verify_depth 2;
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
+            proxy_ssl_ciphers HIGH:!aNULL:!MD5:!RC4;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
