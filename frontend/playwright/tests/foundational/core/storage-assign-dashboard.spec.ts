@@ -39,8 +39,14 @@ async function openManageLocationFromRow(page: Page, rowIndex = 0) {
   const row = rows.nth(Math.min(rowIndex, rowCount - 1));
   await row.locator('[data-testid="sample-actions-overflow-menu"]').click();
   await page.getByRole("menuitem", { name: /manage location/i }).click();
+  // Spec 001 §240-241 + §1647-1649: picker renders "Assign Storage Location"
+  // for unassigned samples and "Move Sample" for pre-assigned ones. The
+  // subsequent UX (search → pick → save → navigate back) is identical.
   await expect(
-    page.getByRole("heading", { level: 1, name: /assign storage location/i }),
+    page.getByRole("heading", {
+      level: 1,
+      name: /(assign storage location|move sample)/i,
+    }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
 }
 

@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -53,6 +53,7 @@ import {
 const OrderLabel = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const {
     orderData,
     samples,
@@ -65,6 +66,8 @@ const OrderLabel = () => {
     orderId,
     storageSkipped,
     setStorageSkipped,
+    loadOrder,
+    isLoading,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -73,12 +76,22 @@ const OrderLabel = () => {
   const labNumber =
     contextLabNumber || orderData?.sampleOrderItems?.labNo || null;
 
-  // Redirect to enter step if no order is loaded
+  // Deep-link support: if the URL carries ?labNumber and no order is loaded,
+  // fetch it before falling back to the Step 1 redirect. Lets external links
+  // (dashboard widgets, tests) land directly on Step 3 without walking the
+  // wizard.
+  const urlLabNumber = new URLSearchParams(location.search).get("labNumber");
+
   useEffect(() => {
-    if (!orderId && !labNumber) {
-      history.replace("/order/enter");
+    if (orderId || labNumber || isLoading) return;
+    if (urlLabNumber) {
+      loadOrder(urlLabNumber).catch(() => {
+        history.replace("/order/enter");
+      });
+      return;
     }
-  }, [orderId, labNumber, history]);
+    history.replace("/order/enter");
+  }, [orderId, labNumber, isLoading, urlLabNumber, loadOrder, history]);
 
   // Label printing state - order label + one entry per sample
   const [labelQuantities, setLabelQuantities] = useState(() => {
