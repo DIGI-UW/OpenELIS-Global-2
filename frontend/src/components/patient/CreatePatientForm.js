@@ -873,16 +873,10 @@ function CreatePatientForm(props) {
                           </>
                         }
                         id={field.name}
-                        invalid={
-                          props.error
-                            ? props.error("patientProperties.nationalId")
-                              ? true
-                              : false
-                            : false
-                        }
+                        invalid={errors.nationalId && touched.nationalId}
                         invalidText={
-                          props.error
-                            ? props.error("patientProperties.nationalId")
+                          errors.nationalId && touched.nationalId
+                            ? errors.nationalId
                             : ""
                         }
                         onMouseOut={() => {
@@ -899,9 +893,6 @@ function CreatePatientForm(props) {
                       />
                     )}
                   </Field>
-                  <div className="error">
-                    <ErrorMessage name="nationalId"></ErrorMessage>
-                  </div>
                 </Column>
                 <Column lg={16} md={8} sm={4}>
                   {" "}
