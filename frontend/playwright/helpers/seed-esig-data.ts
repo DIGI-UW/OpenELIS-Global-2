@@ -20,9 +20,11 @@ export interface EsigTestData {
 export async function createEsigSampleOrder(
   page: Page,
 ): Promise<EsigTestData | null> {
+  // UTC-based: server runs UTC (docker-compose TZ), aligning here prevents
+  // midnight-rollover flakes when dev/runner and server fall on different dates.
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const today = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  const time = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
 
   const accessionNumber = await createSampleOrder(page, {
     labNo: "",

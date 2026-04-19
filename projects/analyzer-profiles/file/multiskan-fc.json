@@ -21,6 +21,7 @@
     "WellPosition": "position",
     "SampleID": "sampleId",
     "Abs": "result",
+    "Interpretation": "interpretation",
     "TestCode": "testCode"
   },
   "locale_support": {
@@ -45,17 +46,10 @@
       "columns": ["Well", "Sample ID", "Absorbance (450 nm)", "Content"]
     }
   },
-  "line_field_order": [
-    "sampleId",
-    "testCode",
-    "result",
-    "interpretation",
-    "position",
-    "testDate",
-    "testTime"
-  ],
   "default_test_mappings": [
-    { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" }
+    { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" },
+    { "test_code": "Dengue IgG", "test_name_hint": "Dengue virus IgG Ab [Presence] in Serum", "loinc": "7854-3", "unit": "" },
+    { "test_code": "Dengue IgM", "test_name_hint": "Dengue virus IgM Ab [Presence] in Serum", "loinc": "7852-7", "unit": "" }
   ],
   "configDefaults": {
     "fileFormat": "CSV",
