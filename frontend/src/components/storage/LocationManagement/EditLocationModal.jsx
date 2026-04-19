@@ -424,9 +424,9 @@ const EditLocationModal = ({
   };
 
   const handleFieldChange = (field, value) => {
-    const normalizedValue = field === "active" ? Boolean(value) : value;
+    const fieldValue = field === "active" ? Boolean(value) : value;
     setFormData((prev) => {
-      const updated = { ...prev, [field]: normalizedValue };
+      const updated = { ...prev, [field]: fieldValue };
       formDataRef.current = updated;
       return updated;
     });
