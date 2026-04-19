@@ -39,6 +39,9 @@ public class EQAProgram extends BaseObject<Long> {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Column(name = "provider", length = 255)
+    private String provider;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "organization_id")
     private Organization organization;

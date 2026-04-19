@@ -1,70 +1,42 @@
-import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  TextInput,
-  TextArea,
-  Select,
-  SelectItem,
-  Toggle,
-  Grid,
-  Column,
-} from "@carbon/react";
+import React, { useState } from "react";
+import { Modal, TextInput, TextArea, Toggle } from "@carbon/react";
 import { useIntl } from "react-intl";
 import {
-  getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
 } from "../../utils/Utils";
-
-const FREQUENCIES = ["Monthly", "Quarterly", "Biannual", "Annual"];
 
 const ProgramForm = ({ program, onClose }) => {
   const intl = useIntl();
   const isEditing = !!program;
 
   const [name, setName] = useState(program?.name || "");
+  const [provider, setProvider] = useState(program?.provider || "");
   const [description, setDescription] = useState(program?.description || "");
-  const [organizationId, setOrganizationId] = useState(
-    program?.organizationId ? String(program.organizationId) : "",
-  );
-  const [testSectionId, setTestSectionId] = useState(
-    program?.testSectionId ? String(program.testSectionId) : "",
-  );
-  const [frequency, setFrequency] = useState(program?.frequency || "");
   const [isActive, setIsActive] = useState(program?.isActive !== false);
   const [nameError, setNameError] = useState("");
-
-  const [organizations, setOrganizations] = useState([]);
-  const [testSections, setTestSections] = useState([]);
-
-  useEffect(() => {
-    getFromOpenElisServer(
-      "/rest/displayList/REFERRAL_ORGANIZATIONS",
-      (data) => {
-        if (data) {
-          setOrganizations(data);
-        }
-      },
-    );
-    getFromOpenElisServer("/rest/test-sections", (data) => {
-      if (data) {
-        setTestSections(data);
-      }
-    });
-  }, []);
+  const [providerError, setProviderError] = useState("");
 
   const handleSubmit = () => {
+    let valid = true;
+
     if (!name.trim()) {
       setNameError(intl.formatMessage({ id: "eqa.program.name.required" }));
-      return;
+      valid = false;
     }
+    if (!provider.trim()) {
+      setProviderError(
+        intl.formatMessage({ id: "eqa.program.provider.required" }),
+      );
+      valid = false;
+    }
+
+    if (!valid) return;
 
     const payload = {
       name,
+      provider,
       description,
-      organizationId: organizationId ? Number(organizationId) : null,
-      testSectionId: testSectionId ? Number(testSectionId) : null,
-      frequency,
     };
 
     if (isEditing) {
@@ -120,64 +92,20 @@ const ProgramForm = ({ program, onClose }) => {
           invalid={!!nameError}
           invalidText={nameError}
         />
-        <Grid condensed>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="program-provider"
-              labelText={intl.formatMessage({ id: "eqa.admin.col.provider" })}
-              value={organizationId}
-              onChange={(e) => setOrganizationId(e.target.value)}
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({
-                  id: "eqa.admin.form.provider.placeholder",
-                })}
-              />
-              {organizations.map((org) => (
-                <SelectItem
-                  key={org.id}
-                  value={String(org.id)}
-                  text={org.value}
-                />
-              ))}
-            </Select>
-          </Column>
-          <Column lg={8} md={4} sm={4}>
-            <Select
-              id="program-category"
-              labelText={intl.formatMessage({ id: "eqa.admin.col.category" })}
-              value={testSectionId}
-              onChange={(e) => setTestSectionId(e.target.value)}
-            >
-              <SelectItem
-                value=""
-                text={intl.formatMessage({
-                  id: "eqa.admin.form.category.placeholder",
-                })}
-              />
-              {testSections.map((ts) => (
-                <SelectItem key={ts.id} value={String(ts.id)} text={ts.value} />
-              ))}
-            </Select>
-          </Column>
-        </Grid>
-        <Select
-          id="program-frequency"
-          labelText={intl.formatMessage({ id: "eqa.admin.col.frequency" })}
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value)}
-        >
-          <SelectItem
-            value=""
-            text={intl.formatMessage({
-              id: "eqa.admin.form.frequency.placeholder",
-            })}
-          />
-          {FREQUENCIES.map((freq) => (
-            <SelectItem key={freq} value={freq} text={freq} />
-          ))}
-        </Select>
+        <TextInput
+          id="program-provider"
+          labelText={intl.formatMessage({ id: "eqa.admin.col.provider" })}
+          placeholder={intl.formatMessage({
+            id: "eqa.admin.form.provider.placeholder",
+          })}
+          value={provider}
+          onChange={(e) => {
+            setProvider(e.target.value);
+            if (providerError) setProviderError("");
+          }}
+          invalid={!!providerError}
+          invalidText={providerError}
+        />
         <TextArea
           id="program-description"
           labelText={intl.formatMessage({ id: "eqa.program.description" })}

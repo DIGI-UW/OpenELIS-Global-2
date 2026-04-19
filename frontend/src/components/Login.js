@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useState, createRef } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  createRef,
+} from "react";
 import config from "../config.json";
 import "./Style.css";
 import qs from "qs";
@@ -32,6 +39,17 @@ function Login(props) {
   const [samlRedirectInitiated, setSamlRedirectInitiated] = useState(false);
   const [loginLogoUrl, setLoginLogoUrl] = useState(null);
   const [logoVersion, setLogoVersion] = useState(0); // Version counter for cache-busting
+  const userIsActiveRef = useRef(false); // Track if user is actively typing without triggering re-renders
+  const activityResetTimerRef = useRef(null);
+  const markUserActive = useCallback(() => {
+    userIsActiveRef.current = true;
+    if (activityResetTimerRef.current) {
+      clearTimeout(activityResetTimerRef.current);
+    }
+    activityResetTimerRef.current = setTimeout(() => {
+      userIsActiveRef.current = false;
+    }, 5000);
+  }, []);
   const firstInput = createRef();
 
   // Auto-redirect to SAML if configured to bypass login page
@@ -59,11 +77,20 @@ function Login(props) {
   useEffect(() => {
     firstInput?.current?.focus();
 
+    // Poll every 10s, but skip polling while the user is actively typing.
+    // Using a ref (not state) keeps a single stable interval alive across renders.
     const interval = setInterval(() => {
-      checkLogin();
-    }, 1000 * 3);
+      if (!userIsActiveRef.current) {
+        checkLogin();
+      }
+    }, 1000 * 10);
 
-    return () => clearInterval(interval); // clear your interval to prevent memory leaks.
+    return () => {
+      clearInterval(interval);
+      if (activityResetTimerRef.current) {
+        clearTimeout(activityResetTimerRef.current);
+      }
+    };
   }, []);
 
   // Load branding configuration for login logo
@@ -247,19 +274,7 @@ function Login(props) {
                       username: "",
                       password: "",
                     }}
-                    onSubmit={(values) => {
-                      doLogin(values);
-                      fetch(config.serverBaseUrl + "/LoginPage", {
-                        //includes the browser sessionId in the Header for Authentication on the backend server
-                        credentials: "include",
-                        method: "GET",
-                      })
-                        .then((response) => response.status)
-                        .then(() => {
-                          doLogin(values);
-                        })
-                        .catch(() => {});
-                    }}
+                    onSubmit={(values) => doLogin(values)}
                   >
                     {({ isValid, handleChange, handleSubmit }) => (
                       <Form onSubmit={handleSubmit} onChange={handleChange}>
@@ -285,6 +300,8 @@ function Login(props) {
                                 })}
                                 autoComplete="off"
                                 ref={firstInput}
+                                onFocus={markUserActive}
+                                onChange={markUserActive}
                               />
                               <TextInput.PasswordInput
                                 id="password"
@@ -298,6 +315,8 @@ function Login(props) {
                                 placeholder={props.intl.formatMessage({
                                   id: "login.msg.password",
                                 })}
+                                onFocus={markUserActive}
+                                onChange={markUserActive}
                               />
                               <Stack orientation="horizontal">
                                 <Button

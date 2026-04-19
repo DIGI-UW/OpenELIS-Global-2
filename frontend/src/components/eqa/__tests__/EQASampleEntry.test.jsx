@@ -106,15 +106,13 @@ describe("EQASampleEntry", () => {
     );
     const checkbox = screen.getByRole("checkbox");
     fireEvent.click(checkbox);
-    expect(mockSetOrderFormValues).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sampleOrderItems: expect.objectContaining({
-          isEQASample: false,
-          eqaProgramId: "",
-          eqaPriority: "STANDARD",
-        }),
-      }),
-    );
+    // setOrderFormValues is called with a functional updater
+    expect(mockSetOrderFormValues).toHaveBeenCalledWith(expect.any(Function));
+    const updater = mockSetOrderFormValues.mock.calls[0][0];
+    const result = updater(eqaOrderFormValues);
+    expect(result.sampleOrderItems.isEQASample).toBe(false);
+    expect(result.sampleOrderItems.eqaProgramId).toBe("");
+    expect(result.sampleOrderItems.eqaPriority).toBe("STANDARD");
   });
 
   test("only renders checkbox, no additional form fields", () => {

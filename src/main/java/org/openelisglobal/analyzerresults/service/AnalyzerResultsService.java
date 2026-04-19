@@ -15,4 +15,11 @@ public interface AnalyzerResultsService extends BaseObjectService<AnalyzerResult
 
     void persistAnalyzerResults(List<AnalyzerResults> deletableAnalyzerResults, List<SampleGrouping> sampleGroupList,
             String sysUserId);
+
+    /**
+     * Staging rows flagged with an {@code import_issue_reason} (unmapped host code,
+     * cartridge-as-result, unknown dict value, etc.). Backing query for the Import
+     * Issues admin panel.
+     */
+    List<AnalyzerResults> findWithImportIssues(int limit);
 }

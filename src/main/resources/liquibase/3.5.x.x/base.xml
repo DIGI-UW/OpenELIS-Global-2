@@ -20,6 +20,8 @@
   <include relativeToChangelogFile="true" file="003-audit-trail-menu.xml"/>
   <!-- Electronic Signature (21 CFR Part 11 Compliance) -->
   <include relativeToChangelogFile="true" file="004-electronic-signature.xml"/>
+  <!-- TAT Report menu entry under Reports (OGC-310) -->
+  <include relativeToChangelogFile="true" file="005-tat-report-menu.xml"/>
 
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
@@ -32,5 +34,35 @@
 
   <!-- Sequence for auto-generating sampling site codes -->
   <include relativeToChangelogFile="true" file="004-create-site-code-sequence.xml"/>
+
+   <!-- Sample shipping management -->
+  <include relativeToChangelogFile="true" file="shipment-001-create-shipping-box-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-002-create-shipment-table.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-003-create-box-sample-table.xml"/>
+  <!-- shipment-004 removed: unassigned samples now use referral table directly -->
+  <include relativeToChangelogFile="true" file="shipment-005-create-indexes.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-006-create-foreign-keys.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-007-add-menu-and-role.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-008-add-capacity-column.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-009-add-referral-shipment-columns.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-010-add-actual-sample-count.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-011-add-sample-shipment-referral-type.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-012-migrate-to-sample-item.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-013-add-box-label-prefix-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
+  <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+
+  <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
+  <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>
+
+  <!-- Informed Consent Capture (OGC-557) -->
+  <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>
+
+  <!-- Patient ID document scanning (OGC-66) -->
+  <include relativeToChangelogFile="true" file="patient_id_document.xml"/>
+
+  <!-- Default nationality configuration for patient entry -->
+  <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
 
 </databaseChangeLog>

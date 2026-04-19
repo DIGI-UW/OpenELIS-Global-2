@@ -117,6 +117,7 @@ describe("MyProgramsPage", () => {
     expect(screen.getByText("Provider")).toBeTruthy();
     expect(screen.getByText("Lab Unit(s)")).toBeTruthy();
     expect(screen.getByText("Tests")).toBeTruthy();
+    expect(screen.getByText("Panels")).toBeTruthy();
     expect(screen.getByText("Status")).toBeTruthy();
     expect(screen.getByText("Actions")).toBeTruthy();
   });
@@ -127,14 +128,13 @@ describe("MyProgramsPage", () => {
     expect(screen.getByText("Inactive")).toBeTruthy();
   });
 
-  test("renders lab unit count tag for enrolled program", () => {
+  test("renders count tags for enrolled program", () => {
     renderPage();
-    expect(screen.getByText("1")).toBeTruthy();
-  });
-
-  test("renders test/panel count tag for enrolled program", () => {
-    renderPage();
-    expect(screen.getByText("3")).toBeTruthy();
+    // Chemistry PT has: 1 lab unit, 2 tests, 1 panel
+    // Multiple elements may render "1" (lab units, panels, etc.)
+    const ones = screen.getAllByText("1");
+    expect(ones.length).toBeGreaterThanOrEqual(2); // lab units + panels
+    expect(screen.getByText("2")).toBeTruthy(); // tests
   });
 
   test("renders breadcrumb navigation", () => {

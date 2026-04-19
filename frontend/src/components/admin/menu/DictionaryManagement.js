@@ -498,9 +498,23 @@ function DictionaryManagement() {
                   open={open}
                   size="sm"
                   onRequestClose={() => setOpen(false)}
-                  modalHeading={editMode ? "Add Dictionary" : "Edit Dictionary"}
-                  primaryButtonText={editMode ? "Add" : "Update"}
-                  secondaryButtonText="Cancel"
+                  modalHeading={
+                    editMode
+                      ? intl.formatMessage({
+                          id: "dictionary.modal.add.heading",
+                        })
+                      : intl.formatMessage({
+                          id: "dictionary.modal.edit.heading",
+                        })
+                  }
+                  primaryButtonText={
+                    editMode
+                      ? intl.formatMessage({ id: "label.button.add" })
+                      : intl.formatMessage({ id: "label.button.update" })
+                  }
+                  secondaryButtonText={intl.formatMessage({
+                    id: "label.button.cancel",
+                  })}
                   onRequestSubmit={
                     editMode ? handleSubmitModal : handleUpdateModal
                   }
@@ -508,7 +522,9 @@ function DictionaryManagement() {
                   <TextInput
                     data-modal-primary-focus
                     id="dictNumber"
-                    labelText="Dictionary Number"
+                    labelText={intl.formatMessage({
+                      id: "dictionary.number.label",
+                    })}
                     disabled
                     value={dictionaryNumber}
                     onChange={(e) => setDictionaryNumber(e.target.value)}
@@ -521,7 +537,9 @@ function DictionaryManagement() {
                     label=""
                     type="default"
                     items={categoryDescription}
-                    titleText="Dictionary Category"
+                    titleText={intl.formatMessage({
+                      id: "dictionary.category.label",
+                    })}
                     itemToString={(item) => (item ? item.description : "")}
                     onChange={({ selectedItem }) => {
                       setCategory(selectedItem);
@@ -534,7 +552,9 @@ function DictionaryManagement() {
                   />
                   <TextInput
                     id="dictEntry"
-                    labelText="Dictionary Entry"
+                    labelText={intl.formatMessage({
+                      id: "dictionary.dictEntry",
+                    })}
                     value={dictionaryEntry}
                     onChange={(e) => setDictionaryEntry(e.target.value)}
                     style={{
@@ -546,7 +566,9 @@ function DictionaryManagement() {
                     type="default"
                     label=""
                     items={yesOrNo}
-                    titleText="Is Active"
+                    titleText={intl.formatMessage({
+                      id: "dictionary.category.isActive",
+                    })}
                     itemToString={(item) => (item ? item.id : "")}
                     onChange={({ selectedItem }) => {
                       setIsActive(selectedItem);
@@ -559,7 +581,9 @@ function DictionaryManagement() {
                   />
                   <TextInput
                     id="localAbbrev"
-                    labelText="Local Abbreviation"
+                    labelText={intl.formatMessage({
+                      id: "dictionary.category.localAbbreviation",
+                    })}
                     value={localAbbreviation}
                     onChange={(e) => setLocalAbbreviation(e.target.value)}
                     style={{
@@ -569,7 +593,9 @@ function DictionaryManagement() {
 
                   <TextInput
                     id="loincCode"
-                    labelText="LOINC Code"
+                    labelText={intl.formatMessage({
+                      id: "dictionary.loincCode",
+                    })}
                     value={loincCode}
                     onChange={(e) => setLoincCode(e.target.value)}
                     // invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
@@ -611,7 +637,8 @@ function DictionaryManagement() {
                     textAlign: isMobile ? "center" : "left",
                   }}
                 >
-                  Showing {fromRecordCount} - {toRecordCount} of{" "}
+                  <FormattedMessage id="showing" /> {fromRecordCount} -{" "}
+                  {toRecordCount} <FormattedMessage id="of" />{" "}
                   {totalRecordCount}
                 </h4>
                 <div
@@ -629,7 +656,9 @@ function DictionaryManagement() {
                       padding: "0.5rem",
                     }}
                     hasIconOnly
-                    iconDescription="previous"
+                    iconDescription={intl.formatMessage({
+                      id: "organization.previous",
+                    })}
                     disabled={parseInt(fromRecordCount) <= 1}
                     onClick={handlePreviousPage}
                     renderIcon={ArrowLeft}
@@ -641,7 +670,9 @@ function DictionaryManagement() {
                       padding: "0.5rem",
                     }}
                     hasIconOnly
-                    iconDescription="next"
+                    iconDescription={intl.formatMessage({
+                      id: "organization.next",
+                    })}
                     renderIcon={ArrowRight}
                     onClick={handleNextPage}
                     disabled={
@@ -719,7 +750,7 @@ function DictionaryManagement() {
 
                 {
                   key: "loincCode",
-                  header: "LOINC",
+                  header: intl.formatMessage({ id: "dictionary.loincCode" }),
                 },
               ]}
               isSortable

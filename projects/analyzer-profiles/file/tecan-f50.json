@@ -50,15 +50,6 @@
       "columns": ["WellPosition", "SampleID", "OD_450", "OD_620", "CorrectedOD", "Interpretation"]
     }
   },
-  "line_field_order": [
-    "sampleId",
-    "testCode",
-    "result",
-    "interpretation",
-    "position",
-    "testDate",
-    "testTime"
-  ],
   "default_test_mappings": [
     { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" }
   ],

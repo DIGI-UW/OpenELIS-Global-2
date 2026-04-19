@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
-import { Route } from "react-router-dom";
+import { Route, useLocation } from "react-router-dom";
 import { useIdleTimer } from "react-idle-timer";
 import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
@@ -16,10 +16,11 @@ const idleLogoutTimeout = idleTimeout + idleWarningTimeout;
 
 function SecureRoute(props) {
   const [permissionGranted, setPermissionGranted] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [stillThereOpen, setStillThereOpen] = useState(false);
 
   const intl = useIntl();
+  const location = useLocation();
 
   const {
     userSessionDetails,
@@ -30,12 +31,23 @@ function SecureRoute(props) {
 
   const { configurationProperties } = useContext(ConfigurationContext);
 
+  // Reset permission when route changes to prevent stale grants from previous routes
   useEffect(() => {
-    setLoading(!errorLoadingSessionDetails && isCheckingLogin());
+    setPermissionGranted(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const stillChecking = !errorLoadingSessionDetails && isCheckingLogin();
+    setLoading(stillChecking);
+
+    if (stillChecking) {
+      return;
+    }
+
     if (userSessionDetails.authenticated) {
-      console.info("Authenticated");
-      if (hasPermission(userSessionDetails)) {
-        console.info("Access Allowed");
+      const allowed = hasPermission(userSessionDetails);
+      setPermissionGranted(allowed);
+      if (allowed) {
         if (
           configurationProperties.REQUIRE_LAB_UNIT_AT_LOGIN === "true" &&
           !userSessionDetails.loginLabUnit &&
@@ -60,11 +72,10 @@ function SecureRoute(props) {
         };
         confirmAlert(options);
       }
-      setPermissionGranted(hasPermission());
     } else if ("authenticated" in userSessionDetails) {
       window.location.href = config.loginRedirect;
     }
-  }, [userSessionDetails, errorLoadingSessionDetails]);
+  }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
   const hasPermission = (userDetails = userSessionDetails) => {
     var hasRole =

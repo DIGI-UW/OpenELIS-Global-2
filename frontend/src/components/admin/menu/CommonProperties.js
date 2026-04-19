@@ -69,7 +69,7 @@ export const CommonProperties = () => {
             { label: "home.label", link: "/" },
             { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
             {
-              label: "common properties",
+              label: "common.properties.title",
               link: "/MasterListsPage/commonproperties",
             },
           ]}
@@ -78,10 +78,7 @@ export const CommonProperties = () => {
           <Column lg={16} md={8} sm={4}>
             <Section>
               <Heading>
-                <FormattedMessage
-                  id="ewfggwgewgewgweg"
-                  defaultMessage="Common Properties"
-                />
+                <FormattedMessage id="common.properties.title" />
               </Heading>
             </Section>
           </Column>
@@ -98,8 +95,10 @@ export const CommonProperties = () => {
                       Math.ceil(Object.keys(commonProperties).length / 2),
                     )
                     .map((key) => {
-                      // Remove the prefix "org.openelisglobal" using regex
-                      let shortKey = key.replace(/^org\.openelisglobal\./, "");
+                      // Remove the prefix "org.openelisglobal" or "org.itech" using regex
+                      let shortKey = key
+                        .replace(/^org\.openelisglobal\./, "")
+                        .replace(/^org\.itech\./, "");
 
                       return (
                         <div
@@ -132,8 +131,10 @@ export const CommonProperties = () => {
                   {Object.keys(commonProperties)
                     .slice(Math.ceil(Object.keys(commonProperties).length / 2))
                     .map((key) => {
-                      // Remove the prefix "org.openelisglobal" using regex
-                      let shortKey = key.replace(/^org\.openelisglobal\./, "");
+                      // Remove the prefix "org.openelisglobal" or "org.itech" using regex
+                      let shortKey = key
+                        .replace(/^org\.openelisglobal\./, "")
+                        .replace(/^org\.itech\./, "");
 
                       return (
                         <div
