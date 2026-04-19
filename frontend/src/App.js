@@ -10,6 +10,17 @@ import ChangePassword from "./components/ChangePassword.js";
 import Home from "./components/Home";
 import Layout from "./components/layout/Layout";
 import StorageDashboard from "./components/storage/StorageDashboard";
+import SampleItemsPage from "./components/storage/pages/SampleItemsPage";
+import ManageLocationPage from "./components/storage/pages/ManageLocationPage";
+import RoomsPage from "./components/storage/pages/RoomsPage";
+import DevicesPage from "./components/storage/pages/DevicesPage";
+import ShelvesPage from "./components/storage/pages/ShelvesPage";
+import RacksPage from "./components/storage/pages/RacksPage";
+import BoxesPage from "./components/storage/pages/BoxesPage";
+import EditLocationPage from "./components/storage/pages/EditLocationPage";
+import EditBoxPage from "./components/storage/pages/EditBoxPage";
+import AddLocationPage from "./components/storage/pages/AddLocationPage";
+import AddBoxPage from "./components/storage/pages/AddBoxPage";
 import AlertsDashboard from "./components/alerts/AlertsDashboard";
 import EQAManagementDashboard from "./components/eqa/EQAManagementDashboard";
 import EQAProgramManagement from "./components/eqa/EQAProgram/ProgramManagement";
@@ -686,13 +697,174 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
-                  path="/Storage/:tab"
+                  path="/Storage/sample-items"
+                  exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorStorage}>
-                      <StorageDashboard />
+                      <SampleItemsPage />
                     </RouteErrorBoundary>
                   )}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/sample-items/:id/manage-location"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <ManageLocationPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/rooms"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <RoomsPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/devices"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <DevicesPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/shelves"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <ShelvesPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/racks"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <RacksPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/boxes"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <BoxesPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/rooms/new"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <AddLocationPage type="room" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/devices/new"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <AddLocationPage type="device" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/shelves/new"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <AddLocationPage type="shelf" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/racks/new"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <AddLocationPage type="rack" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/boxes/new"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <AddBoxPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/rooms/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="room" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/devices/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="device" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/shelves/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="shelf" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/racks/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditLocationPage type="rack" />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
+                  path="/Storage/boxes/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorStorage}>
+                      <EditBoxPage />
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
                   path="/inventory"
