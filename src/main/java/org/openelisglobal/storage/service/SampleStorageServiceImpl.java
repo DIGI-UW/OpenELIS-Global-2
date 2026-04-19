@@ -130,14 +130,14 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            // Spec 001 API contract: status is an enum of "active" | "disposed"
-            // (specs/001-sample-storage/contracts/storage-api.json:862,885).
-            // Derive from the DB status ID via statusService rather than leaking the raw
-            // ID.
-            map.put("status",
-                    sampleItem.getStatusId() != null && statusService.matches(sampleItem.getStatusId(),
-                            org.openelisglobal.common.services.StatusService.SampleStatus.Disposed) ? "disposed"
-                                    : "active");
+            // Internal map carries the raw DB status ID so
+            // StorageDashboardServiceImpl.filterSamples can call
+            // statusService.matches without another lookup. The REST controller
+            // translates this to the spec-compliant "active"|"disposed" enum
+            // (specs/001-sample-storage/contracts/storage-api.json:862,885)
+            // before serializing to the client — see SampleStorageRestController
+            // .normalizeStatusForResponse.
+            map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
