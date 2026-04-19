@@ -19,12 +19,13 @@ import {
 /**
  * EditBoxPage — /Storage/boxes/:id/edit
  *
- * Boxes have grid-layout fields (rows × columns + capacityLimit) that
- * don't fit the generic EditLocationPage shell, so they get their own
- * page.
+ * Boxes have grid-layout fields (rows × columns) that don't fit the
+ * generic EditLocationPage shell, so they get their own page. Capacity
+ * is computed server-side as rows × columns (spec 149 FR-007) and
+ * surfaces on the response but is not part of the request payload.
  *
  * Backend form is StorageBoxForm { label, code, parentRackId,
- * capacityLimit, rows, columns, active }.
+ * rows, columns, active }.
  */
 export default function EditBoxPage() {
   const { id } = useParams();
@@ -44,10 +45,6 @@ export default function EditBoxPage() {
           label: response.label || response.name || "",
           code: response.code || "",
           parentRackId: String(response.parentRackId || ""),
-          capacityLimit:
-            response.capacityLimit != null
-              ? String(response.capacityLimit)
-              : "",
           rows: response.rows != null ? String(response.rows) : "",
           columns: response.columns != null ? String(response.columns) : "",
           active: response.active !== false,
@@ -88,9 +85,6 @@ export default function EditBoxPage() {
       label: formData.label,
       code: formData.code || null,
       parentRackId: formData.parentRackId || null,
-      capacityLimit: formData.capacityLimit
-        ? parseInt(formData.capacityLimit, 10)
-        : null,
       rows: formData.rows ? parseInt(formData.rows, 10) : null,
       columns: formData.columns ? parseInt(formData.columns, 10) : null,
       active: formData.active,
@@ -256,18 +250,6 @@ export default function EditBoxPage() {
               selectedItem ? String(selectedItem.id) : "",
             )
           }
-        />
-        <NumberInput
-          id="box-edit-capacity"
-          label={intl.formatMessage({
-            id: "storage.box.capacity",
-            defaultMessage: "Capacity limit",
-          })}
-          value={formData.capacityLimit}
-          onChange={(_e, { value }) =>
-            updateField("capacityLimit", String(value ?? ""))
-          }
-          min={0}
         />
         <NumberInput
           id="box-edit-rows"

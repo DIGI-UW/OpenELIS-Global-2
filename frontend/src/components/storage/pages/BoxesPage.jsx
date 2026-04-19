@@ -23,7 +23,7 @@ export default function BoxesPage() {
       label: b.label || b.name || "",
       code: b.code || "",
       rack: b.parentRackLabel || b.rackLabel || "",
-      capacity: b.capacityLimit || "",
+      capacity: b.capacity ?? "",
       active: <ActiveTag active={b.active !== false} />,
     }),
     [],

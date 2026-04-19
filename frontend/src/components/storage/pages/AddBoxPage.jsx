@@ -37,7 +37,6 @@ export default function AddBoxPage() {
     label: "",
     code: "",
     parentRackId: "",
-    capacityLimit: "",
     rows: "8",
     columns: "12",
     active: true,
@@ -108,9 +107,6 @@ export default function AddBoxPage() {
       label: formData.label.trim(),
       code: formData.code.trim() || null,
       parentRackId: formData.parentRackId || null,
-      capacityLimit: formData.capacityLimit
-        ? Number.parseInt(formData.capacityLimit, 10)
-        : null,
       rows: formData.rows ? Number.parseInt(formData.rows, 10) : null,
       columns: formData.columns ? Number.parseInt(formData.columns, 10) : null,
       active: formData.active,
@@ -219,19 +215,6 @@ export default function AddBoxPage() {
           itemToString={(item) => (item ? item.label : "")}
           selectedItem={selectedPreset}
           onChange={handlePresetChange}
-        />
-
-        <NumberInput
-          id="box-add-capacity"
-          label={intl.formatMessage({
-            id: "storage.box.capacity",
-            defaultMessage: "Capacity limit",
-          })}
-          value={formData.capacityLimit}
-          onChange={(_event, { value }) =>
-            updateField("capacityLimit", String(value ?? ""))
-          }
-          min={0}
         />
 
         <NumberInput
