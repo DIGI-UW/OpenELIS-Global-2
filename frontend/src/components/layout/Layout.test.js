@@ -34,6 +34,13 @@ jest.mock("../utils/Utils", () => ({
   deleteToOpenElisServer: jest.fn(async () => ({})),
 }));
 
+// Mock QuickNavFooter component to avoid loading translation keys required by it
+jest.mock("./QuickNavFooter", () => {
+  return function MockQuickNavFooter() {
+    return <div data-testid="mock-quick-nav-footer">Quick Nav Footer</div>;
+  };
+});
+
 // Mock user session context value
 const mockUserSessionContextValue = {
   userSessionDetails: {
@@ -195,7 +202,7 @@ describe("Layout", () => {
       const NotificationConsumer = () => {
         const notificationCtx = useContext(NotificationContext);
         return (
-          <div data-testid="notification-consumer">
+          <div data-testid="notification-consumer-1">
             {notificationCtx ? "context-available" : "no-context"}
           </div>
         );
@@ -207,7 +214,7 @@ describe("Layout", () => {
         </Layout>,
       );
 
-      expect(screen.getByTestId("notification-consumer").textContent).toBe(
+      expect(screen.getByTestId("notification-consumer-1").textContent).toBe(
         "context-available",
       );
     });
@@ -219,7 +226,7 @@ describe("Layout", () => {
       const NotificationConsumer = () => {
         const notificationCtx = useContext(NotificationContext);
         return (
-          <div data-testid="notification-consumer">
+          <div data-testid="notification-consumer-2">
             {typeof notificationCtx?.addNotification === "function"
               ? "has-add"
               : "no-add"}
@@ -233,7 +240,7 @@ describe("Layout", () => {
         </Layout>,
       );
 
-      expect(screen.getByTestId("notification-consumer").textContent).toBe(
+      expect(screen.getByTestId("notification-consumer-2").textContent).toBe(
         "has-add",
       );
     });

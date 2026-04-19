@@ -13,7 +13,6 @@ id_file
 # IDE files #
 .idea/
 .vscode/
-.metadata/
 .classpath
 .settings/
 .project
@@ -64,12 +63,14 @@ volume/lucene/*
 # AI agent directories -- tracked config (persists across branches/worktrees)
 # .cursor/rules/           -> tracked (Cursor rules for agent guardrails)
 # .cursor/worktrees.json   -> tracked (Cursor worktree setup config)
+# .claude/settings.local.json -> tracked (Claude Code permissions + prefs)
 
 # Ignore everything else in .cursor/ and .claude/
 .cursor/*
 !.cursor/rules/
 !.cursor/worktrees.json
 .claude/*
+!.claude/settings.local.json
 **/*checksum*.properties
 **/*checksums*.properties
 
@@ -125,6 +126,8 @@ frontend/e2e-evidence/
 e2e-evidence-*.zip
 
 # Miscellaneous dev artifacts
+
+
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
@@ -132,3 +135,4 @@ volume/properties/ChangedSystemConfiguration.properties
 # Real analyzer files from Herbert's Madagascar mount (contain PII)
 # Keep as a working copy for local debugging; never commit.
 docs/debug-local/
+

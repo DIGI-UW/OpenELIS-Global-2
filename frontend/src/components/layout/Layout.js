@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 import { useLocation } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
+import QuickNavFooter from "./QuickNavFooter";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getFromOpenElisServer } from "../utils/Utils";
@@ -144,8 +145,10 @@ export default function Layout(props) {
             >
               {children}
             </Content>
+            <div className="quick-nav-content" />
           </Theme>
           <Footer />
+          <QuickNavFooter />
         </div>
       </NotificationContext.Provider>
     </ConfigurationContext.Provider>

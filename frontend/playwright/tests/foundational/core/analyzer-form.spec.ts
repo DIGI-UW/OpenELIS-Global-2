@@ -95,9 +95,10 @@ test.describe("Analyzer Form", () => {
     await list.clickAction(createdAnalyzerId, "edit");
     await form.expectOpen();
 
-    // Verify name is populated
-    const name = await form.getName();
-    expect(name).toBe(analyzerName);
+    // Edit modal values are hydrated asynchronously; wait until name arrives.
+    await expect
+      .poll(async () => form.getName(), { timeout: 10_000 })
+      .toBe(analyzerName);
 
     // Update port
     await form.fillPort("1300");
