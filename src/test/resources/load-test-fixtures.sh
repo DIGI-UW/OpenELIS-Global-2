@@ -336,6 +336,9 @@ SELECT setval('result_seq', CAST((SELECT COALESCE(MAX(id), 30000) + 1 FROM resul
 }
 
 # Load profile fixtures based on --profile
+# Runs BEFORE storage-e2e.xml — any fixture that FK-references storage patients
+# (e.g. analyzer-harness-lane-data.sql's sample_human → patient 1000) belongs
+# in load_profile_lane_fixtures() instead, which runs AFTER storage.
 load_profile_fixtures() {
     # Core baseline shared by both profiles
     load_sql_file "$ANALYZER_MINIMAL_SQL_FILE" "analyzer-minimal.sql (3 generic types)" "fatal"
@@ -348,7 +351,10 @@ load_profile_fixtures() {
     if [ -f "$FILE_IMPORT_E2E_SQL" ]; then
         load_sql_file "$FILE_IMPORT_E2E_SQL" "file-import-e2e.sql (cleanup + dashboard deactivation)"
     fi
+}
 
+# Runs AFTER storage-e2e.xml, for fixtures that FK-reference storage patients.
+load_profile_lane_fixtures() {
     if [ "$PROFILE" = "harness" ]; then
         load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
     fi
@@ -501,11 +507,15 @@ fi
 # 1. Load foundational data (providers, organizations)
 load_sql_file "$FOUNDATIONAL_SQL_FILE" "foundational fixtures (providers, organizations)" "fatal"
 
-# 2. Load profile fixtures
+# 2. Load profile fixtures (analyzer types, file-import cleanup)
 load_profile_fixtures
 
 # 3. Load storage hierarchy + E2E test data via generated SQL
+#    (Creates patient id 1000 referenced by lane fixtures below.)
 load_sql_file "$STORAGE_SQL" "storage fixtures (generated SQL)" "fatal"
+
+# 4. Load profile lane fixtures (after storage — these FK-ref storage patients)
+load_profile_lane_fixtures
 
 normalize_sequences
 
