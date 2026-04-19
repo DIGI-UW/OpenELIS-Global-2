@@ -1836,20 +1836,11 @@ export function SearchResults(props) {
         actualValue > row.upperAbnormalRange)
     ) {
       return { ...validation, isInvalid: true, outsideValid: true };
-      // resultBox.style.background = "#ffa0a0";
-      // resultBox.title = "En dehors de la plage valide"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = false;
-      // if( outOfValidRangeMsg ){
-      //   alert( outOfValidRangeMsg);
-      // }
     } else if (
       row.lowerNormalRange != row.upperNormalRange &&
       (actualValue < row.lowerNormalRange || actualValue > row.upperNormalRange)
     ) {
       return { ...validation, outsideNormal: true };
-      // resultBox.style.background = "#ffffa0";
-      // resultBox.title = "En dehors de la plage normale"; //FIXME: Uses hardcoded French labels. Switch to refer to resource file.
-      // $("valid_" + row).value = true;
     } else {
       return { ...validation, outsideNormal: false };
       // resultBox.style.background = "#ffffff";
