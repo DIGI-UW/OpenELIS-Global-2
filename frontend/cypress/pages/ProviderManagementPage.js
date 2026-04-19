@@ -4,13 +4,12 @@ class ProviderManagementPage {
       addButton: "[data-cy='add-Button']",
       modifyButton: "[data-cy='modify-Button']",
       deactivateButton: "[data-cy='deactivate-Button']",
-      isActive: "#downshift-1-toggle-button",
-      modifyStatus: "#downshift-3-toggle-button",
+      addIsActive: "#addIsActive .cds--list-box__field",
+      modifyStatus: "#updateIsActive .cds--list-box__field",
       activeStatus: ".cds--list-box__menu-item__option",
-      lastNameInput: "#lastName",
-      firstNameInput: "#firstName",
-      activeDropdown: "#isActive",
-      provderSearchBar: "#provider-search-bar",
+      lastNameInput: "#addLastName",
+      firstNameInput: "#addFirstName",
+      providerSearchBar: "#provider-search-bar",
       modalAddButton: "div.cds--modal button:contains('Add')",
       updateButton: "div.cds--modal button:contains('Update')",
     };
@@ -30,12 +29,12 @@ class ProviderManagementPage {
   }
 
   activeStatus(value) {
-    cy.get(this.selectors.isActive).click();
+    cy.get(this.selectors.addIsActive).should("be.visible").click();
     cy.contains(this.selectors.activeStatus, value).click();
   }
 
   modifyStatus(value) {
-    cy.get(this.selectors.modifyStatus).click();
+    cy.get(this.selectors.modifyStatus).should("be.visible").click();
     cy.contains(this.selectors.activeStatus, value).click();
   }
 
@@ -50,7 +49,7 @@ class ProviderManagementPage {
   }
 
   searchProvider(value) {
-    cy.get(this.selectors.provderSearchBar).clear().type(value);
+    cy.get(this.selectors.providerSearchBar).clear().type(value);
   }
 
   confirmProvider(value) {

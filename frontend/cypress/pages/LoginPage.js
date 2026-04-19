@@ -17,12 +17,12 @@ class LoginPage {
     cy.visit("/login");
   }
 
-  getUsernameElement() {
-    return cy.get(SELECTORS.USERNAME);
+  getUsernameElement(options = {}) {
+    return cy.get(SELECTORS.USERNAME, options);
   }
 
-  getPasswordElement() {
-    return cy.get(SELECTORS.PASSWORD);
+  getPasswordElement(options = {}) {
+    return cy.get(SELECTORS.PASSWORD, options);
   }
 
   enterUsername(value) {
@@ -92,10 +92,18 @@ class LoginPage {
     cy.wait(1000);
     cy.url().then((url) => {
       if (url.includes("/login")) {
-        cy.contains("button", "Login", { timeout: 10000 }).should("be.visible");
+        this.getUsernameElement({ timeout: 30000 }).should("be.visible");
+        this.getPasswordElement({ timeout: 30000 }).should("be.visible");
         this.enterUsername(this.testProperties.getUsername());
         this.enterPassword(this.testProperties.getPassword());
-        this.signIn();
+        cy.get("body").then(($body) => {
+          if ($body.find(SELECTORS.LOGIN_BUTTON).length > 0) {
+            this.signIn();
+          } else {
+            // Fallback for legacy/variant login markup where submit button selector changes.
+            this.getPasswordElement().type("{enter}");
+          }
+        });
       }
     });
     cy.wait(5000);
