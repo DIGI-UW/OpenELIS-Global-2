@@ -48,15 +48,20 @@ const CustomFieldTypeManagementPage = React.lazy(
   () => import("./pages/CustomFieldTypeManagementPage"),
 );
 const AnalyzerTypesPage = React.lazy(() => import("./pages/AnalyzerTypesPage"));
-const QCDashboardPlaceholder = React.lazy(
-  () => import("./pages/analyzers/QCDashboardPlaceholder"),
+const AnalyzerFormPage = React.lazy(
+  () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
-const QCAlertsPlaceholder = React.lazy(
-  () => import("./pages/analyzers/QCAlertsPlaceholder"),
+const QcRulePage = React.lazy(
+  () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
 );
-const CorrectiveActionsPlaceholder = React.lazy(
-  () => import("./pages/analyzers/CorrectiveActionsPlaceholder"),
-);
+import {
+  QCDashboard,
+  ControlChartDetail,
+  ControlLotList,
+  InstrumentDetailPage,
+  ControlLotSetup,
+  RuleConfigPanel,
+} from "./components/qc";
 import ResultSearch from "./components/resultPage/ResultSearch";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
@@ -924,6 +929,42 @@ export default function App() {
                   role={[Roles.RECEPTION, Roles.RESULTS]}
                 />
                 <SecureRoute
+                  path="/analyzers/new"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerFormPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/:id/edit"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerFormPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
+                  path="/analyzers/:id/qc-rules"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <QcRulePage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={Roles.GLOBAL_ADMIN}
+                />
+                <SecureRoute
                   path="/analyzers"
                   exact
                   component={() => (
@@ -984,40 +1025,46 @@ export default function App() {
                   role={Roles.ANALYSER_IMPORT}
                 />
                 <SecureRoute
-                  path="/analyzers/qc"
+                  path="/analyzers/qc/instruments/:instrumentId"
                   exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QCDashboardPlaceholder />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
+                  component={() => <InstrumentDetailPage />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
-                  path="/analyzers/qc/alerts"
+                  path="/analyzers/qc/db"
                   exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <QCAlertsPlaceholder />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
+                  component={() => <QCDashboard />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
-                  path="/analyzers/qc/corrective-actions"
+                  path="/analyzers/qc/charts/:analyzerId"
                   exact
-                  component={() => (
-                    <RouteErrorBoundary {...routeErrorAnalyzers}>
-                      <Suspense fallback={null}>
-                        <CorrectiveActionsPlaceholder />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  )}
-                  role={Roles.ANALYSER_IMPORT}
+                  component={() => <ControlChartDetail />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots"
+                  exact
+                  component={() => <ControlLotList />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots/new"
+                  exact
+                  component={() => <ControlLotSetup />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/control-lots/:id"
+                  exact
+                  component={() => <ControlLotSetup />}
+                  role={Roles.LAB_SUPERVISOR}
+                />
+                <SecureRoute
+                  path="/analyzers/qc/rule-config"
+                  exact
+                  component={() => <RuleConfigPanel />}
+                  role={Roles.LAB_SUPERVISOR}
                 />
                 <SecureRoute
                   path="/PatientHistory"

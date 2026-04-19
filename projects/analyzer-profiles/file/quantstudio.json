@@ -52,6 +52,14 @@
   "configDefaults": {
     "fileFormat": "EXCEL",
     "hasHeader": true,
-    "sheetIndex": null
+    "sheetIndex": null,
+    "qcRules": [
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "STANDARD", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "FIELD_EQUALS", "targetField": "QC_TASK", "operand": "NTC", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CNEG", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CPOS", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC", "isActive": true, "sortOrder": 5 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC", "isActive": true, "sortOrder": 6 }
+    ]
   }
 }

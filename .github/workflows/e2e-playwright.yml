@@ -5,7 +5,7 @@ name: 03 - E2E
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, fix/madagascar-accession-results-file-e2e]
   push:
     branches: [develop]
   release:
