@@ -511,23 +511,25 @@ const AnalyzerForm = () => {
   return (
     <>
       <div data-testid="analyzer-form" className="analyzer-form-page">
-        <PageTitle
-          breadcrumbs={[
-            {
-              label: intl.formatMessage({
-                id: "analyzer.page.hierarchy.root",
-              }),
-              link: "/analyzers",
-            },
-            {
-              label: intl.formatMessage({
-                id: isEditMode
-                  ? "analyzer.form.editTitle"
-                  : "analyzer.form.addTitle",
-              }),
-            },
-          ]}
-        />
+        <div data-testid="analyzer-form-header">
+          <PageTitle
+            breadcrumbs={[
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({
+                  id: isEditMode
+                    ? "analyzer.form.editTitle"
+                    : "analyzer.form.addTitle",
+                }),
+              },
+            ]}
+          />
+        </div>
         <div className="analyzer-form-content">
           {notification && (
             <InlineNotification
