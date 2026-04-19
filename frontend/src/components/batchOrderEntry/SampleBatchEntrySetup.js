@@ -382,7 +382,7 @@ const SampleBatchEntrySetup = () => {
                     </h3>
                   </Column>
 
-                  <Column lg={4} md={6} sm={4}>
+                  <Column lg={4} md={4} sm={4}>
                     <CustomDatePicker
                       id={"order_currentDate"}
                       labelText={intl.formatMessage({
@@ -401,7 +401,7 @@ const SampleBatchEntrySetup = () => {
                       }
                     />
                   </Column>
-                  <Column lg={4} md={6} sm={4}>
+                  <Column lg={4} md={4} sm={4}>
                     <TimePicker
                       id="order_CurrentTime"
                       labelText={intl.formatMessage({
@@ -417,7 +417,7 @@ const SampleBatchEntrySetup = () => {
                     />
                   </Column>
                   <Column lg={8}></Column>
-                  <Column lg={4} md={6} sm={4}>
+                  <Column lg={4} md={4} sm={4}>
                     <CustomDatePicker
                       id={"order_receivedDate"}
                       labelText={intl.formatMessage({
@@ -437,7 +437,7 @@ const SampleBatchEntrySetup = () => {
                       }
                     />
                   </Column>
-                  <Column lg={4} md={6} sm={4}>
+                  <Column lg={4} md={4} sm={4}>
                     <TimePicker
                       id="order_ReceptionTime"
                       labelText={intl.formatMessage({
