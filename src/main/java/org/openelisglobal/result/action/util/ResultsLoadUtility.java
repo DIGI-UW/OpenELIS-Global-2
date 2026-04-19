@@ -754,8 +754,30 @@ public class ResultsLoadUtility {
         testItem.setResultValue(getFormattedResultValue(result));
         testItem.setMultiSelectResultValues(analysisService.getJSONMultiSelectResults(analysis));
         testItem.setAnalysisStatusId(analysisService.getStatusId(analysis));
-        // setDictionaryResults must come after setResultType, it may override it
-        testItem.setResultType(testService.getResultType(test));
+        // Display type selection:
+        // - For existing results with a stored non-blank value whose type differs
+        // from the test's configured type, prefer the STORED type for display.
+        // Otherwise the cell renders the wrong widget (e.g. a <Select> when the
+        // stored value is a raw number) and the value becomes invisible.
+        // - This happens when an analyzer sends a result that doesn't match the
+        // test's configured expectation — analyzers don't always know the
+        // downstream display contract. Dropping the value is worse than
+        // showing it as text, and a warning is logged to surface the mismatch
+        // for eventual test-configuration cleanup.
+        // - For new rows (no stored result) we must use the test's configured
+        // type, because that's the only signal available for widget choice.
+        String configuredType = testService.getResultType(test);
+        if (result != null && !GenericValidator.isBlankOrNull(result.getResultType())
+                && !GenericValidator.isBlankOrNull(result.getValue())
+                && !result.getResultType().equals(configuredType)) {
+            LogEvent.logWarn(getClass().getSimpleName(), "createTestResultItem",
+                    "Result type mismatch for test " + test.getId() + " (" + test.getDescription() + "): configured="
+                            + configuredType + " stored=" + result.getResultType() + " — preferring stored type so the"
+                            + " value remains visible to the user");
+            testItem.setResultType(result.getResultType());
+        } else {
+            testItem.setResultType(configuredType);
+        }
         setDictionaryResults(testItem, isConclusion, result, testResults);
 
         testItem.setTechnician(techSignature);
@@ -790,13 +812,22 @@ public class ResultsLoadUtility {
         }
 
         // EQA indicator: look up the SampleEQA record for this sample
-        Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
-        SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
-        if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
-            testItem.setEqaSample(true);
-            if (sampleEQA.getEqaPriority() != null) {
-                testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+        try {
+            Long sampleId = Long.parseLong(analysis.getSampleItem().getSample().getId());
+            SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
+            if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
+                testItem.setEqaSample(true);
+                if (sampleEQA.getEqaPriority() != null) {
+                    testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
+                }
             }
+        } catch (RuntimeException e) {
+            // Log and ignore to prevent breaking the whole report if EQA lookup fails
+            String sampleIdStr = (analysis.getSampleItem() != null && analysis.getSampleItem().getSample() != null)
+                    ? analysis.getSampleItem().getSample().getId()
+                    : "null";
+            LogEvent.logError(
+                    "Error looking up EQA status for analysis " + analysis.getId() + ", sample " + sampleIdStr, e);
         }
 
         Result quantifiedResult = analysisService.getQuantifiedResult(analysis);

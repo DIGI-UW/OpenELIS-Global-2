@@ -1,11 +1,12 @@
 {
   "profileMeta": {
     "id": "multiskan-fc",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "displayName": "Thermo Multiskan FC",
     "manufacturer": "Thermo Fisher",
-    "validation_status": "PENDING - awaiting real export files from site. Herbert reported no OE plugin available 2026-03-20. Profile based on standard SkanIt export format; may need adjustment after real file validation."
+    "validation_status": "PENDING - v2.0 updated for dual plate-grid format. Validated against real SkanIt CSV export description from Confluence tracker. French locale confirmed (semicolons, comma decimals)."
   },
+  "category": "IMMUNOASSAY",
   "protocol": {
     "name": "FILE",
     "format": "CSV"
@@ -17,15 +18,14 @@
     ".xlsx"
   ],
   "column_mapping": {
-    "Well": "position",
-    "Sample ID": "sampleId",
-    "Absorbance (450 nm)": "result",
-    "Absorbance": "result",
-    "Content": "content",
-    "Concentration": "concentration"
+    "WellPosition": "position",
+    "SampleID": "sampleId",
+    "Abs": "result",
+    "Interpretation": "interpretation",
+    "TestCode": "testCode"
   },
   "locale_support": {
-    "description": "Madagascar site uses French locale. CSV exports may use semicolons as delimiter and commas as decimal separator.",
+    "description": "Madagascar site uses French locale. CSV exports use semicolons as delimiter and commas as decimal separator.",
     "french_csv": {
       "delimiter": ";",
       "decimal_separator": ","
@@ -33,7 +33,10 @@
   },
   "layouts": {
     "plate_grid": {
-      "description": "8x12 plate grid after metadata header (standard SkanIt export)",
+      "description": "Dual plate-grid format from SkanIt: first grid is Abs (OD values), second grid is Echantillon (sample IDs). Both grids are 8x12. PlateGridNormalizer merges them into well-per-row output.",
+      "dual_grid": true,
+      "od_grid_header": "Abs",
+      "sample_id_grid_header": "Echantillon",
       "metadata_rows": ["Instrument", "Protocol", "Date", "Time", "Filter", "Plate Type"],
       "grid_rows": 8,
       "grid_cols": 12
@@ -43,6 +46,11 @@
       "columns": ["Well", "Sample ID", "Absorbance (450 nm)", "Content"]
     }
   },
+  "default_test_mappings": [
+    { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" },
+    { "test_code": "Dengue IgG", "test_name_hint": "Dengue virus IgG Ab [Presence] in Serum", "loinc": "7854-3", "unit": "" },
+    { "test_code": "Dengue IgM", "test_name_hint": "Dengue virus IgM Ab [Presence] in Serum", "loinc": "7852-7", "unit": "" }
+  ],
   "configDefaults": {
     "fileFormat": "CSV",
     "delimiter": ";",

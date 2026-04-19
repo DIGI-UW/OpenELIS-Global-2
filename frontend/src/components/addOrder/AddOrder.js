@@ -6,12 +6,12 @@ import {
   SelectItem,
   Stack,
   TextInput,
-  TimePicker,
   Column,
   Grid,
 } from "@carbon/react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import CustomDatePicker from "../common/CustomDatePicker";
+import CustomTimePicker from "../common/CustomTimePicker";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { priorities } from "../data/orderOptions";
@@ -183,12 +183,12 @@ const AddOrder = (props) => {
     });
   }
 
-  function handleReceivedTime(e) {
+  function handleReceivedTime(time) {
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
-        receivedTime: e.target.value,
+        receivedTime: time,
       },
     });
   }
@@ -353,14 +353,42 @@ const AddOrder = (props) => {
   };
 
   function handleRememberCheckBox(e) {
-    let checked = false;
-    if (e.currentTarget.checked) {
-      checked = true;
-    }
+    const checked = e.currentTarget.checked;
     setOrderFormValues({
       ...orderFormValues,
       rememberSiteAndRequester: checked,
     });
+  }
+
+  function handleConsentCheckBox(e) {
+    const checked = e.currentTarget.checked;
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentGiven: checked,
+        // Clear reference number if unchecking consent
+        consentFormReference: checked
+          ? orderFormValues.sampleOrderItems.consentFormReference
+          : "",
+      },
+    });
+    setChanged({
+      ...changed,
+      "sampleOrderItems.consentGiven": true,
+      "sampleOrderItems.consentFormReference": true,
+    });
+  }
+
+  function handleConsentReferenceChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentFormReference: e.target.value,
+      },
+    });
+    setChanged({ ...changed, "sampleOrderItems.consentFormReference": true });
   }
 
   useEffect(() => {
@@ -578,7 +606,7 @@ const AddOrder = (props) => {
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
             <Column lg={8} md={4} sm={4}>
-              <TimePicker
+              <CustomTimePicker
                 id="order_receivedTime"
                 labelText={intl.formatMessage({ id: "order.reception.time" })}
                 onChange={handleReceivedTime}
@@ -907,6 +935,8 @@ const AddOrder = (props) => {
               {" "}
               &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
             </Column>
+
+            {/* Remember Site and Requester + Informed Consent Row */}
             <Column lg={8} md={4} sm={4}>
               <Checkbox
                 labelText={
@@ -916,6 +946,46 @@ const AddOrder = (props) => {
                 onChange={handleRememberCheckBox}
               />
             </Column>
+            <Column lg={8} md={4} sm={4}>
+              <Checkbox
+                labelText={
+                  <FormattedMessage id="label.informedConsent.consentGiven" />
+                }
+                id="consentGiven"
+                checked={orderFormValues.sampleOrderItems.consentGiven}
+                onChange={handleConsentCheckBox}
+              />
+            </Column>
+
+            {/* Conditional Consent Reference Number Field */}
+            {orderFormValues.sampleOrderItems.consentGiven && (
+              <>
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    name="consentFormReference"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.formReference",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "placeholder.informedConsent.formReference",
+                    })}
+                    value={
+                      orderFormValues.sampleOrderItems.consentFormReference
+                    }
+                    onChange={handleConsentReferenceChange}
+                    id="consentFormReferenceId"
+                    maxLength={100}
+                  />
+                </Column>
+              </>
+            )}
           </Grid>
         </div>
         <div className="orderLegendBody">

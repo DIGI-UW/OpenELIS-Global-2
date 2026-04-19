@@ -25,6 +25,8 @@ const Index = () => {
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
   const [type, setType] = useState("");
+  const [queryMode, setQueryMode] = useState("type");
+  const [queryValue, setQueryValue] = useState("");
   const [nextPage, setNextPage] = useState(null);
   const [previousPage, setPreviousPage] = useState(null);
   const [pagination, setPagination] = useState(false);
@@ -43,9 +45,13 @@ const Index = () => {
     const analyzerId = params.get("id");
     const analyserType = params.get("type");
     if (analyzerId) {
+      setQueryMode("id");
+      setQueryValue(analyzerId);
       setType(analyzerId);
       setUrl("/rest/AnalyzerResults?id=" + analyzerId);
     } else if (analyserType) {
+      setQueryMode("type");
+      setQueryValue(analyserType);
       setType(analyserType);
       setUrl("/rest/AnalyzerResults?type=" + analyserType);
     }
@@ -203,6 +209,8 @@ const Index = () => {
         </>
         <AnalyserResults
           type={type}
+          queryMode={queryMode}
+          queryValue={queryValue}
           results={results}
           sampleGroup={sampleGroup}
         />

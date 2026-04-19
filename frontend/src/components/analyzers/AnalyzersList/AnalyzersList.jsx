@@ -17,6 +17,7 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   Dropdown,
+  InlineNotification,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
@@ -26,7 +27,7 @@ import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
-import FileImportConfiguration from "../FileImportConfiguration/FileImportConfiguration";
+
 import PageTitle from "../../common/PageTitle/PageTitle";
 import "./AnalyzersList.css";
 
@@ -64,35 +65,44 @@ const AnalyzersList = () => {
     open: false,
     analyzer: null,
   });
-  const [fileImportModal, setFileImportModal] = useState({
-    open: false,
-    analyzer: null,
-  });
+  // Banner shown in the list view after a successful save from AnalyzerForm.
+  // The form's own InlineNotification disappears when the modal closes 1s
+  // after save, and then loadAnalyzers() re-sorts the table — users had no
+  // way to see what was just edited. This persists for 5s in the list view.
+  const [listNotification, setListNotification] = useState(null);
 
-  const loadAnalyzers = useCallback((searchFilters = {}) => {
+  const loadAnalyzers = useCallback((searchFilters = {}, signal = null) => {
     setLoading(true);
-    getAnalyzers(searchFilters, (data) => {
-      const list = data && Array.isArray(data.analyzers) ? data.analyzers : [];
-      setAnalyzers(list);
-      setFilteredAnalyzers(list);
+    getAnalyzers(
+      searchFilters,
+      (data) => {
+        const list =
+          data && Array.isArray(data.analyzers) ? data.analyzers : [];
+        setAnalyzers(list);
+        setFilteredAnalyzers(list);
 
-      // Calculate statistics based on unified status
-      const activeCount = list.filter((a) => a.status === "ACTIVE").length;
-      const inactiveCount = list.filter((a) => a.status === "INACTIVE").length;
-      const pluginWarningCount = list.filter(
-        (a) => a.pluginLoaded === false,
-      ).length;
-      setStats({
-        total: list.length,
-        active: activeCount,
-        inactive: inactiveCount,
-        pluginWarnings: pluginWarningCount,
-      });
-      setLoading(false);
-    });
+        // Calculate statistics based on unified status
+        const activeCount = list.filter((a) => a.status === "ACTIVE").length;
+        const inactiveCount = list.filter(
+          (a) => a.status === "INACTIVE",
+        ).length;
+        const pluginWarningCount = list.filter(
+          (a) => a.pluginLoaded === false,
+        ).length;
+        setStats({
+          total: list.length,
+          active: activeCount,
+          inactive: inactiveCount,
+          pluginWarnings: pluginWarningCount,
+        });
+        setLoading(false);
+      },
+      signal,
+    );
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams(window.location.search);
     const initialSearch = params.get("search") || "";
     const initialStatus = params.get("status") || "";
@@ -105,10 +115,13 @@ const AnalyzersList = () => {
       analyzerType: initialAnalyzerType,
     };
     setFilters(initialFilters);
-    loadAnalyzers({
-      ...initialFilters,
-      ...(initialSearch ? { search: initialSearch } : {}),
-    });
+    loadAnalyzers(
+      {
+        ...initialFilters,
+        ...(initialSearch ? { search: initialSearch } : {}),
+      },
+      controller.signal,
+    );
 
     const storedScrollY = sessionStorage.getItem("analyzers.scrollY");
     if (storedScrollY) {
@@ -124,6 +137,7 @@ const AnalyzersList = () => {
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
+      controller.abort();
       window.removeEventListener("beforeunload", onBeforeUnload);
       sessionStorage.setItem("analyzers.scrollY", String(window.scrollY));
     };
@@ -197,10 +211,14 @@ const AnalyzersList = () => {
   ];
 
   const rows = filteredAnalyzers.map((analyzer) => {
+    // Connection column: TCP analyzers show ip:port; FILE analyzers show
+    // the watched import directory so lab techs can verify the data source.
     const connection =
       analyzer.ipAddress && analyzer.port
         ? `${analyzer.ipAddress}:${analyzer.port}`
-        : "-";
+        : analyzer.importDirectory
+          ? analyzer.importDirectory
+          : "-";
 
     const unifiedStatus = analyzer.status || "SETUP";
 
@@ -368,6 +386,12 @@ const AnalyzersList = () => {
                     id: "analyzer.status.offline",
                   }),
                 },
+                {
+                  id: "PENDING_REGISTRATION",
+                  text: intl.formatMessage({
+                    id: "analyzer.status.pending_registration",
+                  }),
+                },
               ]}
               itemToString={(item) => (item ? item.text : "")}
               selectedItem={
@@ -398,6 +422,18 @@ const AnalyzersList = () => {
           </Column>
         </Grid>
       </div>
+
+      {listNotification && (
+        <InlineNotification
+          kind={listNotification.kind}
+          title={listNotification.title}
+          subtitle={listNotification.subtitle}
+          onCloseButtonClick={() => setListNotification(null)}
+          lowContrast
+          data-testid="analyzer-list-notification"
+          style={{ maxWidth: "100%", marginBottom: "1rem" }}
+        />
+      )}
 
       <Grid>
         <Column lg={16} md={8} sm={4}>
@@ -478,6 +514,7 @@ const AnalyzersList = () => {
                                 ACTIVE: "green",
                                 ERROR_PENDING: "red", // Carbon doesn't support "orange", use "red" for error states
                                 OFFLINE: "red",
+                                PENDING_REGISTRATION: "purple", // Attention color — analyzer discovered by bridge but not yet configured
                               };
                               const statusColor =
                                 statusColorMap[unifiedStatus] || "gray";
@@ -531,18 +568,6 @@ const AnalyzersList = () => {
                                       });
                                     }}
                                     data-testid={`analyzer-action-test-connection-${row.id}`}
-                                  />
-                                  <OverflowMenuItem
-                                    itemText={intl.formatMessage({
-                                      id: "analyzer.action.configureFileImport",
-                                    })}
-                                    onClick={() => {
-                                      setFileImportModal({
-                                        open: true,
-                                        analyzer: analyzer,
-                                      });
-                                    }}
-                                    data-testid={`analyzer-action-file-import-${row.id}`}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
@@ -604,10 +629,21 @@ const AnalyzersList = () => {
         <AnalyzerForm
           analyzer={selectedAnalyzer}
           open={analyzerFormOpen}
-          onClose={() => {
+          onClose={(result) => {
+            // Capture the edited analyzer's name before clearing state —
+            // the banner references it so users know what just saved.
+            const editedName = selectedAnalyzer?.name;
             setAnalyzerFormOpen(false);
             setSelectedAnalyzer(null);
             loadAnalyzers(); // Reload list after form closes
+            if (result === "saved") {
+              setListNotification({
+                kind: "success",
+                title: intl.formatMessage({ id: "analyzer.success.save" }),
+                subtitle: editedName,
+              });
+              setTimeout(() => setListNotification(null), 5000);
+            }
           }}
         />
       )}
@@ -632,16 +668,6 @@ const AnalyzersList = () => {
           onConfirm={(deletedId) => {
             loadAnalyzers();
           }}
-        />
-      )}
-
-      {fileImportModal.open && (
-        <FileImportConfiguration
-          open={fileImportModal.open}
-          onClose={() => {
-            setFileImportModal({ open: false, analyzer: null });
-          }}
-          preselectedAnalyzerId={fileImportModal.analyzer?.id}
         />
       )}
 

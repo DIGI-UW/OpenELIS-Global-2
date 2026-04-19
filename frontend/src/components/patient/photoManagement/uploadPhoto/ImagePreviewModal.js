@@ -7,10 +7,13 @@ import {
   TabPanels,
   TabPanel,
   Button,
+  InlineNotification,
 } from "@carbon/react";
 import { Camera, CloudUpload } from "@carbon/icons-react";
 import "./ImagePreviewModal.css";
 import { useIntl } from "react-intl";
+
+const MAX_PHOTO_SIZE = 2 * 1024 * 1024; // 2MB
 
 const ImagePreviewModal = ({
   open,
@@ -44,16 +47,28 @@ const ImagePreviewModal = ({
 
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState("");
+
+  const processPhotoFile = (file) => {
+    setFileError("");
+    if (!file || !file.type.startsWith("image/")) {
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE) {
+      setFileError(
+        intl.formatMessage({ id: "patient.photo.error.fileTooLarge" }),
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+    processPhotoFile(event.target.files[0]);
   };
 
   //  drag and drop
@@ -70,15 +85,7 @@ const ImagePreviewModal = ({
   const handleDrop = (event) => {
     event.preventDefault();
     setIsDragging(false);
-
-    const file = event.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
+    processPhotoFile(event.dataTransfer.files[0]);
   };
 
   const handleClickUpload = () => {
@@ -202,6 +209,15 @@ const ImagePreviewModal = ({
                 style={{ display: "none" }}
               />
 
+              {fileError && (
+                <InlineNotification
+                  kind="error"
+                  title={fileError}
+                  lowContrast
+                  hideCloseButton
+                  style={{ marginBottom: "1rem" }}
+                />
+              )}
               {!previewUrl ? (
                 <div
                   className={`dropzone ${isDragging ? "dropzone-active" : ""}`}

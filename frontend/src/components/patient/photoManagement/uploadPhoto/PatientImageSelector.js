@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { UserAvatar } from "@carbon/icons-react";
+import { UserAvatar, View } from "@carbon/icons-react";
+import { Modal } from "@carbon/react";
 import ImagePreviewModal from "./ImagePreviewModal";
 import "./PatientImageSelector.css";
 import { useIntl } from "react-intl";
@@ -13,6 +14,7 @@ const PatientImageSelector = ({
 }) => {
   const intl = useIntl();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const handleImageSelect = (imageData) => {
     onChange(imageData);
@@ -40,6 +42,18 @@ const PatientImageSelector = ({
                   {intl.formatMessage({ id: "patient.photo.retake" })}
                 </span>
               </div>
+              <button
+                type="button"
+                className="patient-photo-view-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsViewModalOpen(true);
+                }}
+                title={intl.formatMessage({ id: "patient.photo.view" })}
+                aria-label={intl.formatMessage({ id: "patient.photo.view" })}
+              >
+                <View size={16} />
+              </button>
             </div>
           ) : (
             <div className="image-placeholder">
@@ -59,6 +73,24 @@ const PatientImageSelector = ({
         onImageSelect={handleImageSelect}
         currentImage={value}
       />
+
+      <Modal
+        open={isViewModalOpen}
+        onRequestClose={() => setIsViewModalOpen(false)}
+        modalHeading={intl.formatMessage({ id: "patient.photo.view" })}
+        passiveModal
+        size="lg"
+      >
+        {value && (
+          <div className="patient-photo-view-container">
+            <img
+              src={value}
+              alt={intl.formatMessage({ id: "patient.photo.preview.alt" })}
+              className="patient-photo-view-image"
+            />
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

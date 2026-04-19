@@ -131,7 +131,13 @@ still use
 
 - CI runs `core-demo` on the build stack (`e2e-playwright.yml`) and
   `harness-demo` on the full analyzer harness reusable workflow.
-- `core-demo-video` / `harness-demo-video` are local-only (slowMo + video).
+- `core-demo-video` auto-runs in PR-associated downstream CI only when PR diffs
+  touch `frontend/playwright/tests/demo/core/**`.
+- `harness-demo-video` auto-runs in PR-associated downstream CI only when PR
+  diffs touch `frontend/playwright/tests/demo/harness/**`, and remains available
+  via `E2E / Playwright / Analyzer Harness (Manual)`.
+- `frontend/playwright/tests/manual-only/**` is excluded from ordinary PR CI and
+  auto-video selection.
 - Canonical local commands:
 
 ```bash
@@ -148,11 +154,12 @@ CLEANUP=false TEST_USER=admin TEST_PASS='<password>' npm run pw:test:harness-dem
 
 ## Test tiers and intent
 
-- `core-app`: fast smoke checks on shared app behaviors.
-- `core-demo`: UI workflow demos provable without analyzer harness.
-- `harness`: analyzer bridge/simulator/plugin integration checks.
-- `harness-demo`: end-to-end analyzer story validation in CI.
-- `*-demo-video`: local demonstration capture only.
+- `core-app`: core foundational verification on the build stack.
+- `core-demo`: core user-story proof (video-ready).
+- `harness-foundational`: harness foundational verification.
+- `harness-demo`: harness user-story proof in CI.
+- `harness-manual-only`: real-device/operator-managed tests, manual-only.
+- `harness-demo-video`: opt-in video evidence path for selected PRs/manual runs.
 
 ## Develop enforcement model
 

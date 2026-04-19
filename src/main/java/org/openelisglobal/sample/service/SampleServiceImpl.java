@@ -114,22 +114,25 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Sample getSampleByAccessionNumber(String labNumber) {
+        if (labNumber == null || labNumber.trim().isEmpty()) {
+            return null;
+        }
         String originalLabNumber = labNumber;
+        if (labNumber.contains(".")) {
+            labNumber = labNumber.substring(0, labNumber.indexOf('.'));
+        }
+        Sample sample = getMatch("accessionNumber", labNumber).orElse(null);
+        return sample;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Sample getUnassignedSampleByAccessionNumber(String labNumber) {
         if (labNumber != null && labNumber.contains(".")) {
             labNumber = labNumber.substring(0, labNumber.indexOf('.'));
         }
-        org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "getSampleByAccessionNumber",
-                "Searching for sample with accessionNumber: " + labNumber + " (original: " + originalLabNumber + ")");
-        Sample sample = getMatch("accessionNumber", labNumber).orElse(null);
-        if (sample != null) {
-            org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(),
-                    "getSampleByAccessionNumber",
-                    "Found sample: id=" + sample.getId() + ", accessionNumber=" + sample.getAccessionNumber());
-        } else {
-            org.openelisglobal.common.log.LogEvent.logWarn(this.getClass().getSimpleName(),
-                    "getSampleByAccessionNumber", "No sample found for accessionNumber: " + labNumber);
-        }
-        return sample;
+        // Get sample by accession number and check if it has an unassigned referral
+        return sampleDAO.getUnassignedSampleByAccessionNumber(labNumber);
     }
 
     @Override
@@ -159,7 +162,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     @Override
     @Transactional(readOnly = true)
     public Date getCompletedDate(Sample sample) {
-        Date date = null;
+        Timestamp date = null;
         List<Analysis> analysisList = analysisService.getAnalysesBySampleId(sample.getId());
 
         for (Analysis analysis : analysisList) {
@@ -173,7 +176,7 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
                 }
             }
         }
-        return date;
+        return date != null ? new Date(date.getTime()) : null;
     }
 
     private boolean isCanceled(Analysis analysis) {

@@ -100,6 +100,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     public void persistData_shouldUpdateExistingAnalyzerAndAddNewMappings() {
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
+        existingAnalyzer.setSysUserId("1");
 
         String originalLocation = existingAnalyzer.getLocation();
         existingAnalyzer.setLocation("Updated Location");
@@ -134,6 +135,7 @@ public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
     public void persistData_shouldNotDuplicateExistingMappings() {
         Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
         assertNotNull(existingAnalyzer);
+        existingAnalyzer.setSysUserId("1");
 
         List<AnalyzerTestMapping> newMappings = new ArrayList<>();
         AnalyzerTestMapping mapping = new AnalyzerTestMapping();

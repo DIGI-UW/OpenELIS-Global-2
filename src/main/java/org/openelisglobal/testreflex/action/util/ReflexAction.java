@@ -87,7 +87,7 @@ public abstract class ReflexAction {
             generatedAnalysis.setIsReportable(currentAnalysis.getIsReportable());
             generatedAnalysis.setAnalysisType(currentAnalysis.getAnalysisType());
             generatedAnalysis.setRevision(currentAnalysis.getRevision());
-            generatedAnalysis.setStartedDate(DateUtil.getNowAsSqlDate());
+            generatedAnalysis.setStartedDate(DateUtil.getNowAsTimestamp());
             generatedAnalysis
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             generatedAnalysis.setParentAnalysis(currentAnalysis);

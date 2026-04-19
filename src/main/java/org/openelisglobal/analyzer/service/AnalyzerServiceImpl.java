@@ -68,6 +68,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -333,6 +334,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
         case DELETED:
             return newStatus == AnalyzerStatus.INACTIVE;
+        case PENDING_REGISTRATION:
+            return newStatus == AnalyzerStatus.SETUP || newStatus == AnalyzerStatus.INACTIVE;
         default:
             return false;
         }
@@ -499,7 +502,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
         // analyzer_field, analyzer_field_mapping, serial_port_configuration,
-        // file_import_configuration, analyzer_plugin_config,
+        // analyzer_plugin_config,
         // analyzer_pending_code, analyzer_experiment
 
         // Delete the analyzer — DB cascades config tables automatically
@@ -507,5 +510,11 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
                 "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        return baseObjectDAO.findByDiscoveredSourceId(discoveredSourceId);
     }
 }
