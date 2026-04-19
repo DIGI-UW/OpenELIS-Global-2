@@ -451,11 +451,7 @@ function ProviderMenu() {
 
           <Dropdown
             className="dropdown-list"
-
             id="addIsActive"
-
-            id="isActive"
-
             titleText={intl.formatMessage({ id: "label.active" })}
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
@@ -521,11 +517,7 @@ function ProviderMenu() {
             onChange={(e) => setEmail(e.target.value)}
           />
           <Dropdown
-
             id="updateIsActive"
-
-            id="isActive"
-
             titleText={intl.formatMessage({ id: "label.active" })}
             label={intl.formatMessage({ id: "provider.select" })}
             items={yesOrNo}
