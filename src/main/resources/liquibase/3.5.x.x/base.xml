@@ -96,4 +96,12 @@
 
     <include file="liquibase/3.5.x.x/033-add-retrieval-notebook-link.xml"/>
 
+    <!-- ======================================================== -->
+    <!-- Biorepository QC Round hardening                        -->
+    <!-- Add qc_batch_id + expected snapshot + discrepancy check -->
+    <!-- ======================================================== -->
+
+    <include file="liquibase/3.5.x.x/031-biorepository-qc-round-hardening.xml"/>
+    <include file="liquibase/3.5.x.x/034-add-biorepository-storage-flag.xml"/>
+
 </databaseChangeLog>

@@ -1,6 +1,7 @@
 package org.openelisglobal.storage.service;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,17 +209,38 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             return new HashMap<>();
         }
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("sampleItemId", sampleItemId);
+        return buildLocationDetailsFromAssignment(assignment, new HashMap<>(), new HashMap<>(), new HashMap<>(),
+                new HashMap<>(), new HashMap<>());
+    }
 
-        String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
-        result.put("location", hierarchicalPath != null ? hierarchicalPath : "");
-        result.put("hierarchicalPath", hierarchicalPath != null ? hierarchicalPath : "");
-        result.put("assignedBy", assignment.getAssignedByUserId());
-        result.put("assignedDate", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
-        result.put("positionCoordinate",
-                assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
-        result.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Map<String, Object>> getSampleItemLocations(List<String> sampleItemIds) {
+        Map<String, Map<String, Object>> result = new HashMap<>();
+        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
+            return result;
+        }
+
+        List<SampleStorageAssignment> assignments = sampleStorageAssignmentDAO.findBySampleItemIds(sampleItemIds);
+        if (assignments.isEmpty()) {
+            return result;
+        }
+
+        Map<Integer, StorageRoom> roomCache = new HashMap<>();
+        Map<Integer, StorageDevice> deviceCache = new HashMap<>();
+        Map<Integer, StorageShelf> shelfCache = new HashMap<>();
+        Map<Integer, StorageRack> rackCache = new HashMap<>();
+        Map<Integer, StorageBox> boxCache = new HashMap<>();
+
+        for (SampleStorageAssignment assignment : assignments) {
+            if (assignment == null || assignment.getSampleItemId() == null) {
+                continue;
+            }
+
+            result.put(assignment.getSampleItemId().toString(),
+                    buildLocationDetailsFromAssignment(assignment, roomCache, deviceCache, shelfCache, rackCache,
+                            boxCache));
+        }
 
         return result;
     }
@@ -534,6 +556,141 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         } else {
             return rack.getLabel() + " > " + box.getLabel();
         }
+    }
+
+    private Map<String, Object> buildLocationDetailsFromAssignment(SampleStorageAssignment assignment,
+            Map<Integer, StorageRoom> roomCache, Map<Integer, StorageDevice> deviceCache,
+            Map<Integer, StorageShelf> shelfCache, Map<Integer, StorageRack> rackCache,
+            Map<Integer, StorageBox> boxCache) {
+        Map<String, Object> result = new HashMap<>();
+        if (assignment == null) {
+            return result;
+        }
+
+        String sampleItemId = assignment.getSampleItemId() != null ? assignment.getSampleItemId().toString() : null;
+        result.put("sampleItemId", sampleItemId);
+        result.put("locationType", assignment.getLocationType());
+        result.put("locationId", assignment.getLocationId());
+        result.put("assignedBy", assignment.getAssignedByUserId());
+        result.put("assignedDate", assignment.getAssignedDate() != null ? assignment.getAssignedDate().toString() : "");
+        result.put("positionCoordinate",
+                assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
+        result.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
+
+        StorageRoom room = null;
+        StorageDevice device = null;
+        StorageShelf shelf = null;
+        StorageRack rack = null;
+        StorageBox box = null;
+
+        Integer locationId = assignment.getLocationId();
+        String locationType = assignment.getLocationType();
+
+        if (locationId != null && locationType != null) {
+            switch (locationType) {
+            case "room":
+                room = getCachedLocation(locationId, StorageRoom.class, roomCache);
+                break;
+            case "device":
+                device = getCachedLocation(locationId, StorageDevice.class, deviceCache);
+                room = device != null ? device.getParentRoom() : null;
+                break;
+            case "shelf":
+                shelf = getCachedLocation(locationId, StorageShelf.class, shelfCache);
+                device = shelf != null ? shelf.getParentDevice() : null;
+                room = device != null ? device.getParentRoom() : null;
+                break;
+            case "rack":
+                rack = getCachedLocation(locationId, StorageRack.class, rackCache);
+                shelf = rack != null ? rack.getParentShelf() : null;
+                device = shelf != null ? shelf.getParentDevice() : null;
+                room = device != null ? device.getParentRoom() : null;
+                break;
+            case "box":
+                box = getCachedLocation(locationId, StorageBox.class, boxCache);
+                rack = box != null ? box.getParentRack() : null;
+                shelf = rack != null ? rack.getParentShelf() : null;
+                device = shelf != null ? shelf.getParentDevice() : null;
+                room = device != null ? device.getParentRoom() : null;
+                break;
+            default:
+                break;
+            }
+        }
+
+        String hierarchicalPath = buildHierarchicalPathForResolvedLocation(locationType, room, device, shelf, rack, box,
+                assignment.getPositionCoordinate());
+        result.put("location", hierarchicalPath != null ? hierarchicalPath : "");
+        result.put("hierarchicalPath", hierarchicalPath != null ? hierarchicalPath : "");
+
+        if (room != null) {
+            result.put("roomId", room.getId());
+            result.put("roomName", room.getName());
+        }
+        if (device != null) {
+            result.put("deviceId", device.getId());
+            result.put("deviceName", device.getName());
+            result.put("deviceType", device.getTypeAsString());
+            result.put("deviceBiorepositoryStorage", Boolean.TRUE.equals(device.getBiorepositoryStorage()));
+        }
+        if (shelf != null) {
+            result.put("shelfId", shelf.getId());
+            result.put("shelfLabel", shelf.getLabel());
+        }
+        if (rack != null) {
+            result.put("rackId", rack.getId());
+            result.put("rackLabel", rack.getLabel());
+        }
+        if (box != null) {
+            result.put("boxId", box.getId());
+            result.put("boxLabel", box.getLabel());
+        }
+
+        return result;
+    }
+
+    private <T> T getCachedLocation(Integer id, Class<T> entityClass, Map<Integer, T> cache) {
+        if (id == null) {
+            return null;
+        }
+        if (!cache.containsKey(id)) {
+            @SuppressWarnings("unchecked")
+            T entity = (T) storageLocationService.get(id, entityClass);
+            cache.put(id, entity);
+        }
+        return cache.get(id);
+    }
+
+    private String buildHierarchicalPathForResolvedLocation(String locationType, StorageRoom room, StorageDevice device,
+            StorageShelf shelf, StorageRack rack, StorageBox box, String positionCoordinate) {
+        List<String> parts = new ArrayList<>();
+
+        if (room != null && room.getName() != null && !room.getName().trim().isEmpty()) {
+            parts.add(room.getName().trim());
+        }
+        if (device != null && device.getName() != null && !device.getName().trim().isEmpty()) {
+            parts.add(device.getName().trim());
+        }
+        if (shelf != null && shelf.getLabel() != null && !shelf.getLabel().trim().isEmpty()) {
+            parts.add(shelf.getLabel().trim());
+        }
+        if (rack != null && rack.getLabel() != null && !rack.getLabel().trim().isEmpty()) {
+            parts.add(rack.getLabel().trim());
+        }
+        if (box != null && box.getLabel() != null && !box.getLabel().trim().isEmpty()) {
+            parts.add(box.getLabel().trim());
+        }
+
+        String path = String.join(" > ", parts);
+        if ((path == null || path.isEmpty()) && locationType != null) {
+            return locationType;
+        }
+        if (positionCoordinate != null && !positionCoordinate.trim().isEmpty()
+                && !"box".equals(locationType)
+                && (path == null || !path.endsWith(positionCoordinate.trim()))) {
+            return path;
+        }
+        return path;
     }
 
     @Override

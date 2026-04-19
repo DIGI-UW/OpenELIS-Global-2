@@ -49,9 +49,11 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
      * Types of discrepancies that can be found during QC inspection.
      */
     public enum DiscrepancyType {
-        MISSING_SAMPLE("Missing Sample"), DAMAGED_LABEL("Damaged/Illegible Label"),
-        MISPLACED_ITEM("Misplaced Item (wrong position)"), CONTAINER_DAMAGE("Container Damage"),
-        VOLUME_DISCREPANCY("Volume Discrepancy"), OTHER("Other");
+        MISSING_SAMPLE("Missing Sample"), WRONG_SAMPLE_IN_POSITION("Wrong Sample In Position"),
+        MISPLACED_ITEM("Misplaced Item (Found Elsewhere)"),
+        EMPTY_POSITION_REGISTERED_OCCUPIED("Empty Position But Registered Occupied"), LABELING_ERROR("Labeling Error"),
+        BOX_RACK_MISPLACEMENT("Box/Rack Misplacement"), DAMAGED_LABEL("Damaged/Illegible Label"),
+        CONTAINER_DAMAGE("Container Damage"), VOLUME_DISCREPANCY("Volume Discrepancy"), OTHER("Other");
 
         private final String displayValue;
 
@@ -132,6 +134,16 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;
+
+    // ========================================
+    // QC Round / Coordinate Snapshot
+    // ========================================
+
+    @Column(name = "qc_batch_id", length = 80)
+    private String qcBatchId;
+
+    @Column(name = "expected_coordinate_snapshot", length = 512)
+    private String expectedCoordinateSnapshot;
 
     // ========================================
     // Inspection Metadata
@@ -263,6 +275,22 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public String getQcBatchId() {
+        return qcBatchId;
+    }
+
+    public void setQcBatchId(String qcBatchId) {
+        this.qcBatchId = qcBatchId;
+    }
+
+    public String getExpectedCoordinateSnapshot() {
+        return expectedCoordinateSnapshot;
+    }
+
+    public void setExpectedCoordinateSnapshot(String expectedCoordinateSnapshot) {
+        this.expectedCoordinateSnapshot = expectedCoordinateSnapshot;
     }
 
     public String getInspectorName() {

@@ -86,6 +86,31 @@ const STORAGE_CONDITIONS = [
   },
 ];
 
+const deriveStoragePageStatus = (sample) => {
+  const rawStatus = sample.pageStatus || sample.status || "PENDING";
+  const hasStorageAssignment =
+    sample.data?.storageWell ||
+    sample.data?.storagePath ||
+    sample.data?.storageRoom ||
+    sample.data?.storageFreezer ||
+    sample.data?.storageShelf ||
+    sample.data?.storageRack ||
+    sample.data?.storageBox ||
+    sample.storageWell ||
+    sample.storagePath ||
+    sample.storageRoom ||
+    sample.storageFreezer ||
+    sample.storageShelf ||
+    sample.storageRack ||
+    sample.storageBox;
+
+  if (rawStatus === "COMPLETED" || rawStatus === "SKIPPED") {
+    return rawStatus;
+  }
+
+  return hasStorageAssignment ? "IN_PROGRESS" : rawStatus;
+};
+
 /**
  * BiorepositoryStorageAssignmentPage - Storage Assignment workflow page
  * Stage 2 of the Biorepository workflow
@@ -98,16 +123,12 @@ const STORAGE_CONDITIONS = [
  * @param {Object} props
  * @param {number} props.entryId - The notebook entry ID
  * @param {Object} props.pageData - Page configuration from notebook
- * @param {Object} props.progress - Progress tracking data
  * @param {Function} props.onProgressUpdate - Callback when progress changes
- * @param {number} props.notebookId - The notebook ID
  */
 function BiorepositoryStorageAssignmentPage({
   entryId,
   pageData,
-  progress: _progress,
   onProgressUpdate,
-  notebookId,
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
@@ -115,7 +136,7 @@ function BiorepositoryStorageAssignmentPage({
   // State for samples
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
@@ -132,7 +153,6 @@ function BiorepositoryStorageAssignmentPage({
 
   // Storage assignment modal state
   const [storageModalOpen, setStorageModalOpen] = useState(false);
-  const [selectedWell, setSelectedWell] = useState(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [wellAssignments, setWellAssignments] = useState({});
   const [isReassignment, setIsReassignment] = useState(false);
@@ -319,35 +339,47 @@ function BiorepositoryStorageAssignmentPage({
       (response) => {
         if (componentMounted.current) {
           if (response && Array.isArray(response)) {
-            const transformedSamples = response.map((sample) => ({
-              id: String(sample.id || sample.sampleItemId),
-              sampleItemId: sample.sampleItemId,
-              externalId: sample.externalId || "-",
-              accessionNumber: sample.accessionNumber || "-",
-              sampleType:
-                sample.sampleType || sample.typeOfSample?.description || "-",
-              collectionDate: sample.collectionDate,
-              status: sample.pageStatus || sample.status || "PENDING",
-              // Biorepository specific fields
-              biosafetyLevel: sample.data?.biosafetyLevel,
-              projectName: sample.data?.projectName,
-              originLab: sample.data?.originLab,
-              // Storage assignment fields from data
-              storageRoom: sample.data?.storageRoom,
-              storageFreezer: sample.data?.storageFreezer,
-              storageRack: sample.data?.storageRack,
-              storageBox: sample.data?.storageBox,
-              storageWell: sample.data?.storageWell,
-              storagePath: sample.data?.storagePath,
-              storageCondition: sample.data?.storageCondition,
-              assignedBy: sample.data?.assignedBy,
-              assignedDateTime: sample.data?.assignedDateTime,
-              // Retention policy fields (initial values, will be enriched by biorepository API)
-              retentionPolicyName:
-                sample.retentionPolicyName || sample.data?.retentionPolicyName,
-              retentionExpiryDate:
-                sample.retentionExpiryDate || sample.data?.retentionExpiryDate,
-            }));
+            const transformedSamples = response.map((sample) => {
+              const normalizedStatus = deriveStoragePageStatus(sample);
+              return {
+                id: String(sample.id || sample.sampleItemId),
+                sampleItemId: sample.sampleItemId,
+                externalId: sample.externalId || "-",
+                accessionNumber: sample.accessionNumber || "-",
+                sampleType:
+                  sample.sampleType || sample.typeOfSample?.description || "-",
+                collectionDate: sample.collectionDate,
+                status: normalizedStatus,
+                pageStatus: normalizedStatus,
+                // Biorepository specific fields
+                biosafetyLevel:
+                  sample.data?.biosafetyLevel || sample.biosafetyLevel,
+                projectName: sample.data?.projectName || sample.projectName,
+                originLab: sample.data?.originLab || sample.originLab,
+                // Storage assignment fields from data or legacy root fields
+                storageRoom: sample.data?.storageRoom || sample.storageRoom,
+                storageFreezer:
+                  sample.data?.storageFreezer || sample.storageFreezer,
+                storageShelf:
+                  sample.data?.storageShelf || sample.storageShelf,
+                storageRack: sample.data?.storageRack || sample.storageRack,
+                storageBox: sample.data?.storageBox || sample.storageBox,
+                storageWell: sample.data?.storageWell || sample.storageWell,
+                storagePath: sample.data?.storagePath || sample.storagePath,
+                storageCondition:
+                  sample.data?.storageCondition || sample.storageCondition,
+                assignedBy: sample.data?.assignedBy || sample.assignedBy,
+                assignedDateTime:
+                  sample.data?.assignedDateTime || sample.assignedDateTime,
+                // Retention policy fields (initial values, will be enriched by biorepository API)
+                retentionPolicyName:
+                  sample.retentionPolicyName ||
+                  sample.data?.retentionPolicyName,
+                retentionExpiryDate:
+                  sample.retentionExpiryDate ||
+                  sample.data?.retentionExpiryDate,
+              };
+            });
             setSamples(transformedSamples);
 
             // Fetch retention policy data from biorepository API
@@ -444,7 +476,6 @@ function BiorepositoryStorageAssignmentPage({
           return;
         }
 
-        setSelectedWell(wellCoord);
         setStorageModalOpen(true);
       }
     },
@@ -1197,6 +1228,7 @@ function BiorepositoryStorageAssignmentPage({
                 entryId={entryId}
                 onBoxLayoutLoaded={handleBoxLayoutLoaded}
                 boxRequired={true}
+                biorepositoryOnly
                 showPath={true}
               />
             </div>

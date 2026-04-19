@@ -60,6 +60,44 @@ public class SampleStorageAssignmentDAOImpl extends BaseDAOImpl<SampleStorageAss
 
     @Override
     @Transactional(readOnly = true)
+    public List<SampleStorageAssignment> findBySampleItemIds(List<String> sampleItemIds) {
+        if (sampleItemIds == null || sampleItemIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Integer> numericIds = sampleItemIds.stream()
+                .filter(id -> id != null && !id.trim().isEmpty())
+                .map(String::trim)
+                .map(id -> {
+                    try {
+                        return Integer.parseInt(id);
+                    } catch (NumberFormatException e) {
+                        logger.warn("Skipping invalid SampleItem ID format in batch lookup: {}", id);
+                        return null;
+                    }
+                })
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (numericIds.isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            String hql = "FROM SampleStorageAssignment ssa WHERE ssa.sampleItemId IN :sampleItemIds";
+            Query<SampleStorageAssignment> query = entityManager.unwrap(Session.class).createQuery(hql,
+                    SampleStorageAssignment.class);
+            query.setParameter("sampleItemIds", numericIds);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding SampleStorageAssignments by SampleItem IDs", e);
+            throw new LIMSRuntimeException("Error finding SampleStorageAssignments by SampleItem IDs", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public SampleStorageAssignment findByStorageBox(StorageBox box) {
         try {
             if (box == null) {

@@ -3,6 +3,7 @@ import {
   Grid,
   Column,
   Button,
+  ButtonSet,
   Tile,
   InlineNotification,
   Modal,
@@ -11,6 +12,7 @@ import {
   TextInput,
   Checkbox,
   Dropdown,
+  Toggle,
   DataTable,
   TableContainer,
   Table,
@@ -35,10 +37,6 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 
-/**
- * QC Checklist items for Biorepository sample inspection
- * Based on ISO 20387:2018 quality control requirements
- */
 const QC_CHECKLIST = [
   {
     id: "samplePresent",
@@ -67,39 +65,183 @@ const QC_CHECKLIST = [
   },
 ];
 
-/**
- * Discrepancy types for failed QC
- */
 const DISCREPANCY_TYPES = [
   { id: "MISSING_SAMPLE", label: "Missing Sample" },
+  { id: "WRONG_SAMPLE_IN_POSITION", label: "Wrong Sample In Position" },
   { id: "DAMAGED_LABEL", label: "Damaged/Illegible Label" },
   { id: "MISPLACED_ITEM", label: "Misplaced Item (Wrong Position)" },
+  {
+    id: "EMPTY_POSITION_REGISTERED_OCCUPIED",
+    label: "Empty Position But Registered Occupied",
+  },
+  { id: "LABELING_ERROR", label: "Labeling Error" },
+  { id: "BOX_RACK_MISPLACEMENT", label: "Box/Rack Misplacement" },
   { id: "CONTAINER_DAMAGE", label: "Container Damage" },
   { id: "VOLUME_DISCREPANCY", label: "Volume Discrepancy" },
   { id: "OTHER", label: "Other" },
 ];
 
-/**
- * BiorepositoryQCInspectionPage - QC Inspection workflow for stored samples
- *
- * Allows technicians to perform visual inspection and verification of samples
- * in storage against their expected location and condition.
- *
- * Features:
- * - Load samples with workflowStatus = STORED
- * - Display storage coordinates (freezer/shelf/rack/box/position)
- * - 5-point QC checklist (presence, label, container, volume, position)
- * - Auto-calculate QC result (all pass = VERIFIED, any fail = DISCREPANCY_FOUND)
- * - Record discrepancy details (type + corrective action)
- * - Bulk apply QC to multiple samples
- *
- * @param {Object} props
- * @param {number} props.entryId - The notebook entry ID
- * @param {Object} props.pageData - The notebook page data
- * @param {Object} props.progress - Page progress
- * @param {function} props.onProgressUpdate - Callback when progress changes
- * @param {number} props.notebookId - The notebook ID
- */
+const ALL_FREEZERS = "All freezers";
+const ALL_SHELVES = "All shelves";
+const ALL_RACKS = "All racks";
+
+const createBlankChecklist = () =>
+  QC_CHECKLIST.reduce((acc, item) => {
+    acc[item.id] = false;
+    return acc;
+  }, {});
+
+const createInitialInspectionForm = () => ({
+  inspectorName: "",
+  inspectionDate: new Date().toISOString().slice(0, 16),
+  qcChecklist: createBlankChecklist(),
+  qcResult: "",
+  discrepancyType: "",
+  correctiveAction: "",
+  remarks: "",
+});
+
+const toSafeString = (value, fallback = "") => {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  const asString = String(value).trim();
+  return asString || fallback;
+};
+
+const parseLocationPath = (
+  locationPath,
+  positionCoordinate,
+  locationDetails = {},
+) => {
+  const path = toSafeString(locationPath);
+  const coordinate = toSafeString(positionCoordinate);
+  const explicitFreezer = toSafeString(locationDetails.deviceName);
+  const explicitShelf = toSafeString(locationDetails.shelfLabel);
+  const explicitRack = toSafeString(locationDetails.rackLabel);
+  const explicitBox = toSafeString(locationDetails.boxLabel);
+
+  const segments = path
+    .split(/\s*>\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  let freezer;
+  let shelf;
+  let rack;
+  let box;
+
+  segments.forEach((segment) => {
+    const lower = segment.toLowerCase();
+    if (!freezer && lower.includes("freezer")) {
+      freezer = segment;
+    } else if (!shelf && lower.includes("shelf")) {
+      shelf = segment;
+    } else if (!rack && lower.includes("rack")) {
+      rack = segment;
+    } else if (!box && (lower.includes("box") || lower.startsWith("bx"))) {
+      box = segment;
+    }
+  });
+
+  if (!freezer && segments[0]) {
+    freezer = segments[0];
+  }
+  if (!shelf && segments[1]) {
+    shelf = segments[1];
+  }
+  if (!rack && segments[2]) {
+    rack = segments[2];
+  }
+  if (!box && segments[3]) {
+    box = segments[3];
+  }
+  if (!box && segments.length > 0) {
+    box = segments[segments.length - 1];
+  }
+
+  const normalizedFreezer = explicitFreezer || freezer || "Unknown Freezer";
+  const normalizedShelf = explicitShelf || shelf || "Unknown Shelf";
+  const normalizedRack = explicitRack || rack || "Unknown Rack";
+  const normalizedBox = explicitBox || box || "Unknown Box";
+
+  return {
+    freezer: normalizedFreezer,
+    shelf: normalizedShelf,
+    rack: normalizedRack,
+    box: normalizedBox,
+    positionCoordinate: coordinate || "-",
+    shelfKey: `${normalizedFreezer} > ${normalizedShelf}`,
+    rackKey: `${normalizedFreezer} > ${normalizedShelf} > ${normalizedRack}`,
+    boxKey: `${normalizedFreezer} > ${normalizedShelf} > ${normalizedRack} > ${normalizedBox}`,
+  };
+};
+
+const computeOverview = (samples) => {
+  const freezers = new Set();
+  const shelves = new Set();
+  const racks = new Set();
+  const boxes = new Set();
+  const freezerSummaryMap = new Map();
+
+  samples.forEach((sample) => {
+    freezers.add(sample.freezer);
+    shelves.add(sample.shelfKey);
+    racks.add(sample.rackKey);
+    boxes.add(sample.boxKey);
+
+    if (!freezerSummaryMap.has(sample.freezer)) {
+      freezerSummaryMap.set(sample.freezer, {
+        freezer: sample.freezer,
+        sampleCount: 0,
+        shelfSet: new Set(),
+        rackSet: new Set(),
+        boxSet: new Set(),
+      });
+    }
+
+    const row = freezerSummaryMap.get(sample.freezer);
+    row.sampleCount += 1;
+    row.shelfSet.add(sample.shelfKey);
+    row.rackSet.add(sample.rackKey);
+    row.boxSet.add(sample.boxKey);
+  });
+
+  const freezerSummary = Array.from(freezerSummaryMap.values())
+    .map((row) => ({
+      freezer: row.freezer,
+      sampleCount: row.sampleCount,
+      shelfCount: row.shelfSet.size,
+      rackCount: row.rackSet.size,
+      boxCount: row.boxSet.size,
+    }))
+    .sort((a, b) => a.freezer.localeCompare(b.freezer));
+
+  return {
+    totalStoredSamples: samples.length,
+    freezerCount: freezers.size,
+    shelfCount: shelves.size,
+    rackCount: racks.size,
+    boxCount: boxes.size,
+    freezerSummary,
+  };
+};
+
+const buildSnapshotText = (sample) => {
+  if (!sample) {
+    return null;
+  }
+  if (!sample.locationPath || sample.locationPath === "Not Assigned") {
+    return sample.positionCoordinate && sample.positionCoordinate !== "-"
+      ? sample.positionCoordinate
+      : null;
+  }
+  if (!sample.positionCoordinate || sample.positionCoordinate === "-") {
+    return sample.locationPath;
+  }
+  return `${sample.locationPath} @ ${sample.positionCoordinate}`;
+};
+
 function BiorepositoryQCInspectionPage({
   entryId,
   pageData,
@@ -109,440 +251,1173 @@ function BiorepositoryQCInspectionPage({
 }) {
   const intl = useIntl();
 
-  // State for samples
   const [samples, setSamples] = useState([]);
+  const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [overviewLoading, setOverviewLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Bulk apply modal state
-  const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
-  const [isBulkApplying, setIsBulkApplying] = useState(false);
-  const [selectedForBulkApply, setSelectedForBulkApply] = useState([]); // Capture selection when modal opens
-
-  // Bulk apply form values
-  const [bulkApplyValues, setBulkApplyValues] = useState({
-    inspectorName: "",
-    inspectionDate: new Date().toISOString().slice(0, 16),
-    // QC Checklist - 5 boolean criteria
-    qcChecklist: QC_CHECKLIST.reduce((acc, item) => {
-      acc[item.id] = false;
-      return acc;
-    }, {}),
-    // Auto-calculated QC result
-    qcResult: "",
-    // Discrepancy details (only for failed QC)
-    discrepancyType: "",
-    correctiveAction: "",
-    remarks: "",
+  const [filters, setFilters] = useState({
+    freezer: "",
+    shelf: "",
+    rack: "",
+    box: "",
   });
 
-  // Load stored samples for QC
+  const [roundSettings, setRoundSettings] = useState({
+    boxesPerRound: "12",
+    samplesPerBox: "4",
+    seed: "",
+  });
+
+  const [qcRoundInfo, setQcRoundInfo] = useState(null);
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+
+  const [inspectionModalOpen, setInspectionModalOpen] = useState(false);
+  const [isSubmittingInspection, setIsSubmittingInspection] = useState(false);
+  const [inspectionContext, setInspectionContext] = useState({
+    mode: "bulk",
+    sampleIds: [],
+    samplePreview: [],
+  });
+  const [inspectionValues, setInspectionValues] = useState(
+    createInitialInspectionForm(),
+  );
+
+  const resetInspectionForm = useCallback(() => {
+    setInspectionValues(createInitialInspectionForm());
+  }, []);
+
+  const calculateQCResult = useCallback((checklist) => {
+    const allPassed = Object.values(checklist).every((value) => value === true);
+    return allPassed ? "VERIFIED" : "DISCREPANCY_FOUND";
+  }, []);
+
   const loadStoredSamples = useCallback(() => {
     setLoading(true);
     setError(null);
 
-    getFromOpenElisServer(
-      `/rest/biorepository/qc-inspection/samples`,
-      (response) => {
-        setLoading(false);
-        if (response && Array.isArray(response)) {
-          // Transform API response to component state
-          const transformedSamples = response.map((sample) => ({
+    getFromOpenElisServer(`/rest/biorepository/qc-inspection/samples`, (response) => {
+      setLoading(false);
+      if (Array.isArray(response)) {
+        const transformed = response.map((sample) => {
+          const storageLocation = sample.storageLocation || {};
+          const rawCoordinate = toSafeString(
+            storageLocation.positionCoordinate,
+            "-",
+          );
+
+          return {
             id: sample.bioSampleId,
             sampleItemId: sample.sampleItemId,
             externalId: sample.externalId || "-",
             accessionNumber: sample.accessionNumber || "-",
             sampleType: sample.sampleType || "-",
-            locationPath: sample.locationPath || "Not Assigned",
-            storageLocation: sample.storageLocation, // Full location object
+            locationPath:
+              sample.locationPath ||
+              storageLocation.hierarchicalPath ||
+              "Not Assigned",
+            positionCoordinate: rawCoordinate,
+            storageDetails: storageLocation,
             biosafetyLevel: sample.biosafetyLevel || "-",
             workflowStatus: sample.workflowStatus,
-            lastQCInspection: sample.lastQCInspection, // Most recent inspection record
-          }));
-          setSamples(transformedSamples);
+            lastQCInspection: sample.lastQCInspection,
+          };
+        });
+
+        setSamples(transformed);
+      } else {
+        setSamples([]);
+      }
+    });
+  }, []);
+
+  const loadLocationOverview = useCallback(() => {
+    setOverviewLoading(true);
+    getFromOpenElisServer(
+      `/rest/biorepository/qc-inspection/location-overview`,
+      (response) => {
+        setOverviewLoading(false);
+        if (response && typeof response === "object" && !response.error) {
+          setOverview(response);
         } else {
-          setSamples([]);
+          setOverview(null);
         }
       },
     );
   }, []);
 
-  // Load samples on mount
   useEffect(() => {
     loadStoredSamples();
-  }, [loadStoredSamples]);
+    loadLocationOverview();
+  }, [loadStoredSamples, loadLocationOverview]);
 
-  // Reset bulk apply values
-  const resetBulkApplyValues = () => {
-    setBulkApplyValues({
-      inspectorName: "",
-      inspectionDate: new Date().toISOString().slice(0, 16),
-      qcChecklist: QC_CHECKLIST.reduce((acc, item) => {
-        acc[item.id] = false;
+  const enrichedSamples = useMemo(
+    () =>
+      samples.map((sample) => ({
+        ...sample,
+        ...parseLocationPath(
+          sample.locationPath,
+          sample.positionCoordinate,
+          sample.storageDetails,
+        ),
+      })),
+    [samples],
+  );
+
+  const fullOverviewFallback = useMemo(
+    () => computeOverview(enrichedSamples),
+    [enrichedSamples],
+  );
+
+  const freezerScopeOptions = useMemo(() => {
+    if (Array.isArray(overview?.freezerOptions) && overview.freezerOptions.length) {
+      return overview.freezerOptions;
+    }
+    return Array.from(
+      new Set(enrichedSamples.map((sample) => sample.freezer)),
+    )
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ value, label: value }));
+  }, [overview, enrichedSamples]);
+
+  const availableFreezers = useMemo(
+    () =>
+      freezerScopeOptions
+        .map((option) => option?.value || option?.label)
+        .filter(Boolean),
+    [freezerScopeOptions],
+  );
+
+  const availableShelves = useMemo(
+    () => {
+      if (Array.isArray(overview?.shelfOptions) && overview.shelfOptions.length) {
+        return Array.from(
+          new Set(
+            overview.shelfOptions
+              .filter(
+                (option) =>
+                  !filters.freezer || option.freezer === filters.freezer,
+              )
+              .map((option) => option?.value || option?.label)
+              .filter(Boolean),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+      }
+
+      return Array.from(
+        new Set(
+          enrichedSamples
+            .filter(
+              (sample) => !filters.freezer || sample.freezer === filters.freezer,
+            )
+            .map((sample) => sample.shelf),
+        ),
+      ).sort((a, b) => a.localeCompare(b));
+    },
+    [overview, enrichedSamples, filters.freezer],
+  );
+
+  const availableRacks = useMemo(
+    () => {
+      if (Array.isArray(overview?.rackOptions) && overview.rackOptions.length) {
+        return Array.from(
+          new Set(
+            overview.rackOptions
+              .filter(
+                (option) =>
+                  (!filters.freezer || option.freezer === filters.freezer) &&
+                  (!filters.shelf || option.shelf === filters.shelf),
+              )
+              .map((option) => option?.value || option?.label)
+              .filter(Boolean),
+          ),
+        ).sort((a, b) => a.localeCompare(b));
+      }
+
+      return Array.from(
+        new Set(
+          enrichedSamples
+            .filter(
+              (sample) =>
+                (!filters.freezer || sample.freezer === filters.freezer) &&
+                (!filters.shelf || sample.shelf === filters.shelf),
+            )
+            .map((sample) => sample.rack),
+        ),
+      ).sort((a, b) => a.localeCompare(b));
+    },
+    [overview, enrichedSamples, filters.freezer, filters.shelf],
+  );
+
+  const roundSelectedIds = useMemo(
+    () =>
+      new Set(
+        (qcRoundInfo?.samples || [])
+          .map((sample) => String(sample.bioSampleId))
+          .filter(Boolean),
+      ),
+    [qcRoundInfo],
+  );
+
+  const displayedSamples = useMemo(
+    () =>
+      enrichedSamples.filter((sample) => {
+        if (filters.freezer && sample.freezer !== filters.freezer) {
+          return false;
+        }
+        if (filters.shelf && sample.shelf !== filters.shelf) {
+          return false;
+        }
+        if (filters.rack && sample.rack !== filters.rack) {
+          return false;
+        }
+        if (
+          filters.box &&
+          !sample.box.toLowerCase().includes(filters.box.trim().toLowerCase())
+        ) {
+          return false;
+        }
+        if (showSelectedOnly && qcRoundInfo) {
+          return roundSelectedIds.has(String(sample.id));
+        }
+        return true;
+      }),
+    [enrichedSamples, filters, showSelectedOnly, qcRoundInfo, roundSelectedIds],
+  );
+
+  const filteredOverview = useMemo(
+    () => computeOverview(displayedSamples),
+    [displayedSamples],
+  );
+
+  const activeOverview = useMemo(() => {
+    if (overview && !filters.freezer && !filters.shelf && !filters.rack && !filters.box) {
+      return overview;
+    }
+    return filteredOverview;
+  }, [overview, filters, filteredOverview]);
+
+  const verifiedCount = useMemo(
+    () =>
+      displayedSamples.filter(
+        (sample) => sample.lastQCInspection?.qcResult === "VERIFIED",
+      ).length,
+    [displayedSamples],
+  );
+
+  const discrepancyCount = useMemo(
+    () =>
+      displayedSamples.filter(
+        (sample) => sample.lastQCInspection?.qcResult === "DISCREPANCY_FOUND",
+      ).length,
+    [displayedSamples],
+  );
+
+  const pendingCount = useMemo(
+    () => displayedSamples.filter((sample) => !sample.lastQCInspection).length,
+    [displayedSamples],
+  );
+
+  const checkedCount = useMemo(
+    () =>
+      Object.values(inspectionValues.qcChecklist).filter((checked) => checked)
+        .length,
+    [inspectionValues.qcChecklist],
+  );
+
+  const openInspectionModal = useCallback(
+    (mode, sampleIds, samplePreview = []) => {
+      setInspectionContext({
+        mode,
+        sampleIds,
+        samplePreview,
+      });
+      resetInspectionForm();
+      setInspectionModalOpen(true);
+      setError(null);
+    },
+    [resetInspectionForm],
+  );
+
+  const closeInspectionModal = useCallback(() => {
+    setInspectionModalOpen(false);
+    setInspectionContext({ mode: "bulk", sampleIds: [], samplePreview: [] });
+    resetInspectionForm();
+  }, [resetInspectionForm]);
+
+  const handleChecklistChange = useCallback(
+    (criteriaId, checked) => {
+      setInspectionValues((previous) => {
+        const qcChecklist = {
+          ...previous.qcChecklist,
+          [criteriaId]: checked,
+        };
+        const qcResult = calculateQCResult(qcChecklist);
+        return {
+          ...previous,
+          qcChecklist,
+          qcResult,
+          discrepancyType: qcResult === "VERIFIED" ? "" : previous.discrepancyType,
+          correctiveAction:
+            qcResult === "VERIFIED" ? "" : previous.correctiveAction,
+        };
+      });
+    },
+    [calculateQCResult],
+  );
+
+  const handleSetAllChecklist = useCallback(
+    (isChecked) => {
+      const checklist = QC_CHECKLIST.reduce((acc, item) => {
+        acc[item.id] = isChecked;
         return acc;
-      }, {}),
-      qcResult: "",
-      discrepancyType: "",
-      correctiveAction: "",
-      remarks: "",
-    });
-  };
+      }, {});
 
-  // Calculate QC result based on checklist
-  const calculateQCResult = (checklist) => {
-    const allPassed = Object.values(checklist).every((v) => v === true);
-    return allPassed ? "VERIFIED" : "DISCREPANCY_FOUND";
-  };
+      setInspectionValues((previous) => ({
+        ...previous,
+        qcChecklist: checklist,
+        qcResult: calculateQCResult(checklist),
+        discrepancyType: isChecked ? "" : previous.discrepancyType,
+        correctiveAction: isChecked ? "" : previous.correctiveAction,
+      }));
+    },
+    [calculateQCResult],
+  );
 
-  // Handle checklist change
-  const handleChecklistChange = (criteriaId, checked) => {
-    setBulkApplyValues((prev) => {
-      const newChecklist = { ...prev.qcChecklist, [criteriaId]: checked };
-      const autoResult = calculateQCResult(newChecklist);
-      return {
-        ...prev,
-        qcChecklist: newChecklist,
-        qcResult: autoResult,
-        // Clear fail-related fields if now passing
-        discrepancyType: autoResult === "VERIFIED" ? "" : prev.discrepancyType,
-        correctiveAction:
-          autoResult === "VERIFIED" ? "" : prev.correctiveAction,
-      };
-    });
-  };
+  const handleGenerateQCRound = useCallback(() => {
+    setError(null);
 
-  // Handle "Check All" for QC criteria
-  const handleCheckAll = () => {
-    setBulkApplyValues((prev) => ({
-      ...prev,
-      qcChecklist: QC_CHECKLIST.reduce((acc, item) => {
-        acc[item.id] = true;
-        return acc;
-      }, {}),
-      qcResult: "VERIFIED",
-      discrepancyType: "",
-      correctiveAction: "",
-    }));
-  };
+    const boxesPerRound = Math.max(
+      1,
+      Number.parseInt(roundSettings.boxesPerRound || "10", 10) || 10,
+    );
+    const samplesPerBox = Math.max(
+      1,
+      Number.parseInt(roundSettings.samplesPerBox || "3", 10) || 3,
+    );
 
-  // Handle "Clear All" for QC criteria
-  const handleClearAll = () => {
-    setBulkApplyValues((prev) => ({
-      ...prev,
-      qcChecklist: QC_CHECKLIST.reduce((acc, item) => {
-        acc[item.id] = false;
-        return acc;
-      }, {}),
-      qcResult: "DISCREPANCY_FOUND",
-    }));
-  };
+    const seedValue = roundSettings.seed.trim();
+    const parsedSeed = seedValue ? Number.parseInt(seedValue, 10) : null;
 
-  // Handle bulk apply
-  const handleBulkApply = useCallback(() => {
-    if (selectedForBulkApply.length === 0) {
+    if (seedValue && Number.isNaN(parsedSeed)) {
+      setError(
+        intl.formatMessage({
+          id: "biorepository.qc.error.invalidSeed",
+          defaultMessage: "Seed must be a valid whole number.",
+        }),
+      );
+      return;
+    }
+
+    const payload = {
+      boxesPerRound,
+      samplesPerBox,
+      seed: parsedSeed,
+      freezer: filters.freezer || null,
+      shelf: filters.shelf || null,
+      rack: filters.rack || null,
+      box: filters.box || null,
+    };
+
+    postToOpenElisServerJsonResponse(
+      `/rest/biorepository/qc-inspection/generate-round`,
+      JSON.stringify(payload),
+      (response) => {
+        if (response?.error) {
+          setError(response.error);
+          return;
+        }
+
+        const selectedIds = (response?.samples || [])
+          .map((sample) => String(sample.bioSampleId))
+          .filter(Boolean);
+
+        if (selectedIds.length === 0) {
+          setError(
+            intl.formatMessage({
+              id: "biorepository.qc.error.emptyRound",
+              defaultMessage:
+                "No eligible samples were found for the selected location and round settings.",
+            }),
+          );
+          return;
+        }
+
+        setQcRoundInfo(response);
+        setShowSelectedOnly(true);
+
+        setSuccessMessage(
+          intl.formatMessage(
+            {
+              id: "biorepository.qc.round.success",
+              defaultMessage:
+                "QC round generated successfully: {boxes} box(es), {samples} sample(s).",
+            },
+            {
+              boxes: response.boxesSelected || 0,
+              samples: response.samplesSelected || 0,
+            },
+          ),
+        );
+      },
+    );
+  }, [filters, intl, roundSettings]);
+
+  const handleSubmitInspection = useCallback(() => {
+    if (!inspectionContext.sampleIds.length) {
       setError(
         intl.formatMessage({
           id: "biorepository.qc.error.noSelection",
-          defaultMessage: "Please select samples to apply QC to.",
+          defaultMessage: "Please choose at least one sample.",
         }),
       );
       return;
     }
 
-    // Validate: Inspector name required
-    if (!bulkApplyValues.inspectorName.trim()) {
+    if (!inspectionValues.inspectorName.trim()) {
       setError(
         intl.formatMessage({
           id: "biorepository.qc.error.noInspector",
-          defaultMessage: "Please enter inspector name.",
+          defaultMessage: "Inspector name is required.",
         }),
       );
       return;
     }
 
-    // Validate: QC result must be set
-    if (!bulkApplyValues.qcResult) {
+    if (!inspectionValues.qcResult) {
       setError(
         intl.formatMessage({
           id: "biorepository.qc.error.noResult",
           defaultMessage:
-            "Please complete the QC checklist to determine pass/fail status.",
+            "Complete the checklist first so the system can determine pass/fail.",
         }),
       );
       return;
     }
 
-    // Validate: If discrepancy found, must have discrepancy type and corrective action
-    if (bulkApplyValues.qcResult === "DISCREPANCY_FOUND") {
-      if (!bulkApplyValues.discrepancyType) {
+    if (inspectionValues.qcResult === "DISCREPANCY_FOUND") {
+      if (!inspectionValues.discrepancyType) {
         setError(
           intl.formatMessage({
             id: "biorepository.qc.error.noDiscrepancyType",
-            defaultMessage: "Please select a discrepancy type.",
+            defaultMessage: "Discrepancy type is required for failed QC.",
           }),
         );
         return;
       }
-      if (!bulkApplyValues.correctiveAction.trim()) {
+      if (!inspectionValues.correctiveAction.trim()) {
         setError(
           intl.formatMessage({
             id: "biorepository.qc.error.noCorrectiveAction",
-            defaultMessage: "Please describe the corrective action taken.",
+            defaultMessage: "Corrective action details are required for failed QC.",
+          }),
+        );
+        return;
+      }
+      if (!inspectionValues.remarks.trim()) {
+        setError(
+          intl.formatMessage({
+            id: "biorepository.qc.error.noRemarks",
+            defaultMessage: "Comment/remarks are required for failed QC.",
           }),
         );
         return;
       }
     }
 
-    setIsBulkApplying(true);
+    setIsSubmittingInspection(true);
     setError(null);
 
-    // Prepare request payload
+    const singleSampleSnapshot =
+      inspectionContext.mode === "single" && inspectionContext.samplePreview.length
+        ? buildSnapshotText(inspectionContext.samplePreview[0])
+        : null;
+
     const payload = {
-      bioSampleIds: selectedForBulkApply.map((id) => parseInt(id, 10)),
-      inspectorName: bulkApplyValues.inspectorName.trim(),
-      inspectionDate: bulkApplyValues.inspectionDate
-        ? new Date(bulkApplyValues.inspectionDate).toISOString()
+      bioSampleIds: inspectionContext.sampleIds.map((id) => Number(id)),
+      inspectorName: inspectionValues.inspectorName.trim(),
+      inspectionDate: inspectionValues.inspectionDate
+        ? new Date(inspectionValues.inspectionDate).toISOString()
         : null,
-      samplePresent: bulkApplyValues.qcChecklist.samplePresent,
-      labelIntegrity: bulkApplyValues.qcChecklist.labelIntegrity,
-      containerIntegrity: bulkApplyValues.qcChecklist.containerIntegrity,
+      samplePresent: inspectionValues.qcChecklist.samplePresent,
+      labelIntegrity: inspectionValues.qcChecklist.labelIntegrity,
+      containerIntegrity: inspectionValues.qcChecklist.containerIntegrity,
       volumeAppearanceAcceptable:
-        bulkApplyValues.qcChecklist.volumeAppearanceAcceptable,
-      correctPosition: bulkApplyValues.qcChecklist.correctPosition,
+        inspectionValues.qcChecklist.volumeAppearanceAcceptable,
+      correctPosition: inspectionValues.qcChecklist.correctPosition,
       discrepancyType:
-        bulkApplyValues.qcResult === "DISCREPANCY_FOUND"
-          ? bulkApplyValues.discrepancyType
+        inspectionValues.qcResult === "DISCREPANCY_FOUND"
+          ? inspectionValues.discrepancyType
           : null,
       correctiveAction:
-        bulkApplyValues.qcResult === "DISCREPANCY_FOUND"
-          ? bulkApplyValues.correctiveAction
+        inspectionValues.qcResult === "DISCREPANCY_FOUND"
+          ? inspectionValues.correctiveAction.trim()
           : null,
-      remarks: bulkApplyValues.remarks || null,
+      remarks: inspectionValues.remarks.trim() || null,
+      qcBatchId: qcRoundInfo?.qcBatchId || null,
+      expectedCoordinateSnapshot: singleSampleSnapshot,
     };
 
     postToOpenElisServerJsonResponse(
       `/rest/biorepository/qc-inspection/bulk-apply`,
       JSON.stringify(payload),
       (response) => {
-        setIsBulkApplying(false);
-        if (response && !response.error) {
-          const count = response.count || selectedForBulkApply.length;
-          setSuccessMessage(
-            intl.formatMessage(
-              {
-                id: "biorepository.qc.success.applied",
-                defaultMessage: "QC inspection applied to {count} sample(s).",
-              },
-              { count },
-            ),
-          );
-          setBulkApplyModalOpen(false);
-          resetBulkApplyValues();
-          setSelectedForBulkApply([]); // Clear captured selection
-          loadStoredSamples();
-          if (onProgressUpdate) {
-            onProgressUpdate();
-          }
-        } else {
-          setError(
-            response?.error ||
-              intl.formatMessage({
-                id: "biorepository.qc.error.apply",
-                defaultMessage:
-                  "Failed to apply QC inspection. Please try again.",
-              }),
-          );
+        setIsSubmittingInspection(false);
+        if (response?.error) {
+          setError(response.error);
+          return;
+        }
+
+        const count = response?.count || inspectionContext.sampleIds.length;
+        setSuccessMessage(
+          intl.formatMessage(
+            {
+              id: "biorepository.qc.success.applied",
+              defaultMessage: "QC inspection recorded for {count} sample(s).",
+            },
+            { count },
+          ),
+        );
+
+        closeInspectionModal();
+        loadStoredSamples();
+        loadLocationOverview();
+
+        if (onProgressUpdate) {
+          onProgressUpdate();
         }
       },
     );
   }, [
-    selectedForBulkApply,
-    bulkApplyValues,
+    closeInspectionModal,
+    inspectionContext,
+    inspectionValues,
     intl,
+    loadLocationOverview,
     loadStoredSamples,
     onProgressUpdate,
+    qcRoundInfo?.qcBatchId,
   ]);
 
-  // Calculate stats
-  const totalSamples = samples.length;
-  const verifiedCount = samples.filter(
-    (s) => s.lastQCInspection && s.lastQCInspection.qcResult === "VERIFIED",
-  ).length;
-  const discrepanciesCount = samples.filter(
-    (s) =>
-      s.lastQCInspection && s.lastQCInspection.qcResult === "DISCREPANCY_FOUND",
-  ).length;
-  const pendingCount = samples.filter((s) => !s.lastQCInspection).length;
+  const handleDownloadRoundCSV = useCallback(() => {
+    if (!qcRoundInfo?.samples?.length) {
+      return;
+    }
 
-  // Count checked criteria
-  const checkedCount = useMemo(() => {
-    return Object.values(bulkApplyValues.qcChecklist).filter((v) => v).length;
-  }, [bulkApplyValues.qcChecklist]);
+    const headers = [
+      "qcBatchId",
+      "freezer",
+      "shelf",
+      "rack",
+      "box",
+      "position",
+      "locationPath",
+      "sampleNumber",
+      "sampleId",
+    ];
 
-  // Get QC result tag
-  const getQCTag = (qcResult) => {
-    if (!qcResult) return <Tag type="gray">Pending</Tag>;
-    if (qcResult === "VERIFIED") return <Tag type="green">Verified</Tag>;
-    if (qcResult === "DISCREPANCY_FOUND")
+    const escapeCSV = (value) => {
+      const text = value === null || value === undefined ? "" : String(value);
+      if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    };
+
+    const rows = qcRoundInfo.samples.map((sample) => {
+      const parsed = parseLocationPath(
+        sample.locationPath,
+        sample.expectedCoordinate || sample.positionCoordinate,
+      );
+      return [
+        qcRoundInfo.qcBatchId || "",
+        sample.freezer || parsed.freezer,
+        sample.shelf || parsed.shelf,
+        sample.rack || parsed.rack,
+        sample.box || parsed.box,
+        sample.expectedCoordinate || sample.positionCoordinate || "",
+        sample.locationPath || "",
+        sample.accessionNumber || "",
+        sample.externalId || "",
+      ];
+    });
+
+    const csv = `${headers.join(",")}\n${rows
+      .map((row) => row.map(escapeCSV).join(","))
+      .join("\n")}\n`;
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `biorepository-qc-round-${qcRoundInfo.qcBatchId || "batch"}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }, [qcRoundInfo]);
+
+  const roundRows = useMemo(
+    () =>
+      (qcRoundInfo?.samples || []).map((sample, index) => {
+        const parsed = parseLocationPath(
+          sample.locationPath,
+          sample.expectedCoordinate || sample.positionCoordinate,
+        );
+
+        return {
+          id: `${sample.bioSampleId || "sample"}-${index}`,
+          freezer: sample.freezer || parsed.freezer,
+          shelf: sample.shelf || parsed.shelf,
+          rack: sample.rack || parsed.rack,
+          box: sample.box || parsed.box,
+          position:
+            sample.expectedCoordinate || sample.positionCoordinate || parsed.positionCoordinate,
+          accessionNumber: sample.accessionNumber || "-",
+          externalId: sample.externalId || "-",
+        };
+      }),
+    [qcRoundInfo],
+  );
+
+  const roundHeaders = useMemo(
+    () => [
+      { key: "freezer", header: "Freezer" },
+      { key: "shelf", header: "Shelf" },
+      { key: "rack", header: "Rack" },
+      { key: "box", header: "Box" },
+      { key: "position", header: "Position" },
+      { key: "accessionNumber", header: "Sample Number" },
+      { key: "externalId", header: "Sample ID" },
+    ],
+    [],
+  );
+
+  const tableHeaders = useMemo(
+    () => [
+      {
+        key: "accessionNumber",
+        header: intl.formatMessage({
+          id: "biorepository.sample.accessionNumber",
+          defaultMessage: "Sample Number",
+        }),
+      },
+      {
+        key: "sampleType",
+        header: intl.formatMessage({
+          id: "biorepository.sample.type",
+          defaultMessage: "Sample Type",
+        }),
+      },
+      { key: "freezer", header: "Freezer" },
+      { key: "shelf", header: "Shelf" },
+      { key: "rack", header: "Rack" },
+      { key: "box", header: "Box" },
+      { key: "positionCoordinate", header: "Position" },
+      {
+        key: "biosafetyLevel",
+        header: intl.formatMessage({
+          id: "biorepository.sample.bsl",
+          defaultMessage: "BSL",
+        }),
+      },
+      {
+        key: "lastQCInspection",
+        header: intl.formatMessage({
+          id: "biorepository.qc.lastInspection",
+          defaultMessage: "Last QC",
+        }),
+      },
+      { key: "actions", header: "Actions" },
+    ],
+    [intl],
+  );
+
+  const tableRows = useMemo(
+    () =>
+      displayedSamples.map((sample) => ({
+        id: String(sample.id),
+        accessionNumber: sample.accessionNumber,
+        sampleType: sample.sampleType,
+        freezer: sample.freezer,
+        shelf: sample.shelf,
+        rack: sample.rack,
+        box: sample.box,
+        positionCoordinate: sample.positionCoordinate,
+        biosafetyLevel: sample.biosafetyLevel,
+        lastQCInspection: sample.lastQCInspection,
+        actions: "inspect",
+        _raw: sample,
+      })),
+    [displayedSamples],
+  );
+
+  const freezerDropdownItems = useMemo(
+    () => [ALL_FREEZERS, ...availableFreezers],
+    [availableFreezers],
+  );
+
+  const shelfDropdownItems = useMemo(
+    () => [ALL_SHELVES, ...availableShelves],
+    [availableShelves],
+  );
+
+  const rackDropdownItems = useMemo(
+    () => [ALL_RACKS, ...availableRacks],
+    [availableRacks],
+  );
+
+  const getQCTag = useCallback((qcResult) => {
+    if (!qcResult) {
+      return <Tag type="gray">Pending</Tag>;
+    }
+    if (qcResult === "VERIFIED") {
+      return <Tag type="green">Verified</Tag>;
+    }
+    if (qcResult === "DISCREPANCY_FOUND") {
       return <Tag type="red">Discrepancy</Tag>;
+    }
     return <Tag type="gray">{qcResult}</Tag>;
-  };
-
-  // Table headers
-  const headers = [
-    {
-      key: "accessionNumber",
-      header: intl.formatMessage({
-        id: "biorepository.sample.accessionNumber",
-        defaultMessage: "Sample Number",
-      }),
-    },
-    {
-      key: "sampleType",
-      header: intl.formatMessage({
-        id: "biorepository.sample.type",
-        defaultMessage: "Sample Type",
-      }),
-    },
-    {
-      key: "locationPath",
-      header: intl.formatMessage({
-        id: "biorepository.sample.storageLocation",
-        defaultMessage: "Storage Location",
-      }),
-    },
-    {
-      key: "biosafetyLevel",
-      header: intl.formatMessage({
-        id: "biorepository.sample.bsl",
-        defaultMessage: "BSL",
-      }),
-    },
-    {
-      key: "lastQCInspection",
-      header: intl.formatMessage({
-        id: "biorepository.qc.lastInspection",
-        defaultMessage: "Last QC Inspection",
-      }),
-    },
-  ];
+  }, []);
 
   return (
     <div className="biorepository-qc-inspection-page">
-      {/* Page Header */}
       <div className="page-section-header">
         <h4>
           <FormattedMessage
             id="biorepository.qc.title"
-            defaultMessage="Quality Control Inspection"
+            defaultMessage="Biorepository Periodic QC"
           />
         </h4>
         <p className="page-description">
           <FormattedMessage
             id="biorepository.qc.description"
-            defaultMessage="Perform visual inspection and verification of stored samples. Use the QC checklist to assess physical presence, label integrity, container condition, volume/appearance, and storage position. Samples with discrepancies require corrective action documentation."
+            defaultMessage="Start with a room overview, scope the location to check, generate a randomized QC round, then record outcomes individually or in bulk with required failure documentation."
           />
         </p>
       </div>
 
-      {/* Progress Summary */}
-      <Grid fullWidth className="progress-section">
+      {error && (
+        <InlineNotification
+          kind="error"
+          title={error}
+          lowContrast
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {successMessage && (
+        <InlineNotification
+          kind="success"
+          title={successMessage}
+          lowContrast
+          onClose={() => setSuccessMessage(null)}
+        />
+      )}
+
+      <Grid fullWidth style={{ marginTop: "1rem" }}>
         <Column lg={16} md={8} sm={4}>
-          <div className="progress-tiles">
-            <Tile className="progress-tile">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="biorepository.qc.totalStored"
-                  defaultMessage="Total Stored"
+          <Tile>
+            <h5 style={{ marginTop: 0, marginBottom: "0.75rem" }}>
+              Room Overview
+            </h5>
+            <p style={{ marginTop: 0, marginBottom: "1rem", color: "#525252" }}>
+              Review storage scale before starting QC. Filters below let you plan a
+              focused QC round.
+            </p>
+
+            {overviewLoading && (
+              <div style={{ marginBottom: "1rem" }}>
+                <Loading small withOverlay={false} />
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: "0.75rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <Tile>
+                <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                  Total Stored Samples
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                  {fullOverviewFallback.totalStoredSamples}
+                </div>
+              </Tile>
+              <Tile>
+                <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                  Matching Current Filters
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                  {filteredOverview.totalStoredSamples}
+                </div>
+              </Tile>
+              <Tile>
+                <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                  Freezers
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                  {activeOverview.freezerCount || 0}
+                </div>
+              </Tile>
+              <Tile>
+                <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                  Shelves
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                  {activeOverview.shelfCount || 0}
+                </div>
+              </Tile>
+              <Tile>
+                <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                  Racks
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                  {activeOverview.rackCount || 0}
+                </div>
+              </Tile>
+              <Tile>
+                <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                  Boxes
+                </div>
+                <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                  {activeOverview.boxCount || 0}
+                </div>
+              </Tile>
+            </div>
+
+            <Grid condensed fullWidth>
+              <Column lg={4} md={4} sm={4}>
+                <Dropdown
+                  id="qc-filter-freezer"
+                  titleText="Freezer"
+                  label={ALL_FREEZERS}
+                  items={freezerDropdownItems}
+                  selectedItem={filters.freezer || ALL_FREEZERS}
+                  itemToString={(item) => (item ? String(item) : "")}
+                  onChange={({ selectedItem }) => {
+                    const value = selectedItem === ALL_FREEZERS ? "" : selectedItem;
+                    setFilters((previous) => ({
+                      ...previous,
+                      freezer: value,
+                      shelf: "",
+                      rack: "",
+                    }));
+                  }}
                 />
-              </span>
-              <span className="progress-value">{totalSamples}</span>
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <Dropdown
+                  id="qc-filter-shelf"
+                  titleText="Shelf"
+                  label={ALL_SHELVES}
+                  items={shelfDropdownItems}
+                  selectedItem={filters.shelf || ALL_SHELVES}
+                  itemToString={(item) => (item ? String(item) : "")}
+                  onChange={({ selectedItem }) => {
+                    const value = selectedItem === ALL_SHELVES ? "" : selectedItem;
+                    setFilters((previous) => ({
+                      ...previous,
+                      shelf: value,
+                      rack: "",
+                    }));
+                  }}
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <Dropdown
+                  id="qc-filter-rack"
+                  titleText="Rack"
+                  label={ALL_RACKS}
+                  items={rackDropdownItems}
+                  selectedItem={filters.rack || ALL_RACKS}
+                  itemToString={(item) => (item ? String(item) : "")}
+                  onChange={({ selectedItem }) => {
+                    const value = selectedItem === ALL_RACKS ? "" : selectedItem;
+                    setFilters((previous) => ({
+                      ...previous,
+                      rack: value,
+                    }));
+                  }}
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <TextInput
+                  id="qc-filter-box"
+                  labelText="Box (optional text filter)"
+                  placeholder="e.g. BX078"
+                  value={filters.box}
+                  onChange={(event) =>
+                    setFilters((previous) => ({
+                      ...previous,
+                      box: event.target.value,
+                    }))
+                  }
+                />
+              </Column>
+            </Grid>
+
+            <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem" }}>
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() =>
+                  setFilters({ freezer: "", shelf: "", rack: "", box: "" })
+                }
+              >
+                Clear location filters
+              </Button>
+              <Button kind="ghost" size="sm" renderIcon={Renew} onClick={loadStoredSamples}>
+                Refresh samples
+              </Button>
+              <Button kind="ghost" size="sm" renderIcon={Renew} onClick={loadLocationOverview}>
+                Refresh overview
+              </Button>
+            </div>
+          </Tile>
+        </Column>
+      </Grid>
+
+      <Grid fullWidth style={{ marginTop: "1rem" }}>
+        <Column lg={16} md={8} sm={4}>
+          <Tile>
+            <h5 style={{ marginTop: 0, marginBottom: "0.75rem" }}>
+              QC Round Planning
+            </h5>
+            <p style={{ marginTop: 0, marginBottom: "1rem", color: "#525252" }}>
+              Choose how many boxes and positions to sample for this periodic QC
+              round. The system will generate a randomized list from the selected
+              location scope.
+            </p>
+
+            <Grid condensed fullWidth>
+              <Column lg={4} md={4} sm={4}>
+                <TextInput
+                  id="qc-round-boxes"
+                  type="number"
+                  min="1"
+                  max="200"
+                  labelText="Boxes per round"
+                  value={roundSettings.boxesPerRound}
+                  onChange={(event) =>
+                    setRoundSettings((previous) => ({
+                      ...previous,
+                      boxesPerRound: event.target.value,
+                    }))
+                  }
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <TextInput
+                  id="qc-round-samples-per-box"
+                  type="number"
+                  min="1"
+                  max="50"
+                  labelText="Samples per box"
+                  value={roundSettings.samplesPerBox}
+                  onChange={(event) =>
+                    setRoundSettings((previous) => ({
+                      ...previous,
+                      samplesPerBox: event.target.value,
+                    }))
+                  }
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4}>
+                <TextInput
+                  id="qc-round-seed"
+                  type="number"
+                  labelText="Random seed (optional)"
+                  placeholder="Leave empty for true random"
+                  value={roundSettings.seed}
+                  onChange={(event) =>
+                    setRoundSettings((previous) => ({
+                      ...previous,
+                      seed: event.target.value,
+                    }))
+                  }
+                />
+              </Column>
+              <Column lg={4} md={4} sm={4} style={{ display: "flex", alignItems: "end" }}>
+                <Button size="sm" onClick={handleGenerateQCRound}>
+                  Generate random QC round
+                </Button>
+              </Column>
+            </Grid>
+
+            {qcRoundInfo && (
+              <div style={{ marginTop: "1rem" }}>
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  title={intl.formatMessage(
+                    {
+                      id: "biorepository.qc.round.generated",
+                      defaultMessage:
+                        "Round {batch}: {boxes} box(es), {samples} sample(s) selected.",
+                    },
+                    {
+                      batch: qcRoundInfo.qcBatchId,
+                      boxes: qcRoundInfo.boxesSelected || 0,
+                      samples: qcRoundInfo.samplesSelected || 0,
+                    },
+                  )}
+                />
+
+                <div style={{ marginTop: "0.75rem" }}>
+                  <ButtonSet>
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      onClick={() => {
+                        const selectedIds = (qcRoundInfo.samples || [])
+                          .map((sample) => String(sample.bioSampleId))
+                          .filter(Boolean);
+                        const preview = displayedSamples
+                          .filter((sample) => selectedIds.includes(String(sample.id)))
+                          .slice(0, 6);
+                        openInspectionModal("bulk", selectedIds, preview);
+                      }}
+                    >
+                      Bulk inspect generated round
+                    </Button>
+                    <Button kind="tertiary" size="sm" onClick={handleDownloadRoundCSV}>
+                      Download round list (CSV)
+                    </Button>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setQcRoundInfo(null);
+                        setShowSelectedOnly(false);
+                      }}
+                    >
+                      Clear round
+                    </Button>
+                  </ButtonSet>
+                </div>
+
+                <div style={{ marginTop: "0.75rem" }}>
+                  <Toggle
+                    id="show-selected-round-only"
+                    labelText="Show only generated round samples in main table"
+                    toggled={showSelectedOnly}
+                    onToggle={(nextValue) => setShowSelectedOnly(Boolean(nextValue))}
+                  />
+                </div>
+              </div>
+            )}
+          </Tile>
+        </Column>
+      </Grid>
+
+      {qcRoundInfo && roundRows.length > 0 && (
+        <Grid fullWidth style={{ marginTop: "1rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <DataTable rows={roundRows} headers={roundHeaders}>
+              {({
+                rows,
+                headers,
+                getTableProps,
+                getHeaderProps,
+                getRowProps,
+              }) => (
+                <TableContainer
+                  title="Generated QC Checklist"
+                  description="Technician path guidance: Freezer > Shelf > Rack > Box > Position"
+                >
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader key={header.key} {...getHeaderProps({ header })}>
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          {row.cells.map((cell) => (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </DataTable>
+          </Column>
+        </Grid>
+      )}
+
+      <Grid fullWidth style={{ marginTop: "1rem" }}>
+        <Column lg={16} md={8} sm={4}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "0.75rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <Tile>
+              <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                In View
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+                {displayedSamples.length}
+              </div>
             </Tile>
-            <Tile className="progress-tile verified">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="biorepository.qc.verified"
-                  defaultMessage="Verified"
-                />
-              </span>
-              <span className="progress-value">{verifiedCount}</span>
+            <Tile>
+              <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                Verified
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#198038" }}>
+                {verifiedCount}
+              </div>
             </Tile>
-            <Tile className="progress-tile error">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="biorepository.qc.discrepancies"
-                  defaultMessage="Discrepancies"
-                />
-              </span>
-              <span className="progress-value">{discrepanciesCount}</span>
+            <Tile>
+              <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                Discrepancies
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#da1e28" }}>
+                {discrepancyCount}
+              </div>
             </Tile>
-            <Tile className="progress-tile pending">
-              <span className="progress-label">
-                <FormattedMessage
-                  id="biorepository.qc.pending"
-                  defaultMessage="Pending"
-                />
-              </span>
-              <span className="progress-value">{pendingCount}</span>
+            <Tile>
+              <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+                Pending
+              </div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>{pendingCount}</div>
             </Tile>
           </div>
         </Column>
       </Grid>
 
-      {/* Messages */}
-      {error && (
-        <InlineNotification
-          kind="error"
-          title={error}
-          onClose={() => setError(null)}
-          lowContrast
-        />
-      )}
-      {successMessage && (
-        <InlineNotification
-          kind="success"
-          title={successMessage}
-          onClose={() => setSuccessMessage(null)}
-          lowContrast
-        />
-      )}
-
-      {/* Samples Table */}
-      <div className="sample-table-section" style={{ marginTop: "1rem" }}>
+      <div className="sample-table-section" style={{ marginTop: "0.5rem" }}>
         {loading ? (
           <div style={{ padding: "2rem", textAlign: "center" }}>
             <Loading withOverlay={false} />
           </div>
-        ) : samples.length === 0 ? (
+        ) : tableRows.length === 0 ? (
           <InlineNotification
             kind="info"
-            title={intl.formatMessage({
-              id: "biorepository.qc.noSamples",
-              defaultMessage: "No Stored Samples",
-            })}
-            subtitle={intl.formatMessage({
-              id: "biorepository.qc.noSamples.message",
-              defaultMessage:
-                "No samples with STORED status available for QC inspection.",
-            })}
             lowContrast
             hideCloseButton
+            title="No samples found for current view"
+            subtitle="Adjust location filters or generate a new QC round."
           />
         ) : (
-          <DataTable
-            rows={samples.map((sample) => ({
-              id: sample.id.toString(),
-              accessionNumber: sample.accessionNumber,
-              sampleType: sample.sampleType,
-              locationPath: sample.locationPath,
-              biosafetyLevel: sample.biosafetyLevel,
-              lastQCInspection: sample.lastQCInspection,
-              _raw: sample,
-            }))}
-            headers={headers}
-          >
+          <DataTable rows={tableRows} headers={tableHeaders}>
             {({
               rows,
               headers,
@@ -553,44 +1428,33 @@ function BiorepositoryQCInspectionPage({
               getBatchActionProps,
               selectedRows,
             }) => {
-              // Get selected IDs from Carbon's DataTable state (read-only, no setState in render)
-              const currentSelectedIds = selectedRows.map((r) => r.id);
+              const selectedIds = selectedRows.map((row) => row.id);
 
               return (
-                <TableContainer>
+                <TableContainer title="QC Execution Table">
                   <TableToolbar>
                     <TableBatchActions {...getBatchActionProps()}>
                       <TableBatchAction
                         renderIcon={Edit}
-                        iconDescription={intl.formatMessage({
-                          id: "biorepository.qc.bulkApply",
-                          defaultMessage: "Bulk Apply QC",
-                        })}
+                        iconDescription="Bulk inspect selected"
                         onClick={() => {
-                          // Capture selection when modal opens
-                          setSelectedForBulkApply(currentSelectedIds);
-                          resetBulkApplyValues();
-                          setBulkApplyModalOpen(true);
+                          const preview = displayedSamples
+                            .filter((sample) => selectedIds.includes(String(sample.id)))
+                            .slice(0, 6);
+                          openInspectionModal("bulk", selectedIds, preview);
                         }}
                       >
-                        <FormattedMessage
-                          id="biorepository.qc.bulkApply"
-                          defaultMessage="Bulk Apply QC"
-                        />
+                        Bulk inspect selected
                       </TableBatchAction>
                     </TableBatchActions>
                     <TableToolbarContent>
                       <Button
                         kind="ghost"
-                        size="sm"
-                        renderIcon={Renew}
-                        iconDescription={intl.formatMessage({
-                          id: "label.refresh",
-                          defaultMessage: "Refresh",
-                        })}
                         hasIconOnly
+                        size="sm"
+                        iconDescription="Refresh"
+                        renderIcon={Renew}
                         onClick={loadStoredSamples}
-                        disabled={loading}
                       />
                     </TableToolbarContent>
                   </TableToolbar>
@@ -599,10 +1463,7 @@ function BiorepositoryQCInspectionPage({
                       <TableRow>
                         <TableSelectAll {...getSelectionProps()} />
                         {headers.map((header) => (
-                          <TableHeader
-                            {...getHeaderProps({ header })}
-                            key={header.key}
-                          >
+                          <TableHeader key={header.key} {...getHeaderProps({ header })}>
                             {header.header}
                           </TableHeader>
                         ))}
@@ -610,66 +1471,72 @@ function BiorepositoryQCInspectionPage({
                     </TableHead>
                     <TableBody>
                       {rows.map((row) => {
-                        const sample = samples.find(
-                          (s) => s.id.toString() === row.id,
-                        );
+                        const raw = row.cells.find((cell) => cell.info.header === "actions")
+                          ? displayedSamples.find(
+                              (sample) => String(sample.id) === String(row.id),
+                            )
+                          : null;
+
                         return (
-                          <TableRow {...getRowProps({ row })} key={row.id}>
+                          <TableRow key={row.id} {...getRowProps({ row })}>
                             <TableSelectRow {...getSelectionProps({ row })} />
                             {row.cells.map((cell) => {
                               if (cell.info.header === "biosafetyLevel") {
                                 let bslColor = "gray";
-                                if (cell.value === "BSL_1") bslColor = "green";
-                                else if (cell.value === "BSL_2")
+                                if (cell.value === "BSL_1") {
+                                  bslColor = "green";
+                                } else if (cell.value === "BSL_2") {
                                   bslColor = "teal";
-                                else if (cell.value === "BSL_3")
+                                } else if (cell.value === "BSL_3") {
                                   bslColor = "purple";
-                                else if (cell.value === "BSL_4")
+                                } else if (cell.value === "BSL_4") {
                                   bslColor = "red";
+                                }
                                 return (
                                   <TableCell key={cell.id}>
                                     <Tag type={bslColor}>{cell.value}</Tag>
                                   </TableCell>
                                 );
                               }
+
                               if (cell.info.header === "lastQCInspection") {
-                                if (!sample.lastQCInspection) {
+                                const inspection = raw?.lastQCInspection;
+                                if (!inspection) {
                                   return (
                                     <TableCell key={cell.id}>
-                                      <Tag type="gray">Never Inspected</Tag>
+                                      <Tag type="gray">Never inspected</Tag>
                                     </TableCell>
                                   );
                                 }
-                                const qc = sample.lastQCInspection;
                                 return (
                                   <TableCell key={cell.id}>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "0.5rem",
-                                        alignItems: "center",
-                                      }}
-                                    >
-                                      {getQCTag(qc.qcResult)}
-                                      <span
-                                        style={{
-                                          fontSize: "0.75rem",
-                                          color: "#525252",
-                                        }}
-                                      >
-                                        {new Date(
-                                          qc.inspectionDate,
-                                        ).toLocaleDateString()}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                      {getQCTag(inspection.qcResult)}
+                                      <span style={{ fontSize: "0.75rem", color: "#525252" }}>
+                                        {new Date(inspection.inspectionDate).toLocaleDateString()}
                                       </span>
                                     </div>
                                   </TableCell>
                                 );
                               }
-                              return (
-                                <TableCell key={cell.id}>
-                                  {cell.value}
-                                </TableCell>
-                              );
+
+                              if (cell.info.header === "actions") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        openInspectionModal("single", [row.id], [raw])
+                                      }
+                                    >
+                                      Inspect
+                                    </Button>
+                                  </TableCell>
+                                );
+                              }
+
+                              return <TableCell key={cell.id}>{cell.value}</TableCell>;
                             })}
                           </TableRow>
                         );
@@ -683,277 +1550,187 @@ function BiorepositoryQCInspectionPage({
         )}
       </div>
 
-      {/* Bulk Apply QC Modal */}
       <Modal
-        open={bulkApplyModalOpen}
-        onRequestClose={() => setBulkApplyModalOpen(false)}
-        modalHeading={intl.formatMessage({
-          id: "biorepository.qc.bulkApply.title",
-          defaultMessage: "Bulk QC Inspection",
-        })}
-        primaryButtonText={
-          isBulkApplying
-            ? intl.formatMessage({
-                id: "label.applying",
-                defaultMessage: "Applying...",
-              })
-            : bulkApplyValues.qcResult === "VERIFIED"
-              ? intl.formatMessage({
-                  id: "biorepository.qc.action.verify",
-                  defaultMessage: "Record Verification",
-                })
-              : bulkApplyValues.qcResult === "DISCREPANCY_FOUND"
-                ? intl.formatMessage({
-                    id: "biorepository.qc.action.recordDiscrepancy",
-                    defaultMessage: "Record Discrepancy",
-                  })
-                : intl.formatMessage({
-                    id: "label.apply",
-                    defaultMessage: "Apply",
-                  })
+        open={inspectionModalOpen}
+        onRequestClose={closeInspectionModal}
+        modalHeading={
+          inspectionContext.mode === "single"
+            ? "Individual QC Inspection"
+            : "Bulk QC Inspection"
         }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleBulkApply}
-        onSecondarySubmit={() => setBulkApplyModalOpen(false)}
+        primaryButtonText={
+          isSubmittingInspection
+            ? "Saving..."
+            : inspectionValues.qcResult === "DISCREPANCY_FOUND"
+              ? "Record Failed QC"
+              : "Record QC"
+        }
+        secondaryButtonText="Cancel"
+        onRequestSubmit={handleSubmitInspection}
+        onSecondarySubmit={closeInspectionModal}
+        primaryButtonDisabled={isSubmittingInspection || !inspectionValues.qcResult}
+        danger={inspectionValues.qcResult === "DISCREPANCY_FOUND"}
         size="md"
-        primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
-        danger={bulkApplyValues.qcResult === "DISCREPANCY_FOUND"}
       >
-        <div className="qc-bulk-apply-modal">
-          <p className="modal-description">
-            <FormattedMessage
-              id="biorepository.qc.bulkApply.description"
-              defaultMessage="Apply QC inspection to {count} selected sample(s)."
-              values={{ count: selectedForBulkApply.length }}
+        <p style={{ marginTop: 0 }}>
+          {inspectionContext.mode === "single"
+            ? "Record QC for one selected sample."
+            : `Record QC for ${inspectionContext.sampleIds.length} selected sample(s).`}
+        </p>
+
+        {inspectionContext.samplePreview.length > 0 && (
+          <Tile style={{ marginBottom: "1rem" }}>
+            <div style={{ fontSize: "0.75rem", color: "#6f6f6f" }}>
+              Selected preview
+            </div>
+            {inspectionContext.samplePreview.slice(0, 4).map((sample) => (
+              <div key={`preview-${sample.id}`} style={{ marginTop: "0.35rem" }}>
+                {sample.accessionNumber} - {sample.freezer} / {sample.shelf} / {sample.rack} / {sample.box} / {sample.positionCoordinate}
+              </div>
+            ))}
+            {inspectionContext.samplePreview.length > 4 && (
+              <div style={{ marginTop: "0.35rem", color: "#6f6f6f" }}>
+                +{inspectionContext.samplePreview.length - 4} more sample(s)
+              </div>
+            )}
+          </Tile>
+        )}
+
+        <Grid fullWidth>
+          <Column lg={8} md={4} sm={4}>
+            <TextInput
+              id="qc-inspector-name"
+              labelText="Inspector name (required)"
+              value={inspectionValues.inspectorName}
+              onChange={(event) =>
+                setInspectionValues((previous) => ({
+                  ...previous,
+                  inspectorName: event.target.value,
+                }))
+              }
             />
-          </p>
-
-          {/* Inspector Information */}
-          <div className="qc-section">
-            <h5 className="qc-section-header">
-              <FormattedMessage
-                id="biorepository.qc.section.inspector"
-                defaultMessage="Inspector Information"
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <div className="cds--form-item">
+              <label className="cds--label">Inspection date and time</label>
+              <input
+                type="datetime-local"
+                className="cds--text-input"
+                value={inspectionValues.inspectionDate}
+                onChange={(event) =>
+                  setInspectionValues((previous) => ({
+                    ...previous,
+                    inspectionDate: event.target.value,
+                  }))
+                }
               />
-            </h5>
-            <Grid fullWidth>
-              <Column lg={8} md={4} sm={4}>
-                <TextInput
-                  id="inspectorName"
-                  labelText={intl.formatMessage({
-                    id: "biorepository.qc.inspectorName",
-                    defaultMessage: "Inspector Name (Required)",
-                  })}
-                  value={bulkApplyValues.inspectorName}
-                  onChange={(e) =>
-                    setBulkApplyValues((prev) => ({
-                      ...prev,
-                      inspectorName: e.target.value,
-                    }))
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "biorepository.qc.inspectorName.placeholder",
-                    defaultMessage: "Enter inspector name",
-                  })}
-                />
-              </Column>
-              <Column lg={8} md={4} sm={4}>
-                <div className="cds--form-item">
-                  <label className="cds--label">
-                    <FormattedMessage
-                      id="biorepository.qc.inspectionDate"
-                      defaultMessage="Inspection Date & Time"
-                    />
-                  </label>
-                  <input
-                    type="datetime-local"
-                    className="cds--text-input"
-                    value={bulkApplyValues.inspectionDate}
-                    onChange={(e) =>
-                      setBulkApplyValues((prev) => ({
-                        ...prev,
-                        inspectionDate: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </Column>
-            </Grid>
-          </div>
+            </div>
+          </Column>
+        </Grid>
 
-          {/* QC Checklist Section */}
-          <div className="qc-section">
-            <h5 className="qc-section-header">
-              <FormattedMessage
-                id="biorepository.qc.section.checklist"
-                defaultMessage="QC Checklist"
-              />
-              <span className="qc-checklist-count">
-                ({checkedCount}/{QC_CHECKLIST.length})
-              </span>
-            </h5>
-            <div className="qc-checklist-actions">
-              <Button kind="ghost" size="sm" onClick={handleCheckAll}>
-                <FormattedMessage
-                  id="biorepository.qc.checkAll"
-                  defaultMessage="Check All (Verify)"
-                />
+        <div style={{ marginTop: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <strong>
+              QC Checklist ({checkedCount}/{QC_CHECKLIST.length})
+            </strong>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Button kind="ghost" size="sm" onClick={() => handleSetAllChecklist(true)}>
+                Check all
               </Button>
-              <Button kind="ghost" size="sm" onClick={handleClearAll}>
-                <FormattedMessage
-                  id="biorepository.qc.clearAll"
-                  defaultMessage="Clear All"
-                />
+              <Button kind="ghost" size="sm" onClick={() => handleSetAllChecklist(false)}>
+                Clear all
               </Button>
             </div>
-            <div className="qc-checklist-items">
-              {QC_CHECKLIST.map((criteria) => (
-                <Checkbox
-                  key={criteria.id}
-                  id={`qc-${criteria.id}`}
-                  labelText={intl.formatMessage({
-                    id: criteria.labelId,
-                    defaultMessage: criteria.defaultLabel,
-                  })}
-                  checked={bulkApplyValues.qcChecklist[criteria.id]}
-                  onChange={(_, { checked }) =>
-                    handleChecklistChange(criteria.id, checked)
-                  }
-                />
-              ))}
-            </div>
           </div>
 
-          {/* QC Result Indicator */}
-          <div className="qc-section qc-decision-section">
-            <h5 className="qc-section-header">
-              <FormattedMessage
-                id="biorepository.qc.section.result"
-                defaultMessage="QC Result"
-              />
-            </h5>
-            <div
-              className={`qc-result-indicator ${bulkApplyValues.qcResult === "VERIFIED" ? "pass" : bulkApplyValues.qcResult === "DISCREPANCY_FOUND" ? "fail" : ""}`}
-            >
-              {bulkApplyValues.qcResult === "VERIFIED" && (
-                <Tag type="green" size="md">
-                  <Checkmark size={16} style={{ marginRight: "0.5rem" }} />
-                  <FormattedMessage
-                    id="biorepository.qc.result.verified"
-                    defaultMessage="QC VERIFIED - All checks passed"
-                  />
-                </Tag>
-              )}
-              {bulkApplyValues.qcResult === "DISCREPANCY_FOUND" && (
-                <Tag type="red" size="md">
-                  <WarningAlt size={16} style={{ marginRight: "0.5rem" }} />
-                  <FormattedMessage
-                    id="biorepository.qc.result.discrepancy"
-                    defaultMessage="DISCREPANCY FOUND - Corrective action required"
-                  />
-                </Tag>
-              )}
-              {!bulkApplyValues.qcResult && (
-                <Tag type="gray" size="md">
-                  <FormattedMessage
-                    id="biorepository.qc.result.pending"
-                    defaultMessage="Complete checklist to determine result"
-                  />
-                </Tag>
-              )}
-            </div>
-          </div>
+          {QC_CHECKLIST.map((item) => (
+            <Checkbox
+              key={item.id}
+              id={`qc-check-${item.id}`}
+              labelText={intl.formatMessage({
+                id: item.labelId,
+                defaultMessage: item.defaultLabel,
+              })}
+              checked={inspectionValues.qcChecklist[item.id]}
+              onChange={(_, { checked }) => handleChecklistChange(item.id, checked)}
+            />
+          ))}
+        </div>
 
-          {/* Discrepancy Details - Only show if QC result is DISCREPANCY_FOUND */}
-          {bulkApplyValues.qcResult === "DISCREPANCY_FOUND" && (
-            <div className="qc-section">
-              <h5 className="qc-section-header">
-                <WarningAlt size={16} style={{ marginRight: "0.5rem" }} />
-                <FormattedMessage
-                  id="biorepository.qc.section.discrepancy"
-                  defaultMessage="Discrepancy Details"
-                />
-              </h5>
-              <Grid fullWidth>
-                <Column lg={16} md={8} sm={4}>
-                  <Dropdown
-                    id="discrepancyType"
-                    titleText={intl.formatMessage({
-                      id: "biorepository.qc.discrepancyType",
-                      defaultMessage: "Discrepancy Type (Required)",
-                    })}
-                    label={intl.formatMessage({
-                      id: "biorepository.qc.discrepancyType.placeholder",
-                      defaultMessage: "Select discrepancy type",
-                    })}
-                    items={DISCREPANCY_TYPES}
-                    itemToString={(item) => (item ? item.label : "")}
-                    selectedItem={DISCREPANCY_TYPES.find(
-                      (d) => d.id === bulkApplyValues.discrepancyType,
-                    )}
-                    onChange={({ selectedItem }) =>
-                      setBulkApplyValues((prev) => ({
-                        ...prev,
-                        discrepancyType: selectedItem?.id || "",
-                      }))
-                    }
-                  />
-                </Column>
-                <Column lg={16} md={8} sm={4}>
-                  <TextArea
-                    id="correctiveAction"
-                    labelText={intl.formatMessage({
-                      id: "biorepository.qc.correctiveAction",
-                      defaultMessage: "Corrective Action Taken (Required)",
-                    })}
-                    value={bulkApplyValues.correctiveAction}
-                    onChange={(e) =>
-                      setBulkApplyValues((prev) => ({
-                        ...prev,
-                        correctiveAction: e.target.value,
-                      }))
-                    }
-                    placeholder={intl.formatMessage({
-                      id: "biorepository.qc.correctiveAction.placeholder",
-                      defaultMessage:
-                        "Describe the corrective action taken to resolve the discrepancy...",
-                    })}
-                    rows={3}
-                  />
-                </Column>
-              </Grid>
-            </div>
+        <div style={{ marginTop: "1rem" }}>
+          {inspectionValues.qcResult === "VERIFIED" && (
+            <Tag type="green">
+              <Checkmark size={16} style={{ marginRight: "0.25rem" }} />
+              QC VERIFIED
+            </Tag>
           )}
+          {inspectionValues.qcResult === "DISCREPANCY_FOUND" && (
+            <Tag type="red">
+              <WarningAlt size={16} style={{ marginRight: "0.25rem" }} />
+              DISCREPANCY FOUND
+            </Tag>
+          )}
+          {!inspectionValues.qcResult && <Tag type="gray">Complete checklist</Tag>}
+        </div>
 
-          {/* Remarks (Optional) */}
-          <div className="qc-section">
-            <Grid fullWidth>
-              <Column lg={16} md={8} sm={4}>
-                <TextArea
-                  id="remarks"
-                  labelText={intl.formatMessage({
-                    id: "biorepository.qc.remarks",
-                    defaultMessage: "Remarks (Optional)",
-                  })}
-                  value={bulkApplyValues.remarks}
-                  onChange={(e) =>
-                    setBulkApplyValues((prev) => ({
-                      ...prev,
-                      remarks: e.target.value,
-                    }))
-                  }
-                  placeholder={intl.formatMessage({
-                    id: "biorepository.qc.remarks.placeholder",
-                    defaultMessage: "Additional observations or notes...",
-                  })}
-                  rows={2}
-                />
-              </Column>
-            </Grid>
+        {inspectionValues.qcResult === "DISCREPANCY_FOUND" && (
+          <div style={{ marginTop: "1rem" }}>
+            <Dropdown
+              id="qc-discrepancy-type"
+              titleText="Discrepancy type (required)"
+              label="Choose discrepancy"
+              items={DISCREPANCY_TYPES}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={DISCREPANCY_TYPES.find(
+                (item) => item.id === inspectionValues.discrepancyType,
+              )}
+              onChange={({ selectedItem }) =>
+                setInspectionValues((previous) => ({
+                  ...previous,
+                  discrepancyType: selectedItem?.id || "",
+                }))
+              }
+            />
+
+            <TextArea
+              id="qc-corrective-action"
+              labelText="Corrective action (required)"
+              rows={3}
+              value={inspectionValues.correctiveAction}
+              onChange={(event) =>
+                setInspectionValues((previous) => ({
+                  ...previous,
+                  correctiveAction: event.target.value,
+                }))
+              }
+            />
           </div>
+        )}
+
+        <div style={{ marginTop: "1rem" }}>
+          <TextArea
+            id="qc-remarks"
+            labelText={
+              inspectionValues.qcResult === "DISCREPANCY_FOUND"
+                ? "Comment/remarks (required for failed QC)"
+                : "Comment/remarks (optional)"
+            }
+            rows={2}
+            value={inspectionValues.remarks}
+            onChange={(event) =>
+              setInspectionValues((previous) => ({
+                ...previous,
+                remarks: event.target.value,
+              }))
+            }
+          />
         </div>
       </Modal>
     </div>

@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.notebook.valueholder.NoteBook.NoteBookStatus;
@@ -324,6 +325,10 @@ public class ArchivingServiceImpl implements ArchivingService {
             throw new IllegalArgumentException("Notebook not found: " + notebookId);
         }
 
+        if (isOperationalBiorepositoryNotebook(notebook)) {
+            throw new IllegalStateException("Biorepository notebook remains active and cannot be finalized");
+        }
+
         if (notebook.getStatus() == NoteBookStatus.FINALIZED) {
             throw new IllegalStateException("Notebook is already finalized");
         }
@@ -351,6 +356,16 @@ public class ArchivingServiceImpl implements ArchivingService {
     @Override
     @Transactional(readOnly = true)
     public boolean canFinalize(Integer notebookId) {
+        NoteBook notebook;
+        try {
+            notebook = noteBookService.get(notebookId);
+        } catch (org.hibernate.ObjectNotFoundException e) {
+            return false;
+        }
+        if (notebook == null || isOperationalBiorepositoryNotebook(notebook)) {
+            return false;
+        }
+
         TraceabilityResult traceability = verifyTraceability(notebookId);
         return !ArchivingService.hasCriticalFailures(traceability);
     }
@@ -599,5 +614,40 @@ public class ArchivingServiceImpl implements ArchivingService {
         }
 
         return records;
+    }
+
+    private boolean isOperationalBiorepositoryNotebook(NoteBook notebook) {
+        if (notebook == null) {
+            return false;
+        }
+
+        if (isBiorepositoryWorkflowType(notebook.getWorkflowType())) {
+            return true;
+        }
+
+        if (notebook.isChildInstance() && notebook.getParentNotebook() != null
+                && isBiorepositoryWorkflowType(notebook.getParentNotebook().getWorkflowType())) {
+            return true;
+        }
+
+        if (notebook.getId() != null) {
+            NoteBook parentTemplate = noteBookService.getParentTemplate(notebook.getId());
+            if (parentTemplate != null) {
+                if (isBiorepositoryWorkflowType(parentTemplate.getWorkflowType())) {
+                    return true;
+                }
+
+                if (parentTemplate.isChildInstance() && parentTemplate.getParentNotebook() != null
+                        && isBiorepositoryWorkflowType(parentTemplate.getParentNotebook().getWorkflowType())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isBiorepositoryWorkflowType(String workflowType) {
+        return StringUtils.equalsIgnoreCase(StringUtils.trimToNull(workflowType), "biorepository");
     }
 }

@@ -70,6 +70,8 @@ public interface SampleStorageService {
      */
     java.util.Map<String, Object> getSampleItemLocation(String sampleItemId);
 
+    java.util.Map<String, java.util.Map<String, Object>> getSampleItemLocations(java.util.List<String> sampleItemIds);
+
     /**
      * Get paginated sample storage assignments for dashboard display (OGC-150).
      * 

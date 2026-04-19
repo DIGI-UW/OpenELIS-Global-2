@@ -80,6 +80,9 @@ public class StorageDevice extends BaseObject<Integer> {
     @Column(name = "ACTIVE", nullable = false)
     private Boolean active;
 
+    @Column(name = "BIOREPOSITORY_STORAGE", nullable = false)
+    private Boolean biorepositoryStorage;
+
     @ManyToOne(fetch = jakarta.persistence.FetchType.EAGER)
     @JoinColumn(name = "PARENT_ROOM_ID", nullable = false)
     private StorageRoom parentRoom;
@@ -170,6 +173,14 @@ public class StorageDevice extends BaseObject<Integer> {
         this.active = active;
     }
 
+    public Boolean getBiorepositoryStorage() {
+        return biorepositoryStorage;
+    }
+
+    public void setBiorepositoryStorage(Boolean biorepositoryStorage) {
+        this.biorepositoryStorage = biorepositoryStorage;
+    }
+
     public StorageRoom getParentRoom() {
         return parentRoom;
     }
@@ -216,6 +227,9 @@ public class StorageDevice extends BaseObject<Integer> {
     protected void onCreate() {
         if (fhirUuid == null) {
             fhirUuid = UUID.randomUUID();
+        }
+        if (biorepositoryStorage == null) {
+            biorepositoryStorage = Boolean.FALSE;
         }
     }
 

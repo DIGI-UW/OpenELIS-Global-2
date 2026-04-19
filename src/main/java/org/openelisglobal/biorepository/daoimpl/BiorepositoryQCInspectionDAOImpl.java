@@ -1,7 +1,9 @@
 package org.openelisglobal.biorepository.daoimpl;
 
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.Session;
 import org.openelisglobal.biorepository.dao.BiorepositoryQCInspectionDAO;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
@@ -38,6 +40,32 @@ public class BiorepositoryQCInspectionDAOImpl extends BaseDAOImpl<BiorepositoryQ
                 .setParameter("bioSampleId", bioSampleId).setMaxResults(1).getResultList();
         return results.isEmpty() ? null : results.get(0);
     }
+
+        @Override
+        public Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds) {
+                if (bioSampleIds == null || bioSampleIds.isEmpty()) {
+                        return Map.of();
+                }
+
+                Session session = entityManager.unwrap(Session.class);
+                String hql = "SELECT qc FROM BiorepositoryQCInspection qc "
+                                + "JOIN FETCH qc.bioSample bs "
+                                + "WHERE bs.id IN :bioSampleIds "
+                                + "ORDER BY bs.id ASC, qc.inspectionDate DESC, qc.id DESC";
+
+                List<BiorepositoryQCInspection> inspections = session.createQuery(hql, BiorepositoryQCInspection.class)
+                                .setParameter("bioSampleIds", bioSampleIds)
+                                .getResultList();
+
+                Map<Integer, BiorepositoryQCInspection> mostRecentBySampleId = new HashMap<>();
+                for (BiorepositoryQCInspection inspection : inspections) {
+                        Integer sampleId = inspection.getBioSample() != null ? inspection.getBioSample().getId() : null;
+                        if (sampleId != null && !mostRecentBySampleId.containsKey(sampleId)) {
+                                mostRecentBySampleId.put(sampleId, inspection);
+                        }
+                }
+                return mostRecentBySampleId;
+        }
 
     @Override
     public List<BiorepositoryQCInspection> getByQCResult(QCResult qcResult) {

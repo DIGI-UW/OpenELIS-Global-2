@@ -51,6 +51,7 @@ const EditLocationModal = ({
     rows: "",
     columns: "",
     positionSchemaHint: "",
+    biorepositoryStorage: false,
   });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,6 +119,7 @@ const EditLocationModal = ({
       rows: loc.rows || "",
       columns: loc.columns || "",
       positionSchemaHint: loc.positionSchemaHint || "",
+      biorepositoryStorage: loc.biorepositoryStorage === true,
       // Support multiple field names from API for parent data
       parentRoomName:
         loc.parentRoomName || loc.parentRoom?.name || loc.roomName || "",
@@ -162,6 +164,7 @@ const EditLocationModal = ({
               rows: fullLocation.rows || "",
               columns: fullLocation.columns || "",
               positionSchemaHint: fullLocation.positionSchemaHint || "",
+              biorepositoryStorage: fullLocation.biorepositoryStorage === true,
               // Support multiple field names from API for parent data
               parentRoomName:
                 fullLocation.parentRoomName ||
@@ -264,6 +267,7 @@ const EditLocationModal = ({
         rows: "",
         columns: "",
         positionSchemaHint: "",
+        biorepositoryStorage: false,
       };
       formDataRef.current = empty;
       setFormData(empty);
@@ -490,6 +494,7 @@ const EditLocationModal = ({
           ? parseInt(latest.capacityLimit, 10)
           : null;
         payload.active = latest.active;
+        payload.biorepositoryStorage = latest.biorepositoryStorage === true;
         // Always include parent room ID if selected (backend will handle if unchanged)
         if (selectedParentRoomId) {
           payload.parentRoomId = selectedParentRoomId;
@@ -902,6 +907,18 @@ const EditLocationModal = ({
                     handleFieldChange("capacityLimit", e.target.value)
                   }
                   type="number"
+                />
+                <Toggle
+                  id="device-biorepository-storage"
+                  data-testid="edit-location-device-biorepository-storage"
+                  labelText={intl.formatMessage({
+                    id: "storage.device.biorepositoryStorage",
+                    defaultMessage: "Biorepository storage",
+                  })}
+                  toggled={formData.biorepositoryStorage === true}
+                  onToggle={(checked) =>
+                    handleFieldChange("biorepositoryStorage", checked)
+                  }
                 />
                 <Toggle
                   id="device-active"

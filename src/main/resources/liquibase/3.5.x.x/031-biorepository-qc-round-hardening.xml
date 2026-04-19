@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="add-qc-inspection-batch-and-coordinate-snapshot" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="biorepository_qc_inspection" schemaName="clinlims" columnName="qc_batch_id"/>
+            </not>
+        </preConditions>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="qc_batch_id" type="VARCHAR(80)"/>
+            <column name="expected_coordinate_snapshot" type="VARCHAR(512)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="replace-qc-inspection-discrepancy-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            DROP CONSTRAINT IF EXISTS check_discrepancy_type;
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            ADD CONSTRAINT check_discrepancy_type
+            CHECK (
+                discrepancy_type IS NULL OR discrepancy_type IN (
+                    'MISSING_SAMPLE',
+                    'WRONG_SAMPLE_IN_POSITION',
+                    'MISPLACED_ITEM',
+                    'EMPTY_POSITION_REGISTERED_OCCUPIED',
+                    'LABELING_ERROR',
+                    'BOX_RACK_MISPLACEMENT',
+                    'DAMAGED_LABEL',
+                    'CONTAINER_DAMAGE',
+                    'VOLUME_DISCREPANCY',
+                    'OTHER'
+                )
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
