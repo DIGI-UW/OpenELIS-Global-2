@@ -191,4 +191,42 @@ public class StorageSearchServiceImpl implements StorageSearchService {
 
         return filtered;
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> searchBoxes(String query) {
+        // Get all boxes as fully populated Maps (with all data resolved within
+        // transaction)
+        List<Map<String, Object>> allBoxes = storageLocationService.getBoxesForAPI(null);
+
+        // Empty or null query returns all boxes
+        if (query == null || query.trim().isEmpty()) {
+            return allBoxes;
+        }
+
+        String normalizedQuery = query.trim().toLowerCase();
+        List<Map<String, Object>> filtered = new ArrayList<>();
+
+        for (Map<String, Object> box : allBoxes) {
+            // Search by box label/code OR parent hierarchy names (OR logic)
+            String label = (String) box.get("label");
+            String code = (String) box.get("code");
+            String roomName = (String) box.get("roomName");
+            String deviceName = (String) box.get("deviceName");
+            String shelfLabel = (String) box.get("shelfLabel");
+            String rackLabel = (String) box.get("rackLabel");
+            boolean matchesLabel = label != null && label.toLowerCase().contains(normalizedQuery);
+            boolean matchesCode = code != null && code.toLowerCase().contains(normalizedQuery);
+            boolean matchesRoom = roomName != null && roomName.toLowerCase().contains(normalizedQuery);
+            boolean matchesDevice = deviceName != null && deviceName.toLowerCase().contains(normalizedQuery);
+            boolean matchesShelf = shelfLabel != null && shelfLabel.toLowerCase().contains(normalizedQuery);
+            boolean matchesRack = rackLabel != null && rackLabel.toLowerCase().contains(normalizedQuery);
+
+            if (matchesLabel || matchesCode || matchesRoom || matchesDevice || matchesShelf || matchesRack) {
+                filtered.add(box);
+            }
+        }
+
+        return filtered;
+    }
 }

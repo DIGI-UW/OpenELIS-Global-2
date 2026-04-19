@@ -135,6 +135,11 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Frontend dropdown loads all status types and filters by ID
             // Default to "active" if no status ID (backward compatibility)
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
+            // Derived status flag for UI rendering consistency (status value may be an
+            // internal ID).
+            boolean isDisposed = sampleItem.getStatusId() != null && statusService.matches(sampleItem.getStatusId(),
+                    org.openelisglobal.common.services.StatusService.SampleStatus.Disposed);
+            map.put("isDisposed", isDisposed);
 
             // Check if this sample item has an assignment
             SampleStorageAssignment assignment = assignmentsBySampleItemId.get(sampleItem.getId());
@@ -398,6 +403,7 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageDevice device = null;
         StorageShelf shelf = null;
         StorageRack rack = null;
+        StorageBox box = null;
 
         switch (assignment.getLocationType()) {
         case "device":
@@ -447,6 +453,67 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         hierarchicalPath += " > " + assignment.getPositionCoordinate();
                     }
                 }
+            }
+            break;
+        case "box":
+            box = (StorageBox) storageLocationService.get(assignment.getLocationId(), StorageBox.class);
+            if (box != null) {
+                rack = box.getParentRack();
+                if (rack != null) {
+                    shelf = rack.getParentShelf();
+                    if (shelf != null) {
+                        device = shelf.getParentDevice();
+                        if (device != null) {
+                            room = device.getParentRoom();
+                        }
+                    }
+                }
+
+                // For box assignments, always include box label and append coordinate when
+                // present.
+                String coord = assignment.getPositionCoordinate();
+                String boxLabel = box.getLabel();
+                String normalizedCoord = coord != null ? coord.trim() : null;
+                if (boxLabel != null && normalizedCoord != null && normalizedCoord.equalsIgnoreCase(boxLabel.trim())) {
+                    normalizedCoord = null;
+                }
+
+                StringBuilder pathBuilder = new StringBuilder();
+                if (room != null && room.getName() != null) {
+                    pathBuilder.append(room.getName());
+                }
+                if (device != null && device.getName() != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(device.getName());
+                }
+                if (shelf != null && shelf.getLabel() != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(shelf.getLabel());
+                }
+                if (rack != null && rack.getLabel() != null) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(rack.getLabel());
+                }
+                if (boxLabel != null && !boxLabel.trim().isEmpty()) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(boxLabel.trim());
+                }
+                if (normalizedCoord != null && !normalizedCoord.isEmpty()) {
+                    if (pathBuilder.length() > 0) {
+                        pathBuilder.append(" > ");
+                    }
+                    pathBuilder.append(normalizedCoord);
+                }
+
+                hierarchicalPath = pathBuilder.length() > 0 ? pathBuilder.toString() : null;
             }
             break;
         }
@@ -1116,7 +1183,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 }
             }
             String coord = positionCoordinate != null && !positionCoordinate.trim().isEmpty() ? positionCoordinate
-                    : box.getLabel();
+                    : null;
+            String boxLabel = box.getLabel();
+            String normalizedCoord = coord != null ? coord.trim() : null;
+            if (boxLabel != null && normalizedCoord != null && normalizedCoord.equalsIgnoreCase(boxLabel.trim())) {
+                normalizedCoord = null;
+            }
             StringBuilder builder = new StringBuilder();
             if (room != null) {
                 builder.append(room.getName());
@@ -1139,11 +1211,17 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 }
                 builder.append(rack.getLabel());
             }
-            if (coord != null) {
+            if (boxLabel != null && !boxLabel.trim().isEmpty()) {
                 if (builder.length() > 0) {
                     builder.append(" > ");
                 }
-                builder.append(coord);
+                builder.append(boxLabel.trim());
+            }
+            if (normalizedCoord != null) {
+                if (builder.length() > 0) {
+                    builder.append(" > ");
+                }
+                builder.append(normalizedCoord);
             }
             return builder.length() > 0 ? builder.toString() : "Unknown Location";
         default:

@@ -67,7 +67,8 @@ public class StorageBoxDAOImpl extends BaseDAOImpl<StorageBox, Integer> implemen
     public int countOccupied(Integer rackId) {
         try {
             String hql = "SELECT COUNT(*) FROM SampleStorageAssignment ssa "
-                    + "WHERE ssa.locationType = 'box' AND ssa.locationId = :rackId";
+                    + "WHERE ssa.locationType = 'box' AND ssa.locationId IN "
+                    + "(SELECT b.id FROM StorageBox b WHERE b.parentRack.id = :rackId)";
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql, Long.class);
             query.setParameter("rackId", rackId);
             Long count = query.uniqueResult();

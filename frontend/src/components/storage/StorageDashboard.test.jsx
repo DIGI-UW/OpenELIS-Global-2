@@ -141,6 +141,66 @@ describe("StorageDashboard Filter UI", () => {
     });
   });
 
+  test("testSamplesStatus_RendersDisposedTagFromIsDisposedFlag", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/samples"));
+
+    setupApiMocks({
+      metrics: mockMetrics,
+      samples: [
+        {
+          id: "130",
+          sampleItemId: "130",
+          sampleItemExternalId: "SI-DIS-001",
+          sampleAccessionNumber: "ACC-001",
+          type: "Serum",
+          status: "24",
+          isDisposed: true,
+          location: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1",
+        },
+      ],
+      locationCounts: { rooms: 1, devices: 1, shelves: 1, racks: 1 },
+    });
+
+    renderWithIntl(<StorageDashboard />);
+
+    const sampleCell = await screen.findByText("SI-DIS-001");
+    const row = sampleCell.closest("tr");
+    expect(row).toBeTruthy();
+    expect(within(row).getByText(/Disposed/i)).toBeTruthy();
+  });
+
+  test("testSamplesStatus_RendersActiveTagWhenNotDisposed", async () => {
+    jest
+      .spyOn(require("react-router-dom"), "useLocation")
+      .mockReturnValue(createMockLocation("/Storage/samples"));
+
+    setupApiMocks({
+      metrics: mockMetrics,
+      samples: [
+        {
+          id: "131",
+          sampleItemId: "131",
+          sampleItemExternalId: "SI-ACT-001",
+          sampleAccessionNumber: "ACC-002",
+          type: "Plasma",
+          status: "1",
+          isDisposed: false,
+          location: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1",
+        },
+      ],
+      locationCounts: { rooms: 1, devices: 1, shelves: 1, racks: 1 },
+    });
+
+    renderWithIntl(<StorageDashboard />);
+
+    const sampleCell = await screen.findByText("SI-ACT-001");
+    const row = sampleCell.closest("tr");
+    expect(row).toBeTruthy();
+    expect(within(row).getByText(/^Active$/i)).toBeTruthy();
+  });
+
   /**
    * T062i3: Test Samples tab shows single location dropdown and status filter
    * Samples tab should have single LocationFilterDropdown (not separate room/device dropdowns)

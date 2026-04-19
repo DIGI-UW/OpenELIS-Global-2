@@ -35,6 +35,7 @@ public class StorageSearchServiceImplTest {
     private List<Map<String, Object>> mockDevicesForAPI;
     private List<Map<String, Object>> mockShelvesForAPI;
     private List<Map<String, Object>> mockRacksForAPI;
+    private List<Map<String, Object>> mockBoxesForAPI;
 
     @Before
     public void setUp() {
@@ -152,6 +153,28 @@ public class StorageSearchServiceImplTest {
         rack2.put("label", "Rack R2");
         rack2.put("active", true);
         mockRacksForAPI.add(rack2);
+
+        // Mock boxes as Maps (API format)
+        mockBoxesForAPI = new ArrayList<>();
+        Map<String, Object> box1 = new HashMap<>();
+        box1.put("id", 40);
+        box1.put("label", "Box Alpha");
+        box1.put("code", "BX-ALPHA");
+        box1.put("roomName", "Main Laboratory");
+        box1.put("deviceName", "Freezer Unit 1");
+        box1.put("shelfLabel", "Shelf-A");
+        box1.put("rackLabel", "Rack R1");
+        mockBoxesForAPI.add(box1);
+
+        Map<String, Object> box2 = new HashMap<>();
+        box2.put("id", 41);
+        box2.put("label", "Plate-96");
+        box2.put("code", "PLATE-96");
+        box2.put("roomName", "Secondary Laboratory");
+        box2.put("deviceName", "Freezer Unit 2");
+        box2.put("shelfLabel", "Shelf-B");
+        box2.put("rackLabel", "Rack R3");
+        mockBoxesForAPI.add(box2);
     }
 
     // ========== Sample Search Service Tests ==========
@@ -323,6 +346,19 @@ public class StorageSearchServiceImplTest {
     }
 
     @Test
+    public void testSearchSamples_FiltersByBoxLabelInLocationPath() throws Exception {
+        List<Map<String, Object>> testSamples = new ArrayList<>(mockSamples);
+        testSamples.get(0).put("location", "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Box Alpha > D4");
+        when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(testSamples);
+
+        List<Map<String, Object>> results = searchService.searchSamples("Box Alpha");
+
+        assertNotNull("Results should not be null", results);
+        assertEquals("Should find sample by box label in hierarchical path", 1, results.size());
+        assertEquals("1001", String.valueOf(results.get(0).get("id")));
+    }
+
+    @Test
     public void testSearchSamples_EmptyQuery_ReturnsAll() throws Exception {
         // Empty query returns all
         when(sampleStorageService.getAllSamplesWithAssignments()).thenReturn(mockSamples);
@@ -425,5 +461,30 @@ public class StorageSearchServiceImplTest {
             assertTrue("Label should contain query (case-insensitive)", 
                     label.toLowerCase().contains("rack r1"));
         }
+    }
+
+    // ========== Box Search Service Tests ==========
+
+    @Test
+    public void testSearchBoxes_FiltersByLabelCodeAndHierarchy() throws Exception {
+        when(storageLocationService.getBoxesForAPI(null)).thenReturn(mockBoxesForAPI);
+
+        // Search by box label
+        List<Map<String, Object>> byLabel = searchService.searchBoxes("Box Alpha");
+        assertNotNull(byLabel);
+        assertEquals(1, byLabel.size());
+        assertEquals("Box Alpha", byLabel.get(0).get("label"));
+
+        // Search by code
+        List<Map<String, Object>> byCode = searchService.searchBoxes("BX-ALPHA");
+        assertNotNull(byCode);
+        assertEquals(1, byCode.size());
+        assertEquals("BX-ALPHA", byCode.get(0).get("code"));
+
+        // Search by hierarchy field (room/device/shelf/rack)
+        List<Map<String, Object>> byHierarchy = searchService.searchBoxes("Freezer Unit 1");
+        assertNotNull(byHierarchy);
+        assertEquals(1, byHierarchy.size());
+        assertEquals("Box Alpha", byHierarchy.get(0).get("label"));
     }
 }

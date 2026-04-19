@@ -684,10 +684,18 @@ const Index = () => {
             }
             // Extract storage location data if present
             const storageLocation = sampleItem.sampleXML?.storageLocation;
-            const storageLocationId = storageLocation?.id || "";
-            const storageLocationType = storageLocation?.type || "";
+            const storageLocationId =
+              storageLocation?.locationId ||
+              storageLocation?.box?.id ||
+              storageLocation?.id ||
+              "";
+            const storageLocationType =
+              storageLocation?.locationType ||
+              (storageLocation?.box?.id ? "box" : storageLocation?.type || "");
             const storagePositionCoordinate =
-              storageLocation?.positionCoordinate || "";
+              storageLocation?.positionCoordinate ||
+              storageLocation?.position?.coordinate ||
+              "";
 
             // Extract GPS coordinates data if present
             const gpsLatitude = sampleItem.sampleXML?.gpsLatitude || "";

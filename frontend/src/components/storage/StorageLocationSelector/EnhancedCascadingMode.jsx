@@ -26,14 +26,14 @@ import "./EnhancedCascadingMode.css";
 
 /**
  * Enhanced cascading mode with autocomplete text boxes that allow inline creation
- * Each level (Room, Device, Shelf, Rack) uses ComboBox with autocomplete suggestions
+ * Each level (Room, Device, Shelf, Rack, Box) uses ComboBox with autocomplete suggestions
  * Users can select existing items or type new names to create them
  * Position is a simple text input (optional)
  *
  * Props:
  * - onLocationChange: function - Callback when location is selected/created
  * - selectedLocation: object - Pre-selected location (optional)
- * - focusField: string - Field to focus on ('device' | 'shelf' | 'rack' | 'position')
+ * - focusField: string - Field to focus on ('device' | 'shelf' | 'rack' | 'box' | 'position')
  */
 const EnhancedCascadingMode = ({
   onLocationChange,
@@ -48,11 +48,13 @@ const EnhancedCascadingMode = ({
   const [devices, setDevices] = useState([]);
   const [shelves, setShelves] = useState([]);
   const [racks, setRacks] = useState([]);
+  const [boxes, setBoxes] = useState([]);
 
   const [roomInput, setRoomInput] = useState("");
   const [deviceInput, setDeviceInput] = useState("");
   const [shelfInput, setShelfInput] = useState("");
   const [rackInput, setRackInput] = useState("");
+  const [boxInput, setBoxInput] = useState("");
   const [positionInput, setPositionInput] = useState("");
 
   // Refs to track current input values synchronously (for button validation)
@@ -60,16 +62,19 @@ const EnhancedCascadingMode = ({
   const deviceInputRef = useRef("");
   const shelfInputRef = useRef("");
   const rackInputRef = useRef("");
+  const boxInputRef = useRef("");
 
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [selectedShelf, setSelectedShelf] = useState(null);
   const [selectedRack, setSelectedRack] = useState(null);
+  const [selectedBox, setSelectedBox] = useState(null);
 
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [isCreatingDevice, setIsCreatingDevice] = useState(false);
   const [isCreatingShelf, setIsCreatingShelf] = useState(false);
   const [isCreatingRack, setIsCreatingRack] = useState(false);
+  const [isCreatingBox, setIsCreatingBox] = useState(false);
 
   // Track pending room creation (must be declared before useEffect that uses it)
   const [pendingRoomCreation, setPendingRoomCreation] = useState(null);
@@ -79,6 +84,7 @@ const EnhancedCascadingMode = ({
   const [showAddDeviceLink, setShowAddDeviceLink] = useState(false);
   const [showAddShelfLink, setShowAddShelfLink] = useState(false);
   const [showAddRackLink, setShowAddRackLink] = useState(false);
+  const [showAddBoxLink, setShowAddBoxLink] = useState(false);
 
   // Confirmation dialogs for Enter key
   const [showConfirmRoom, setShowConfirmRoom] = useState(false);
@@ -89,7 +95,7 @@ const EnhancedCascadingMode = ({
   /**
    * Helper function to build location object with locationId, locationType, and positionCoordinate
    * for the new flexible assignment architecture
-   * Priority: rack > shelf > device (lowest selected level wins)
+   * Priority: box > rack > shelf > device (lowest selected level wins)
    */
   const buildLocationWithFlexibleFields = useCallback((location) => {
     if (!location) return null;
@@ -97,7 +103,10 @@ const EnhancedCascadingMode = ({
     const result = { ...location };
 
     // Extract locationId and locationType based on lowest selected hierarchy level
-    if (location.rack && location.rack.id) {
+    if (location.box && location.box.id) {
+      result.locationId = location.box.id;
+      result.locationType = "box";
+    } else if (location.rack && location.rack.id) {
       result.locationId = location.rack.id;
       result.locationType = "rack";
     } else if (location.shelf && location.shelf.id) {
@@ -166,10 +175,12 @@ const EnhancedCascadingMode = ({
       setSelectedDevice(null);
       setSelectedShelf(null);
       setSelectedRack(null);
+      setSelectedBox(null);
       setRoomInput("");
       setDeviceInput("");
       setShelfInput("");
       setRackInput("");
+      setBoxInput("");
       setPositionInput("");
       return;
     }
@@ -228,6 +239,12 @@ const EnhancedCascadingMode = ({
         setSelectedRack(selectedLocation.rack);
         setRackInput(
           selectedLocation.rack.label || selectedLocation.rack.name || "",
+        );
+      }
+      if (selectedLocation.box && typeof selectedLocation.box === "object") {
+        setSelectedBox(selectedLocation.box);
+        setBoxInput(
+          selectedLocation.box.label || selectedLocation.box.name || "",
         );
       }
       if (
@@ -353,12 +370,14 @@ const EnhancedCascadingMode = ({
               const currentDevice = selectedDeviceRef.current || selectedDevice;
               const currentShelf = selectedShelfRef.current || selectedShelf;
               const currentRack = selectedRackRef.current || selectedRack;
+              const currentBox = selectedBoxRef.current || selectedBox;
               const currentPosition = positionInput;
               const locationObj = {
                 room: room,
                 device: currentDevice || null,
                 shelf: currentShelf || null,
                 rack: currentRack || null,
+                box: currentBox || null,
                 position: currentPosition
                   ? { coordinate: currentPosition }
                   : null,
@@ -390,16 +409,20 @@ const EnhancedCascadingMode = ({
       if (
         !selectedLocation?.device &&
         !selectedLocation?.shelf &&
-        !selectedLocation?.rack
+        !selectedLocation?.rack &&
+        !selectedLocation?.box
       ) {
         setSelectedDevice(null);
         setSelectedShelf(null);
         setSelectedRack(null);
+        setSelectedBox(null);
         setDeviceInput("");
         setShelfInput("");
         setRackInput("");
+        setBoxInput("");
         setShelves([]);
         setRacks([]);
+        setBoxes([]);
       }
     } else if (
       selectedRoom &&
@@ -414,6 +437,9 @@ const EnhancedCascadingMode = ({
       setDevices([]);
       setSelectedDevice(null);
       setDeviceInput("");
+      setSelectedBox(null);
+      setBoxInput("");
+      setBoxes([]);
     }
   }, [selectedRoom, isCreatingRoom, pendingRoomCreation, selectedLocation]);
 
@@ -434,9 +460,12 @@ const EnhancedCascadingMode = ({
       );
       setSelectedShelf(null);
       setSelectedRack(null);
+      setSelectedBox(null);
       setShelfInput("");
       setRackInput("");
+      setBoxInput("");
       setRacks([]);
+      setBoxes([]);
     } else if (selectedDevice && !selectedDevice.id && isCreatingDevice) {
       // Device is being created (typed but not yet saved) - keep shelves empty but enable shelf field
       // Shelf field will be enabled because of the disabled prop logic
@@ -446,6 +475,9 @@ const EnhancedCascadingMode = ({
       setShelves([]);
       setSelectedShelf(null);
       setShelfInput("");
+      setSelectedBox(null);
+      setBoxInput("");
+      setBoxes([]);
     }
   }, [selectedDevice, isCreatingDevice]);
 
@@ -465,8 +497,34 @@ const EnhancedCascadingMode = ({
       );
       setSelectedRack(null);
       setRackInput("");
+      setSelectedBox(null);
+      setBoxInput("");
+      setBoxes([]);
     }
   }, [selectedShelf]);
+
+  // Load boxes when rack is selected or created
+  useEffect(() => {
+    if (selectedRack && selectedRack.id) {
+      getFromOpenElisServer(
+        `/rest/storage/boxes?rackId=${selectedRack.id}`,
+        (response) => {
+          const activeBoxes = (response || []).filter(
+            (b) => b.active !== false,
+          );
+          setBoxes(activeBoxes);
+        },
+      );
+      setSelectedBox(null);
+      setBoxInput("");
+    } else if (selectedRack && !selectedRack.id && isCreatingRack) {
+      setBoxes([]);
+    } else if (!selectedRack) {
+      setBoxes([]);
+      setSelectedBox(null);
+      setBoxInput("");
+    }
+  }, [selectedRack, isCreatingRack]);
 
   // Create room if input doesn't match existing - FULLY SYNCHRONOUS
   const handleRoomChange = useCallback(
@@ -484,6 +542,7 @@ const EnhancedCascadingMode = ({
       const currentDevice = selectedDeviceRef.current || selectedDevice;
       const currentShelf = selectedShelfRef.current || selectedShelf;
       const currentRack = selectedRackRef.current || selectedRack;
+      const currentBox = selectedBoxRef.current || selectedBox;
       const currentPosition = positionInput;
 
       if (selectedItem) {
@@ -503,6 +562,7 @@ const EnhancedCascadingMode = ({
             device: currentDevice || null,
             shelf: currentShelf || null,
             rack: currentRack || null,
+            box: currentBox || null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -529,6 +589,7 @@ const EnhancedCascadingMode = ({
               device: currentDevice || null,
               shelf: currentShelf || null,
               rack: currentRack || null,
+              box: currentBox || null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -557,6 +618,7 @@ const EnhancedCascadingMode = ({
               device: currentDevice || null,
               shelf: currentShelf || null,
               rack: currentRack || null,
+              box: currentBox || null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -596,15 +658,19 @@ const EnhancedCascadingMode = ({
         selectedDeviceRef.current = null;
         selectedShelfRef.current = null;
         selectedRackRef.current = null;
+        selectedBoxRef.current = null;
         setSelectedDevice(null);
         setSelectedShelf(null);
         setSelectedRack(null);
+        setSelectedBox(null);
         deviceInputRef.current = "";
         shelfInputRef.current = "";
         rackInputRef.current = "";
+        boxInputRef.current = "";
         setDeviceInput("");
         setShelfInput("");
         setRackInput("");
+        setBoxInput("");
 
         // Update parent immediately
         if (onLocationChange) {
@@ -614,6 +680,7 @@ const EnhancedCascadingMode = ({
               device: null,
               shelf: null,
               rack: null,
+              box: null,
               position: null,
             }),
           );
@@ -626,6 +693,7 @@ const EnhancedCascadingMode = ({
       selectedDevice,
       selectedShelf,
       selectedRack,
+      selectedBox,
       positionInput,
       buildLocationWithFlexibleFields,
     ],
@@ -636,6 +704,7 @@ const EnhancedCascadingMode = ({
   const selectedDeviceRef = useRef(selectedDevice);
   const selectedShelfRef = useRef(selectedShelf);
   const selectedRackRef = useRef(selectedRack);
+  const selectedBoxRef = useRef(selectedBox);
 
   useEffect(() => {
     selectedRoomRef.current = selectedRoom;
@@ -652,6 +721,10 @@ const EnhancedCascadingMode = ({
   useEffect(() => {
     selectedRackRef.current = selectedRack;
   }, [selectedRack]);
+
+  useEffect(() => {
+    selectedBoxRef.current = selectedBox;
+  }, [selectedBox]);
 
   // Helper: Check if Add button should be enabled for room
   const canAddRoom = useCallback(() => {
@@ -743,6 +816,24 @@ const EnhancedCascadingMode = ({
     return result;
   }, [rackInput, racks, selectedShelf, isCreatingShelf, isCreatingRack]);
 
+  // Helper: Check if Add button should be enabled for box
+  const canAddBox = useCallback(() => {
+    const currentInput = boxInputRef.current || boxInput;
+    const trimmed = currentInput.trim();
+    const result = (() => {
+      if (!trimmed) return false;
+      if (!selectedRack || (!selectedRack.id && !isCreatingRack)) {
+        return false;
+      }
+      if (!isCreatingBox) return false;
+      const matches = boxes.find(
+        (b) => (b.label || b.name)?.toLowerCase() === trimmed.toLowerCase(),
+      );
+      return !matches && trimmed.length > 0;
+    })();
+    return result;
+  }, [boxInput, boxes, selectedRack, isCreatingRack, isCreatingBox]);
+
   // Create device if input doesn't match existing - FULLY SYNCHRONOUS
   const handleDeviceChange = useCallback(
     (inputValue, selectedItem) => {
@@ -752,6 +843,7 @@ const EnhancedCascadingMode = ({
       const currentRoom = selectedRoomRef.current || selectedRoom;
       const currentShelf = selectedShelfRef.current || selectedShelf;
       const currentRack = selectedRackRef.current || selectedRack;
+      const currentBox = selectedBoxRef.current || selectedBox;
       const currentPosition = positionInput;
 
       if (selectedItem) {
@@ -770,6 +862,7 @@ const EnhancedCascadingMode = ({
             device: selectedItem,
             shelf: currentShelf || null,
             rack: currentRack || null,
+            box: currentBox || null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -798,6 +891,7 @@ const EnhancedCascadingMode = ({
               device: existing,
               shelf: currentShelf || null,
               rack: currentRack || null,
+              box: currentBox || null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -822,6 +916,7 @@ const EnhancedCascadingMode = ({
               device: newDevice,
               shelf: currentShelf || null,
               rack: currentRack || null,
+              box: currentBox || null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -845,6 +940,7 @@ const EnhancedCascadingMode = ({
             device: null,
             shelf: currentShelf || null,
             rack: currentRack || null,
+            box: currentBox || null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -859,6 +955,7 @@ const EnhancedCascadingMode = ({
       onLocationChange,
       selectedShelf,
       selectedRack,
+      selectedBox,
       positionInput,
       buildLocationWithFlexibleFields,
     ],
@@ -884,6 +981,7 @@ const EnhancedCascadingMode = ({
       const currentRoom = selectedRoomRef.current || selectedRoom;
       const currentDevice = selectedDeviceRef.current || selectedDevice;
       const currentRack = selectedRackRef.current || selectedRack;
+      const currentBox = selectedBoxRef.current || selectedBox;
       const currentPosition = positionInput;
 
       if (selectedItem) {
@@ -901,6 +999,7 @@ const EnhancedCascadingMode = ({
             device: currentDevice || null,
             shelf: selectedItem,
             rack: currentRack || null,
+            box: currentBox || null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -924,6 +1023,7 @@ const EnhancedCascadingMode = ({
               device: currentDevice || null,
               shelf: existing,
               rack: currentRack || null,
+              box: currentBox || null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -944,6 +1044,7 @@ const EnhancedCascadingMode = ({
               device: currentDevice || null,
               shelf: newShelf,
               rack: currentRack || null,
+              box: currentBox || null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -966,6 +1067,7 @@ const EnhancedCascadingMode = ({
             device: currentDevice || null,
             shelf: null,
             rack: currentRack || null,
+            box: currentBox || null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -978,6 +1080,7 @@ const EnhancedCascadingMode = ({
       onLocationChange,
       selectedRoom,
       selectedRack,
+      selectedBox,
       positionInput,
       buildLocationWithFlexibleFields,
     ],
@@ -1001,6 +1104,12 @@ const EnhancedCascadingMode = ({
         setShowAddRackLink(false);
         rackInputRef.current = selectedItem.label || selectedItem.name || "";
         setRackInput(selectedItem.label || selectedItem.name || "");
+        selectedBoxRef.current = null;
+        setSelectedBox(null);
+        setIsCreatingBox(false);
+        setShowAddBoxLink(false);
+        boxInputRef.current = "";
+        setBoxInput("");
 
         // Update parent immediately
         if (onLocationChange) {
@@ -1009,6 +1118,7 @@ const EnhancedCascadingMode = ({
             device: currentDevice || null,
             shelf: currentShelf || null,
             rack: selectedItem,
+            box: null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -1024,6 +1134,12 @@ const EnhancedCascadingMode = ({
           setShowAddRackLink(false);
           rackInputRef.current = existing.label || "";
           setRackInput(existing.label || "");
+          selectedBoxRef.current = null;
+          setSelectedBox(null);
+          setIsCreatingBox(false);
+          setShowAddBoxLink(false);
+          boxInputRef.current = "";
+          setBoxInput("");
 
           // Update parent immediately
           if (onLocationChange) {
@@ -1032,6 +1148,7 @@ const EnhancedCascadingMode = ({
               device: currentDevice || null,
               shelf: currentShelf || null,
               rack: existing,
+              box: null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -1044,6 +1161,12 @@ const EnhancedCascadingMode = ({
           selectedRackRef.current = newRack;
           setSelectedRack(newRack);
           setShowAddRackLink(true);
+          selectedBoxRef.current = null;
+          setSelectedBox(null);
+          setIsCreatingBox(false);
+          setShowAddBoxLink(false);
+          boxInputRef.current = "";
+          setBoxInput("");
 
           // Update parent immediately with new rack (no id yet)
           if (onLocationChange) {
@@ -1052,6 +1175,7 @@ const EnhancedCascadingMode = ({
               device: currentDevice || null,
               shelf: currentShelf || null,
               rack: newRack,
+              box: null,
               position: currentPosition
                 ? { coordinate: currentPosition }
                 : null,
@@ -1066,6 +1190,12 @@ const EnhancedCascadingMode = ({
         setShowAddRackLink(false);
         rackInputRef.current = "";
         setRackInput("");
+        selectedBoxRef.current = null;
+        setSelectedBox(null);
+        setIsCreatingBox(false);
+        setShowAddBoxLink(false);
+        boxInputRef.current = "";
+        setBoxInput("");
 
         // Update parent immediately
         if (onLocationChange) {
@@ -1074,6 +1204,7 @@ const EnhancedCascadingMode = ({
             device: currentDevice || null,
             shelf: currentShelf || null,
             rack: null,
+            box: null,
             position: currentPosition ? { coordinate: currentPosition } : null,
           };
           onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -1157,12 +1288,14 @@ const EnhancedCascadingMode = ({
         const currentDevice = selectedDeviceRef.current || selectedDevice;
         const currentShelf = selectedShelfRef.current || selectedShelf;
         const currentRack = selectedRackRef.current || selectedRack;
+        const currentBox = selectedBoxRef.current || selectedBox;
         const currentPosition = positionInput;
         const locationObj = {
           room: response,
           device: currentDevice || null,
           shelf: currentShelf || null,
           rack: currentRack || null,
+          box: currentBox || null,
           position: currentPosition ? { coordinate: currentPosition } : null,
         };
         onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -1174,6 +1307,7 @@ const EnhancedCascadingMode = ({
     selectedDevice,
     selectedShelf,
     selectedRack,
+    selectedBox,
     positionInput,
     addNotification,
     setNotificationVisible,
@@ -1240,12 +1374,14 @@ const EnhancedCascadingMode = ({
         const currentRoom = selectedRoomRef.current || selectedRoom;
         const currentShelf = selectedShelfRef.current || selectedShelf;
         const currentRack = selectedRackRef.current || selectedRack;
+        const currentBox = selectedBoxRef.current || selectedBox;
         const currentPosition = positionInput;
         const locationObj = {
           room: currentRoom || null,
           device: response,
           shelf: currentShelf || null,
           rack: currentRack || null,
+          box: currentBox || null,
           position: currentPosition ? { coordinate: currentPosition } : null,
         };
         onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -1257,6 +1393,7 @@ const EnhancedCascadingMode = ({
     onLocationChange,
     selectedShelf,
     selectedRack,
+    selectedBox,
     positionInput,
     addNotification,
     setNotificationVisible,
@@ -1320,12 +1457,14 @@ const EnhancedCascadingMode = ({
         const currentRoom = selectedRoomRef.current || selectedRoom;
         const currentDevice = selectedDeviceRef.current || selectedDevice;
         const currentRack = selectedRackRef.current || selectedRack;
+        const currentBox = selectedBoxRef.current || selectedBox;
         const currentPosition = positionInput;
         const locationObj = {
           room: currentRoom || null,
           device: currentDevice || null,
           shelf: response,
           rack: currentRack || null,
+          box: currentBox || null,
           position: currentPosition ? { coordinate: currentPosition } : null,
         };
         onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -1337,6 +1476,7 @@ const EnhancedCascadingMode = ({
     onLocationChange,
     selectedRoom,
     selectedRack,
+    selectedBox,
     positionInput,
     addNotification,
     setNotificationVisible,
@@ -1386,6 +1526,12 @@ const EnhancedCascadingMode = ({
         setRacks((prev) => [...prev, response]);
         setIsCreatingRack(false);
         setShowAddRackLink(false);
+        selectedBoxRef.current = null;
+        setSelectedBox(null);
+        setIsCreatingBox(false);
+        setShowAddBoxLink(false);
+        boxInputRef.current = "";
+        setBoxInput("");
 
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
@@ -1408,6 +1554,7 @@ const EnhancedCascadingMode = ({
           device: currentDevice || null,
           shelf: currentShelf || null,
           rack: response,
+          box: null,
           position: currentPosition ? { coordinate: currentPosition } : null,
         };
         onLocationChange(buildLocationWithFlexibleFields(locationObj));
@@ -1419,6 +1566,220 @@ const EnhancedCascadingMode = ({
     onLocationChange,
     selectedRoom,
     selectedDevice,
+    positionInput,
+    addNotification,
+    setNotificationVisible,
+    intl,
+  ]);
+
+  // Create/select box from rack level
+  const handleBoxChange = useCallback(
+    (inputValue, selectedItem) => {
+      const trimmedValue = inputValue?.trim() || "";
+
+      const currentRoom = selectedRoomRef.current || selectedRoom;
+      const currentDevice = selectedDeviceRef.current || selectedDevice;
+      const currentShelf = selectedShelfRef.current || selectedShelf;
+      const currentRack = selectedRackRef.current || selectedRack;
+      const currentPosition = positionInput;
+
+      if (selectedItem) {
+        selectedBoxRef.current = selectedItem;
+        setSelectedBox(selectedItem);
+        setIsCreatingBox(false);
+        setShowAddBoxLink(false);
+        boxInputRef.current = selectedItem.label || selectedItem.name || "";
+        setBoxInput(selectedItem.label || selectedItem.name || "");
+
+        if (onLocationChange) {
+          const locationObj = {
+            room: currentRoom || null,
+            device: currentDevice || null,
+            shelf: currentShelf || null,
+            rack: currentRack || null,
+            box: selectedItem,
+            position: currentPosition ? { coordinate: currentPosition } : null,
+          };
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
+        }
+      } else if (trimmedValue && currentRack && currentRack.id) {
+        const existing = boxes.find(
+          (b) =>
+            (b.label || b.name || "").toLowerCase() ===
+            trimmedValue.toLowerCase(),
+        );
+        if (existing) {
+          selectedBoxRef.current = existing;
+          setSelectedBox(existing);
+          setIsCreatingBox(false);
+          setShowAddBoxLink(false);
+          boxInputRef.current = existing.label || existing.name || "";
+          setBoxInput(existing.label || existing.name || "");
+
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: currentDevice || null,
+              shelf: currentShelf || null,
+              rack: currentRack || null,
+              box: existing,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
+        } else {
+          setIsCreatingBox(true);
+          const sanitizedCode = trimmedValue
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, "")
+            .slice(0, 10);
+          const newBox = {
+            label: trimmedValue,
+            code: sanitizedCode || `BOX${Date.now()}`.slice(-10),
+            rows: 8,
+            columns: 8,
+            positionSchemaHint: "letter-number",
+            type: "box",
+          };
+          selectedBoxRef.current = newBox;
+          setSelectedBox(newBox);
+          setShowAddBoxLink(true);
+
+          if (onLocationChange) {
+            const locationObj = {
+              room: currentRoom || null,
+              device: currentDevice || null,
+              shelf: currentShelf || null,
+              rack: currentRack || null,
+              box: newBox,
+              position: currentPosition
+                ? { coordinate: currentPosition }
+                : null,
+            };
+            onLocationChange(buildLocationWithFlexibleFields(locationObj));
+          }
+        }
+      } else {
+        selectedBoxRef.current = null;
+        setSelectedBox(null);
+        setIsCreatingBox(false);
+        setShowAddBoxLink(false);
+        boxInputRef.current = "";
+        setBoxInput("");
+
+        if (onLocationChange) {
+          const locationObj = {
+            room: currentRoom || null,
+            device: currentDevice || null,
+            shelf: currentShelf || null,
+            rack: currentRack || null,
+            box: null,
+            position: currentPosition ? { coordinate: currentPosition } : null,
+          };
+          onLocationChange(buildLocationWithFlexibleFields(locationObj));
+        }
+      }
+    },
+    [
+      boxes,
+      onLocationChange,
+      selectedRoom,
+      selectedDevice,
+      selectedShelf,
+      selectedRack,
+      positionInput,
+      buildLocationWithFlexibleFields,
+    ],
+  );
+
+  // Create box via API
+  const createBox = useCallback(async () => {
+    if (
+      !selectedBox ||
+      !selectedBox.label ||
+      selectedBox.id ||
+      !selectedRack?.id
+    )
+      return;
+
+    const safeCode = (selectedBox.code || selectedBox.label || "")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 10);
+
+    const formData = {
+      label: selectedBox.label,
+      type: selectedBox.type || "box",
+      rows: selectedBox.rows || 8,
+      columns: selectedBox.columns || 8,
+      positionSchemaHint: selectedBox.positionSchemaHint || "letter-number",
+      code: safeCode || "BOX0000001",
+      active: true,
+      parentRackId: String(selectedRack.id),
+    };
+
+    postToOpenElisServerJsonResponse(
+      "/rest/storage/boxes",
+      JSON.stringify(formData),
+      (response) => {
+        if (response.error) {
+          console.error("Failed to create box:", response.error);
+          addNotification({
+            title: intl.formatMessage({ id: "notification.title" }),
+            message:
+              intl.formatMessage(
+                { id: "storage.create.box.error" },
+                { error: response.error },
+              ) || `Failed to create box: ${response.error}`,
+            kind: NotificationKinds.error,
+          });
+          setNotificationVisible(true);
+          return;
+        }
+        selectedBoxRef.current = response;
+        setSelectedBox(response);
+        boxInputRef.current = response.label || "";
+        setBoxInput(response.label || "");
+        setBoxes((prev) => [...prev, response]);
+        setIsCreatingBox(false);
+        setShowAddBoxLink(false);
+
+        addNotification({
+          title: intl.formatMessage({ id: "notification.title" }),
+          message:
+            intl.formatMessage(
+              { id: "storage.create.box.success" },
+              { label: response.label },
+            ) || `Box "${response.label}" created successfully`,
+          kind: NotificationKinds.success,
+        });
+        setNotificationVisible(true);
+
+        const currentRoom = selectedRoomRef.current || selectedRoom;
+        const currentDevice = selectedDeviceRef.current || selectedDevice;
+        const currentShelf = selectedShelfRef.current || selectedShelf;
+        const currentRack = selectedRackRef.current || selectedRack;
+        const currentPosition = positionInput;
+        const locationObj = {
+          room: currentRoom || null,
+          device: currentDevice || null,
+          shelf: currentShelf || null,
+          rack: currentRack || null,
+          box: response,
+          position: currentPosition ? { coordinate: currentPosition } : null,
+        };
+        onLocationChange(buildLocationWithFlexibleFields(locationObj));
+      },
+    );
+  }, [
+    selectedBox,
+    selectedRack,
+    onLocationChange,
+    selectedRoom,
+    selectedDevice,
+    selectedShelf,
     positionInput,
     addNotification,
     setNotificationVisible,
@@ -1823,6 +2184,90 @@ const EnhancedCascadingMode = ({
               }}
               data-testid="add-new-rack-button"
               disabled={!canAddRack()}
+            >
+              <Add size={16} />
+              <FormattedMessage id="storage.add.new" defaultMessage="Add new" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Box - ComboBox with autocomplete */}
+      <div className="enhanced-cascading-row">
+        <div className="enhanced-cascading-column enhanced-cascading-column-input">
+          <ComboBox
+            id="box-combobox"
+            data-testid="box-combobox"
+            titleText={intl.formatMessage({
+              id: "storage.box.label",
+              defaultMessage: "Box",
+            })}
+            label={intl.formatMessage({
+              id: "storage.box.label",
+              defaultMessage: "Box",
+            })}
+            items={boxes || []}
+            itemToString={(item) => {
+              if (!item) return "";
+              return item.label || item.name || "";
+            }}
+            selectedItem={selectedBox || null}
+            downshiftProps={{
+              inputValue: boxInputRef.current || boxInput || "",
+            }}
+            onInputChange={(event) => {
+              const inputValue =
+                typeof event === "string"
+                  ? event
+                  : event?.inputValue !== undefined
+                    ? event.inputValue
+                    : event?.target?.value || "";
+              const newInput = inputValue || "";
+              boxInputRef.current = newInput;
+              setBoxInput(newInput);
+              handleBoxChange(newInput, null);
+            }}
+            onChange={({ selectedItem }) => {
+              if (selectedItem) {
+                selectedBoxRef.current = selectedItem;
+                boxInputRef.current =
+                  selectedItem.label || selectedItem.name || "";
+                setBoxInput(selectedItem.label || selectedItem.name || "");
+                handleBoxChange(
+                  selectedItem.label || selectedItem.name || "",
+                  selectedItem,
+                );
+              } else {
+                if (!boxInputRef.current || !boxInputRef.current.trim()) {
+                  selectedBoxRef.current = null;
+                  handleBoxChange("", null);
+                }
+              }
+            }}
+            disabled={!selectedRack || (!selectedRack.id && !isCreatingRack)}
+            placeholder={intl.formatMessage({
+              id: "storage.box.placeholder",
+              defaultMessage: "Select or create box...",
+            })}
+          />
+        </div>
+        <div className="enhanced-cascading-column enhanced-cascading-column-button">
+          <div className="inline-add-button-wrapper">
+            <Button
+              kind="ghost"
+              size="md"
+              onClick={() => {
+                if (
+                  canAddBox() &&
+                  isCreatingBox &&
+                  selectedRack &&
+                  selectedRack.id
+                ) {
+                  createBox();
+                }
+              }}
+              data-testid="add-new-box-button"
+              disabled={!canAddBox()}
             >
               <Add size={16} />
               <FormattedMessage id="storage.add.new" defaultMessage="Add new" />

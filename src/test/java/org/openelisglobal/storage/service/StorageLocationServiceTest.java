@@ -8,16 +8,20 @@ import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
+import org.openelisglobal.storage.dao.StorageBoxDAO;
 import org.openelisglobal.storage.dao.StorageDeviceDAO;
 import org.openelisglobal.storage.dao.StorageRackDAO;
 import org.openelisglobal.storage.dao.StorageRoomDAO;
 import org.openelisglobal.storage.dao.StorageShelfDAO;
+import org.openelisglobal.storage.valueholder.StorageBox;
 import org.openelisglobal.storage.valueholder.StorageDevice;
 import org.openelisglobal.storage.valueholder.StorageRack;
 import org.openelisglobal.storage.valueholder.StorageRoom;
@@ -40,6 +44,9 @@ public class StorageLocationServiceTest {
 
     @Mock
     private StorageRackDAO storageRackDAO;
+
+    @Mock
+    private StorageBoxDAO storageBoxDAO;
 
     @Mock
     private SampleStorageAssignmentDAO sampleStorageAssignmentDAO;
@@ -301,5 +308,60 @@ public class StorageLocationServiceTest {
         boolean unique = storageLocationService.isNameUniqueWithinParent("Freezer-02", 1, "device", 10);
 
         assertTrue("Device name should be allowed when excludeId matches existing entity", unique);
+    }
+
+    @Test
+    public void testGetRacksForAPI_IncludesDerivedCapacityAndOccupiedCount() {
+        // Arrange hierarchy Room -> Device -> Shelf -> Rack
+        StorageRoom room = new StorageRoom();
+        room.setId(1);
+        room.setName("Main Lab");
+        room.setActive(true);
+
+        StorageDevice device = new StorageDevice();
+        device.setId(10);
+        device.setName("Freezer-01");
+        device.setParentRoom(room);
+        device.setActive(true);
+
+        StorageShelf shelf = new StorageShelf();
+        shelf.setId(20);
+        shelf.setLabel("Shelf-A");
+        shelf.setParentDevice(device);
+        shelf.setActive(true);
+
+        StorageRack rack = new StorageRack();
+        rack.setId(30);
+        rack.setLabel("R1");
+        rack.setParentShelf(shelf);
+        rack.setActive(true);
+
+        StorageBox box1 = new StorageBox();
+        box1.setId(40);
+        box1.setRows(2);
+        box1.setColumns(3); // capacity 6
+        box1.setParentRack(rack);
+
+        StorageBox box2 = new StorageBox();
+        box2.setId(41);
+        box2.setRows(2);
+        box2.setColumns(2); // capacity 4
+        box2.setParentRack(rack);
+
+        when(storageRackDAO.getAll()).thenReturn(Arrays.asList(rack));
+        when(storageBoxDAO.findByParentRackId(30)).thenReturn(Arrays.asList(box1, box2));
+        when(storageBoxDAO.countOccupied(30)).thenReturn(3);
+
+        // Act
+        List<Map<String, Object>> result = storageLocationService.getRacksForAPI(null);
+
+        // Assert
+        assertNotNull("Result should not be null", result);
+        assertEquals("Should return one rack", 1, result.size());
+
+        Map<String, Object> rackMap = result.get(0);
+        assertEquals("totalCapacity should be derived from child boxes", 10, rackMap.get("totalCapacity"));
+        assertEquals("capacityType should be calculated when capacity > 0", "calculated", rackMap.get("capacityType"));
+        assertEquals("occupiedCount should come from DAO count", 3, rackMap.get("occupiedCount"));
     }
 }

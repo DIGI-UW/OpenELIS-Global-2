@@ -5,12 +5,14 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Dropdown,
   TextArea,
   TextInput,
   InlineNotification,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ArrowDown } from "@carbon/icons-react";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import LocationSearchAndCreate from "../StorageLocationSelector/LocationSearchAndCreate";
 import UnifiedBarcodeInput from "../StorageLocationSelector/UnifiedBarcodeInput";
 import "./LocationManagementModal.css";
@@ -77,6 +79,10 @@ const LocationManagementModal = ({
   const [isAutoSaving, setIsAutoSaving] = useState(false); // Track auto-save in progress
   const [showAutoSaved, setShowAutoSaved] = useState(false); // Show "autosaved" indicator
   const autoSaveTimeoutRef = useRef(null); // Ref to store auto-save timeout
+  const [boxPositionOptions, setBoxPositionOptions] = useState([]);
+  const [boxPositionsLoading, setBoxPositionsLoading] = useState(false);
+  const [boxPositionsError, setBoxPositionsError] = useState("");
+  const boxPositionLoadSeqRef = useRef(0);
 
   // Determine modal mode: assignment (no location) or movement (location exists)
   const isMovementMode = !!currentLocation;
@@ -149,11 +155,13 @@ const LocationManagementModal = ({
       autoSaveTimeoutRef.current = null;
     }
 
-    // Check if we have a valid location (minimum: device selected)
+    // Check if we have a valid location (minimum: device selected, can also be shelf/rack/box)
     const locationToCheck = selectedLocation || selectedLocationRef.current;
     const hasValidLocation =
       locationToCheck &&
-      (locationToCheck.device?.id ||
+      (locationToCheck.box?.id ||
+        locationToCheck.device?.id ||
+        (locationToCheck.type === "box" && locationToCheck.id) ||
         (locationToCheck.type === "device" && locationToCheck.id) ||
         locationToCheck.shelf?.id ||
         locationToCheck.rack?.id);
@@ -235,6 +243,7 @@ const LocationManagementModal = ({
             const shelfLabel =
               location.shelf?.label || location.shelf?.name || "";
             const rackLabel = location.rack?.label || location.rack?.name || "";
+            const boxLabel = location.box?.label || location.box?.name || "";
             const positionCoord =
               location.position?.coordinate || location.position || "";
 
@@ -243,6 +252,7 @@ const LocationManagementModal = ({
             if (deviceName) pathParts.push(deviceName);
             if (shelfLabel) pathParts.push(shelfLabel);
             if (rackLabel) pathParts.push(rackLabel);
+            if (boxLabel) pathParts.push(boxLabel);
             if (positionCoord) pathParts.push(`Position ${positionCoord}`);
 
             path = pathParts.join(" > ");
@@ -347,6 +357,7 @@ const LocationManagementModal = ({
         device: locationData.device || validComponents.device || null,
         shelf: locationData.shelf || validComponents.shelf || null,
         rack: locationData.rack || validComponents.rack || null,
+        box: locationData.box || validComponents.box || null,
         position: locationData.position || validComponents.position || null,
         hierarchicalPath: locationData.hierarchicalPath || null,
       };
@@ -379,6 +390,9 @@ const LocationManagementModal = ({
           if (locationData.shelf?.label)
             pathParts.push(locationData.shelf.label);
           if (locationData.rack?.label) pathParts.push(locationData.rack.label);
+          if (locationData.box?.label || locationData.box?.name) {
+            pathParts.push(locationData.box?.label || locationData.box?.name);
+          }
           if (locationData.position?.coordinate) {
             pathParts.push(`Position ${locationData.position.coordinate}`);
           }
@@ -430,6 +444,13 @@ const LocationManagementModal = ({
                 id: validComponents.rack.id,
                 label: validComponents.rack.label || validComponents.rack.name,
                 name: validComponents.rack.name || validComponents.rack.label,
+              }
+            : null,
+          box: validComponents.box
+            ? {
+                id: validComponents.box.id,
+                label: validComponents.box.label || validComponents.box.name,
+                name: validComponents.box.name || validComponents.box.label,
               }
             : null,
           position: validComponents.position
@@ -517,6 +538,157 @@ const LocationManagementModal = ({
   const selectedLocationForValidation =
     selectedLocationRef.current || selectedLocation;
 
+  const extractSelectedBoxContext = useCallback((location) => {
+    if (!location) {
+      return { boxId: null, rackId: null };
+    }
+
+    if (location.box?.id) {
+      return {
+        boxId: location.box.id,
+        rackId:
+          location.rack?.id ||
+          location.box?.parentRackId ||
+          location.parentRackId ||
+          null,
+      };
+    }
+
+    if (location.locationType === "box" && location.locationId) {
+      return {
+        boxId: location.locationId,
+        rackId: location.rack?.id || location.parentRackId || null,
+      };
+    }
+
+    if (location.type === "box" && location.id) {
+      return {
+        boxId: location.id,
+        rackId: location.rack?.id || location.parentRackId || null,
+      };
+    }
+
+    return { boxId: null, rackId: null };
+  }, []);
+
+  const buildPositionOptionsFromBox = useCallback((box) => {
+    if (!box) {
+      return [];
+    }
+
+    const rows = Number(box.rows) || 0;
+    const columns = Number(box.columns) || 0;
+    if (rows <= 0 || columns <= 0) {
+      return [];
+    }
+
+    const hint = box.positionSchemaHint || "letter-number";
+    const occupiedCoordinates = box.occupiedCoordinates || {};
+    const occupiedSet = new Set(
+      Object.keys(occupiedCoordinates).map((coord) =>
+        String(coord || "")
+          .trim()
+          .toUpperCase(),
+      ),
+    );
+
+    const options = [];
+    for (let rowIdx = 0; rowIdx < rows; rowIdx += 1) {
+      for (let colIdx = 0; colIdx < columns; colIdx += 1) {
+        const coordinate =
+          hint === "letter-number"
+            ? `${String.fromCharCode(65 + rowIdx)}${colIdx + 1}`
+            : `${rowIdx + 1}-${colIdx + 1}`;
+
+        if (!occupiedSet.has(coordinate.toUpperCase())) {
+          options.push({
+            id: coordinate,
+            label: coordinate,
+          });
+        }
+      }
+    }
+
+    return options;
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const { boxId, rackId } = extractSelectedBoxContext(
+      selectedLocationForValidation,
+    );
+    if (!boxId) {
+      setBoxPositionOptions([]);
+      setBoxPositionsLoading(false);
+      setBoxPositionsError("");
+      return;
+    }
+
+    const requestSeq = boxPositionLoadSeqRef.current + 1;
+    boxPositionLoadSeqRef.current = requestSeq;
+    setBoxPositionsLoading(true);
+    setBoxPositionsError("");
+
+    const endpoints = rackId
+      ? [
+          `/rest/storage/boxes?rackId=${encodeURIComponent(rackId)}`,
+          "/rest/storage/boxes",
+        ]
+      : ["/rest/storage/boxes"];
+
+    const loadFromEndpoint = (endpointIndex) => {
+      if (endpointIndex >= endpoints.length) {
+        if (boxPositionLoadSeqRef.current !== requestSeq) {
+          return;
+        }
+        setBoxPositionOptions([]);
+        setBoxPositionsLoading(false);
+        setBoxPositionsError(
+          intl.formatMessage({
+            id: "storage.box.position.load.error",
+            defaultMessage: "Unable to load available positions for this box.",
+          }),
+        );
+        return;
+      }
+
+      getFromOpenElisServer(endpoints[endpointIndex], (response) => {
+        if (boxPositionLoadSeqRef.current !== requestSeq) {
+          return;
+        }
+
+        const boxes = Array.isArray(response) ? response : [];
+        const selectedBox = boxes.find(
+          (box) => String(box.id) === String(boxId),
+        );
+
+        if (!selectedBox) {
+          loadFromEndpoint(endpointIndex + 1);
+          return;
+        }
+
+        const options = buildPositionOptionsFromBox(selectedBox);
+        setBoxPositionOptions(options);
+        setBoxPositionsLoading(false);
+        setBoxPositionsError("");
+      });
+    };
+
+    loadFromEndpoint(0);
+  }, [
+    open,
+    selectedLocationForValidation,
+    extractSelectedBoxContext,
+    buildPositionOptionsFromBox,
+    intl,
+  ]);
+  const selectedBoxContext = extractSelectedBoxContext(
+    selectedLocationForValidation,
+  );
+
   // Validation logic for location selection
   const hasRoom = !!(
     selectedLocationForValidation?.room &&
@@ -544,17 +716,27 @@ const LocationManagementModal = ({
       selectedLocationForValidation.rack.name ||
       selectedLocationForValidation.rack)
   );
+  const hasBox = !!(
+    selectedLocationForValidation?.box &&
+    (selectedLocationForValidation.box.id ||
+      selectedLocationForValidation.box.label ||
+      selectedLocationForValidation.box.name ||
+      selectedLocationForValidation.box)
+  );
 
   const hasLocationId = !!selectedLocationForValidation?.id;
   const hasLocationType = !!(
     selectedLocationForValidation?.type &&
     (selectedLocationForValidation.type === "device" ||
       selectedLocationForValidation.type === "shelf" ||
-      selectedLocationForValidation.type === "rack")
+      selectedLocationForValidation.type === "rack" ||
+      selectedLocationForValidation.type === "box")
   );
 
   let canExtractLocationId = false;
-  if (hasRack && selectedLocationForValidation.rack.id) {
+  if (hasBox && selectedLocationForValidation.box.id) {
+    canExtractLocationId = true;
+  } else if (hasRack && selectedLocationForValidation.rack.id) {
     canExtractLocationId = true;
   } else if (hasShelf && selectedLocationForValidation.shelf.id) {
     canExtractLocationId = true;
@@ -900,6 +1082,76 @@ const LocationManagementModal = ({
 
         {/* Optional Fields Section - Position, Condition Notes, Reason for Move */}
         <div className="location-management-optional-fields">
+          {/* Box Position Dropdown - enabled only when selected location is a box */}
+          <div className="form-group">
+            <label className="form-label">
+              <FormattedMessage
+                id="storage.box.position.dropdown.label"
+                defaultMessage="Box position"
+              />{" "}
+              <span className="optional-text">
+                (
+                <FormattedMessage
+                  id="label.optional"
+                  defaultMessage="optional"
+                />
+                )
+              </span>
+            </label>
+            <Dropdown
+              id="box-position-dropdown"
+              data-testid="box-position-dropdown"
+              titleText=""
+              label={intl.formatMessage({
+                id: "storage.box.position.dropdown.placeholder",
+                defaultMessage: "Select available position",
+              })}
+              items={boxPositionOptions}
+              itemToString={(item) => (item ? item.label : "")}
+              selectedItem={
+                boxPositionOptions.find(
+                  (item) =>
+                    String(item.id).toUpperCase() ===
+                    String(positionCoordinate || "").toUpperCase(),
+                ) ||
+                (selectedBoxContext.boxId && positionCoordinate
+                  ? {
+                      id: positionCoordinate,
+                      label: positionCoordinate,
+                    }
+                  : null)
+              }
+              onChange={({ selectedItem }) => {
+                setPositionCoordinate(selectedItem?.id || "");
+              }}
+              disabled={!selectedBoxContext.boxId}
+            />
+            {boxPositionsLoading && (
+              <div className="position-dropdown-helper-text">
+                <FormattedMessage
+                  id="storage.box.position.dropdown.loading"
+                  defaultMessage="Loading available positions..."
+                />
+              </div>
+            )}
+            {!boxPositionsLoading &&
+              selectedBoxContext.boxId &&
+              boxPositionOptions.length === 0 &&
+              !boxPositionsError && (
+                <div className="position-dropdown-helper-text">
+                  <FormattedMessage
+                    id="storage.box.position.dropdown.empty"
+                    defaultMessage="No available positions in this box."
+                  />
+                </div>
+              )}
+            {boxPositionsError && (
+              <div className="position-dropdown-helper-text error">
+                {boxPositionsError}
+              </div>
+            )}
+          </div>
+
           {/* Position Input */}
           <div className="form-group">
             <label className="form-label">

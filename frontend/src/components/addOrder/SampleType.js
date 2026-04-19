@@ -138,12 +138,38 @@ const SampleType = (props) => {
   );
 
   function handleStorageLocationChange(location, positionCoordinate) {
+    const normalizedLocation = {
+      ...(location || {}),
+      id:
+        location?.locationId ||
+        location?.box?.id ||
+        location?.id ||
+        location?.rack?.id ||
+        location?.shelf?.id ||
+        location?.device?.id ||
+        null,
+      type:
+        location?.locationType ||
+        (location?.box?.id
+          ? "box"
+          : location?.type ||
+            (location?.rack?.id
+              ? "rack"
+              : location?.shelf?.id
+                ? "shelf"
+                : location?.device?.id
+                  ? "device"
+                  : "")),
+      positionCoordinate:
+        positionCoordinate ||
+        location?.positionCoordinate ||
+        location?.position?.coordinate ||
+        "",
+    };
+
     setSampleXml({
       ...sampleXml,
-      storageLocation: {
-        ...location,
-        positionCoordinate: positionCoordinate || "",
-      },
+      storageLocation: normalizedLocation,
       storagePositionId: location?.position?.id || null,
     });
   }

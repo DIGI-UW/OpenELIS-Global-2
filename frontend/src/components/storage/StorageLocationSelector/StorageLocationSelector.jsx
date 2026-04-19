@@ -47,8 +47,15 @@ const StorageLocationSelector = ({
     // Check if it has hierarchicalPath or hierarchical_path already
     if (location.hierarchicalPath) return location.hierarchicalPath;
     if (location.hierarchical_path) return location.hierarchical_path;
+    const boxLabel = location.box?.label || location.box?.name || "";
+    const positionCoordinate =
+      location.position?.coordinate || location.positionCoordinate || "";
     // Build from components
-    if (location.position?.coordinate) {
+    if (positionCoordinate && boxLabel) {
+      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label || ""} > ${boxLabel} > ${positionCoordinate}`;
+    } else if (boxLabel) {
+      return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label || ""} > ${boxLabel}`;
+    } else if (location.position?.coordinate) {
       return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label || ""} > Position ${location.position.coordinate}`;
     } else if (location.rack?.label) {
       return `${location.room?.name || ""} > ${location.device?.name || ""} > ${location.shelf?.label || ""} > ${location.rack?.label}`;
@@ -92,6 +99,16 @@ const StorageLocationSelector = ({
 
   const buildHierarchicalPath = (location) => {
     if (!location) return "";
+    if (location.hierarchicalPath) return location.hierarchicalPath;
+    if (location.hierarchical_path) return location.hierarchical_path;
+    const boxLabel = location.box?.label || location.box?.name || "";
+    const positionCoordinate =
+      location.position?.coordinate || location.positionCoordinate || "";
+    if (positionCoordinate && boxLabel) {
+      return `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > ${boxLabel} > ${positionCoordinate}`;
+    } else if (boxLabel) {
+      return `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > ${boxLabel}`;
+    }
     if (location.position) {
       return `${location.room?.name} > ${location.device?.name} > ${location.shelf?.label} > ${location.rack?.label} > Position ${location.position.coordinate}`;
     } else if (location.rack) {
@@ -127,8 +144,24 @@ const StorageLocationSelector = ({
   const handleModalSave = (locationData) => {
     // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
     // Extract newLocation from locationData
-    const newLocation = locationData?.newLocation || locationData;
-    handleLocationChange(newLocation);
+    const newLocation = locationData?.newLocation || locationData || {};
+    const normalizedLocation = {
+      ...newLocation,
+      locationId:
+        newLocation?.locationId ||
+        newLocation?.box?.id ||
+        newLocation?.id ||
+        null,
+      locationType:
+        newLocation?.locationType ||
+        (newLocation?.box?.id ? "box" : newLocation?.type || null),
+      positionCoordinate:
+        locationData?.positionCoordinate ||
+        newLocation?.positionCoordinate ||
+        newLocation?.position?.coordinate ||
+        "",
+    };
+    handleLocationChange(normalizedLocation);
     setIsModalOpen(false);
   };
 

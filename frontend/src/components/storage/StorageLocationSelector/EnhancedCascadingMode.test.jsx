@@ -452,6 +452,78 @@ describe("EnhancedCascadingMode", () => {
    * - Notification handling
    * - Input validation
    */
+
+  test("testSelectingBox_EmitsFlexibleFieldsWithLocationTypeBox", async () => {
+    mockGetFromOpenElisServer.mockImplementation((url, callback) => {
+      if (
+        url.includes("/rest/storage/rooms") &&
+        !url.includes("/rest/storage/rooms/")
+      ) {
+        callback([{ id: "1", name: "Main Laboratory", code: "MAIN" }]);
+      } else if (url.includes("/rest/storage/devices?roomId=1")) {
+        callback([
+          {
+            id: "10",
+            name: "Freezer Unit 1",
+            code: "FRZ01",
+            parentRoomId: "1",
+          },
+        ]);
+      } else if (url.includes("/rest/storage/shelves?deviceId=10")) {
+        callback([{ id: "20", label: "Shelf-A", parentDeviceId: "10" }]);
+      } else if (url.includes("/rest/storage/racks?shelfId=20")) {
+        callback([{ id: "30", label: "R1", parentShelfId: "20" }]);
+      } else if (url.includes("/rest/storage/boxes?rackId=30")) {
+        callback([{ id: "40", label: "Box Alpha", parentRackId: "30" }]);
+      } else {
+        callback([]);
+      }
+    });
+
+    renderWithIntl(
+      <EnhancedCascadingMode
+        onLocationChange={mockOnLocationChange}
+        selectedLocation={{
+          room: { id: "1", name: "Main Laboratory" },
+          device: { id: "10", name: "Freezer Unit 1" },
+          shelf: { id: "20", label: "Shelf-A" },
+          rack: { id: "30", label: "R1" },
+        }}
+      />,
+    );
+
+    const boxInput = await waitFor(
+      () => screen.getByRole("combobox", { name: /box/i }),
+      { timeout: 3000 },
+    );
+    expect(boxInput).toBeTruthy();
+
+    await typeIntoComboBox(boxInput, "Box Alpha");
+
+    await waitFor(
+      () => {
+        const option = screen.getByRole("option", { name: /box alpha/i });
+        expect(option).toBeTruthy();
+      },
+      { timeout: 3000 },
+    );
+
+    await userEvent.click(screen.getByRole("option", { name: /box alpha/i }));
+
+    await waitFor(
+      () => {
+        const hasBoxPayload = mockOnLocationChange.mock.calls.some((call) => {
+          const payload = call[0] || {};
+          return (
+            payload.locationType === "box" &&
+            String(payload.locationId) === "40"
+          );
+        });
+        expect(hasBoxPayload).toBe(true);
+      },
+      { timeout: 3000 },
+    );
+  });
 });
 
 describe("EnhancedCascadingMode Notifications", () => {

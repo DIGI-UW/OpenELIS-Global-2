@@ -4,6 +4,7 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import LocationManagementModal from "./LocationManagementModal";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import messages from "../../../languages/en.json";
 
 // Mock the API utilities
@@ -11,6 +12,41 @@ jest.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: jest.fn(),
   postToOpenElisServer: jest.fn(),
 }));
+
+// Mock LocationSearchAndCreate to control location selection deterministically
+jest.mock("../StorageLocationSelector/LocationSearchAndCreate", () => {
+  return function MockLocationSearchAndCreate({ onLocationChange }) {
+    return (
+      <div data-testid="location-search-and-create">
+        <button
+          data-testid="select-device-location"
+          onClick={() =>
+            onLocationChange?.({
+              room: { id: "1", name: "Main Laboratory" },
+              device: { id: "10", name: "Freezer Unit 1" },
+            })
+          }
+        >
+          Select Device
+        </button>
+        <button
+          data-testid="select-box-location"
+          onClick={() =>
+            onLocationChange?.({
+              room: { id: "1", name: "Main Laboratory" },
+              device: { id: "10", name: "Freezer Unit 1" },
+              shelf: { id: "20", label: "Shelf-A" },
+              rack: { id: "30", label: "R1" },
+              box: { id: "40", label: "Box-1" },
+            })
+          }
+        >
+          Select Box
+        </button>
+      </div>
+    );
+  };
+});
 
 // Mock UnifiedBarcodeInput component
 jest.mock("../StorageLocationSelector/UnifiedBarcodeInput", () => {
@@ -589,5 +625,86 @@ describe("LocationManagementModal", () => {
     // Barcode should overwrite dropdown selection
     const successIndicator = screen.queryByTestId("barcode-success");
     expect(successIndicator).toBeTruthy();
+  });
+
+  test("testBoxPositionDropdown_DisabledUntilBoxSelected", () => {
+    renderWithIntl(
+      <LocationManagementModal
+        open={true}
+        sample={mockSample}
+        currentLocation={null}
+        onClose={mockOnClose}
+        onConfirm={mockOnConfirm}
+      />,
+    );
+
+    const dropdown = screen.getByTestId("box-position-dropdown");
+    const button = dropdown.querySelector("button") || dropdown;
+    expect(button.hasAttribute("disabled")).toBe(true);
+  });
+
+  test("testBoxPositionDropdown_LoadsAvailablePositionsWhenBoxIsSelected", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/rest/storage/boxes?rackId=30")) {
+        callback([
+          {
+            id: "40",
+            label: "Box-1",
+            rows: 2,
+            columns: 2,
+            positionSchemaHint: "letter-number",
+            occupiedCoordinates: {
+              A1: { sampleItemId: "1001", externalId: "SI-1001" },
+            },
+          },
+        ]);
+      } else if (url.includes("/rest/storage/boxes")) {
+        callback([
+          {
+            id: "40",
+            label: "Box-1",
+            rows: 2,
+            columns: 2,
+            positionSchemaHint: "letter-number",
+            occupiedCoordinates: {
+              A1: { sampleItemId: "1001", externalId: "SI-1001" },
+            },
+          },
+        ]);
+      } else {
+        callback([]);
+      }
+    });
+
+    renderWithIntl(
+      <LocationManagementModal
+        open={true}
+        sample={mockSample}
+        currentLocation={null}
+        onClose={mockOnClose}
+        onConfirm={mockOnConfirm}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("select-box-location"));
+
+    await waitFor(() => {
+      expect(getFromOpenElisServer).toHaveBeenCalledWith(
+        expect.stringContaining("/rest/storage/boxes?rackId=30"),
+        expect.any(Function),
+      );
+    });
+
+    const dropdown = screen.getByTestId("box-position-dropdown");
+    const button = dropdown.querySelector("button") || dropdown;
+    expect(button.hasAttribute("disabled")).toBe(false);
+
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(screen.getByText("A2")).toBeTruthy();
+      expect(screen.getByText("B1")).toBeTruthy();
+      expect(screen.getByText("B2")).toBeTruthy();
+    });
   });
 });
