@@ -26,7 +26,7 @@ let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
-    label: "Non Conformity Menu Management",
+    label: "sidenav.label.admin.menu.nonconform",
     link: "/MasterListsPage/nonConformityMenuManagement",
   },
 ];

@@ -47,6 +47,13 @@ const ModifyOrder = () => {
   const [errors, setErrors] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [patientId, setPatientId] = useState("");
+  const [patientHeaderInfo, setPatientHeaderInfo] = useState({
+    patientName: "",
+    gender: "",
+    dob: "",
+    nationalId: "",
+    accessionNumber: "",
+  });
   const [changed, setChanged] = useState({
     "sampleOrderItems.providerFirstName": false,
     "sampleOrderItems.providerLastName": false,
@@ -109,6 +116,13 @@ const ModifyOrder = () => {
       if (data.sampleOrderItems) {
         data.sampleOrderItems.referringSiteName = "";
         setOrderFormValues(data);
+        setPatientHeaderInfo({
+          patientName: data.patientName || "",
+          gender: data.gender || "",
+          dob: data.dob || "",
+          nationalId: data.nationalId || "",
+          accessionNumber: data.accessionNumber || "",
+        });
       }
     }
   };
@@ -270,11 +284,11 @@ const ModifyOrder = () => {
 
       <PatientHeader
         id={patientId}
-        patientName={orderFormValues?.patientName}
-        gender={orderFormValues?.gender}
-        dob={orderFormValues?.dob}
-        nationalId={orderFormValues?.nationalId}
-        accesionNumber={orderFormValues?.accessionNumber}
+        patientName={patientHeaderInfo.patientName}
+        gender={patientHeaderInfo.gender}
+        dob={patientHeaderInfo.dob}
+        nationalId={patientHeaderInfo.nationalId}
+        accesionNumber={patientHeaderInfo.accessionNumber}
         className="patient-header3"
         isOrderPage={true}
       >

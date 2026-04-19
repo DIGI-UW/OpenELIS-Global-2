@@ -22,7 +22,7 @@ on:
         type: string
         default: "build.docker-compose.yml"
       fixture_mode:
-        description: "Fixture loading mode: core (SQL files) or harness (load-test-fixtures.sh)"
+        description: "Fixture loading mode: core or harness via unified load-test-fixtures.sh"
         required: false
         type: string
         default: "core"
@@ -217,22 +217,13 @@ jobs:
 
       # ── Fixture Loading ─────────────────────────────────────────────────────
 
-      - name: Load core SQL fixtures
+      - name: Load core fixtures
         if: inputs.fixture_mode == 'core'
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/e2e-foundational-data.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/analyzer-harness-e2e.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/fixtures/file-import-e2e.sql
+        run: ./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 
       - name: Load harness fixtures
         if: inputs.fixture_mode == 'harness'
-        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+        run: ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
 
       - name: Create core analyzer import directories
         if: inputs.fixture_mode == 'core'

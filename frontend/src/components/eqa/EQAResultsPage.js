@@ -17,8 +17,10 @@ import {
   TableToolbarSearch,
   Tag,
   Loading,
+  Button,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { getFromOpenElisServer } from "../utils/Utils";
 
@@ -43,6 +45,7 @@ const PRIORITY_TAG_MAP = {
 
 const EQAResultsPage = () => {
   const intl = useIntl();
+  const history = useHistory();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -150,30 +153,56 @@ const EQAResultsPage = () => {
                           {header.header}
                         </TableHeader>
                       ))}
+                      <TableHeader>
+                        {intl.formatMessage({ id: "eqa.column.actions" })}
+                      </TableHeader>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {rows.map((row) => (
-                      <TableRow key={row.id} {...getRowProps({ row })}>
-                        {row.cells.map((cell) => (
-                          <TableCell key={cell.id}>
-                            {cell.info.header === "status" ? (
-                              <Tag type={STATUS_TAG_MAP[cell.value] || "gray"}>
-                                {cell.value}
-                              </Tag>
-                            ) : cell.info.header === "priority" ? (
-                              <Tag
-                                type={PRIORITY_TAG_MAP[cell.value] || "gray"}
-                              >
-                                {cell.value}
-                              </Tag>
-                            ) : (
-                              cell.value
-                            )}
+                    {rows.map((row) => {
+                      const labNumber =
+                        orders.find((o) => String(o.id) === row.id)
+                          ?.labNumber || "";
+                      return (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          {row.cells.map((cell) => (
+                            <TableCell key={cell.id}>
+                              {cell.info.header === "status" ? (
+                                <Tag
+                                  type={STATUS_TAG_MAP[cell.value] || "gray"}
+                                >
+                                  {cell.value}
+                                </Tag>
+                              ) : cell.info.header === "priority" ? (
+                                <Tag
+                                  type={PRIORITY_TAG_MAP[cell.value] || "gray"}
+                                >
+                                  {cell.value}
+                                </Tag>
+                              ) : (
+                                cell.value
+                              )}
+                            </TableCell>
+                          ))}
+                          <TableCell>
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              disabled={!labNumber}
+                              onClick={() =>
+                                history.push(
+                                  `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(labNumber)}`,
+                                )
+                              }
+                            >
+                              {intl.formatMessage({
+                                id: "eqa.action.viewResults",
+                              })}
+                            </Button>
                           </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>

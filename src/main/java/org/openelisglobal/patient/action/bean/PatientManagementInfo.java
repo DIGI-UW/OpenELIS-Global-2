@@ -200,6 +200,8 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String photo;
 
+    private List<PatientIdDocumentInfo> idDocuments = new ArrayList<>();
+
     @Valid
     private PatientContact patientContact;
 
@@ -561,6 +563,14 @@ public class PatientManagementInfo implements Serializable {
 
     public void setPhotoData(String photo) {
         this.photo = photo;
+    }
+
+    public List<PatientIdDocumentInfo> getIdDocuments() {
+        return idDocuments;
+    }
+
+    public void setIdDocuments(List<PatientIdDocumentInfo> idDocuments) {
+        this.idDocuments = idDocuments;
     }
 
     public Map<String, String> getAddressHierarchy() {

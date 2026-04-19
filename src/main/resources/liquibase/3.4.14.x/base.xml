@@ -31,4 +31,16 @@
 
   <!-- Complete FILE config unification: add remaining FIC fields to analyzer table -->
   <include relativeToChangelogFile="true" file="011-complete-file-config-unification.xml"/>
+
+  <!-- Drop archive_directory / error_directory columns — the bridge is now
+       strictly read-only with respect to watched directories and tracks all
+       processing state in FileStateStore (openelis-analyzer-bridge PR #34) -->
+  <include relativeToChangelogFile="true" file="012-drop-analyzer-archive-error-directories.xml"/>
+
+  <!-- Drop default_test_code column on already-deployed DBs (v4 revert of
+       plan mellow-honking-cascade Phase A.3.6). The 013 changeset that added
+       the column is reverted from source and will never run on fresh DBs;
+       this 014 forward migration drops the column on upgrade for environments
+       where 013 ran once. Changeset is idempotent via <columnExists> precondition. -->
+  <include relativeToChangelogFile="true" file="014-drop-analyzer-default-test-code.xml"/>
 </databaseChangeLog>

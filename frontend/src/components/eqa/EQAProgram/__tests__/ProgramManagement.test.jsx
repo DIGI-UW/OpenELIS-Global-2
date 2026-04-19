@@ -34,18 +34,14 @@ const mockPrograms = [
     id: 1,
     name: "Chemistry PT",
     description: "Chemistry proficiency testing",
-    providerName: "CAP",
-    category: "Chemistry",
-    frequency: "Quarterly",
+    provider: "CAP",
     isActive: true,
   },
   {
     id: 2,
     name: "Hematology PT",
     description: "Hematology proficiency testing",
-    providerName: "UKNEQAS",
-    category: "Hematology",
-    frequency: "Monthly",
+    provider: "UKNEQAS",
     isActive: false,
   },
 ];
@@ -78,7 +74,7 @@ describe("ProgramManagement", () => {
     );
   });
 
-  test("renders provider and category columns", () => {
+  test("renders provider column", () => {
     renderWithIntl(<ProgramManagement />);
     expect(screen.getByText("CAP")).toBeTruthy();
     expect(screen.getByText("UKNEQAS")).toBeTruthy();
@@ -141,9 +137,7 @@ describe("ProgramForm", () => {
       id: 1,
       name: "Chemistry PT",
       description: "Test desc",
-      providerName: "CAP",
-      category: "Chemistry",
-      frequency: "Quarterly",
+      provider: "CAP",
       isActive: true,
     };
     renderWithIntl(<ProgramForm program={program} onClose={jest.fn()} />);
@@ -156,11 +150,9 @@ describe("ProgramForm", () => {
     expect(screen.getByText("Program name is required")).toBeTruthy();
   });
 
-  test("renders provider and category dropdowns", () => {
+  test("renders provider field", () => {
     renderWithIntl(<ProgramForm program={null} onClose={jest.fn()} />);
     expect(screen.getByText("Provider")).toBeTruthy();
-    expect(screen.getByText("Category")).toBeTruthy();
-    expect(screen.getByText("Frequency")).toBeTruthy();
   });
 
   test("renders toggle only in edit mode", () => {

@@ -229,32 +229,37 @@ const Validation = (props) => {
       case "sampleInfo":
         return (
           <>
-            <Button
-              onClick={async () => {
-                if ("clipboard" in navigator) {
-                  return await navigator.clipboard.writeText(
-                    row.accessionNumber,
-                  );
-                } else {
-                  return document.execCommand(
-                    "copy",
-                    true,
-                    row.accessionNumber,
-                  );
-                }
-              }}
-              kind="ghost"
-              iconDescription={intl.formatMessage({
-                id: "instructions.copy.labnum",
-              })}
-              hasIconOnly
-              renderIcon={Copy}
-            />
+            <div>
+              <Button
+                onClick={async () => {
+                  if ("clipboard" in navigator) {
+                    return await navigator.clipboard.writeText(
+                      row.accessionNumber,
+                    );
+                  } else {
+                    return document.execCommand(
+                      "copy",
+                      true,
+                      row.accessionNumber,
+                    );
+                  }
+                }}
+                kind="ghost"
+                iconDescription={intl.formatMessage({
+                  id: "instructions.copy.labnum",
+                })}
+                hasIconOnly
+                renderIcon={Copy}
+              />
+            </div>
             <div className="sampleInfo" data-testid="LabNo">
               <br></br>
               {formatLabNum
                 ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                 : row.accessionNumber}
+              <br></br>
+              {row.patientName} <br></br>
+              {row.patientInfo}
               <br></br>
               <br></br>
             </div>
@@ -270,15 +275,23 @@ const Validation = (props) => {
             )}
           </>
         );
-      case "testName":
+      case "testName": {
+        const unitsOnly = row.units ? row.units.split(" (")[0].trim() : "";
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
             <br></br>
             {testName}
+            {unitsOnly && (
+              <>
+                <br></br>
+                {unitsOnly}
+              </>
+            )}
             <br></br>
             {sampleType}
           </div>
         );
+      }
 
       case "save":
         return (

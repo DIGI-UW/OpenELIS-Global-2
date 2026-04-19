@@ -66,7 +66,7 @@ public class TestResultDAOImpl extends BaseDAOImpl<TestResult, String> implement
     public List<TestResult> getAllTestResults() throws LIMSRuntimeException {
         List<TestResult> list;
         try {
-            String sql = "from TestResult";
+            String sql = "from TestResult tr JOIN FETCH tr.test";
             Query<TestResult> query = entityManager.unwrap(Session.class).createQuery(sql, TestResult.class);
             list = query.list();
         } catch (RuntimeException e) {

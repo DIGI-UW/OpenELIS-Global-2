@@ -126,3 +126,13 @@ frontend/e2e-evidence/
 e2e-evidence-*.zip
 
 # Miscellaneous dev artifacts
+
+
+volume/properties/TotalSystemConfiguration.properties
+volume/properties/SystemConfiguration.properties
+volume/properties/ChangedSystemConfiguration.properties
+
+# Real analyzer files from Herbert's Madagascar mount (contain PII)
+# Keep as a working copy for local debugging; never commit.
+docs/debug-local/
+
