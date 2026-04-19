@@ -22,7 +22,8 @@ import CustomTextInput from "../common/CustomTextInput";
 import CustomTimePicker from "../common/CustomTimePicker";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
+import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
+import { LEVEL_ORDER } from "../storage/LocationPicker/useLocationPicker";
 import { getFromOpenElisServer } from "../utils/Utils";
 import GpsCoordinatesCapture from "./GpsCoordinatesCapture";
 import LabelsSection from "../barcodeWorkflow/LabelsSection";
@@ -615,28 +616,43 @@ const SampleType = (props) => {
           </div>
         )}
 
-        {/* Storage Location Selector - INT-001: Integration point */}
-        {/* NOTE: In order entry workflow, SampleItems are created after Sample is saved.
-            Storage assignment operates at SampleItem level, so actual assignment happens
-            after SampleItems are created. The location preference is stored here for
-            later assignment to the first/default SampleItem. */}
+        {/* Storage location — inline variant (part of the larger
+            sample-type form). SampleItems are created after Sample
+            save, so this selection is a preference persisted into
+            sampleXml.storageLocation and applied to the first
+            SampleItem once it exists. */}
         <div className="inlineDiv">
-          <StorageLocationSelector
-            workflow="orders"
-            optional={true}
-            sampleInfo={{
-              // Note: sampleId here is temporary/placeholder - actual SampleItem ID will be available after SampleItems are created
-              sampleId: sample?.id || sample?.sampleId || `TEMP-${index}`,
-              type: selectedSampleType?.name || sampleXml?.sampleTypeName || "",
-              status: sampleXml?.rejected ? "Rejected" : "Active",
-            }}
-            initialLocation={sampleXml?.storageLocation || null}
-            onLocationChange={(locationData) => {
-              // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-              // Extract newLocation and positionCoordinate from locationData
-              // Store location preference - will be assigned to SampleItem after SampleItems are created
-              const location = locationData?.newLocation || locationData;
-              const positionCoordinate = locationData?.positionCoordinate || "";
+          <LocationPickerInline
+            initialSelection={
+              sampleXml?.storageLocation
+                ? (() => {
+                    const sel = {};
+                    LEVEL_ORDER.forEach((lvl) => {
+                      if (sampleXml.storageLocation[lvl])
+                        sel[lvl] = sampleXml.storageLocation[lvl];
+                    });
+                    return sel;
+                  })()
+                : null
+            }
+            onChange={(state) => {
+              // Adapt new picker shape → legacy sampleXml.storageLocation:
+              // flat object with keys room/device/shelf/rack/box + a
+              // positionCoordinate string.
+              const location = {};
+              LEVEL_ORDER.forEach((lvl) => {
+                if (state.selection[lvl]) location[lvl] = state.selection[lvl];
+              });
+              let positionCoordinate = "";
+              if (state.position) {
+                if (state.position.mode === "text") {
+                  positionCoordinate = (state.position.value || "").trim();
+                } else if (state.position.mode === "grid") {
+                  const row = (state.position.row || "").toString().trim();
+                  const col = (state.position.column || "").toString().trim();
+                  positionCoordinate = row + col;
+                }
+              }
               handleStorageLocationChange(location, positionCoordinate);
             }}
           />

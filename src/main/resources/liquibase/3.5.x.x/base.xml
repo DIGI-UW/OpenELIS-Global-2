@@ -23,6 +23,9 @@
   <!-- TAT Report menu entry under Reports (OGC-310) -->
   <include relativeToChangelogFile="true" file="005-tat-report-menu.xml"/>
 
+  <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
+  <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
+
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
 
