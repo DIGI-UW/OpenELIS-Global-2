@@ -296,7 +296,12 @@ jobs:
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
-          FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '1000' || '' }}
+          # FILE_IMPORT_POLL_MS is the total poll-timeout window (not a poll interval). At 1000ms
+          # the harness shard had a single shot at seeing results after the drop buffer, so any
+          # cold-start latency in the GenericFile watcher flipped the shard to red on bad luck.
+          # Matching the spec's 60s default lets the watcher refresh post-seed without masking
+          # real breakage.
+          FILE_IMPORT_POLL_MS: ${{ inputs.setup_analyzer_harness && '60000' || '' }}
           FILE_IMPORT_DROP_BUFFER_MS: ${{ inputs.setup_analyzer_harness && '15000' || '' }}
 
       - name: Memory snapshot (post-test) + monitor dump
