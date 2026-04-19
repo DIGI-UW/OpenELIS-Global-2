@@ -25,6 +25,7 @@ FOUNDATIONAL_SQL_FILE="$SCRIPT_DIR/e2e-foundational-data.sql"
 ANALYZER_MINIMAL_SQL_FILE="$SCRIPT_DIR/analyzer-minimal.sql"
 FILE_IMPORT_E2E_SQL="$SCRIPT_DIR/fixtures/file-import-e2e.sql"
 ANALYZER_HARNESS_LANE_SQL_FILE="$SCRIPT_DIR/fixtures/analyzer-harness-lane-data.sql"
+STORAGE_IN_PROGRESS_ORDER_SQL="$SCRIPT_DIR/fixtures/storage-in-progress-order.sql"
 RESET_SCRIPT="$SCRIPT_DIR/reset-test-database.sh"
 
 RESET=false
@@ -357,6 +358,14 @@ load_profile_fixtures() {
 load_profile_lane_fixtures() {
     if [ "$PROFILE" = "harness" ]; then
         load_sql_file "$ANALYZER_HARNESS_LANE_SQL_FILE" "analyzer harness lane fixtures (HARN-* accessions)" "fatal"
+    fi
+
+    # Seed one Not-Tested analysis linked to sample_item 10001 (from storage-e2e.xml)
+    # so ORDERS_IN_PROGRESS returns a labNumber for the storage-assign-order-label spec.
+    # Idempotent + FK-guarded inside the SQL; non-fatal if the file is absent.
+    if [ -f "$STORAGE_IN_PROGRESS_ORDER_SQL" ]; then
+        load_sql_file "$STORAGE_IN_PROGRESS_ORDER_SQL" \
+            "storage in-progress analysis (ORDERS_IN_PROGRESS seed)"
     fi
 }
 
