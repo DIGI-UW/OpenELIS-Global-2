@@ -61,6 +61,7 @@
 	<field name="correctedResult" class="java.lang.Boolean"/>
 	<field name="parentMarker" class="java.lang.Boolean"/>
 	<field name="alerts" class="java.lang.String"/>
+	<field name="collector" class="java.lang.String"/>
 	<group name="person" isStartNewPage="true" isResetPageNumber="true">
 		<groupExpression><![CDATA[$F{accessionNumber}]]></groupExpression>
 	</group>
@@ -612,7 +613,7 @@
 		</band>
 	</detail>
 	<columnFooter>
-		<band height="83" splitType="Stretch">
+		<band height="103" splitType="Stretch">
 			<staticText>
 				<reportElement x="0" y="19" width="370" height="61" uuid="bbad2ed3-4d01-4ee2-b09a-d69bfbcabd65"/>
 				<box topPadding="0" leftPadding="4">
@@ -622,7 +623,7 @@
 					<bottomPen lineWidth="0.5"/>
 					<rightPen lineWidth="0.5"/>
 				</box>
-				<text><![CDATA[Remarques gï¿½nï¿½rales du laboratoire]]></text>
+				<text><![CDATA[Notes]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="370" y="19" width="182" height="61" uuid="9fcaee6f-cb20-4d9e-988b-d84b57fb3a14"/>
@@ -640,8 +641,32 @@
 				<textElement verticalAlignment="Middle"/>
 				<text><![CDATA[Date:]]></text>
 			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="80" width="370" height="20" uuid="c1a2b3d4-e5f6-7890-abcd-ef1234567890"/>
+				<box topPadding="2" leftPadding="4">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA["Collector: " + ($F{collector} != null ? $F{collector} : "")]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="370" y="80" width="182" height="20" uuid="d2e3f4a5-b6c7-8901-bcde-f23456789012"/>
+				<box leftPadding="4">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5"/>
+					<leftPen lineWidth="0.5"/>
+					<bottomPen lineWidth="0.5"/>
+					<rightPen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[]]></text>
+			</staticText>
 			<line>
-				<reportElement key="line" x="0" y="80" width="552" height="1" forecolor="#000000" uuid="4199fc09-5a7c-4803-943c-7e68dbe84eaa"/>
+				<reportElement key="line" x="0" y="100" width="552" height="1" forecolor="#000000" uuid="4199fc09-5a7c-4803-943c-7e68dbe84eaa"/>
 				<graphicElement>
 					<pen lineWidth="2.0" lineStyle="Solid"/>
 				</graphicElement>
@@ -649,7 +674,7 @@
 			<staticText>
 				<reportElement x="0" y="0" width="552" height="19" uuid="3a7ad019-8f5f-4549-81d5-66dd05ff6da5"/>
 				<textElement verticalAlignment="Middle"/>
-				<text><![CDATA[ B = Infï¿½rieure ï¿½ la Normale        E =  Supï¿½rieure ï¿½ la Normale        * = Anormale]]></text>
+				<text><![CDATA[ B = Inférieure à la Normale        E =  Supérieure à la Normale        * = Anormale]]></text>
 			</staticText>
 		</band>
 	</columnFooter>

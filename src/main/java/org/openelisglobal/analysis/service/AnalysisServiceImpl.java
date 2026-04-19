@@ -361,6 +361,11 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    public List<Analysis> getAnalysesForStatusIds(List<String> statusIds) {
+        return baseObjectDAO.getAnalysesForStatusIds(statusIds);
+    }
+
+    @Override
     public int getCountOfAnalysesForStatusIds(List<Integer> statusIdList) {
         return baseObjectDAO.getCountOfAnalysesForStatusIds(statusIdList);
     }

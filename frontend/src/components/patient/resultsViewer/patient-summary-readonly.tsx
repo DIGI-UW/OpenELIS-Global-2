@@ -1,7 +1,6 @@
 import React, { useContext, useMemo } from "react";
 import {
-  Accordion,
-  AccordionItem,
+  Button,
   Column,
   Grid,
   RadioButton,
@@ -19,6 +18,7 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../../layout/Layout";
 import AsyncAvatar from "../photoManagement/photoAvatar/AyncAvatar";
+import config from "../../../config.json";
 
 type PatientContactPerson = {
   firstName?: string;
@@ -124,7 +124,7 @@ const ReadonlyField = ({ id, labelText, value = "" }: ReadonlyFieldProps) => (
     className="patientReadonlyField"
     labelText={labelText}
     value={value}
-    readOnly
+    disabled
   />
 );
 
@@ -137,101 +137,86 @@ const PatientSummaryReadonly: React.FC<PatientSummaryReadonlyProps> = ({
   const configurationProperties =
     configurationContext?.configurationProperties ?? {};
 
-  const ageParts = useMemo(
-    () =>
-      getAgeParts(
-        patient.birthDateForDisplay,
-        configurationProperties.DEFAULT_DATE_LOCALE,
-      ),
-    [patient.birthDateForDisplay, configurationProperties.DEFAULT_DATE_LOCALE],
-  );
-
   const patientName =
     `${patient.lastName || ""} ${patient.firstName || ""}`.trim() || "Patient";
 
+  const [labNoOpen, setLabNoOpen] = React.useState(false);
+  const [labNoVal, setLabNoVal] = React.useState("");
+
+  const openAllReports = () => {
+    const url =
+      config.serverBaseUrl +
+      "/ReportPrint?report=patientCILNSP_vreduit&type=patient" +
+      "&accessionDirect=&highAccessionDirect=" +
+      "&dateOfBirthSearchValue=&selPatient=" +
+      encodeURIComponent(String(patient.patientPK ?? "")) +
+      "&referringSiteId=&referringSiteDepartmentId=" +
+      "&onlyResults=false&_onlyResults=on" +
+      "&dateType=RESULT_DATE&lowerDateRange=&upperDateRange=";
+    window.open(url, "_blank");
+  };
+
+  const openLabNoReport = () => {
+    if (!labNoVal.trim()) return;
+    const url =
+      config.serverBaseUrl +
+      "/ReportPrint?report=patientCILNSP_vreduit&type=patient" +
+      "&accessionDirect=" +
+      encodeURIComponent(labNoVal.trim()) +
+      "&highAccessionDirect=" +
+      encodeURIComponent(labNoVal.trim());
+    window.open(url, "_blank");
+  };
+
   return (
     <Tile className="patientSummaryTile">
-      <div className="patientSummaryHeading">
-        <h4>
-          <FormattedMessage id="patient.label.info" />
-        </h4>
-      </div>
-
       <Grid fullWidth>
-        <Column lg={4} md={4} sm={4}>
+        {/* Avatar */}
+        <Column lg={2} md={2} sm={4}>
           <div className="patientSummaryPhotoCard">
             <AsyncAvatar
               patientId={patient.patientPK ? String(patient.patientPK) : null}
               hasPhoto={Boolean(patient.patientPK)}
               patientName={patientName}
-              size={112}
+              size={80}
               gender={patient.gender}
             />
           </div>
         </Column>
 
-        <Column lg={6} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-subject-number"
-            labelText={intl.formatMessage({ id: "patient.subject.number" })}
-            value={patient.subjectNumber}
+        {/* Full name */}
+        <Column lg={4} md={3} sm={4}>
+          <TextInput
+            id="patient-summary-name"
+            className="patientReadonlyField"
+            labelText={intl.formatMessage({
+              id: "patient.name",
+              defaultMessage: "Full Name",
+            })}
+            value={patientName}
+            disabled
           />
         </Column>
 
-        <Column lg={6} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-national-id"
-            labelText={
-              <>
-                {intl.formatMessage({ id: "patient.natioanalid" })}
-                <span className="requiredlabel">*</span>
-              </>
-            }
-            value={patient.nationalId}
-          />
-        </Column>
-
-        <Column lg={6} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-last-name"
-            labelText={intl.formatMessage({ id: "patient.last.name" })}
-            value={patient.lastName}
-          />
-        </Column>
-
-        <Column lg={6} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-first-name"
-            labelText={intl.formatMessage({ id: "patient.first.name" })}
-            value={patient.firstName}
-          />
-        </Column>
-
-        <Column lg={4} md={4} sm={4}>
-          <ReadonlyField
+        {/* Phone */}
+        <Column lg={3} md={3} sm={4}>
+          <TextInput
             id="patient-summary-primary-phone"
+            className="patientReadonlyField"
             labelText={intl.formatMessage(
-              {
-                id: "patient.label.primaryphone",
-                defaultMessage: "Primary phone: {PHONE_FORMAT}",
-              },
-              {
-                PHONE_FORMAT: configurationProperties.PHONE_FORMAT || "",
-              },
+              { id: "patient.label.primaryphone", defaultMessage: "Phone" },
+              { PHONE_FORMAT: "" },
             )}
-            value={patient.primaryPhone}
+            value={patient.primaryPhone ?? ""}
+            disabled
           />
         </Column>
 
-        <Column lg={8} md={4} sm={4}>
+        {/* Gender */}
+        <Column lg={3} md={3} sm={4}>
           <RadioButtonGroup
             className="patientReadonlyRadioGroup"
-            legendText={
-              <>
-                {intl.formatMessage({ id: "patient.gender" })}
-                <span className="requiredlabel">*</span>
-              </>
-            }
+            legendText={intl.formatMessage({ id: "patient.gender" })}
             name="patient-summary-gender"
             valueSelected={patient.gender || ""}
           >
@@ -250,181 +235,129 @@ const PatientSummaryReadonly: React.FC<PatientSummaryReadonlyProps> = ({
           </RadioButtonGroup>
         </Column>
 
-        <Column lg={4} md={4} sm={4}>
-          <ReadonlyField
+        {/* DOB */}
+        <Column lg={4} md={3} sm={4}>
+          <TextInput
             id="patient-summary-dob"
-            labelText={
-              <>
-                {intl.formatMessage({ id: "patient.dob" })}
-                <span className="requiredlabel">*</span>
-              </>
-            }
-            value={patient.birthDateForDisplay}
-          />
-        </Column>
-
-        <Column lg={4} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-years"
-            labelText={intl.formatMessage({ id: "patient.age.years" })}
-            value={ageParts.years}
-          />
-        </Column>
-
-        <Column lg={4} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-months"
-            labelText={intl.formatMessage({ id: "patient.age.months" })}
-            value={ageParts.months}
-          />
-        </Column>
-
-        <Column lg={4} md={4} sm={4}>
-          <ReadonlyField
-            id="patient-summary-days"
-            labelText={intl.formatMessage({ id: "patient.age.days" })}
-            value={ageParts.days}
+            className="patientReadonlyField"
+            labelText={intl.formatMessage({ id: "patient.dob" })}
+            value={patient.birthDateForDisplay ?? ""}
+            disabled
           />
         </Column>
       </Grid>
 
-      <Accordion className="patientSummaryAccordion">
-        <AccordionItem
-          title={intl.formatMessage({ id: "emergencyContactInfo.title" })}
+      {/* Action buttons */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "1rem",
+          alignItems: "flex-start",
+          marginTop: "1.25rem",
+          paddingTop: "1rem",
+          borderTop: "1px solid #e0e0e0",
+        }}
+      >
+        {/* All Reports button with description */}
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
         >
-          <Grid fullWidth>
-            <Column lg={6} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-contact-last-name"
-                labelText={intl.formatMessage({
-                  id: "patientcontact.person.lastname",
-                })}
-                value={patient.patientContact?.person?.lastName}
-              />
-            </Column>
+          <Button kind="primary" size="md" onClick={openAllReports}>
+            <FormattedMessage
+              id="report.all.client"
+              defaultMessage="All Reports"
+            />
+          </Button>
+          <span
+            style={{
+              fontSize: "0.75rem",
+              color: "#525252",
+              maxWidth: "180px",
+              lineHeight: "1.3",
+            }}
+          >
+            <FormattedMessage
+              id="report.all.client.description"
+              defaultMessage="Generate all recorded lab results for this patient"
+            />
+          </span>
+        </div>
 
-            <Column lg={6} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-contact-first-name"
-                labelText={intl.formatMessage({
-                  id: "patientcontact.person.firstname",
-                })}
-                value={patient.patientContact?.person?.firstName}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-contact-phone"
-                labelText={intl.formatMessage(
-                  {
-                    id: "patient.label.contactphone",
-                    defaultMessage: "Contact Phone: {PHONE_FORMAT}",
-                  },
-                  {
-                    PHONE_FORMAT: configurationProperties.PHONE_FORMAT || "",
-                  },
-                )}
-                value={patient.patientContact?.person?.primaryPhone}
-              />
-            </Column>
-
-            <Column lg={8} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-contact-email"
-                labelText={intl.formatMessage({
-                  id: "patientcontact.person.email",
-                })}
-                value={patient.patientContact?.person?.email}
-              />
-            </Column>
-          </Grid>
-        </AccordionItem>
-
-        <AccordionItem
-          title={intl.formatMessage({ id: "patient.label.additionalInfo" })}
+        {/* By Lab No button with description */}
+        <div
+          style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}
         >
-          <Grid fullWidth>
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-city"
-                labelText={intl.formatMessage({ id: "patient.address.town" })}
-                value={patient.city}
-              />
-            </Column>
+          <Button
+            kind="tertiary"
+            size="md"
+            onClick={() => {
+              setLabNoOpen((v) => !v);
+              setLabNoVal("");
+            }}
+          >
+            <FormattedMessage id="report.by.labno" defaultMessage="By Lab No" />
+          </Button>
+          <span
+            style={{
+              fontSize: "0.75rem",
+              color: "#525252",
+              maxWidth: "180px",
+              lineHeight: "1.3",
+            }}
+          >
+            <FormattedMessage
+              id="report.by.labno.description"
+              defaultMessage="Print report for a specific accession number"
+            />
+          </span>
+        </div>
 
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-street-address"
-                labelText={intl.formatMessage({ id: "patient.address.street" })}
-                value={patient.streetAddress}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-commune"
-                labelText={intl.formatMessage({ id: "patient.address.camp" })}
-                value={patient.commune}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-health-region"
+        {/* Inline lab number input — shown only when toggled */}
+        {labNoOpen && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.25rem",
+              alignSelf: "flex-start",
+            }}
+          >
+            <div
+              style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}
+            >
+              <TextInput
+                id="patient-summary-labno-input"
                 labelText={intl.formatMessage({
-                  id: "patient.address.healthregion",
+                  id: "report.enter.labNumber.headline",
+                  defaultMessage: "Accession / Lab No",
                 })}
-                value={patient.healthRegion}
+                placeholder="e.g. mberDEV01260000000000015"
+                size="md"
+                value={labNoVal}
+                onChange={(e) =>
+                  setLabNoVal((e.target as HTMLInputElement).value)
+                }
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === "Enter" && labNoVal.trim()) openLabNoReport();
+                }}
+                style={{ width: "240px" }}
               />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-health-district"
-                labelText={intl.formatMessage({
-                  id: "patient.address.healthdistrict",
-                })}
-                value={patient.healthDistrict}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-education"
-                labelText={intl.formatMessage({ id: "patient.eduction" })}
-                value={patient.education}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-maritial-status"
-                labelText={intl.formatMessage({ id: "patient.maritalstatus" })}
-                value={patient.maritialStatus}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-nationality"
-                labelText={intl.formatMessage({ id: "patient.nationality" })}
-                value={patient.nationality}
-              />
-            </Column>
-
-            <Column lg={4} md={4} sm={4}>
-              <ReadonlyField
-                id="patient-summary-other-nationality"
-                labelText={intl.formatMessage({
-                  id: "patient.nationality.other",
-                })}
-                value={patient.otherNationality}
-              />
-            </Column>
-          </Grid>
-        </AccordionItem>
-      </Accordion>
+              <Button
+                kind="primary"
+                size="md"
+                disabled={!labNoVal.trim()}
+                onClick={openLabNoReport}
+              >
+                <FormattedMessage
+                  id="label.button.print"
+                  defaultMessage="Print"
+                />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </Tile>
   );
 };

@@ -1126,4 +1126,44 @@ public class ResultsLoadUtility {
         return analysisService.getCountAnalysisByStatusFromAccession(analysisStatusList, sampleStatusList,
                 accessionNumber);
     }
+
+    /**
+     * Returns ALL test result items for a given accession number regardless of
+     * status, including Finalized tests. Used by the result entry page when
+     * accessed from the dashboard so that completed orders still show their
+     * results. Uses all analysis statuses AND all sample/order statuses (including
+     * Finished) so that fully validated orders are not filtered out.
+     */
+    public List<TestResultItem> getAllTestResultItemsByAccession(String accessionNumber) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+
+        // Include every analysis status — nothing filtered out
+        List<Integer> allAnalysisStatuses = new java.util.ArrayList<>();
+        for (AnalysisStatus status : AnalysisStatus.values()) {
+            try {
+                String id = statusService.getStatusID(status);
+                if (id != null && !id.trim().isEmpty() && !id.equals("-1")) {
+                    allAnalysisStatuses.add(Integer.parseInt(id));
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        // Include every sample/order status — specifically includes Finished so that
+        // fully validated orders (where sample status = Finished) are not excluded.
+        List<Integer> allSampleStatuses = new java.util.ArrayList<>();
+        for (OrderStatus status : OrderStatus.values()) {
+            try {
+                String id = statusService.getStatusID(status);
+                if (id != null && !id.trim().isEmpty() && !id.equals("-1")) {
+                    allSampleStatuses.add(Integer.parseInt(id));
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        List<Analysis> analysisList = analysisService.getPageAnalysisByStatusFromAccession(allAnalysisStatuses,
+                allSampleStatuses, accessionNumber);
+        return getGroupedTestsForAnalysisList(analysisList, SORT_FORWARD);
+    }
 }

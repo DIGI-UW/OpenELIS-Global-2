@@ -527,6 +527,143 @@ public class PatientDashBoardProvider {
     }
 
     /**
+     * Returns all grouped orders regardless of status (NotStarted,
+     * TechnicalAcceptance, Finalized) so the dashboard can persist completed
+     * records. Finalized orders are marked with completed=true so the frontend can
+     * render a "Completed" badge.
+     */
+    @GetMapping(value = "home-dashboard/ORDERS-All-Grouped", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public PatientDashBoardForm getAllGroupedOrders(HttpServletRequest request)
+            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+
+        PatientDashBoardForm response = new PatientDashBoardForm();
+        PatientDashBoardPaging paging = new PatientDashBoardPaging();
+        List<OrderDisplayBean> orderDisplayBeans = new ArrayList<>();
+
+        String requestedPage = request.getParameter("page");
+        if (GenericValidator.isBlankOrNull(requestedPage)) {
+            List<String> activeStatusIds = new ArrayList<>();
+            activeStatusIds.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
+            activeStatusIds.add(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
+
+            List<String> finalizedStatusIds = new ArrayList<>();
+            finalizedStatusIds.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
+
+            List<Analysis> activeAnalyses = analysisService.getAnalysesForStatusIds(activeStatusIds);
+            List<Analysis> finalizedAnalyses = analysisService.getAnalysesForStatusIds(finalizedStatusIds);
+
+            // Build grouped beans for active orders (pending result + pending validation)
+            List<Analysis> pendingResult = new ArrayList<>();
+            List<Analysis> pendingValidation = new ArrayList<>();
+            if (activeAnalyses != null) {
+                for (Analysis a : activeAnalyses) {
+                    String statusId = a.getStatusId();
+                    if (iStatusService.getStatusID(AnalysisStatus.NotStarted).equals(statusId)) {
+                        pendingResult.add(a);
+                    } else {
+                        pendingValidation.add(a);
+                    }
+                }
+            }
+            orderDisplayBeans = convertAnalysesToGroupedOrderBean(pendingResult, pendingValidation);
+
+            // Collect accession numbers already represented by active beans so we
+            // can skip adding a duplicate finalized bean for mixed-state orders
+            // (e.g. 24 finalized + 4 still pending in the same accession).
+            Set<String> activeAccessions = new HashSet<>();
+            for (OrderDisplayBean b : orderDisplayBeans) {
+                if (b.getLabNumber() != null && !b.getLabNumber().trim().isEmpty()) {
+                    activeAccessions.add(b.getLabNumber().trim());
+                }
+            }
+
+            // Add finalized orders — only for accessions NOT already in the active list.
+            if (finalizedAnalyses != null) {
+                Map<String, OrderDisplayBean> finalizedMap = new LinkedHashMap<>();
+                for (Analysis analysis : finalizedAnalyses) {
+                    if (analysis == null)
+                        continue;
+                    org.openelisglobal.sample.valueholder.Sample sample = analysis.getSampleItem() != null
+                            ? analysis.getSampleItem().getSample()
+                            : null;
+                    String labNumber = sample != null ? sample.getAccessionNumber() : null;
+                    String key = labNumber != null ? labNumber : analysis.getId();
+
+                    // Skip: this accession already has an active bean — no duplicate row needed
+                    if (activeAccessions.contains(key)) {
+                        continue;
+                    }
+
+                    finalizedMap.computeIfAbsent(key, k -> {
+                        OrderDisplayBean bean = new OrderDisplayBean();
+                        bean.setId(analysis.getId());
+                        if (sample != null) {
+                            org.openelisglobal.patient.valueholder.Patient patient = sampleHumanService
+                                    .getPatientForSample(sample);
+                            bean.setPriority(sample.getPriority() != null ? sample.getPriority().toString() : "");
+                            bean.setLabNumber(sample.getAccessionNumber() != null ? sample.getAccessionNumber() : "");
+                            bean.setPatientId(
+                                    patient != null ? StringUtils.defaultString(patient.getNationalId()) : "");
+                            bean.setPatientName(getPatientName(patient));
+                        }
+                        bean.setOrderDate(analysis.getStartedDateForDisplay());
+                        bean.setTestSection(analysis.getTestSection() != null ? analysis.getTestSection().getId() : "");
+                        bean.setCompleted(true);
+                        return bean;
+                    });
+                }
+                orderDisplayBeans.addAll(finalizedMap.values());
+            }
+
+            // Build a map of accessionNumber -> sampleId from all analyses so we can
+            // query the true total count per sample without N+1 calls.
+            // We combine active + finalized to cover every accession in the result set.
+            Map<String, String> accessionToSampleId = new LinkedHashMap<>();
+            List<Analysis> allAnalyses = new ArrayList<>();
+            if (activeAnalyses != null)
+                allAnalyses.addAll(activeAnalyses);
+            if (finalizedAnalyses != null)
+                allAnalyses.addAll(finalizedAnalyses);
+            for (Analysis a : allAnalyses) {
+                if (a == null)
+                    continue;
+                org.openelisglobal.sample.valueholder.Sample s = a.getSampleItem() != null
+                        ? a.getSampleItem().getSample()
+                        : null;
+                if (s != null && s.getAccessionNumber() != null && s.getId() != null) {
+                    accessionToSampleId.putIfAbsent(s.getAccessionNumber().trim(), s.getId());
+                }
+            }
+
+            // For each unique sample, get the real total count of ALL analyses
+            // (any status: NotStarted, TechnicalAcceptance, Finalized, Rejected, etc.)
+            // This is the one true number that never changes when a result is reverted.
+            Map<String, Integer> accessionToTotalCount = new LinkedHashMap<>();
+            for (Map.Entry<String, String> entry : accessionToSampleId.entrySet()) {
+                List<Analysis> allForSample = analysisService.getAnalysesBySampleId(entry.getValue());
+                accessionToTotalCount.put(entry.getKey(), allForSample != null ? allForSample.size() : 0);
+            }
+
+            // Apply the true total count to every bean
+            for (OrderDisplayBean bean : orderDisplayBeans) {
+                String key = bean.getLabNumber() != null ? bean.getLabNumber().trim() : "";
+                Integer total = accessionToTotalCount.get(key);
+                if (total != null) {
+                    bean.setTestCount(total);
+                }
+            }
+
+            paging.setDatabaseResults(request, response, orderDisplayBeans);
+        } else {
+            int requestedPageNumber = Integer.parseInt(requestedPage);
+            paging.page(request, response, requestedPageNumber);
+        }
+
+        return response;
+    }
+
+    /**
      * Returns the list of orders based on the type of the list provided by the
      * getdashBoardDisplayList method.
      */

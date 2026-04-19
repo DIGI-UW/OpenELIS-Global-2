@@ -984,6 +984,27 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<Analysis> getAnalysesForStatusIds(List<String> statusIds) throws LIMSRuntimeException {
+        if (statusIds == null || statusIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+
+        try {
+            List<Integer> intIds = statusIds.stream().map(Integer::parseInt)
+                    .collect(java.util.stream.Collectors.toList());
+            String sql = "from Analysis a where a.statusId in (:statusList)";
+            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            query.setParameterList("statusList", intIds);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "getAnalysesForStatusIds");
+        }
+
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<Integer> statusIds)
             throws LIMSRuntimeException {
         if (statusIds == null || statusIds.isEmpty()) {
@@ -1567,8 +1588,9 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
             List<Integer> sampleStatusList, String accessionNumber) {
 
-        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber >= :accessionNumber" //
-                + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
+        // Fixed: was >= (range query) which returned all accessions >= the given one.
+        // Changed to = for exact accession match, scoping results to one order only.
+        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
                 + " AND a.statusId IN (:analysisStatusList)" //
                 + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
                 + " ORDER BY a.sampleItem.sample.accessionNumber"; //

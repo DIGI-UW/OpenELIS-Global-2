@@ -90,13 +90,14 @@
 	<field name="sampleSortOrder" class="java.lang.String"/>
 	<field name="contactTracingIndexName" class="java.lang.String"/>
 	<field name="contactTracingIndexRecordNumber" class="java.lang.String"/>
+	<field name="collector" class="java.lang.String"/>
 	<group name="person" isStartNewPage="true" isResetPageNumber="true" footerPosition="ForceAtBottom">
 		<groupExpression><![CDATA[$F{subjectNumber}]]></groupExpression>
 		<groupFooter>
-			<band height="80">
+			<band height="100">
 				<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				<textField evaluationTime="Group" evaluationGroup="person" pattern="">
-					<reportElement x="371" y="0" width="182" height="70" isRemoveLineWhenBlank="true">
+					<reportElement x="371" y="0" width="182" height="50" isRemoveLineWhenBlank="true">
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
 					<box leftPadding="4">
@@ -113,7 +114,7 @@
 					<textFieldExpression><![CDATA[$R{report.signValidation}]]></textFieldExpression>
 				</textField>
 				<textField evaluationTime="Group" evaluationGroup="person" pattern="">
-					<reportElement x="375" y="56" width="100" height="14" isRemoveLineWhenBlank="true">
+					<reportElement x="375" y="36" width="100" height="14" isRemoveLineWhenBlank="true">
 						<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					</reportElement>
 					<textElement verticalAlignment="Middle">
@@ -122,8 +123,8 @@
 					</textElement>
 					<textFieldExpression><![CDATA[$R{report.date}]]></textFieldExpression>
 				</textField>
-				<textField evaluationTime="Group" evaluationGroup="person" pattern="">
-					<reportElement x="1" y="0" width="370" height="70" isRemoveLineWhenBlank="true">
+				<staticText>
+					<reportElement x="1" y="0" width="370" height="50" isRemoveLineWhenBlank="true">
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
 					<box topPadding="0" leftPadding="4">
@@ -137,8 +138,8 @@
 						<font size="8" isBold="false"/>
 						<paragraph lineSpacing="Single"/>
 					</textElement>
-					<textFieldExpression><![CDATA[$R{report.labInfomation}]]></textFieldExpression>
-				</textField>
+					<text><![CDATA[Notes]]></text>
+				</staticText>
 				<image>
 					<reportElement x="373" y="10" width="178" height="25">
 						<printWhenExpression><![CDATA[$P{useLabDirectorSignature}]]></printWhenExpression>
@@ -169,6 +170,38 @@
 					</textElement>
 					<textFieldExpression><![CDATA[$P{labDirectorTitle}]]></textFieldExpression>
 				</textField>
+				<textField isBlankWhenNull="true">
+					<reportElement x="1" y="50" width="370" height="20">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box topPadding="2" leftPadding="4">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5"/>
+						<leftPen lineWidth="0.5"/>
+						<bottomPen lineWidth="0.5"/>
+						<rightPen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font size="8"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Collector: " + ($F{collector} != null ? $F{collector} : "")]]></textFieldExpression>
+				</textField>
+				<staticText>
+					<reportElement x="371" y="50" width="182" height="20">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="4">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5"/>
+						<leftPen lineWidth="0.5"/>
+						<bottomPen lineWidth="0.5"/>
+						<rightPen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font size="8"/>
+					</textElement>
+					<text><![CDATA[]]></text>
+				</staticText>
 			</band>
 		</groupFooter>
 	</group>

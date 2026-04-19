@@ -938,6 +938,11 @@ public abstract class PatientReport extends Report {
             data.setSampleType(analysisService.getTypeOfSample(currentAnalysis).getLocalizedName());
             data.setCollectionDateTime(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(
                     currentAnalysis.getSampleItem().getCollectionDate()));
+            // Collector is stored on SampleItem — set by SampleAddService from the
+            // sample XML collector attribute (populated with the logged-in user's name
+            // during order entry / incoming order collection).
+            String collectorName = currentAnalysis.getSampleItem().getCollector();
+            data.setCollector(collectorName != null ? collectorName : "");
         }
         if (AccessionFormat.ALPHANUM.toString()
                 .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat))) {

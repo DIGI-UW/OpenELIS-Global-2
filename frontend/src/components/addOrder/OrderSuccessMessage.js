@@ -5,6 +5,7 @@ import { SampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFor
 import { sampleObject } from "./Index";
 import { FormattedMessage } from "react-intl";
 import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
+import { navigateTo } from "../utils/Navigation";
 
 const OrderSuccessMessage = (props) => {
   const {
@@ -117,6 +118,7 @@ const OrderSuccessMessage = (props) => {
           <PostSavePrintDialog
             accessionNumber={accessionNumber}
             printableLabelTypes={printableLabels}
+            onDone={() => navigateTo("/")}
           />
         </Row>
         <Row>

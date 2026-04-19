@@ -83,6 +83,7 @@ public final class ClinicalPatientData {
     private String tbSampleAspect;
     private String tbFollowupPeriodLine1;
     private String tbFollowupPeriodLine2;
+    private String collector;
 
     public ClinicalPatientData() {
     }
@@ -143,6 +144,7 @@ public final class ClinicalPatientData {
         sampleId = data.getSampleId();
         sampleSortOrder = data.getSampleSortOrder();
         analysisStatus = data.getAnalysisStatus();
+        collector = data.getCollector();
     }
 
     public String getReferralRefRange() {
@@ -668,5 +670,13 @@ public final class ClinicalPatientData {
 
     public void setPrescriber(String prescriber) {
         this.prescriber = prescriber;
+    }
+
+    public String getCollector() {
+        return collector;
+    }
+
+    public void setCollector(String collector) {
+        this.collector = collector;
     }
 }

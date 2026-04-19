@@ -263,29 +263,27 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 if (doRange) {
                     tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber,
                             upperRangeAccessionNumber, doRange, finished);
-                } else {
+                } else if (!GenericValidator.isBlankOrNull(labNumber)) {
+                    // Accession-scoped search: show ALL tests for this accession including
+                    // Finalized ones. No patient fallback — results must be scoped to the
+                    // exact accession number clicked, not the patient's full history.
                     resultsLoadUtility.setLockCurrentResults(
                             ResultUtil.modifyResultsRoleBased() && ResultUtil.userNotInRole(request));
-                    // Keep React accession search aligned with legacy /AccessionResults behavior.
-                    tests = resultsLoadUtility.getUnfinishedTestResultItemsByAccession(labNumber);
+                    tests = resultsLoadUtility.getAllTestResultItemsByAccession(labNumber);
                     LogEvent.logInfo(this.getClass().getSimpleName(), "getLogbookResults",
-                            "getUnfinishedTestResultItemsByAccession returned " + tests.size() + " tests for labNumber "
+                            "getAllTestResultItemsByAccession returned " + tests.size() + " tests for labNumber "
                                     + labNumber);
-                }
-
-                // if no test try patientID
-                if (tests.isEmpty()) {
+                } else {
+                    // No accession number — fall back to patient-level search if patientPK provided
+                    if (StringUtils.isBlank(patientPK)) {
+                        return (form);
+                    }
                     String statusRules = ConfigurationProperties.getInstance()
                             .getPropertyValueUpperCase(Property.StatusRules);
                     if (statusRules.equals(STATUS_RULES_RETROCI)) {
                         resultsLoadUtility.addExcludedAnalysisStatus(AnalysisStatus.TechnicalRejected);
                     }
-
-                    if (StringUtils.isBlank(patientPK)) {
-                        return (form);
-                    }
                     patient = patientService.get(patientPK);
-
                     tests = resultsLoadUtility.getGroupedTestsForPatient(patient);
                     patientName = patientService.getLastFirstName(patient);
                     patientInfo = patient.getNationalId() + ", " + patient.getGender() + ", "

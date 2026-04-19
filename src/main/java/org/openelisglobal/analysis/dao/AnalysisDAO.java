@@ -125,6 +125,8 @@ public interface AnalysisDAO extends BaseDAO<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusId(String statusId) throws LIMSRuntimeException;
 
+    List<Analysis> getAnalysesForStatusIds(List<String> statusIds) throws LIMSRuntimeException;
+
     List<Analysis> getAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<Integer> statusIds)
             throws LIMSRuntimeException;
 

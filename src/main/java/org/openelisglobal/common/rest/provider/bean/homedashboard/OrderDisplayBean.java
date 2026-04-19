@@ -30,6 +30,8 @@ public class OrderDisplayBean {
 
     private int pendingValidationCount;
 
+    private boolean completed;
+
     public String getUserFirstName() {
         return userFirstName;
     }
@@ -140,5 +142,13 @@ public class OrderDisplayBean {
 
     public void setPendingValidationCount(int pendingValidationCount) {
         this.pendingValidationCount = pendingValidationCount;
+    }
+
+    public boolean isCompleted() {
+        return completed;
+    }
+
+    public void setCompleted(boolean completed) {
+        this.completed = completed;
     }
 }

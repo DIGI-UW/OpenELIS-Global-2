@@ -180,6 +180,50 @@ export function SearchResultForm(props) {
     setPagination(false);
     setPatient(patient);
   };
+
+  // Compute isReadOnlyView here (SearchResultForm scope) so the useEffect
+  // below has access to all state setters declared in this component.
+  const _srfSearchParams = new URLSearchParams(window.location.search);
+  const _srfCurrentPath = stripBasePath(window.location.pathname);
+  const isReadOnlyView =
+    _srfCurrentPath === "/PatientResults" &&
+    Boolean(_srfSearchParams.get("patientId"));
+
+  // Auto-load patient + most recent accession when arriving from global search bar.
+  useEffect(() => {
+    if (!isReadOnlyView) return;
+    const urlPatientId = _srfSearchParams.get("patientId");
+    if (!urlPatientId) return;
+    getFromOpenElisServer(
+      "/rest/patient-search-results?patientID=" +
+        encodeURIComponent(urlPatientId) +
+        "&suppressExternalSearch=true",
+      (res) => {
+        const results = res?.patientSearchResults;
+        if (!Array.isArray(results) || results.length === 0) return;
+        const p = results[0];
+        if (!p?.patientPK) return;
+        setNextPage(null);
+        setPreviousPage(null);
+        setPagination(false);
+        setPatient(p);
+        getFromOpenElisServer(
+          "/rest/SampleEdit?patientId=" + encodeURIComponent(p.patientPK),
+          (form) => {
+            const accession = form?.accessionNumber;
+            if (accession) {
+              setSearchFormValues((prev) => ({
+                ...prev,
+                accessionNumber: accession,
+              }));
+            }
+          },
+        );
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReadOnlyView]);
+
   useEffect(() => {
     if (searchBy.type === "patient" && patient.patientPK) {
       querySearch(searchFormValues);
@@ -483,9 +527,11 @@ export function SearchResultForm(props) {
             <Stack gap={2}>
               <Grid>
                 <Column lg={16} md={8} sm={4}>
-                  <h4>
-                    <FormattedMessage id="label.button.search" />
-                  </h4>
+                  {!isReadOnlyView && (
+                    <h4>
+                      <FormattedMessage id="label.button.search" />
+                    </h4>
+                  )}
                 </Column>
                 {searchBy.type === "order" && (
                   <>
@@ -814,7 +860,7 @@ export function SearchResults(props) {
     currentPath === "/PatientResults" && Boolean(searchParams.get("patientId"));
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(isReadOnlyView ? 10 : 100);
   const [acceptAsIs, setAcceptAsIs] = useState([]);
   const [referalOrganizations, setReferalOrganizations] = useState([]);
   const [methods, setMethods] = useState([]);
@@ -1030,7 +1076,17 @@ export function SearchResults(props) {
   }
 
   const displayedColumns = isReadOnlyView
-    ? columns.filter((col) => col.id !== "accept" && col.id !== "reject")
+    ? columns
+        .filter(
+          (col) =>
+            col.id !== "accept" &&
+            col.id !== "reject" &&
+            col.id !== "analyzerResult" &&
+            col.id !== "normalRange" &&
+            col.id !== "currentResult" &&
+            col.id !== "notes",
+        )
+        .map(({ width: _w, ...col }) => col) // strip fixed widths so columns flex to container
     : columns;
 
   const renderCell = (row, index, column, id) => {
@@ -1179,6 +1235,14 @@ export function SearchResults(props) {
                 labelText=""
                 rows={1}
                 onChange={(e) => handleChange(e, row.id)}
+                style={
+                  row.isModified === "true" &&
+                  row.shadowResultValue &&
+                  String(row.shadowResultValue).trim() !== "" &&
+                  String(row.shadowResultValue).trim() !== "0"
+                    ? { outline: "2px solid red", borderRadius: "2px" }
+                    : undefined
+                }
               ></TextArea>
               <div
                 className="note"
@@ -1880,6 +1944,35 @@ export function SearchResults(props) {
     if (isSubmitting) {
       return;
     }
+
+    // Mandatory note: every modified result (except the very first entry on a
+    // blank result) must have a note explaining the change.
+    const missingNotes = (props.results?.testResult || []).filter((result) => {
+      if (!result.isModified) return false;
+      // First-time entry: resultValue was blank before (no shadowResultValue or
+      // shadowResultValue is empty). No note required for initial entry.
+      const isFirstEntry =
+        !result.shadowResultValue ||
+        String(result.shadowResultValue).trim() === "" ||
+        String(result.shadowResultValue).trim() === "0";
+      if (isFirstEntry) return false;
+      // Existing result being changed — note is mandatory
+      return !result.note || String(result.note).trim() === "";
+    });
+
+    if (missingNotes.length > 0) {
+      addNotification({
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "result.note.required",
+          defaultMessage:
+            "A note is required when modifying an existing result. Please add a note for each changed result.",
+        }),
+        kind: NotificationKinds.error,
+      });
+      setNotificationVisible(true);
+      return;
+    }
     setIsSubmitting(true);
     values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
@@ -1904,13 +1997,14 @@ export function SearchResults(props) {
         kind: NotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
-        window.location.href = getFullPath(
-          "/result?type=" +
-            props.searchBy.type +
-            "&doRange=" +
-            props.searchBy.doRange +
-            props.extraParams,
-        );
+        // Refresh the parent dashboard tab (if opened via window.open) then
+        // close this tab. Falls back to navigating home if no opener exists.
+        if (window.opener && !window.opener.closed) {
+          window.opener.location.reload();
+          window.close();
+        } else {
+          window.location.href = getFullPath("/");
+        }
       }
     } else {
       addNotification({
@@ -1955,7 +2049,7 @@ export function SearchResults(props) {
     <>
       {notificationVisible === true ? <AlertDialog /> : ""}
       <>
-        {props.results?.testResult?.length > 0 && (
+        {!isReadOnlyView && props.results?.testResult?.length > 0 && (
           <Grid style={{ marginTop: "20px" }} className="gridBoundary">
             <Column lg={3} />
             <Column lg={7} sm={4}>
@@ -1974,88 +2068,96 @@ export function SearchResults(props) {
             </Column>
           </Grid>
         )}
-        <Formik
-          initialValues={SearchResultFormValues}
-          //validationSchema={}
-          onSubmit
-          onChange
+        <div
+          style={
+            isReadOnlyView ? { maxWidth: "100%", overflowX: "hidden" } : {}
+          }
         >
-          {({
-            // values,
-            // errors,
-            // touched,
-            handleChange,
-            //handleBlur,
-            // handleSubmit,
-          }) => (
-            <Form
-              onChange={handleChange}
-              //onBlur={handleBlur}
-            >
-              <DataTable
-                data={props.results?.testResult?.slice(
-                  (page - 1) * pageSize,
-                  page * pageSize,
-                )}
-                columns={displayedColumns}
-                isSortable
-                expandableRows={!isReadOnlyView}
-                expandableRowsComponent={renderReferral}
-              ></DataTable>
-              <Pagination
-                onChange={handlePageChange}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20, 30, 50, 100]}
-                totalItems={props.results?.testResult?.length}
-                forwardText={intl.formatMessage({ id: "pagination.forward" })}
-                backwardText={intl.formatMessage({ id: "pagination.backward" })}
-                itemRangeText={(min, max, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.item-range" },
-                    { min: min, max: max, total: total },
-                  )
-                }
-                itemsPerPageText={intl.formatMessage({
-                  id: "pagination.items-per-page",
-                })}
-                itemText={(min, max) =>
-                  intl.formatMessage(
-                    { id: "pagination.item" },
-                    { min: min, max: max },
-                  )
-                }
-                pageNumberText={intl.formatMessage({
-                  id: "pagination.page-number",
-                })}
-                pageRangeText={(_current, total) =>
-                  intl.formatMessage(
-                    { id: "pagination.page-range" },
-                    { total: total },
-                  )
-                }
-                pageText={(page, pagesUnknown) =>
-                  intl.formatMessage(
-                    { id: "pagination.page" },
-                    { page: pagesUnknown ? "" : page },
-                  )
-                }
-              />
+          <Formik
+            initialValues={SearchResultFormValues}
+            //validationSchema={}
+            onSubmit
+            onChange
+          >
+            {({
+              // values,
+              // errors,
+              // touched,
+              handleChange,
+              //handleBlur,
+              // handleSubmit,
+            }) => (
+              <Form
+                onChange={handleChange}
+                //onBlur={handleBlur}
+              >
+                <DataTable
+                  data={props.results?.testResult?.slice(
+                    (page - 1) * pageSize,
+                    page * pageSize,
+                  )}
+                  columns={displayedColumns}
+                  isSortable
+                  expandableRows={!isReadOnlyView}
+                  expandableRowsComponent={renderReferral}
+                ></DataTable>
+                <Pagination
+                  onChange={handlePageChange}
+                  page={page}
+                  pageSize={pageSize}
+                  pageSizes={[10, 20, 30, 50, 100]}
+                  totalItems={props.results?.testResult?.length}
+                  forwardText={intl.formatMessage({ id: "pagination.forward" })}
+                  backwardText={intl.formatMessage({
+                    id: "pagination.backward",
+                  })}
+                  itemRangeText={(min, max, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.item-range" },
+                      { min: min, max: max, total: total },
+                    )
+                  }
+                  itemsPerPageText={intl.formatMessage({
+                    id: "pagination.items-per-page",
+                  })}
+                  itemText={(min, max) =>
+                    intl.formatMessage(
+                      { id: "pagination.item" },
+                      { min: min, max: max },
+                    )
+                  }
+                  pageNumberText={intl.formatMessage({
+                    id: "pagination.page-number",
+                  })}
+                  pageRangeText={(_current, total) =>
+                    intl.formatMessage(
+                      { id: "pagination.page-range" },
+                      { total: total },
+                    )
+                  }
+                  pageText={(page, pagesUnknown) =>
+                    intl.formatMessage(
+                      { id: "pagination.page" },
+                      { page: pagesUnknown ? "" : page },
+                    )
+                  }
+                />
 
-              {!isReadOnlyView && (
-                <Button
-                  type="button"
-                  id="saveResults"
-                  onClick={handleSave}
-                  style={{ marginTop: "16px" }}
-                  disabled={isSubmitting}
-                >
-                  <FormattedMessage id="label.button.save" />
-                </Button>
-              )}
-            </Form>
-          )}
-        </Formik>
+                {!isReadOnlyView && (
+                  <Button
+                    type="button"
+                    id="saveResults"
+                    onClick={handleSave}
+                    style={{ marginTop: "16px" }}
+                    disabled={isSubmitting}
+                  >
+                    <FormattedMessage id="label.button.save" />
+                  </Button>
+                )}
+              </Form>
+            )}
+          </Formik>
+        </div>
       </>
     </>
   );

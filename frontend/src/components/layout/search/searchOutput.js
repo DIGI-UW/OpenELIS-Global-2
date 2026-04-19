@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { Grid, Column, Section, Tag, Tile } from "@carbon/react";
+import { Grid, Column, Section, Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import Avatar from "react-avatar";
 import { openPatientResults } from "./searchService";
@@ -70,10 +70,6 @@ const SearchOutput = ({ patientData, className = "patientHead" }) => {
                           <strong>{patient.contactPhone}</strong>
                         </Tag>
                       )}
-                      {/* <Tag size="md" type="blue">
-                        <FormattedMessage id="patient.subject.number" /> :{" "}
-                        <strong>{patient.subjectNumber}</strong>
-                      </Tag> */}
                     </div>
                   </Column>
                 </Grid>

@@ -131,6 +131,7 @@ services:
             - PUBLIC_URL=/openelis
             - REACT_APP_BASE_PATH=/openelis
             - CHOKIDAR_USEPOLLING=true
+            - WATCHPACK_POLLING=true
         tty: true
 
     proxy:

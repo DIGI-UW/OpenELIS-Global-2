@@ -253,6 +253,19 @@
   background-color: #f4f4f4;
 }
 
+// Darken disabled field text so it's legible in the read-only patient card
+.patientReadonlyField .cds--text-input:disabled,
+.patientReadonlyField .cds--text-input[disabled] {
+  color: #161616;
+  -webkit-text-fill-color: #161616;
+  opacity: 1;
+}
+
+.patientReadonlyField .cds--label--disabled,
+.patientReadonlyField .cds--label {
+  color: #525252;
+}
+
 .patientReadonlyRadioGroup {
   margin-bottom: spacing.$spacing-05;
 }
@@ -364,4 +377,22 @@
   .resultsTableCell--date {
     min-width: unset;
   }
+}
+
+// ── PatientResults readonly view — table alignment ───────────────────────────
+// Ensures the results table doesn't overflow horizontally and stays
+// flush with the patient info card above it.
+.orderLegendBody .cds--data-table-container {
+  overflow-x: hidden;
+}
+
+.orderLegendBody .cds--data-table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.orderLegendBody .cds--data-table td,
+.orderLegendBody .cds--data-table th {
+  white-space: normal;
+  word-break: break-word;
 }

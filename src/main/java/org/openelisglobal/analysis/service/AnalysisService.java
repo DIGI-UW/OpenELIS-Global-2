@@ -109,6 +109,8 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
 
     List<Analysis> getAnalysesForStatusId(String statusId);
 
+    List<Analysis> getAnalysesForStatusIds(List<String> statusIds);
+
     int getCountOfAnalysesForStatusIds(List<Integer> statusIdList);
 
     List<Analysis> getAllMaxRevisionAnalysesPerTest(Test test);
