@@ -192,13 +192,19 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
 
     /**
      * When the QC Observation's accession number doesn't match any configured
-     * control lot, the controller should still succeed (staging row created) but no
-     * QCResult or violation should be created.
+     * control lot's lotNumber, but exactly one ACTIVE lot exists for the (testId,
+     * instrumentId) pair, the controller should fall back to that single active lot
+     * and create a QCResult against it. This Tier 2 fallback is documented in
+     * {@code QCResultProcessingServiceImpl.findMatchingControlLot} and exists
+     * specifically for FILE analyzers whose specimen IDs (e.g., CNEG001, NTC001)
+     * are per-run identifiers unrelated to lot numbers.
      */
     @Test
-    public void fhirBundle_withUnmatchedLotNumber_skipsQCProcessingGracefully() {
-        // Arrange: accession = "UNKNOWN-LOT" (no matching qc_control_lot)
-        String bundle = buildQCFhirBundle("UNKNOWN-LOT", "GLU", new BigDecimal("120.0"), "mg/dL");
+    public void fhirBundle_withUnmatchedLot_fallsBackToSingleActiveLot() {
+        // Arrange: accession = "UNKNOWN-LOT" (no strict match to lot_number
+        // "QC-LOT-2025-GLU"), but fixture has exactly 1 ACTIVE lot for
+        // (testId=1, instrumentId=1) → Tier 2 fallback applies.
+        String bundle = buildQCFhirBundle("UNKNOWN-LOT", "GLU", new BigDecimal("102.0"), "mg/dL");
 
         // Act
         ResponseEntity<Map<String, Object>> response = postFhirBundle(bundle, "1");
@@ -208,13 +214,16 @@ public class FhirQCPipelineIntegrationTest extends BaseWebContextSensitiveTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> body = response.getBody();
         assertEquals("Should insert 1 staging result", 1, body.get("resultsInserted"));
-        // QC processing attempted but no lot found -> qcResultsProcessed still = 1
-        // (method was called), but no QCResult persisted
         assertEquals("QC processing should be attempted", 1, body.get("qcResultsProcessed"));
 
-        // Assert: no QCResult created (lot lookup failed)
+        // Assert: QCResult WAS created via Tier 2 fallback against the single
+        // active lot (lot_number="QC-LOT-2025-GLU", not the "UNKNOWN-LOT"
+        // accession). Value 102 is within 1SD of mean=100,SD=5 → ACCEPTED,
+        // no violation.
         List<QCResult> qcResults = qcResultDAO.getAll();
-        assertEquals("No QC result should be created for unknown lot", 0, qcResults.size());
+        assertEquals("Fallback lot should yield 1 QC result", 1, qcResults.size());
+        List<QCRuleViolation> violations = violationDAO.findByInstrument(1);
+        assertEquals("In-range fallback result should not produce a violation", 0, violations.size());
     }
 
     /**
