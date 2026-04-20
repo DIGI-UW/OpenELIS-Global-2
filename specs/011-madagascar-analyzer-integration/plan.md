@@ -4,9 +4,7 @@
 > landing. The MVP architecture (three generic plugins + profile JSONs) is
 > shipped on `develop`; per-analyzer site validation and post-MVP architecture
 > evolution are open. Do not use the M0–M21 numbering below to plan current
-> work; track delivery through the Confluence tracker
->
-> - per-PR commits.
+> work; track delivery through the Confluence tracker and per-PR commits.
 >
 > **Canonical sources:**
 >
@@ -14,7 +12,7 @@
 >   `specs/roadmaps/madagascar-analyzer-roadmap.md`
 > - **Per-analyzer status (canonical):** >
 >   [Confluence Analyzer Integration Tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396)
-> - **Test harness:** `projects/analyzer-harness/seed-analyzers.sh` +
+> - **Test harness:** `projects/analyzer-harness/seed-analyzers.sh` and
 >   `ci-parity-test.sh`
 
 ## Remaining Work to Finish Line (2026-04-20)

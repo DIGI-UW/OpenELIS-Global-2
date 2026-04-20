@@ -17,9 +17,11 @@ additional reader.
   via `CSVAnalyzerReader`; Excel workbooks via `AnalyzerXLSLineReader` / Apache
   POI.
 - **Transport**: Two ingestion paths share the review/preview flow.
-  - **Bridge watcher** — bridge polls a configured directory, delivers parsed
-    payloads to OE (`FileImportServiceImpl` — bridge-owned per the 2026-03-18
-    Ownership Override below).
+  - **Bridge watcher** — bridge polls a configured directory and sends the raw
+    file (or its binary contents) to OpenELIS; OpenELIS parses via
+    `FileImportService` and the configured reader. Per the 2026-03-18 Ownership
+    Override (below), the bridge owns watching/transport and OpenELIS owns
+    parsing/ingestion.
   - **Admin Upload UI** (OGC-324 / OGC-329) — direct upload + slot-based
     preview + review for formats where no live watcher is wanted.
 - **Profile schema**: `FileImportConfiguration` carries `fileFormat`, delimiter,

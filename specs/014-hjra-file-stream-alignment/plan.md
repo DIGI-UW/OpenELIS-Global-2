@@ -1,17 +1,19 @@
 > **STATUS: Architecture shipped, deferred test coverage + site validation open
 > (updated 2026-04-20).** The `GenericFile` plugin, file-reader dispatch, and
-> Upload/Review UI foundation (OGC-329 / OGC-324) are on `develop`. File parsing
-> is bridge-owned (see `FileImportServiceImpl`), backed by `CSVAnalyzerReader` /
-> `AnalyzerXLSLineReader` in the plugins submodule; `GenericFile` is a peer of
+> Upload/Review UI foundation (OGC-329 / OGC-324) are on `develop`. Per the
+> 2026-03-18 Ownership Override (below), the bridge owns file watching and
+> transport delivery; **OpenELIS owns file parsing and ingestion** —
+> `FileImportServiceImpl` is an OpenELIS service (in this repo under
+> `src/main/java/org/openelisglobal/...`), backed by `CSVAnalyzerReader` /
+> `AnalyzerXLSLineReader` (also in this repo). `GenericFile` is a peer of
 > `GenericASTM` / `GenericHL7`. Adding a new flat-file analyzer is now a
 > profile-JSON drop in
 > [`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
 >
-> - **Live per-analyzer status:** see the Confluence analyzer tracker (canonical
->   for Pattern C) linked below.
+> - **Live per-analyzer status:** see the
+>   [Confluence analyzer tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396)
+>   (canonical for Pattern C).
 > - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`.
-
-[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ## Remaining Work to Finish Line (2026-04-20)
 
