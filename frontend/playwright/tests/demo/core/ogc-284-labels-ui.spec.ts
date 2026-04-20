@@ -12,9 +12,12 @@ test.describe("OGC-284 labels UI", () => {
   test("Add Order shows shared labels section", async ({ page }) => {
     await gotoSamplePatientEntry(page);
 
-    const addSampleBtn = page.getByRole("button", {
-      name: /incomplete\s*add sample/i,
-    });
+    // Carbon ProgressStep composes the accessible name as
+    // "{label} {state}" — label first, state second (e.g.
+    // "Add Sample Incomplete"). Match on the label only so the
+    // selector works regardless of step state and doesn't break
+    // when Carbon's hardcoded English state prefix changes.
+    const addSampleBtn = page.getByRole("button", { name: /add sample/i });
     await expect(addSampleBtn).toBeVisible({ timeout: UI_TIMEOUT });
     await addSampleBtn.click();
     await expect(page.getByTestId("labels-section-root")).toBeVisible();
