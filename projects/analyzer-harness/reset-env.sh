@@ -8,6 +8,13 @@
 #   --full-reset   Remove DB (and other) volumes before starting (wipe DB)
 #   --skip-fixtures   Skip loading test fixtures after startup
 #   --skip-letsencrypt Do not run Let's Encrypt setup even when LETSENCRYPT_* env is set
+#   --ci-parity    Bring up the CI-parity stack (build.docker-compose.yml +
+#                  ci.analyzer-harness.yml) instead of the local dev stack.
+#                  Selects frontend Dockerfile `target: runtime` (nginx +
+#                  minified dist/) — the same image CI runs. Lets local
+#                  Playwright against `core-app` / `harness` projects exercise
+#                  the real production bundle path. Forces --skip-letsencrypt
+#                  (the CI compose files don't include the letsencrypt overlay).
 #   --help            Show this help message
 #
 # Start from scratch: ./build.sh && ./reset-env.sh --full-reset
@@ -48,6 +55,7 @@ SKIP_FIXTURES=false
 DO_BUILD=false
 USE_LETSENCRYPT=false
 SKIP_LETSENCRYPT=false
+CI_PARITY=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -71,6 +79,12 @@ while [[ $# -gt 0 ]]; do
             SKIP_LETSENCRYPT=true
             shift
             ;;
+        --ci-parity)
+            CI_PARITY=true
+            # CI compose files don't include the letsencrypt overlay.
+            SKIP_LETSENCRYPT=true
+            shift
+            ;;
         --help)
             head -30 "$0" | tail -27
             exit 0
@@ -82,7 +96,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-LOCAL_COMPOSE_FILES=($(compose_args_local "$USE_LETSENCRYPT"))
+if [ "$CI_PARITY" = true ]; then
+    # CI-parity: run the exact stack CI uses — build.docker-compose.yml selects
+    # frontend target: runtime, proxy mounts nginx-prod.conf. Same image path
+    # that e2e-playwright.yml exercises locally.
+    LOCAL_COMPOSE_FILES=($(compose_args_ci))
+    echo -e "${BLUE}Mode: CI parity (build.docker-compose.yml + ci.analyzer-harness.yml)${NC}"
+else
+    LOCAL_COMPOSE_FILES=($(compose_args_local "$USE_LETSENCRYPT"))
+fi
 
 echo -e "${BLUE}======================================${NC}"
 echo -e "${BLUE}  Analyzer Harness – Reset test env${NC}"
