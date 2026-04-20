@@ -27,29 +27,12 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          # Use the host Docker daemon so buildx can see images tagged by
-          # `docker build` (specifically openelis-frontend-base:local that the
-          # pre-build step below produces). The default `docker-container`
-          # driver runs in its own namespace and can't resolve host-tagged
-          # images, which breaks our Dockerfile's `FROM openelis-frontend-base:local`.
-          driver: docker
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKER_NAME }}
-
-      # Pre-build the shared base image (Dockerfile.base = node + deps + source).
-      # Dockerfile and Dockerfile.dev both FROM openelis-frontend-base:local,
-      # so it must exist before the main build runs.
-      - name: Pre-build frontend base image
-        run: |
-          docker build \
-            -f ./frontend/Dockerfile.base \
-            -t openelis-frontend-base:local \
-            ./frontend
 
       - name: Build Docker image
         uses: docker/build-push-action@v5
