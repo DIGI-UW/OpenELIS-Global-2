@@ -18,9 +18,9 @@
    bridge + main-repo team agreement in `launch-checklists/pre-m1-readiness.md`.
 2. **HJRA site networking**: get Mindray analyzers routable to the bridge MLLP
    listener (not just local mock).
-3. **M1 (OGC-325)** — `feat/013-ogc-325-hl7-listener-foundation`: paired bridge
-   - main-repo PR, MLLP listener → `/analyzer/hl7`, Gate 1 evidence (see
-     `launch-checklists/gate1-ogc325-evidence.md`), mock-with-profile E2E proof.
+3. **M1 (OGC-325)** — `feat/013-ogc-325-hl7-listener-foundation`: paired
+   bridge + main-repo PR, MLLP listener → `/analyzer/hl7`, Gate 1 evidence (see
+   `launch-checklists/gate1-ogc325-evidence.md`), mock-with-profile E2E proof.
 4. **M2 (OGC-327)** — `feat/013-ogc-327-bc5380-hl7`: BC-5380 as first proving
    target, Gate 2 evidence.
 5. **M3 (OGC-326)** — `feat/013-ogc-326-bs-series-hl7`: BS-200 + BS-300

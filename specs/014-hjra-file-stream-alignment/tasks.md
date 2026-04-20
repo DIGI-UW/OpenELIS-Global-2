@@ -5,8 +5,7 @@
 > Work to Finish Line" below and should drive what still needs to be picked up.
 >
 > - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
-> - **Cross-branch summary:** >
->   [plan.md § "Remaining Work to Finish Line"](./plan.md#remaining-work-to-finish-line-2026-04-20)
+> - **Cross-branch summary:** see `plan.md` § "Remaining Work to Finish Line"
 
 ## Remaining Work to Finish Line (2026-04-20)
 

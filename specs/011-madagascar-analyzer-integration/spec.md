@@ -14,12 +14,12 @@ This spec is the umbrella for three protocol tracks: **HL7 (coordinated in
 `specs/014`)**. The January 2026 scope below (12-analyzer matrix, RS232 bridge,
 contract deadline 2026-02-28) framed the initial plan. Actual delivery has
 diverged in places — the canonical status table lives in
-[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md)
-and the authoritative analyzer fleet lives in
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
+The authoritative analyzer fleet lives in
 [`projects/analyzer-harness/seed-analyzers.sh`](../../projects/analyzer-harness/seed-analyzers.sh)
-
-- [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
-  (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+and
+[`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
+(distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
 
 | Track               | Shipped (E2E verified)                                                         | Validation Pending                                                  | Blocked / Deprioritized                                |
 | ------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |

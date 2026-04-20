@@ -5,8 +5,8 @@
 >
 > - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
 > - **Per-issue tracking:** Jira OGC-\* + per-PR commits
-> - **Current remaining-work summary:** >
->   [plan.md § "Remaining Work to Finish Line"](./plan.md#remaining-work-to-finish-line-2026-04-20)
+> - **Current remaining-work summary:** see `plan.md` § "Remaining Work to
+>   Finish Line"
 
 ## Remaining Work to Finish Line (2026-04-20)
 
