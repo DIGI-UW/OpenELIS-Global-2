@@ -30,7 +30,9 @@ and
 **Cross-cutting remaining work** (see roadmap for the canonical list):
 
 - PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
-- `communication` blocks on the 7 remaining ASTM/HL7 profiles (5 of 12 done)
+- `communication` blocks on the 8 remaining ASTM/HL7 profiles (5 of 13 done —
+  `genexpert-astm`, `genexpert-hl7`, `mindray-bc5380`, `mindray-bs200`,
+  `mindray-bs300`)
 - Video evidence for HL7 / ASTM / FILE demo flows
 - Post-MVP: Unified FHIR R4 bridge interface; HL7 bidirectional (ORM^O01,
   QRY^Q02); GeneXpert HL7 mode (OGC-336); LIS-initiated bridge outbound;

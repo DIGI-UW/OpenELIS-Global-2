@@ -38,7 +38,9 @@ section as the authoritative override during remediation.
 
 **Feature Branch**: `spec/014-hjra-file-stream-alignment`  
 **Created**: 2026-03-10  
-**Status**: Draft  
+**Updated**: 2026-04-20 (status reckoning)  
+**Status**: **In Progress** — GenericFile plugin + 5 analyzer profiles shipped;
+Herbert site validation + deferred test coverage open.  
 **Epic**: OGC-304 (Madagascar Analyzer Work)  
 **Input**: Coordinate file import work across OGC-324, OGC-329, OGC-344,
 OGC-348, OGC-350, OGC-351, OGC-417, OGC-418
