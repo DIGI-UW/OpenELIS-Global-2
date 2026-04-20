@@ -20,6 +20,7 @@ import tseslint from "typescript-eslint";
 import pwCountComparisonMatcher from "./eslint-local-rules/pw-count-comparison-matcher.js";
 import pwDemoNoBackendAccess from "./eslint-local-rules/pw-demo-no-backend-access.js";
 import noUseEffectTimerLeaks from "./eslint-local-rules/no-useeffect-timer-leaks.js";
+import noRawReactLazy from "./eslint-local-rules/no-raw-react-lazy.js";
 
 export default [
   // ─── Global ignores ─────────────────────────────────────────────────
@@ -53,6 +54,7 @@ export default [
           "pw-count-comparison-matcher": pwCountComparisonMatcher,
           "pw-demo-no-backend-access": pwDemoNoBackendAccess,
           "no-useeffect-timer-leaks": noUseEffectTimerLeaks,
+          "no-raw-react-lazy": noRawReactLazy,
         },
       },
     },
@@ -96,6 +98,10 @@ export default [
       // fires after unmount and crashes Vitest with `window is not
       // defined`).
       "local/no-useeffect-timer-leaks": "error",
+      // Require lazyWithRetry wrapper for dynamic-import route code-
+      // splitting; raw React.lazy doesn't retry on chunk-fetch blips
+      // (ERR_NETWORK_CHANGED). See App.jsx helper.
+      "local/no-raw-react-lazy": "error",
     },
   },
 
