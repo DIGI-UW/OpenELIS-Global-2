@@ -16,6 +16,7 @@ import {
 } from "../api/sampleTypeRequestApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 
 /**
@@ -47,6 +48,7 @@ const OrderCollect = () => {
     assignTestToSample,
     removeTestFromSample,
     updateSampleCollectionDetails,
+    setOrderData,
   } = useOrderContext();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -62,6 +64,37 @@ const OrderCollect = () => {
   // Pending sample type requests from Step 1
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+
+  // Informed consent data
+  const [consentData, setConsentData] = useState({
+    consentGiven: false,
+    consentFormReference: "",
+    consentRecordedAt: "",
+    consentRecordedBy: "",
+  });
+
+  // Initialize consent data from orderData (for edit scenarios)
+  useEffect(() => {
+    if (orderData?.sampleOrderItems) {
+      const {
+        consentGiven,
+        consentFormReference,
+        consentRecordedAt,
+        consentRecordedBy,
+      } = orderData.sampleOrderItems;
+      if (consentGiven !== undefined) {
+        setConsentData({
+          consentGiven: consentGiven || false,
+          consentFormReference: consentFormReference || "",
+          consentRecordedAt: consentRecordedAt || "",
+          consentRecordedBy: consentRecordedBy || "",
+        });
+      }
+    }
+  }, [
+    orderData?.sampleOrderItems?.consentGiven,
+    orderData?.sampleOrderItems?.consentFormReference,
+  ]);
 
   // Fetch sample types and UOMs on mount
   useEffect(() => {
@@ -160,11 +193,9 @@ const OrderCollect = () => {
     }
   }, [orderData?.sampleOrderItems?.labNo, samples, loadOrder]);
 
-  // Validate that at least one sample with a sample type is present
-  const canProceed =
-    samples &&
-    samples.length > 0 &&
-    samples.some((sample) => sample.sampleTypeId);
+  // Validate that at least one sample with a sample type is present.
+  // Informed consent is advisory only (FRS FR-5-001/FR-5-002) — does not gate submission.
+  const canProceed = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
@@ -203,6 +234,21 @@ const OrderCollect = () => {
       });
       setNotificationVisible(true);
     }
+  };
+
+  const handleConsentChange = (updatedConsent) => {
+    setConsentData(updatedConsent);
+
+    // Sync consent data with orderData.sampleOrderItems for backend persistence
+    setOrderData({
+      ...orderData,
+      sampleOrderItems: {
+        ...orderData.sampleOrderItems,
+        consentGiven: updatedConsent.consentGiven,
+        consentFormReference: updatedConsent.consentFormReference,
+        // Note: consentRecordedAt and consentRecordedBy are auto-populated by backend
+      },
+    });
   };
 
   return (
@@ -245,7 +291,14 @@ const OrderCollect = () => {
           isReadOnly={isReadOnly && !isEditMode}
         />
 
-        {/* Section 2: Samples Collection */}
+        {/* Section 2: Informed Consent */}
+        <ConsentAccordionSection
+          consentData={consentData}
+          onConsentChange={handleConsentChange}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        {/* Section 3: Samples Collection */}
         <SamplesCollectionSection
           samples={samples}
           setSamples={setSamples}

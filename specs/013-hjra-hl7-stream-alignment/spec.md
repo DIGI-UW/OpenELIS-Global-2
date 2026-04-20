@@ -2,11 +2,39 @@
 
 **Feature Branch**: `spec/013-hjra-hl7-stream-alignment`  
 **Created**: 2026-03-10  
-**Status**: In Progress  
+**Updated**: 2026-04-20 (status reckoning)  
+**Status**: **In Progress** — coordination artifacts complete; M1 ready to
+launch when HJRA networking + submodule sync are in place.  
 **Input**: User description: "Create the HL7 coordination artifacts needed
 before coding begins, establish stream boundaries and issue sequencing for
 `OGC-325`, `OGC-326`, `OGC-327`, optional `OGC-336`, preserve the recommended
 implementation branches, and keep this stage planning-only."
+
+## Current Status (2026-04-20)
+
+**Shipped / merged**: HL7 MLLP listener + BC-5380, BS-200, BS-300 profiles
+(#3035). Test-connection parity + `CommunicationMode` enum (#3195, in review).
+Locally E2E-verified through Mock → MLLP → Bridge → OE → Results page for all
+three Mindray analyzers.
+
+**Still to ship / validate**:
+
+- **HJRA site networking** — get Mindray analyzers talking to the bridge MLLP
+  listener at the HJRA site (not local mock).
+- **Pre-M1 readiness** — T009/T010 in [tasks.md](./tasks.md): sync `develop` +
+  `tools/openelis-analyzer-bridge` + `plugins` submodule pins, and capture
+  paired-PR team agreement before opening `feat/013-ogc-325-*`.
+- **M1 (OGC-325)** — MLLP listener foundation branch (paired bridge + main
+  repo).
+- **M2 (OGC-327)** — BC-5380 HL7 adapter branch, first proving target.
+- **M3 (OGC-326)** — BS-series branch (BS-200 + BS-300 together, early BS-300
+  evidence).
+- **Optional / post-MVP**: OGC-336 GeneXpert HL7 mode (QBP queries); HL7
+  bidirectional (ORM^O01 worklist, QRY^Q02 order download); LIS-initiated
+  outbound MLLP.
+
+Canonical roadmap:
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
 
 ## Clarifications
 

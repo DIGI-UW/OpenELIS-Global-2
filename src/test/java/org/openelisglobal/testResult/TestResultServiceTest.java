@@ -1,6 +1,8 @@
 package org.openelisglobal.testResult;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -70,6 +72,20 @@ public class TestResultServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(2, testResults.size());
         assertEquals("1", testResults.get(0).getId());
         assertEquals("2", testResults.get(1).getId());
+    }
+
+    @Test
+    public void getAllTestResults_shouldEagerlyLoadTestEntities() {
+        List<TestResult> testResults = testResultService.getAllTestResults();
+
+        for (TestResult testResult : testResults) {
+            org.openelisglobal.test.valueholder.Test test = testResult.getTest();
+
+            assertNotNull("Test should be loaded", test);
+            assertNotNull("Test ID should be accessible", test.getId());
+
+            assertFalse("Test should not be a proxy", test.getClass().getName().contains("$HibernateProxy$"));
+        }
     }
 
     @Test

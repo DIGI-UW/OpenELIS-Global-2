@@ -57,11 +57,11 @@ const renderWithIntl = (component) => {
 // ========== TESTS ==========
 
 describe("MappingActivationModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnConfirm = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnConfirm = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -400,7 +400,7 @@ describe("MappingActivationModal", () => {
    */
   test("testActivation_WithConcurrentEdit_ShowsOptimisticLockWarning", async () => {
     // Arrange: Modal with concurrent edit detected
-    const mockOnReloadPage = jest.fn();
+    const mockOnReloadPage = vi.fn();
     renderWithIntl(
       <MappingActivationModal
         open={true}
