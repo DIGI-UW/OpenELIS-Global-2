@@ -11,7 +11,9 @@ public class BulkRegistrationResponse {
     private boolean success;
     private String error;
     private int registeredCount;
+    private int failedCount;
     private List<RegisteredSample> samples = new ArrayList<>();
+    private List<String> rowErrors = new ArrayList<>();
 
     public boolean isSuccess() {
         return success;
@@ -37,6 +39,14 @@ public class BulkRegistrationResponse {
         this.registeredCount = registeredCount;
     }
 
+    public int getFailedCount() {
+        return failedCount;
+    }
+
+    public void setFailedCount(int failedCount) {
+        this.failedCount = failedCount;
+    }
+
     public List<RegisteredSample> getSamples() {
         return samples;
     }
@@ -45,9 +55,22 @@ public class BulkRegistrationResponse {
         this.samples = samples;
     }
 
+    public List<String> getRowErrors() {
+        return rowErrors;
+    }
+
+    public void setRowErrors(List<String> rowErrors) {
+        this.rowErrors = rowErrors;
+    }
+
     public void addSample(RegisteredSample sample) {
         this.samples.add(sample);
         this.registeredCount++;
+    }
+
+    public void addRowError(String rowError) {
+        this.rowErrors.add(rowError);
+        this.failedCount++;
     }
 
     /**
