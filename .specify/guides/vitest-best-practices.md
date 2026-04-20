@@ -3,16 +3,15 @@
 **Quick Reference Guide** for common Vitest + React Testing Library patterns in
 OpenELIS Global 2.
 
-**For Comprehensive Guidance**: See
-[Testing Roadmap](./testing-roadmap.md) for detailed patterns and examples.
+**For Comprehensive Guidance**: See [Testing Roadmap](./testing-roadmap.md) for
+detailed patterns and examples.
 
-**For Official Documentation**: See
-[Vitest](https://vitest.dev/) and
+**For Official Documentation**: See [Vitest](https://vitest.dev/) and
 [React Testing Library](https://testing-library.com/docs/react-testing-library/intro).
 
-**Project configuration**: OpenELIS frontend uses Vitest with
-`globals: true` (see `frontend/vite.config.ts`), so `vi`, `describe`, `it`,
-`expect`, `beforeEach`, `afterEach` are available without imports. The
+**Project configuration**: OpenELIS frontend uses Vitest with `globals: true`
+(see `frontend/vite.config.ts`), so `vi`, `describe`, `it`, `expect`,
+`beforeEach`, `afterEach` are available without imports. The
 `@testing-library/jest-dom` matchers are wired up via
 `frontend/src/setupTests.js`.
 
@@ -104,19 +103,19 @@ import ComponentName from "./ComponentName";
 If you're porting existing Jest tests or following Jest docs, these are the
 substitutions that matter in this project:
 
-| Jest                     | Vitest                   | Notes                                                 |
-| ------------------------ | ------------------------ | ----------------------------------------------------- |
-| `jest.fn()`              | `vi.fn()`                | Globals enabled — no import needed                    |
-| `jest.mock(...)`         | `vi.mock(...)`           | Hoisted same as Jest                                  |
-| `jest.spyOn(...)`        | `vi.spyOn(...)`          |                                                       |
-| `jest.useFakeTimers()`   | `vi.useFakeTimers()`     |                                                       |
-| `jest.useRealTimers()`   | `vi.useRealTimers()`     |                                                       |
-| `jest.advanceTimersBy*`  | `vi.advanceTimersBy*`    |                                                       |
-| `jest.clearAllMocks()`   | `vi.clearAllMocks()`     |                                                       |
-| `jest.resetAllMocks()`   | `vi.resetAllMocks()`     |                                                       |
-| `jest.config.js`         | `vite.config.ts` `test`  | Vitest config lives in `vite.config.ts` `test:` block |
-| `jest.setup.js`          | `setupTests.js`          | Wired via `setupFiles` in config                      |
-| `@testing-library/jest-dom` | same                  | Library name unchanged; works with Vitest             |
+| Jest                        | Vitest                  | Notes                                                 |
+| --------------------------- | ----------------------- | ----------------------------------------------------- |
+| `jest.fn()`                 | `vi.fn()`               | Globals enabled — no import needed                    |
+| `jest.mock(...)`            | `vi.mock(...)`          | Hoisted same as Jest                                  |
+| `jest.spyOn(...)`           | `vi.spyOn(...)`         |                                                       |
+| `jest.useFakeTimers()`      | `vi.useFakeTimers()`    |                                                       |
+| `jest.useRealTimers()`      | `vi.useRealTimers()`    |                                                       |
+| `jest.advanceTimersBy*`     | `vi.advanceTimersBy*`   |                                                       |
+| `jest.clearAllMocks()`      | `vi.clearAllMocks()`    |                                                       |
+| `jest.resetAllMocks()`      | `vi.resetAllMocks()`    |                                                       |
+| `jest.config.js`            | `vite.config.ts` `test` | Vitest config lives in `vite.config.ts` `test:` block |
+| `jest.setup.js`             | `setupTests.js`         | Wired via `setupFiles` in config                      |
+| `@testing-library/jest-dom` | same                    | Library name unchanged; works with Vitest             |
 
 The only remaining "Jest" references in this project are legitimate:
 `@testing-library/jest-dom` (library name) and historical references to the
@@ -196,7 +195,7 @@ await waitFor(
     const element = screen.queryByText("Loaded Data");
     expect(element).toBeInTheDocument();
   },
-  { timeout: 5000 },
+  { timeout: 5000 }
 );
 ```
 
@@ -390,7 +389,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 };
 ```
@@ -442,7 +441,7 @@ const createMockRoom = (overrides = {}) => ({
 
 ---
 
-**Last Updated**: 2026-04-20 (renamed from jest-best-practices.md during
-Vitest migration cleanup)  
+**Last Updated**: 2026-04-20 (renamed from jest-best-practices.md during Vitest
+migration cleanup)  
 **Reference**: [Testing Roadmap](./testing-roadmap.md) for comprehensive
 guidance.
