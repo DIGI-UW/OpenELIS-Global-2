@@ -19,6 +19,7 @@ import tseslint from "typescript-eslint";
 
 import pwCountComparisonMatcher from "./eslint-local-rules/pw-count-comparison-matcher.js";
 import pwDemoNoBackendAccess from "./eslint-local-rules/pw-demo-no-backend-access.js";
+import noUseEffectTimerLeaks from "./eslint-local-rules/no-useeffect-timer-leaks.js";
 
 export default [
   // ─── Global ignores ─────────────────────────────────────────────────
@@ -39,6 +40,22 @@ export default [
       "scripts/",
       "**/*.min.js",
     ],
+  },
+
+  // ─── Local plugin registration (global) ─────────────────────────────
+  // Flat config forbids redefining a plugin key across blocks, so the
+  // `local` namespace is registered once here and later blocks enable
+  // its rules per-file-pattern.
+  {
+    plugins: {
+      local: {
+        rules: {
+          "pw-count-comparison-matcher": pwCountComparisonMatcher,
+          "pw-demo-no-backend-access": pwDemoNoBackendAccess,
+          "no-useeffect-timer-leaks": noUseEffectTimerLeaks,
+        },
+      },
+    },
   },
 
   // ─── Base JS/JSX ────────────────────────────────────────────────────
@@ -74,6 +91,11 @@ export default [
       "react-hooks/exhaustive-deps": "off",
       "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
       "prettier/prettier": "warn",
+      // React hook timer-leak guard (prevents the ErrorDashboard.jsx
+      // class of flake where a setTimeout scheduled inside useEffect
+      // fires after unmount and crashes Vitest with `window is not
+      // defined`).
+      "local/no-useeffect-timer-leaks": "error",
     },
   },
 
@@ -105,6 +127,8 @@ export default [
       ],
       // Disable the base rule; the TS-aware version above supersedes it.
       "no-unused-vars": "off",
+      // Same hook-leak guard for TS/TSX components.
+      "local/no-useeffect-timer-leaks": "error",
     },
   },
 
@@ -124,20 +148,12 @@ export default [
   },
 
   // ─── Playwright E2E specs + helpers ─────────────────────────────────
-  //
-  // A single `local` plugin object holds both rules; subsequent blocks
-  // reference it by name (`local/pw-demo-no-backend-access`) without
-  // redefining the plugin. Flat-config forbids redefining plugin names.
+  // `local` plugin is registered in the global block above; rules are
+  // referenced here by name (`local/pw-count-comparison-matcher`).
   {
     files: ["playwright/**/*.{ts,js}"],
     plugins: {
       playwright: playwrightPlugin,
-      local: {
-        rules: {
-          "pw-count-comparison-matcher": pwCountComparisonMatcher,
-          "pw-demo-no-backend-access": pwDemoNoBackendAccess,
-        },
-      },
     },
     rules: {
       // Upstream plugin rules (eslint-plugin-playwright 2.x).
