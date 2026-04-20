@@ -82,15 +82,17 @@ services:
 
   frontend.openelis.org:
     image: itechuw/openelis-global-2-frontend-dev:develop
-    # Local-dev default: Vite dev server with HMR + unminified React for
+    # Local-dev default: `target: dev` selects the Vite dev-server stage
+    # of the single multi-stage Dockerfile — HMR + unminified React for
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
-    # use `compose_args_ci()` in compose-stack.sh which points at the prod
-    # `Dockerfile` via build.docker-compose.yml. Both listen on :3000 so
-    # the outer proxy doesn't care which mode is active.
-    # Prereq: openelis-frontend-base:local must exist; build.sh prebuilds it.
+    # use `compose_args_ci()` in compose-stack.sh which routes through
+    # build.docker-compose.yml (no `target:` → defaults to the `runtime`
+    # stage = nginx serving dist/). Both stages listen on :3000 so the
+    # outer proxy config doesn't care which mode is active.
     build:
       context: ../../frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: dev
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public

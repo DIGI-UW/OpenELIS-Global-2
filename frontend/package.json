@@ -98,7 +98,7 @@
     "@playwright/test": "^1.58.2",
     "@testing-library/react-hooks": "^8.0.1",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/ui": "^1.0.0",
+    "@vitest/ui": "^4.1.4",
     "cypress": "^15.9.0",
     "cypress-fail-fast": "^7.1.1",
     "cypress-xpath": "^2.0.1",
@@ -117,7 +117,7 @@
     "sass": "1.79.5",
     "vite": "^8.0.6",
     "vite-plugin-svgr": "^5.2.0",
-    "vitest": "^1.0.0"
+    "vitest": "^4.1.4"
   },
   "overrides": {
     "qs": "6.14.2",

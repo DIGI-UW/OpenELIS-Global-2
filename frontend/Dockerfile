@@ -1,36 +1,51 @@
 # frontend/Dockerfile
 #
-# Production / CI / harness frontend image. Multi-stage:
-#   - `build` stage starts FROM the shared base (openelis-frontend-base:local)
-#     and runs `npm run build` to produce dist/.
-#   - Final stage is nginx:alpine serving dist/ on HTTP :80.
+# Single multi-stage source of truth for dev, CI, and prod frontend images.
+# Docker's 2026 canonical pattern (https://docs.docker.com/build/building/multi-stage/):
+# one file, named stages, callers pick via `--target=` or compose `build.target:`.
 #
-# TLS terminates at the outer reverse proxy (real cert in prod, self-signed
-# in the analyzer harness, cluster ingress in prod deploys). This container
-# speaks plain HTTP internally — standard edge-termination pattern.
+# Stages:
+#   base    — node + deps + source (shared foundation, deduped by layer cache)
+#   dev     — Vite dev server with HMR (used by harness local-dev mode)
+#   build   — runs `npm run build` to produce dist/ (intermediate, not shipped)
+#   runtime — nginx serving the built SPA (used by CI, prod, harness CI-parity)
 #
-# Prereq: build Dockerfile.base first and tag as openelis-frontend-base:local.
-# The harness's build.sh does this automatically; CI's pipeline runs the same
-# pre-build step.
+# Callers:
+#   - build.docker-compose.yml            → no `target:` → defaults to last stage = runtime
+#   - .github/workflows/frontend.yml      → same default → runtime
+#   - .github/workflows/publish-dev-*.yml → same default → runtime (multi-platform)
+#   - .github/workflows/e2e-playwright.yml → bake reads compose → runtime
+#   - projects/analyzer-harness/docker-compose.dev.yml → `build.target: dev`
+#
+# `runtime` MUST stay last (build-push-action defaults to the final stage).
 
-# --- Build stage: reuse the shared base, produce dist/ ---
-FROM openelis-frontend-base:local AS build
+# ---- base: shared foundation ----
+FROM node:20.20-alpine AS base
+RUN apk update && apk upgrade && apk add --no-cache bash
+WORKDIR /app
+ENV PATH=/app/node_modules/.bin:$PATH
+COPY package.json package-lock.json ./
+# legacy-peer-deps: React 17 + @carbon/react v1.15 genuinely requires it.
+# Durable fix lands in #3452 (pnpm migration, epic #3449 M1.f).
+RUN npm ci --legacy-peer-deps
+COPY . ./
+
+# ---- dev: Vite dev server (HMR via volume mounts from harness compose) ----
+FROM base AS dev
+EXPOSE 3000
+CMD ["npm", "start"]
+
+# ---- build: produce dist/ (intermediate stage, never shipped directly) ----
+FROM base AS build
 RUN npm run build
 
-# --- Runtime stage: nginx serving the built SPA ---
-FROM nginx:1.27-alpine
+# ---- runtime: nginx serving static SPA on HTTP :3000 (edge-termination pattern) ----
+FROM nginx:1.27-alpine AS runtime
 USER root
-
-# Static SPA artifact + the app's nginx site config
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY --from=build /app/nginx/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Runtime tooling for healthcheck.sh
 RUN apk update && apk upgrade && apk add --no-cache bash curl
-
-# Healthcheck script (invoked by compose or orchestrator)
 ADD nginx/healthcheck.sh /healthcheck.sh
 RUN chown nginx:nginx /healthcheck.sh && chmod 770 /healthcheck.sh
-
 EXPOSE 3000
 CMD ["nginx", "-g", "daemon off;"]
