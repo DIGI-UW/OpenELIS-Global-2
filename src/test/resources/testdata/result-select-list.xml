@@ -1,9 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
-    <localization id="1" description="Test Description 1"
-        english="TB" french="TB" />
-    <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
+    <reference_tables id="9999" name="DICTIONARY"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
+    <system_user id="6702" login_name="testuser"
+        last_name="Test" first_name="User" is_active="Y" is_employee="Y"
+        external_id="EXT6702" lastupdated="2023-10-01 12:00:00" />
+    <system_user id="6901" login_name="testuser2"
+        last_name="Test" first_name="User2" is_active="Y" is_employee="Y"
+        external_id="EXT6901" lastupdated="2023-10-01 12:00:00" />
+
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <test id="1" description="Blood Test" loinc="123456"
         reporting_description="Complete Blood Count" sticker_req_flag="Y"

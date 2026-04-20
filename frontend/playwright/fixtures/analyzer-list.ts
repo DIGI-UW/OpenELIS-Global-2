@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { UI_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * AnalyzersList Page Object
@@ -31,14 +32,15 @@ export class AnalyzerListPage {
 
   /** Navigate to the analyzers list page */
   async goto() {
-    await this.page.goto("/analyzers");
+    await this.page.goto("analyzers", { waitUntil: "domcontentloaded" });
   }
 
   /** Assert the page has loaded (root + header + stats visible) */
   async expectLoaded() {
-    await expect(this.root).toBeVisible();
-    await expect(this.header).toBeVisible();
-    await expect(this.statsGrid).toBeVisible();
+    // Wait for analyzers API to complete (stats grid populated)
+    await expect(this.root).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect(this.header).toBeVisible({ timeout: UI_TIMEOUT });
+    await expect(this.statsGrid).toBeVisible({ timeout: LONG_TIMEOUT });
   }
 
   /** Get a stat tile value by testid suffix (total, active, inactive) */
@@ -71,6 +73,13 @@ export class AnalyzerListPage {
 
   /** Open the overflow menu for a specific analyzer row */
   async openOverflowMenu(id: string) {
+    const explicitOverflow = this.page.locator(
+      `[data-testid="analyzer-row-overflow-${id}"]`,
+    );
+    if ((await explicitOverflow.count()) > 0) {
+      await explicitOverflow.first().click();
+      return;
+    }
     const actionsCell = this.page.locator(
       `[data-testid="analyzer-actions-${id}"]`,
     );

@@ -7,6 +7,15 @@ import org.openelisglobal.common.dao.BaseDAO;
 public interface AnalyzerErrorDAO extends BaseDAO<AnalyzerError, String> {
     List<AnalyzerError> findByAnalyzerId(String analyzerId);
 
+    /**
+     * Set analyzer_id = NULL on all error rows for a given analyzer. Used during
+     * analyzer deletion to preserve audit trail (SET NULL tier).
+     *
+     * @param analyzerId The analyzer ID
+     * @return Number of rows updated
+     */
+    int nullifyAnalyzerId(String analyzerId);
+
     List<AnalyzerError> findByStatus(String status);
 
     List<AnalyzerError> findByErrorType(String errorType);

@@ -1,9 +1,21 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <localization id="1" english="Test Localization 1"
-        french="Localisation de Test 1" lastupdated="2023-12-01 12:00:00" />
-    <localization id="2" english="Test Localization 2"
-        french="Localisation de Test 2" lastupdated="2023-12-01 12:00:00" />
+    <localization id="1" description="localization 1" />
+    <localization id="2" description="localization 2" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Test Localization 1" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Localisation de Test 1" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Test Localization 2" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Localisation de Test 2" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <!-- Status of Sample - Required for foreign key constraint -->
     <status_of_sample id="1" code="100"

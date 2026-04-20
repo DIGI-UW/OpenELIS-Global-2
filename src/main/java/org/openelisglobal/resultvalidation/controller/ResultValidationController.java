@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -388,7 +387,7 @@ public class ResultValidationController extends BaseResultValidationController {
                     if (analysisItem.getIsAccepted()) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
-                        analysis.setReleasedDate(new java.sql.Date(Calendar.getInstance().getTimeInMillis()));
+                        analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
                         analysisIdList.add(analysis.getId());
                         analysisUpdateList.add(analysis);
                     }

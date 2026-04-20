@@ -65,6 +65,10 @@
   font-weight: 600;
 }
 
+.field-mapping-stats .stat-value-small {
+  font-size: 1.5rem;
+}
+
 /* Action Buttons */
 .field-mapping-actions {
   display: flex;
@@ -81,4 +85,37 @@
   padding: 2rem;
   text-align: center;
   color: var(--cds-text-secondary);
+}
+
+.field-mapping-plugin-config,
+.field-mapping-pending-codes {
+  margin-bottom: 1rem;
+}
+
+.plugin-config-pre {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.75rem;
+  background: var(--cds-layer-02);
+  border: 1px solid var(--cds-border-subtle);
+}
+
+.pending-codes-panel h4 {
+  margin-bottom: 0.25rem;
+}
+
+.pending-codes-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+}
+
+.pending-codes-table th,
+.pending-codes-table td {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--cds-border-subtle);
+  vertical-align: middle;
 }
