@@ -43,6 +43,8 @@ import org.openelisglobal.notebook.valueholder.NotebookEntry;
 import org.openelisglobal.notebook.valueholder.NotebookPageSample.Status;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -105,6 +107,9 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
     @Autowired
     private NotebookPageSampleService notebookPageSampleService;
 
+    @Autowired
+    private PersonService personService;
+
     // Valid container types per spec FR-014
     private static final Set<String> VALID_CONTAINER_TYPES = Set.of("vacutainer", "cryovial", "urine_cup", "stool_jar",
             "swab_tube", "edta", "sst", "heparin", "citrate", "plain");
@@ -136,10 +141,10 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
             Integer unitOfMeasureIdx = getColumnIndex(columnIndex, columnMapping.getUnitOfMeasureColumn());
             Integer collectionSourceIdx = getColumnIndex(columnIndex, columnMapping.getCollectionSourceColumn());
             Integer collectorIdx = getColumnIndex(columnIndex, columnMapping.getCollectorColumn());
-            Integer collectionDateIdx = getColumnIndex(columnIndex, columnMapping.getCollectionDateColumn());
-            Integer collectionTimeIdx = getColumnIndex(columnIndex, columnMapping.getCollectionTimeColumn());
 
             // Get column indices from mapping (optional fields)
+            Integer collectionDateIdx = getColumnIndex(columnIndex, columnMapping.getCollectionDateColumn());
+            Integer collectionTimeIdx = getColumnIndex(columnIndex, columnMapping.getCollectionTimeColumn());
             Integer customLabelIdx = getColumnIndex(columnIndex, columnMapping.getCustomLabelColumn());
             Integer orderIdIdx = getColumnIndex(columnIndex, columnMapping.getOrderIdColumn());
             Integer patientIdIdx = getColumnIndex(columnIndex, columnMapping.getPatientIdColumn());
@@ -210,13 +215,16 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                     hasError = true;
                 }
 
-                if (collectionDate == null || collectionDate.isBlank()) {
-                    errors.add(new ParseError(rowNumber, "collectionDate", "Collection Date is required"));
-                    hasError = true;
-                }
-
-                if (collectionTime == null || collectionTime.isBlank()) {
-                    errors.add(new ParseError(rowNumber, "collectionTime", "Collection Time is required"));
+                boolean hasCollectionDate = collectionDate != null && !collectionDate.isBlank();
+                boolean hasCollectionTime = collectionTime != null && !collectionTime.isBlank();
+                if (hasCollectionDate ^ hasCollectionTime) {
+                    if (!hasCollectionDate) {
+                        errors.add(new ParseError(rowNumber, "collectionDate",
+                                "Collection Date is required when Collection Time is provided"));
+                    } else {
+                        errors.add(new ParseError(rowNumber, "collectionTime",
+                                "Collection Time is required when Collection Date is provided"));
+                    }
                     hasError = true;
                 }
 
@@ -340,58 +348,64 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
             Patient patient = null;
             List<ElectronicOrder> orders = null;
 
-            // Validate patientId if provided - patient must exist to import
+            // Validate patientId if provided. Missing participants are not blocking:
+            // import can create a lightweight participant record.
             if (patientId != null && !patientId.isBlank()) {
                 if (notFoundPatients.contains(patientId)) {
-                    // Already checked, not found - block import
-                    errors.add(new ParseError(row.rowNumber(), "patientId", "Patient not found: " + patientId));
+                    warnings.add(new ValidationWarning(row.rowNumber(), "patientId",
+                            "Participant will be created during import: " + patientId,
+                            ValidationWarning.WarningType.INFO));
                 } else if (patientCache.containsKey(patientId)) {
                     patient = patientCache.get(patientId);
                 } else {
-                    // Try to find patient by ID, external ID, or national ID
                     patient = findPatient(patientId);
                     if (patient != null) {
                         patientCache.put(patientId, patient);
                     } else {
                         notFoundPatients.add(patientId);
-                        errors.add(new ParseError(row.rowNumber(), "patientId", "Patient not found: " + patientId));
+                        warnings.add(new ValidationWarning(row.rowNumber(), "patientId",
+                                "Participant will be created during import: " + patientId,
+                                ValidationWarning.WarningType.INFO));
                     }
                 }
             }
 
-            // Validate orderId if provided - order must exist to import
+            // Validate orderId if provided. Order linking remains optional.
             if (orderId != null && !orderId.isBlank()) {
                 if (notFoundOrders.contains(orderId)) {
-                    // Already checked, not found - block import
-                    errors.add(new ParseError(row.rowNumber(), "orderId", "Order not found: " + orderId));
+                    warnings.add(new ValidationWarning(row.rowNumber(), "orderId",
+                            "Order not found and will not be linked during import: " + orderId,
+                            ValidationWarning.WarningType.ORDER_NOT_FOUND));
                 } else if (orderCache.containsKey(orderId)) {
                     orders = orderCache.get(orderId);
                 } else {
-                    // Try to find order by external ID
                     try {
                         orders = electronicOrderService.getElectronicOrdersByExternalId(orderId);
                         if (orders != null && !orders.isEmpty()) {
                             orderCache.put(orderId, orders);
                         } else {
                             notFoundOrders.add(orderId);
-                            errors.add(new ParseError(row.rowNumber(), "orderId", "Order not found: " + orderId));
+                            warnings.add(new ValidationWarning(row.rowNumber(), "orderId",
+                                    "Order not found and will not be linked during import: " + orderId,
+                                    ValidationWarning.WarningType.ORDER_NOT_FOUND));
                         }
                     } catch (Exception e) {
                         LogEvent.logDebug(this.getClass().getSimpleName(), "validatePatientAndOrderReferences",
                                 "Error looking up order: " + orderId);
                         notFoundOrders.add(orderId);
-                        errors.add(new ParseError(row.rowNumber(), "orderId", "Order not found: " + orderId));
+                        warnings.add(new ValidationWarning(row.rowNumber(), "orderId",
+                                "Order not found and will not be linked during import: " + orderId,
+                                ValidationWarning.WarningType.ORDER_NOT_FOUND));
                     }
                 }
             }
 
-            // Validate patient-order consistency if both are provided and found
+            // If both exist but do not match, keep that visible without blocking the row.
             if (patient != null && orders != null && !orders.isEmpty()) {
                 try {
                     ElectronicOrder order = orders.get(0);
                     String orderPatientId = order.getPatient() != null ? order.getPatient().getId() : null;
                     if (orderPatientId != null && !orderPatientId.equals(patient.getId())) {
-                        // Mismatch: order belongs to different patient - block import
                         String orderPatientName = "Unknown";
                         try {
                             if (order.getPatient() != null) {
@@ -400,8 +414,10 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                         } catch (Exception e) {
                             // Use default "Unknown"
                         }
-                        errors.add(new ParseError(row.rowNumber(), "patientId", "Patient mismatch: Order " + orderId
-                                + " belongs to '" + orderPatientName + "', not '" + patientId + "'"));
+                        warnings.add(new ValidationWarning(row.rowNumber(), "patientId",
+                                "Order " + orderId + " belongs to '" + orderPatientName
+                                        + "' and will not be linked to participant '" + patientId + "'",
+                                ValidationWarning.WarningType.PATIENT_ORDER_MISMATCH));
                     }
                 } catch (Exception e) {
                     LogEvent.logDebug(this.getClass().getSimpleName(), "validatePatientAndOrderReferences",
@@ -414,14 +430,14 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
     }
 
     /**
-     * Find a patient by structured identifier (external ID, national ID, or subject
-     * number). For manifest imports, patients should ONLY be referenced by
+     * Find a patient by structured identifier (external ID or national ID). For
+     * manifest imports, patients should ONLY be referenced by
      * structured identifiers, NOT by internal database PK. Attempting to look up by
      * PK with an alphanumeric structured ID causes exceptions that mark the
      * transaction for rollback.
      *
      * @param patientId the patient structured identifier to search for
-     *                  (external_id, national_id, or subject number)
+     *                  (external_id or national_id)
      * @return the Patient if found, null otherwise
      */
     private Patient findPatient(String patientId) {
@@ -451,22 +467,9 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                     "Patient not found by national ID: " + patientId);
         }
 
-        // Try by subject number third (via SUBJECT identity type in PatientIdentity)
-        try {
-            Patient patient = patientService.getPatientBySubjectNumber(patientId);
-            if (patient != null) {
-                LogEvent.logDebug(this.getClass().getSimpleName(), "findPatient",
-                        "Found patient by subject number: " + patientId);
-                return patient;
-            }
-        } catch (Exception e) {
-            LogEvent.logDebug(this.getClass().getSimpleName(), "findPatient",
-                    "Patient not found by subject number: " + patientId);
-        }
-
         // DO NOT look up by internal PK (getData) for manifest imports.
         // Manifest files should ONLY use structured identifiers (external_id,
-        // national_id, subject number).
+        // national_id).
         // Calling getData() with alphanumeric IDs like "PAT-VALID-001" throws
         // exceptions when Hibernate tries to convert to numeric PK, marking the
         // transaction for rollback.
@@ -474,6 +477,36 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
         LogEvent.logDebug(this.getClass().getSimpleName(), "findPatient",
                 "Patient not found by any structured identifier: " + patientId);
         return null;
+    }
+
+    private Patient ensurePatientForImport(String patientIdentifier, Integer createdBy) {
+        if (patientIdentifier == null || patientIdentifier.isBlank()) {
+            return null;
+        }
+
+        Patient existingPatient = findPatient(patientIdentifier);
+        if (existingPatient != null) {
+            return existingPatient;
+        }
+
+        String sysUserId = String.valueOf(createdBy);
+
+        Person person = new Person();
+        person.setFirstName("Imported");
+        person.setLastName("Participant");
+        person.setSysUserId(sysUserId);
+        personService.insert(person);
+
+        Patient patient = new Patient();
+        patient.setPerson(person);
+        patient.setExternalId(patientIdentifier);
+        patient.setSysUserId(sysUserId);
+        patientService.insert(patient);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "ensurePatientForImport",
+                "Created lightweight participant for manifest import: " + patientIdentifier + " -> " + patient.getId());
+
+        return patient;
     }
 
     @Override
@@ -503,13 +536,30 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                 sample.setStatusId(statusService.getStatusID(SampleStatus.Entered));
                 // setEnteredDate takes java.sql.Date
                 sample.setEnteredDate(new java.sql.Date(System.currentTimeMillis()));
-                sample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
 
                 // Store collection source in clientReference field (closest match)
                 sample.setClientReference(row.collectionSource());
 
                 // Set sysUserId for audit trail (REQUIRED)
                 sample.setSysUserId(String.valueOf(createdBy));
+
+                // SAMPLE.received_date is mandatory in the database.
+                // When collection timestamp is not provided in the manifest, default receipt to now.
+                Date collectionDateTime = null;
+                try {
+                    if ((row.collectionDate() != null && !row.collectionDate().isBlank())
+                            && (row.collectionTime() != null && !row.collectionTime().isBlank())) {
+                        collectionDateTime = parseDateTime(row.collectionDate(), row.collectionTime());
+                        sample.setCollectionDate(new Timestamp(collectionDateTime.getTime()));
+                        sample.setReceivedTimestamp(new Timestamp(collectionDateTime.getTime()));
+                    } else {
+                        sample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
+                    }
+                } catch (ParseException e) {
+                    errors.add(new ParseError(row.rowNumber(), "collectionDate",
+                            "Invalid date/time format: " + row.collectionDate() + " " + row.collectionTime()));
+                    sample.setReceivedTimestamp(new Timestamp(System.currentTimeMillis()));
+                }
 
                 sampleService.insert(sample);
 
@@ -541,13 +591,9 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                 // Map collector
                 sampleItem.setCollector(row.collector());
 
-                // Map collectionDate + collectionTime
-                try {
-                    Date collectionDateTime = parseDateTime(row.collectionDate(), row.collectionTime());
+                // Map collectionDate + collectionTime when provided
+                if (collectionDateTime != null) {
                     sampleItem.setCollectionDate(new Timestamp(collectionDateTime.getTime()));
-                } catch (ParseException e) {
-                    errors.add(new ParseError(row.rowNumber(), "collectionDate",
-                            "Invalid date/time format: " + row.collectionDate() + " " + row.collectionTime()));
                 }
 
                 // Set sample type
@@ -621,7 +667,7 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                 // If patientId provided, create SampleHuman link
                 if (row.patientId() != null && !row.patientId().isBlank()) {
                     try {
-                        Patient patient = findPatient(row.patientId());
+                        Patient patient = ensurePatientForImport(row.patientId(), createdBy);
                         if (patient != null) {
                             SampleHuman sampleHuman = new SampleHuman();
                             sampleHuman.setSampleId(sample.getId());
@@ -629,13 +675,11 @@ public class MedLabManifestImportServiceImpl implements MedLabManifestImportServ
                             sampleHuman.setSysUserId(String.valueOf(createdBy));
                             sampleHumanService.insert(sampleHuman);
                         }
-                        // Note: If patient not found, validation should have caught this earlier.
-                        // We don't add an error here since validatePatientAndOrderReferences handles
-                        // it.
                     } catch (Exception e) {
                         LogEvent.logError("MedLabManifestImportServiceImpl", "createSamplesForEntry",
                                 "Error linking sample to patient: " + e.getMessage());
-                        // Don't fail the whole import if patient link fails
+                        errors.add(new ParseError(row.rowNumber(), "patientId",
+                                "Failed to create or link participant: " + row.patientId()));
                     }
                 }
 

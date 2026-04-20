@@ -249,6 +249,18 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
     setActivePage(pageIndex);
   };
 
+  const handleNavigateToPageOrder = useCallback(
+    (pageOrder) => {
+      const targetIndex = effectivePages.findIndex(
+        (p) => (p.pageOrder ?? p.order ?? 0) === pageOrder,
+      );
+      if (targetIndex >= 0) {
+        setActivePage(targetIndex);
+      }
+    },
+    [effectivePages],
+  );
+
   const getProgressForPage = (pageId) => {
     const progress = pageProgress[pageId];
     if (!progress) {
@@ -276,7 +288,10 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
     const progress = getProgressForPage(page.id);
 
     switch (pageOrder) {
-      case 1:
+      case 1: {
+        const sampleCollectionPage = effectivePages.find(
+          (p) => (p.pageOrder ?? p.order ?? 0) === 2,
+        );
         return (
           <PatientOrderEntryPage
             key={`medlab-patient-${page.id}`}
@@ -285,8 +300,11 @@ function MedLabWorkflowTab({ notebookId, entryId: propEntryId }) {
             progress={progress}
             onProgressUpdate={handleProgressUpdate}
             notebookId={notebook?.id}
+            sampleCollectionPageData={sampleCollectionPage}
+            onNavigateToPage={handleNavigateToPageOrder}
           />
         );
+      }
       case 2: {
         // Find Patient Order Entry page (page 1) to pass to Sample Collection
         const orderEntryPage = effectivePages.find(
