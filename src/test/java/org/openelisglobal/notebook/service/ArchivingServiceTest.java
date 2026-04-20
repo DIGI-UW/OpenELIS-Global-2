@@ -518,6 +518,35 @@ public class ArchivingServiceTest {
     }
 
     /**
+     * Biorepository notebooks remain operational and cannot be finalized.
+     */
+    @Test(expected = IllegalStateException.class)
+    public void testFinalizeNotebook_BiorepositoryWorkflow_ThrowsException() {
+        // Arrange
+        testNotebook.setWorkflowType("biorepository");
+        when(noteBookService.get(1)).thenReturn(testNotebook);
+
+        // Act - should throw
+        archivingService.finalizeNotebook(1, "1");
+    }
+
+    /**
+     * canFinalize should return false for operational biorepository notebooks.
+     */
+    @Test
+    public void testCanFinalize_BiorepositoryWorkflow_ReturnsFalse() {
+        // Arrange
+        testNotebook.setWorkflowType("biorepository");
+        when(noteBookService.get(1)).thenReturn(testNotebook);
+
+        // Act
+        boolean canFinalize = archivingService.canFinalize(1);
+
+        // Assert
+        assertFalse("Biorepository notebook should not be finalizable", canFinalize);
+    }
+
+    /**
      * canFinalize returns false when critical failures exist.
      */
     @Test
