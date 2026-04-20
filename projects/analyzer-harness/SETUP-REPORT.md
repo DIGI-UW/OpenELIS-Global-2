@@ -985,7 +985,10 @@ docker logs analyzer-harness-astm-simulator-1 | grep "H|"
 
 **Documentation:**
 
-- Feature spec: `specs/011-madagascar-analyzer-integration/spec.md`
+- Canonical roadmap: `specs/roadmaps/madagascar-analyzer-roadmap.md`
+- Harness README: `projects/analyzer-harness/README.md`
+- Historical feature spec (context only, not current source of truth):
+  `specs/011-madagascar-analyzer-integration/spec.md`
 - Supported analyzers (retired 2026-04-18):
   `.specify/plan-archive/011-supported-analyzers.md` — current truth is
   `projects/analyzer-harness/seed-analyzers.sh`

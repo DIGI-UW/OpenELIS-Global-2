@@ -304,7 +304,7 @@ requirements:
 - **XML/Hibernate Migration Guide** (retired 2026-04-18):
   [.specify/plan-archive/011-xml-hibernate-migration.md](../../../.specify/plan-archive/011-xml-hibernate-migration.md)
 - **Constitution**:
-  [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
+  [.specify/memory/constitution.md](../../../.specify/memory/constitution.md)
 
 ---
 

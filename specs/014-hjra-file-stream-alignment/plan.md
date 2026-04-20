@@ -1,8 +1,9 @@
 > **STATUS: Historical — completed 2026-04 (bannered 2026-04-18)**. All M1A,
-> M1B, M2, M3, M4 milestones shipped. `ExcelAnalyzerReader` is in the plugins
-> submodule; GenericFile is a peer of GenericASTM/GenericHL7; all FILE analyzers
-> (FluoroCycler, Tecan, Multiskan, Wondfo, QuantStudio, GeneXpert-CSV) flow
-> through the generic-file path.
+> M1B, M2, M3, M4 milestones shipped. File parsing is bridge-owned (see
+> `FileImportServiceImpl`), backed by `CSVAnalyzerReader` /
+> `AnalyzerXLSLineReader` in the plugins submodule; GenericFile is a peer of
+> GenericASTM/GenericHL7; all FILE analyzers (FluoroCycler, Tecan, Multiskan,
+> Wondfo, QuantStudio, GeneXpert-CSV) flow through the generic-file path.
 >
 > - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
 > - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`
@@ -26,8 +27,10 @@ Current remediation contract:
 **Spec**: [spec.md](spec.md)  
 **Input**: Feature specification from
 `specs/014-hjra-file-stream-alignment/spec.md`  
-**Roadmap**:
-[parallel_analyzer_lanes_af342372.plan.md](../roadmaps/parallel_analyzer_lanes_af342372.plan.md)
+**Roadmap (archived 2026-04-18)**:
+[parallel_analyzer_lanes_af342372.plan.md](../../.specify/plan-archive/parallel_analyzer_lanes_af342372.plan.md)
+— canonical live source is
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md)
 
 ## Summary
 
