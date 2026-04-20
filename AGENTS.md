@@ -1311,8 +1311,7 @@ public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
 **Project configuration:** Vitest with `globals: true` (see
 `frontend/vite.config.ts`). `vi`, `describe`, `it`, `expect`, `beforeEach`,
 `afterEach` are globally available — use `vi.*` (not `jest.*`).
-`@testing-library/jest-dom` matchers are wired via
-`frontend/src/setupTests.js`.
+`@testing-library/jest-dom` matchers are wired via `frontend/src/setupTests.js`.
 
 **For Comprehensive Guidance**: See
 [Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
@@ -2245,8 +2244,8 @@ Before creating PR, verify ALL items:
   E2E-specific fixture guide
 - **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
   Cypress patterns
-- **Vitest Best Practices:** `.specify/guides/vitest-best-practices.md` -
-  Vitest patterns + Vitest↔Jest API mapping
+- **Vitest Best Practices:** `.specify/guides/vitest-best-practices.md` - Vitest
+  patterns + Vitest↔Jest API mapping
 - **Backend Testing Best Practices:**
   `.specify/guides/backend-testing-best-practices.md` - Backend patterns
 
