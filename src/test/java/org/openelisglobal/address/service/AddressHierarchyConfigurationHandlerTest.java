@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
 import org.openelisglobal.organization.valueholder.Organization;
@@ -42,6 +43,9 @@ public class AddressHierarchyConfigurationHandlerTest {
 
     @Mock
     private PatientIdentityTypeService patientIdentityTypeService;
+
+    @Mock
+    private DisplayListService displayListService;
 
     @InjectMocks
     private AddressHierarchyConfigurationHandler handler;
@@ -125,6 +129,9 @@ public class AddressHierarchyConfigurationHandlerTest {
         assertEquals("Province", created.getName());
         assertEquals(Integer.valueOf(1), created.getHierarchyLevel());
         assertEquals(Boolean.FALSE, created.getAllowFreeText());
+        // Dropdown cache must be refreshed after CSV processing so UI sees new
+        // hierarchy.
+        verify(displayListService).refreshLists();
     }
 
     @Test

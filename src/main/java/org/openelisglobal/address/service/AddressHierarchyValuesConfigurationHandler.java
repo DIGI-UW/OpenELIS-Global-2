@@ -73,6 +73,9 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Autowired
+    private DisplayListService displayListService;
+
     @Override
     public String getDomainName() {
         return "address-hierarchy";
@@ -207,7 +210,7 @@ public class AddressHierarchyValuesConfigurationHandler implements DomainConfigu
             flushBatch(batchToInsert, typeLinksToCreate, pathToOrgIdMap, existingTypeLinks);
         }
 
-        DisplayListService.getInstance().refreshLists();
+        displayListService.refreshLists();
 
         long totalTime = System.currentTimeMillis() - startTime;
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",

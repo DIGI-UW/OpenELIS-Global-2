@@ -63,6 +63,9 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
     @Autowired
     private PatientIdentityTypeService patientIdentityTypeService;
 
+    @Autowired
+    private DisplayListService displayListService;
+
     @Override
     public String getDomainName() {
         return "address-hierarchy";
@@ -130,7 +133,7 @@ public class AddressHierarchyConfigurationHandler implements DomainConfiguration
 
         PatientIdentityTypeMap.reset();
 
-        DisplayListService.getInstance().refreshLists();
+        displayListService.refreshLists();
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "processConfiguration",
                 "Successfully loaded " + processedTypes.size() + " address hierarchy levels from " + fileName);
