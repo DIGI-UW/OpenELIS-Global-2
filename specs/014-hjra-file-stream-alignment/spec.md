@@ -1,5 +1,24 @@
 # Feature Specification: File Stream Alignment — GenericFile Coordination
 
+## Current Status (updated 2026-04-20)
+
+**Scope shipped**: GenericFile plugin + Upload/Review UI + 5 analyzer profiles
+(QuantStudio 5/7, FluoroCycler XT, Wondfo Finecare, Tecan F50, Multiskan FC) —
+all in `projects/analyzer-profiles/file/` and seeded by
+[`seed-analyzers.sh`](../../projects/analyzer-harness/seed-analyzers.sh).  
+**Validation pending**: Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert
+site samples still in flight.  
+**Blocked**: Attune CytPix (OGC-350) — no CSV export available.  
+**Deferred test coverage (not blocking MVP)**: some M2 frontend Jest tests
+(T030–T031, T038–T045) and M4 watcher-integration + upload E2E (T073, T078) —
+see [tasks.md](./tasks.md) § "Remaining Work to Finish Line".
+
+Full status table: [§ Stream Boundaries](#stream-boundaries) below and the
+canonical
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
+
+---
+
 ## 2026-03-18 Ownership Override (014 Remediation)
 
 This document is updated by the FILE workflow remediation plan archived at

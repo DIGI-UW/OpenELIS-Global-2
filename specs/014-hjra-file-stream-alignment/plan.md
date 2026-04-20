@@ -1,12 +1,40 @@
-> **STATUS: Historical — completed 2026-04 (bannered 2026-04-18)**. All M1A,
-> M1B, M2, M3, M4 milestones shipped. File parsing is bridge-owned (see
-> `FileImportServiceImpl`), backed by `CSVAnalyzerReader` /
+> **STATUS: Code shipped, validation + test coverage open (updated
+> 2026-04-20).** M1A / M1B / M3 code landed on the consolidation branch; M2 code
+> landed but several frontend Jest + upload E2E tasks remain deferred; M4
+> (Wondfo) watcher-integration and upload E2E are deferred. File parsing is
+> bridge-owned (see `FileImportServiceImpl`), backed by `CSVAnalyzerReader` /
 > `AnalyzerXLSLineReader` in the plugins submodule; GenericFile is a peer of
-> GenericASTM/GenericHL7; all FILE analyzers (FluoroCycler, Tecan, Multiskan,
-> Wondfo, QuantStudio, GeneXpert-CSV) flow through the generic-file path.
+> GenericASTM/GenericHL7; all shipped FILE analyzers (QuantStudio 5/7,
+> FluoroCycler, Tecan F50, Multiskan FC, Wondfo Finecare) flow through the
+> generic-file path.
 >
 > - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
 > - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`
+
+## Remaining Work to Finish Line (2026-04-20)
+
+**Site validation (Herbert):**
+
+- [ ] Tecan F50 (OGC-417) — validate with Herbert's site samples
+- [ ] Multiskan FC (OGC-418) — validate with Herbert's site samples
+
+**Deferred test coverage (code shipped, tests not):**
+
+- [ ] M2 Upload/Review UI: T030–T031 (Jest component tests) + T038–T045
+      (upload-flow Playwright E2E) — see [tasks.md § M2](./tasks.md)
+- [ ] M4 Wondfo: T073 (bridge watcher integration test) + T078 (upload-flow E2E)
+      — see [tasks.md § M4](./tasks.md)
+
+**Blocked:**
+
+- [ ] Attune CytPix (OGC-350) — no CSV export; re-open when export becomes
+      available
+
+**Record demo evidence:**
+
+- [ ] FILE E2E demo video (QuantStudio file drop → bridge → OE → Accept results)
+
+---
 
 # Implementation Plan: File Stream Alignment — GenericFile Coordination
 

@@ -1,12 +1,57 @@
-> **STATUS: Historical (bannered 2026-04-18)** — MVP delivered. This plan (dated
-> 2026-01-22 with "contract deadline 2026-02-28", M0–M21 milestones,
-> RS232-via-bridge, Cypress 12.x as E2E) is superseded. Current state:
+> **STATUS: Superseded as a delivery tracker (updated 2026-04-20).** The January
+> 2026 milestone structure below (M0–M21, RS232-via-bridge framing, Cypress 12.x
+> as E2E, contract deadline 2026-02-28) no longer describes how the work is
+> landing. MVP code is shipped for 7 analyzers (3 Mindray HL7, 1 GeneXpert ASTM,
+> 3 FILE) — but site validation and post-MVP work (below) are still open. Do not
+> use the M0–M21 numbering below to plan current work; track delivery through
+> Jira OGC-\* + per-PR commits.
+>
+> **Canonical sources:**
 >
 > - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
->   (2026-03-26)
-> - **Delivery tracking:** Jira OGC-\* + per-PR commits, not this plan
+>   (2026-03-26) — per-analyzer status + immediate / post-MVP sections
 > - **Test harness:** `projects/analyzer-harness/seed-analyzers.sh` +
 >   `ci-parity-test.sh`
+
+## Remaining Work to Finish Line (2026-04-20)
+
+Per the canonical roadmap, the three tracks have the following work left before
+the MVP is considered site-validated and the post-MVP slate is closed:
+
+**HL7 track (013):**
+
+- HJRA site networking — Mindray analyzers → bridge MLLP
+- PR #3195 merge (test-connection + `CommunicationMode`)
+- Record HL7 E2E demo video (BC-5380 flow)
+
+**ASTM track (011 core):**
+
+- Record ASTM E2E demo video (GeneXpert flow)
+- Wondfo Finecare ASTM (OGC-345) — awaiting real ASTM capture
+- Add `communication` blocks on remaining ASTM/HL7 profiles (only 5 of 12)
+
+**FILE track (014):**
+
+- Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert site samples
+- Record FILE E2E demo video (QuantStudio flow)
+- Attune CytPix (OGC-350) — blocked on CSV export
+
+**Post-MVP (cross-track, deferred):**
+
+- Unified FHIR R4 bridge interface (bridge parses all formats, delivers FHIR
+  transaction Bundles to OE) — `specs/roadmaps/pr-3195-remediation-plan.md`
+  Phase 3B
+- HL7 bidirectional (ORM^O01 worklist download OGC-327, QRY^Q02 order download
+  OGC-326)
+- GeneXpert HL7 mode (OGC-336) — QBP queries
+- Bridge outbound MLLP/ASTM client (required for LIS_INITIATED mode)
+- `autoCreateTestMappings` profile-field-naming fix
+- TLS consolidation (shared `BridgeSslUtil`, `analyzer.bridge.tls.verify`
+  config)
+- `@Scheduled` periodic bridge sync (currently fires only on OE startup)
+- Stago STart 4, DNA Technology DT-Prime XML parser (new instruments)
+
+---
 
 # Implementation Plan: Madagascar Analyzer Integration
 

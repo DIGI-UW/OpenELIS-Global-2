@@ -1,19 +1,49 @@
-> **STATUS: Historical (bannered 2026-04-18)** — kept for context; do NOT use as
-> live source of truth. The fleet and architecture narrative below (12-analyzer
-> matrix, RS232 bridge, contract-deadline framing) describes pre-March 2026
-> planning. Current state:
->
-> - **Canonical roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
-> - **Live analyzer seed:** `projects/analyzer-harness/seed-analyzers.sh`
-> - **Live profile set:** `projects/analyzer-profiles/{astm,hl7,file}/*.json`
->   (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror)
-
 # Feature Specification: Madagascar Analyzer Integration
 
-**Feature Branch**: `spec/011-madagascar-analyzer-integration` **Created**:
-2026-01-22 **Status**: Draft **Contract Deadline**: 2026-02-28 **Scope**: 12
-minimum analyzers with bidirectional communication (results + orders)
+**Feature Branch**: `spec/011-madagascar-analyzer-integration`  
+**Created**: 2026-01-22  
+**Updated**: 2026-04-20 (status reckoning — three tracks in flight)  
+**Status**: **In Progress** — MVP code shipped across HL7/ASTM/FILE; site
+validation + post-MVP work open.  
 **Extends**: Feature 004-astm-analyzer-mapping
+
+## Current Status (2026-04-20)
+
+This spec is the umbrella for three protocol tracks: **HL7 (coordinated in
+`specs/013`)**, **ASTM (core 011 work)**, and **FILE (coordinated in
+`specs/014`)**. The January 2026 scope below (12-analyzer matrix, RS232 bridge,
+contract deadline 2026-02-28) framed the initial plan. Actual delivery has
+diverged in places — the canonical status table lives in
+[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md)
+and the authoritative analyzer fleet lives in
+[`projects/analyzer-harness/seed-analyzers.sh`](../../projects/analyzer-harness/seed-analyzers.sh)
+
+- [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
+  (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+
+| Track               | Shipped (E2E verified)                                                         | Validation Pending                                                  | Blocked / Deprioritized                                |
+| ------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
+| **HL7** (013)       | Mindray BC-5380, BS-200, BS-300                                                | HJRA site networking, MLLP traffic proofs                           | —                                                      |
+| **ASTM** (011 core) | Cepheid GeneXpert                                                              | Video evidence for GeneXpert E2E flow                               | Wondfo Finecare ASTM (OGC-345 — awaiting ASTM capture) |
+| **FILE** (014)      | QuantStudio 5/7, FluoroCycler XT, Wondfo Finecare CSV, Tecan F50, Multiskan FC | Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert site samples | Attune CytPix (OGC-350 — no CSV export; deprioritized) |
+
+**Cross-cutting remaining work** (see roadmap for the canonical list):
+
+- PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
+- `communication` blocks on the 7 remaining ASTM/HL7 profiles (5 of 12 done)
+- Video evidence for HL7 / ASTM / FILE demo flows
+- Post-MVP: Unified FHIR R4 bridge interface; HL7 bidirectional (ORM^O01,
+  QRY^Q02); GeneXpert HL7 mode (OGC-336); LIS-initiated bridge outbound;
+  `@Scheduled` periodic bridge sync; TLS consolidation
+
+> The body below is **the original January 2026 scoping document** — kept
+> verbatim for audit/history. Where it conflicts with the Current Status table
+> above or the canonical roadmap, the canonical sources win.
+
+---
+
+**Contract Deadline**: 2026-02-28 **Scope**: 12 minimum analyzers with
+bidirectional communication (results + orders)
 
 ## Executive Summary
 
