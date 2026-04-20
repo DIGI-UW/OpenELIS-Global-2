@@ -204,9 +204,10 @@ metadata, and hierarchy
       frontend/src/components/sampleManagement/SampleSearch.test.js (Template:
       `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
-      Reference: [Jest Best Practices](.specify/guides/jest-best-practices.md) -
-      **TDD Workflow**: Write test FIRST (RED), then implement (GREEN) -
-      **Import Order**: React → Testing Library → userEvent → jest-dom → Intl →
+      Reference:
+      [Vitest Best Practices](.specify/guides/vitest-best-practices.md) - **TDD
+      Workflow**: Write test FIRST (RED), then implement (GREEN) - **Import
+      Order**: React → Testing Library → userEvent → jest-dom → Intl →
       Component - **Mocks BEFORE imports**: Jest hoisting requires mocks before
       imports - **userEvent PREFERRED**: Use `userEvent.type()` for search input
       (NOT `fireEvent`) - **Test Cases**: (1) search input renders, (2) search
@@ -218,11 +219,12 @@ metadata, and hierarchy
       (Template: `.specify/templates/testing/JestComponent.test.jsx.template`) -
       Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
-      Reference: [Jest Best Practices](.specify/guides/jest-best-practices.md) -
-      **Test Cases**: (1) renders results with sample data, (2) displays
-      hierarchy (parent-child indicators), (3) shows "no results" message when
-      empty, (4) row selection works correctly - **Carbon Components**: Use
-      `within()` for scoped queries in DataTable - **Coverage Goal**: >70%
+      Reference:
+      [Vitest Best Practices](.specify/guides/vitest-best-practices.md) - **Test
+      Cases**: (1) renders results with sample data, (2) displays hierarchy
+      (parent-child indicators), (3) shows "no results" message when empty, (4)
+      row selection works correctly - **Carbon Components**: Use `within()` for
+      scoped queries in DataTable - **Coverage Goal**: >70%
 - [ ] T028 [P] [US1] Cypress E2E test for sample search workflow in
       frontend/cypress/e2e/sampleManagement.cy.js (Template:
       `.specify/templates/testing/CypressE2E.cy.js.template`) - Reference:
@@ -349,10 +351,11 @@ tests list
       frontend/src/components/sampleManagement/TestSelector.test.js (Template:
       `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
-      Reference: [Jest Best Practices](.specify/guides/jest-best-practices.md) -
-      **Test Cases**: (1) renders test catalog with MultiSelect, (2) filters
-      tests by sample type, (3) selection works correctly, (4) displays
-      duplicate warning before submission, (5) handles API errors
+      Reference:
+      [Vitest Best Practices](.specify/guides/vitest-best-practices.md) - **Test
+      Cases**: (1) renders test catalog with MultiSelect, (2) filters tests by
+      sample type, (3) selection works correctly, (4) displays duplicate warning
+      before submission, (5) handles API errors
 - [ ] T041 [P] [US2] Integration test for complete add tests workflow in
       src/test/java/org/openelisglobal/sampleitem/integration/SampleManagementIntegrationTest.java -
       Reference:

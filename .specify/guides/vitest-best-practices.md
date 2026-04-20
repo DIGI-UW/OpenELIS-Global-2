@@ -1,20 +1,27 @@
-# Jest Best Practices Quick Reference
+# Vitest Best Practices Quick Reference
 
-**Quick Reference Guide** for common Jest + React Testing Library patterns in
+**Quick Reference Guide** for common Vitest + React Testing Library patterns in
 OpenELIS Global 2.
 
 **For Comprehensive Guidance**: See
-[Testing Roadmap](.specify/guides/testing-roadmap.md) for detailed patterns and
-examples.
+[Testing Roadmap](./testing-roadmap.md) for detailed patterns and examples.
 
 **For Official Documentation**: See
-[Jest React Tutorial](https://jestjs.io/docs/tutorial-react).
+[Vitest](https://vitest.dev/) and
+[React Testing Library](https://testing-library.com/docs/react-testing-library/intro).
+
+**Project configuration**: OpenELIS frontend uses Vitest with
+`globals: true` (see `frontend/vite.config.ts`), so `vi`, `describe`, `it`,
+`expect`, `beforeEach`, `afterEach` are available without imports. The
+`@testing-library/jest-dom` matchers are wired up via
+`frontend/src/setupTests.js`.
 
 ---
 
 ## Import Order Cheat Sheet
 
-**STRICT Order** (Jest hoisting requires mocks before imports):
+**STRICT Order** (Vitest hoists `vi.mock()` calls to the top of the file, but
+keep mocks visually above imports for readability):
 
 1. **React**
 
@@ -41,7 +48,8 @@ examples.
    import userEvent from "@testing-library/user-event";
    ```
 
-4. **jest-dom matchers** (MUST be imported)
+4. **jest-dom matchers** (wired in `setupTests.js`; import here only if your
+   test file needs them explicitly)
 
    ```javascript
    import "@testing-library/jest-dom";
@@ -76,17 +84,43 @@ examples.
    import messages from "../../../languages/en.json";
    ```
 
-**Mocks MUST be before imports**:
+**Mocks at the top (Vitest hoists `vi.mock()` automatically)**:
 
 ```javascript
-// Mocks FIRST (before imports)
-jest.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+// Vitest hoists this above all imports at compile time, but keep it visually
+// above for clarity.
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 // Then imports
 import ComponentName from "./ComponentName";
 ```
+
+---
+
+## Vitest ↔ Jest API mapping
+
+If you're porting existing Jest tests or following Jest docs, these are the
+substitutions that matter in this project:
+
+| Jest                     | Vitest                   | Notes                                                 |
+| ------------------------ | ------------------------ | ----------------------------------------------------- |
+| `jest.fn()`              | `vi.fn()`                | Globals enabled — no import needed                    |
+| `jest.mock(...)`         | `vi.mock(...)`           | Hoisted same as Jest                                  |
+| `jest.spyOn(...)`        | `vi.spyOn(...)`          |                                                       |
+| `jest.useFakeTimers()`   | `vi.useFakeTimers()`     |                                                       |
+| `jest.useRealTimers()`   | `vi.useRealTimers()`     |                                                       |
+| `jest.advanceTimersBy*`  | `vi.advanceTimersBy*`    |                                                       |
+| `jest.clearAllMocks()`   | `vi.clearAllMocks()`     |                                                       |
+| `jest.resetAllMocks()`   | `vi.resetAllMocks()`     |                                                       |
+| `jest.config.js`         | `vite.config.ts` `test`  | Vitest config lives in `vite.config.ts` `test:` block |
+| `jest.setup.js`          | `setupTests.js`          | Wired via `setupFiles` in config                      |
+| `@testing-library/jest-dom` | same                  | Library name unchanged; works with Vitest             |
+
+The only remaining "Jest" references in this project are legitimate:
+`@testing-library/jest-dom` (library name) and historical references to the
+pre-Vite test runner. Everything else should use `vi.*`.
 
 ---
 
@@ -162,7 +196,7 @@ await waitFor(
     const element = screen.queryByText("Loaded Data");
     expect(element).toBeInTheDocument();
   },
-  { timeout: 5000 }
+  { timeout: 5000 },
 );
 ```
 
@@ -293,6 +327,7 @@ expect(input.value.length).toBe(100);
 - ❌ Test function call counts (test outcomes)
 - ❌ Use inconsistent import order
 - ❌ Skip mocking utilities before imports
+- ❌ Reach for `jest.*` — use `vi.*` (globals enabled)
 
 ---
 
@@ -303,7 +338,7 @@ expect(input.value.length).toBe(100);
 1. **Red**: Write failing test first
 
    ```javascript
-   test("testSubmitForm_ShowsSuccess", async () => {
+   it("testSubmitForm_ShowsSuccess", async () => {
      renderWithIntl(<ComponentName />);
      // Test will fail - component doesn't exist yet
    });
@@ -355,7 +390,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>
+    </BrowserRouter>,
   );
 };
 ```
@@ -407,6 +442,7 @@ const createMockRoom = (overrides = {}) => ({
 
 ---
 
-**Last Updated**: 2025-01-XX  
-**Reference**: [Testing Roadmap](.specify/guides/testing-roadmap.md) for
-comprehensive guidance
+**Last Updated**: 2026-04-20 (renamed from jest-best-practices.md during
+Vitest migration cleanup)  
+**Reference**: [Testing Roadmap](./testing-roadmap.md) for comprehensive
+guidance.

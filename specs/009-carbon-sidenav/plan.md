@@ -139,7 +139,7 @@ Principle IX)
   - **Reference**:
     [Testing Roadmap - Jest + React Testing Library](../../.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
   - **Reference**:
-    [Jest Best Practices](../../.specify/guides/jest-best-practices.md)
+    [Vitest Best Practices](../../.specify/guides/vitest-best-practices.md)
   - **Coverage Goal**: >70% (measured via Jest)
   - **TDD Workflow**: Red-Green-Refactor cycle for toggle logic and preference
     persistence

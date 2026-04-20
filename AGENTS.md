@@ -1313,8 +1313,8 @@ public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
 for detailed patterns, code examples, and best practices.
 
 **For Quick Reference**: See
-[Jest Best Practices Guide](.specify/guides/jest-best-practices.md) for common
-patterns and cheat sheets.
+[Vitest Best Practices Guide](.specify/guides/vitest-best-practices.md) for
+common patterns and cheat sheets.
 
 **TDD Workflow (MANDATORY for complex logic):**
 
@@ -1845,7 +1845,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-dem
 - **Backend Testing Best Practices**:
   `.specify/guides/backend-testing-best-practices.md` - Quick reference for
   backend Java/Spring Framework testing patterns
-- **Jest Best Practices**: `.specify/guides/jest-best-practices.md` - Quick
+- **Vitest Best Practices**: `.specify/guides/vitest-best-practices.md` - Quick
   reference for Jest + React Testing Library patterns
 - **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` -
   Quick reference for Cypress patterns
@@ -2238,7 +2238,7 @@ Before creating PR, verify ALL items:
   E2E-specific fixture guide
 - **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
   Cypress patterns
-- **Jest Best Practices:** `.specify/guides/jest-best-practices.md` - Jest
+- **Vitest Best Practices:** `.specify/guides/vitest-best-practices.md` - Jest
   patterns
 - **Backend Testing Best Practices:**
   `.specify/guides/backend-testing-best-practices.md` - Backend patterns

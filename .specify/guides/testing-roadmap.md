@@ -1176,7 +1176,7 @@ official patterns.
 
 This section provides comprehensive technical guidance for implementing Jest +
 React Testing Library unit tests. For quick reference, see
-[Jest Best Practices Guide](.specify/guides/jest-best-practices.md).
+[Vitest Best Practices Guide](.specify/guides/vitest-best-practices.md).
 
 #### TDD Workflow Integration
 

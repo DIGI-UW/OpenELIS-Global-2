@@ -3,7 +3,7 @@
  * 
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md (comprehensive guidance)
- * - Jest Best Practices: .specify/guides/jest-best-practices.md (quick reference)
+ * - Vitest Best Practices: .specify/guides/vitest-best-practices.md (quick reference)
  * - Jest Official Docs: https://jestjs.io/docs/tutorial-react
  * 
  * TDD Workflow (MANDATORY for complex logic):
