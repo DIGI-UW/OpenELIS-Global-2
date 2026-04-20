@@ -95,6 +95,16 @@
       "unit": "%"
     }
   ],
-  "configDefaults": {},
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
   "notes": "RESEARCH CORRECTION: Only ASTM over TCP/IP confirmed in vendor specifications. Original HL7 claim could not be verified. TCP/IP mode uses ASTM E1394-97 presentation layer + E1381-02 data link layer. RS-232 mode also available with baud rate 19200."
 }

@@ -460,7 +460,10 @@ export const convertAlphaNumLabNumForDisplay = (labNumber) => {
     return labNumber;
   }
   if (labNumber.length > 15) {
-    console.warn("labNumber is not alphanumeric (too long), ignoring format");
+    // Longer-than-15 accessions (e.g. 20-char SiteYearNum like
+    // DEV01263000000000001) aren't reformatted — they're opaque IDs.
+    // Return as-is without warning; legacy dashed formatting below is only
+    // for the old 12-char Tacoma-style lab numbers.
     return labNumber;
   }
   //if dash made it into value, then it's part of the analysis number, not the base lab number

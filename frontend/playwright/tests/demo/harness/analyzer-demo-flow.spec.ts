@@ -153,7 +153,13 @@ const CONFIGS: AnalyzerTestConfig[] = [
       protocol: "FILE",
       simulatorUrl: SIMULATOR_URL,
       template: "hain_fluorocycler",
-      targetDir: "/data/analyzer-imports/demo--fluorocycler-xt/incoming",
+      // FluoroCycler real files carry no per-row test-code column — in
+      // production the lab tech declares VIH-1 in the bridge upload UI.
+      // Mirror that here instead of hacking a TestCode column into the
+      // fixture.
+      uploadViaBridge: true,
+      analyzerName: "Demo: FluoroCycler XT",
+      testCode: "VIH-1",
     },
   },
   // ── Madagascar Sprint: 3 New FILE Analyzers ────────────────────

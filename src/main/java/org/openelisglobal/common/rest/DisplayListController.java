@@ -404,6 +404,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.DEFAULT_NATIONALITY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),

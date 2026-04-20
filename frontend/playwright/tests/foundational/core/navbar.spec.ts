@@ -8,9 +8,13 @@ const expectHeaderIconVisible = async (page: Page, selector: string) => {
 test.describe("Navbar (Header) actions", () => {
   test("logo click navigates to home", async ({ page }) => {
     await page.goto("/Storage/sample-items", { waitUntil: "domcontentloaded" });
+
     await expect(page.locator("#sidenav-menu-button")).toBeVisible({
       timeout: 15_000,
     });
+
+    await expect(page.locator("#sidenav-menu-button")).toBeVisible();
+
 
     // Carbon HeaderName renders an anchor; clicking should navigate home
     await page.locator("#mainHeader a.cds--header__name").click();

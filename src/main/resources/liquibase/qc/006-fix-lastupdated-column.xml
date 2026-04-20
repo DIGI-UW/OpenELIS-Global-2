@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        Fix: QC tables were created with column "lastupdated" but BaseObject
+        maps @Column(name="last_updated"). Rename to match the JPA mapping
+        used by all other tables in the system.
+    -->
+
+    <changeSet id="qc-010-fix-lastupdated-qc-control-lot" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="qc_control_lot" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="qc_control_lot" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="qc-011-fix-lastupdated-qc-result" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="qc_result" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="qc_result" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="qc-012-fix-lastupdated-qc-statistics" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="qc_statistics" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="qc_statistics" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="qc-013-fix-lastupdated-westgard-rule-config" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="westgard_rule_config" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="westgard_rule_config" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="qc-014-fix-lastupdated-qc-rule-violation" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="qc_rule_violation" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="qc_rule_violation" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+    <changeSet id="qc-016-fix-lastupdated-qc-alert" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="qc_alert" columnName="lastupdated"/>
+        </preConditions>
+        <renameColumn tableName="qc_alert" oldColumnName="lastupdated" newColumnName="last_updated" columnDataType="TIMESTAMP"/>
+    </changeSet>
+
+</databaseChangeLog>

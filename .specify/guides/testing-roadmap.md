@@ -781,7 +781,8 @@ needs same fixtures as backend tests.
 - **Generated Output**: `testdata/storage-e2e.generated.sql` (never committed,
   see `.gitignore`)
 - **Converter**: `testdata/xml-to-sql.py` (Python 3 script)
-- **Loading**: `load-test-fixtures.sh` generates SQL then loads via `psql`
+- **Loading**: `load-test-fixtures.sh --profile=core|harness` generates SQL then
+  loads via `psql`
 
 **Pattern (Cypress)**:
 

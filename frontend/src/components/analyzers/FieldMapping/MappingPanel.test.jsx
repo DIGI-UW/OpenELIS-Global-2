@@ -16,24 +16,26 @@
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
 // Mock OpenELISFieldSelector component
-jest.mock("./OpenELISFieldSelector", () => {
-  return function MockOpenELISFieldSelector({
-    onFieldSelect,
-    selectedFieldId,
-  }) {
-    return (
-      <div data-testid="openelis-field-selector">
-        <button
-          data-testid="select-field-button"
-          onClick={() => onFieldSelect("TEST-001", "TEST")}
-        >
-          Select Field
-        </button>
-        {selectedFieldId && (
-          <span data-testid="selected-field-id">{selectedFieldId}</span>
-        )}
-      </div>
-    );
+vi.mock("./OpenELISFieldSelector", () => {
+  return {
+    default: function MockOpenELISFieldSelector({
+      onFieldSelect,
+      selectedFieldId,
+    }) {
+      return (
+        <div data-testid="openelis-field-selector">
+          <button
+            data-testid="select-field-button"
+            onClick={() => onFieldSelect("TEST-001", "TEST")}
+          >
+            Select Field
+          </button>
+          {selectedFieldId && (
+            <span data-testid="selected-field-id">{selectedFieldId}</span>
+          )}
+        </div>
+      );
+    },
   };
 });
 
@@ -102,12 +104,12 @@ const createMockMapping = (overrides = {}) => ({
 // ========== TESTS ==========
 
 describe("MappingPanel", () => {
-  const mockOnCreateMapping = jest.fn();
-  const mockOnUpdateMapping = jest.fn();
-  const mockOnRetireMapping = jest.fn();
+  const mockOnCreateMapping = vi.fn();
+  const mockOnUpdateMapping = vi.fn();
+  const mockOnRetireMapping = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
