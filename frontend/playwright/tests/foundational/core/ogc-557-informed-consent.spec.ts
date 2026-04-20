@@ -47,12 +47,23 @@ async function buildOrderForm(
   const configProps = await dateFormatRes.json();
   const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
   const useMDY = dateLocale.startsWith("en");
+  // UTC-based so the test is deterministic regardless of the runner's local
+  // timezone. Server defaults to UTC (see docker-compose TZ); aligning the
+  // client here prevents "today/yesterday" flips near midnight.
   const now = new Date();
-  const dd = String(now.getDate()).padStart(2, "0");
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = now.getUTCFullYear();
   const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
-  const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const time = `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
+  // nextVisitDate must be strictly after today (@ValidDate(FUTURE) on the form).
+  // Parity with `seed-tat-data.ts` createSampleOrder — using today yields HTTP 400.
+  // UTC-based for the same midnight-drift reason as today/time above.
+  const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tdd = String(tomorrowDate.getUTCDate()).padStart(2, "0");
+  const tmm = String(tomorrowDate.getUTCMonth() + 1).padStart(2, "0");
+  const tyyyy = tomorrowDate.getUTCFullYear();
+  const tomorrow = useMDY ? `${tmm}/${tdd}/${tyyyy}` : `${tdd}/${tmm}/${tyyyy}`;
   const uniqueId = String(Date.now());
 
   // Generate accession number via the same endpoint the React UI uses.
@@ -113,7 +124,7 @@ async function buildOrderForm(
       requestDate: today,
       receivedDateForDisplay: today,
       receivedTime: time,
-      nextVisitDate: today,
+      nextVisitDate: tomorrow,
       requesterSampleID: "",
       referringPatientNumber: "",
       referringSiteId: "9000100",
@@ -214,11 +225,42 @@ async function postOrder(
  * sits at the end of the form JSON. This helper makes CI logs actionable.
  */
 function formatErr(label: string, result: PostResult): string {
-  const errs =
-    (result.parsed as { errors?: unknown })?.errors ??
-    (result.parsed as { fieldErrors?: unknown })?.fieldErrors;
-  const errsStr = errs ? `\n  errors: ${JSON.stringify(errs)}` : "";
-  return `${label} POST /rest/SamplePatientEntry returned ${result.status}${errsStr}\n  body[0..3000]: ${result.body.substring(0, 3000)}`;
+  const parsed = result.parsed ?? {};
+  const candidatePaths = [
+    ["errors"],
+    ["fieldErrors"],
+    ["globalErrors"],
+    ["bindingResult", "errors"],
+    ["bindingResult", "fieldErrors"],
+    ["result", "errors"],
+    ["result", "fieldErrors"],
+    ["sampleOrderItems", "errors"],
+    ["sampleOrderItems", "fieldErrors"],
+  ] as const;
+
+  const extracted = candidatePaths
+    .map((path) =>
+      path.reduce<unknown>((acc, key) => {
+        if (!acc || typeof acc !== "object") {
+          return undefined;
+        }
+        return (acc as Record<string, unknown>)[key];
+      }, parsed),
+    )
+    .filter((value) => {
+      if (!value) {
+        return false;
+      }
+      return !Array.isArray(value) || value.length > 0;
+    });
+
+  const diagnostics = extracted.length
+    ? `
+  extractedErrors: ${JSON.stringify(extracted)}`
+    : "";
+
+  return `${label} POST /rest/SamplePatientEntry returned ${result.status}${diagnostics}
+  body[0..3000]: ${result.body.substring(0, 3000)}`;
 }
 
 // ─── Tests ──────────────────────────────────────────────────────────────────

@@ -23,6 +23,9 @@
   <!-- TAT Report menu entry under Reports (OGC-310) -->
   <include relativeToChangelogFile="true" file="005-tat-report-menu.xml"/>
 
+  <!-- LocationPicker refactor (Phase 5c): rename /Storage/samples → /Storage/sample-items -->
+  <include relativeToChangelogFile="true" file="006-storage-sidenav-rename.xml"/>
+
   <!-- OGC-530: Analyzer metadata on Analysis + FHIR Device identity -->
   <include relativeToChangelogFile="true" file="004-analysis-analyzer-id.xml"/>
 
@@ -52,6 +55,9 @@
   <include relativeToChangelogFile="true" file="shipment-014-move-menu-to-top-level.xml"/>
   <include relativeToChangelogFile="true" file="shipment-015-add-site-organization-uuid-config.xml"/>
   <include relativeToChangelogFile="true" file="shipment-016-add-fhir-mapping-config.xml"/>
+
+  <!-- Analyzer import diagnostics: structured reason for unmapped/failed staging rows -->
+  <include relativeToChangelogFile="true" file="005-analyzer-results-import-issue-reason.xml"/>
 
   <!-- Informed Consent Capture (OGC-557) -->
   <include relativeToChangelogFile="true" file="017-add-informed-consent-fields.xml"/>

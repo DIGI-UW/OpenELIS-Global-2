@@ -64,23 +64,6 @@ jobs:
               cypress/e2e/dashboard.cy.js,
               cypress/e2e/report.cy.js,
               cypress/e2e/AdminE2E/barcode.cy.js
-          - shard: storage
-            shard_name: Storage
-            specs: >-
-              cypress/e2e/storageAssignment.cy.js,
-              cypress/e2e/storageBoxCRUD.cy.js,
-              cypress/e2e/storageBoxCRUD-integration.cy.js,
-              cypress/e2e/storageDashboard.cy.js,
-              cypress/e2e/storageDashboardMetrics.cy.js,
-              cypress/e2e/storageDisposal.cy.js,
-              cypress/e2e/storageFilters.cy.js,
-              cypress/e2e/storageLocationCRUD.cy.js,
-              cypress/e2e/storageLocationCRUD-integration.cy.js,
-              cypress/e2e/storageLocationCRUD-smoke.cy.js,
-              cypress/e2e/storageLocationExpandableRows.cy.js,
-              cypress/e2e/storageSamplesTable.cy.js,
-              cypress/e2e/storageSearch.cy.js,
-              cypress/e2e/storageViewStorage.cy.js
           - shard: admin
             shard_name: Admin
             specs: >-

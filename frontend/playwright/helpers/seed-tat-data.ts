@@ -312,20 +312,23 @@ export async function createSampleOrder(
   const configProps = await dateFormatRes.json();
   const dateLocale = configProps?.DEFAULT_DATE_LOCALE || "fr-FR";
   const useMDY = dateLocale.startsWith("en");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yyyy = now.getFullYear();
+  // UTC-based so the helper is deterministic regardless of the runner's local
+  // timezone. Server defaults to UTC (docker-compose TZ); aligning here
+  // prevents "today/yesterday" flips near midnight.
+  const dd = String(now.getUTCDate()).padStart(2, "0");
+  const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const yyyy = now.getUTCFullYear();
   const today = useMDY ? `${mm}/${dd}/${yyyy}` : `${dd}/${mm}/${yyyy}`;
   // nextVisitDate must be strictly in the future (@ValidDate(FUTURE) on the form).
   // Using today as in the UI's default behavior triggers HTTP 400. Pick tomorrow.
   const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const tdd = String(tomorrowDate.getDate()).padStart(2, "0");
-  const tmm = String(tomorrowDate.getMonth() + 1).padStart(2, "0");
-  const tyyyy = tomorrowDate.getFullYear();
+  const tdd = String(tomorrowDate.getUTCDate()).padStart(2, "0");
+  const tmm = String(tomorrowDate.getUTCMonth() + 1).padStart(2, "0");
+  const tyyyy = tomorrowDate.getUTCFullYear();
   const tomorrow = useMDY ? `${tmm}/${tdd}/${tyyyy}` : `${tdd}/${tmm}/${tyyyy}`;
   const time =
     receivedTime ||
-    `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}`;
   const uniqueId = String(Date.now());
 
   // Step 1: generate accession number via the same endpoint the UI uses.

@@ -128,3 +128,11 @@ e2e-evidence-*.zip
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
+
+# Real analyzer files from Herbert's Madagascar mount (contain PII)
+# Keep as a working copy for local debugging; never commit.
+docs/debug-local/
+
+# Playwright MCP / Java build metadata
+.playwright-mcp/
+META-INF/

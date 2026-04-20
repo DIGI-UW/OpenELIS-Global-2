@@ -238,14 +238,30 @@ create_mock_network() {
   response_file="$(mktemp)"
   error_file="$(mktemp)"
 
+  # Mock server briefly drops inbound connections right after a previous
+  # create — it connects ITSELF to the new analyzer network to simulate
+  # analyzer-initiated TCP pushes, which reconfigures its network stack
+  # for ~100–500ms. Retry curl-connect-failures (exit 7) with backoff so
+  # sequential seeds don't flake on fast hosts.
   local curl_exit
-  set +e
-  curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" \
-    >"$response_file" 2>"$error_file"
-  curl_exit=$?
-  set -e
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    : >"$response_file"
+    : >"$error_file"
+    set +e
+    curl -sk --connect-timeout 3 --max-time 15 -X POST "${MOCK_URL}/analyzers" \
+      -H "Content-Type: application/json" \
+      -d "{\"name\":\"${name}\",\"template\":\"${template}\",\"port\":${port}}" \
+      >"$response_file" 2>"$error_file"
+    curl_exit=$?
+    set -e
+    # Exit 7 = Failed to connect; mock's net stack in flux. Back off + retry.
+    if [ "$curl_exit" -eq 7 ] && [ "$attempt" -lt 5 ]; then
+      sleep "$attempt"
+      continue
+    fi
+    break
+  done
 
   local resp
   resp="$(python3 - "$response_file" <<'PY' 2>/dev/null || true
@@ -327,11 +343,18 @@ if [ "$CLEAN" = true ]; then
   echo ""
 fi
 
-# Create dynamic networks for TCP analyzers
+# Create dynamic networks for TCP analyzers.
+# Wait 2s between calls: the mock server attaches itself to each new Docker
+# network asynchronously (api.py:511-515). During that attach, the container's
+# network stack is briefly disrupted, which drops the next HTTP connection
+# (curl exit 52). The sleep lets the async attach complete before the next POST.
 echo "Creating dynamic mock networks..."
 GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
+sleep 2
 BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
+sleep 2
 BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
+sleep 2
 BS300_IP=$(create_mock_network "bs300" "mindray_bs300" 6002)
 echo ""
 
