@@ -58,6 +58,9 @@ import LandingPage from "./components/home/LandingPage";
  * chunk is genuinely missing (e.g., deploy mismatch).
  */
 function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
+  // eslint-disable-next-line local/no-raw-react-lazy --
+  // This IS the lazyWithRetry helper: it legitimately wraps React.lazy
+  // with retry semantics. The rule flags direct callers elsewhere.
   return React.lazy(async () => {
     let lastError;
     for (let attempt = 0; attempt < retries; attempt += 1) {
