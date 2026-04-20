@@ -16,35 +16,38 @@
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
 // Mock analyzerService API client
-jest.mock("../../../services/analyzerService", () => ({
-  getAnalyzers: jest.fn(),
-  getAnalyzer: jest.fn(),
-  createAnalyzer: jest.fn(),
-  updateAnalyzer: jest.fn(),
-  deleteAnalyzer: jest.fn(),
-  testConnection: jest.fn(),
-  queryAnalyzer: jest.fn(),
-  getMappings: jest.fn(),
-  createMapping: jest.fn(),
-  updateMapping: jest.fn(),
-  deleteMapping: jest.fn(),
-  getFields: jest.fn(),
-  getPendingCodes: jest.fn(),
-  getPluginConfig: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  getAnalyzers: vi.fn(),
+  getAnalyzer: vi.fn(),
+  createAnalyzer: vi.fn(),
+  updateAnalyzer: vi.fn(),
+  deleteAnalyzer: vi.fn(),
+  testConnection: vi.fn(),
+  queryAnalyzer: vi.fn(),
+  getMappings: vi.fn(),
+  createMapping: vi.fn(),
+  updateMapping: vi.fn(),
+  deleteMapping: vi.fn(),
+  getFields: vi.fn(),
+  getPendingCodes: vi.fn(),
+  getPluginConfig: vi.fn(),
 }));
 
 // Mock react-router-dom
 const mockHistory = {
-  replace: jest.fn(),
-  push: jest.fn(),
+  replace: vi.fn(),
+  push: vi.fn(),
 };
 
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
-  useParams: () => ({ id: "1" }),
-  useLocation: () => ({ pathname: "/analyzers/1/mappings" }),
-}));
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useHistory: () => mockHistory,
+    useParams: () => ({ id: "1" }),
+    useLocation: () => ({ pathname: "/analyzers/1/mappings" }),
+  };
+});
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
@@ -90,10 +93,10 @@ const renderWithIntl = (component) => {
 
 describe("FieldMapping", () => {
   // Increase timeout for async tests that need to wait for rendering
-  jest.setTimeout(15000);
+  vi.setConfig({ testTimeout: 15000 });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
     analyzerService.getPendingCodes.mockImplementation((id, callback) => {

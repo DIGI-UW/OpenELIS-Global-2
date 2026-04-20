@@ -22,10 +22,12 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.form.AnalyzerForm;
 import org.openelisglobal.analyzer.service.AnalyzerErrorService;
 import org.openelisglobal.analyzer.service.AnalyzerFieldService;
+import org.openelisglobal.analyzer.service.AnalyzerQcRuleService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.service.BridgeRegistrationService;
 import org.openelisglobal.analyzer.service.FileImportService;
+import org.openelisglobal.analyzer.service.QcRuleDto;
 import org.openelisglobal.analyzer.service.SerialPortService;
 import org.openelisglobal.analyzer.util.NetworkValidationUtil;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
@@ -34,7 +36,9 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerError;
 import org.openelisglobal.analyzer.valueholder.AnalyzerType;
 import org.openelisglobal.analyzer.valueholder.CommunicationMode;
 import org.openelisglobal.analyzer.valueholder.ProtocolVersion;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.common.services.PluginAnalyzerService;
@@ -85,7 +89,13 @@ public class AnalyzerRestController extends BaseRestController {
     private BridgeRegistrationService bridgeRegistrationService;
 
     @Autowired
+    private AnalyzerQcRuleService analyzerQcRuleService;
+
+    @Autowired
     private AnalyzerErrorService analyzerErrorService;
+
+    @Autowired
+    private AnalyzerTestMappingService analyzerTestMappingService;
 
     @Autowired
     @org.springframework.beans.factory.annotation.Qualifier("bridgeRegistrationExecutor")
@@ -241,6 +251,30 @@ public class AnalyzerRestController extends BaseRestController {
                 analyzer.setStatus(AnalyzerStatus.SETUP);
             }
 
+            // File import fields — allow the frontend to set these at creation time
+            // so FILE analyzers can be fully configured in a single form submission.
+            if (form.getImportDirectory() != null) {
+                analyzer.setImportDirectory(form.getImportDirectory());
+            }
+            if (form.getFilePattern() != null) {
+                analyzer.setFilePattern(form.getFilePattern());
+            }
+            if (form.getColumnMappings() != null) {
+                analyzer.setColumnMappings(form.getColumnMappings());
+            }
+            if (form.getFileFormat() != null) {
+                analyzer.setFileFormat(form.getFileFormat());
+            }
+            if (form.getDelimiter() != null) {
+                analyzer.setDelimiter(form.getDelimiter());
+            }
+            if (form.getHasHeader() != null) {
+                analyzer.setHasHeader(form.getHasHeader());
+            }
+            if (form.getSkipRows() != null) {
+                analyzer.setSkipRows(form.getSkipRows());
+            }
+
             analyzer.setSysUserId(getSysUserId(request));
             String analyzerId = analyzerService.insert(analyzer);
             pluginService.registerAnalyzerMenuAndPermission(analyzer.getName(), analyzerId);
@@ -252,7 +286,8 @@ public class AnalyzerRestController extends BaseRestController {
                 if (configData != null) {
                     analyzerService.autoCreateTestMappings(analyzerId, configData, getSysUserId(request));
 
-                    // For FILE protocol profiles, auto-create FileImportConfiguration
+                    // For FILE protocol profiles, auto-fill any file import fields not already set
+                    // by the form
                     if (isFileProtocol(configData)) {
                         fileImportService.autoCreateFromProfile(analyzerId, configData, form.getName(),
                                 getSysUserId(request));
@@ -484,12 +519,6 @@ public class AnalyzerRestController extends BaseRestController {
             if (form.getImportDirectory() != null) {
                 analyzer.setImportDirectory(form.getImportDirectory());
             }
-            if (form.getArchiveDirectory() != null) {
-                analyzer.setArchiveDirectory(form.getArchiveDirectory());
-            }
-            if (form.getErrorDirectory() != null) {
-                analyzer.setErrorDirectory(form.getErrorDirectory());
-            }
             if (form.getFilePattern() != null) {
                 analyzer.setFilePattern(form.getFilePattern());
             }
@@ -540,23 +569,17 @@ public class AnalyzerRestController extends BaseRestController {
      * POST /rest/analyzer/analyzers/{id}/delete Delete analyzer.
      *
      * <p>
-     * Implements 90-day soft delete window per spec requirement:
-     * <ul>
-     * <li>If analyzer has recent results (within 90 days): soft delete (status =
-     * DELETED)</li>
-     * <li>If analyzer has no recent results: hard delete (remove from
-     * database)</li>
-     * </ul>
+     * Always performs a soft delete: sets status to DELETED and active to false.
+     * The analyzer record is retained for audit trail purposes. Uses POST instead
+     * of DELETE due to Spring Security 6 CSRF protection.
      *
-     * <p>
-     * Note: Uses POST instead of DELETE HTTP method due to Spring Security 6 CSRF
-     * protection blocking DELETE requests even with valid CSRF tokens.
-     *
-     * @param id Analyzer ID to delete
+     * @param id      Analyzer ID to delete
+     * @param request HTTP request (used to resolve the current user id for the
+     *                audit trail)
      * @return 200 on success with deletion details, 404 if analyzer not found
      */
     @PostMapping("/analyzers/{id}/delete")
-    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id) {
+    public ResponseEntity<Map<String, Object>> deleteAnalyzer(@PathVariable String id, HttpServletRequest request) {
         try {
             Analyzer analyzer = analyzerService.get(id);
             if (analyzer == null) {
@@ -565,6 +588,7 @@ public class AnalyzerRestController extends BaseRestController {
 
             analyzer.setStatus(AnalyzerStatus.DELETED);
             analyzer.setActive(false);
+            analyzer.setSysUserId(getSysUserId(request));
             analyzerService.update(analyzer);
 
             unregisterFromBridgeAsync(id, analyzer.getName());
@@ -628,16 +652,30 @@ public class AnalyzerRestController extends BaseRestController {
         map.put("testUnitIds", analyzer.getTestUnitIds());
         map.put("identifierPattern", analyzer.getIdentifierPattern());
 
-        // FILE transport fields (unified on analyzer table — same as TCP fields above)
+        // FILE transport fields (unified on analyzer table — same as TCP fields above).
+        // The bridge is strictly read-only with respect to watched directories since
+        // plan mellow-honking-cascade Phase 1, so archive/error directories no longer
+        // exist — processing state lives in the bridge's FileStateStore instead.
         map.put("importDirectory", analyzer.getImportDirectory());
-        map.put("archiveDirectory", analyzer.getArchiveDirectory());
-        map.put("errorDirectory", analyzer.getErrorDirectory());
         map.put("filePattern", analyzer.getFilePattern());
         map.put("columnMappings", analyzer.getColumnMappings());
         map.put("fileFormat", analyzer.getFileFormat());
         map.put("delimiter", analyzer.getDelimiter());
         map.put("hasHeader", analyzer.getHasHeader());
         map.put("skipRows", analyzer.getSkipRows());
+
+        // Expose the analyzer's configured test code vocabulary so the bridge can
+        // populate the /admin/upload UI Test dropdown and feed the file-level
+        // self-declaration scanner's whitelist. Source: AnalyzerTestMapping rows
+        // linked to this analyzer (populated at analyzer-create time from the
+        // profile's default_test_mappings). This is NOT a default — just the
+        // allowed set. Test identity at ingestion time comes from the file's
+        // own content OR the tech's upload-time declaration, never from
+        // persistent config on the analyzer instance. See plan
+        // mellow-honking-cascade §2.WIRE.
+        List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzer.getId()).stream()
+                .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
+        map.put("testMappings", testMappings);
 
         // Derive plugin type info from analyzer_type FK
         boolean isGeneric = analyzer.getAnalyzerType() != null && analyzer.getAnalyzerType().isGenericPlugin();
@@ -653,6 +691,15 @@ public class AnalyzerRestController extends BaseRestController {
         } else {
             map.put("status", "SETUP");
         }
+
+        // Audit field from BaseObject — surfaces "Last Modified" column in the
+        // dashboard. Jackson serializes Timestamp as epoch millis; the frontend
+        // formats with toLocaleDateString().
+        map.put("lastModified", analyzer.getLastupdated());
+
+        // FR-15: Active QC rules for bridge consumption
+        List<QcRuleDto> qcRules = analyzerQcRuleService.getActiveRuleDtosForAnalyzer(analyzer.getId());
+        map.put("qcRules", qcRules);
 
         return map;
     }
@@ -1064,9 +1111,11 @@ public class AnalyzerRestController extends BaseRestController {
 
             // FILE analyzers: register by watch directory (unified fields on Analyzer)
             if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(id).stream()
+                        .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
                 registered = bridgeRegistrationService.registerFile(id, name, analyzer.getImportDirectory(),
                         analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
-                        analyzer.getDelimiter(), analyzer.getSkipRows());
+                        analyzer.getDelimiter(), analyzer.getSkipRows(), testMappings);
             }
 
             if (registered) {
@@ -1470,10 +1519,11 @@ public class AnalyzerRestController extends BaseRestController {
         }
 
         Analyzer stub = new Analyzer();
+        stub.ensureFhirUuid();
         stub.setName(displayName);
         stub.setStatus(AnalyzerStatus.PENDING_REGISTRATION);
         stub.setDiscoveredSourceId(sourceId);
-        stub.setSysUserId("bridge-discovery");
+        stub.setSysUserId("1");
 
         // Try insert. UNIQUE index on discovered_source_id handles races.
         // On duplicate, catch the constraint violation and return existing stub.
