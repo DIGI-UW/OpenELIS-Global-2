@@ -341,6 +341,8 @@ public class SamplePatientUpdateData {
                 if (useReceiveDateForCollectionDate) {
                     sample.setCollectionDateForDisplay(collectionDateFromReceiveDate);
                 }
+                // Update informed consent fields with audit logic
+                updateConsentFieldsWithAudit(sample, sampleOrder);
                 setElectronicOrderIfNeeded(sampleOrder);
                 return;
             }
@@ -370,6 +372,9 @@ public class SamplePatientUpdateData {
             sample.setDomain(ConfigurationProperties.getInstance().getPropertyValue("domain.human"));
         }
         sample.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Entered));
+
+        // Set informed consent fields with audit logic
+        updateConsentFieldsWithAudit(sample, sampleOrder);
 
         setElectronicOrderIfNeeded(sampleOrder);
     }
@@ -926,5 +931,32 @@ public class SamplePatientUpdateData {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    /**
+     * Update consent fields with proper audit trail. When consent is provided
+     * (true), auto-populate audit fields with current timestamp and user. When
+     * consent is withdrawn (false/null), clear all consent fields. Client-supplied
+     * audit values are ignored for security.
+     */
+    private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
+        Boolean consentGiven = sampleOrder.getConsentGiven();
+        String consentFormReference = sampleOrder.getConsentFormReference();
+
+        if (Boolean.TRUE.equals(consentGiven)) {
+            // Consent provided - set fields and audit trail
+            sample.setConsentGiven(true);
+            sample.setConsentFormReference(consentFormReference);
+
+            // Auto-populate audit fields (ignore any client-supplied values)
+            sample.setConsentRecordedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+            sample.setConsentRecordedBy(currentUserId);
+        } else {
+            // Consent withdrawn or not provided - clear all fields
+            sample.setConsentGiven(false);
+            sample.setConsentFormReference(null);
+            sample.setConsentRecordedAt(null);
+            sample.setConsentRecordedBy(null);
+        }
     }
 }

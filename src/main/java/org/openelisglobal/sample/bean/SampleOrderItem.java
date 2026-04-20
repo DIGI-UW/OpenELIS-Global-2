@@ -20,6 +20,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
@@ -238,6 +239,23 @@ public class SampleOrderItem implements Serializable {
     private String eqaParticipantId;
     private String eqaDeadline;
     private String eqaPriority;
+
+    // Informed consent fields
+    private Boolean consentGiven;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    @Size(max = 100, message = "{error.informedConsent.formReferenceMaxLength}", groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+            SampleEditForm.SampleEdit.class })
+    @Pattern(regexp = "^[a-zA-Z0-9\\- ]*$", message = "{error.informedConsent.formReferenceInvalidChars}", groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
+            SampleEditForm.SampleEdit.class })
+    private String consentFormReference;
+
+    // Audit fields for consent (read-only, populated by service layer)
+    private String consentRecordedAt;
+    private String consentRecordedBy;
 
     // for display
     private List<IdValuePair> priorityList;
@@ -705,5 +723,37 @@ public class SampleOrderItem implements Serializable {
             return (String) value;
         }
         return value.toString();
+    }
+
+    public Boolean getConsentGiven() {
+        return consentGiven;
+    }
+
+    public void setConsentGiven(Boolean consentGiven) {
+        this.consentGiven = consentGiven;
+    }
+
+    public String getConsentFormReference() {
+        return consentFormReference;
+    }
+
+    public void setConsentFormReference(String consentFormReference) {
+        this.consentFormReference = consentFormReference;
+    }
+
+    public String getConsentRecordedAt() {
+        return consentRecordedAt;
+    }
+
+    public void setConsentRecordedAt(String consentRecordedAt) {
+        this.consentRecordedAt = consentRecordedAt;
+    }
+
+    public String getConsentRecordedBy() {
+        return consentRecordedBy;
+    }
+
+    public void setConsentRecordedBy(String consentRecordedBy) {
+        this.consentRecordedBy = consentRecordedBy;
     }
 }

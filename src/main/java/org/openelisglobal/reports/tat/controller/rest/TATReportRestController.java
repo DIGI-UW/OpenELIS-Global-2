@@ -31,7 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/rest/reports/tat")
-@PreAuthorize("hasAnyRole('ADMIN', 'ROLE_RESULTS')")
+@PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
 public class TATReportRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(TATReportRestController.class);

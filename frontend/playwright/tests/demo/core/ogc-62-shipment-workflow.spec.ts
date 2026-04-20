@@ -1,4 +1,4 @@
-import { expect, test, Page, TestInfo } from "@playwright/test";
+import { expect, test, Page } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
 import {

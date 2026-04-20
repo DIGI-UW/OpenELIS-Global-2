@@ -20,10 +20,10 @@
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
 // Mock BrandingUtils BEFORE imports that use them (Jest hoisting)
-jest.mock("../../../../utils/BrandingUtils", () => ({
-  getBranding: jest.fn(),
-  updateBranding: jest.fn(),
-  resetBranding: jest.fn(),
+vi.mock("../../../../utils/BrandingUtils", () => ({
+  getBranding: vi.fn(),
+  updateBranding: vi.fn(),
+  resetBranding: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -44,7 +44,7 @@ import {
 import userEvent from "@testing-library/user-event";
 
 // 4. jest-dom matchers
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 
 // 5. IntlProvider (if component uses i18n)
 import { IntlProvider } from "react-intl";
@@ -57,15 +57,18 @@ import { NotificationContext } from "../../../../layout/Layout";
 
 // Mock react-router-dom useHistory
 const mockHistory = {
-  push: jest.fn(),
-  replace: jest.fn(),
-  goBack: jest.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
+  goBack: vi.fn(),
 };
 
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
-}));
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useHistory: () => mockHistory,
+  };
+});
 
 // 7. Component under test
 import SiteBrandingConfig from "../SiteBrandingConfig";
@@ -85,8 +88,8 @@ import messages from "../../../../../languages/en.json";
 // Mock notification context value
 const mockNotificationContext = {
   notificationVisible: false,
-  setNotificationVisible: jest.fn(),
-  addNotification: jest.fn(),
+  setNotificationVisible: vi.fn(),
+  addNotification: vi.fn(),
 };
 
 // Helper function: Standard render with IntlProvider and NotificationContext
@@ -106,7 +109,7 @@ const renderWithIntl = (component) => {
 
 describe("SiteBrandingConfig", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
