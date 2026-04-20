@@ -327,7 +327,9 @@ ORDER BY id;
 
 ## Related Documentation
 
-- **Supported Analyzers Contract:** `contracts/supported-analyzers.md`
+- **Supported Analyzers (retired 2026-04-18):**
+  `.specify/plan-archive/011-supported-analyzers.md` — current truth is
+  `projects/analyzer-harness/seed-analyzers.sh`
 - **Template-Fixture Mapping:** `contracts/template-fixture-mapping.md`
 - **Testing Roadmap:** `.specify/guides/testing-roadmap.md`
 - **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md`

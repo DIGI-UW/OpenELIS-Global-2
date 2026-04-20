@@ -1,3 +1,38 @@
+> **STATUS: Code shipped, several tasks deferred (updated 2026-04-20).** The M1A
+> → M4 sequencing below is historical; the current branch consolidated the
+> milestones, so branch-specific tasks (T021, T021a, T021c, T048, T067) remain
+> unchecked on purpose. **Deferred-but-not-done** tasks are listed in "Remaining
+> Work to Finish Line" below and should drive what still needs to be picked up.
+>
+> - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Cross-branch summary:** see `plan.md` § "Remaining Work to Finish Line"
+
+## Remaining Work to Finish Line (2026-04-20)
+
+From this task list, the following are code-shipped but test/validation-
+incomplete and should be finished before 014 can be declared closed:
+
+**M2 (Upload / Review UI) — deferred tests:**
+
+- [ ] T030 — Jest component test: preview slot system
+- [ ] T031 — Jest component test: upload-form validation summary
+- [ ] T038–T045 — Playwright E2E: upload → preview → submit flow
+
+**M4 (Wondfo CSV) — deferred tests:**
+
+- [ ] T073 — Bridge watcher integration test (Wondfo drop → bridge → OE)
+- [ ] T078 — Playwright E2E: Wondfo upload flow
+
+**Site validation (not a code task, but a gate):**
+
+- [ ] Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert site samples
+
+**Blocked (do not attempt):**
+
+- [ ] Attune CytPix (OGC-350) — awaiting CSV export
+
+---
+
 # Tasks: File Stream Alignment — GenericFile Coordination
 
 **Input**: Design documents from `specs/014-hjra-file-stream-alignment/`

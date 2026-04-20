@@ -299,13 +299,12 @@ requirements:
 
 ### References
 
-- **Pre-implementation Analysis**:
-  [pre-implementation-analysis.md](../research/pre-implementation-analysis.md)
-  (formerly specification-analysis-report.md)
-- **XML/Hibernate Migration Guide**:
-  [research/xml-hibernate-migration.md](../research/xml-hibernate-migration.md)
+- **Pre-implementation Analysis** (retired 2026-04-18):
+  [.specify/plan-archive/011-pre-implementation-analysis.md](../../../.specify/plan-archive/011-pre-implementation-analysis.md)
+- **XML/Hibernate Migration Guide** (retired 2026-04-18):
+  [.specify/plan-archive/011-xml-hibernate-migration.md](../../../.specify/plan-archive/011-xml-hibernate-migration.md)
 - **Constitution**:
-  [.specify/memory/constitution.md](../../.specify/memory/constitution.md)
+  [.specify/memory/constitution.md](../../../.specify/memory/constitution.md)
 
 ---
 
