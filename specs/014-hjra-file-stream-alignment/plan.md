@@ -7,8 +7,8 @@
 > profile-JSON drop in
 > [`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
 >
-> - **Live per-analyzer status:** > [Confluence analyzer tracker][tracker]
->   (canonical for Pattern C).
+> - **Live per-analyzer status:** see the Confluence analyzer tracker (canonical
+>   for Pattern C) linked below.
 > - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`.
 
 [tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396

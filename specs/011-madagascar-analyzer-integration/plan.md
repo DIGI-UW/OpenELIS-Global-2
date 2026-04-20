@@ -1,15 +1,19 @@
 > **STATUS: Superseded as a delivery tracker (updated 2026-04-20).** The January
 > 2026 milestone structure below (M0–M21, RS232-via-bridge framing, Cypress 12.x
 > as E2E, contract deadline 2026-02-28) no longer describes how the work is
-> landing. MVP code is shipped for 7 analyzers (3 Mindray HL7, 1 GeneXpert ASTM,
-> 3 FILE) — but site validation and post-MVP work (below) are still open. Do not
-> use the M0–M21 numbering below to plan current work; track delivery through
-> Jira OGC-\* + per-PR commits.
+> landing. The MVP architecture (three generic plugins + profile JSONs) is
+> shipped on `develop`; per-analyzer site validation and post-MVP architecture
+> evolution are open. Do not use the M0–M21 numbering below to plan current
+> work; track delivery through the Confluence tracker
+>
+> - per-PR commits.
 >
 > **Canonical sources:**
 >
-> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
->   (2026-03-26) — per-analyzer status + immediate / post-MVP sections
+> - **Live roadmap (architecture-level):** >
+>   `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Per-analyzer status (canonical):** >
+>   [Confluence Analyzer Integration Tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396)
 > - **Test harness:** `projects/analyzer-harness/seed-analyzers.sh` +
 >   `ci-parity-test.sh`
 

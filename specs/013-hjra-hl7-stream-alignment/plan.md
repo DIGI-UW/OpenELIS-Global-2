@@ -8,9 +8,8 @@
 ## Remaining Work to Finish Line (2026-04-20)
 
 **Coordination artifacts**: complete (M0 validation tasks all checked in
-[tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity
-
-- `CommunicationMode`) is currently in review (not yet merged).
+[tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity and
+the `CommunicationMode` enum) is currently in review (not yet merged).
 
 Once any new HL7 analyzer's profile JSON is in
 [`projects/analyzer-profiles/hl7/`](../../projects/analyzer-profiles/hl7/) and
