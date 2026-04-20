@@ -1,0 +1,56 @@
+ FAIL  src/App.test.js [ src/App.test.js ]
+ FAIL  src/components/layout/Header.test.jsx [ src/components/layout/Header.test.jsx ]
+ FAIL  src/components/layout/HelpMenu.test.jsx [ src/components/layout/HelpMenu.test.jsx ]
+ FAIL  src/components/alerts/__tests__/AlertsDashboard.test.jsx [ src/components/alerts/__tests__/AlertsDashboard.test.jsx ]
+ FAIL  src/components/eqa/__tests__/EQAOrdersPage.test.jsx [ src/components/eqa/__tests__/EQAOrdersPage.test.jsx ]
+ FAIL  src/components/eqa/__tests__/EQAParticipantsPage.test.jsx [ src/components/eqa/__tests__/EQAParticipantsPage.test.jsx ]
+ FAIL  src/components/eqa/__tests__/MyProgramsPage.test.jsx [ src/components/eqa/__tests__/MyProgramsPage.test.jsx ]
+ FAIL  src/components/admin/calendarManagement/__tests__/CalendarManagement.test.jsx [ src/components/admin/calendarManagement/__tests__/CalendarManagement.test.jsx ]
+ FAIL  src/components/eqa/EQAProgram/__tests__/ProgramManagement.test.jsx [ src/components/eqa/EQAProgram/__tests__/ProgramManagement.test.jsx ]
+ FAIL  src/components/reports/tat/__tests__/TATDetailListTab.test.jsx [ src/components/reports/tat/__tests__/TATDetailListTab.test.jsx ]
+ FAIL  src/components/reports/tat/__tests__/TATTrendsTab.test.jsx [ src/components/reports/tat/__tests__/TATTrendsTab.test.jsx ]
+ FAIL  src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.jsx [ src/components/admin/barcodeConfiguration/BarcodeConfiguration.test.jsx ]
+ FAIL  src/components/layout/Layout.integration.test.jsx > Layout Full Integration (Smoke Tests) > CRITICAL: renders without infinite loop when authenticated
+ FAIL  src/components/layout/Layout.integration.test.jsx > Layout Full Integration (Smoke Tests) > CRITICAL: side navigation renders when authenticated
+ FAIL  src/components/layout/Layout.integration.test.jsx > Layout Full Integration (Smoke Tests) > CRITICAL: navigation items render in sidenav when authenticated
+ FAIL  src/components/layout/Layout.integration.test.jsx > Layout Full Integration (Smoke Tests) > CRITICAL: header actions render without crash
+ FAIL  src/components/layout/Layout.integration.test.jsx > Layout Full Integration (Smoke Tests) > side navigation does NOT render when not authenticated
+ FAIL  src/components/eqa/__tests__/EQASampleEntry.test.jsx > EQASampleEntry > clicking checkbox triggers patient search for NULL placeholder
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testSamplesTab_ShowsSingleLocationDropdownAndStatusFilter
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testStatusFilter_LoadsOptionsFromBackend
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testRoomsTab_ShowsStatusFilter
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testDevicesTab_ShowsTypeRoomStatusFilters
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testShelvesTab_ShowsDeviceRoomStatusFilters
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testRacksTab_ShowsRoomShelfDeviceStatusFilters
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testRacksTab_DisplaysRoomColumn
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testClearFilters_ResetsAllFilters
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > Clear Filters appears only when Rooms filters active
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > Clear Filters appears only when Devices filters active
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > Clear Filters appears only when Shelves filters active
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > Clear Filters appears only when Racks filters active
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testLocationFilter_DownwardInclusive_ShowsAllSamplesInHierarchy
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Filter UI > testSamplesTab_DisplaysSampleItemDataStructure
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Boxes tab CRUD integration (C3) > testBoxesTab_AddButtonDisabled_WhenNoRackSelected
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Notifications > testAlertDialog_RenderedWhenNotificationVisible
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Notifications > testAlertDialog_NotRenderedWhenNotificationVisibleFalse
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Notifications > testMoveSample_Success_ShowsNotification
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Notifications > testOnMoveConfirm_ExtractsFlexibleAssignmentFields
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testHandleRowExpand_TogglesExpandedState
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testHandleRowExpand_MultipleRowsCanBeExpanded
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testHandleRowExpand_RowsExpandIndependently
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testTabSwitch_ResetsExpandedState
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_Room
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_Device
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_Shelf
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_Rack
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_MissingFields_ShowsNA
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_DateFormatting
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Expandable Rows > testRenderExpandedContent_ReadOnly
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Capacity Display > testOccupancyDisplay_ManualCapacity_ShowsFractionAndPercentage
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Capacity Display > testOccupancyDisplay_CalculatedCapacity_ShowsFractionAndPercentage
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Capacity Display > testOccupancyDisplay_UndeterminedCapacity_ShowsNA
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Capacity Display > testOccupancyDisplay_UndeterminedCapacity_HidesProgressBar
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Capacity Display > testOccupancyDisplay_ManualCapacity_ShowsProgressBar
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Capacity Display > testOccupancyDisplay_CalculatedCapacity_ShowsProgressBar
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Pagination (OGC-150) > testPaginationComponent_UsesCorrectAPIParameters
+ FAIL  src/components/storage/StorageDashboard.test.jsx > StorageDashboard Pagination (OGC-150) > testPaginationAPICalls_UseCorrectParameters

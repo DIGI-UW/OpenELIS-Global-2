@@ -32,20 +32,20 @@ const render = (ui, options) => {
   return result;
 };
 
-jest.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 beforeEach(() => {
-  jest.useFakeTimers();
+  vi.useFakeTimers();
   Utils.getFromOpenElisServer.mockReset();
 });
 
 afterEach(() => {
   act(() => {
-    jest.runOnlyPendingTimers();
+    vi.runOnlyPendingTimers();
   });
-  jest.useRealTimers();
+  vi.useRealTimers();
 });
 
 describe("SearchField", () => {
@@ -54,23 +54,23 @@ describe("SearchField", () => {
       <SearchField
         query="freezer"
         results={[]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     expect(screen.getByRole("combobox")).toHaveValue("freezer");
   });
 
   it("calls onQueryChange when the user types", () => {
-    const onQueryChange = jest.fn();
+    const onQueryChange = vi.fn();
     render(
       <SearchField
         query=""
         results={[]}
         onQueryChange={onQueryChange}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     fireEvent.change(screen.getByRole("combobox"), {
@@ -80,7 +80,7 @@ describe("SearchField", () => {
   });
 
   it("ignores stale search responses after a newer query is issued", () => {
-    const onResultsChange = jest.fn();
+    const onResultsChange = vi.fn();
     const callbacks = [];
     Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
       callbacks.push(cb);
@@ -90,28 +90,28 @@ describe("SearchField", () => {
       <SearchField
         query="Free"
         results={[]}
-        onQueryChange={jest.fn()}
+        onQueryChange={vi.fn()}
         onResultsChange={onResultsChange}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
       />,
     );
 
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
 
     rerender(
       <SearchField
         query="Shelf"
         results={[]}
-        onQueryChange={jest.fn()}
+        onQueryChange={vi.fn()}
         onResultsChange={onResultsChange}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
       />,
     );
 
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
 
     expect(callbacks).toHaveLength(2);
@@ -136,31 +136,31 @@ describe("SearchField", () => {
       <SearchField
         query="L"
         results={[]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     act(() => {
-      jest.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(1000);
     });
     expect(Utils.getFromOpenElisServer).not.toHaveBeenCalled();
   });
 
   it("debounces the search API call when query has ≥2 chars", () => {
-    const onResultsChange = jest.fn();
+    const onResultsChange = vi.fn();
     const { rerender } = render(
       <SearchField
         query="La"
         results={[]}
-        onQueryChange={jest.fn()}
+        onQueryChange={vi.fn()}
         onResultsChange={onResultsChange}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
       />,
     );
     // Before debounce timer fires, no call yet
     act(() => {
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
     });
     expect(Utils.getFromOpenElisServer).not.toHaveBeenCalled();
 
@@ -169,19 +169,19 @@ describe("SearchField", () => {
       <SearchField
         query="Lab"
         results={[]}
-        onQueryChange={jest.fn()}
+        onQueryChange={vi.fn()}
         onResultsChange={onResultsChange}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
       />,
     );
     act(() => {
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
     });
     expect(Utils.getFromOpenElisServer).not.toHaveBeenCalled();
 
     // After full debounce delay — exactly one call with latest query
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
     expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
     expect(Utils.getFromOpenElisServer.mock.calls[0][0]).toBe(
@@ -190,7 +190,7 @@ describe("SearchField", () => {
   });
 
   it("invokes onResultsChange with the API response", () => {
-    const onResultsChange = jest.fn();
+    const onResultsChange = vi.fn();
     Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
       cb([
         {
@@ -205,13 +205,13 @@ describe("SearchField", () => {
       <SearchField
         query="Free"
         results={[]}
-        onQueryChange={jest.fn()}
+        onQueryChange={vi.fn()}
         onResultsChange={onResultsChange}
-        onSelect={jest.fn()}
+        onSelect={vi.fn()}
       />,
     );
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
     expect(onResultsChange).toHaveBeenCalledWith([
       {
@@ -242,9 +242,9 @@ describe("SearchField", () => {
       <SearchField
         query="Lab"
         results={results}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     expect(screen.getByRole("listbox")).toBeInTheDocument();
@@ -261,9 +261,9 @@ describe("SearchField", () => {
       <SearchField
         query="Main"
         results={[{ id: 1, type: "room", name: "Main Lab" }]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     expect(
@@ -283,9 +283,9 @@ describe("SearchField", () => {
           room: { id: 1, name: "Main Lab" },
           device: { id: 12, name: "Freezer 2" },
         }}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
 
@@ -300,7 +300,7 @@ describe("SearchField", () => {
   });
 
   it("supports arrow keys plus Enter selection from active descendant", () => {
-    const onSelect = jest.fn();
+    const onSelect = vi.fn();
     render(
       <SearchField
         query="Main"
@@ -308,8 +308,8 @@ describe("SearchField", () => {
           { id: 1, type: "room", name: "Main Lab" },
           { id: 2, type: "room", name: "Secondary Lab" },
         ]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
         onSelect={onSelect}
       />,
     );
@@ -326,7 +326,7 @@ describe("SearchField", () => {
   });
 
   it("calls onSelect with the picked result on click", () => {
-    const onSelect = jest.fn();
+    const onSelect = vi.fn();
     const result = {
       id: 5,
       type: "device",
@@ -337,8 +337,8 @@ describe("SearchField", () => {
       <SearchField
         query="Free"
         results={[result]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
         onSelect={onSelect}
       />,
     );
@@ -361,9 +361,9 @@ describe("SearchField", () => {
           },
           { id: 1, type: "room", name: "Main Lab" },
         ]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     const options = screen.getAllByRole("option");
@@ -381,9 +381,9 @@ describe("SearchField", () => {
           { id: 1, type: "room", name: "Main Lab" },
           { id: 2, type: "room", name: "Secondary Lab" },
         ]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     screen.getAllByRole("option").forEach((option) => {
@@ -395,7 +395,7 @@ describe("SearchField", () => {
     // Two results with no id → without a trailing-index key fragment,
     // both would render with the same React key. Regression guard for
     // comment 3096884902 (key collision).
-    const warn = jest.spyOn(console, "error").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
     render(
       <SearchField
         query="Lab"
@@ -403,9 +403,9 @@ describe("SearchField", () => {
           { type: "room", name: "First Unnamed" },
           { type: "room", name: "Second Unnamed" },
         ]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     expect(screen.getAllByRole("option")).toHaveLength(2);
@@ -423,9 +423,9 @@ describe("SearchField", () => {
       <SearchField
         query="zzz"
         results={[]}
-        onQueryChange={jest.fn()}
-        onResultsChange={jest.fn()}
-        onSelect={jest.fn()}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={vi.fn()}
       />,
     );
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();

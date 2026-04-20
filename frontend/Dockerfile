@@ -1,24 +1,36 @@
-# pull official base image
-FROM node:20.20-alpine
+# frontend/Dockerfile
+#
+# Production / CI / harness frontend image. Multi-stage:
+#   - `build` stage starts FROM the shared base (openelis-frontend-base:local)
+#     and runs `npm run build` to produce dist/.
+#   - Final stage is nginx:alpine serving dist/ on HTTP :80.
+#
+# TLS terminates at the outer reverse proxy (real cert in prod, self-signed
+# in the analyzer harness, cluster ingress in prod deploys). This container
+# speaks plain HTTP internally — standard edge-termination pattern.
+#
+# Prereq: build Dockerfile.base first and tag as openelis-frontend-base:local.
+# The harness's build.sh does this automatically; CI's pipeline runs the same
+# pre-build step.
 
-RUN apk update; \
-    apk upgrade; \
-    apk add bash
+# --- Build stage: reuse the shared base, produce dist/ ---
+FROM openelis-frontend-base:local AS build
+RUN npm run build
 
-# set working directory
-WORKDIR /app
+# --- Runtime stage: nginx serving the built SPA ---
+FROM nginx:1.27-alpine
+USER root
 
-# add `/app/node_modules/.bin` to $PATH
-ENV PATH /app/node_modules/.bin:$PATH
+# Static SPA artifact + the app's nginx site config
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-# install app dependencies
-COPY package.json ./
-COPY package-lock.json ./
-RUN npm install 
-RUN npm install react-scripts@5.0.1 -g
+# Runtime tooling for healthcheck.sh
+RUN apk update && apk upgrade && apk add --no-cache bash curl
 
-# add app
-COPY . ./
+# Healthcheck script (invoked by compose or orchestrator)
+ADD nginx/healthcheck.sh /healthcheck.sh
+RUN chown nginx:nginx /healthcheck.sh && chmod 770 /healthcheck.sh
 
-# start app
-CMD ["npm", "start"]
+EXPOSE 3000
+CMD ["nginx", "-g", "daemon off;"]

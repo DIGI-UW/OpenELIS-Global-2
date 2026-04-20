@@ -8,13 +8,13 @@ import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
 
-jest.mock("../../../../services/analyzerService", () => ({
-  getAnalyzer: jest.fn(),
-  getDefaultConfigs: jest.fn(),
-  getDefaultConfig: jest.fn(),
-  getAnalyzerTypes: jest.fn(),
-  createAnalyzer: jest.fn(),
-  updateAnalyzer: jest.fn(),
+vi.mock("../../../../services/analyzerService", () => ({
+  getAnalyzer: vi.fn(),
+  getDefaultConfigs: vi.fn(),
+  getDefaultConfig: vi.fn(),
+  getAnalyzerTypes: vi.fn(),
+  createAnalyzer: vi.fn(),
+  updateAnalyzer: vi.fn(),
 }));
 
 // Render the page-based AnalyzerForm under a MemoryRouter with a route that
@@ -90,7 +90,7 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("hides connection fields and protocol version when FILE plugin is selected", async () => {

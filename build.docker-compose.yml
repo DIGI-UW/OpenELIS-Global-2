@@ -122,10 +122,12 @@ services:
       
   frontend.openelis.org:
     image: frontend
+    # Prereq: openelis-frontend-base:local must exist before this builds.
+    # `build.sh` pre-builds it; CI workflows run a pre-build step too.
     build:
       context: ./frontend
-      dockerfile: ./Dockerfile.prod
-    container_name: openelisglobal-front-end  
+      dockerfile: ./Dockerfile
+    container_name: openelisglobal-front-end
     networks:
         - default
     environment:

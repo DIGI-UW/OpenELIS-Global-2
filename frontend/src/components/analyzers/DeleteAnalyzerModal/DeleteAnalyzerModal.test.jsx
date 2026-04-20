@@ -12,8 +12,8 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../services/analyzerService", () => ({
-  deleteAnalyzer: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  deleteAnalyzer: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -62,11 +62,11 @@ const createMockAnalyzer = (overrides = {}) => ({
 // ========== TESTS ==========
 
 describe("DeleteAnalyzerModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnConfirm = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnConfirm = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**

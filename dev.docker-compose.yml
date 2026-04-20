@@ -126,6 +126,7 @@ services:
             - './frontend/public:/app/public'
             - './frontend/package.json:/app/package.json:ro'
             - './frontend/package-lock.json:/app/package-lock.json:ro'
+            - './frontend/vite.config.ts:/app/vite.config.ts:ro'
         environment:
             - CHOKIDAR_USEPOLLING=true
         tty: true

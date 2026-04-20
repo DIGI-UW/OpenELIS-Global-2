@@ -71,10 +71,43 @@ fi
 if [ "$SKIP_IMAGES" != true ]; then
   echo "[2/2] Building harness Docker images (dev stack + parity image set)..."
   cd "$HARNESS_DIR"
-  docker compose "${LOCAL_COMPOSE_FILES[@]}" build
+
+  # Frontend base image: shared foundation for Dockerfile (prod) and
+  # Dockerfile.dev. Both downstream Dockerfiles FROM openelis-frontend-base:local,
+  # so this must build FIRST. Dockerfile.base contains node + deps + source and
+  # no CMD — it's not runnable on its own.
+  echo "  [2a/2] Pre-build shared frontend base image (openelis-frontend-base:local)..."
+  docker build \
+    -f "$REPO_ROOT/frontend/Dockerfile.base" \
+    -t openelis-frontend-base:local \
+    "$REPO_ROOT/frontend"
+  echo "  ✓ openelis-frontend-base:local"
+
+  # Dev stack: explicitly name the services that contain branch-local source
+  # (oe + frontend). Without explicit service names, `docker compose build`
+  # silently skips services that are missing a `build:` directive — which
+  # masked the root cause of a class of bugs where the harness ran develop's
+  # published images instead of the local branch. Explicit names make a
+  # missing `build:` directive error out loudly instead.
+  docker compose "${LOCAL_COMPOSE_FILES[@]}" build oe.openelis.org frontend.openelis.org
+
+  # Confirm the expected image tags exist locally so compose up doesn't
+  # silently fall back to the pulled :develop tags.
+  for tag in \
+    itechuw/openelis-global-2-dev:develop \
+    itechuw/openelis-global-2-frontend-dev:develop; do
+    if ! docker image inspect "$tag" >/dev/null 2>&1; then
+      echo "ERROR: expected image '$tag' not present after build." >&2
+      echo "Check that the compose file has a 'build:' directive for the" >&2
+      echo "corresponding service and that the Dockerfile path is correct." >&2
+      exit 1
+    fi
+    echo "  ✓ $tag"
+  done
+
   cd "$REPO_ROOT"
   docker compose "${CI_COMPOSE_FILES[@]}" build
-  echo "  ✓ Images built (dev stack + CI parity)"
+  echo "  ✓ Images built (dev stack: oe + frontend; CI parity set)"
   echo ""
 else
   echo "[2/2] Skipping Docker image build (--skip-images)"

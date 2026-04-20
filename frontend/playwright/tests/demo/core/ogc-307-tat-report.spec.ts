@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { createAndCompleteAccessions } from "../../../helpers/seed-tat-data";
 import { seedHolidays } from "../../../helpers/seed-calendar-data";

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
 import { UI_TIMEOUT } from "../../../helpers/timeouts";
 
 async function gotoSamplePatientEntry(page) {
@@ -13,7 +13,7 @@ test.describe("OGC-284 labels UI", () => {
     await gotoSamplePatientEntry(page);
 
     const addSampleBtn = page.getByRole("button", {
-      name: /incomplete add sample/i,
+      name: /incomplete\s*add sample/i,
     });
     await expect(addSampleBtn).toBeVisible({ timeout: UI_TIMEOUT });
     await addSampleBtn.click();

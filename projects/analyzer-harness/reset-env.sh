@@ -197,14 +197,12 @@ else
         ./src/test/resources/load-test-fixtures.sh --profile=harness --reset --no-verify
     fi
 
-    # Seed 4 harness analyzers via REST API (parity with CI and /restart-analyzer-harness)
+    # Seed 4 harness analyzers via REST API (parity with CI and /restart-analyzer-harness).
+    # seed-analyzers.sh defaults TEST_USER=admin / TEST_PASS=adminADMIN! internally; a .env
+    # file or explicit exports still take precedence. No manual credential setup needed.
     set -a && [ -f .env ] && . ./.env && set +a
-    if [ -n "${TEST_PASS:-}" ]; then
-        BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
-        echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
-    else
-        echo -e "  ${YELLOW}⚠ TEST_PASS not set; run seed-analyzers.sh manually after adding to .env${NC}"
-    fi
+    BASE_URL=https://localhost bash projects/analyzer-harness/seed-analyzers.sh
+    echo -e "  ${GREEN}✓ Analyzers seeded${NC}"
     echo -e "  ${GREEN}✓ Fixtures loaded${NC}"
 fi
 

@@ -1,4 +1,4 @@
-import { expect, test, Page } from "@playwright/test";
+import { expect, test, Page } from "../../../helpers/test-base";
 import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,

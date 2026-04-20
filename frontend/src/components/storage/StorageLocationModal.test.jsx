@@ -9,12 +9,12 @@ import messages from "../../languages/en.json";
 import * as Utils from "../utils/Utils";
 
 // Mock utilities BEFORE imports (Jest hoisting)
-jest.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  getFromOpenElisServerV2: jest.fn(),
-  postToOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
-  putToOpenElisServer: jest.fn(),
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  getFromOpenElisServerV2: vi.fn(),
+  postToOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
+  putToOpenElisServer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -28,8 +28,8 @@ const renderWithIntl = (component) => {
 };
 
 describe("StorageLocationModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnSave = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnSave = vi.fn();
 
   const mockParentRoom = {
     id: "1",
@@ -38,7 +38,7 @@ describe("StorageLocationModal", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     Utils.getFromOpenElisServerV2.mockResolvedValue([]);
     Utils.postToOpenElisServerJsonResponse.mockImplementation(
       (url, data, callback) => {
