@@ -84,8 +84,13 @@ function walk(dir) {
         `\\bexpect(?:\\.\\w+)?\\s*\\(\\s*${varName}\\s*[,)]`,
       );
 
+      // Start at `i` (not `i + 1`) so single-line violations are caught —
+      // e.g. `const n = await rows.count(); expect(n).toBeGreaterThan(0);`
+      // on one physical line. varName isn't in scope before its own
+      // declaration, so an `expect(varName)` earlier on the same line
+      // isn't syntactically possible in valid TS and won't false-positive.
       const end = Math.min(i + LOOKAHEAD, lines.length - 1);
-      for (let j = i + 1; j <= end; j += 1) {
+      for (let j = i; j <= end; j += 1) {
         if (expectRe.test(lines[j])) {
           violations.push({
             file: path.relative(process.cwd(), full),
