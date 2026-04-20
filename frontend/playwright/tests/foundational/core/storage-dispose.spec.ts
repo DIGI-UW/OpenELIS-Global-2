@@ -1,5 +1,6 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page, Locator } from "@playwright/test";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * Storage Dispose.
@@ -19,13 +20,17 @@ import type { Page, Locator } from "@playwright/test";
 async function pickDisposableSample(
   page: Page,
 ): Promise<{ row: Locator; sampleItemId: string }> {
+  // Auto-retrying wait: `toBeVisible` polls until rows hydrate.
+  // `locator.count()` is a one-shot snapshot (non-retrying) and must
+  // only run AFTER the DOM stabilizes — otherwise flakes on cold
+  // runners where the row XHR arrives after first paint.
   const rows = page.locator("tbody tr");
-  const rowCount = await rows.count();
-  expect(
-    rowCount,
+  await expect(
+    rows.first(),
     "Sample Items table should contain at least one row — " +
       "seed sample items before exercising the disposal flow.",
-  ).toBeGreaterThan(0);
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+  const rowCount = await rows.count();
 
   for (let i = 0; i < rowCount; i += 1) {
     const row = rows.nth(i);

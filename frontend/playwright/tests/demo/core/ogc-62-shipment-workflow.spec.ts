@@ -271,8 +271,19 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   // The create button state depends on whether a facility and sample were
   // added. On a fresh demo DB without unassigned samples it stays disabled.
   // Either state proves the form validation logic works.
-  const isEnabled = await createBtn.isEnabled();
-  if (isEnabled) {
+  //
+  // Give the button a bounded window to stabilize into its final state
+  // (enabled if form is valid, disabled otherwise). `toBeEnabled` auto-
+  // retries; the `.catch` swallows the timeout because "disabled" is a
+  // legitimate terminal state here, not a failure. Without this wait,
+  // `isEnabled()` can race and return false while the UI is still
+  // settling, silently skipping the click path.
+  await expect(createBtn)
+    .toBeEnabled({ timeout: UI_TIMEOUT })
+    .catch(() => {
+      /* disabled is a valid terminal state for this demo */
+    });
+  if (await createBtn.isEnabled()) {
     await createBtn.click();
 
     const successNotification = page.getByText(/created|success/i);
