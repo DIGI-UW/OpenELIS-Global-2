@@ -106,7 +106,7 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void createServiceRequest_shouldReturnCreatedServiceRequest() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "analysis" });
+        cleanRowsInCurrentConnection(new String[] { "analysis", "sample_requester" });
         String subjectUUID = "b479ab79-5f53-4d1f-bc9b-10f19ce04635";
         String specimenUUID = "68438220-5cef-44c4-9e6f-9f88e6b93270";
         String practitionerUUID = "550e8400-e29b-41d4-a716-446655441004";
