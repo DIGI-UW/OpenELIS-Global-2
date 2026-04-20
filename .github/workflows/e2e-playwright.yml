@@ -5,7 +5,7 @@ name: 03 - E2E
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, fix/madagascar-accession-results-file-e2e]
   push:
     branches: [develop]
   release:
@@ -51,7 +51,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Prepare .env
@@ -119,26 +119,32 @@ jobs:
 
       - name: Build all compose images (cached, writable)
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true
-        uses: docker/bake-action@v5
+        uses: nick-fields/retry@v3
         with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=e2e-shared
-            *.cache-to=type=gha,scope=e2e-shared,mode=max
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            docker buildx bake \
+              -f build.docker-compose.yml \
+              -f .github/ci/ci.analyzer-harness.yml \
+              --load \
+              --set "*.cache-from=type=gha,scope=e2e-shared" \
+              --set "*.cache-to=type=gha,scope=e2e-shared,mode=max"
 
       - name: Build all compose images (cached, read-only)
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true
-        uses: docker/bake-action@v5
+        uses: nick-fields/retry@v3
         with:
-          files: |
-            build.docker-compose.yml
-            .github/ci/ci.analyzer-harness.yml
-          load: true
-          set: |
-            *.cache-from=type=gha,scope=e2e-shared
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: |
+            docker buildx bake \
+              -f build.docker-compose.yml \
+              -f .github/ci/ci.analyzer-harness.yml \
+              --load \
+              --set "*.cache-from=type=gha,scope=e2e-shared"
 
       - name: Enumerate compose images
         run: |

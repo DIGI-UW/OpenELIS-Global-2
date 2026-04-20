@@ -1,49 +1,43 @@
 package org.openelisglobal.analyzer.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 /**
- * Service interface for processing QC results from ASTM Q-segments
- * 
- * 
- * This service coordinates the complete QC result processing workflow: (1)
- * Q-segment parsing (via ASTMQSegmentParser), (2) Mapping application (via
- * QCResultExtractionService), (3) Persistence via Feature 003's
- * QCResultService.createQCResult() method.
- * 
- * The service ensures that QC results are processed within the same transaction
- * as patient result processing (per FR-021 requirement: "within the same
- * transaction").
- * 
- * Integration Pattern: Direct service call from Feature 004's message
- * processing service to Feature 003's QCResultService.createQCResult() method.
- * This ensures immediate consistency and follows the 5-layer architecture
- * pattern (004's service calls 003's service).
- * 
- * Error Handling: If Feature 003's QCResultService is unavailable or throws an
- * exception, this service should create an AnalyzerError with type
- * QC_MAPPING_INCOMPLETE (per FR-011).
+ * Service interface for processing QC results received via the FHIR import
+ * pipeline.
+ *
+ * <p>
+ * When the analyzer bridge tags an Observation with {@code meta.tag code="QC"},
+ * the
+ * {@link org.openelisglobal.analyzerimport.action.AnalyzerFhirImportController}
+ * calls this service to create a {@code QCResult} and trigger Westgard rule
+ * evaluation.
+ *
+ * <p>
+ * The control lot is identified by matching the specimen accession number
+ * (which for QC samples is typically the lot number or control ID) against
+ * {@code QCControlLot.lotNumber} for the given test and instrument.
+ *
+ * <p>
+ * Transaction Boundary: Runs within the same transaction as the FHIR import
+ * (REQUIRED propagation) so that both the staging {@code AnalyzerResults} row
+ * and the {@code QCResult} row are committed atomically.
  */
 public interface QCResultProcessingService {
 
     /**
-     * Processes QC result through Feature 003's QCResultService
-     * 
-     * This method coordinates: (1) Receives QCResultDTO from
-     * QCResultExtractionService (after Q-segment parsing and mapping), (2) Calls
-     * Feature 003's QCResultService.createQCResult() to persist the QC result, (3)
-     * Returns the created QCResult entity.
-     * 
-     * Transaction Boundary: This method should use @Transactional with REQUIRED
-     * propagation to ensure it runs within the same transaction as patient result
-     * processing. This ensures atomicity: both patient and QC results are persisted
-     * together or both fail together.
-     * 
-     * @param qcResultDTO QC result data extracted from Q-segment (from
-     *                    QCResultExtractionService)
-     * @param analyzerId  Analyzer ID (for association with analyzer configuration)
-     * @return Created QCResult entity (from Feature 003's QCResultService)
-     * @throws RuntimeException if Feature 003's QCResultService is unavailable or
-     *                          throws an exception (should be wrapped and handled
-     *                          gracefully)
+     * Process a QC result from a FHIR Observation that was tagged as QC by the
+     * bridge.
+     *
+     * @param analyzerId      Analyzer ID (from X-Analyzer-Id header)
+     * @param testId          Mapped OE test ID (from AnalyzerTestNameCache)
+     * @param accessionNumber Specimen accession number (used to look up control lot
+     *                        by lot number)
+     * @param resultValue     Numeric result value
+     * @param unit            Unit of measure
+     * @param timestamp       Run date/time from Observation.effectiveDateTime
      */
-    Object processQCResult(QCResultDTO qcResultDTO, String analyzerId);
+    void processQCResult(String analyzerId, String testId, String accessionNumber, BigDecimal resultValue, String unit,
+            LocalDateTime timestamp);
 }

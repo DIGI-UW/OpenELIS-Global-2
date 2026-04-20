@@ -19,7 +19,7 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void showRestAnalyzerResults_ShouldReturnResultList_WhenQueriedByAnalyzerId() throws Exception {
         mockMvc.perform(get("/rest/AnalyzerResults").param("id", "2001")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.resultList").isArray()).andExpect(jsonPath("$.resultList[0].accessionNumber")
-                        .value("ACC123456"));
+                .andExpect(jsonPath("$.resultList").isArray())
+                .andExpect(jsonPath("$.resultList[0].accessionNumber").value("ACC123456"));
     }
 }

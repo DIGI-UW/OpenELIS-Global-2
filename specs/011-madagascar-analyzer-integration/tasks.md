@@ -1,3 +1,41 @@
+> **STATUS: Superseded as a task tracker (updated 2026-04-20).** The task list
+> below is tied to the retired January 2026 M0–M21 milestone plan and does not
+> reflect current work. MVP tasks mostly landed via alternate branches; site
+> validation + post-MVP tasks are tracked below.
+>
+> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
+> - **Per-issue tracking:** Jira OGC-\* + per-PR commits
+> - **Current remaining-work summary:** see `plan.md` § "Remaining Work to
+>   Finish Line"
+
+## Remaining Work to Finish Line (2026-04-20)
+
+Use this list, not the M0–M21 task list below, to track what's left. Cross-
+references are to the canonical roadmap.
+
+**Immediate (site validation + pending PRs):**
+
+- [ ] PR #3195 merged (HL7 test-connection + `CommunicationMode` enum)
+- [ ] HJRA site networking configured (Mindray analyzers → bridge MLLP)
+- [ ] Tecan F50 (OGC-417) / Multiskan FC (OGC-418) validated at Herbert's site
+- [ ] Wondfo Finecare ASTM assessment (OGC-345 — capture needed)
+- [ ] Add `communication` blocks to remaining 7 ASTM/HL7 profiles (5 of 12 done)
+- [ ] Record HL7 / ASTM / FILE E2E demo videos (3 recordings)
+- [ ] Package Playwright HTML reports for stakeholder review
+
+**Post-MVP (deferred):**
+
+- [ ] Unified FHIR R4 bridge interface (Phase 3B)
+- [ ] HL7 bidirectional — ORM^O01 (OGC-327) + QRY^Q02 (OGC-326)
+- [ ] GeneXpert HL7 mode (OGC-336) — QBP queries
+- [ ] Bridge outbound MLLP/ASTM client (LIS_INITIATED mode)
+- [ ] `autoCreateTestMappings` profile-field-naming fix
+- [ ] TLS consolidation (shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`)
+- [ ] `@Scheduled` periodic bridge sync
+- [ ] Stago STart 4, DNA Technology DT-Prime XML parser
+
+---
+
 # Tasks: Madagascar Analyzer Integration
 
 **Feature**: 011-madagascar-analyzer-integration **Input**: Design documents
