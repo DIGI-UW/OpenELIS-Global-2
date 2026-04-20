@@ -19,13 +19,9 @@ import {
   Tag,
   TextArea,
   TextInput,
-  Tile
+  Tile,
 } from "@carbon/react";
-import {
-  Add,
-  Checkmark,
-  Launch
-} from "@carbon/react/icons";
+import { Add, Checkmark, Launch } from "@carbon/react/icons";
 import { useContext, useEffect, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
@@ -42,7 +38,7 @@ import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
-  toBase64
+  toBase64,
 } from "../utils/Utils";
 import NotebookAuditLogViewer from "./NotebookAuditLogViewer";
 import BacteriologyWorkflowTab from "./workflow/BacteriologyWorkflowTab";
@@ -143,6 +139,14 @@ const NoteBookInstanceEntryForm = () => {
       return true;
     }
 
+    const title = notebook?.title;
+    if (
+      typeof title === "string" &&
+      title.toLowerCase().includes("biorepository")
+    ) {
+      return true;
+    }
+
     return false;
   };
 
@@ -150,7 +154,10 @@ const NoteBookInstanceEntryForm = () => {
     if (isSubmitting) {
       return;
     }
-    if (isBiorepositoryNotebook(noteBookData) && ["FINALIZED", "ARCHIVED"].includes(noteBookData.status)) {
+    if (
+      isBiorepositoryNotebook(noteBookData) &&
+      ["FINALIZED", "ARCHIVED"].includes(noteBookData.status)
+    ) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
@@ -632,7 +639,8 @@ const NoteBookInstanceEntryForm = () => {
     return statusColors[status] || "gray";
   };
 
-  const isOperationalBiorepositoryNotebook = isBiorepositoryNotebook(noteBookData);
+  const isOperationalBiorepositoryNotebook =
+    isBiorepositoryNotebook(noteBookData);
 
   const editableStatuses = isOperationalBiorepositoryNotebook
     ? statuses.filter(
@@ -1619,9 +1627,9 @@ const NoteBookInstanceEntryForm = () => {
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
             <Column lg={8} md={8} sm={4}>
-                <Select
-                  id="status"
-                  name="status"
+              <Select
+                id="status"
+                name="status"
                 labelText={intl.formatMessage({ id: "notebook.label.status" })}
                 value={noteBookData.status || ""}
                 onChange={(event) => {
