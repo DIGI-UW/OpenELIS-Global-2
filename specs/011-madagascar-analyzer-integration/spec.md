@@ -971,10 +971,6 @@ complete:
 - **Plugin Architecture Guide (CRITICAL)**:
   [docs/analyzer.md](../../docs/analyzer.md) — External plugin JAR pattern
   documentation. All new analyzers MUST follow this guide.
-- **Research Report**:
-  `.specify/artifacts/ANALYZER-MADAGASCAR-RESEARCH-REPORT.md`
-- **Executive Summary**:
-  `.specify/artifacts/ANALYZER-MADAGASCAR-EXECUTIVE-SUMMARY.md`
 - **Feature 004 Specification**: `specs/004-astm-analyzer-mapping/spec.md`
 - **Existing Plugins**:
   https://github.com/DIGI-UW/openelisglobal-plugins/tree/develop/analyzers
