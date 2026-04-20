@@ -16,10 +16,7 @@
 
 import { expect, test } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import {
-  findAnalyzerRow,
-  goToAnalyzerDashboard,
-} from "../../../helpers/analyzer-dashboard";
+import { findAnalyzerRow } from "../../../helpers/analyzer-dashboard";
 import {
   createAnalyzerFromProfile,
   teardownAnalyzer,

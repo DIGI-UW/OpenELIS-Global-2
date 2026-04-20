@@ -1,6 +1,5 @@
 import { test, expect } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
-import { videoPause } from "../../../helpers/video-pause";
 import {
   seedHolidays,
   cleanupHolidays,

@@ -345,7 +345,6 @@ export async function createSampleOrder(
   });
   const generatedLabNo = JSON.parse(genResult).body || "";
   if (!generatedLabNo) {
-    // eslint-disable-next-line no-console
     console.warn("createSampleOrder: failed to generate accession number");
     return "";
   }
@@ -463,7 +462,6 @@ export async function createSampleOrder(
   }, form);
 
   if (!result.ok) {
-    // eslint-disable-next-line no-console
     console.warn(
       `createSampleOrder: server returned HTTP ${result.status}: ${result.text.substring(0, 200)}`,
     );
@@ -473,17 +471,15 @@ export async function createSampleOrder(
     const responseForm = JSON.parse(result.text);
     const responseLabNo = responseForm?.sampleOrderItems?.labNo || "";
     if (responseLabNo) {
-      // eslint-disable-next-line no-console
       console.log(`createSampleOrder: ${responseLabNo}`);
       return responseLabNo;
     }
-    // eslint-disable-next-line no-console
+
     console.warn(
       `createSampleOrder: no labNo in response (HTTP ${result.status})`,
     );
     return "";
   } catch {
-    // eslint-disable-next-line no-console
     console.warn(
       `createSampleOrder: non-JSON response (HTTP ${result.status})`,
     );

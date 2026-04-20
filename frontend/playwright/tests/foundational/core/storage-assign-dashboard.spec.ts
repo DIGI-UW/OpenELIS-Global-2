@@ -28,13 +28,18 @@ async function openManageLocationFromRow(page: Page, rowIndex = 0) {
     page.getByRole("heading", { level: 1, name: /sample items/i }),
   ).toBeVisible({ timeout: LONG_TIMEOUT });
 
+  // Auto-retrying wait: `toBeVisible` polls until the table-row XHR
+  // completes and at least one row hydrates. `locator.count()` is a
+  // one-shot snapshot (non-retrying) so it must only run AFTER the
+  // DOM has stabilized — otherwise it flakes under cold-runner
+  // hydration delays.
   const rows = page.locator("table tbody tr");
-  const rowCount = await rows.count();
-  expect(
-    rowCount,
+  await expect(
+    rows.first(),
     "Expected at least one sample row to open Manage Location — " +
       "seed sample items before exercising this flow.",
-  ).toBeGreaterThan(0);
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+  const rowCount = await rows.count();
 
   const row = rows.nth(Math.min(rowIndex, rowCount - 1));
   await row.locator('[data-testid="sample-actions-overflow-menu"]').click();
