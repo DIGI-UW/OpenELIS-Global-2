@@ -101,6 +101,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     public TestServiceImpl() {
         super(Test.class);
+        this.auditTrailLog = true;
         initializeGlobalVariables();
     }
 
@@ -178,7 +179,9 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Override
     @Transactional(readOnly = true)
     public String getResultType(Test test) {
-        String testResultType = TypeOfTestResultServiceImpl.ResultType.NUMERIC.getCharacterValue();
+        // Default to ALPHA (text) when no test results are configured.
+        // This is safer than NUMERIC as it accepts any input without validation errors.
+        String testResultType = TypeOfTestResultServiceImpl.ResultType.ALPHA.getCharacterValue();
         List<TestResult> testResults = getPossibleTestResults(test);
 
         if (testResults != null && !testResults.isEmpty()) {
@@ -240,50 +243,65 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         return entityToMap.get(entiy);
     }
 
+    /**
+     * Get the localized test name for the current request's locale.
+     *
+     * @param test the test
+     * @return the localized test name
+     */
     public static String getUserLocalizedTestName(Test test) {
         if (test == null) {
             return "";
         }
-
-        return getUserLocalizedTestName(test.getId());
+        return buildTestName(test);
     }
 
-    public static String getUserLocalizedReportingTestName(String testId) {
-        ensureEntityMapInitialized();
-        if (entityToMap == null || entityToMap.get(Entity.TEST_REPORTING_NAME) == null) {
+    /**
+     * Get the localized test name for the current request's locale.
+     *
+     * @param testId the test ID
+     * @return the localized test name
+     */
+    public static String getUserLocalizedTestName(String testId) {
+        Optional<Test> testOpt = baseObjectDAO.get(testId);
+        if (testOpt.isEmpty()) {
             return "";
         }
-        String name = entityToMap.get(Entity.TEST_REPORTING_NAME).get(testId);
-        return name == null ? "" : name;
+        return buildTestName(testOpt.get());
     }
 
-    private static synchronized void ensureEntityMapInitialized() {
-        if (entityToMap == null) {
-            TestServiceImpl instance = SpringContext.getBean(TestServiceImpl.class);
-            if (instance != null) {
-                instance.initializeGlobalVariables();
-            }
-        }
-    }
-
+    /**
+     * Get the localized reporting test name for the current request's locale.
+     *
+     * @param test the test
+     * @return the localized reporting test name
+     */
     public static String getUserLocalizedReportingTestName(Test test) {
         if (test == null) {
             return "";
         }
-
-        return getUserLocalizedReportingTestName(test.getId());
+        return buildReportingTestName(test);
     }
 
-    public static String getUserLocalizedTestName(String testId) {
-        String name = entityToMap.get(Entity.TEST_NAME).get(testId);
-        return name == null ? "" : name;
+    /**
+     * Get the localized reporting test name for the current request's locale.
+     *
+     * @param testId the test ID
+     * @return the localized reporting test name
+     */
+    public static String getUserLocalizedReportingTestName(String testId) {
+        Optional<Test> testOpt = baseObjectDAO.get(testId);
+        if (testOpt.isEmpty()) {
+            return "";
+        }
+        return buildReportingTestName(testOpt.get());
     }
 
     /**
      * Returns the test name augmented with the sample type IF
      * ConfigurationProperties.Property.TEST_NAME_AUGMENTED is true. If it is not
      * true just the test name will be returned. The test name will be correct for
-     * the current locale
+     * the current locale (per-request).
      *
      * @param test The test for which we want the name
      * @return The test name or the augmented test name
@@ -292,26 +310,56 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         if (test == null) {
             return "";
         }
-
-        return getLocalizedTestNameWithType(test.getId());
+        return buildAugmentedTestNameForLocale(test);
     }
 
     /**
      * Returns the test name augmented with the sample type IF
      * ConfigurationProperties.Property.TEST_NAME_AUGMENTED is true. If it is not
      * true just the test name will be returned. The test name will be correct for
-     * the current locale
+     * the current locale (per-request).
      *
      * @param testId The test id of the test for which we want the name
      * @return The test name or the augmented test name
      */
     public static String getLocalizedTestNameWithType(String testId) {
-        ensureEntityMapInitialized();
-        if (entityToMap == null || entityToMap.get(Entity.TEST_AUGMENTED_NAME) == null) {
+        Optional<Test> testOpt = baseObjectDAO.get(testId);
+        if (testOpt.isEmpty()) {
             return "";
         }
-        String description = entityToMap.get(Entity.TEST_AUGMENTED_NAME).get(testId);
-        return description == null ? "" : description;
+        return buildAugmentedTestNameForLocale(testOpt.get());
+    }
+
+    /**
+     * Build augmented test name using current request's locale. This is a static
+     * helper that doesn't use instance state.
+     */
+    private static String buildAugmentedTestNameForLocale(Test test) {
+        Localization localization = test.getLocalizedTestName();
+
+        String sampleName = "";
+
+        if (ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
+            List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService
+                    .getTypeOfSampleTestsForTest(test.getId());
+            if (typeOfSampleTests != null && !typeOfSampleTests.isEmpty()) {
+                TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
+                TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
+                if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
+                    sampleName = "(" + typeOfSample.getLocalizedName() + ")";
+                }
+            }
+        }
+
+        try {
+            // This reads from LocaleContextHolder.getLocale() - the current request's
+            // locale
+            return localization.getLocalizedValue() + sampleName;
+        } catch (RuntimeException e) {
+            LogEvent.logInfo("TestServiceImpl", "buildAugmentedTestNameForLocale", "augmented caught LAZY");
+            return test.getDescription() != null ? test.getDescription() : "";
+        }
     }
 
     private static Map<String, String> createTestIdToNameMap() {
@@ -519,6 +567,12 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Transactional(readOnly = true)
     public Test getTestByDescription(String description) {
         return getBaseObjectDAO().getTestByDescription(description);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Test getTestByNormalizedDescription(String description) {
+        return getBaseObjectDAO().getTestByNormalizedDescription(description);
     }
 
     @Override

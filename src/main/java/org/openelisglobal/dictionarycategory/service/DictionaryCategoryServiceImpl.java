@@ -16,6 +16,7 @@ public class DictionaryCategoryServiceImpl extends AuditableBaseObjectServiceImp
 
     DictionaryCategoryServiceImpl() {
         super(DictionaryCategory.class);
+        this.auditTrailLog = true;
     }
 
     @Override

@@ -7,6 +7,7 @@ const CreatePatientFormValues = {
   streetAddress: "",
   city: "",
   primaryPhone: "",
+  email: "",
   gender: "",
   birthDateForDisplay: "",
   commune: "",
@@ -17,6 +18,7 @@ const CreatePatientFormValues = {
   healthRegion: "",
   otherNationality: "",
   photo: "",
+  idDocuments: [],
   patientContact: {
     person: {
       firstName: "",

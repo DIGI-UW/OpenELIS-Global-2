@@ -39,6 +39,9 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
     @Transactional(readOnly = true)
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result) {
         try {
+            if (result.getAnalyzerId() == null || result.getAnalyzerId().trim().isEmpty()) {
+                return null;
+            }
 
             List<AnalyzerResults> list = new ArrayList<>();
 
@@ -69,5 +72,20 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
             throw new LIMSRuntimeException("Error in AnalyzerResults readAnalyzerResults()", e);
         }
         return data;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerResults> findWithImportIssues(int limit) {
+        try {
+            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason IS NOT NULL "
+                    + "ORDER BY a.lastupdated DESC NULLS LAST, a.id DESC";
+            Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerResults.class);
+            query.setMaxResults(Math.max(1, limit));
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in AnalyzerResults findWithImportIssues()", e);
+        }
     }
 }

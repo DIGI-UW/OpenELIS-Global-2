@@ -1,3 +1,11 @@
+> **STATUS: Historical (bannered 2026-04-18)** — verification steps below
+> reference `load-analyzer-test-data.sh --dataset-011` and fixed-IP mock setup.
+> Current verification path:
+>
+> - **`projects/analyzer-harness/README.md`**
+> - **`projects/analyzer-harness/ci-parity-test.sh`**
+> - **`projects/analyzer-harness/seed-analyzers.sh`**
+
 # Madagascar Analyzer Fixtures - Verification Guide
 
 **Version:** 1.0.0  

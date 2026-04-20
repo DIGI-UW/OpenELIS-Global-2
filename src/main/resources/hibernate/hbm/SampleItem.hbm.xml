@@ -64,6 +64,10 @@
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType" />
         <property name="collector" column="collector"
             type="java.lang.String" />
+        <property name="collectionConditions"
+            column="collection_conditions" type="java.lang.String" />
+        <property name="receivedDate" column="received_date"
+            type="java.sql.Timestamp" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
         <property name="rejected" column="rejected"

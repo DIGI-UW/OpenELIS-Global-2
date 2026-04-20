@@ -46,6 +46,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         dictionaryCategory.setCategoryName("NEW_CATEGORY");
         dictionaryCategory.setDescription("New Test Category");
         dictionaryCategory.setLocalAbbreviation("NEW");
+        dictionaryCategory.setSysUserId("1");
 
         assertEquals(3, dictionaryCategoryService.getAll().size());
 
@@ -64,6 +65,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         dictionaryCategory.setCategoryName("SAVED_CATEGORY");
         dictionaryCategory.setDescription("Saved Test Category");
         dictionaryCategory.setLocalAbbreviation("SAVED");
+        dictionaryCategory.setSysUserId("1");
 
         DictionaryCategory saved = dictionaryCategoryService.save(dictionaryCategory);
 
@@ -78,6 +80,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         dictionaryCategory.setCategoryName("UPDATED_CATEGORY");
         dictionaryCategory.setDescription("Updated Test Category");
         dictionaryCategory.setLocalAbbreviation("UPD");
+        dictionaryCategory.setSysUserId("1");
 
         DictionaryCategory updated = dictionaryCategoryService.update(dictionaryCategory);
 
@@ -91,6 +94,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
     public void delete_shouldDeleteDictionaryCategory() {
         DictionaryCategory dictionaryCategory = dictionaryCategoryService.get("1");
         assertNotNull(dictionaryCategory);
+        dictionaryCategory.setSysUserId("1");
 
         // The BaseObjectServiceImpl likely marks records as inactive rather than
         // physically deleting them
@@ -118,6 +122,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         duplicateCategory.setCategoryName("TEST_CATEGORY_ONE"); // Same as existing
         duplicateCategory.setDescription("Duplicate Test Category");
         duplicateCategory.setLocalAbbreviation("DUP");
+        duplicateCategory.setSysUserId("1");
 
         try {
             dictionaryCategoryService.insert(duplicateCategory);
@@ -144,6 +149,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         duplicateCategory.setCategoryName("TEST_CATEGORY_ONE"); // Same as existing
         duplicateCategory.setDescription("Duplicate Test Category");
         duplicateCategory.setLocalAbbreviation("DUP");
+        duplicateCategory.setSysUserId("1");
 
         try {
             dictionaryCategoryService.save(duplicateCategory);
@@ -173,6 +179,7 @@ public class DictionaryCategoryServiceTest extends BaseWebContextSensitiveTest {
         categoryToUpdate.setCategoryName("TEST_CATEGORY_ONE"); // Same as another existing category
         categoryToUpdate.setDescription("Updated Test Category");
         categoryToUpdate.setLocalAbbreviation("UPD");
+        categoryToUpdate.setSysUserId("1");
 
         try {
             dictionaryCategoryService.update(categoryToUpdate);

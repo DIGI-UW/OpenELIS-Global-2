@@ -3,22 +3,30 @@ package org.openelisglobal.analyzer.service;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerErrorDAO;
+import org.openelisglobal.analyzer.dao.AnalyzerFileUploadDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
+import org.openelisglobal.common.services.PluginAnalyzerService;
+import org.openelisglobal.notebook.dao.NoteBookDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,8 +51,27 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Autowired
     private org.openelisglobal.test.service.TestService testService;
 
+    @Autowired
+    private AnalyzerPluginConfigService analyzerPluginConfigService;
+
+    @Autowired
+    private AnalyzerQcRuleService analyzerQcRuleService;
+
+    @Autowired
+    PluginAnalyzerService pluginAnalyzerService;
+
+    @Autowired
+    private AnalyzerErrorDAO analyzerErrorDAO;
+
+    @Autowired
+    private AnalyzerFileUploadDAO analyzerFileUploadDAO;
+
+    @Autowired
+    private NoteBookDAO noteBookDAO;
+
     AnalyzerServiceImpl() {
         super(Analyzer.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -67,7 +94,18 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Override
     @Transactional(readOnly = true)
     public Analyzer getAnalyzerByName(String name) {
-        return getMatch("name", name).orElse(null);
+        // Return the most recent active analyzer with this name.
+        // Multiple analyzers can share a name (e.g., two instruments of the same
+        // model).
+        // Prefer ACTIVE over other statuses; within same status, prefer highest ID
+        // (newest).
+        List<Analyzer> matches = getAllMatching("name", name);
+        if (matches == null || matches.isEmpty()) {
+            return null;
+        }
+        return matches.stream().filter(a -> a.getStatus() != Analyzer.AnalyzerStatus.DELETED)
+                .max(java.util.Comparator.comparing(a -> Integer.parseInt(a.getId())))
+                .orElse(matches.get(matches.size() - 1));
     }
 
     @Override
@@ -80,8 +118,20 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             update(analyzer);
         }
 
+        persistTestMappings(analyzer.getId(), testMappings, existingMappings);
+    }
+
+    @Override
+    @Transactional
+    public void persistTestMappings(String analyzerId, List<AnalyzerTestMapping> testMappings,
+            List<AnalyzerTestMapping> existingMappings) {
+        if (analyzerId == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "persistTestMappings",
+                    "analyzerId is null — skipping " + testMappings.size() + " mapping(s)");
+            return;
+        }
         for (AnalyzerTestMapping mapping : testMappings) {
-            mapping.setAnalyzerId(analyzer.getId());
+            mapping.setAnalyzerId(analyzerId);
             if (newMapping(mapping, existingMappings)) {
                 mapping.setSysUserId("1");
                 analyzerMappingService.insert(mapping);
@@ -96,7 +146,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     private boolean newMapping(AnalyzerTestMapping mapping, List<AnalyzerTestMapping> existingMappings) {
         for (AnalyzerTestMapping existingMap : existingMappings) {
-            if (existingMap.getAnalyzerId().equals(mapping.getAnalyzerId())
+            if (Objects.equals(existingMap.getAnalyzerId(), mapping.getAnalyzerId())
                     && existingMap.getAnalyzerTestName().equals(mapping.getAnalyzerTestName())) {
                 return false;
             }
@@ -114,39 +164,69 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Analyzer> getByIpAddressAndPort(String ipAddress, Integer port) {
+        return baseObjectDAO.findByIpAddressAndPort(ipAddress, port);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Analyzer> getByName(String name) {
         return baseObjectDAO.findByName(name);
     }
 
     @Override
     @Transactional(readOnly = true)
+    public Optional<Analyzer> findActiveByListenPort(Integer port) {
+        return baseObjectDAO.findActiveByPort(port);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Optional<Analyzer> findByIdentifierPatternMatch(String analyzerIdentifier) {
-        if (analyzerIdentifier == null || analyzerIdentifier.trim().isEmpty()) {
+        return findByIdentifierPatternMatch(analyzerIdentifier == null ? List.of() : List.of(analyzerIdentifier));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByIdentifierPatternMatch(List<String> analyzerIdentifiers) {
+        List<String> normalizedIdentifiers = normalizeAnalyzerIdentifiers(analyzerIdentifiers);
+        if (normalizedIdentifiers.isEmpty()) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                    "Empty analyzer identifier");
+                    "Empty analyzer identifiers");
             return Optional.empty();
         }
 
         List<Analyzer> candidates = baseObjectDAO.findGenericAnalyzersWithPatterns();
         LogEvent.logDebug(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                "Looking for match: identifier='" + analyzerIdentifier + "', candidates="
+                "Looking for match: identifiers=" + normalizedIdentifiers + ", candidates="
                         + (candidates != null ? candidates.size() : 0));
         if (candidates == null || candidates.isEmpty()) {
             return Optional.empty();
         }
 
-        String identifier = analyzerIdentifier.trim();
+        Analyzer bestAnalyzer = null;
+        String bestIdentifier = null;
+        String bestPattern = null;
+        int bestScore = -1;
+
         for (Analyzer analyzer : candidates) {
-            if (analyzer.getIdentifierPattern() == null) {
+            if (analyzer.getIdentifierPattern() == null || analyzer.getIdentifierPattern().trim().isEmpty()) {
                 continue;
             }
             try {
                 String pattern = analyzer.getIdentifierPattern();
                 Pattern p = Pattern.compile(pattern);
-                if (p.matcher(identifier).find()) {
-                    LogEvent.logInfo(this.getClass().getSimpleName(), "findByIdentifierPatternMatch", "MATCHED: '"
-                            + identifier + "' matched pattern '" + pattern + "' for analyzer " + analyzer.getName());
-                    return Optional.of(analyzer);
+                for (String identifier : normalizedIdentifiers) {
+                    Matcher m = p.matcher(identifier);
+                    if (m.find()) {
+                        int score = m.group().length();
+                        if (score > bestScore) {
+                            bestAnalyzer = analyzer;
+                            bestIdentifier = identifier;
+                            bestPattern = pattern;
+                            bestScore = score;
+                        }
+                    }
                 }
             } catch (PatternSyntaxException e) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
@@ -154,9 +234,44 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             }
         }
 
+        if (bestAnalyzer != null) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
+                    "MATCHED: '" + bestIdentifier + "' matched pattern '" + bestPattern + "' for analyzer "
+                            + bestAnalyzer.getName());
+            return Optional.of(bestAnalyzer);
+        }
+
         LogEvent.logWarn(this.getClass().getSimpleName(), "findByIdentifierPatternMatch",
-                "No match found for identifier '" + identifier + "' among " + candidates.size() + " candidates");
+                "No match found for identifiers " + normalizedIdentifiers + " among " + candidates.size()
+                        + " candidates");
         return Optional.empty();
+    }
+
+    private List<String> normalizeAnalyzerIdentifiers(List<String> analyzerIdentifiers) {
+        if (analyzerIdentifiers == null || analyzerIdentifiers.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String identifier : analyzerIdentifiers) {
+            if (identifier == null) {
+                continue;
+            }
+
+            String trimmed = identifier.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+
+            normalized.add(trimmed);
+
+            String upperCased = trimmed.toUpperCase();
+            if (!upperCased.equals(trimmed)) {
+                normalized.add(upperCased);
+            }
+        }
+
+        return List.copyOf(normalized);
     }
 
     @Override
@@ -222,6 +337,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
         case DELETED:
             return newStatus == AnalyzerStatus.INACTIVE;
+        case PENDING_REGISTRATION:
+            return newStatus == AnalyzerStatus.SETUP || newStatus == AnalyzerStatus.INACTIVE;
         default:
             return false;
         }
@@ -261,16 +378,30 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     @Transactional
     @SuppressWarnings("unchecked")
     public void autoCreateTestMappings(String analyzerId, Map<String, Object> config, String sysUserId) {
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                "Called for analyzer " + analyzerId + ", config keys: " + config.keySet());
+
+        analyzerPluginConfigService.applyConfigDefaults(analyzerId, config.get("configDefaults"), sysUserId);
+
+        // FR-15: Auto-create QC rules from profile configDefaults
+        createQcRulesFromProfile(analyzerId, config.get("configDefaults"), sysUserId);
+
         Object mappingsObj = config.get("default_test_mappings");
+        LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                "default_test_mappings type: " + (mappingsObj != null ? mappingsObj.getClass().getSimpleName() : "null")
+                        + ", is List: " + (mappingsObj instanceof List));
         if (!(mappingsObj instanceof List)) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                    "No default_test_mappings list found in config — skipping");
             return;
         }
 
         List<Map<String, Object>> mappings = (List<Map<String, Object>>) mappingsObj;
         int created = 0;
-
+        Analyzer analyzer = get(analyzerId);
+        List<AnalyzerTestMapping> dbTestMappings = analyzerMappingService.getAll();
         for (Map<String, Object> mapping : mappings) {
-            String analyzerCode = (String) mapping.get("analyzer_code");
+            String analyzerCode = (String) mapping.get("test_code");
             String loinc = (String) mapping.get("loinc");
 
             if (analyzerCode == null || loinc == null || analyzerCode.isEmpty() || loinc.isEmpty()) {
@@ -295,17 +426,143 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             atm.setSysUserId(sysUserId);
 
             try {
-                analyzerMappingService.insert(atm);
-                created++;
+                if (newMapping(atm, dbTestMappings)) {
+                    analyzerMappingService.insert(atm);
+                    dbTestMappings.add(atm);
+                    created++;
+                } else {
+                    // Update existing mapping if test_id changed (e.g., profile updated)
+                    for (AnalyzerTestMapping existing : dbTestMappings) {
+                        if (Objects.equals(existing.getAnalyzerId(), atm.getAnalyzerId())
+                                && existing.getAnalyzerTestName().equals(atm.getAnalyzerTestName())
+                                && !Objects.equals(existing.getTestId(), atm.getTestId())) {
+                            existing.setTestId(atm.getTestId());
+                            existing.setSysUserId(sysUserId);
+                            analyzerMappingService.update(existing);
+                            created++;
+                            LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
+                                    "Updated stale test mapping for '" + analyzerCode + "' → test " + test.getId());
+                            break;
+                        }
+                    }
+                }
+
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getSimpleName(), "autoCreateTestMappings",
                         "Failed to create test mapping for analyzer_code '" + analyzerCode + "': " + e.getMessage());
             }
         }
+        // Invalidate cache AFTER the transaction commits — not during.
+        // If reloadCache() runs during the transaction, a concurrent thread may
+        // reload stale data before the mappings are committed to the DB.
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        LogEvent.logInfo("AnalyzerServiceImpl", "afterCommit",
+                                "Transaction committed — reloading AnalyzerTestNameCache");
+                        AnalyzerTestNameCache.getInstance().reloadCache();
+                    }
+                });
 
         if (created > 0) {
             LogEvent.logInfo(this.getClass().getSimpleName(), "autoCreateTestMappings",
                     "Auto-created " + created + " test mappings for analyzer " + analyzerId);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void createQcRulesFromProfile(String analyzerId, Object configDefaultsObj, String sysUserId) {
+        if (!(configDefaultsObj instanceof Map)) {
+            return;
+        }
+        Map<String, Object> configDefaults = (Map<String, Object>) configDefaultsObj;
+        Object qcRulesObj = configDefaults.get("qcRules");
+        if (!(qcRulesObj instanceof List)) {
+            return;
+        }
+        List<Map<String, Object>> qcRules = (List<Map<String, Object>>) qcRulesObj;
+        int created = 0;
+        for (Map<String, Object> ruleMap : qcRules) {
+            try {
+                String ruleType = (String) ruleMap.get("ruleType");
+                if (ruleType == null) {
+                    continue;
+                }
+                org.openelisglobal.analyzer.valueholder.AnalyzerQcRule rule = new org.openelisglobal.analyzer.valueholder.AnalyzerQcRule();
+                rule.setRuleType(org.openelisglobal.analyzer.valueholder.AnalyzerQcRule.RuleType.valueOf(ruleType));
+                rule.setTargetField((String) ruleMap.get("targetField"));
+                rule.setOperand((String) ruleMap.get("operand"));
+                rule.setActive(ruleMap.get("isActive") == null || Boolean.TRUE.equals(ruleMap.get("isActive")));
+                Object sortOrder = ruleMap.get("sortOrder");
+                rule.setDisplayOrder(sortOrder instanceof Number ? ((Number) sortOrder).intValue() : 0);
+                if (analyzerQcRuleService.ruleExists(analyzerId, rule.getRuleType(), rule.getTargetField(),
+                        rule.getOperand())) {
+                    continue;
+                }
+                analyzerQcRuleService.createRule(analyzerId, rule, sysUserId);
+                created++;
+            } catch (Exception e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "createQcRulesFromProfile",
+                        "Failed to create QC rule from profile for analyzer " + analyzerId + ": " + e.getMessage());
+            }
+        }
+        if (created > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "createQcRulesFromProfile",
+                    "Auto-created " + created + " QC rules from profile for analyzer " + analyzerId);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteWithDependents(Analyzer analyzer) {
+        String id = analyzer.getId();
+
+        // Tiered FK strategy — matches Liquibase 004 constraints:
+        //
+        // RESTRICT tier: analyzer_results, notebook_analysers
+        // → Must not exist; throw if they do (clinical/reference data).
+        // SET NULL tier: analyzer_error, analyzer_file_upload
+        // → Preserve audit trail by nulling the FK, not deleting rows.
+        // CASCADE tier: config tables
+        // → DB ON DELETE CASCADE handles these automatically.
+
+        // 1. RESTRICT tier — block if clinical/reference data exists
+        List<AnalyzerResults> results = analyzerResultsService.getResultsbyAnalyzer(id);
+        if (!results.isEmpty()) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + results.size()
+                    + " analyzer_results rows exist. Remove or reassign results first.");
+        }
+
+        long notebookCount = noteBookDAO.countByAnalyzerId(id);
+        if (notebookCount > 0) {
+            throw new LIMSRuntimeException("Cannot delete analyzer " + id + ": " + notebookCount
+                    + " notebook references exist. Remove references first.");
+        }
+
+        // 2. SET NULL tier — preserve audit trail
+        int errorsNulled = analyzerErrorDAO.nullifyAnalyzerId(id);
+        int uploadsNulled = analyzerFileUploadDAO.nullifyAnalyzerId(Integer.valueOf(id));
+        if (errorsNulled > 0 || uploadsNulled > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents", "Set analyzer_id = NULL on "
+                    + errorsNulled + " error(s) and " + uploadsNulled + " upload(s) for analyzer " + id);
+        }
+
+        // 3. CASCADE tier — DB ON DELETE CASCADE handles config tables:
+        // analyzer_field, analyzer_field_mapping, serial_port_configuration,
+        // analyzer_plugin_config,
+        // analyzer_pending_code, analyzer_experiment
+
+        // Delete the analyzer — DB cascades config tables automatically
+        delete(analyzer);
+
+        LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
+                "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        return baseObjectDAO.findByDiscoveredSourceId(discoveredSourceId);
     }
 }

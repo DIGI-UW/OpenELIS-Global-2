@@ -1,4 +1,23 @@
+> **STATUS: Partially Historical (bannered 2026-04-18)** — Step 1 / Step 2 below
+> are rewritten against the current harness path; later sections still reference
+> the pre-March stack and are kept as recipe-style scaffolding only. For the
+> live harness flow, use `projects/analyzer-harness/README.md` +
+> `ci-parity-test.sh` as the authoritative source.
+
 # Generic Analyzer Test Recipe
+
+## 2026-03-18 Addendum: FILE Test Ownership
+
+For FILE analyzers under remediation, treat bridge watcher as the active
+detector.
+
+Updated FILE flow for tests:
+
+1. File is dropped/generated into shared import directory.
+2. Bridge watcher detects and forwards to OpenELIS ingest endpoint.
+3. OpenELIS processes and persists results.
+
+References to OpenELIS file watcher as primary owner are historical.
 
 **Version:** 1.0.0  
 **Date:** 2026-02-02  
@@ -21,39 +40,33 @@ to all supported analyzers in the Madagascar inventory.
 
 ---
 
-## Step 1: Start Full Test Stack
-
-### Single Startup Command
+## Step 1: Start Full Test Stack (current harness path)
 
 ```bash
-cd /home/ubuntu/OpenELIS-Global-2
-
-# Start OpenELIS with analyzer infrastructure (mock server + ASTM bridge + virtual serial)
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d
-
-# Wait for services to be ready (60-90 seconds)
-docker compose logs -f oe.openelis.org | grep "Started"
+# From repo root — brings up OE + bridge + mock-server via the layered
+# compose stack described in projects/analyzer-harness/README.md
+./projects/analyzer-harness/ci-parity-test.sh
 ```
 
-**What this brings up**:
-
-- OpenELIS webapp (`oe.openelis.org`) at `https://localhost`
-- PostgreSQL database (`openelisglobal-database`)
-- ASTM mock server (`astm-simulator`) at `172.20.1.100:5000`
-- ASTM-HTTP bridge (`openelis-analyzer-bridge`) at `172.20.1.101:12001`
-- Virtual serial ports (`virtual-serial`) at `/dev/serial/ttyVUSB0-4`
+`ci-parity-test.sh` runs the exact CI step order (compose up + readiness +
+seed + permissions + Playwright). For step-by-step manual startup, see
+`projects/analyzer-harness/README.md` § "Quick start". Mock-server network
+identities are allocated at runtime by
+`tools/analyzer-mock-server/analyzer_network_manager.py` (per-analyzer Docker
+networks); there are no longer fixed IPs like `172.20.1.100/.101`.
 
 ---
 
-## Step 2: Load Analyzer Fixtures
+## Step 2: Seed Analyzers
 
 ```bash
-# Load all analyzer test data (Feature 004 + 011)
-./src/test/resources/load-analyzer-test-data.sh --all
-
-# OR load only Madagascar fixtures (Feature 011)
-./src/test/resources/load-analyzer-test-data.sh --dataset-011
+# Seeds the pre-configured analyzer fleet via the OE REST API (matches
+# the `23_Seed analyzers via REST API` CI step).
+cd projects/analyzer-harness
+./seed-analyzers.sh
 ```
+
+`ci-parity-test.sh` also runs this as part of its normal flow.
 
 **Expected Output:**
 

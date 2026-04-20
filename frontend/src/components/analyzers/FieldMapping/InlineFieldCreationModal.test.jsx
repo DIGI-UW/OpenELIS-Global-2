@@ -16,8 +16,8 @@
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
 // Mock analyzerService API client
-jest.mock("../../../services/analyzerService", () => ({
-  createField: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  createField: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -64,11 +64,11 @@ const renderWithIntl = (component) => {
 // ========== TESTS ==========
 
 describe("InlineFieldCreationModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnFieldCreated = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnFieldCreated = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**

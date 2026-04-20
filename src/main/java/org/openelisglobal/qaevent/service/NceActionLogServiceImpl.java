@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceActionLog, String>
+public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceActionLog, Integer>
         implements NceActionLogService {
 
     @Autowired
@@ -22,7 +22,7 @@ public class NceActionLogServiceImpl extends AuditableBaseObjectServiceImpl<NceA
 
     @Override
     @Transactional
-    public List<NceActionLog> getNceActionLogByNceId(String nceId) throws LIMSRuntimeException {
+    public List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException {
         return getBaseObjectDAO().getNceActionLogByNceId(nceId);
     }
 

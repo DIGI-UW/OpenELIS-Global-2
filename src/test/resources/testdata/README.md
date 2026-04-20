@@ -185,7 +185,8 @@ on-demand from the authoritative DBUnit XML:
 - **Authoritative Source**: `storage-e2e.xml` (DBUnit XML)
 - **Generated Output**: `storage-e2e.generated.sql` (never committed to git)
 - **Converter**: `xml-to-sql.py` (Python script)
-- **How**: `load-test-fixtures.sh` generates SQL on-the-fly before loading
+- **How**: `load-test-fixtures.sh --profile=core|harness` generates SQL
+  on-the-fly before loading
 
 **IMPORTANT**: The `*.generated.sql` files are **NEVER committed** to git (see
 `.gitignore`). They are generated on-demand during test runs to avoid
@@ -199,7 +200,7 @@ source-of-truth fragmentation.
 
 **Why generated SQL?**
 
-- E2E CI (`frontend-qa.yml`) doesn't have Maven/Java dependencies
+- E2E CI (`e2e-cypress-deprecated.yml`) doesn't have Maven/Java dependencies
 - Keeps E2E tests fast (no Maven compilation)
 - Maintains single source of truth (XML is authoritative)
 - Prevents accidental divergence (SQL regenerated every run)
