@@ -68,6 +68,7 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
     AnalyzerServiceImpl() {
         super(Analyzer.class);
+        this.auditTrailLog = true;
     }
 
     @Override
@@ -333,6 +334,8 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
             return newStatus == AnalyzerStatus.ACTIVE || newStatus == AnalyzerStatus.ERROR_PENDING;
         case DELETED:
             return newStatus == AnalyzerStatus.INACTIVE;
+        case PENDING_REGISTRATION:
+            return newStatus == AnalyzerStatus.SETUP || newStatus == AnalyzerStatus.INACTIVE;
         default:
             return false;
         }
@@ -507,5 +510,11 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
 
         LogEvent.logInfo(this.getClass().getSimpleName(), "deleteWithDependents",
                 "Deleted analyzer " + id + " (" + analyzer.getName() + ") with all dependents");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Analyzer> findByDiscoveredSourceId(String discoveredSourceId) {
+        return baseObjectDAO.findByDiscoveredSourceId(discoveredSourceId);
     }
 }
