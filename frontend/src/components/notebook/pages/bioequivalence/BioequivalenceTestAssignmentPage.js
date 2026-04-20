@@ -35,6 +35,11 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "./BioequivalencePages.css";
 
 /**
@@ -1016,6 +1021,66 @@ function BioequivalenceTestAssignmentPage({
     onProgressUpdate,
   ]);
 
+  // E-signature: callback for test assignment save (AUTHORED)
+  const handleSignAndAssign = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleTestAssignment();
+    },
+    [handleTestAssignment],
+  );
+
+  // E-signature: callback for Mark Complete (VALIDATED_AND_RELEASED)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkCompleteAndAdvance();
+    },
+    [handleMarkCompleteAndAdvance],
+  );
+
+  // E-Signature hook for test assignment (AUTHORED meaning)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.bioequivalence.testassignment.esig.assignTests",
+        defaultMessage: "Sign test assignment for {count} sample(s)",
+      },
+      { count: selectedSamples.size },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndAssign,
+    onCancel: () => setShowAssignmentForm(true),
+  });
+
+  // E-Signature hook for mark complete (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openValidatedSignatureModal,
+    signatureModalProps: validatedSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.bioequivalence.testassignment.esig.markComplete",
+      defaultMessage:
+        "Mark test assignments as complete and advance to next stage",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Handle "Assign Tests" button click in modal - close modal, then open e-sig
+  const handleAssignTestsClick = useCallback(() => {
+    setShowAssignmentForm(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   return (
     <div className="bioequivalence-page">
       <div className="page-instructions">
@@ -1076,10 +1141,12 @@ function BioequivalenceTestAssignmentPage({
 
                   {/* Show completion button if samples have test assignments */}
                   {samples.filter((s) => testAssignments[s.id]).length > 0 && (
-                    <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+                    <PermissionGate
+                      permissions={[Permissions.VALIDATE_RESULTS]}
+                    >
                       <Button
                         kind="secondary"
-                        onClick={handleMarkCompleteAndAdvance}
+                        onClick={openValidatedSignatureModal}
                         disabled={isAdvancing}
                       >
                         <FormattedMessage
@@ -1275,23 +1342,7 @@ function BioequivalenceTestAssignmentPage({
             defaultMessage="Test Assignment Configuration"
           />
         }
-        primaryButtonText={
-          <FormattedMessage
-            id="notebook.bioequivalence.testassignment.assignTests"
-            defaultMessage="Assign Tests to {count} Sample(s)"
-            values={{ count: selectedSamples.size }}
-          />
-        }
-        secondaryButtonText={
-          <FormattedMessage id="label.button.cancel" defaultMessage="Cancel" />
-        }
-        onRequestSubmit={handleTestAssignment}
-        primaryButtonDisabled={
-          isAssigning ||
-          !assignmentConfig.analyticalMethod ||
-          !assignmentConfig.assignedStaff ||
-          !assignmentConfig.samplePreparation?.trim()
-        }
+        passiveModal
         size="md"
       >
         <Form>
@@ -1839,7 +1890,54 @@ function BioequivalenceTestAssignmentPage({
             />
           </FormGroup>
         </Form>
+
+        {/* Custom Footer */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => {
+              setShowAssignmentForm(false);
+              setSelectedSamples(new Set());
+            }}
+          >
+            <FormattedMessage
+              id="label.button.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleAssignTestsClick}
+            disabled={
+              isAssigning ||
+              !assignmentConfig.analyticalMethod ||
+              !assignmentConfig.assignedStaff ||
+              !assignmentConfig.samplePreparation?.trim()
+            }
+          >
+            <FormattedMessage
+              id="notebook.bioequivalence.testassignment.assignTests"
+              defaultMessage="Assign Tests to {count} Sample(s)"
+              values={{ count: selectedSamples.size }}
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Test Assignment (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validatedSignatureModalProps} />
 
       {/* Summary Section for Assigned Tests */}
       {!showAssignmentForm && Object.keys(testAssignments).length > 0 && (

@@ -50,6 +50,11 @@ import {
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 
 /**
  * MNTDSampleArchivingPage - Page 9 of the MNTD workflow.
@@ -608,6 +613,30 @@ function MNTDSampleArchivingPage({ entryId, pageData, onProgressUpdate }) {
     intl,
   ]);
 
+  // E-Signature: AUTHORED hook for archive submission
+  const handleSignAndArchive = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleArchiveSamples();
+    },
+    [handleArchiveSamples],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.archiving.esig.authoredContext",
+      defaultMessage: "Sign sample archiving data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndArchive,
+    onCancel: () => setArchiveModalOpen(true),
+  });
+
   // Calculate stats
   const stats = useMemo(() => {
     const retained = samples.filter(
@@ -1067,7 +1096,7 @@ function MNTDSampleArchivingPage({ entryId, pageData, onProgressUpdate }) {
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setArchiveModalOpen(false)}
-        onRequestSubmit={handleArchiveSamples}
+        onRequestSubmit={openAuthoredSignatureModal}
         primaryButtonDisabled={isArchiving}
         size="lg"
       >
@@ -1338,6 +1367,9 @@ function MNTDSampleArchivingPage({ entryId, pageData, onProgressUpdate }) {
           )}
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Archiving (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
     </div>
   );
 }

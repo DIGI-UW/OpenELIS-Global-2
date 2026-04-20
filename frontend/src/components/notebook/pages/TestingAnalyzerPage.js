@@ -54,6 +54,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { ESignatureModal, SignatureMeaning, useESign } from "../../esignature";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -74,6 +75,9 @@ function TestingAnalyzerPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending-action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State
   const [samples, setSamples] = useState([]);
@@ -755,6 +759,55 @@ function TestingAnalyzerPage({
     loadSamplesForTesting,
     onProgressUpdate,
   ]);
+
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // Shared AUTHORED callback: run whichever save action was pending
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared AUTHORED cancel: reopen whichever modal was closed
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Hook: AUTHORED (shared across Execute Tests + QC + Deviation + Assign Tests)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "medlab.testingAnalyzer.esig.authoredContext",
+      defaultMessage: "Sign testing / analyzer action as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Helper: route a save action through the AUTHORED e-sig flow
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
 
   // Calculate stats
   const totalSamples = samples.length;
@@ -1473,19 +1526,8 @@ function TestingAnalyzerPage({
           id: "medlab.page.testingAnalyzer.executeModal.title",
           defaultMessage: "Execute Tests",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.executeModal.run",
-          defaultMessage: "Run Tests",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.executeModal.cancel",
-          defaultMessage: "Cancel",
-        })}
         onRequestClose={() => setTestExecutionModalOpen(false)}
-        onRequestSubmit={handleExecuteTests}
-        primaryButtonDisabled={
-          executing || (!selectedAnalyzer && !isManualTest)
-        }
+        passiveModal
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1573,6 +1615,42 @@ function TestingAnalyzerPage({
             style={{ marginTop: "1rem" }}
           />
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setTestExecutionModalOpen(false)}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.executeModal.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleExecuteTests, () =>
+                setTestExecutionModalOpen(true),
+              )
+            }
+            disabled={executing || (!selectedAnalyzer && !isManualTest)}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.executeModal.run"
+              defaultMessage="Run Tests"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* QC Modal */}
@@ -1582,17 +1660,8 @@ function TestingAnalyzerPage({
           id: "medlab.page.testingAnalyzer.qcModal.title",
           defaultMessage: "Record Quality Control",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.qcModal.save",
-          defaultMessage: "Save QC Record",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.qcModal.cancel",
-          defaultMessage: "Cancel",
-        })}
         onRequestClose={() => setQcModalOpen(false)}
-        onRequestSubmit={handleSaveQcRecord}
-        primaryButtonDisabled={savingQc || !selectedAnalyzer}
+        passiveModal
         size="md"
       >
         <Dropdown
@@ -1706,6 +1775,37 @@ function TestingAnalyzerPage({
             style={{ marginTop: "1rem" }}
           />
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setQcModalOpen(false)}>
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.qcModal.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveQcRecord, () => setQcModalOpen(true))
+            }
+            disabled={savingQc || !selectedAnalyzer}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.qcModal.save"
+              defaultMessage="Save QC Record"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Deviation Modal */}
@@ -1715,17 +1815,8 @@ function TestingAnalyzerPage({
           id: "medlab.page.testingAnalyzer.deviationModal.title",
           defaultMessage: "Record Deviation",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.deviationModal.save",
-          defaultMessage: "Save Deviation",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.deviationModal.cancel",
-          defaultMessage: "Cancel",
-        })}
         onRequestClose={() => setDeviationModalOpen(false)}
-        onRequestSubmit={handleSaveDeviation}
-        primaryButtonDisabled={savingDeviation || !rootCauseAnalysis.trim()}
+        passiveModal
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1800,6 +1891,39 @@ function TestingAnalyzerPage({
           onChange={(e) => setDeviationNotes(e.target.value)}
           rows={3}
         />
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setDeviationModalOpen(false)}>
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.deviationModal.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveDeviation, () =>
+                setDeviationModalOpen(true),
+              )
+            }
+            disabled={savingDeviation || !rootCauseAnalysis.trim()}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.deviationModal.save"
+              defaultMessage="Save Deviation"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Bulk Entry Modal */}
@@ -1885,17 +2009,8 @@ function TestingAnalyzerPage({
           id: "medlab.page.testingAnalyzer.assignTestsModal.title",
           defaultMessage: "Assign Tests to Samples",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.assignTestsModal.assign",
-          defaultMessage: "Assign Tests",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "medlab.page.testingAnalyzer.assignTestsModal.cancel",
-          defaultMessage: "Cancel",
-        })}
         onRequestClose={() => setAssignTestsModalOpen(false)}
-        onRequestSubmit={handleAssignTests}
-        primaryButtonDisabled={assigningTests || selectedTestIds.length === 0}
+        passiveModal
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -2020,7 +2135,46 @@ function TestingAnalyzerPage({
             style={{ marginTop: "1rem" }}
           />
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setAssignTestsModalOpen(false)}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.assignTestsModal.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleAssignTests, () =>
+                setAssignTestsModalOpen(true),
+              )
+            }
+            disabled={assigningTests || selectedTestIds.length === 0}
+          >
+            <FormattedMessage
+              id="medlab.page.testingAnalyzer.assignTestsModal.assign"
+              defaultMessage="Assign Tests"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal (AUTHORED - shared across all 4 modals) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
     </div>
   );
 }

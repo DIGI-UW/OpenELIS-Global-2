@@ -24,6 +24,11 @@ import {
 import { Renew, CheckmarkFilled, Chemistry } from "@carbon/react/icons";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -538,6 +543,61 @@ export const VirologyLabLibraryPreparationPage = ({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      applyLibrary();
+    },
+    [applyLibrary],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setLibraryModalOpen(true);
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.virologylab.library.esig.authoredContext",
+        defaultMessage: "Sign library preparation record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.virologylab.library.esig.completeContext",
+      defaultMessage: "Validate and release library preparation as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const handleSaveClick = useCallback(() => {
+    setLibraryModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   const eligibleForCompletionCount = useMemo(
     () =>
       samples.filter(
@@ -708,12 +768,12 @@ export const VirologyLabLibraryPreparationPage = ({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+        <PermissionGate permission={Permissions.VALIDATE_RESULTS}>
           <Button
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
             }
@@ -906,27 +966,11 @@ export const VirologyLabLibraryPreparationPage = ({
       <Modal
         open={libraryModalOpen}
         onRequestClose={() => setLibraryModalOpen(false)}
-        onRequestSubmit={applyLibrary}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.virologylab.library.modal.title",
           defaultMessage: "Record Library Preparation",
         })}
-        primaryButtonText={
-          isApplyingLibrary
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.virologylab.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingLibrary}
         size="lg"
       >
         {isApplyingLibrary && <Loading withOverlay={false} small />}
@@ -1376,7 +1420,39 @@ export const VirologyLabLibraryPreparationPage = ({
             </>
           )}
         </Grid>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setLibraryModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplyingLibrary || isCheckingEnabled}
+          >
+            <FormattedMessage
+              id="notebook.virologylab.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal (AUTHORED) */}
+      <ESignatureModal {...signatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

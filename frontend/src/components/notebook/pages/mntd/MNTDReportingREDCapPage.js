@@ -51,6 +51,11 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 
 /**
  * MNTDReportingREDCapPage - Page 10 of the MNTD workflow.
@@ -88,6 +93,9 @@ function MNTDReportingREDCapPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -982,6 +990,48 @@ function MNTDReportingREDCapPage({
     [pageData?.id, hasRealPageId, loadPageSamples, onProgressUpdate, intl],
   );
 
+  // E-Signature Integration (21 CFR Part 11)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.reporting.esig.authoredContext",
+      defaultMessage: "Sign reporting data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   // Render validation status from Data Analysis page
   const renderValidationStatus = (sample) => {
     const status = sample.validationStatus;
@@ -1478,7 +1528,11 @@ function MNTDReportingREDCapPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowReportModal(false)}
-        onRequestSubmit={handleGenerateReport}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleGenerateReport, () =>
+            setShowReportModal(true),
+          )
+        }
         primaryButtonDisabled={isGeneratingReport}
         size="md"
       >
@@ -1690,7 +1744,11 @@ function MNTDReportingREDCapPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowREDCapModal(false)}
-        onRequestSubmit={handleGenerateREDCapFile}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleGenerateREDCapFile, () =>
+            setShowREDCapModal(true),
+          )
+        }
         primaryButtonDisabled={isGeneratingREDCapFile}
         size="md"
       >
@@ -1830,7 +1888,11 @@ function MNTDReportingREDCapPage({
           setSelectedWell(null);
           setUseAutoAssign(true);
         }}
-        onRequestSubmit={handleArchiveSamples}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleArchiveSamples, () =>
+            setShowArchiveModal(true),
+          )
+        }
         primaryButtonDisabled={
           isArchiving ||
           !storageSelection.box ||
@@ -2248,6 +2310,9 @@ function MNTDReportingREDCapPage({
           )}
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Reporting (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
     </div>
   );
 }

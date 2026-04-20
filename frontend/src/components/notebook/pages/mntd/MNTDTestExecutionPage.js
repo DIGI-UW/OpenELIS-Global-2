@@ -70,6 +70,13 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDTestExecutionPage - Page 8 of the MNTD workflow.
@@ -110,6 +117,9 @@ function MNTDTestExecutionPage({
   const componentMounted = useRef(false);
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -813,6 +823,91 @@ function MNTDTestExecutionPage({
     [pageData?.id, hasRealPageId, loadPageSamples, onProgressUpdate, intl],
   );
 
+  // E-Signature Integration (21 CFR Part 11)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Wrapper: only COMPLETED status transitions require e-sig
+  const handleSignAndCompleteStatus = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.sampleId) {
+        handleStatusChange(pendingAction.current.sampleId, "COMPLETED");
+      }
+      pendingAction.current = null;
+    },
+    [handleStatusChange],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.execution.esig.authoredContext",
+      defaultMessage: "Sign test execution data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.execution.esig.validationContext",
+        defaultMessage: "Validate and release sample as completed",
+      },
+      {},
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndCompleteStatus,
+    onCancel: () => {},
+  });
+
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
+  // Conditional status change: COMPLETED requires e-sig, others proceed directly
+  const handleStatusChangeWithEsig = useCallback(
+    (sampleId, newStatus) => {
+      if (newStatus === "COMPLETED") {
+        pendingAction.current = { sampleId };
+        openValidationSignatureModal();
+      } else {
+        handleStatusChange(sampleId, newStatus);
+      }
+    },
+    [handleStatusChange, openValidationSignatureModal],
+  );
+
   // Render execution info column
   const renderExecutionInfo = (sample) => {
     if (!sample) {
@@ -1127,7 +1222,7 @@ function MNTDTestExecutionPage({
           samples={samples}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
-          onStatusChange={handleStatusChange}
+          onStatusChange={handleStatusChangeWithEsig}
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
           showSelection={true}
@@ -1189,7 +1284,11 @@ function MNTDTestExecutionPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowExecutionModal(false)}
-        onRequestSubmit={handleSaveExecutionData}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleSaveExecutionData, () =>
+            setShowExecutionModal(true),
+          )
+        }
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1411,7 +1510,11 @@ function MNTDTestExecutionPage({
           setShowDataUploadModal(false);
           setUploadedFile(null);
         }}
-        onRequestSubmit={handleSaveDataUpload}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleSaveDataUpload, () =>
+            setShowDataUploadModal(true),
+          )
+        }
         primaryButtonDisabled={isUploading || !uploadedFile}
         size="md"
       >
@@ -1572,7 +1675,11 @@ function MNTDTestExecutionPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowBulkValueModal(false)}
-        onRequestSubmit={handleApplyBulkValue}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleApplyBulkValue, () =>
+            setShowBulkValueModal(true),
+          )
+        }
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1810,7 +1917,11 @@ function MNTDTestExecutionPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowPostTestQCModal(false)}
-        onRequestSubmit={handleSavePostTestQCData}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleSavePostTestQCData, () =>
+            setShowPostTestQCModal(true),
+          )
+        }
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1939,6 +2050,12 @@ function MNTDTestExecutionPage({
           />
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Data Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

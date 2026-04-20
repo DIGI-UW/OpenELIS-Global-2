@@ -35,6 +35,11 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -62,6 +67,7 @@ function TraditionalMedicineAnalyticalPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
 
   // Use standard permissions instead of custom TMMRD-specific logic
   // Page-level access control should be handled by usePageAccessControl() in parent workflow component
@@ -805,6 +811,66 @@ function TraditionalMedicineAnalyticalPage({
     notify,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current) {
+        pendingAction.current();
+        pendingAction.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.analytical.esig.authoredContext",
+      defaultMessage: "Sign analytical record as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const triggerEsigForSave = useCallback(
+    (action) => {
+      pendingAction.current = action;
+      openSignatureModal();
+    },
+    [openSignatureModal],
+  );
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.analytical.esig.completeContext",
+      defaultMessage: "Validate and release analytical as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   const pendingSamples = useMemo(
     () => samples.filter((s) => s.status !== "COMPLETED"),
     [samples],
@@ -1059,7 +1125,7 @@ function TraditionalMedicineAnalyticalPage({
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={!canMarkComplete() || isCompleting || !hasRealPageId}
             title={
               !canMarkComplete()
@@ -1240,27 +1306,11 @@ function TraditionalMedicineAnalyticalPage({
       <Modal
         open={fractionationModalOpen}
         onRequestClose={() => setFractionationModalOpen(false)}
-        onRequestSubmit={applyFractionation}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.analytical.fractionation.modal.title",
           defaultMessage: "Step 1: Record Fractionation",
         })}
-        primaryButtonText={
-          isApplyingFractionation
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "label.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingFractionation}
         size="md"
       >
         {isApplyingFractionation && <Loading withOverlay={false} small />}
@@ -1339,33 +1389,47 @@ function TraditionalMedicineAnalyticalPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setFractionationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setFractionationModalOpen(false);
+              triggerEsigForSave(applyFractionation);
+            }}
+            disabled={isApplyingFractionation}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* STEP 2: Identification Modal */}
       <Modal
         open={identificationModalOpen}
         onRequestClose={() => setIdentificationModalOpen(false)}
-        onRequestSubmit={applyIdentification}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.analytical.identification.modal.title",
           defaultMessage: "Step 2: Record Identification",
         })}
-        primaryButtonText={
-          isApplyingIdentification
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "label.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingIdentification}
         size="md"
       >
         {isApplyingIdentification && <Loading withOverlay={false} small />}
@@ -1428,33 +1492,47 @@ function TraditionalMedicineAnalyticalPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setIdentificationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setIdentificationModalOpen(false);
+              triggerEsigForSave(applyIdentification);
+            }}
+            disabled={isApplyingIdentification}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* STEP 3: Purification Modal */}
       <Modal
         open={purificationModalOpen}
         onRequestClose={() => setPurificationModalOpen(false)}
-        onRequestSubmit={applyPurification}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.analytical.purification.modal.title",
           defaultMessage: "Step 3: Record Purification",
         })}
-        primaryButtonText={
-          isApplyingPurification
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "label.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingPurification}
         size="md"
       >
         {isApplyingPurification && <Loading withOverlay={false} small />}
@@ -1522,33 +1600,47 @@ function TraditionalMedicineAnalyticalPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setPurificationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setPurificationModalOpen(false);
+              triggerEsigForSave(applyPurification);
+            }}
+            disabled={isApplyingPurification}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* STEP 4: Characterization Modal */}
       <Modal
         open={characterizationModalOpen}
         onRequestClose={() => setCharacterizationModalOpen(false)}
-        onRequestSubmit={applyCharacterization}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.analytical.characterization.modal.title",
           defaultMessage: "Step 4: Record Characterization",
         })}
-        primaryButtonText={
-          isApplyingCharacterization
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "label.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingCharacterization}
         size="md"
       >
         {isApplyingCharacterization && <Loading withOverlay={false} small />}
@@ -1635,7 +1727,40 @@ function TraditionalMedicineAnalyticalPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setCharacterizationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setCharacterizationModalOpen(false);
+              triggerEsigForSave(applyCharacterization);
+            }}
+            disabled={isApplyingCharacterization}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

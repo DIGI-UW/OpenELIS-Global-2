@@ -36,6 +36,11 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -60,6 +65,7 @@ function TraditionalMedicineFormulationPage({
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
 
   // Use standard permissions instead of custom TMMRD-specific logic
   // Page-level access control should be handled by usePageAccessControl() in parent workflow component
@@ -682,6 +688,66 @@ function TraditionalMedicineFormulationPage({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current) {
+        pendingAction.current();
+        pendingAction.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.formulation.esig.authoredContext",
+      defaultMessage: "Sign formulation record as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const triggerEsigForSave = useCallback(
+    (action) => {
+      pendingAction.current = action;
+      openSignatureModal();
+    },
+    [openSignatureModal],
+  );
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.formulation.esig.completeContext",
+      defaultMessage: "Validate and release formulation as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   const pendingSamples = useMemo(
     () =>
       samples.filter(
@@ -899,7 +965,7 @@ function TraditionalMedicineFormulationPage({
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
             }
@@ -1080,27 +1146,11 @@ function TraditionalMedicineFormulationPage({
       <Modal
         open={formulationModalOpen}
         onRequestClose={() => setFormulationModalOpen(false)}
-        onRequestSubmit={applyFormulation}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.formulation.modal.title",
           defaultMessage: "Record Formulation Details",
         })}
-        primaryButtonText={
-          isApplying
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.formulation.modal.record",
-                defaultMessage: "Record Formulation",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplying}
         size="md"
       >
         {isApplying && <Loading withOverlay={false} small />}
@@ -1366,26 +1416,46 @@ function TraditionalMedicineFormulationPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setFormulationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setFormulationModalOpen(false);
+              triggerEsigForSave(applyFormulation);
+            }}
+            disabled={isApplying}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       <Modal
         open={productQcModalOpen}
         onRequestClose={() => setProductQcModalOpen(false)}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.tradmed.formulation.qc.modal.title",
           defaultMessage: "Record Product QC",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.tradmed.formulation.qc.record",
-          defaultMessage: "Record QC",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "common.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={applyProductQC}
-        onSecondarySubmit={() => setProductQcModalOpen(false)}
-        shouldSubmitOnEnter={false}
       >
         <Grid>
           <Column lg={16}>
@@ -1636,32 +1706,43 @@ function TraditionalMedicineFormulationPage({
             </div>
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setProductQcModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setProductQcModalOpen(false);
+              triggerEsigForSave(applyProductQC);
+            }}
+            disabled={isApplyingProductQC}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       <Modal
         open={disposalModalOpen}
         onRequestClose={() => setDisposalModalOpen(false)}
-        onRequestSubmit={applyDisposal}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.disposal.modal.title",
           defaultMessage: "Record Disposal Information",
         })}
-        primaryButtonText={
-          isApplyingDisposal
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.disposal.modal.record",
-                defaultMessage: "Record Disposal",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingDisposal}
         size="md"
       >
         {isApplyingDisposal && <Loading withOverlay={false} small />}
@@ -1711,7 +1792,37 @@ function TraditionalMedicineFormulationPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setDisposalModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setDisposalModalOpen(false);
+              triggerEsigForSave(applyDisposal);
+            }}
+            disabled={isApplyingDisposal}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

@@ -40,6 +40,11 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -61,6 +66,9 @@ function MedLabSampleProcessingPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending-action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State
   const [samples, setSamples] = useState([]);
@@ -347,6 +355,55 @@ function MedLabSampleProcessingPage({
     loadSamplesForProcessing,
     onProgressUpdate,
   ]);
+
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // Shared AUTHORED callback: run whichever save action was pending
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared AUTHORED cancel: reopen whichever modal was closed
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Hook: AUTHORED (shared for record processing + create aliquots)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "medlab.sampleProcessing.esig.authoredContext",
+      defaultMessage: "Sign sample processing action as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Helper: route a save action through the AUTHORED e-sig flow
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
 
   // Handle view children for a parent
   const handleViewChildren = useCallback((parentSampleId) => {
@@ -801,17 +858,8 @@ function MedLabSampleProcessingPage({
           id: "medlab.page.sampleProcessing.modal.title",
           defaultMessage: "Record Sample Processing",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.page.sampleProcessing.modal.save",
-          defaultMessage: "Record Processing",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "medlab.page.sampleProcessing.modal.cancel",
-          defaultMessage: "Cancel",
-        })}
         onRequestClose={() => setProcessModalOpen(false)}
-        onRequestSubmit={handleRecordProcessing}
-        primaryButtonDisabled={processing || !processingType}
+        passiveModal
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -895,6 +943,39 @@ function MedLabSampleProcessingPage({
             onChange={(e, { checked }) => setTransferToBioanalytical(checked)}
           />
         </div>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setProcessModalOpen(false)}>
+            <FormattedMessage
+              id="medlab.page.sampleProcessing.modal.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleRecordProcessing, () =>
+                setProcessModalOpen(true),
+              )
+            }
+            disabled={processing || !processingType}
+          >
+            <FormattedMessage
+              id="medlab.page.sampleProcessing.modal.save"
+              defaultMessage="Record Processing"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Create Aliquots Modal */}
@@ -904,17 +985,8 @@ function MedLabSampleProcessingPage({
           id: "medlab.page.sampleProcessing.aliquotModal.title",
           defaultMessage: "Create Aliquots (Child Samples)",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.page.sampleProcessing.aliquotModal.create",
-          defaultMessage: "Create Aliquots",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "medlab.page.sampleProcessing.aliquotModal.cancel",
-          defaultMessage: "Cancel",
-        })}
         onRequestClose={() => setAliquotModalOpen(false)}
-        onRequestSubmit={handleCreateAliquots}
-        primaryButtonDisabled={creating || !labelingConfirmed}
+        passiveModal
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1020,6 +1092,39 @@ function MedLabSampleProcessingPage({
             </strong>
           </p>
         </div>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setAliquotModalOpen(false)}>
+            <FormattedMessage
+              id="medlab.page.sampleProcessing.aliquotModal.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleCreateAliquots, () =>
+                setAliquotModalOpen(true),
+              )
+            }
+            disabled={creating || !labelingConfirmed}
+          >
+            <FormattedMessage
+              id="medlab.page.sampleProcessing.aliquotModal.create"
+              defaultMessage="Create Aliquots"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* View Aliquots Modal */}
@@ -1110,6 +1215,9 @@ function MedLabSampleProcessingPage({
           </DataTable>
         )}
       </Modal>
+
+      {/* E-Signature Modal (AUTHORED - shared across Record Processing + Create Aliquots) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
     </div>
   );
 }

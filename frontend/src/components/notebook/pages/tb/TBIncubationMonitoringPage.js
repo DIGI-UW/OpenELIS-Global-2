@@ -42,6 +42,11 @@ import {
 import WeeklyReadingTable from "./components/WeeklyReadingTable";
 import RecordReadingModal from "./components/RecordReadingModal";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 
 /**
  * TBIncubationMonitoringPage - Page 5 of the TB workflow.
@@ -58,6 +63,10 @@ import "../../workflow/NotebookWorkflow.css";
 function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending data for shared AUTHORED + VALIDATED hooks
+  const pendingReadingDataRef = useRef(null);
+  const pendingMarkActionRef = useRef(null);
 
   // State
   const [incubatingSamples, setIncubatingSamples] = useState([]);
@@ -334,6 +343,112 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
     [intl, loadIncubatingSamples, onProgressUpdate],
   );
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // Shared AUTHORED callback: runs the pending save-reading action
+  const handleAuthoredSigned = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      const data = pendingReadingDataRef.current;
+      pendingReadingDataRef.current = null;
+      if (data) {
+        handleSaveReading(data);
+      }
+    },
+    [handleSaveReading],
+  );
+
+  // Shared AUTHORED cancel: reopens the child reading modal
+  const handleAuthoredCancel = useCallback(() => {
+    if (pendingReadingDataRef.current) {
+      setReadingModalOpen(true);
+    }
+    pendingReadingDataRef.current = null;
+  }, []);
+
+  // Shared VALIDATED callback: runs the pending Mark Positive/Negative action
+  const handleMarkActionSigned = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      const action = pendingMarkActionRef.current;
+      pendingMarkActionRef.current = null;
+      if (action?.callback) {
+        action.callback();
+      }
+    },
+    [],
+  );
+
+  // Shared VALIDATED cancel: clear pending sample so next open is clean
+  const handleMarkActionCancel = useCallback(() => {
+    pendingMarkActionRef.current = null;
+  }, []);
+
+  // AUTHORED e-signature for weekly reading save (fired from child RecordReadingModal)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.tb.incubation.esig.authoredContext",
+      defaultMessage: "Sign weekly culture reading as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleAuthoredSigned,
+    onCancel: handleAuthoredCancel,
+  });
+
+  // VALIDATED_AND_RELEASED e-signature shared between Mark Positive + Mark Negative
+  const {
+    openSignatureModal: openMarkActionSignatureModal,
+    signatureModalProps: markActionSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.tb.incubation.esig.markActionContext",
+      defaultMessage: "Validate & release culture result",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleMarkActionSigned,
+    onCancel: handleMarkActionCancel,
+  });
+
+  // Wrapper: child modal onSave → close modal → open AUTHORED e-sig
+  const handleSaveReadingWithEsig = useCallback(
+    (readingData) => {
+      pendingReadingDataRef.current = readingData;
+      setReadingModalOpen(false);
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
+  // Inline button trigger: stash sample + mark type, then open VALIDATED e-sig
+  const handleTriggerMarkPositive = useCallback(
+    (sample) => {
+      pendingMarkActionRef.current = {
+        callback: () => handleMarkPositive(sample),
+      };
+      openMarkActionSignatureModal();
+    },
+    [handleMarkPositive, openMarkActionSignatureModal],
+  );
+
+  const handleTriggerMarkNegative = useCallback(
+    (sample) => {
+      pendingMarkActionRef.current = {
+        callback: () => handleMarkNegative(sample),
+      };
+      openMarkActionSignatureModal();
+    },
+    [handleMarkNegative, openMarkActionSignatureModal],
+  );
+
   // Filter samples by search term
   const filteredSamples = useMemo(() => {
     if (!searchTerm) return incubatingSamples;
@@ -427,8 +542,8 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
         sample={sample}
         currentWeek={currentWeek}
         onAddReading={() => handleOpenReadingModal(sample)}
-        onMarkPositive={() => handleMarkPositive(sample)}
-        onMarkNegative={() => handleMarkNegative(sample)}
+        onMarkPositive={() => handleTriggerMarkPositive(sample)}
+        onMarkNegative={() => handleTriggerMarkNegative(sample)}
         loadSampleReadings={loadSampleReadings}
         refreshTrigger={refreshTrigger}
       />
@@ -646,7 +761,7 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
           setSelectedSample(null);
           setSampleReadings([]);
         }}
-        onSave={handleSaveReading}
+        onSave={handleSaveReadingWithEsig}
         sample={selectedSample}
         existingReadings={sampleReadings}
         currentWeek={
@@ -655,6 +770,10 @@ function TBIncubationMonitoringPage({ entryId, pageData, onProgressUpdate }) {
             : 1
         }
       />
+
+      {/* E-Signature Modals */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...markActionSignatureModalProps} />
     </div>
   );
 }

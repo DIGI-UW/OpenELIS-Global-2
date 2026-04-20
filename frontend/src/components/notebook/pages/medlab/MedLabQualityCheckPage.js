@@ -21,6 +21,13 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -600,6 +607,77 @@ function MedLabQualityCheckPage({
     pageData?.id,
   ]);
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // AUTHORED callback: run the bulk apply after a successful signature
+  const handleSignAndBulkApply = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkApply();
+    },
+    [handleBulkApply],
+  );
+
+  // Reopen bulk apply modal on cancel
+  const handleBulkApplySignCancelled = useCallback(() => {
+    setBulkApplyModalOpen(true);
+  }, []);
+
+  // VALIDATED_AND_RELEASED callback: run mark verified after a successful signature
+  const handleSignAndMarkVerified = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkVerified();
+    },
+    [handleMarkVerified],
+  );
+
+  // Hook 1: AUTHORED (Bulk Apply QC)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "medlab.qc.esig.authoredContext",
+        defaultMessage: "Sign QC assessment for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndBulkApply,
+    onCancel: handleBulkApplySignCancelled,
+  });
+
+  // Hook 2: VALIDATED_AND_RELEASED (Mark as Done)
+  const {
+    openSignatureModal: openMarkVerifiedSignatureModal,
+    signatureModalProps: markVerifiedSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "medlab.qc.esig.markVerifiedContext",
+        defaultMessage: "Validate and release {count} sample(s) as verified",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkVerified,
+    onCancel: () => {},
+  });
+
+  // Trigger for Bulk Apply Save button: close modal, then open e-sig
+  const handleTriggerBulkApply = useCallback(() => {
+    setBulkApplyModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   // Calculate stats
   const qcPassedCount = samples.filter((s) => s.qcResult === "Pass").length;
   const qcFailedCount = samples.filter((s) => s.qcResult === "Fail").length;
@@ -712,18 +790,23 @@ function MedLabQualityCheckPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkVerified}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as done"
           >
-            <FormattedMessage
-              id="notebook.page.medlab.markDone"
-              defaultMessage="Mark as Done ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openMarkVerifiedSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.medlab.markDone"
+                defaultMessage="Mark as Done ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
       </div>
 
@@ -1004,35 +1087,8 @@ function MedLabQualityCheckPage({
           id: "notebook.medlab.bulkApply.title",
           defaultMessage: "Sample Quality Assessment",
         })}
-        primaryButtonText={
-          isBulkApplying
-            ? intl.formatMessage({
-                id: "label.applying",
-                defaultMessage: "Applying...",
-              })
-            : bulkApplyValues.qcResult === "Pass"
-              ? intl.formatMessage({
-                  id: "notebook.medlab.qc.action.pass",
-                  defaultMessage: "Pass - Proceed to Routing",
-                })
-              : bulkApplyValues.qcResult === "Fail"
-                ? intl.formatMessage({
-                    id: "notebook.medlab.qc.action.fail",
-                    defaultMessage: "Fail - Apply Action",
-                  })
-                : intl.formatMessage({
-                    id: "label.apply",
-                    defaultMessage: "Apply",
-                  })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleBulkApply}
-        onSecondarySubmit={() => setBulkApplyModalOpen(false)}
+        passiveModal
         size="md"
-        primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
         danger={bulkApplyValues.qcResult === "Fail"}
       >
         <div className="qc-bulk-apply-modal">
@@ -1373,7 +1429,53 @@ function MedLabQualityCheckPage({
             </div>
           )}
         </div>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setBulkApplyModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind={bulkApplyValues.qcResult === "Fail" ? "danger" : "primary"}
+            onClick={handleTriggerBulkApply}
+            disabled={isBulkApplying || !bulkApplyValues.qcResult}
+          >
+            {isBulkApplying ? (
+              <FormattedMessage
+                id="label.applying"
+                defaultMessage="Applying..."
+              />
+            ) : bulkApplyValues.qcResult === "Pass" ? (
+              <FormattedMessage
+                id="notebook.medlab.qc.action.pass"
+                defaultMessage="Pass - Proceed to Routing"
+              />
+            ) : bulkApplyValues.qcResult === "Fail" ? (
+              <FormattedMessage
+                id="notebook.medlab.qc.action.fail"
+                defaultMessage="Fail - Apply Action"
+              />
+            ) : (
+              <FormattedMessage id="label.apply" defaultMessage="Apply" />
+            )}
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Bulk Apply (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Mark as Done (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...markVerifiedSignatureModalProps} />
     </div>
   );
 }

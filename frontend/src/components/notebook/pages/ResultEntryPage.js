@@ -53,6 +53,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
+import { ESignatureModal, SignatureMeaning, useESign } from "../../esignature";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -391,6 +394,47 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
     setImportProgress(0);
   };
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // AUTHORED callback: run the result submission after a successful signature
+  const handleSignAndSaveResult = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSubmitResult();
+    },
+    [handleSubmitResult],
+  );
+
+  // Reopen the result modal when user cancels the e-sig flow
+  const handleSignAndSaveResultCancelled = useCallback(() => {
+    setResultModalOpen(true);
+  }, []);
+
+  // Hook 1: AUTHORED (result entry)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+    isCheckingEnabled: isAuthoredCheckingEnabled,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "medlab.result.esig.authoredContext",
+      defaultMessage: "Sign test result as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSaveResult,
+    onCancel: handleSignAndSaveResultCancelled,
+  });
+
+  // Trigger the AUTHORED e-sig flow: close modal, then open e-sig
+  const handleSaveResultClick = useCallback(() => {
+    setResultModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   // Mark selected samples as complete
   const handleMarkComplete = useCallback(() => {
     if (selectedSampleIds.length === 0) {
@@ -459,6 +503,62 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
     loadSamplesForResultEntry,
     onProgressUpdate,
   ]);
+
+  // VALIDATED_AND_RELEASED callback for Mark Complete
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  // Hook 2: VALIDATED_AND_RELEASED (Mark Complete)
+  const {
+    openSignatureModal: openMarkCompleteSignatureModal,
+    signatureModalProps: markCompleteSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "medlab.result.esig.markCompleteContext",
+        defaultMessage: "Validate and release {count} sample(s) as complete",
+      },
+      {
+        count:
+          selectedSampleIds.length > 0
+            ? selectedSampleIds.length
+            : samples.filter(
+                (s) =>
+                  s.resultEntryStatus === "COMPLETED" || s.pendingTests === 0,
+              ).length,
+      },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Click handler for the Mark Complete button: validate preconditions then open e-sig
+  const handleMarkCompleteClick = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      const autoCompletable = samples.filter(
+        (s) => s.resultEntryStatus === "COMPLETED" || s.pendingTests === 0,
+      );
+      if (autoCompletable.length === 0) {
+        setError(
+          intl.formatMessage({
+            id: "medlab.result.noSamplesToComplete",
+            defaultMessage:
+              "No samples with all results entered to mark complete",
+          }),
+        );
+        return;
+      }
+    }
+    openMarkCompleteSignatureModal();
+  }, [selectedSampleIds, samples, intl, openMarkCompleteSignatureModal]);
 
   // Calculate stats
   const totalSamples = samples.length;
@@ -812,35 +912,40 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
             defaultMessage="Import Results"
           />
         </Button>
-        <Button
-          kind="secondary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleMarkComplete}
-          disabled={
-            completing ||
-            (completedSamples === 0 && selectedSampleIds.length === 0)
-          }
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to mark results as complete"
         >
-          {completing ? (
-            <FormattedMessage
-              id="medlab.result.completing"
-              defaultMessage="Completing..."
-            />
-          ) : selectedSampleIds.length > 0 ? (
-            <FormattedMessage
-              id="medlab.result.markSelectedComplete"
-              defaultMessage="Mark Selected Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          ) : (
-            <FormattedMessage
-              id="medlab.result.markAllComplete"
-              defaultMessage="Mark All Complete ({count})"
-              values={{ count: completedSamples }}
-            />
-          )}
-        </Button>
+          <Button
+            kind="secondary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={handleMarkCompleteClick}
+            disabled={
+              completing ||
+              (completedSamples === 0 && selectedSampleIds.length === 0)
+            }
+          >
+            {completing ? (
+              <FormattedMessage
+                id="medlab.result.completing"
+                defaultMessage="Completing..."
+              />
+            ) : selectedSampleIds.length > 0 ? (
+              <FormattedMessage
+                id="medlab.result.markSelectedComplete"
+                defaultMessage="Mark Selected Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            ) : (
+              <FormattedMessage
+                id="medlab.result.markAllComplete"
+                defaultMessage="Mark All Complete ({count})"
+                values={{ count: completedSamples }}
+              />
+            )}
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Loading State */}
@@ -1302,13 +1407,7 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
           id: "medlab.page.resultEntry.enterResult",
           defaultMessage: "Enter Test Result",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "label.button.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitResult}
-        primaryButtonDisabled={saving || !resultValue.trim()}
+        passiveModal
         size="md"
       >
         <Grid>
@@ -1427,6 +1526,31 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
             </span>
           </div>
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setResultModalOpen(false)}>
+            <FormattedMessage id="label.button.cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveResultClick}
+            disabled={
+              saving || !resultValue.trim() || isAuthoredCheckingEnabled
+            }
+          >
+            <FormattedMessage id="label.button.save" defaultMessage="Save" />
+          </Button>
+        </div>
       </Modal>
 
       {/* Import Modal */}
@@ -1486,6 +1610,12 @@ function ResultEntryPage({ entryId, pageData, progress, onProgressUpdate }) {
           {renderImportStep()}
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Result Entry (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...markCompleteSignatureModalProps} />
     </div>
   );
 }

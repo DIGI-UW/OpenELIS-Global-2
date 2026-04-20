@@ -31,6 +31,11 @@ import {
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -655,6 +660,61 @@ export const GBDGelElectrophoresesPage = ({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      applyGel();
+    },
+    [applyGel],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setGelModalOpen(true);
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.gbd.gel.esig.authoredContext",
+        defaultMessage: "Sign gel electrophoresis record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.gbd.gel.esig.completeContext",
+      defaultMessage: "Validate and release gel electrophoresis as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const handleSaveClick = useCallback(() => {
+    setGelModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   const eligibleForCompletionCount = useMemo(
     () =>
       samples.filter(
@@ -855,12 +915,12 @@ export const GBDGelElectrophoresesPage = ({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+        <PermissionGate permission={Permissions.VALIDATE_RESULTS}>
           <Button
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
             }
@@ -1114,27 +1174,11 @@ export const GBDGelElectrophoresesPage = ({
           setGelModalOpen(false);
           resetForm();
         }}
-        onRequestSubmit={applyGel}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.gbd.gel.modal.title",
           defaultMessage: "Record Gel Electrophoresis Analysis",
         })}
-        primaryButtonText={
-          isApplyingGel
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.gbd.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingGel}
         size="lg"
       >
         {isApplyingGel && <Loading withOverlay={false} small />}
@@ -1595,7 +1639,36 @@ export const GBDGelElectrophoresesPage = ({
             </>
           )}
         </Grid>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setGelModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplyingGel || isCheckingEnabled}
+          >
+            <FormattedMessage id="notebook.gbd.save" defaultMessage="Save" />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal (AUTHORED) */}
+      <ESignatureModal {...signatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

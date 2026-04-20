@@ -51,6 +51,13 @@ import ReagentUsageSelector, {
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * ImmunologyInitialProcessingPage - Page 2 of the Immunology workflow.
@@ -850,6 +857,75 @@ function ImmunologyInitialProcessingPage({
     [intl],
   );
 
+  // Handle e-signature success for bulk apply (AUTHORED meaning)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkApply();
+    },
+    [handleBulkApply],
+  );
+
+  // Handle e-signature cancel - reopen the bulk apply modal
+  const handleSignCancelled = useCallback(() => {
+    setBulkApplyModalOpen(true);
+  }, []);
+
+  // Handle e-signature success for mark complete (VALIDATED_AND_RELEASED meaning)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkProcessingComplete();
+    },
+    [handleMarkProcessingComplete],
+  );
+
+  // E-Signature hook for bulk apply (AUTHORED meaning)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.immunology.processing.esig.authoredContext",
+        defaultMessage:
+          "Sign initial processing data for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // E-Signature hook for mark complete (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.immunology.processing.esig.completeContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as processing complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Handle save click from bulk apply modal - close modal, then open e-sig
+  const handleSaveClick = useCallback(() => {
+    setBulkApplyModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   return (
     <div className="immunology-initial-processing-page">
       <div className="page-section-header">
@@ -964,18 +1040,23 @@ function ImmunologyInitialProcessingPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkProcessingComplete}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as completed"
           >
-            <FormattedMessage
-              id="notebook.page.immunology.processing.markComplete"
-              defaultMessage="Mark Processing Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openCompleteSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.immunology.processing.markComplete"
+                defaultMessage="Mark Processing Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
       </div>
 
@@ -1290,36 +1371,8 @@ function ImmunologyInitialProcessingPage({
           id: "notebook.immunology.bulkApply.title",
           defaultMessage: "Initial Processing",
         })}
-        primaryButtonText={
-          isBulkApplying
-            ? intl.formatMessage({
-                id: "label.applying",
-                defaultMessage: "Applying...",
-              })
-            : processingValues.qcResult === "Pass"
-              ? intl.formatMessage({
-                  id: "notebook.immunology.processing.action.pass",
-                  defaultMessage: "Pass - Proceed to Next Step",
-                })
-              : processingValues.qcResult === "Fail"
-                ? intl.formatMessage({
-                    id: "notebook.immunology.processing.action.fail",
-                    defaultMessage: "Fail - Flag for Review",
-                  })
-                : intl.formatMessage({
-                    id: "label.apply",
-                    defaultMessage: "Apply Processing",
-                  })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleBulkApply}
-        onSecondarySubmit={() => setBulkApplyModalOpen(false)}
+        passiveModal
         size="lg"
-        primaryButtonDisabled={isBulkApplying}
-        danger={processingValues.qcResult === "Fail"}
       >
         <div className="processing-bulk-apply-modal">
           <p className="modal-description">
@@ -2217,8 +2270,58 @@ function ImmunologyInitialProcessingPage({
               </Column>
             </Grid>
           </div>
+
+          {/* Custom footer for e-sig integration */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "1rem",
+              marginTop: "1rem",
+              paddingTop: "1rem",
+              borderTop: "1px solid #e0e0e0",
+            }}
+          >
+            <Button
+              kind="secondary"
+              onClick={() => setBulkApplyModalOpen(false)}
+            >
+              <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+            </Button>
+            <Button
+              kind={processingValues.qcResult === "Fail" ? "danger" : "primary"}
+              onClick={handleSaveClick}
+              disabled={isBulkApplying}
+            >
+              {isBulkApplying
+                ? intl.formatMessage({
+                    id: "label.applying",
+                    defaultMessage: "Applying...",
+                  })
+                : processingValues.qcResult === "Pass"
+                  ? intl.formatMessage({
+                      id: "notebook.immunology.processing.action.pass",
+                      defaultMessage: "Pass - Proceed to Next Step",
+                    })
+                  : processingValues.qcResult === "Fail"
+                    ? intl.formatMessage({
+                        id: "notebook.immunology.processing.action.fail",
+                        defaultMessage: "Fail - Flag for Review",
+                      })
+                    : intl.formatMessage({
+                        id: "label.apply",
+                        defaultMessage: "Apply Processing",
+                      })}
+            </Button>
+          </div>
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Bulk Apply (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

@@ -41,6 +41,11 @@ import {
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
@@ -84,6 +89,7 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
     useContext(NotificationContext);
 
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -713,6 +719,66 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current) {
+        pendingAction.current();
+        pendingAction.current = null;
+      }
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.gbd.storage.esig.authoredContext",
+      defaultMessage: "Sign storage record as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const triggerEsigForSave = useCallback(
+    (action) => {
+      pendingAction.current = action;
+      openSignatureModal();
+    },
+    [openSignatureModal],
+  );
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.gbd.storage.esig.completeContext",
+      defaultMessage: "Validate and release storage monitoring as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   // Count eligible samples for completion
   const eligibleForCompletionCount = useMemo(
     () =>
@@ -988,12 +1054,12 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+        <PermissionGate permission={Permissions.VALIDATE_RESULTS}>
           <Button
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               eligibleForCompletionCount === 0 || submitting || !hasRealPageId
             }
@@ -1319,20 +1385,12 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
                 { id: selectedSampleForRetrieval?.accessionNumber || "" },
               )
         }
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.gbd.storage.retrievalModal.recordRetrieval",
-          defaultMessage: "Record Recovery",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "notebook.gbd.storage.retrievalModal.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => {
           setRetrievalModalOpen(false);
           setSelectedSampleForRetrieval(null);
           setIsBulkRetrieval(false);
         }}
-        onRequestSubmit={handleSubmitRetrieval}
       >
         <InlineNotification
           kind="info"
@@ -1413,6 +1471,31 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
             placeholder="e.g., Error in disposal, Additional testing needed"
           />
         </div>
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setRetrievalModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setRetrievalModalOpen(false);
+              triggerEsigForSave(handleSubmitRetrieval);
+            }}
+            disabled={submitting}
+          >
+            <FormattedMessage id="notebook.gbd.save" defaultMessage="Save" />
+          </Button>
+        </div>
       </Modal>
 
       {/* Disposal Modal */}
@@ -1435,21 +1518,12 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
                 { id: selectedSampleForDisposal?.accessionNumber || "" },
               )
         }
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.gbd.storage.disposalModal.recordDisposal",
-          defaultMessage: "Record Disposal",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "notebook.gbd.storage.disposalModal.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => {
           setDisposalModalOpen(false);
           setSelectedSampleForDisposal(null);
           setIsBulkDisposal(false);
         }}
-        onRequestSubmit={handleSubmitDisposal}
-        danger
       >
         <InlineNotification
           kind="error"
@@ -1541,6 +1615,31 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
             placeholder="Reason for disposal, retention period expiry, etc."
           />
         </div>
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setDisposalModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => {
+              setDisposalModalOpen(false);
+              triggerEsigForSave(handleSubmitDisposal);
+            }}
+            disabled={submitting}
+          >
+            <FormattedMessage id="notebook.gbd.save" defaultMessage="Save" />
+          </Button>
+        </div>
       </Modal>
 
       {loading && (
@@ -1548,6 +1647,12 @@ export const GBDStorageEnvironmentalMonitoringPage = ({
           <Loading withOverlay={false} description="Loading samples..." />
         </div>
       )}
+
+      {/* E-Signature Modal (AUTHORED) */}
+      <ESignatureModal {...signatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

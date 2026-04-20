@@ -25,6 +25,13 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * TBCultureTrackingPage - Page 5 of the TB workflow.
@@ -435,6 +442,77 @@ function TBCultureTrackingPage({
     pageData?.id,
   ]);
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // AUTHORED e-signature for weekly reading save
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.tb.culture.esig.authoredContext",
+        defaultMessage:
+          "Sign weekly culture reading for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    // eslint-disable-next-line no-unused-vars
+    onSuccess: (signature) => handleSaveReading(),
+    onCancel: () => setReadingModalOpen(true),
+  });
+
+  // VALIDATED_AND_RELEASED e-signature for Mark Complete
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.tb.culture.esig.completeContext",
+        defaultMessage: "Mark {count} culture sample(s) as complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    // eslint-disable-next-line no-unused-vars
+    onSuccess: (signature) => handleMarkComplete(),
+    onCancel: () => {},
+  });
+
+  // Save button click handler: validate, close modal, then open e-sig
+  const handleSaveReadingClick = useCallback(() => {
+    if (!readingData.growthObservation) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.culture.error.noObservation",
+          defaultMessage: "Please select a growth observation.",
+        }),
+      );
+      return;
+    }
+    if (readingData.cultureMethod === "BOTH") {
+      if (!readingData.ljObservation || !readingData.mgitObservation) {
+        setError(
+          intl.formatMessage({
+            id: "notebook.page.tb.culture.error.bothRequired",
+            defaultMessage: "Please select observations for both LJ and MGIT.",
+          }),
+        );
+        return;
+      }
+    }
+    setReadingModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [readingData, intl, openAuthoredSignatureModal]);
+
   // Get growth observation tag
   const getGrowthTag = (observation) => {
     if (!observation) return <Tag type="gray">Not read</Tag>;
@@ -561,18 +639,23 @@ function TBCultureTrackingPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkComplete}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as complete"
           >
-            <FormattedMessage
-              id="notebook.page.tb.culture.markComplete"
-              defaultMessage="Mark Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openCompleteSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.tb.culture.markComplete"
+                defaultMessage="Mark Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
 
         <Button
@@ -821,25 +904,8 @@ function TBCultureTrackingPage({
           id: "notebook.tb.culture.modal.title",
           defaultMessage: "Add Weekly Culture Reading",
         })}
-        primaryButtonText={
-          isSaving
-            ? intl.formatMessage({
-                id: "label.saving",
-                defaultMessage: "Saving...",
-              })
-            : intl.formatMessage({
-                id: "label.save",
-                defaultMessage: "Save Reading",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleSaveReading}
-        onSecondarySubmit={() => setReadingModalOpen(false)}
+        passiveModal
         size="md"
-        primaryButtonDisabled={isSaving || !readingData.growthObservation}
       >
         <div className="culture-reading-modal">
           <p className="modal-description">
@@ -1085,7 +1151,40 @@ function TBCultureTrackingPage({
             />
           )}
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setReadingModalOpen(false)}
+            disabled={isSaving}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveReadingClick}
+            disabled={isSaving || !readingData.growthObservation}
+          >
+            {isSaving ? (
+              <FormattedMessage id="label.saving" defaultMessage="Saving..." />
+            ) : (
+              <FormattedMessage id="label.save" defaultMessage="Save Reading" />
+            )}
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modals */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

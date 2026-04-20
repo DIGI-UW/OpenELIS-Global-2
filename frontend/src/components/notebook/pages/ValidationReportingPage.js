@@ -55,6 +55,9 @@ import {
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { NotificationKinds } from "../../common/CustomNotification";
+import { ESignatureModal, SignatureMeaning, useESign } from "../../esignature";
+import PermissionGate from "../../security/PermissionGate";
+import { Permissions } from "../../../constants/roles";
 import "../workflow/NotebookWorkflow.css";
 
 /**
@@ -122,6 +125,12 @@ function ValidationReportingPage({
   // Processing state
   const [verifying, setVerifying] = useState(false);
   const [completing, setCompleting] = useState(false);
+
+  // E-signature pending-action ref for shared AUTHORED hook (delivery + ref range)
+  const pendingAction = useRef(null);
+
+  // E-signature pending approval context (Pattern C: per-row approve button)
+  const [pendingApproval, setPendingApproval] = useState(null);
 
   // Load verification samples
   const loadSamplesForVerification = useCallback(() => {
@@ -485,6 +494,183 @@ function ValidationReportingPage({
     onProgressUpdate,
   ]);
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // Shared AUTHORED callback: run whichever save action was pending
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared AUTHORED cancel: reopen whichever modal was closed
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // VALIDATED_AND_RELEASED callback: approve with the pending sample/test
+  const handleSignAndApprove = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingApproval) {
+        handleApproveResult(pendingApproval.sample, pendingApproval.test);
+        setPendingApproval(null);
+      }
+    },
+    [pendingApproval, handleApproveResult],
+  );
+
+  // VALIDATED_AND_RELEASED callback: Mark Verification Complete
+  const handleSignAndMarkVerificationComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkVerificationComplete();
+    },
+    [handleMarkVerificationComplete],
+  );
+
+  // REJECTED callback: submit rejection after signing
+  const handleSignAndReject = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSubmitRejection();
+    },
+    [handleSubmitRejection],
+  );
+
+  // Reopen the rejection modal if the user cancels the REJECTED e-sig flow
+  const handleRejectSignCancelled = useCallback(() => {
+    setRejectModalOpen(true);
+  }, []);
+
+  // Clear pending approval on cancel so a future open starts clean
+  const handleApproveSignCancelled = useCallback(() => {
+    setPendingApproval(null);
+  }, []);
+
+  // Hook 1: AUTHORED (shared for delivery + ref range via pendingAction ref)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "medlab.validation.esig.authoredContext",
+      defaultMessage: "Sign validation / reporting action as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 2: VALIDATED_AND_RELEASED (per-row approve)
+  const {
+    openSignatureModal: openApproveSignatureModal,
+    signatureModalProps: approveSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "medlab.validation.esig.approveContext",
+      defaultMessage: "Validate and release result as approved",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndApprove,
+    onCancel: handleApproveSignCancelled,
+  });
+
+  // Hook 3: VALIDATED_AND_RELEASED (Mark Verification Complete)
+  const {
+    openSignatureModal: openVerificationCompleteSignatureModal,
+    signatureModalProps: verificationCompleteSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "medlab.validation.esig.markCompleteContext",
+        defaultMessage: "Validate and release {count} sample(s) as complete",
+      },
+      {
+        count: samplesForVerification.filter(
+          (s) =>
+            s.verificationStatus === "VERIFIED" || s.pendingVerification === 0,
+        ).length,
+      },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkVerificationComplete,
+    onCancel: () => {},
+  });
+
+  // Hook 4: REJECTED (rejection modal)
+  const {
+    openSignatureModal: openRejectSignatureModal,
+    signatureModalProps: rejectSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.REJECTED,
+    context: intl.formatMessage({
+      id: "medlab.validation.esig.rejectContext",
+      defaultMessage: "Sign rejection of result",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndReject,
+    onCancel: handleRejectSignCancelled,
+  });
+
+  // Helper: route AUTHORED save action through e-sig (close modal, then sign)
+  const triggerAuthoredEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
+  // Per-row approve trigger (Pattern C)
+  const handleTriggerApprove = useCallback(
+    (sample, test) => {
+      setPendingApproval({ sample, test });
+      openApproveSignatureModal();
+    },
+    [openApproveSignatureModal],
+  );
+
+  // Mark Verification Complete trigger (preflight validation, then e-sig)
+  const handleTriggerMarkVerificationComplete = useCallback(() => {
+    const verifiedSamples = samplesForVerification.filter(
+      (s) => s.verificationStatus === "VERIFIED" || s.pendingVerification === 0,
+    );
+    if (verifiedSamples.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "medlab.validation.noSamplesToComplete",
+          defaultMessage: "No fully verified samples to mark complete",
+        }),
+      );
+      return;
+    }
+    openVerificationCompleteSignatureModal();
+  }, [samplesForVerification, intl, openVerificationCompleteSignatureModal]);
+
+  // Reject modal Save: close modal then open REJECTED e-sig
+  const handleTriggerReject = useCallback(() => {
+    setRejectModalOpen(false);
+    openRejectSignatureModal();
+  }, [openRejectSignatureModal]);
+
   // Get status tag type
   const getStatusTagType = (status) => {
     switch (status) {
@@ -651,25 +837,30 @@ function ValidationReportingPage({
                 justifyContent: "flex-end",
               }}
             >
-              <Button
-                kind="primary"
-                size="md"
-                renderIcon={Checkmark}
-                onClick={handleMarkVerificationComplete}
-                disabled={completing || verified === 0}
+              <PermissionGate
+                roles={Permissions.VALIDATE_RESULTS}
+                disabledTooltip="You need validation permission to mark verification complete"
               >
-                {completing ? (
-                  <FormattedMessage
-                    id="medlab.validation.completing"
-                    defaultMessage="Completing..."
-                  />
-                ) : (
-                  <FormattedMessage
-                    id="medlab.validation.markComplete"
-                    defaultMessage="Mark Verification Complete"
-                  />
-                )}
-              </Button>
+                <Button
+                  kind="primary"
+                  size="md"
+                  renderIcon={Checkmark}
+                  onClick={handleTriggerMarkVerificationComplete}
+                  disabled={completing || verified === 0}
+                >
+                  {completing ? (
+                    <FormattedMessage
+                      id="medlab.validation.completing"
+                      defaultMessage="Completing..."
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="medlab.validation.markComplete"
+                      defaultMessage="Mark Verification Complete"
+                    />
+                  )}
+                </Button>
+              </PermissionGate>
             </div>
 
             {/* Loading */}
@@ -803,52 +994,73 @@ function ValidationReportingPage({
                                                     gap: "0.5rem",
                                                   }}
                                                 >
-                                                  <Button
-                                                    kind="primary"
-                                                    size="sm"
-                                                    renderIcon={Checkmark}
-                                                    onClick={() =>
-                                                      handleApproveResult(
-                                                        sample,
-                                                        test,
-                                                      )
+                                                  <PermissionGate
+                                                    roles={
+                                                      Permissions.VALIDATE_RESULTS
                                                     }
-                                                    disabled={verifying}
+                                                    disabledTooltip="You need validation permission to approve results"
                                                   >
-                                                    <FormattedMessage
-                                                      id="medlab.validation.approve"
-                                                      defaultMessage="Approve"
-                                                    />
-                                                  </Button>
-                                                  <Button
-                                                    kind="danger"
-                                                    size="sm"
-                                                    renderIcon={Close}
-                                                    onClick={() =>
-                                                      handleOpenRejectModal(
-                                                        sample,
-                                                        test,
-                                                      )
+                                                    <Button
+                                                      kind="primary"
+                                                      size="sm"
+                                                      renderIcon={Checkmark}
+                                                      onClick={() =>
+                                                        handleTriggerApprove(
+                                                          sample,
+                                                          test,
+                                                        )
+                                                      }
+                                                      disabled={verifying}
+                                                    >
+                                                      <FormattedMessage
+                                                        id="medlab.validation.approve"
+                                                        defaultMessage="Approve"
+                                                      />
+                                                    </Button>
+                                                  </PermissionGate>
+                                                  <PermissionGate
+                                                    roles={
+                                                      Permissions.VALIDATE_RESULTS
                                                     }
-                                                    disabled={verifying}
+                                                    disabledTooltip="You need validation permission to reject results"
                                                   >
-                                                    <FormattedMessage
-                                                      id="medlab.validation.reject"
-                                                      defaultMessage="Reject"
-                                                    />
-                                                  </Button>
-                                                  <Button
-                                                    kind="ghost"
-                                                    size="sm"
-                                                    renderIcon={Settings}
-                                                    onClick={() =>
-                                                      handleOpenRefRangeModal(
-                                                        test,
-                                                      )
+                                                    <Button
+                                                      kind="danger"
+                                                      size="sm"
+                                                      renderIcon={Close}
+                                                      onClick={() =>
+                                                        handleOpenRejectModal(
+                                                          sample,
+                                                          test,
+                                                        )
+                                                      }
+                                                      disabled={verifying}
+                                                    >
+                                                      <FormattedMessage
+                                                        id="medlab.validation.reject"
+                                                        defaultMessage="Reject"
+                                                      />
+                                                    </Button>
+                                                  </PermissionGate>
+                                                  <PermissionGate
+                                                    roles={
+                                                      Permissions.VALIDATE_RESULTS
                                                     }
-                                                    hasIconOnly
-                                                    iconDescription="Modify Reference Range"
-                                                  />
+                                                    disabledTooltip="You need validation permission to modify reference ranges"
+                                                  >
+                                                    <Button
+                                                      kind="ghost"
+                                                      size="sm"
+                                                      renderIcon={Settings}
+                                                      onClick={() =>
+                                                        handleOpenRefRangeModal(
+                                                          test,
+                                                        )
+                                                      }
+                                                      hasIconOnly
+                                                      iconDescription="Modify Reference Range"
+                                                    />
+                                                  </PermissionGate>
                                                 </div>
                                               ) : (
                                                 <Tag type="green" size="sm">
@@ -1355,12 +1567,7 @@ function ValidationReportingPage({
           id: "medlab.validation.rejectModal.title",
           defaultMessage: "Reject Result",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.validation.reject",
-          defaultMessage: "Reject",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitRejection}
+        passiveModal
         danger
         size="sm"
       >
@@ -1406,6 +1613,28 @@ function ValidationReportingPage({
             </Column>
           </Grid>
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setRejectModalOpen(false)}>
+            <FormattedMessage id="label.button.cancel" />
+          </Button>
+          <Button kind="danger" onClick={handleTriggerReject}>
+            <FormattedMessage
+              id="medlab.validation.reject"
+              defaultMessage="Reject"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Delivery Modal */}
@@ -1416,12 +1645,7 @@ function ValidationReportingPage({
           id: "medlab.reporting.deliverModal.title",
           defaultMessage: "Deliver Report",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "medlab.reporting.deliver",
-          defaultMessage: "Deliver",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitDelivery}
+        passiveModal
         size="sm"
       >
         {selectedSample && (
@@ -1484,6 +1708,35 @@ function ValidationReportingPage({
             )}
           </Grid>
         )}
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setDeliveryModalOpen(false)}>
+            <FormattedMessage id="label.button.cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerAuthoredEsigForSave(handleSubmitDelivery, () =>
+                setDeliveryModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="medlab.reporting.deliver"
+              defaultMessage="Deliver"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Reference Range Modal */}
@@ -1494,12 +1747,7 @@ function ValidationReportingPage({
           id: "medlab.validation.refRangeModal.title",
           defaultMessage: "Modify Reference Range",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "label.button.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
-        onRequestSubmit={handleSubmitRefRange}
+        passiveModal
         size="sm"
       >
         <Grid>
@@ -1555,7 +1803,39 @@ function ValidationReportingPage({
             />
           </Column>
         </Grid>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setRefRangeModalOpen(false)}>
+            <FormattedMessage id="label.button.cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerAuthoredEsigForSave(handleSubmitRefRange, () =>
+                setRefRangeModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage id="label.button.save" defaultMessage="Save" />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modals (rendered at page root so they survive tab switches) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...approveSignatureModalProps} />
+      <ESignatureModal {...verificationCompleteSignatureModalProps} />
+      <ESignatureModal {...rejectSignatureModalProps} />
     </div>
   );
 }

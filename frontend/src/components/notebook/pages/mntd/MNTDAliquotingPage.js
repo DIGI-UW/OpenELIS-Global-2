@@ -56,6 +56,13 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import AssayPlateCreator from "../../workflow/AssayPlateCreator";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDAliquotingPage - Page 5 of the MNTD workflow.
@@ -91,6 +98,9 @@ function MNTDAliquotingPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -637,6 +647,74 @@ function MNTDAliquotingPage({
     intl,
   ]);
 
+  // E-Signature Integration (21 CFR Part 11)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkMarkCompleted();
+    },
+    [handleBulkMarkCompleted],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.aliquoting.esig.authoredContext",
+      defaultMessage: "Sign aliquoting data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.aliquoting.esig.validationContext",
+        defaultMessage: "Validate and release {count} sample(s) as completed",
+      },
+      { count: selectedParentIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   // Handle QC during processing modal open
   const handleOpenQcModal = useCallback(() => {
     if (selectedChildIds.length === 0) {
@@ -961,18 +1039,23 @@ function MNTDAliquotingPage({
               </Button>
 
               {selectedParentIds.length > 0 && (
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={ArrowRight}
-                  onClick={handleBulkMarkCompleted}
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip="You need validation permission to mark samples as completed"
                 >
-                  <FormattedMessage
-                    id="notebook.mntd.aliquoting.markComplete"
-                    defaultMessage="Mark Aliquoting Complete ({count})"
-                    values={{ count: selectedParentIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={ArrowRight}
+                    onClick={openValidationSignatureModal}
+                  >
+                    <FormattedMessage
+                      id="notebook.mntd.aliquoting.markComplete"
+                      defaultMessage="Mark Aliquoting Complete ({count})"
+                      values={{ count: selectedParentIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
               )}
 
               <Button
@@ -1203,7 +1286,11 @@ function MNTDAliquotingPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setCreateModalOpen(false)}
-        onRequestSubmit={handleCreateAliquots}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleCreateAliquots, () =>
+            setCreateModalOpen(true),
+          )
+        }
         primaryButtonDisabled={creating}
         size="md"
       >
@@ -1787,7 +1874,11 @@ function MNTDAliquotingPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setRouteModalOpen(false)}
-        onRequestSubmit={handleRouteToAnalyzer}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleRouteToAnalyzer, () =>
+            setRouteModalOpen(true),
+          )
+        }
         primaryButtonDisabled={routing || !selectedAssayPlateId}
         size="lg"
       >
@@ -1839,7 +1930,11 @@ function MNTDAliquotingPage({
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setQcModalOpen(false)}
-        onRequestSubmit={handleProcessingQcSubmit}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleProcessingQcSubmit, () =>
+            setQcModalOpen(true),
+          )
+        }
         primaryButtonDisabled={qcProcessing || !processingQcResult}
         size="md"
       >
@@ -2003,6 +2098,12 @@ function MNTDAliquotingPage({
           </Grid>
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Data Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

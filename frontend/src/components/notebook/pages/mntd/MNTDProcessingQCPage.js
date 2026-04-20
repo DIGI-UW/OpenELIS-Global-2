@@ -40,6 +40,13 @@ import ReagentUsageSelector, {
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDProcessingQCPage - Page 6 of the MNTD workflow.
@@ -471,6 +478,57 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     intl,
   ]);
 
+  // E-Signature: AUTHORED hook for extraction data save
+  const handleSignAndSaveExtraction = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSaveExtractionData();
+    },
+    [handleSaveExtractionData],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.extraction.esig.authoredContext",
+      defaultMessage: "Sign extraction data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSaveExtraction,
+    onCancel: () => setShowExtractionModal(true),
+  });
+
+  // E-Signature: VALIDATED_AND_RELEASED hook for Mark Completed
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkMarkCompleted();
+    },
+    [handleBulkMarkCompleted],
+  );
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.extraction.esig.validationContext",
+        defaultMessage: "Validate and release {count} sample(s) as completed",
+      },
+      { count: selectedIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   // Get method label from ID
   const getMethodLabel = (methodId) => {
     const allMethods = [
@@ -640,18 +698,23 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         </Button>
 
         {selectedIds.length > 0 && (
-          <Button
-            kind="tertiary"
-            size="sm"
-            renderIcon={CheckmarkFilled}
-            onClick={handleBulkMarkCompleted}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark samples as completed"
           >
-            <FormattedMessage
-              id="notebook.mntd.extraction.markCompleted"
-              defaultMessage="Mark Completed ({count})"
-              values={{ count: selectedIds.length }}
-            />
-          </Button>
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={CheckmarkFilled}
+              onClick={openValidationSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.mntd.extraction.markCompleted"
+                defaultMessage="Mark Completed ({count})"
+                values={{ count: selectedIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
 
         <Button
@@ -719,7 +782,7 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
           defaultMessage: "Cancel",
         })}
         onRequestClose={() => setShowExtractionModal(false)}
-        onRequestSubmit={handleSaveExtractionData}
+        onRequestSubmit={openAuthoredSignatureModal}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -1002,6 +1065,12 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
           />
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Extraction Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation/Completion (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }
