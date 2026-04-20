@@ -9,7 +9,8 @@
 
 **Coordination artifacts**: complete (M0 validation tasks all checked in
 [tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity +
-`CommunicationMode`) is merged pending final review.
+`CommunicationMode`) is currently in review (not yet merged) per the canonical
+roadmap.
 
 **Still to do, in order:**
 

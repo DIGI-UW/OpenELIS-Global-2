@@ -28,7 +28,7 @@ the MVP is considered site-validated and the post-MVP slate is closed:
 
 - Record ASTM E2E demo video (GeneXpert flow)
 - Wondfo Finecare ASTM (OGC-345) — awaiting real ASTM capture
-- Add `communication` blocks on remaining ASTM/HL7 profiles (only 5 of 12)
+- Add `communication` blocks on remaining ASTM/HL7 profiles (5 of 13 done)
 
 **FILE track (014):**
 
