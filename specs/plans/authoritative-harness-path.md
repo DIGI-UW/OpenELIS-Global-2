@@ -34,7 +34,8 @@ todos:
       confirmed root-cause class before finalizing Phase 2 scope.
     status: pending
   - id: standardize-harness-scripts
-    content: Refactor reset and bootstrap harness tooling so local workflows are
+    content:
+      Refactor reset and bootstrap harness tooling so local workflows are
       wrappers or thin overlays on the authoritative CI base instead of a
       separate stack definition.
     status: pending
@@ -44,7 +45,8 @@ todos:
       and replace it with explicit hard failures and post-seed verification.
     status: pending
   - id: remediate-residual-tests
-    content: After harness parity and hardening are proven, fix any remaining
+    content:
+      After harness parity and hardening are proven, fix any remaining
       Playwright or product-level failures one at a time with the CI-parity
       runner as the regression gate.
     status: pending

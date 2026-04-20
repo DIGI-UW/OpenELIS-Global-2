@@ -35,7 +35,8 @@ todos:
       7-day retention for e2e-cache images.
     status: completed
   - id: extract-lane-d-publication
-    content: Extract publish-images into a separate publish-images.yml workflow
+    content:
+      Extract publish-images into a separate publish-images.yml workflow
       triggered by workflow_run on 03 - E2E filtered to push/release events.
       Create a publish environment with deployment branch restriction on develop
       for DockerHub credentials.
