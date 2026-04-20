@@ -2,6 +2,7 @@ package org.openelisglobal.biorepository.service;
 
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection.QCResult;
 import org.openelisglobal.common.service.BaseObjectService;
@@ -27,6 +28,15 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
      * @return the most recent inspection or null if none found
      */
     BiorepositoryQCInspection getMostRecentByBioSampleId(Integer bioSampleId);
+
+        /**
+         * Find the most recent QC inspections for multiple biosamples in a single
+         * call.
+         *
+         * @param bioSampleIds list of biosample IDs
+         * @return map keyed by biosample ID containing the latest inspection
+         */
+        Map<Integer, BiorepositoryQCInspection> getMostRecentByBioSampleIds(List<Integer> bioSampleIds);
 
     /**
      * Find all inspections by QC result.
@@ -89,7 +99,17 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
     BiorepositoryQCInspection createInspection(Integer bioSampleId, String inspectorName, Timestamp inspectionDate,
             boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
             boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
-            String correctiveAction, String remarks, String sysUserId);
+            String correctiveAction, String remarks, String qcBatchId, String expectedCoordinateSnapshot,
+            String sysUserId);
+
+    default BiorepositoryQCInspection createInspection(Integer bioSampleId, String inspectorName,
+            Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
+            boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
+            String correctiveAction, String remarks, String sysUserId) {
+        return createInspection(bioSampleId, inspectorName, inspectionDate, samplePresent, labelIntegrity,
+                containerIntegrity, volumeAppearanceAcceptable, correctPosition, discrepancyType, correctiveAction,
+                remarks, null, null, sysUserId);
+    }
 
     /**
      * Bulk create QC inspections for multiple biosamples.
@@ -111,5 +131,57 @@ public interface BiorepositoryQCInspectionService extends BaseObjectService<Bior
     List<BiorepositoryQCInspection> createBulkInspections(List<Integer> bioSampleIds, String inspectorName,
             Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
             boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
-            String correctiveAction, String remarks, String sysUserId);
+            String correctiveAction, String remarks, String qcBatchId, String expectedCoordinateSnapshot,
+            String sysUserId);
+
+    default List<BiorepositoryQCInspection> createBulkInspections(List<Integer> bioSampleIds, String inspectorName,
+            Timestamp inspectionDate, boolean samplePresent, boolean labelIntegrity, boolean containerIntegrity,
+            boolean volumeAppearanceAcceptable, boolean correctPosition, String discrepancyType,
+            String correctiveAction, String remarks, String sysUserId) {
+        return createBulkInspections(bioSampleIds, inspectorName, inspectionDate, samplePresent, labelIntegrity,
+                containerIntegrity, volumeAppearanceAcceptable, correctPosition, discrepancyType, correctiveAction,
+                remarks, null, null, sysUserId);
+    }
+
+    /**
+     * Generate a randomized QC round from currently stored samples.
+     *
+     * @param boxesPerRound number of boxes to sample
+     * @param samplesPerBox number of samples to sample per selected box
+     * @param randomSeed    optional seed for deterministic generation
+     * @param sysUserId     request user ID
+     * @return round metadata and selected samples
+     */
+    Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed, String sysUserId);
+
+        /**
+         * Generate a randomized QC round scoped by optional location filters.
+         *
+         * Supported filter keys: freezer, shelf, rack, box
+         */
+        default Map<String, Object> generateRandomQCRound(int boxesPerRound, int samplesPerBox, Long randomSeed,
+                        String sysUserId, Map<String, String> locationFilters) {
+                return generateRandomQCRound(boxesPerRound, samplesPerBox, randomSeed, sysUserId);
+        }
+
+        /**
+         * Build a storage location overview for QC planning UI.
+         *
+         * @return summary counts and location breakdowns by freezer/shelf/rack/box
+         */
+        Map<String, Object> getLocationOverview();
+
+    /**
+     * Record a corrective action for a failed QC inspection and keep an auditable
+     * trace of coordinate changes.
+     *
+     * @param inspectionId        target QC inspection ID
+     * @param observedCoordinate  observed coordinate during QC
+     * @param correctedCoordinate corrected coordinate saved in system
+     * @param correctiveReason    reason for correction
+     * @param sysUserId           user making the change
+     * @return operation summary
+     */
+    Map<String, Object> applyCorrectiveAction(Integer inspectionId, String observedCoordinate,
+            String correctedCoordinate, String correctiveReason, String sysUserId);
 }

@@ -126,8 +126,40 @@ const NoteBookInstanceEntryForm = () => {
   const [projectTags, setProjectTags] = useState([]); // Template tags (for display only)
   const [projectFiles, setProjectFiles] = useState([]); // Template files (for display only)
 
+  const isBiorepositoryNotebook = (notebook) => {
+    const workflowType = notebook?.workflowType;
+    if (
+      typeof workflowType === "string" &&
+      workflowType.toLowerCase() === "biorepository"
+    ) {
+      return true;
+    }
+
+    const typeName = notebook?.typeName;
+    if (
+      typeof typeName === "string" &&
+      typeName.toLowerCase().includes("biorepository")
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   const handleSubmit = () => {
     if (isSubmitting) {
+      return;
+    }
+    if (isBiorepositoryNotebook(noteBookData) && ["FINALIZED", "ARCHIVED"].includes(noteBookData.status)) {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({
+          id: "biorepository.notebook.status.restricted",
+          defaultMessage:
+            "Biorepository entries stay operational and cannot be finalized or archived.",
+        }),
+      });
       return;
     }
     setIsSubmitting(true);
@@ -518,6 +550,8 @@ const NoteBookInstanceEntryForm = () => {
                 // Override with latest template properties (for display)
                 title: templateData.title,
                 type: templateData.type,
+                typeName: templateData.typeName || data.typeName,
+                workflowType: templateData.workflowType || data.workflowType,
                 objective: templateData.objective,
                 protocol: templateData.protocol,
                 content: templateData.content,
@@ -597,6 +631,14 @@ const NoteBookInstanceEntryForm = () => {
   const getStatusColor = (status) => {
     return statusColors[status] || "gray";
   };
+
+  const isOperationalBiorepositoryNotebook = isBiorepositoryNotebook(noteBookData);
+
+  const editableStatuses = isOperationalBiorepositoryNotebook
+    ? statuses.filter(
+        (status) => !["FINALIZED", "ARCHIVED"].includes(status.id),
+      )
+    : statuses;
 
   return (
     <>
@@ -1163,7 +1205,7 @@ const NoteBookInstanceEntryForm = () => {
               )}
             {noteBookData?.isTemplate !== true &&
               noteBookData?.id &&
-              noteBookData?.title?.toLowerCase().includes("biorepository") && (
+              isBiorepositoryNotebook(noteBookData) && (
                 <BiorepositoryWorkflowTab notebookId={noteBookData.id} />
               )}
             {noteBookData?.isTemplate !== true &&
@@ -1197,7 +1239,7 @@ const NoteBookInstanceEntryForm = () => {
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("medical laboratory") &&
-              !noteBookData?.title?.toLowerCase().includes("biorepository") &&
+              !isBiorepositoryNotebook(noteBookData) &&
               !noteBookData?.title
                 ?.toLowerCase()
                 .includes("genomics & bioinformatics laboratory") &&
@@ -1577,9 +1619,9 @@ const NoteBookInstanceEntryForm = () => {
         <Column lg={16} md={8} sm={4}>
           <Grid fullWidth={true} className="gridBoundary">
             <Column lg={8} md={8} sm={4}>
-              <Select
-                id="status"
-                name="status"
+                <Select
+                  id="status"
+                  name="status"
                 labelText={intl.formatMessage({ id: "notebook.label.status" })}
                 value={noteBookData.status || ""}
                 onChange={(event) => {
@@ -1591,7 +1633,7 @@ const NoteBookInstanceEntryForm = () => {
                 disabled={isViewMode}
               >
                 <SelectItem />
-                {statuses.map((status, index) => {
+                {editableStatuses.map((status, index) => {
                   return (
                     <SelectItem
                       key={index}

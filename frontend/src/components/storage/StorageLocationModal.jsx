@@ -62,6 +62,7 @@ const StorageLocationModal = ({
     ipAddress: "",
     port: "",
     communicationProtocol: "BACnet",
+    biorepositoryStorage: false,
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,6 +105,7 @@ const StorageLocationModal = ({
           ipAddress: location.ipAddress || "",
           port: location.port || "",
           communicationProtocol: location.communicationProtocol || "BACnet",
+          biorepositoryStorage: location.biorepositoryStorage === true,
         });
       } else {
         // Create mode: initialize with defaults
@@ -122,6 +124,7 @@ const StorageLocationModal = ({
           ipAddress: "",
           port: "",
           communicationProtocol: "BACnet",
+          biorepositoryStorage: false,
         });
       }
       setErrors({});
@@ -338,6 +341,7 @@ const StorageLocationModal = ({
         payload.port = formData.port ? parseInt(formData.port, 10) : null;
         payload.communicationProtocol =
           formData.communicationProtocol?.trim() || "BACnet";
+        payload.biorepositoryStorage = formData.biorepositoryStorage === true;
         if (mode === "create" && selectedParentRoomId) {
           payload.parentRoomId = selectedParentRoomId;
         }
@@ -720,6 +724,17 @@ const StorageLocationModal = ({
                   defaultMessage:
                     "Protocol used for device communication (e.g., BACnet)",
                 })}
+              />
+              <Toggle
+                id="device-biorepository-storage"
+                labelText={intl.formatMessage({
+                  id: "storage.device.biorepositoryStorage",
+                  defaultMessage: "Biorepository storage",
+                })}
+                toggled={formData.biorepositoryStorage === true}
+                onToggle={(checked) =>
+                  handleFieldChange("biorepositoryStorage", checked)
+                }
               />
               <Toggle
                 id="device-active"

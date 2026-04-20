@@ -670,6 +670,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                             existingData.put("storagePath", hierarchicalPath);
                         }
 
+                        advanceStorageSampleStatus(nps);
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -802,6 +803,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         existingData.put("storageWell", wellCoordinate);
                         existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
                         existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+                        advanceStorageSampleStatus(nps);
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -1107,6 +1109,7 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
                         existingData.put("storageWell", wellCoordinate);
                         existingData.put("storageAssignmentId", assignmentResult.get("assignmentId"));
                         existingData.put("storagePath", assignmentResult.get("hierarchicalPath"));
+                        advanceStorageSampleStatus(nps);
                         nps.setData(existingData);
                         nps.setLastupdated(new Timestamp(System.currentTimeMillis()));
                         notebookPageSampleService.update(nps);
@@ -1146,6 +1149,12 @@ public class NotebookBulkOperationServiceImpl implements NotebookBulkOperationSe
         }
 
         return result;
+    }
+
+    private void advanceStorageSampleStatus(NotebookPageSample nps) {
+        if (nps != null && nps.getStatus() == NotebookPageSample.Status.PENDING) {
+            nps.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+        }
     }
 
     @Override

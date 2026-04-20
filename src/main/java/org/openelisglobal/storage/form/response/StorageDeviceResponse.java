@@ -10,6 +10,7 @@ public class StorageDeviceResponse {
     private BigDecimal temperatureSetting;
     private Integer capacityLimit;
     private Boolean active;
+    private Boolean biorepositoryStorage;
     private String fhirUuid;
     private String ipAddress;
     private Integer port;
@@ -73,6 +74,14 @@ public class StorageDeviceResponse {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getBiorepositoryStorage() {
+        return biorepositoryStorage;
+    }
+
+    public void setBiorepositoryStorage(Boolean biorepositoryStorage) {
+        this.biorepositoryStorage = biorepositoryStorage;
     }
 
     public String getFhirUuid() {

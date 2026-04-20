@@ -1,5 +1,8 @@
 package org.openelisglobal.storage.controller;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -9,7 +12,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -23,6 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MvcResult;
 
 /**
  * Controller integration tests for Storage Location CRUD endpoints.
@@ -145,6 +152,107 @@ public class StorageLocationRestControllerTest extends BaseWebContextSensitiveTe
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.ipAddress").value("192.168.1.100"))
                 .andExpect(jsonPath("$.port").value(502))
                 .andExpect(jsonPath("$.communicationProtocol").value("BACnet"));
+    }
+
+    @Test
+    public void testCreateDevice_WithBiorepositoryStorageFlag_Returns201WithFlag() throws Exception {
+        String deviceJson = "{" + "\"name\":\"Bio Freezer\"," + "\"code\":\"BIO-FRZ-01\"," + "\"type\":\"freezer\","
+                + "\"parentRoomId\":20005," + "\"biorepositoryStorage\":true" + "}";
+
+        this.mockMvc
+                .perform(post("/rest/storage/devices").contentType(MediaType.APPLICATION_JSON).content(deviceJson)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.biorepositoryStorage").value(true));
+    }
+
+    @Test
+    public void testGetRooms_WithBiorepositoryOnly_ReturnsOnlyBiorepositoryRooms() throws Exception {
+        // Mark one room as biorepository-enabled by flagging one of its devices
+        jdbcTemplate.execute("UPDATE clinlims.storage_device SET biorepository_storage = true WHERE id = 20001");
+
+        MvcResult mvcResult = this.mockMvc
+                .perform(get("/rest/storage/rooms?biorepositoryOnly=true").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> rooms = readMapList(mvcResult.getResponse().getContentAsString());
+        assertFalse("Expected at least one biorepository room", rooms.isEmpty());
+        assertTrue("All returned rooms must have biorepository devices",
+                rooms.stream().allMatch(room -> Boolean.TRUE.equals(room.get("hasBiorepositoryDevices"))));
+    }
+
+    @Test
+    public void testGetDevices_WithBiorepositoryOnly_ReturnsOnlyBiorepositoryDevices() throws Exception {
+        jdbcTemplate.execute("UPDATE clinlims.storage_device SET biorepository_storage = true WHERE id = 20001");
+
+        MvcResult mvcResult = this.mockMvc
+                .perform(get("/rest/storage/devices?biorepositoryOnly=true").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> devices = readMapList(mvcResult.getResponse().getContentAsString());
+        assertFalse("Expected at least one biorepository device", devices.isEmpty());
+        assertTrue("All returned devices must be biorepository storage",
+                devices.stream().allMatch(device -> Boolean.TRUE.equals(device.get("biorepositoryStorage"))));
+    }
+
+    @Test
+    public void testGetShelvesAndRacks_WithBiorepositoryOnly_ReturnsOnlyBiorepositoryHierarchy() throws Exception {
+        // Shelf 20001 and rack 20000 belong to device 20003
+        jdbcTemplate.execute("UPDATE clinlims.storage_device SET biorepository_storage = true WHERE id = 20003");
+
+        MvcResult shelvesResult = this.mockMvc
+                .perform(get("/rest/storage/shelves?biorepositoryOnly=true").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> shelves = readMapList(shelvesResult.getResponse().getContentAsString());
+        assertFalse("Expected at least one biorepository shelf", shelves.isEmpty());
+        assertTrue("All returned shelves must inherit biorepository storage flag",
+                shelves.stream().allMatch(shelf -> Boolean.TRUE.equals(shelf.get("biorepositoryStorage"))));
+
+        MvcResult racksResult = this.mockMvc
+                .perform(get("/rest/storage/racks?biorepositoryOnly=true").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> racks = readMapList(racksResult.getResponse().getContentAsString());
+        assertFalse("Expected at least one biorepository rack", racks.isEmpty());
+        assertTrue("All returned racks must inherit biorepository storage flag",
+                racks.stream().allMatch(rack -> Boolean.TRUE.equals(rack.get("biorepositoryStorage"))));
+    }
+
+    @Test
+    public void testGetBoxes_WithBiorepositoryOnly_ReturnsOnlyBoxesUnderBiorepositoryDevices() throws Exception {
+        // Rack 20000 -> Shelf 20001 -> Device 20003
+        jdbcTemplate.execute("UPDATE clinlims.storage_device SET biorepository_storage = true WHERE id = 20003");
+        jdbcTemplate.execute("INSERT INTO clinlims.storage_box (id, label, code, type, rows, columns, parent_rack_id, active, fhir_uuid, sys_user_id, last_updated) "
+                + "VALUES (20999, 'Bio Box', 'BIO-BOX-1', 'plate', 8, 12, 20000, true, '40000000-0000-0000-0000-000000020999', '1', CURRENT_TIMESTAMP)");
+
+        MvcResult mvcResult = this.mockMvc
+                .perform(get("/rest/storage/boxes?biorepositoryOnly=true").contentType(MediaType.APPLICATION_JSON)
+                        .sessionAttr("userSessionData", usd))
+                .andExpect(status().isOk()).andReturn();
+
+        List<Map<String, Object>> boxes = readMapList(mvcResult.getResponse().getContentAsString());
+        assertFalse("Expected at least one biorepository box", boxes.isEmpty());
+        assertTrue("All returned boxes must belong to the flagged biorepository device",
+                boxes.stream().allMatch(box -> Integer.valueOf(20003).equals(asInteger(box.get("parentDeviceId")))));
+    }
+
+    private List<Map<String, Object>> readMapList(String json) throws Exception {
+        return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {
+        });
+    }
+
+    private Integer asInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        return Integer.valueOf(String.valueOf(value));
     }
 
     @Test

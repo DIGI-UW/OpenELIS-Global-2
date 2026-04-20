@@ -30,6 +30,8 @@ public class StorageDeviceForm {
 
     private Boolean active = true;
 
+    private Boolean biorepositoryStorage = false;
+
     // Note: parentRoomId is required for creation but optional for updates
     // (parent cannot be changed after creation, backend ignores this field on PUT)
     private String parentRoomId;
@@ -100,6 +102,14 @@ public class StorageDeviceForm {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getBiorepositoryStorage() {
+        return biorepositoryStorage;
+    }
+
+    public void setBiorepositoryStorage(Boolean biorepositoryStorage) {
+        this.biorepositoryStorage = biorepositoryStorage;
     }
 
     public String getParentRoomId() {
