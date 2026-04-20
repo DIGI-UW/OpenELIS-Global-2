@@ -199,14 +199,19 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
                 // Check if this is a routing page or storage page
                 boolean isRoutingPage = noteBookService.isRoutingPage(pageId);
                 boolean isStoragePage = noteBookService.isStoragePage(pageId);
+                boolean shouldSkipStoragePageToArchiving = isStoragePage
+                        && nextPage != null
+                        && nextPage.getTitle() != null
+                        && nextPage.getTitle().toLowerCase().contains("report");
                 LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus", "T150: pageId=" + pageId
-                        + " isRoutingPage=" + isRoutingPage + " isStoragePage=" + isStoragePage);
+                        + " isRoutingPage=" + isRoutingPage + " isStoragePage=" + isStoragePage
+                        + " shouldSkipStoragePageToArchiving=" + shouldSkipStoragePageToArchiving);
                 NoteBookPage archivingPage = null;
                 Integer notebookId = null;
 
                 // For both routing pages and storage pages, we need the archiving page
                 // Always ensure page is loaded for routing/storage pages
-                if (isRoutingPage || isStoragePage) {
+                if (isRoutingPage || shouldSkipStoragePageToArchiving) {
                     if (page == null) {
                         page = noteBookService.getPage(pageId);
                     }
@@ -255,7 +260,7 @@ public class NotebookPageSampleServiceImpl extends AuditableBaseObjectServiceImp
 
                     // For storage pages, always skip to archiving page (Disposal & Archiving)
                     // Storage samples skip the Reporting page
-                    if (isStoragePage && archivingPage != null) {
+                    if (shouldSkipStoragePageToArchiving && archivingPage != null) {
                         targetPage = archivingPage;
                         LogEvent.logInfo(this.getClass().getName(), "bulkUpdateStatus",
                                 "Sample " + sampleId + " on storage page, skipping to archiving page");

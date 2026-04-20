@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useContext,
+} from "react";
 import {
   Grid,
   Column,
@@ -38,6 +45,13 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -76,6 +90,8 @@ function ImmunologyAdditionalAssaysPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   const [samples, setSamples] = useState([]);
   const [selectedSampleIds, setSelectedSampleIds] = useState([]);
@@ -110,6 +126,7 @@ function ImmunologyAdditionalAssaysPage({
 
     // Reagent & Instrument Selection (from inventory)
     selectedReagents: [],
+    reagentQuantities: {},
     selectedEquipment: [],
 
     // Timing
@@ -205,6 +222,21 @@ function ImmunologyAdditionalAssaysPage({
       },
     ],
     [intl],
+  );
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
   );
 
   // Load reagents from inventory
@@ -337,6 +369,7 @@ function ImmunologyAdditionalAssaysPage({
       operatorName: "",
       operatorInitials: "",
       selectedReagents: [],
+      reagentQuantities: {},
       selectedEquipment: [],
       assayStartTime: "",
       assayEndTime: "",
@@ -439,7 +472,29 @@ function ImmunologyAdditionalAssaysPage({
       return;
     }
 
+    const selectedReagentItems = reagents.filter((reagent) =>
+      assayValues.selectedReagents.includes(reagent.id),
+    );
+    if (reagents.length > 0 && selectedReagentItems.length === 0) {
+      notifyError("Select at least one reagent before applying assay data.");
+      return;
+    }
+    const invalidReagentItems = getInvalidReagentUsageItems(
+      selectedReagentItems,
+      assayValues.reagentQuantities,
+    );
+    if (invalidReagentItems.length > 0) {
+      notifyError("Enter a quantity greater than 0 for each selected reagent.");
+      return;
+    }
+
     const data = buildAssayData();
+    if (assayValues.selectedReagents.length > 0) {
+      data.selectedReagentUsages = buildSelectedReagentUsages(
+        selectedReagentItems,
+        assayValues.reagentQuantities,
+      );
+    }
 
     if (Object.keys(data).length === 0) {
       setError(
@@ -1396,8 +1451,12 @@ function ImmunologyAdditionalAssaysPage({
             >
               <Grid narrow>
                 <Column lg={8} md={4} sm={4}>
-                  <MultiSelect
-                    id="selectedReagents"
+                  <ReagentUsageSelector
+                    reagents={reagents}
+                    selectedIds={assayValues.selectedReagents}
+                    reagentQuantities={assayValues.reagentQuantities}
+                    sampleCount={selectedSampleIds.length}
+                    disabled={loadingReagents}
                     titleText={intl.formatMessage({
                       id: "notebook.immunology.reagents",
                       defaultMessage: "Reagents Used",
@@ -1406,18 +1465,25 @@ function ImmunologyAdditionalAssaysPage({
                       id: "notebook.immunology.reagents.placeholder",
                       defaultMessage: "Select reagents...",
                     })}
-                    items={reagents}
-                    itemToString={(item) => (item ? item.label : "")}
-                    selectedItems={reagents.filter((r) =>
-                      assayValues.selectedReagents.includes(r.id),
-                    )}
-                    onChange={({ selectedItems }) =>
+                    onSelectionChange={(selectedItems) =>
                       setAssayValues((prev) => ({
                         ...prev,
-                        selectedReagents: selectedItems.map((r) => r.id),
+                        selectedReagents: selectedItems.map((reagent) => reagent.id),
+                        reagentQuantities: syncReagentUsageQuantities(
+                          selectedItems,
+                          prev.reagentQuantities,
+                        ),
                       }))
                     }
-                    disabled={loadingReagents}
+                    onQuantityChange={(reagentId, value) =>
+                      setAssayValues((prev) => ({
+                        ...prev,
+                        reagentQuantities: {
+                          ...prev.reagentQuantities,
+                          [reagentId]: value,
+                        },
+                      }))
+                    }
                   />
                 </Column>
                 <Column lg={8} md={4} sm={4}>

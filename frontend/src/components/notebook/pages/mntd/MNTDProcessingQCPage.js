@@ -4,6 +4,7 @@ import React, {
   useRef,
   useCallback,
   useMemo,
+  useContext,
 } from "react";
 import {
   Grid,
@@ -31,6 +32,13 @@ import {
   postToOpenElisServer,
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
+import ReagentUsageSelector, {
+  buildSelectedReagentUsages,
+  getInvalidReagentUsageItems,
+  syncReagentUsageQuantities,
+} from "../../workflow/ReagentUsageSelector";
+import { NotificationContext } from "../../../layout/Layout";
+import { NotificationKinds } from "../../../common/CustomNotification";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -105,6 +113,8 @@ const VECTOR_AUTO_METHODS = [
 function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { addNotification, setNotificationVisible } =
+    useContext(NotificationContext);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -122,6 +132,7 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     extractionMethod: "",
     otherMethodDescription: "",
     selectedKits: [], // Array of selected kit IDs for multiselect
+    kitQuantities: {},
     yield: "",
     yieldUnit: "ng/uL",
     extractionDate: new Date().toISOString().split("T")[0],
@@ -146,6 +157,21 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
         : VECTOR_AUTO_METHODS;
     }
   }, [extractionData.sampleType, extractionData.extractionType]);
+
+  const notifyError = useCallback(
+    (message) => {
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({
+          id: "notification.error",
+          defaultMessage: "Error",
+        }),
+        message,
+      });
+      setNotificationVisible(true);
+    },
+    [addNotification, intl, setNotificationVisible],
+  );
 
   // Load reagents from inventory (used for kit lot number selection)
   const loadReagents = useCallback(() => {
@@ -260,6 +286,7 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
       extractionMethod: "",
       otherMethodDescription: "",
       selectedKits: [],
+      kitQuantities: {},
       yield: "",
       yieldUnit: "ng/uL",
       extractionDate: new Date().toISOString().split("T")[0],
@@ -294,6 +321,18 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
     const selectedKitObjects = reagents.filter((r) =>
       extractionData.selectedKits.includes(r.id),
     );
+    if (reagents.length > 0 && selectedKitObjects.length === 0) {
+      notifyError("Select at least one extraction kit before saving.");
+      return;
+    }
+    const invalidKitItems = getInvalidReagentUsageItems(
+      selectedKitObjects,
+      extractionData.kitQuantities,
+    );
+    if (invalidKitItems.length > 0) {
+      notifyError("Enter a quantity greater than 0 for each selected extraction kit.");
+      return;
+    }
 
     // Build kit lot numbers string from selected kits
     const kitLotNumbers = selectedKitObjects
@@ -321,6 +360,10 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
       extractionNotes: extractionData.notes,
       // Include selectedReagents for automatic inventory consumption
       selectedReagents: selectedReagents,
+      selectedReagentUsages: buildSelectedReagentUsages(
+        selectedKitObjects,
+        extractionData.kitQuantities,
+      ),
     };
 
     postToOpenElisServer(
@@ -817,8 +860,12 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
               style={{ marginBottom: "1rem" }}
             />
           ) : (
-            <MultiSelect
-              id="kit-lot-number"
+            <ReagentUsageSelector
+              reagents={reagents}
+              selectedIds={extractionData.selectedKits}
+              reagentQuantities={extractionData.kitQuantities}
+              sampleCount={selectedIds.length}
+              disabled={loadingReagents}
               titleText={intl.formatMessage({
                 id: "notebook.mntd.extraction.kitLotNumber",
                 defaultMessage: "Kit Lot Number",
@@ -827,18 +874,25 @@ function MNTDProcessingQCPage({ entryId, pageData, onProgressUpdate }) {
                 id: "notebook.mntd.extraction.selectKits",
                 defaultMessage: "Select extraction kits...",
               })}
-              items={reagents}
-              itemToString={(item) => (item ? item.label : "")}
-              selectedItems={reagents.filter((r) =>
-                extractionData.selectedKits.includes(r.id),
-              )}
-              onChange={({ selectedItems }) =>
-                setExtractionData({
-                  ...extractionData,
+              onSelectionChange={(selectedItems) =>
+                setExtractionData((prev) => ({
+                  ...prev,
                   selectedKits: selectedItems.map((item) => item.id),
-                })
+                  kitQuantities: syncReagentUsageQuantities(
+                    selectedItems,
+                    prev.kitQuantities,
+                  ),
+                }))
               }
-              disabled={loadingReagents}
+              onQuantityChange={(reagentId, value) =>
+                setExtractionData((prev) => ({
+                  ...prev,
+                  kitQuantities: {
+                    ...prev.kitQuantities,
+                    [reagentId]: value,
+                  },
+                }))
+              }
             />
           )}
 

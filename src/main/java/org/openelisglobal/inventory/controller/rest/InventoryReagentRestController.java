@@ -59,6 +59,9 @@ public class InventoryReagentRestController extends BaseRestController {
             // For each reagent item, get available lots and aggregate info
             for (InventoryItem item : reagentItems) {
                 List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
+                if ("active".equalsIgnoreCase(status) && lots.isEmpty()) {
+                    continue;
+                }
 
                 ReagentDTO dto = new ReagentDTO();
                 dto.setId(String.valueOf(item.getId()));
@@ -68,6 +71,7 @@ public class InventoryReagentRestController extends BaseRestController {
                 dto.setManufacturer(item.getManufacturer());
                 dto.setCategory(item.getCategory());
                 dto.setStorageRequirements(item.getStorageRequirements());
+                dto.setUnits(item.getUnits());
 
                 if (!lots.isEmpty()) {
                     // Use the first lot (FEFO - earliest expiring) for display
@@ -121,6 +125,9 @@ public class InventoryReagentRestController extends BaseRestController {
             // For each cartridge item, get available lots and aggregate info
             for (InventoryItem item : cartridgeItems) {
                 List<InventoryLot> lots = inventoryLotService.getAvailableLotsByItemFEFO(item.getId());
+                if ("active".equalsIgnoreCase(status) && lots.isEmpty()) {
+                    continue;
+                }
 
                 InstrumentDTO dto = new InstrumentDTO();
                 dto.setId(String.valueOf(item.getId()));
@@ -173,6 +180,7 @@ public class InventoryReagentRestController extends BaseRestController {
         private String manufacturer;
         private String category;
         private String storageRequirements;
+        private String units;
         private String lotNumber;
         private String expirationDate;
         private Double currentQuantity;
