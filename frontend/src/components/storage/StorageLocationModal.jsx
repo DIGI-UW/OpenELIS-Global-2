@@ -782,12 +782,12 @@ const StorageLocationModal = ({
                   id="shelf-storage-type"
                   data-testid="shelf-storage-type-dropdown"
                   titleText={intl.formatMessage({
-                    id: "storage.location.type",
-                    defaultMessage: "Location Type",
+                    id: "storage.shelf.label.type",
+                    defaultMessage: "Label Type (labeling only)",
                   })}
                   label={intl.formatMessage({
-                    id: "storage.location.type.select",
-                    defaultMessage: "Select type",
+                    id: "storage.shelf.label.type.select",
+                    defaultMessage: "Select label type",
                   })}
                   items={storageLevel3TypeOptions}
                   selectedItem={selectedStorageLevel3Option || null}

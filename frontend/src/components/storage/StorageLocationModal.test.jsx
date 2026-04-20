@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -91,7 +91,7 @@ describe("StorageLocationModal", () => {
     await screen.findByLabelText(/communication protocol/i);
   });
 
-  test("testStorageLocationModal_ShelfCreateMode_AllowsSelectingStorageType", async () => {
+  test("testStorageLocationModal_ShelfCreateMode_CompartmentSelectionUpdatesTitleAndLabel", async () => {
     Utils.getFromOpenElisServerV2.mockResolvedValue([
       {
         id: "11",
@@ -111,8 +111,20 @@ describe("StorageLocationModal", () => {
     );
 
     await screen.findByTestId("storage-location-modal");
-    await screen.findByTestId("shelf-storage-type-dropdown");
+
+    await screen.findByText(/add shelf/i);
     await screen.findByLabelText(/shelf label/i);
+
+    const storageTypeDropdown = await screen.findByTestId(
+      "shelf-storage-type-dropdown",
+    );
+    const dropdownButton = within(storageTypeDropdown).getByRole("button");
+
+    await userEvent.click(dropdownButton);
+    await userEvent.click(await screen.findByText(/^compartment$/i));
+
+    await screen.findByText(/add compartment/i);
+    await screen.findByLabelText(/compartment label/i);
   });
 
   /**
