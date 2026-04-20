@@ -61,6 +61,12 @@
   "configDefaults": {
     "fileFormat": "CSV",
     "delimiter": ",",
-    "hasHeader": true
+    "hasHeader": true,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CNEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "CPOS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NTC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PTC", "isActive": true, "sortOrder": 4 }
+    ]
   }
 }

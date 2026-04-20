@@ -3,12 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { BrowserRouter } from "react-router-dom";
+import { MemoryRouter, Route } from "react-router-dom";
 import AnalyzerForm from "../AnalyzerForm";
 import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
 
 jest.mock("../../../../services/analyzerService", () => ({
+  getAnalyzer: jest.fn(),
   getDefaultConfigs: jest.fn(),
   getDefaultConfig: jest.fn(),
   getAnalyzerTypes: jest.fn(),
@@ -16,13 +17,30 @@ jest.mock("../../../../services/analyzerService", () => ({
   updateAnalyzer: jest.fn(),
 }));
 
-const renderWithIntl = (component) => {
+// Render the page-based AnalyzerForm under a MemoryRouter with a route that
+// carries the edit `:id` param. The component reads the id via useParams()
+// and calls getAnalyzer(id, cb) on mount — tests mock that service.
+const renderAtEditRoute = (analyzerId) => {
   return render(
-    <BrowserRouter>
+    <MemoryRouter initialEntries={[`/analyzers/${analyzerId}/edit`]}>
       <IntlProvider locale="en" messages={messages}>
-        {component}
+        <Route path="/analyzers/:id/edit">
+          <AnalyzerForm />
+        </Route>
       </IntlProvider>
-    </BrowserRouter>,
+    </MemoryRouter>,
+  );
+};
+
+const renderNewRoute = () => {
+  return render(
+    <MemoryRouter initialEntries={["/analyzers/new"]}>
+      <IntlProvider locale="en" messages={messages}>
+        <Route path="/analyzers/new">
+          <AnalyzerForm />
+        </Route>
+      </IntlProvider>
+    </MemoryRouter>,
   );
 };
 
@@ -66,6 +84,9 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
     analyzerService.createAnalyzer.mockImplementation((data, callback) => {
       callback({ id: "NEW-ID", ...data });
     });
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback({ error: "not configured for this test" });
+    });
   });
 
   afterEach(() => {
@@ -73,7 +94,6 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
   });
 
   test("hides connection fields and protocol version when FILE plugin is selected", async () => {
-    // Pass analyzer with pluginTypeId="3" (Generic File) to pre-select FILE
     const fileAnalyzer = {
       id: "test-1",
       name: "Test FILE Analyzer",
@@ -81,10 +101,11 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
       pluginTypeId: "3",
       status: "SETUP",
     };
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback(fileAnalyzer);
+    });
 
-    renderWithIntl(
-      <AnalyzerForm analyzer={fileAnalyzer} open={true} onClose={jest.fn()} />,
-    );
+    renderAtEditRoute("test-1");
 
     await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
 
@@ -116,10 +137,11 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
       pluginTypeId: "3",
       status: "SETUP",
     };
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback(fileAnalyzer);
+    });
 
-    renderWithIntl(
-      <AnalyzerForm analyzer={fileAnalyzer} open={true} onClose={jest.fn()} />,
-    );
+    renderAtEditRoute("test-2");
 
     await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
 
@@ -150,10 +172,11 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
       port: "9600",
       status: "SETUP",
     };
+    analyzerService.getAnalyzer.mockImplementation((id, callback) => {
+      callback(astmAnalyzer);
+    });
 
-    renderWithIntl(
-      <AnalyzerForm analyzer={astmAnalyzer} open={true} onClose={jest.fn()} />,
-    );
+    renderAtEditRoute("test-3");
 
     await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
 
@@ -181,7 +204,7 @@ describe("AnalyzerForm - FILE Protocol Behavior", () => {
   });
 
   test("plugin types are sorted with generic plugins first", async () => {
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderNewRoute();
 
     await screen.findByTestId("analyzer-form", {}, { timeout: 2000 });
 

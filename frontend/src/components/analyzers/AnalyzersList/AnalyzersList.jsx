@@ -23,9 +23,10 @@ import { Add } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { getAnalyzers } from "../../../services/analyzerService";
-import AnalyzerForm from "../AnalyzerForm/AnalyzerForm";
+// AnalyzerForm is now a routed page at /analyzers/new and /analyzers/:id/edit
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
 import DeleteAnalyzerModal from "../DeleteAnalyzerModal/DeleteAnalyzerModal";
+// QcRuleBuilderModal is now a routed page at /analyzers/:id/qc-rules
 import CopyMappingsModal from "../FieldMapping/CopyMappingsModal";
 
 import PageTitle from "../../common/PageTitle/PageTitle";
@@ -51,8 +52,6 @@ const AnalyzersList = () => {
     inactive: 0,
     pluginWarnings: 0,
   });
-  const [analyzerFormOpen, setAnalyzerFormOpen] = useState(false);
-  const [selectedAnalyzer, setSelectedAnalyzer] = useState(null);
   const [testConnectionModal, setTestConnectionModal] = useState({
     open: false,
     analyzer: null,
@@ -266,10 +265,7 @@ const AnalyzersList = () => {
           kind="primary"
           renderIcon={Add}
           data-testid="add-analyzer-button"
-          onClick={() => {
-            setSelectedAnalyzer(null);
-            setAnalyzerFormOpen(true);
-          }}
+          onClick={() => history.push("/analyzers/new")}
         >
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
@@ -585,11 +581,23 @@ const AnalyzersList = () => {
                                     itemText={intl.formatMessage({
                                       id: "analyzer.action.edit",
                                     })}
-                                    onClick={() => {
-                                      setSelectedAnalyzer(analyzer);
-                                      setAnalyzerFormOpen(true);
-                                    }}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/${analyzer.id}/edit`,
+                                      )
+                                    }
                                     data-testid={`analyzer-action-edit-${row.id}`}
+                                  />
+                                  <OverflowMenuItem
+                                    itemText={intl.formatMessage({
+                                      id: "analyzer.action.qcRules",
+                                    })}
+                                    onClick={() =>
+                                      history.push(
+                                        `/analyzers/${analyzer.id}/qc-rules`,
+                                      )
+                                    }
+                                    data-testid={`analyzer-action-qc-rules-${row.id}`}
                                   />
                                   <OverflowMenuItem
                                     itemText={intl.formatMessage({
@@ -624,29 +632,6 @@ const AnalyzersList = () => {
           </TableContainer>
         </Column>
       </Grid>
-
-      {analyzerFormOpen && (
-        <AnalyzerForm
-          analyzer={selectedAnalyzer}
-          open={analyzerFormOpen}
-          onClose={(result) => {
-            // Capture the edited analyzer's name before clearing state —
-            // the banner references it so users know what just saved.
-            const editedName = selectedAnalyzer?.name;
-            setAnalyzerFormOpen(false);
-            setSelectedAnalyzer(null);
-            loadAnalyzers(); // Reload list after form closes
-            if (result === "saved") {
-              setListNotification({
-                kind: "success",
-                title: intl.formatMessage({ id: "analyzer.success.save" }),
-                subtitle: editedName,
-              });
-              setTimeout(() => setListNotification(null), 5000);
-            }
-          }}
-        />
-      )}
 
       {testConnectionModal.open && (
         <TestConnectionModal

@@ -245,9 +245,10 @@ describe("AnalyzersList", () => {
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup API mocks
    * 2. Act: Click "Add Analyzer" button
-   * 3. Assert: Verify modal opens with form
+   * 3. Assert: Verify navigation to /analyzers/new (AnalyzerForm is now a
+   *    routed page, not an inline modal)
    */
-  test("testOpenAddAnalyzerModal_ShowsForm", async () => {
+  test("testClickAddAnalyzer_NavigatesToNewForm", async () => {
     // Arrange: Setup API mocks
     getAnalyzers.mockImplementation((filters, callback) => {
       act(() => {
@@ -269,14 +270,8 @@ describe("AnalyzersList", () => {
     const addButton = screen.getByTestId("add-analyzer-button");
     await userEvent.click(addButton);
 
-    // Assert: Wait for modal to open (AnalyzerForm should have data-testid)
-    await waitFor(
-      () => {
-        // AnalyzerForm should render with data-testid="analyzer-form"
-        expect(screen.queryByTestId("analyzer-form")).not.toBeNull();
-      },
-      { timeout: 2000 },
-    );
+    // Assert: navigation occurred to the new-analyzer route
+    expect(mockHistory.push).toHaveBeenCalledWith("/analyzers/new");
   });
 
   /**

@@ -343,11 +343,18 @@ if [ "$CLEAN" = true ]; then
   echo ""
 fi
 
-# Create dynamic networks for TCP analyzers
+# Create dynamic networks for TCP analyzers.
+# Wait 2s between calls: the mock server attaches itself to each new Docker
+# network asynchronously (api.py:511-515). During that attach, the container's
+# network stack is briefly disrupted, which drops the next HTTP connection
+# (curl exit 52). The sleep lets the async attach complete before the next POST.
 echo "Creating dynamic mock networks..."
 GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
+sleep 2
 BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
+sleep 2
 BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
+sleep 2
 BS300_IP=$(create_mock_network "bs300" "mindray_bs300" 6002)
 echo ""
 

@@ -155,6 +155,7 @@ public class SampleStorageRestController extends BaseRestController {
                 int fromIndex = Math.min(page * size, total);
                 int toIndex = Math.min(fromIndex + size, total);
                 List<Map<String, Object>> pageContent = filtered.subList(fromIndex, toIndex);
+                pageContent.forEach(this::normalizeStatusForResponse);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("items", pageContent);
@@ -175,6 +176,7 @@ public class SampleStorageRestController extends BaseRestController {
                 int fromIndex = Math.min(page * size, total);
                 int toIndex = Math.min(fromIndex + size, total);
                 List<Map<String, Object>> pageContent = all.subList(fromIndex, toIndex);
+                pageContent.forEach(this::normalizeStatusForResponse);
 
                 Map<String, Object> response = new HashMap<>();
                 response.put("items", pageContent);
@@ -191,6 +193,29 @@ public class SampleStorageRestController extends BaseRestController {
         } catch (Exception e) {
             logger.error("Error getting SampleItems", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Translate the internal raw-statusId {@code status} field on a sample map to
+     * the spec-compliant enum string before serializing to the client. Spec
+     * contract: specs/001-sample-storage/contracts/storage-api.json:862,885 —
+     * {@code "status": { "enum": ["active", "disposed"] }}. Filter logic in
+     * StorageDashboardServiceImpl still consumes the raw ID via
+     * {@code statusService.matches}; this translation happens only at the response
+     * boundary.
+     */
+    private void normalizeStatusForResponse(Map<String, Object> sample) {
+        Object raw = sample.get("status");
+        if (!(raw instanceof String) || ((String) raw).isEmpty()) {
+            sample.put("status", "active");
+            return;
+        }
+        String statusId = (String) raw;
+        if (statusService.matches(statusId, SampleStatus.Disposed)) {
+            sample.put("status", "disposed");
+        } else {
+            sample.put("status", "active");
         }
     }
 

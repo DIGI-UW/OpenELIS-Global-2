@@ -4,9 +4,12 @@ import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -21,6 +24,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.Specimen;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.Analyzer.AnalyzerStatus;
 import org.openelisglobal.analyzerimport.util.AnalyzerTestNameCache;
@@ -79,6 +83,9 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
 
     private static final String[] PROFILE_PROTOCOL_DIRS = { "astm", "hl7", "file" };
     private static final int MIN_PROFILE_MATCH_SCORE = 2;
+
+    @Autowired
+    private QCResultProcessingService qcResultProcessingService;
 
     @PostMapping(value = "/analyzer/fhir", consumes = { "application/fhir+json", MediaType.APPLICATION_JSON_VALUE,
             MediaType.ALL_VALUE })
@@ -208,11 +215,21 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             }
             analyzerResultsService.insertAnalyzerResults(results, userId);
 
+            // Process QC results through Westgard pipeline
+            int qcProcessed = 0;
+            for (AnalyzerResults ar : results) {
+                if (ar.getIsControl() && ar.getTestId() != null && analyzer != null) {
+                    processQCAnalyzerResult(ar, analyzer);
+                    qcProcessed++;
+                }
+            }
+
             response.put("success", true);
             response.put("resultsInserted", results.size());
+            response.put("qcResultsProcessed", qcProcessed);
             response.put("analyzerId", analyzer != null ? analyzer.getId() : null);
             LogEvent.logInfo(CLASS_NAME, "importFhirBundle", "Inserted " + results.size() + " results from FHIR Bundle"
-                    + (analyzer != null ? " for analyzer " + analyzer.getName() : ""));
+                    + " (" + qcProcessed + " QC)" + (analyzer != null ? " for analyzer " + analyzer.getName() : ""));
 
             return ResponseEntity.ok(response);
 
@@ -609,5 +626,32 @@ public class AnalyzerFhirImportController extends org.openelisglobal.common.rest
             e = e.getCause();
         }
         return false;
+    }
+
+    /**
+     * Route a QC-flagged AnalyzerResult to the Westgard QC pipeline.
+     *
+     * <p>
+     * The accession number for QC samples is typically the control lot number or
+     * control ID assigned by the lab. The QCResultProcessingService looks up the
+     * matching {@code QCControlLot} by lot number + test + instrument and creates a
+     * {@code QCResult} that triggers Westgard rule evaluation.
+     */
+    private void processQCAnalyzerResult(AnalyzerResults ar, Analyzer analyzer) {
+        try {
+            BigDecimal resultValue = new BigDecimal(ar.getResult());
+            LocalDateTime timestamp = ar.getCompleteDate() != null
+                    ? ar.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()
+                    : LocalDateTime.now();
+
+            qcResultProcessingService.processQCResult(analyzer.getId(), ar.getTestId(), ar.getAccessionNumber(),
+                    resultValue, ar.getUnits(), timestamp);
+        } catch (NumberFormatException e) {
+            LogEvent.logWarn(CLASS_NAME, "processQCAnalyzerResult",
+                    "QC result value is not numeric — skipping QC processing: " + ar.getResult());
+        } catch (Exception e) {
+            LogEvent.logError(CLASS_NAME, "processQCAnalyzerResult", "QC processing failed for accession="
+                    + ar.getAccessionNumber() + " test=" + ar.getTestId() + ": " + e.getMessage());
+        }
     }
 }

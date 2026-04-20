@@ -1,26 +1,27 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Button,
+  ButtonSet,
   TextInput,
   TextArea,
   Dropdown,
   Checkbox,
   InlineNotification,
   FormGroup,
+  Loading,
 } from "@carbon/react";
 import { useIntl } from "react-intl";
+import { useHistory, useParams } from "react-router-dom";
 import {
   createAnalyzer,
   updateAnalyzer,
+  getAnalyzer,
   getDefaultConfigs,
   getDefaultConfig,
   getAnalyzerTypes,
 } from "../../../services/analyzerService";
 import TestConnectionModal from "../TestConnectionModal/TestConnectionModal";
+import PageTitle from "../../common/PageTitle/PageTitle";
 import {
   PROTOCOL_VERSIONS,
   PLUGIN_PROTOCOL_DEFAULTS,
@@ -31,9 +32,13 @@ import {
 } from "../constants";
 import "./AnalyzerForm.css";
 
-const AnalyzerForm = ({ analyzer, open, onClose }) => {
+const AnalyzerForm = () => {
   const intl = useIntl();
-  const isEditMode = !!analyzer;
+  const history = useHistory();
+  const { id: analyzerId } = useParams();
+  const isEditMode = !!analyzerId;
+  const [analyzer, setAnalyzer] = useState(null);
+  const [loadingAnalyzer, setLoadingAnalyzer] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -113,55 +118,41 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           },
         ];
 
+  // Fetch analyzer data when editing (route-param driven)
   useEffect(() => {
-    if (analyzer) {
-      setFormData({
-        name: analyzer.name || "",
-        analyzerType: analyzer.analyzerType || analyzer.type || "",
-        pluginTypeId: analyzer.pluginTypeId || analyzer.analyzerTypeId || "",
-        ipAddress: analyzer.ipAddress || "",
-        port: analyzer.port ? String(analyzer.port) : "",
-        protocolVersion: analyzer.protocolVersion || DEFAULT_PROTOCOL_VERSION,
-        communicationMode:
-          analyzer.communicationMode || DEFAULT_COMMUNICATION_MODE,
-        testUnitIds: analyzer.testUnitIds || [],
-        status: analyzer.status || "SETUP",
-        identifierPattern: analyzer.identifierPattern || "",
-        importDirectory: analyzer.importDirectory || "",
-        fileFormat: analyzer.fileFormat || "CSV",
-        filePattern: analyzer.filePattern || "*.csv",
-        columnMappings: analyzer.columnMappings
-          ? JSON.stringify(analyzer.columnMappings, null, 2)
-          : "{}",
-        delimiter: analyzer.delimiter || ",",
-        hasHeader: analyzer.hasHeader ?? true,
-        skipRows: analyzer.skipRows ?? 0,
-      });
-    } else {
-      setFormData({
-        name: "",
-        analyzerType: "",
-        pluginTypeId: "",
-        ipAddress: "",
-        port: "",
-        protocolVersion: DEFAULT_PROTOCOL_VERSION,
-        communicationMode: DEFAULT_COMMUNICATION_MODE,
-        testUnitIds: [],
-        status: "SETUP",
-        identifierPattern: "",
-        importDirectory: "",
-        fileFormat: "CSV",
-        filePattern: "*.csv",
-        columnMappings: "{}",
-        delimiter: ",",
-        hasHeader: true,
-        skipRows: 0,
+    if (isEditMode) {
+      setLoadingAnalyzer(true);
+      getAnalyzer(analyzerId, (data) => {
+        setLoadingAnalyzer(false);
+        const a = data?.analyzers?.[0] || data;
+        setAnalyzer(a);
+        setFormData({
+          name: a.name || "",
+          analyzerType: a.analyzerType || a.type || "",
+          pluginTypeId: a.pluginTypeId || a.analyzerTypeId || "",
+          ipAddress: a.ipAddress || "",
+          port: a.port ? String(a.port) : "",
+          protocolVersion: a.protocolVersion || DEFAULT_PROTOCOL_VERSION,
+          communicationMode: a.communicationMode || DEFAULT_COMMUNICATION_MODE,
+          testUnitIds: a.testUnitIds || [],
+          status: a.status || "SETUP",
+          identifierPattern: a.identifierPattern || "",
+          importDirectory: a.importDirectory || "",
+          fileFormat: a.fileFormat || "CSV",
+          filePattern: a.filePattern || "*.csv",
+          columnMappings: a.columnMappings
+            ? JSON.stringify(a.columnMappings, null, 2)
+            : "{}",
+          delimiter: a.delimiter || ",",
+          hasHeader: a.hasHeader ?? true,
+          skipRows: a.skipRows ?? 0,
+        });
       });
     }
     setErrors({});
     setNotification(null);
     setSelectedDefault(null);
-  }, [analyzer, open]);
+  }, [analyzerId, isEditMode]);
 
   useEffect(() => {
     return () => {
@@ -172,31 +163,26 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     };
   }, []);
 
-  // Clear close timeout when modal is closed manually (prevents timer firing after user dismisses)
-  const handleModalClose = () => {
+  const navigateBack = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
       closeTimeoutRef.current = null;
     }
-    onClose();
+    history.push("/analyzers");
   };
 
+  // Load plugin types on mount
   useEffect(() => {
-    if (open) {
-      setLoadingPluginTypes(true);
-      getAnalyzerTypes({ active: true }, (data) => {
-        setLoadingPluginTypes(false);
-        if (Array.isArray(data) && data.length > 0) {
-          // Show all active types — pluginLoaded is informational only.
-          // Admins may configure analyzers before plugin JARs are deployed.
-          setPluginTypes(data);
-        } else {
-          // No plugin types loaded — plugin system may not be initialized yet
-          setPluginTypes([]);
-        }
-      });
-    }
-  }, [open]);
+    setLoadingPluginTypes(true);
+    getAnalyzerTypes({ active: true }, (data) => {
+      setLoadingPluginTypes(false);
+      if (Array.isArray(data) && data.length > 0) {
+        setPluginTypes(data);
+      } else {
+        setPluginTypes([]);
+      }
+    });
+  }, []);
 
   const selectedPluginType = pluginTypes.find(
     (t) => t.id === formData.pluginTypeId,
@@ -233,19 +219,19 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     return defaultConfigs.filter((c) => c.protocol === proto);
   }, [defaultConfigs, selectedPluginType]);
 
+  // Load default configs once on mount — form is always rendered as a page,
+  // so no modal-open gate is needed.
   useEffect(() => {
-    if (open) {
-      setLoadingDefaults(true);
-      getDefaultConfigs((data) => {
-        setLoadingDefaults(false);
-        if (Array.isArray(data)) {
-          setDefaultConfigs(data);
-        } else {
-          setDefaultConfigs([]);
-        }
-      });
-    }
-  }, [open]);
+    setLoadingDefaults(true);
+    getDefaultConfigs((data) => {
+      setLoadingDefaults(false);
+      if (Array.isArray(data)) {
+        setDefaultConfigs(data);
+      } else {
+        setDefaultConfigs([]);
+      }
+    });
+  }, []);
 
   const validateIPAddress = (ip) => {
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
@@ -406,6 +392,13 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
       });
     }
 
+    if (isFileProtocol && !formData.importDirectory.trim()) {
+      newErrors.importDirectory = intl.formatMessage({
+        id: "analyzer.form.validation.importDirectory.required",
+        defaultMessage: "Import directory is required for file-based analyzers",
+      });
+    }
+
     if (!isFileProtocol && formData.ipAddress) {
       const ipError = validateIPAddress(formData.ipAddress);
       if (ipError) {
@@ -493,15 +486,13 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           kind: "success",
           title: intl.formatMessage({ id: "analyzer.form.success.save" }),
         });
-        // Close modal after short delay; timer cleared on unmount or when user closes manually.
-        // Pass "saved" to signal the list view to show its own persistent banner —
-        // the modal's InlineNotification disappears when the modal unmounts.
+        // Navigate back after short delay so user sees the success notification.
         if (closeTimeoutRef.current) {
           clearTimeout(closeTimeoutRef.current);
         }
         closeTimeoutRef.current = setTimeout(() => {
           closeTimeoutRef.current = null;
-          onClose("saved");
+          navigateBack();
         }, 1000);
       }
     };
@@ -513,23 +504,33 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
     }
   };
 
+  if (loadingAnalyzer) {
+    return <Loading withOverlay={false} />;
+  }
+
   return (
     <>
-      <ComposedModal
-        open={open}
-        onClose={handleModalClose}
-        data-testid="analyzer-form"
-        className="analyzer-form-modal"
-      >
-        <ModalHeader
-          title={intl.formatMessage({
-            id: isEditMode
-              ? "analyzer.form.editTitle"
-              : "analyzer.form.addTitle",
-          })}
-          data-testid="analyzer-form-header"
-        />
-        <ModalBody>
+      <div data-testid="analyzer-form" className="analyzer-form-page">
+        <div data-testid="analyzer-form-header">
+          <PageTitle
+            breadcrumbs={[
+              {
+                label: intl.formatMessage({
+                  id: "analyzer.page.hierarchy.root",
+                }),
+                link: "/analyzers",
+              },
+              {
+                label: intl.formatMessage({
+                  id: isEditMode
+                    ? "analyzer.form.editTitle"
+                    : "analyzer.form.addTitle",
+                }),
+              },
+            ]}
+          />
+        </div>
+        <div className="analyzer-form-content">
           {notification && (
             <InlineNotification
               kind={notification.kind}
@@ -910,11 +911,11 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
               )}
             </FormGroup>
           )}
-        </ModalBody>
-        <ModalFooter>
+        </div>
+        <ButtonSet className="analyzer-form-actions">
           <Button
             kind="secondary"
-            onClick={onClose}
+            onClick={navigateBack}
             data-testid="analyzer-form-cancel-button"
           >
             {intl.formatMessage({ id: "analyzer.form.cancel" })}
@@ -927,8 +928,8 @@ const AnalyzerForm = ({ analyzer, open, onClose }) => {
           >
             {intl.formatMessage({ id: "analyzer.form.save" })}
           </Button>
-        </ModalFooter>
-      </ComposedModal>
+        </ButtonSet>
+      </div>
       <TestConnectionModal
         analyzer={
           formData.ipAddress && formData.port

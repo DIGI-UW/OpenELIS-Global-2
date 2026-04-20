@@ -19,6 +19,7 @@ export class AnalyzerFormPage {
   readonly protocolVersionDropdown: Locator;
   readonly ipAddressInput: Locator;
   readonly portInput: Locator;
+  readonly importDirectoryInput: Locator;
   readonly statusDropdown: Locator;
   readonly connectionFields: Locator;
   readonly fileProtocolInfo: Locator;
@@ -50,6 +51,9 @@ export class AnalyzerFormPage {
       '[data-testid="analyzer-form-ip-input"]',
     );
     this.portInput = page.locator('[data-testid="analyzer-form-port-input"]');
+    this.importDirectoryInput = page.locator(
+      '[data-testid="analyzer-form-import-directory-input"]',
+    );
     this.statusDropdown = page.locator(
       '[data-testid="analyzer-form-status-dropdown"]',
     );
@@ -154,6 +158,11 @@ export class AnalyzerFormPage {
   /** Fill the port field */
   async fillPort(port: string) {
     await this.portInput.fill(port);
+  }
+
+  /** Fill the import directory field (FILE protocol only) */
+  async fillImportDirectory(path: string) {
+    await this.importDirectoryInput.fill(path);
   }
 
   /** Click the save button */
