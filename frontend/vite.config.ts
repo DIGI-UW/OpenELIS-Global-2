@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+/// <reference types="vitest" />
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
 import path from "path";
@@ -60,7 +61,7 @@ export default defineConfig({
     ],
   },
   server: {
-    port: 3000,
+    port: 80,
     host: true,
     https: !!process.env.HTTPS,
     open: false,

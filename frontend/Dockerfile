@@ -32,14 +32,14 @@ COPY . ./
 
 # ---- dev: Vite dev server (HMR via volume mounts from harness compose) ----
 FROM base AS dev
-EXPOSE 3000
+EXPOSE 80
 CMD ["npm", "start"]
 
 # ---- build: produce dist/ (intermediate stage, never shipped directly) ----
 FROM base AS build
 RUN npm run build
 
-# ---- runtime: nginx serving static SPA on HTTP :3000 (edge-termination pattern) ----
+# ---- runtime: nginx serving static SPA on HTTP :80 (edge-termination pattern) ----
 FROM nginx:1.27-alpine AS runtime
 USER root
 COPY --from=build /app/dist /usr/share/nginx/html
@@ -47,5 +47,5 @@ COPY --from=build /app/nginx/nginx.conf /etc/nginx/conf.d/default.conf
 RUN apk update && apk upgrade && apk add --no-cache bash curl
 ADD nginx/healthcheck.sh /healthcheck.sh
 RUN chown nginx:nginx /healthcheck.sh && chmod 770 /healthcheck.sh
-EXPOSE 3000
+EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

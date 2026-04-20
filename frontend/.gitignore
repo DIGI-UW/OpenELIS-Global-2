@@ -30,4 +30,10 @@ cypress/screenshots/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-/playwright/.auth//.vite/
+/playwright/.auth/
+
+# vite
+/.vite/
+
+# Dev scratch artifacts (local test-output, never commit)
+current_failures.txt

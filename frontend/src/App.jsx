@@ -126,6 +126,9 @@ const GenericSampleOrderEdit = React.lazy(
 const GenericSampleOrderImport = React.lazy(
   () => import("./components/genericSample/GenericSampleOrderImport"),
 );
+const GenericSampleResults = React.lazy(
+  () => import("./components/genericSample/GenericSampleResults"),
+);
 
 import ShipmentSettings from "./components/shipment/ShipmentSettings";
 import RouteErrorBoundary from "./components/common/RouteErrorBoundary";
@@ -1092,11 +1095,11 @@ export default function App() {
                 <SecureRoute
                   path="/GenericSample/Results"
                   exact
-                  component={() => {
-                    const GenericSampleResults =
-                      require("./components/genericSample/GenericSampleResults").default;
-                    return <GenericSampleResults />;
-                  }}
+                  component={() => (
+                    <Suspense fallback={null}>
+                      <GenericSampleResults />
+                    </Suspense>
+                  )}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute

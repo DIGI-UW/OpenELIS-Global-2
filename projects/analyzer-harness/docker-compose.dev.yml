@@ -87,7 +87,7 @@ services:
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
     # use `compose_args_ci()` in compose-stack.sh which routes through
     # build.docker-compose.yml (no `target:` → defaults to the `runtime`
-    # stage = nginx serving dist/). Both stages listen on :3000 so the
+    # stage = nginx serving dist/). Both stages listen on :80 so the
     # outer proxy config doesn't care which mode is active.
     build:
       context: ../../frontend
