@@ -20,8 +20,11 @@ import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 
 /**
  * GPS Coordinates Capture Component
- * Compact inline design matching StorageLocationSelector pattern
- * Expands to full form when "Expand" button is clicked
+ *
+ * Compact inline design — shows a summary by default and expands to a
+ * full form when the "Expand" button is clicked. Used for environmental
+ * sample workflows where lab technicians record where a sample was
+ * collected.
  */
 const GpsCoordinatesCapture = ({
   index,

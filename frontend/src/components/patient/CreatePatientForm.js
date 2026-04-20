@@ -38,6 +38,7 @@ import { NotificationContext, ConfigurationContext } from "../layout/Layout";
 import CreatePatientValidationSchema from "../formModel/validationSchema/CreatePatientValidationShema";
 import CustomDatePicker from "../common/CustomDatePicker";
 import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSelector";
+import IdentificationDocuments from "./IdentificationDocuments";
 
 function CreatePatientForm(props) {
   const componentMounted = useRef(false);
@@ -48,7 +49,20 @@ function CreatePatientForm(props) {
 
   const intl = useIntl();
 
-  const [patientDetails, setPatientDetails] = useState(CreatePatientFormValues);
+  const defaultNationality =
+    configurationProperties.DEFAULT_NATIONALITY &&
+    nationalityList.some(
+      (n) => n.value === configurationProperties.DEFAULT_NATIONALITY,
+    )
+      ? configurationProperties.DEFAULT_NATIONALITY
+      : "";
+
+  const [patientDetails, setPatientDetails] = useState(() => {
+    if (defaultNationality) {
+      return { ...CreatePatientFormValues, nationality: defaultNationality };
+    }
+    return CreatePatientFormValues;
+  });
   const [healthRegions, setHealthRegions] = useState([]);
   const [healthDistricts, setHealthDistricts] = useState([]);
   const [addressHierarchyLevels, setAddressHierarchyLevels] = useState([]);
@@ -471,8 +485,10 @@ function CreatePatientForm(props) {
         setHealthDistricts([]);
       }
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
-      let patient = props.selectedPatient;
-      patient.patientUpdateStatus = "UPDATE";
+      let patient = {
+        ...props.selectedPatient,
+        patientUpdateStatus: "NO_ACTION",
+      };
       patient.photo = "";
       //merge objects together to avoid "A component is changing a controlled input to be uncontrolled"
       const patientContactPerson = {
@@ -504,7 +520,7 @@ function CreatePatientForm(props) {
         patientContact: patientContact,
       });
       getYearsMonthsDaysFromDOB(patient.birthDateForDisplay);
-      setFormAction("UPDATE");
+      setFormAction("NO_ACTION");
       // Fetch patient photo if patient exists
       getFromOpenElisServer(
         `/rest/patient-photos/${patient.patientPK}/${false}`,
@@ -708,7 +724,14 @@ function CreatePatientForm(props) {
       JSON.stringify(values),
       (status) => {
         handlePost(status);
-        resetForm({ values: CreatePatientFormValues });
+        resetForm({
+          values: defaultNationality
+            ? {
+                ...CreatePatientFormValues,
+                nationality: defaultNationality,
+              }
+            : CreatePatientFormValues,
+        });
         setDateOfBirthFormatter({
           years: "",
           months: "",
@@ -768,6 +791,7 @@ function CreatePatientForm(props) {
                 orderFormValues={props.orderFormValues}
                 setOrderFormValues={props.setOrderFormValues}
                 formAction={formAction}
+                selectedPatient={props.selectedPatient}
               />
             )}
             {/* fieldset[disabled] propagates to all descendant HTML form controls */}
@@ -1503,7 +1527,9 @@ function CreatePatientForm(props) {
                             {({ field }) => (
                               <Select
                                 id="nationality"
-                                value={values.nationality || ""}
+                                value={
+                                  values.nationality || defaultNationality || ""
+                                }
                                 name={field.name}
                                 labelText={intl.formatMessage({
                                   id: "patient.nationality",
@@ -1544,6 +1570,20 @@ function CreatePatientForm(props) {
                         </Column>
                       </Grid>
                     </AccordionItem>
+                    <AccordionItem
+                      title={intl.formatMessage({
+                        id: "patient.idDoc.title",
+                      })}
+                    >
+                      <IdentificationDocuments
+                        patientId={props.selectedPatient?.patientPK || null}
+                        pendingDocuments={values.idDocuments || []}
+                        onDocumentsChange={(docs) =>
+                          setFieldValue("idDocuments", docs)
+                        }
+                        disabled={!!props.disabled}
+                      />
+                    </AccordionItem>
                   </Accordion>
                 </Column>
                 <Column lg={16} md={8} sm={4}>
@@ -1572,7 +1612,14 @@ function CreatePatientForm(props) {
                         kind="danger"
                         disabled={isSubmitting}
                         onClick={() => {
-                          resetForm({ values: CreatePatientFormValues });
+                          resetForm({
+                            values: defaultNationality
+                              ? {
+                                  ...CreatePatientFormValues,
+                                  nationality: defaultNationality,
+                                }
+                              : CreatePatientFormValues,
+                          });
                           setHealthDistricts([]);
                           setDateOfBirthFormatter({
                             years: "",

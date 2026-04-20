@@ -52,10 +52,18 @@ const GenericConfigEdit = ({ menuType, ID }) => {
   }, [menuType, ID]);
 
   const handleMenuItems = (res) => {
+    if (!res) {
+      setIsLoading(false);
+      return;
+    }
     setFormEntryConfig(res);
     if (res.localization) {
-      setTextInputEnglishValue(res.localization.localeValues.en);
-      setTextInputFrenchValue(res.localization.localeValues.fr);
+      setTextInputEnglishValue(
+        res.localization.english || res.localization.localeValues?.en || "",
+      );
+      setTextInputFrenchValue(
+        res.localization.french || res.localization.localeValues?.fr || "",
+      );
     }
     if (res.valueType === "boolean") {
       setRadioValue(res.value);
@@ -98,12 +106,8 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     setTextInputEnglishValue(newValue);
     updateFormEntryConfig({
       localization: {
-        id: FormEntryConfig.localization.id,
-        description: FormEntryConfig.localization.description,
-        localeValues: {
-          ...FormEntryConfig.localization.localeValues,
-          en: newValue,
-        },
+        ...FormEntryConfig.localization,
+        english: newValue,
       },
     });
   };
@@ -113,12 +117,8 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     setTextInputFrenchValue(newValue);
     updateFormEntryConfig({
       localization: {
-        id: FormEntryConfig.localization.id,
-        description: FormEntryConfig.localization.description,
-        localeValues: {
-          ...FormEntryConfig.localization.localeValues,
-          fr: newValue,
-        },
+        ...FormEntryConfig.localization,
+        french: newValue,
       },
     });
   };
@@ -154,10 +154,23 @@ const GenericConfigEdit = ({ menuType, ID }) => {
     }
   };
 
+  const MAX_LOGO_SIZE = 2 * 1024 * 1024; // 2MB
+
   const handleFileUpload = (event) => {
     const files = event.target.files;
 
     const file = files[0];
+    if (!file) {
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE) {
+      showAlertMessage(
+        intl.formatMessage({ id: "admin.config.logo.error.fileTooLarge" }),
+        NotificationKinds.error,
+      );
+      event.target.value = "";
+      return;
+    }
     setFile(file);
 
     const reader = new FileReader();
@@ -285,17 +298,28 @@ const GenericConfigEdit = ({ menuType, ID }) => {
                     </Column>
                     <Column lg={3} md={6} sm={3}>
                       {!removeImage && (
-                        <FileUploader
-                          buttonLabel="Choose file"
-                          buttonKind="primary"
-                          size="sm"
-                          filenameStatus="edit"
-                          accept={[".jpg", ".png", ".gif"]}
-                          multiple={false}
-                          disabled={false}
-                          iconDescription="Delete file"
-                          onChange={handleFileUpload}
-                        />
+                        <>
+                          <FileUploader
+                            buttonLabel="Choose file"
+                            buttonKind="primary"
+                            size="sm"
+                            filenameStatus="edit"
+                            accept={[".jpg", ".png", ".gif"]}
+                            multiple={false}
+                            disabled={false}
+                            iconDescription="Delete file"
+                            onChange={handleFileUpload}
+                          />
+                          <p
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "#525252",
+                              marginTop: "0.25rem",
+                            }}
+                          >
+                            <FormattedMessage id="admin.config.logo.formats" />
+                          </p>
+                        </>
                       )}
                     </Column>
                   </Grid>

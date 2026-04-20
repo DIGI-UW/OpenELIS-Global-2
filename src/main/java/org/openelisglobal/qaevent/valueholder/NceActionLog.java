@@ -1,24 +1,63 @@
 package org.openelisglobal.qaevent.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import java.sql.Date;
 import java.util.Objects;
 import org.openelisglobal.common.valueholder.BaseObject;
 
-public class NceActionLog extends BaseObject<String> {
+@Entity
+@Table(name = "nce_action_log", schema = "clinlims")
+public class NceActionLog extends BaseObject<Integer> {
 
-    private String id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "nce_action_log_seq_gen")
+    @SequenceGenerator(name = "nce_action_log_seq_gen", sequenceName = "nce_action_log_id_seq", schema = "clinlims", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
+
+    @Column(name = "corrective_action")
     private String correctiveAction;
+
+    @Column(name = "action_type", length = 100)
     private String actionType;
+
+    @Column(name = "person_responsible", length = 200)
     private String personResponsible;
+
+    @Column(name = "date_completed")
     private Date dateCompleted;
+
+    @Column(name = "turn_around_time")
     private Integer turnAroundTime;
+
+    @Column(name = "nce_event_id")
     private Integer ncEventId;
 
-    public String getId() {
+    @Column(name = "effective")
+    private Boolean effective;
+
+    @Column(name = "review_comments")
+    private String reviewComments;
+
+    @Column(name = "reviewed_by")
+    private Integer reviewedBy;
+
+    @Column(name = "review_date")
+    private Date reviewDate;
+
+    @Override
+    public Integer getId() {
         return id;
     }
 
-    public void setId(String id) {
+    @Override
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -58,8 +97,8 @@ public class NceActionLog extends BaseObject<String> {
         return turnAroundTime;
     }
 
-    public void setTurnAroundTime(Integer turnAoundTime) {
-        this.turnAroundTime = turnAoundTime;
+    public void setTurnAroundTime(Integer turnAroundTime) {
+        this.turnAroundTime = turnAroundTime;
     }
 
     public Integer getNcEventId() {
@@ -70,6 +109,38 @@ public class NceActionLog extends BaseObject<String> {
         this.ncEventId = ncEventId;
     }
 
+    public Boolean getEffective() {
+        return effective;
+    }
+
+    public void setEffective(Boolean effective) {
+        this.effective = effective;
+    }
+
+    public String getReviewComments() {
+        return reviewComments;
+    }
+
+    public void setReviewComments(String reviewComments) {
+        this.reviewComments = reviewComments;
+    }
+
+    public Integer getReviewedBy() {
+        return reviewedBy;
+    }
+
+    public void setReviewedBy(Integer reviewedBy) {
+        this.reviewedBy = reviewedBy;
+    }
+
+    public Date getReviewDate() {
+        return reviewDate;
+    }
+
+    public void setReviewDate(Date reviewDate) {
+        this.reviewDate = reviewDate;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
@@ -77,16 +148,11 @@ public class NceActionLog extends BaseObject<String> {
         if (o == null || getClass() != o.getClass())
             return false;
         NceActionLog that = (NceActionLog) o;
-        return id == that.id && Objects.equals(correctiveAction, that.correctiveAction)
-                && Objects.equals(actionType, that.actionType)
-                && Objects.equals(personResponsible, that.personResponsible)
-                && Objects.equals(dateCompleted, that.dateCompleted)
-                && Objects.equals(turnAroundTime, that.turnAroundTime) && Objects.equals(ncEventId, that.ncEventId);
+        return Objects.equals(id, that.id) && Objects.equals(ncEventId, that.ncEventId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, correctiveAction, actionType, personResponsible, dateCompleted, turnAroundTime,
-                ncEventId);
+        return Objects.hash(id, ncEventId);
     }
 }

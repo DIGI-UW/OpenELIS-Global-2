@@ -1,14 +1,18 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import { Field, Formik } from "formik";
 import {
+  Accordion,
+  AccordionItem,
   Button,
   Checkbox,
   Column,
   Form,
   Grid,
+  InlineNotification,
   Pagination,
   Select,
   SelectItem,
+  Tag,
   TextArea,
   TextInput,
 } from "@carbon/react";
@@ -21,7 +25,18 @@ import { postToOpenElisServerFullResponse } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
+import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+
+export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
+  if (!queryValue) {
+    return "/AnalyzerResults";
+  }
+
+  return queryMode === "id"
+    ? `/AnalyzerResults?id=${queryValue}`
+    : `/AnalyzerResults?type=${queryValue}`;
+};
 
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -42,6 +57,16 @@ const AnalyserResults = (props) => {
       componentMounted.current = false;
     };
   }, []);
+
+  // Split results into patient rows and QC control rows. The bridge tags
+  // QC rows with meta.tag[QC] → OE sets isControl=true on import.
+  const allResults = props.results?.resultList ?? [];
+  const patientResults = allResults.filter((r) => !r.isControl);
+  const qcResults = allResults.filter((r) => r.isControl);
+  const hasQcFailures = qcResults.some(
+    (r) =>
+      r.result && (/failed/i.test(r.result) || /\binvalid\b/i.test(r.result)),
+  );
 
   const columns = [
     {
@@ -131,7 +156,10 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = "/AnalyzerResults?type=" + props.type;
+      window.location.href = buildAnalyzerResultsRedirectUrl(
+        props.queryMode,
+        props.queryValue || props.type,
+      );
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -158,28 +186,24 @@ const AnalyserResults = (props) => {
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
+    jpSet(form, name, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
     console.debug("handleDatePickerChange:" + date);
     const d = new Date(date).toLocaleDateString("fr-FR");
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, "resultList[" + rowId + "].sentDate_", d);
+    jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
   const handleCheckBox = (e, rowId) => {
     const { name, id, checked } = e.target;
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
   };
 
   const handleAutomatedCheck = (checked, name) => {
     let form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
@@ -367,7 +391,7 @@ const AnalyserResults = (props) => {
 
   return (
     <>
-      {props.results?.resultList?.length === 0 && (
+      {patientResults.length === 0 && qcResults.length === 0 && (
         <div
           className="orderLegendBody"
           data-testid="analyzer-results-empty"
@@ -376,7 +400,33 @@ const AnalyserResults = (props) => {
           <FormattedMessage id="validation.no.records.display" />
         </div>
       )}
-      {props.results?.resultList?.length > 0 && (
+      {hasQcFailures && (
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage({
+            id: "analyzer.qc.batch.failure.title",
+            defaultMessage: "QC Controls Failed",
+          })}
+          subtitle={intl.formatMessage({
+            id: "analyzer.qc.batch.failure.subtitle",
+            defaultMessage:
+              "QC controls in this batch have failures. Review QC results below before accepting patient results.",
+          })}
+          lowContrast
+          hideCloseButton
+          style={{ marginTop: "16px", marginBottom: "8px" }}
+        />
+      )}
+      {qcResults.length > 0 && (
+        <Tag type={hasQcFailures ? "red" : "gray"} style={{ marginTop: "8px" }}>
+          {qcResults.length}{" "}
+          {intl.formatMessage({
+            id: "analyzer.qc.controls.hidden",
+            defaultMessage: "QC controls hidden from patient view",
+          })}
+        </Tag>
+      )}
+      {patientResults.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
             <picture>
@@ -398,7 +448,7 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.accept.all" })}
               onChange={(e) => {
-                const nomalResults = props.results.resultList;
+                const nomalResults = patientResults;
                 nomalResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isAccepted",
@@ -416,7 +466,7 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.reject.all" })}
               onChange={(e) => {
-                const nomalResults = props.results.resultList;
+                const nomalResults = patientResults;
                 nomalResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isRejected",
@@ -434,7 +484,7 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.ignore.all" })}
               onChange={(e) => {
-                const nomalResults = props.results.resultList;
+                const nomalResults = patientResults;
                 nomalResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isDeleted",
@@ -457,14 +507,10 @@ const AnalyserResults = (props) => {
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
             <DataTable
-              data={
-                props.results
-                  ? props.results.resultList?.slice(
-                      (page - 1) * pageSize,
-                      page * pageSize,
-                    )
-                  : []
-              }
+              data={patientResults.slice(
+                (page - 1) * pageSize,
+                page * pageSize,
+              )}
               columns={columns}
               isSortable
             ></DataTable>
@@ -473,13 +519,7 @@ const AnalyserResults = (props) => {
               page={page}
               pageSize={pageSize}
               pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={
-                props.results
-                  ? props.results.resultList
-                    ? props.results.resultList.length
-                    : 0
-                  : 0
-              }
+              totalItems={patientResults.length}
               forwardText={intl.formatMessage({ id: "pagination.forward" })}
               backwardText={intl.formatMessage({ id: "pagination.backward" })}
               itemRangeText={(min, max, total) =>
@@ -530,6 +570,45 @@ const AnalyserResults = (props) => {
           </Form>
         )}
       </Formik>
+      {qcResults.length > 0 && (
+        <Accordion style={{ marginTop: "24px" }}>
+          <AccordionItem
+            title={intl.formatMessage(
+              {
+                id: "analyzer.qc.controls.section.title",
+                defaultMessage: "QC Controls ({count})",
+              },
+              { count: qcResults.length },
+            )}
+          >
+            <DataTable
+              data={qcResults}
+              columns={[
+                {
+                  id: "accessionNumber",
+                  name: intl.formatMessage({
+                    id: "column.name.sampleInfo",
+                  }),
+                  selector: (row) => row.accessionNumber,
+                  width: "12rem",
+                },
+                {
+                  id: "testName",
+                  name: intl.formatMessage({ id: "column.name.testName" }),
+                  selector: (row) => row.testName,
+                  width: "12rem",
+                },
+                {
+                  id: "result",
+                  name: intl.formatMessage({ id: "column.name.result" }),
+                  selector: (row) => row.result,
+                  width: "20rem",
+                },
+              ]}
+            />
+          </AccordionItem>
+        </Accordion>
+      )}
     </>
   );
 };

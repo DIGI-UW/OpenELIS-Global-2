@@ -38,18 +38,12 @@ import SystemSettingsTab from "./SystemSettingsTab";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
+  { label: "banner.menu.eqa.mgmt", link: "" },
   {
-    label: "sidenav.label.admin.eqaProgram",
-    link: "/MasterListsPage/eqaProgram",
+    label: "eqa.management.programs.title",
+    link: "/EQAManagement",
   },
 ];
-
-const CATEGORY_TAG_TYPE = {
-  Microbiology: "purple",
-  Serology: "teal",
-  Chemistry: "blue",
-  Hematology: "magenta",
-};
 
 const ProgramManagement = () => {
   const intl = useIntl();
@@ -100,16 +94,8 @@ const ProgramManagement = () => {
       header: intl.formatMessage({ id: "eqa.admin.col.programName" }),
     },
     {
-      key: "providerName",
+      key: "provider",
       header: intl.formatMessage({ id: "eqa.admin.col.provider" }),
-    },
-    {
-      key: "category",
-      header: intl.formatMessage({ id: "eqa.admin.col.category" }),
-    },
-    {
-      key: "frequency",
-      header: intl.formatMessage({ id: "eqa.admin.col.frequency" }),
     },
     {
       key: "participantCount",
@@ -128,9 +114,7 @@ const ProgramManagement = () => {
   const rows = programs.map((p) => ({
     id: String(p.id),
     name: p.name,
-    providerName: p.providerName || "",
-    category: p.category || "",
-    frequency: p.frequency || "",
+    provider: p.provider || "",
     participantCount: p.participantCount != null ? p.participantCount : 0,
     status: p.isActive
       ? intl.formatMessage({ id: "eqa.program.active" })
@@ -140,7 +124,7 @@ const ProgramManagement = () => {
   }));
 
   return (
-    <div className="adminPageContent">
+    <div className="pageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <Grid fullWidth={true}>
@@ -348,21 +332,6 @@ const ProgramManagement = () => {
                           return (
                             <TableRow key={row.id} {...getRowProps({ row })}>
                               {row.cells.map((cell) => {
-                                if (cell.info.header === "category") {
-                                  const tagType =
-                                    CATEGORY_TAG_TYPE[cell.value] || "gray";
-                                  return (
-                                    <TableCell key={cell.id}>
-                                      {cell.value ? (
-                                        <Tag type={tagType} size="sm">
-                                          {cell.value}
-                                        </Tag>
-                                      ) : (
-                                        ""
-                                      )}
-                                    </TableCell>
-                                  );
-                                }
                                 if (cell.info.header === "status") {
                                   return (
                                     <TableCell key={cell.id}>
