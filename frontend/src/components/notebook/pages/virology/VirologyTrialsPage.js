@@ -40,6 +40,13 @@ import {
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -59,6 +66,7 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
   const componentMounted = useRef(false);
+  const pendingAction = useRef(null);
 
   // State
   const [loading, setLoading] = useState(true);
@@ -380,6 +388,82 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
     onProgressUpdate,
   ]);
 
+  // E-Signature Integration (21 CFR Part 11)
+
+  // Shared callback: executes whichever save action was pending after successful signature
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared callback: reopens the parent modal when user cancels signature flow
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Callback for Mark Complete (VALIDATED_AND_RELEASED)
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleCompleteTrials();
+    },
+    [handleCompleteTrials],
+  );
+
+  // Hook 1: AUTHORED (shared across both save handlers)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.virology.trials.esig.authoredContext",
+      defaultMessage: "Sign trials data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 2: VALIDATED_AND_RELEASED (Mark Complete)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.trials.esig.completeContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as trials complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  // Helper: routes a save action through the AUTHORED e-sig flow
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   const pendingSamples = useMemo(
     () =>
       samples.filter(
@@ -575,20 +659,25 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
             defaultMessage="Clinical Trials (Human)"
           />
         </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteTrials}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to complete trials"
         >
-          <FormattedMessage
-            id="virology.trials.complete"
-            defaultMessage="Complete Trials ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={openCompleteSignatureModal}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.trials.complete"
+              defaultMessage="Complete Trials ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Pending Samples */}
@@ -731,20 +820,7 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
           id: "virology.trials.preclinical.label",
           defaultMessage: "Animal Testing (External)",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "virology.trials.save",
-          defaultMessage: "Save Trial Data",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "button.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleSavePreclinicalTrial}
-        primaryButtonDisabled={
-          loading ||
-          !preclinicalData.animalSpecies ||
-          !preclinicalData.trialInitiationDate
-        }
+        passiveModal
         size="lg"
       >
         <Grid fullWidth>
@@ -961,6 +1037,42 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
             </div>
           </Column>
         </Grid>
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setPreclinicalModalOpen(false)}
+          >
+            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSavePreclinicalTrial, () =>
+                setPreclinicalModalOpen(true),
+              )
+            }
+            disabled={
+              loading ||
+              !preclinicalData.animalSpecies ||
+              !preclinicalData.trialInitiationDate
+            }
+          >
+            <FormattedMessage
+              id="virology.trials.savePreclinical"
+              defaultMessage="Save Preclinical Trial Data"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Clinical Trials Modal */}
@@ -975,20 +1087,7 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
           id: "virology.trials.clinical.label",
           defaultMessage: "Human Testing (External)",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "virology.trials.save",
-          defaultMessage: "Save Trial Data",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "button.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleSaveClinicalTrial}
-        primaryButtonDisabled={
-          loading ||
-          !clinicalData.trialPhase ||
-          !clinicalData.trialInitiationDate
-        }
+        passiveModal
         size="lg"
       >
         <Grid fullWidth>
@@ -1267,6 +1366,39 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
             </div>
           </Column>
         </Grid>
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setClinicalModalOpen(false)}>
+            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveClinicalTrial, () =>
+                setClinicalModalOpen(true),
+              )
+            }
+            disabled={
+              loading ||
+              !clinicalData.trialPhase ||
+              !clinicalData.trialInitiationDate
+            }
+          >
+            <FormattedMessage
+              id="virology.trials.saveClinical"
+              defaultMessage="Save Clinical Trial Data"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* Trials History Modal */}
@@ -1438,6 +1570,12 @@ function VirologyTrialsPage({ entryId, pageData, progress, onProgressUpdate }) {
           )}
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

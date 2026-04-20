@@ -30,6 +30,11 @@ import {
 import { NotificationKinds } from "../../../../components/common/CustomNotification";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -389,6 +394,61 @@ export const GBDDNARNAExtractionPage = ({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      applyExtraction();
+    },
+    [applyExtraction],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setExtractionModalOpen(true);
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.gbd.extraction.esig.authoredContext",
+        defaultMessage: "Sign extraction record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.gbd.extraction.esig.completeContext",
+      defaultMessage: "Validate and release extraction as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const handleSaveClick = useCallback(() => {
+    setExtractionModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   const readyForExtractionSamples = useMemo(
     () =>
       samples.filter(
@@ -510,12 +570,12 @@ export const GBDDNARNAExtractionPage = ({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permission={Permissions.PROCESS_SAMPLES}>
+        <PermissionGate permission={Permissions.VALIDATE_RESULTS}>
           <Button
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               eligibleForCompletionCount === 0 || isCompleting || !hasRealPageId
             }
@@ -640,27 +700,11 @@ export const GBDDNARNAExtractionPage = ({
       <Modal
         open={extractionModalOpen}
         onRequestClose={() => setExtractionModalOpen(false)}
-        onRequestSubmit={applyExtraction}
         modalHeading={intl.formatMessage({
           id: "notebook.gbd.extraction.modal.title",
           defaultMessage: "Record DNA/RNA Extraction",
         })}
-        primaryButtonText={
-          isApplyingExtraction
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.gbd.save",
-                defaultMessage: "Save",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingExtraction}
+        passiveModal
         size="lg"
       >
         {isApplyingExtraction && <Loading withOverlay={false} small />}
@@ -732,7 +776,39 @@ export const GBDDNARNAExtractionPage = ({
             />
           </Column>
         </Grid>
+
+        {/* Custom footer with E-Signature trigger */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setExtractionModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplyingExtraction || isCheckingEnabled}
+          >
+            <FormattedMessage id="notebook.gbd.save" defaultMessage="Save" />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Extraction (AUTHORED) */}
+      <ESignatureModal {...signatureModalProps} />
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

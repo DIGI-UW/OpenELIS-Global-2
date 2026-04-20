@@ -20,6 +20,11 @@ import {
 import { usePermissions } from "../../../../hooks/usePermissions";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import { NotificationContext } from "../../../layout/Layout";
 import {
   postToOpenElisServer,
@@ -265,6 +270,34 @@ export const GBDSampleReceptionPageEnhanced = ({
     onSampleStatusChange,
   ]);
 
+  // E-Signature: VALIDATED_AND_RELEASED for Mark Complete
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.gbd.reception.esig.completeContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as reception complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
   return (
     <div className="gbd-sample-reception-page">
       {/* Page Section Header */}
@@ -342,7 +375,7 @@ export const GBDSampleReceptionPageEnhanced = ({
           </Button>
         </PermissionGate>
         <PermissionGate
-          roles={Permissions.UPDATE_SAMPLES}
+          roles={Permissions.VALIDATE_RESULTS}
           disabledTooltip={intl.formatMessage({
             id: "notebook.gbd.reception.insufficientPermissions.complete",
             defaultMessage: "Insufficient permissions to mark samples complete",
@@ -352,7 +385,7 @@ export const GBDSampleReceptionPageEnhanced = ({
             kind="secondary"
             size="sm"
             renderIcon={Checkmark}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={selectedSampleIds.length === 0}
           >
             <FormattedMessage
@@ -605,6 +638,9 @@ export const GBDSampleReceptionPageEnhanced = ({
           />
         </Modal>
       )}
+
+      {/* E-Signature Modal for Mark Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 };

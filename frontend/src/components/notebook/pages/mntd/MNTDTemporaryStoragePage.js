@@ -40,6 +40,13 @@ import SampleGrid from "../../workflow/SampleGrid";
 import StorageHierarchySelector from "../../workflow/StorageHierarchySelector";
 import BoxLayoutViewer from "../../workflow/BoxLayoutViewer";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * MNTDTemporaryStoragePage - Page 3 of the MNTD workflow.
@@ -67,6 +74,9 @@ function MNTDTemporaryStoragePage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending action ref for shared AUTHORED hook
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -641,6 +651,75 @@ function MNTDTemporaryStoragePage({
     intl,
   ]);
 
+  // E-Signature Integration (21 CFR Part 11)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  const handleSignAndMarkStored = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkStored();
+    },
+    [handleMarkStored],
+  );
+
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.mntd.storage.esig.authoredContext",
+      defaultMessage: "Sign storage assignment data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  const {
+    openSignatureModal: openValidationSignatureModal,
+    signatureModalProps: validationSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.mntd.storage.esig.validationContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as stored and complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkStored,
+    onCancel: () => {},
+  });
+
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal) => {
+      pendingAction.current = { callback, reopenModal };
+      openAuthoredSignatureModal();
+    },
+    [openAuthoredSignatureModal],
+  );
+
   // Calculate stats
   const storedCount = samples.filter(
     (s) => s.storageWell || s.storagePath,
@@ -832,21 +911,26 @@ function MNTDTemporaryStoragePage({
           />
         </Button>
 
-        <Button
-          kind="tertiary"
-          size="sm"
-          renderIcon={Checkmark}
-          onClick={handleMarkStored}
-          disabled={
-            selectedSampleIds.length === 0 || isAssigning || !hasRealPageId
-          }
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to complete samples"
         >
-          <FormattedMessage
-            id="notebook.page.mntd.markCompleteAndAdvance"
-            defaultMessage="Complete & Send to Next Step ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Checkmark}
+            onClick={openValidationSignatureModal}
+            disabled={
+              selectedSampleIds.length === 0 || isAssigning || !hasRealPageId
+            }
+          >
+            <FormattedMessage
+              id="notebook.page.mntd.markCompleteAndAdvance"
+              defaultMessage="Complete & Send to Next Step ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
 
         <Button
           kind="ghost"
@@ -991,7 +1075,11 @@ function MNTDTemporaryStoragePage({
           id: "common.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={handleAssignStorage}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleAssignStorage, () =>
+            setStorageModalOpen(true),
+          )
+        }
         primaryButtonDisabled={
           !storageSelection.room ||
           (storageSelection.box && Object.keys(wellAssignments).length === 0) ||
@@ -1125,7 +1213,11 @@ function MNTDTemporaryStoragePage({
           id: "common.cancel",
           defaultMessage: "Cancel",
         })}
-        onRequestSubmit={handleConfirmReassignment}
+        onRequestSubmit={() =>
+          triggerEsigForSave(handleConfirmReassignment, () =>
+            setConfirmReassignModalOpen(true),
+          )
+        }
         danger
         size="sm"
       >
@@ -1166,6 +1258,12 @@ function MNTDTemporaryStoragePage({
           </div>
         </div>
       </Modal>
+
+      {/* E-Signature Modal for Storage Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Validation (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...validationSignatureModalProps} />
     </div>
   );
 }

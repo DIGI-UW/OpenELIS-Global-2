@@ -25,6 +25,13 @@ import {
 } from "../../../utils/Utils";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * TBQualityCheckPage - Page 2 of the TB workflow.
@@ -695,6 +702,80 @@ function TBQualityCheckPage({
     routeSamplesToPage,
   ]);
 
+  // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // AUTHORED e-signature for Bulk Apply QC
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.tb.qc.esig.authoredContext",
+        defaultMessage: "Sign QC data for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    // eslint-disable-next-line no-unused-vars
+    onSuccess: (signature) => handleBulkApply(),
+    onCancel: () => setBulkApplyModalOpen(true),
+  });
+
+  // VALIDATED_AND_RELEASED e-signature for Mark QC Complete
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.tb.qc.esig.completeContext",
+        defaultMessage: "Mark {count} sample(s) as QC complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    // eslint-disable-next-line no-unused-vars
+    onSuccess: (signature) => handleMarkQcComplete(),
+    onCancel: () => {},
+  });
+
+  // Bulk Apply button click handler: pre-validate, close modal, then open e-sig
+  const handleBulkApplyClick = useCallback(() => {
+    if (selectedSampleIds.length === 0) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.qc.error.noSelection",
+          defaultMessage: "Please select at least one sample.",
+        }),
+      );
+      return;
+    }
+    if (!bulkApplyValues.qcResult) {
+      setError(
+        intl.formatMessage({
+          id: "notebook.page.tb.qc.error.noData",
+          defaultMessage:
+            "Please complete at least one QC check before applying.",
+        }),
+      );
+      return;
+    }
+    setBulkApplyModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [
+    selectedSampleIds,
+    bulkApplyValues.qcResult,
+    intl,
+    openAuthoredSignatureModal,
+  ]);
+
   // Calculate stats
   const qcPassedCount = samples.filter(
     (s) => s.qcResult === "PASS" || s.qcResult === "PASS_TO_STORAGE",
@@ -825,18 +906,23 @@ function TBQualityCheckPage({
         </Button>
 
         {selectedSampleIds.length > 0 && (
-          <Button
-            kind="secondary"
-            size="sm"
-            renderIcon={Checkmark}
-            onClick={handleMarkQcComplete}
+          <PermissionGate
+            roles={Permissions.VALIDATE_RESULTS}
+            disabledTooltip="You need validation permission to mark QC complete"
           >
-            <FormattedMessage
-              id="notebook.page.tb.qc.markComplete"
-              defaultMessage="Mark QC Complete ({count})"
-              values={{ count: selectedSampleIds.length }}
-            />
-          </Button>
+            <Button
+              kind="secondary"
+              size="sm"
+              renderIcon={Checkmark}
+              onClick={openCompleteSignatureModal}
+            >
+              <FormattedMessage
+                id="notebook.page.tb.qc.markComplete"
+                defaultMessage="Mark QC Complete ({count})"
+                values={{ count: selectedSampleIds.length }}
+              />
+            </Button>
+          </PermissionGate>
         )}
       </div>
 
@@ -1105,36 +1191,8 @@ function TBQualityCheckPage({
           id: "notebook.tb.bulkApply.title",
           defaultMessage: "TB Sample Quality Check",
         })}
-        primaryButtonText={
-          isBulkApplying
-            ? intl.formatMessage({
-                id: "label.applying",
-                defaultMessage: "Applying...",
-              })
-            : bulkApplyValues.qcResult === "PASS" ||
-                bulkApplyValues.qcResult === "PASS_TO_STORAGE"
-              ? intl.formatMessage({
-                  id: "notebook.tb.qc.action.pass",
-                  defaultMessage: "Pass - Proceed",
-                })
-              : bulkApplyValues.qcResult === "FAIL_DISCARD"
-                ? intl.formatMessage({
-                    id: "notebook.tb.qc.action.discard",
-                    defaultMessage: "Fail - Discard Sample(s)",
-                  })
-                : intl.formatMessage({
-                    id: "label.apply",
-                    defaultMessage: "Apply QC",
-                  })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        onRequestSubmit={handleBulkApply}
-        onSecondarySubmit={() => setBulkApplyModalOpen(false)}
+        passiveModal
         size="lg"
-        primaryButtonDisabled={isBulkApplying || !bulkApplyValues.qcResult}
         danger={bulkApplyValues.qcResult === "FAIL_DISCARD"}
       >
         <div className="qc-bulk-apply-modal">
@@ -2008,7 +2066,56 @@ function TBQualityCheckPage({
             </div>
           )}
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setBulkApplyModalOpen(false)}
+            disabled={isBulkApplying}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind={
+              bulkApplyValues.qcResult === "FAIL_DISCARD" ? "danger" : "primary"
+            }
+            onClick={handleBulkApplyClick}
+            disabled={isBulkApplying || !bulkApplyValues.qcResult}
+          >
+            {isBulkApplying ? (
+              <FormattedMessage
+                id="label.applying"
+                defaultMessage="Applying..."
+              />
+            ) : bulkApplyValues.qcResult === "PASS" ||
+              bulkApplyValues.qcResult === "PASS_TO_STORAGE" ? (
+              <FormattedMessage
+                id="notebook.tb.qc.action.pass"
+                defaultMessage="Pass - Proceed"
+              />
+            ) : bulkApplyValues.qcResult === "FAIL_DISCARD" ? (
+              <FormattedMessage
+                id="notebook.tb.qc.action.discard"
+                defaultMessage="Fail - Discard Sample(s)"
+              />
+            ) : (
+              <FormattedMessage id="label.apply" defaultMessage="Apply QC" />
+            )}
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modals */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

@@ -27,6 +27,13 @@ import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import SampleGrid from "../../workflow/SampleGrid";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * VirologyVirusIsolationPage - Page for isolating virus from culture batches.
@@ -327,6 +334,75 @@ function VirologyVirusIsolationPage({
     onProgressUpdate,
   ]);
 
+  // Handle e-signature success for save (AUTHORED meaning)
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleSaveIsolation();
+    },
+    [handleSaveIsolation],
+  );
+
+  // Handle e-signature cancel - reopen the modal
+  const handleSignCancelled = useCallback(() => {
+    setModalOpen(true);
+  }, []);
+
+  // Handle e-signature success for complete (VALIDATED_AND_RELEASED meaning)
+  const handleSignAndComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleCompleteIsolation();
+    },
+    [handleCompleteIsolation],
+  );
+
+  // E-Signature hook for save (AUTHORED meaning)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.isolation.esig.authoredContext",
+        defaultMessage:
+          "Sign virus isolation data for {count} sample(s) as authored",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // E-Signature hook for complete (VALIDATED_AND_RELEASED meaning)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.virology.isolation.esig.completeContext",
+        defaultMessage:
+          "Validate and release {count} sample(s) as isolation complete",
+      },
+      { count: selectedSampleIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndComplete,
+    onCancel: () => {},
+  });
+
+  // Handle save click from modal - close modal, then open e-sig
+  const handleSaveClick = useCallback(() => {
+    setModalOpen(false);
+    openAuthoredSignatureModal();
+  }, [openAuthoredSignatureModal]);
+
   // Split samples into pending/in-progress and completed
   const pendingSamples = useMemo(
     () =>
@@ -484,20 +560,25 @@ function VirologyVirusIsolationPage({
             defaultMessage="Log Virus Isolation"
           />
         </Button>
-        <Button
-          kind="tertiary"
-          size="md"
-          renderIcon={Checkmark}
-          onClick={handleCompleteIsolation}
-          disabled={loading || selectedSampleIds.length === 0}
-          style={{ marginLeft: "0.5rem" }}
+        <PermissionGate
+          roles={Permissions.VALIDATE_RESULTS}
+          disabledTooltip="You need validation permission to complete this step"
         >
-          <FormattedMessage
-            id="virology.isolation.complete"
-            defaultMessage="Complete Isolation ({count})"
-            values={{ count: selectedSampleIds.length }}
-          />
-        </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Checkmark}
+            onClick={openCompleteSignatureModal}
+            disabled={loading || selectedSampleIds.length === 0}
+            style={{ marginLeft: "0.5rem" }}
+          >
+            <FormattedMessage
+              id="virology.isolation.complete"
+              defaultMessage="Complete Isolation ({count})"
+              values={{ count: selectedSampleIds.length }}
+            />
+          </Button>
+        </PermissionGate>
       </div>
 
       {/* Pending/In-Progress Samples Section */}
@@ -601,17 +682,7 @@ function VirologyVirusIsolationPage({
             defaultMessage="Record virus isolation method and link to source culture batch"
           />
         }
-        primaryButtonText={
-          <FormattedMessage
-            id="virology.isolation.save"
-            defaultMessage="Save Isolation Log"
-          />
-        }
-        secondaryButtonText={
-          <FormattedMessage id="button.cancel" defaultMessage="Cancel" />
-        }
-        onRequestSubmit={handleSaveIsolation}
-        primaryButtonDisabled={loading || !isolationMethod}
+        passiveModal
         size="md"
       >
         <Grid fullWidth>
@@ -703,7 +774,38 @@ function VirologyVirusIsolationPage({
             </div>
           </Column>
         </Grid>
+        {/* Custom footer for e-sig integration */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setModalOpen(false)}>
+            <FormattedMessage id="notebook.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={loading || !isolationMethod}
+          >
+            <FormattedMessage
+              id="virology.isolation.save"
+              defaultMessage="Save Isolation Log"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modal for Save (AUTHORED) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+
+      {/* E-Signature Modal for Complete (VALIDATED_AND_RELEASED) */}
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

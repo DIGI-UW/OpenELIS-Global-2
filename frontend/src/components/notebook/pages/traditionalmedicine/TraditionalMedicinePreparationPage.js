@@ -38,6 +38,11 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import { Permissions } from "../../../../constants/roles";
 import PermissionGate from "../../../security/PermissionGate";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
 import "../../workflow/NotebookWorkflow.css";
 
 /**
@@ -450,6 +455,61 @@ function TraditionalMedicinePreparationPage({
     onProgressUpdate,
   ]);
 
+  // ── E-Signature hooks ──
+
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      applyPreparation();
+    },
+    [applyPreparation],
+  );
+
+  const handleSignCancelled = useCallback(() => {
+    setPreparationModalOpen(true);
+  }, []);
+
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleMarkComplete();
+    },
+    [handleMarkComplete],
+  );
+
+  const { openSignatureModal, signatureModalProps, isCheckingEnabled } =
+    useESign({
+      meaning: SignatureMeaning.AUTHORED,
+      context: intl.formatMessage({
+        id: "notebook.page.tradmed.preparation.esig.authoredContext",
+        defaultMessage: "Sign preparation record as authored",
+      }),
+      recordType: "NOTEBOOK_PAGE_SAMPLE",
+      recordId: pageData?.id || 0,
+      onSuccess: handleSignAndSave,
+      onCancel: handleSignCancelled,
+    });
+
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage({
+      id: "notebook.page.tradmed.preparation.esig.completeContext",
+      defaultMessage: "Validate and release preparation as complete",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  const handleSaveClick = useCallback(() => {
+    setPreparationModalOpen(false);
+    openSignatureModal();
+  }, [openSignatureModal]);
+
   const unpreparedSamples = useMemo(
     () =>
       samples.filter(
@@ -586,12 +646,12 @@ function TraditionalMedicinePreparationPage({
           </Button>
         </PermissionGate>
 
-        <PermissionGate permissions={[Permissions.PROCESS_SAMPLES]}>
+        <PermissionGate permissions={[Permissions.VALIDATE_RESULTS]}>
           <Button
             kind="tertiary"
             size="sm"
             renderIcon={CheckmarkFilled}
-            onClick={handleMarkComplete}
+            onClick={openCompleteSignatureModal}
             disabled={
               selectedSampleIds.length === 0 || isCompleting || !hasRealPageId
             }
@@ -718,27 +778,11 @@ function TraditionalMedicinePreparationPage({
       <Modal
         open={preparationModalOpen}
         onRequestClose={() => setPreparationModalOpen(false)}
-        onRequestSubmit={applyPreparation}
+        passiveModal
         modalHeading={intl.formatMessage({
           id: "notebook.page.tradmed.prep.modal.title",
           defaultMessage: "Record Sample Preparation",
         })}
-        primaryButtonText={
-          isApplyingPrep
-            ? intl.formatMessage({
-                id: "label.recording",
-                defaultMessage: "Recording...",
-              })
-            : intl.formatMessage({
-                id: "notebook.page.tradmed.prep.modal.record",
-                defaultMessage: "Record Preparation",
-              })
-        }
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
-        primaryButtonDisabled={isApplyingPrep}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -945,7 +989,36 @@ function TraditionalMedicinePreparationPage({
             />
           </Column>
         </Grid>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setPreparationModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleSaveClick}
+            disabled={isApplyingPrep || isCheckingEnabled}
+          >
+            <FormattedMessage
+              id="notebook.page.tradmed.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+      <ESignatureModal {...signatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }

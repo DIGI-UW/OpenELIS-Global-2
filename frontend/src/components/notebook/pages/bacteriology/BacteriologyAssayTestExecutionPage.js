@@ -76,6 +76,13 @@ import {
 import SampleGrid from "../../workflow/SampleGrid";
 import config from "../../../../config.json";
 import "../../workflow/NotebookWorkflow.css";
+import {
+  ESignatureModal,
+  SignatureMeaning,
+  useESign,
+} from "../../../esignature";
+import PermissionGate from "../../../security/PermissionGate";
+import { Permissions } from "../../../../constants/roles";
 
 /**
  * BacteriologyAssayTestExecutionPage - Page 5 of the Bacteriology workflow.
@@ -616,6 +623,9 @@ function BacteriologyAssayTestExecutionPage({
 }) {
   const intl = useIntl();
   const componentMounted = useRef(false);
+
+  // E-signature: pending action ref for shared AUTHORED/REJECTED hooks
+  const pendingAction = useRef(null);
 
   // State for samples
   const [samples, setSamples] = useState([]);
@@ -2777,6 +2787,165 @@ function BacteriologyAssayTestExecutionPage({
   ]);
 
   // ==========================================
+  // E-Signature Integration (21 CFR Part 11)
+  // ==========================================
+
+  // Shared callback: executes whichever save action was pending after a successful signature.
+  const handleSignAndSave = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      if (pendingAction.current?.callback) {
+        pendingAction.current.callback();
+      }
+      pendingAction.current = null;
+    },
+    [],
+  );
+
+  // Shared callback: reopens the parent modal when the user cancels the signature flow.
+  const handleSignCancelled = useCallback(() => {
+    if (pendingAction.current?.reopenModal) {
+      pendingAction.current.reopenModal();
+    }
+    pendingAction.current = null;
+  }, []);
+
+  // Callback for Mark Completed (VALIDATED_AND_RELEASED).
+  const handleSignAndMarkComplete = useCallback(
+    // eslint-disable-next-line no-unused-vars
+    (signature) => {
+      handleBulkMarkCompleted();
+    },
+    [handleBulkMarkCompleted],
+  );
+
+  // Hook 1: AUTHORED (shared across all 11 save handlers for normal data entry)
+  const {
+    openSignatureModal: openAuthoredSignatureModal,
+    signatureModalProps: authoredSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.AUTHORED,
+    context: intl.formatMessage({
+      id: "notebook.bacteriology.esig.authoredContext",
+      defaultMessage: "Sign bacteriology test data as authored",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 2: REJECTED (for molecular QC failures and fully-contaminated media reactions)
+  const {
+    openSignatureModal: openRejectedSignatureModal,
+    signatureModalProps: rejectedSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.REJECTED,
+    context: intl.formatMessage({
+      id: "notebook.bacteriology.esig.rejectedContext",
+      defaultMessage: "Sign rejection of bacteriology result",
+    }),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndSave,
+    onCancel: handleSignCancelled,
+  });
+
+  // Hook 3: VALIDATED_AND_RELEASED (Mark Completed - advances samples to next page)
+  const {
+    openSignatureModal: openCompleteSignatureModal,
+    signatureModalProps: completeSignatureModalProps,
+  } = useESign({
+    meaning: SignatureMeaning.VALIDATED_AND_RELEASED,
+    context: intl.formatMessage(
+      {
+        id: "notebook.bacteriology.esig.completeContext",
+        defaultMessage: "Mark {count} sample(s) as completed",
+      },
+      { count: selectedIds.length },
+    ),
+    recordType: "NOTEBOOK_PAGE_SAMPLE",
+    recordId: pageData?.id || 0,
+    onSuccess: handleSignAndMarkComplete,
+    onCancel: () => {},
+  });
+
+  /**
+   * Helper that routes a save action through the appropriate e-sig flow.
+   * Stores the callback + modal reopener, then opens the correct signature modal.
+   *
+   * @param {Function} callback - The original save handler to run after signing.
+   * @param {Function} reopenModal - Reopens the parent modal if the user cancels.
+   * @param {string} meaning - SignatureMeaning.AUTHORED or SignatureMeaning.REJECTED.
+   */
+  const triggerEsigForSave = useCallback(
+    (callback, reopenModal, meaning = SignatureMeaning.AUTHORED) => {
+      pendingAction.current = { callback, reopenModal };
+      if (meaning === SignatureMeaning.REJECTED) {
+        openRejectedSignatureModal();
+      } else {
+        openAuthoredSignatureModal();
+      }
+    },
+    [openAuthoredSignatureModal, openRejectedSignatureModal],
+  );
+
+  /**
+   * Media Reactions: if every reaction is CONTAMINATED, the whole batch is a
+   * rejection decision -- sign as REJECTED. Otherwise sign as AUTHORED.
+   */
+  const triggerMediaReactionsEsig = useCallback(() => {
+    const allContaminated =
+      mediaReactions.length > 0 &&
+      mediaReactions.every((r) => r.growthResult === "CONTAMINATED");
+    triggerEsigForSave(
+      handleSaveMediaReactions,
+      () => setMediaReactionsModalOpen(true),
+      allContaminated ? SignatureMeaning.REJECTED : SignatureMeaning.AUTHORED,
+    );
+  }, [mediaReactions, handleSaveMediaReactions, triggerEsigForSave]);
+
+  /**
+   * Molecular QC: if the computed overall result is FAIL, the save is effectively
+   * a rejection of the sample for molecular testing -- sign as REJECTED.
+   * Replicates the logic in handleSaveMolecularQcData so we know up-front which
+   * meaning to apply.
+   */
+  const triggerMolecularQcEsig = useCallback(() => {
+    const hasReagentFailure = molecularQcData.reagentQcChecks.some(
+      (c) => c.qcStatus === "FAILED",
+    );
+    const hasEquipmentFailure = molecularQcData.equipmentQcChecks.some(
+      (c) => c.qcStatus === "FAILED" || c.qcStatus === "DUE",
+    );
+    const hasSampleFailure = molecularQcData.sampleQcChecks.some(
+      (c) => c.qcStatus === "FAILED",
+    );
+    const hasControlFailure =
+      molecularQcData.positiveControlResult === "FAILED" ||
+      molecularQcData.negativeControlResult === "FAILED";
+
+    let overallResult = molecularQcData.overallQcResult;
+    if (!overallResult) {
+      overallResult =
+        hasReagentFailure ||
+        hasEquipmentFailure ||
+        hasSampleFailure ||
+        hasControlFailure
+          ? "FAIL"
+          : "PASS";
+    }
+
+    triggerEsigForSave(
+      handleSaveMolecularQcData,
+      () => setMolecularQcModalOpen(true),
+      overallResult === "FAIL"
+        ? SignatureMeaning.REJECTED
+        : SignatureMeaning.AUTHORED,
+    );
+  }, [molecularQcData, handleSaveMolecularQcData, triggerEsigForSave]);
+
+  // ==========================================
   // Render Helper Functions
   // ==========================================
 
@@ -3674,19 +3843,24 @@ function BacteriologyAssayTestExecutionPage({
                   />
                 </Button>
 
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={CheckmarkFilled}
-                  onClick={handleBulkMarkCompleted}
-                  disabled={selectedIds.length === 0}
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip="You need validation permission to mark samples as completed"
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.assay.markCompleted"
-                    defaultMessage="Mark Completed ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={CheckmarkFilled}
+                    onClick={openCompleteSignatureModal}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.assay.markCompleted"
+                      defaultMessage="Mark Completed ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
 
                 <Button
                   kind="ghost"
@@ -3806,19 +3980,24 @@ function BacteriologyAssayTestExecutionPage({
                   />
                 </Button>
 
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={CheckmarkFilled}
-                  onClick={handleBulkMarkCompleted}
-                  disabled={selectedIds.length === 0}
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip="You need validation permission to mark samples as completed"
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.assay.markCompleted"
-                    defaultMessage="Mark Completed ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={CheckmarkFilled}
+                    onClick={openCompleteSignatureModal}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.assay.markCompleted"
+                      defaultMessage="Mark Completed ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
 
                 <Button
                   kind="ghost"
@@ -3904,19 +4083,24 @@ function BacteriologyAssayTestExecutionPage({
                   />
                 </Button>
 
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={CheckmarkFilled}
-                  onClick={handleBulkMarkCompleted}
-                  disabled={selectedIds.length === 0}
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip="You need validation permission to mark samples as completed"
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.assay.markCompleted"
-                    defaultMessage="Mark Completed ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={CheckmarkFilled}
+                    onClick={openCompleteSignatureModal}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.assay.markCompleted"
+                      defaultMessage="Mark Completed ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
 
                 <Button
                   kind="ghost"
@@ -3994,19 +4178,24 @@ function BacteriologyAssayTestExecutionPage({
                   />
                 </Button>
 
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={CheckmarkFilled}
-                  onClick={handleBulkMarkCompleted}
-                  disabled={selectedIds.length === 0}
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip="You need validation permission to mark samples as completed"
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.assay.markCompleted"
-                    defaultMessage="Mark Completed ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={CheckmarkFilled}
+                    onClick={openCompleteSignatureModal}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.assay.markCompleted"
+                      defaultMessage="Mark Completed ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
 
                 <Button
                   kind="ghost"
@@ -4187,19 +4376,24 @@ function BacteriologyAssayTestExecutionPage({
                   </Button>
                 </Tooltip>
 
-                <Button
-                  kind="tertiary"
-                  size="sm"
-                  renderIcon={CheckmarkFilled}
-                  onClick={handleBulkMarkCompleted}
-                  disabled={selectedIds.length === 0}
+                <PermissionGate
+                  roles={Permissions.VALIDATE_RESULTS}
+                  disabledTooltip="You need validation permission to mark samples as completed"
                 >
-                  <FormattedMessage
-                    id="notebook.bacteriology.assay.markCompleted"
-                    defaultMessage="Mark Completed ({count})"
-                    values={{ count: selectedIds.length }}
-                  />
-                </Button>
+                  <Button
+                    kind="tertiary"
+                    size="sm"
+                    renderIcon={CheckmarkFilled}
+                    onClick={openCompleteSignatureModal}
+                    disabled={selectedIds.length === 0}
+                  >
+                    <FormattedMessage
+                      id="notebook.bacteriology.assay.markCompleted"
+                      defaultMessage="Mark Completed ({count})"
+                      values={{ count: selectedIds.length }}
+                    />
+                  </Button>
+                </PermissionGate>
 
                 <Button
                   kind="ghost"
@@ -4288,16 +4482,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.microscopyTitle",
           defaultMessage: "Record Microscopy Examination",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setMicroscopyModalOpen(false)}
-        onRequestSubmit={handleSaveMicroscopyData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -4479,6 +4665,36 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setMicroscopyModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveMicroscopyData, () =>
+                setMicroscopyModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -4490,16 +4706,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.cultureTitle",
           defaultMessage: "Record Culture Inoculation",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setCultureModalOpen(false)}
-        onRequestSubmit={handleSaveCultureData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -4668,6 +4876,33 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setCultureModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveCultureData, () =>
+                setCultureModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -4679,16 +4914,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.colonyTitle",
           defaultMessage: "Record Colony Reading",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setColonyModalOpen(false)}
-        onRequestSubmit={handleSaveColonyData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -4817,6 +5044,33 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setColonyModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveColonyData, () =>
+                setColonyModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -4828,16 +5082,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.biochemTitle",
           defaultMessage: "Record Biochemical Tests",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setBiochemModalOpen(false)}
-        onRequestSubmit={handleSaveBiochemData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -5100,6 +5346,33 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setBiochemModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveBiochemData, () =>
+                setBiochemModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -5121,16 +5394,8 @@ function BacteriologyAssayTestExecutionPage({
           },
           { count: editingSampleIds.length },
         )}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setMediaReactionsModalOpen(false)}
-        onRequestSubmit={handleSaveMediaReactions}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -5498,6 +5763,29 @@ function BacteriologyAssayTestExecutionPage({
               ))}
             </div>
           )}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setMediaReactionsModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button kind="primary" onClick={triggerMediaReactionsEsig}>
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
         </div>
       </Modal>
 
@@ -5877,16 +6165,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.dstTitle",
           defaultMessage: "Record Drug Susceptibility Testing",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setDstModalOpen(false)}
-        onRequestSubmit={handleSaveDSTData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -6266,6 +6546,31 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setDstModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveDSTData, () => setDstModalOpen(true))
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -6278,16 +6583,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.automatedIdTitle",
           defaultMessage: "Record Automated Identification",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setAutomatedIdModalOpen(false)}
-        onRequestSubmit={handleSaveAutomatedIdData}
         size="md"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -6416,6 +6713,36 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setAutomatedIdModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveAutomatedIdData, () =>
+                setAutomatedIdModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -6427,16 +6754,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.extractionTitle",
           defaultMessage: "Record Nucleic Acid Extraction",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setExtractionModalOpen(false)}
-        onRequestSubmit={handleSaveExtractionData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -6743,6 +7062,36 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setExtractionModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveExtractionData, () =>
+                setExtractionModalOpen(true),
+              )
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -6754,16 +7103,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.pcrTitle",
           defaultMessage: "Record PCR Assay Results",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setPcrModalOpen(false)}
-        onRequestSubmit={handleSavePCRData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -7486,6 +7827,31 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setPcrModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSavePCRData, () => setPcrModalOpen(true))
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -7497,16 +7863,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.wgsTitle",
           defaultMessage: "Record Whole Genome Sequencing",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setWgsModalOpen(false)}
-        onRequestSubmit={handleSaveWGSData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -7820,6 +8178,31 @@ function BacteriologyAssayTestExecutionPage({
             </Column>
           </Grid>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button kind="secondary" onClick={() => setWgsModalOpen(false)}>
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() =>
+              triggerEsigForSave(handleSaveWGSData, () => setWgsModalOpen(true))
+            }
+          >
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
 
       {/* ==========================================
@@ -7831,16 +8214,8 @@ function BacteriologyAssayTestExecutionPage({
           id: "notebook.bacteriology.assay.modal.molecularQcTitle",
           defaultMessage: "Molecular Quality Control",
         })}
-        primaryButtonText={intl.formatMessage({
-          id: "notebook.bacteriology.assay.modal.save",
-          defaultMessage: "Save",
-        })}
-        secondaryButtonText={intl.formatMessage({
-          id: "label.cancel",
-          defaultMessage: "Cancel",
-        })}
+        passiveModal
         onRequestClose={() => setMolecularQcModalOpen(false)}
-        onRequestSubmit={handleSaveMolecularQcData}
         size="lg"
       >
         <div style={{ marginBottom: "1rem" }}>
@@ -8497,7 +8872,35 @@ function BacteriologyAssayTestExecutionPage({
             </Grid>
           </div>
         </div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "1rem",
+            marginTop: "1rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #e0e0e0",
+          }}
+        >
+          <Button
+            kind="secondary"
+            onClick={() => setMolecularQcModalOpen(false)}
+          >
+            <FormattedMessage id="label.cancel" defaultMessage="Cancel" />
+          </Button>
+          <Button kind="primary" onClick={triggerMolecularQcEsig}>
+            <FormattedMessage
+              id="notebook.bacteriology.assay.modal.save"
+              defaultMessage="Save"
+            />
+          </Button>
+        </div>
       </Modal>
+
+      {/* E-Signature Modals (rendered outside all other modals) */}
+      <ESignatureModal {...authoredSignatureModalProps} />
+      <ESignatureModal {...rejectedSignatureModalProps} />
+      <ESignatureModal {...completeSignatureModalProps} />
     </div>
   );
 }
