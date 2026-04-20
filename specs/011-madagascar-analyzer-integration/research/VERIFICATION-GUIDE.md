@@ -35,8 +35,8 @@ Dashboard.
 ```bash
 cd /home/ubuntu/OpenELIS-Global-2
 
-# Start OpenELIS with analyzer infrastructure (mock server + ASTM bridge)
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d
+# Start OpenELIS with analyzer harness (mock server + ASTM bridge + virtual serial)
+cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d
 
 # Wait for services to be ready (30-60 seconds)
 docker compose -f dev.docker-compose.yml logs -f oe.openelis.org | grep "Started"
