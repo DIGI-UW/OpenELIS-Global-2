@@ -2619,7 +2619,7 @@ npm run pw:test -- file.spec.ts  # Run specific file
   `.specify/templates/testing/WebMvcTestController.java.template`
 - Backend DAO: `.specify/templates/testing/DataJpaTestDao.java.template`
 - Frontend Component:
-  `.specify/templates/testing/JestComponent.test.jsx.template`
+  `.specify/templates/testing/VitestComponent.test.jsx.template`
 - Frontend E2E (Cypress): `.specify/templates/testing/CypressE2E.cy.js.template`
 - Frontend E2E (Playwright):
   [Playwright Best Practices](.specify/guides/playwright-best-practices.md)

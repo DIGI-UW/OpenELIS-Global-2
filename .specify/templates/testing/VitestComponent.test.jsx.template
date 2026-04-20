@@ -1,42 +1,51 @@
 /**
  * Unit tests for {ComponentName}
- * 
+ *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md (comprehensive guidance)
  * - Vitest Best Practices: .specify/guides/vitest-best-practices.md (quick reference)
- * - Jest Official Docs: https://jestjs.io/docs/tutorial-react
- * 
+ * - Vitest Official Docs: https://vitest.dev/
+ * - React Testing Library: https://testing-library.com/docs/react-testing-library/intro
+ *
  * TDD Workflow (MANDATORY for complex logic):
  * - RED: Write failing test first (defines expected behavior)
  * - GREEN: Write minimal code to make test pass
  * - REFACTOR: Improve code quality while keeping tests green
- * 
+ *
  * SDD Checkpoint: After Phase 4 (Frontend), all unit tests MUST pass
- * Test Coverage Goal: >70% (measured via Jest)
- * 
+ * Test Coverage Goal: >70% (measured via Vitest + @vitest/coverage-v8)
+ *
  * Test Naming: test{Scenario}_{ExpectedResult}
  * Example: testSubmitForm_WithValidData_ShowsSuccessMessage
+ *
+ * Project configuration: `globals: true` in frontend/vite.config.ts — so
+ * `vi`, `describe`, `it`, `expect`, `beforeEach`, `afterEach` are globally
+ * available without explicit imports. `@testing-library/jest-dom` matchers
+ * are wired up via frontend/src/setupTests.js.
  */
 
-// ========== MOCKS (MUST be before imports - Jest hoisting) ==========
+// ========== MOCKS (hoisted by Vitest; keep visually above imports) ==========
 
-// Mock utilities BEFORE imports that use them (Jest hoisting)
-jest.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServer: jest.fn(),
+// Mock utilities BEFORE imports that use them (vi.mock is hoisted at compile time)
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServer: vi.fn(),
 }));
 
 // Mock react-router-dom if component uses routing
 const mockHistory = {
-  replace: jest.fn(),
-  push: jest.fn(),
+  replace: vi.fn(),
+  push: vi.fn(),
 };
 
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
-  useLocation: () => ({ pathname: "/path" }),
-}));
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual("react-router-dom");
+  return {
+    ...actual,
+    useHistory: () => mockHistory,
+    useLocation: () => ({ pathname: "/path" }),
+  };
+});
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
@@ -56,7 +65,7 @@ import {
 // 3. userEvent (PREFERRED for user interactions)
 import userEvent from "@testing-library/user-event";
 
-// 4. jest-dom matchers (MUST be imported)
+// 4. jest-dom matchers (library name unchanged under Vitest; wired in setupTests.js)
 import "@testing-library/jest-dom";
 
 // 5. IntlProvider (if component uses i18n)
@@ -108,7 +117,7 @@ const setupApiMocks = (overrides = {}) => {
   });
 };
 
-// Helper function: Mock data builder (per Medium article - use generic cases)
+// Helper function: Mock data builder (builder pattern - use generic cases)
 const createMockRoom = (overrides = {}) => ({
   id: "1",
   name: "Main Laboratory",
@@ -120,20 +129,20 @@ const createMockRoom = (overrides = {}) => ({
 describe("{ComponentName}", () => {
   beforeEach(() => {
     // Reset mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     setupApiMocks();
   });
 
   /**
    * Test: {Test Description}
    * Task Reference: T{###}
-   * 
+   *
    * Arrange-Act-Assert pattern:
    * 1. Arrange: Setup test data and mocks
    * 2. Act: Render component and interact
    * 3. Assert: Verify expected outcome
    */
-  test("test{Scenario}_{ExpectedResult}", async () => {
+  it("test{Scenario}_{ExpectedResult}", async () => {
     // Arrange: Setup API mocks
     setupApiMocks({
       {entities}: [
@@ -154,13 +163,13 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description for Async}
    * Task Reference: T{###}
-   * 
+   *
    * Testing async operations:
    * - Use waitFor for async element queries
    * - Use queryBy* inside waitFor (not getBy*)
    * - Use act() for state updates
    */
-  test("testAsyncOperation_{ExpectedResult}", async () => {
+  it("testAsyncOperation_{ExpectedResult}", async () => {
     // Arrange
     setupApiMocks();
 
@@ -177,22 +186,22 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description for Carbon Component - ComboBox}
    * Task Reference: T{###}
-   * 
+   *
    * Testing Carbon ComboBox:
    * - Use userEvent.type to open dropdown
    * - Wait for dropdown to appear (Carbon uses portals)
    * - Select option with userEvent.click
    */
-  test("testCarbonComboBox_{ExpectedResult}", async () => {
+  it("testCarbonComboBox_{ExpectedResult}", async () => {
     // Arrange
     renderWithIntl(<{ComponentName} />);
 
     // Act: Interact with ComboBox
     const input = screen.getByRole("combobox", { name: /room/i });
-    
+
     // Type to open dropdown (PREFERRED: userEvent)
     await userEvent.type(input, "Main Laboratory", { delay: 0 });
-    
+
     // Wait for dropdown to open (Carbon renders in portal)
     await waitFor(
       () => {
@@ -201,7 +210,7 @@ describe("{ComponentName}", () => {
       },
       { timeout: 2000 }
     );
-    
+
     // Select option
     const option = await screen.findByRole("option", {
       name: /main laboratory/i,
@@ -215,20 +224,20 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description for Carbon Component - OverflowMenu}
    * Task Reference: T{###}
-   * 
+   *
    * Testing Carbon OverflowMenu:
    * - Click menu button with userEvent
    * - Wait for menu items to render in portal
    * - Select menu item with userEvent
    */
-  test("testCarbonOverflowMenu_{ExpectedResult}", async () => {
+  it("testCarbonOverflowMenu_{ExpectedResult}", async () => {
     // Arrange
     renderWithIntl(<{ComponentName} />);
 
     // Act: Interact with OverflowMenu
     const menuButton = screen.getByTestId("overflow-menu-button");
     await userEvent.click(menuButton);
-    
+
     // Wait for menu items to render in portal
     await waitFor(
       () => {
@@ -237,7 +246,7 @@ describe("{ComponentName}", () => {
       },
       { timeout: 5000 }
     );
-    
+
     // Select menu item
     const menuItem = await screen.findByRole("menuitem", {
       name: /delete/i,
@@ -251,13 +260,13 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description for Carbon Component - DataTable}
    * Task Reference: T{###}
-   * 
+   *
    * Testing Carbon DataTable:
    * - Wait for table to render
    * - Use within() for scoped queries
    * - Interact with row actions
    */
-  test("testCarbonDataTable_{ExpectedResult}", async () => {
+  it("testCarbonDataTable_{ExpectedResult}", async () => {
     // Arrange
     setupApiMocks({
       rooms: [createMockRoom({ id: "1", name: "Test Room" })],
@@ -267,11 +276,11 @@ describe("{ComponentName}", () => {
     // Act: Interact with DataTable
     // Wait for table to render
     const table = await screen.findByRole("table");
-    
+
     // Find row by text (use within for scoped queries)
     const row = within(table).getByText("Test Room");
     expect(row).toBeInTheDocument();
-    
+
     // Interact with row action
     const actionButton = within(row).getByRole("button", { name: /edit/i });
     await userEvent.click(actionButton);
@@ -282,20 +291,20 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description for User Interaction}
    * Task Reference: T{###}
-   * 
+   *
    * Testing user interactions (PREFERRED: userEvent):
    * - Button clicks: await userEvent.click(button)
    * - Form submissions: await userEvent.type(input, "text")
    * - Input changes: await userEvent.type(input, "text", { delay: 0 })
    */
-  test("testUserInteraction_{ExpectedResult}", async () => {
+  it("testUserInteraction_{ExpectedResult}", async () => {
     // Arrange
     renderWithIntl(<{ComponentName} />);
 
     // Act: Simulate user interaction (PREFERRED: userEvent)
     const input = screen.getByLabelText(/name/i);
     await userEvent.type(input, "Test Name", { delay: 0 });
-    
+
     const button = screen.getByRole("button", { name: /save/i });
     await userEvent.click(button);
 
@@ -305,7 +314,7 @@ describe("{ComponentName}", () => {
     //   expect.stringContaining("/rest/{module}/{entities}"),
     //   expect.any(Function)
     // );
-    
+
     // Example: Verify user-visible outcome
     // expect(await screen.findByText("Success")).toBeInTheDocument();
   });
@@ -313,13 +322,13 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description for Edge Cases - Null}
    * Task Reference: T{###}
-   * 
-   * Testing edge cases (per Medium article):
+   *
+   * Testing edge cases:
    * - Null values
    * - Empty strings/arrays
    * - Boundary values
    */
-  test("testEdgeCase_NullValue_ShowsNA", () => {
+  it("testEdgeCase_NullValue_ShowsNA", () => {
     // Arrange: Render with null value
     renderWithIntl(<{ComponentName} value={null} />);
 
@@ -331,7 +340,7 @@ describe("{ComponentName}", () => {
    * Test: {Test Description for Edge Cases - Empty}
    * Task Reference: T{###}
    */
-  test("testEdgeCase_EmptyArray_ShowsEmptyState", () => {
+  it("testEdgeCase_EmptyArray_ShowsEmptyState", () => {
     // Arrange: Render with empty array
     renderWithIntl(<{ComponentName} items={[]} />);
 
@@ -343,7 +352,7 @@ describe("{ComponentName}", () => {
    * Test: {Test Description for Edge Cases - Boundary}
    * Task Reference: T{###}
    */
-  test("testEdgeCase_BoundaryValue_EnforcesMaxLength", async () => {
+  it("testEdgeCase_BoundaryValue_EnforcesMaxLength", async () => {
     // Arrange: Render with maxLength constraint
     renderWithIntl(<{ComponentName} maxLength={100} />);
 
@@ -356,15 +365,15 @@ describe("{ComponentName}", () => {
   });
 
   /**
-   * Test: {Test Description for Async Operation}
+   * Test: {Test Description for Async Operation - Alternate}
    * Task Reference: T{###}
-   * 
+   *
    * Testing async operations:
    * - Use waitFor with queryBy* (NOT getBy*)
    * - OR use findBy* for async elements
    * - DON'T use setTimeout (no retry logic)
    */
-  test("testAsyncOperation_{ExpectedResult}", async () => {
+  it("testAsyncOperationAlternate_{ExpectedResult}", async () => {
     // Arrange
     setupApiMocks();
 
@@ -372,10 +381,13 @@ describe("{ComponentName}", () => {
     renderWithIntl(<{ComponentName} />);
 
     // Assert: Wait for async element (CORRECT: queryBy* in waitFor)
-    await waitFor(() => {
-      const element = screen.queryByTestId("async-element");
-      expect(element).toBeInTheDocument();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const element = screen.queryByTestId("async-element");
+        expect(element).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
 
     // Alternative: Use findBy* (also correct)
     // const element = await screen.findByTestId("async-element");
@@ -385,44 +397,50 @@ describe("{ComponentName}", () => {
   /**
    * Test: {Test Description - Anti-Pattern Warning}
    * Task Reference: T{###}
-   * 
+   *
    * ANTI-PATTERNS TO AVOID:
-   * 
+   *
    * ❌ WRONG: Using setTimeout (no retry logic, brittle timing)
    * await new Promise((resolve) => setTimeout(resolve, 1000));
    * expect(screen.getByText("Loaded Data")).toBeInTheDocument();
-   * 
+   *
    * ✅ CORRECT: Use waitFor with queryBy*
    * await waitFor(() => {
    *   const element = screen.queryByText("Loaded Data");
    *   expect(element).toBeInTheDocument();
    * });
-   * 
+   *
    * ❌ WRONG: Using getBy* in waitFor (throws during retries)
    * await waitFor(() => {
    *   expect(screen.getByText("Loaded Data")).toBeInTheDocument();
    * });
-   * 
+   *
    * ✅ CORRECT: Use queryBy* in waitFor
    * await waitFor(() => {
    *   const element = screen.queryByText("Loaded Data");
    *   expect(element).toBeInTheDocument();
    * });
-   * 
+   *
    * ❌ WRONG: Using fireEvent when userEvent works
    * fireEvent.click(button);
-   * 
+   *
    * ✅ CORRECT: Use userEvent for user interactions
    * await userEvent.click(button);
+   *
+   * ❌ WRONG: Reaching for jest.* — project runs Vitest
+   * jest.fn(); jest.mock();
+   *
+   * ✅ CORRECT: Use vi.* (globals enabled in vite.config.ts)
+   * vi.fn(); vi.mock();
    */
-  test("testAntiPatternExamples_{ExpectedResult}", async () => {
+  it("testAntiPatternExamples_{ExpectedResult}", async () => {
     // This test demonstrates correct patterns
     renderWithIntl(<{ComponentName} />);
-    
+
     // ✅ CORRECT: userEvent for user interactions
     const button = screen.getByRole("button", { name: /submit/i });
     await userEvent.click(button);
-    
+
     // ✅ CORRECT: waitFor with queryBy* for async operations
     await waitFor(() => {
       const element = screen.queryByText("Success");
@@ -437,4 +455,3 @@ describe("{ComponentName}", () => {
   // - Test accessibility (ARIA labels, keyboard navigation)
   // - Test user-visible behavior (NOT implementation details)
 });
-

@@ -214,7 +214,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 - **Playwright 1.57.0** (E2E tests — **recommended for all new tests**)
 - **Cypress 12.17.3** (E2E tests — **deprecated**, existing tests will be
   migrated to Playwright)
-- **Jest + React Testing Library** (unit tests)
+- **Vitest + React Testing Library** (unit tests)
 
 **Code Quality:**
 
@@ -1303,18 +1303,24 @@ public class StorageLocationDAOTest extends BaseWebContextSensitiveTest {
 
 **Template:** `.specify/templates/testing/DataJpaTestDao.java.template`
 
-### Frontend Unit Tests (Jest + React Testing Library)
+### Frontend Unit Tests (Vitest + React Testing Library)
 
 **Location:** `frontend/src/components/{feature}/*.test.jsx` or
 `frontend/src/components/{feature}/__tests__/*.test.jsx`
 
+**Project configuration:** Vitest with `globals: true` (see
+`frontend/vite.config.ts`). `vi`, `describe`, `it`, `expect`, `beforeEach`,
+`afterEach` are globally available — use `vi.*` (not `jest.*`).
+`@testing-library/jest-dom` matchers are wired via
+`frontend/src/setupTests.js`.
+
 **For Comprehensive Guidance**: See
-[Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
+[Testing Roadmap - Vitest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
 for detailed patterns, code examples, and best practices.
 
 **For Quick Reference**: See
 [Vitest Best Practices Guide](.specify/guides/vitest-best-practices.md) for
-common patterns and cheat sheets.
+common patterns, cheat sheets, and a Vitest↔Jest API mapping table.
 
 **TDD Workflow (MANDATORY for complex logic):**
 
@@ -1323,7 +1329,7 @@ common patterns and cheat sheets.
 - **Refactor**: Improve code quality while keeping tests green
 
 **SDD Checkpoint:** After Phase 4 (Frontend), all unit tests MUST pass  
-**Coverage Goal:** >70% (measured via Jest)
+**Coverage Goal:** >70% (measured via Vitest + `@vitest/coverage-v8`)
 
 **Pattern:**
 
@@ -1337,9 +1343,9 @@ import { BrowserRouter } from "react-router-dom";
 import ComponentName from "./ComponentName";
 import messages from "../../../languages/en.json";
 
-// Mock utilities BEFORE imports (Jest hoisting)
-jest.mock("../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+// Mock utilities BEFORE imports (Vitest hoists vi.mock automatically)
+vi.mock("../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -1395,7 +1401,7 @@ describe("ComponentName", () => {
 - ❌ Testing implementation details (test user-visible behavior)
 - ❌ Inconsistent import order
 
-**Template:** `.specify/templates/testing/JestComponent.test.jsx.template`
+**Template:** `.specify/templates/testing/VitestComponent.test.jsx.template`
 
 ### ORM Validation Tests (Constitution V.4)
 
@@ -1846,7 +1852,8 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-dem
   `.specify/guides/backend-testing-best-practices.md` - Quick reference for
   backend Java/Spring Framework testing patterns
 - **Vitest Best Practices**: `.specify/guides/vitest-best-practices.md` - Quick
-  reference for Jest + React Testing Library patterns
+  reference for Vitest + React Testing Library patterns (includes a Vitest↔Jest
+  API mapping table for porting existing tests)
 - **Cypress Best Practices**: `.specify/guides/cypress-best-practices.md` -
   Quick reference for Cypress patterns
 
@@ -1862,9 +1869,9 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-dem
     tests (BaseWebContextSensitiveTest)
   - DAO Tests: `.specify/templates/testing/DataJpaTestDao.java.template` - DAO
     tests (BaseWebContextSensitiveTest)
-  - Jest Component:
-    `.specify/templates/testing/JestComponent.test.jsx.template` - Frontend unit
-    tests
+  - Vitest Component:
+    `.specify/templates/testing/VitestComponent.test.jsx.template` - Frontend
+    unit tests (Vitest `vi.*` APIs, `describe/it/expect` globals)
   - Cypress E2E: `.specify/templates/testing/CypressE2E.cy.js.template` - E2E
     tests
 
@@ -2238,8 +2245,8 @@ Before creating PR, verify ALL items:
   E2E-specific fixture guide
 - **Cypress Best Practices:** `.specify/guides/cypress-best-practices.md` -
   Cypress patterns
-- **Vitest Best Practices:** `.specify/guides/vitest-best-practices.md` - Jest
-  patterns
+- **Vitest Best Practices:** `.specify/guides/vitest-best-practices.md` -
+  Vitest patterns + Vitest↔Jest API mapping
 - **Backend Testing Best Practices:**
   `.specify/guides/backend-testing-best-practices.md` - Backend patterns
 

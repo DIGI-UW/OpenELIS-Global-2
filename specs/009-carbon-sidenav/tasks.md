@@ -72,7 +72,7 @@ persistence
 >
 > Reference:
 > [Vitest Best Practices](../../.specify/guides/vitest-best-practices.md)
-> Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+> Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
 
 - [x] T002 [P] [M1] **[RED]** Create test file for useSideNavPreference hook in
       `frontend/src/components/layout/useSideNavPreference.test.js` → Run
@@ -169,7 +169,7 @@ auto-expand works
 >
 > Reference:
 > [Vitest Best Practices](../../.specify/guides/vitest-best-practices.md)
-> Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+> Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
 
 - [x] T021 [P] [M2a] **[RED]** Create test for menu rendering in
       `frontend/src/components/layout/TwoModeLayout.test.js` (add to existing) →

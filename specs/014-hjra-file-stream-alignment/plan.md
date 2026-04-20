@@ -356,7 +356,7 @@ logic in the WAR (`src/main/java/.../analyzer/parsers/` does NOT exist).
 - [x] **Frontend Unit Tests**: FileImportConfiguration form (fileFormat
       dropdown), upload component, preview table.
 
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - Wrap in `<IntlProvider>` + `<BrowserRouter>`.
 
 - [x] **E2E Tests**: Admin creates file-import analyzer → tech uploads file →

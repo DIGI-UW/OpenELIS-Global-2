@@ -185,7 +185,7 @@ Document which test types will be used for this feature:
     - Concurrent aliquoting scenario with optimistic locking
 - [x] **Frontend Unit Tests**: React component logic (Jest + React Testing
       Library)
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - **Reference**:
     [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests)
     for detailed patterns
