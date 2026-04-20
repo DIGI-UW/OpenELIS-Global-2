@@ -13,28 +13,52 @@
  */
 package org.openelisglobal.dictionarycategory.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Parameter;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+@Entity
+@Table(name = "DICTIONARY_CATEGORY")
+@DynamicUpdate
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class DictionaryCategory extends BaseObject<String> {
 
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @Column(name = "ID", precision = 10, scale = 0)
+    @GeneratedValue(generator = "dictionary_category_seq_gen")
+    @GenericGenerator(name = "dictionary_category_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "dictionary_category_seq"))
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
+    @Column(name = "DESCRIPTION", length = 60)
     private String description;
 
-    // bugzilla 2061-2063
+    @Column(name = "LOCAL_ABBREV", length = 10)
     private String localAbbreviation;
 
-    // bugzilla 2061-2063
+    @Column(name = "NAME", length = 50)
     private String categoryName;
 
     public DictionaryCategory() {
         super();
     }
 
+    @Override
     public void setId(String id) {
         this.id = id;
     }
 
+    @Override
     public String getId() {
         return id;
     }

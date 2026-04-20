@@ -27,6 +27,7 @@ function PatientManagement() {
   };
 
   const handleNewPatientTab = () => {
+    setSelectedPatient({});
     setNewPatientTab({ kind: "primary", active: true });
     setSearchPatientTab({ kind: "tertiary", active: false });
   };
@@ -91,6 +92,7 @@ function PatientManagement() {
           {newPatientTab.active && (
             <Column lg={16} md={8} sm={4}>
               <CreatePatientForm
+                key={selectedPatient.patientPK || "new"}
                 showActionsButton={true}
                 selectedPatient={selectedPatient}
               ></CreatePatientForm>

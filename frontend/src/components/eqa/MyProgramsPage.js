@@ -58,7 +58,7 @@ const MyProgramsPage = () => {
   const fetchEnrollments = () => {
     getFromOpenElisServer("/rest/eqa/my-programs", (data) => {
       setLoading(false);
-      if (data) {
+      if (data && Array.isArray(data)) {
         setEnrollments(data);
       }
     });
@@ -171,6 +171,10 @@ const MyProgramsPage = () => {
       header: intl.formatMessage({ id: "eqa.myPrograms.tests" }),
     },
     {
+      key: "panels",
+      header: intl.formatMessage({ id: "eqa.myPrograms.panels" }),
+    },
+    {
       key: "status",
       header: intl.formatMessage({ id: "eqa.myPrograms.status" }),
     },
@@ -181,7 +185,8 @@ const MyProgramsPage = () => {
     programName: e.programName || "",
     provider: e.provider || "",
     labUnits: (e.labUnits || []).length,
-    tests: (e.tests || []).length + (e.panels || []).length,
+    tests: (e.tests || []).length,
+    panels: (e.panels || []).length,
     status: e.isActive ? "Active" : "Inactive",
   }));
 
@@ -194,7 +199,7 @@ const MyProgramsPage = () => {
   }
 
   return (
-    <div className="adminPageContent">
+    <div className="pageContent">
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <Grid fullWidth={true}>
@@ -312,6 +317,19 @@ const MyProgramsPage = () => {
                                   <TableCell key={cell.id}>
                                     {cell.value > 0 ? (
                                       <Tag type="teal" size="sm">
+                                        {cell.value}
+                                      </Tag>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "panels") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    {cell.value > 0 ? (
+                                      <Tag type="purple" size="sm">
                                         {cell.value}
                                       </Tag>
                                     ) : (

@@ -67,7 +67,12 @@ import { sampleObject } from "../addOrder/Index";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { SearchResults } from "../resultPage/SearchResultForm";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
+import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
+import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAssignmentResponse";
 import GenericSampleOrder from "../genericSample/GenericSampleOrder";
 import GenericSampleOrderEdit from "../genericSample/GenericSampleOrderEdit";
 import GenericSampleOrderImport from "../genericSample/GenericSampleOrderImport";
@@ -955,8 +960,12 @@ const NoteBookInstanceEntryForm = () => {
 
   // Handle location assignment for a sample
   const handleLocationAssignment = async (locationData, sampleItemId) => {
-    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-    const newLocation = locationData?.newLocation || locationData;
+    // locationData format: { sample, selection, reason?, conditionNotes?, positionCoordinate? }
+    const selection =
+      locationData?.selection || locationData?.newLocation || {};
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
 
     // Use sampleItemId from parameter or stored location data
     const actualSampleItemId =
@@ -968,10 +977,10 @@ const NoteBookInstanceEntryForm = () => {
         ? sampleLocations[sampleItemId].sampleItemId
         : null);
 
-    if (!actualSampleItemId || !newLocation) {
+    if (!actualSampleItemId || !deepest) {
       console.error("Missing SampleItem ID or location for assignment", {
         sampleItemId: actualSampleItemId,
-        newLocation,
+        selection,
       });
       return;
     }
@@ -980,18 +989,11 @@ const NoteBookInstanceEntryForm = () => {
       // Call assignment API with SampleItem ID
       const assignmentData = {
         sampleItemId: actualSampleItemId,
-        locationId:
-          newLocation.rack?.id ||
-          newLocation.shelf?.id ||
-          newLocation.device?.id,
-        locationType: newLocation.rack
-          ? "rack"
-          : newLocation.shelf
-            ? "shelf"
-            : "device",
+        locationId: String(deepest.value.id),
+        locationType: deepest.type,
         positionCoordinate:
           locationData.positionCoordinate ||
-          newLocation.position?.coordinate ||
+          positionToCoordinate(locationData.position) ||
           "",
         notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
       };
@@ -1001,9 +1003,12 @@ const NoteBookInstanceEntryForm = () => {
         JSON.stringify(assignmentData),
         async (response) => {
           const body = await response.json();
-          if (response.status === 200 && body.success) {
+          const isSuccess = response.ok && isStorageAssignmentSuccess(body);
+
+          if (isSuccess) {
             // Update local state with location path
-            const locationPath = body.hierarchicalPath || "";
+            const locationPath =
+              body.newHierarchicalPath || body.hierarchicalPath || "";
             const storedData = sampleLocations[sampleItemId];
             setSampleLocations((prev) => ({
               ...prev,
@@ -1019,6 +1024,18 @@ const NoteBookInstanceEntryForm = () => {
                 defaultMessage: "Location assigned successfully",
               }),
               kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+          } else {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message:
+                body?.message ||
+                intl.formatMessage({
+                  id: "storage.location.assigned.error",
+                  defaultMessage: "Failed to assign location",
+                }),
+              kind: NotificationKinds.error,
             });
             setNotificationVisible(true);
           }
@@ -1941,32 +1958,56 @@ const NoteBookInstanceEntryForm = () => {
                                     </Column>
                                   </>
                                 )}
-                                {/* Storage Location Widget */}
+                                {/* Storage location — inline variant
+                                    fits here because notebook entry is a
+                                    linear form (unlike result entry,
+                                    which uses the modal variant inside
+                                    its expandable row). */}
                                 <Column lg={16} md={8} sm={4}>
                                   <br />
-                                  <StorageLocationSelector
-                                    workflow="results"
-                                    showQuickFind={true}
-                                    sampleInfo={{
-                                      sampleItemId:
-                                        sample.sampleItemId || sample.id,
-                                      sampleItemExternalId:
-                                        sample.externalId || null,
-                                      sampleAccessionNumber:
-                                        sample.accessionNumber || "",
-                                      sampleId:
-                                        sample.sampleItemId || sample.id,
-                                      type: sample.sampleType || "",
-                                      status: sample.sampleStatus || "Active",
-                                    }}
-                                    hierarchicalPath={
-                                      sampleLocations[
-                                        sample.sampleItemId || sample.id
-                                      ]?.locationPath || ""
-                                    }
-                                    onLocationChange={(locationData) => {
+                                  <div className="notebook-storage-current">
+                                    <strong>
+                                      <FormattedMessage
+                                        id="storage.location.current"
+                                        defaultMessage="Storage location"
+                                      />
+                                      :
+                                    </strong>{" "}
+                                    {sampleLocations[
+                                      sample.sampleItemId || sample.id
+                                    ]?.locationPath || (
+                                      <FormattedMessage
+                                        id="storage.location.unassigned"
+                                        defaultMessage="Unassigned"
+                                      />
+                                    )}
+                                  </div>
+                                  <LocationPickerInline
+                                    onChange={(state) => {
+                                      if (
+                                        !getDeepestLocationSelection(
+                                          state.selection,
+                                          { requireAssignable: true },
+                                        )
+                                      ) {
+                                        return;
+                                      }
                                       handleLocationAssignment(
-                                        locationData,
+                                        {
+                                          sample: {
+                                            sampleItemId:
+                                              sample.sampleItemId || sample.id,
+                                            sampleAccessionNumber:
+                                              sample.accessionNumber || "",
+                                          },
+                                          selection: state.selection,
+                                          position: state.position,
+                                          positionCoordinate:
+                                            positionToCoordinate(
+                                              state.position,
+                                            ),
+                                          conditionNotes: state.notes || "",
+                                        },
                                         sample.sampleItemId || sample.id,
                                       );
                                     }}

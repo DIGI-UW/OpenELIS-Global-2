@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+     http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add "Quality Control" parent sub-menu under Analyzers -->
+    <changeSet author="openelisglobal" id="qc-017-add-menu-qc-parent">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Quality Control sub-menu under Analyzers</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers')" />
+            <column name="presentation_order" value="5" />
+            <column name="element_id" value="menu_analyzers_qc" />
+            <column name="action_url" value="/analyzers/qc/db" />
+            <column name="display_key" value="analyzer.navigation.qc" />
+            <column name="tool_tip_key" value="analyzer.navigation.qc" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Add "QC Dashboard" sub-menu item -->
+    <changeSet author="openelisglobal" id="qc-018-add-menu-qc-dashboard">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc_dashboard'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds QC Dashboard sub-menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc')" />
+            <column name="presentation_order" value="1" />
+            <column name="element_id" value="menu_analyzers_qc_dashboard" />
+            <column name="action_url" value="/analyzers/qc/db" />
+            <column name="display_key" value="analyzer.navigation.qcDashboard" />
+            <column name="tool_tip_key" value="analyzer.navigation.qcDashboard" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Add "Rule Configuration" sub-menu item -->
+    <changeSet author="openelisglobal" id="qc-019-add-menu-qc-rule-config">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc_rule_config'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Rule Configuration sub-menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc')" />
+            <column name="presentation_order" value="2" />
+            <column name="element_id" value="menu_analyzers_qc_rule_config" />
+            <column name="action_url" value="/analyzers/qc/rule-config" />
+            <column name="display_key" value="analyzer.navigation.qcRuleConfig" />
+            <column name="tool_tip_key" value="analyzer.navigation.qcRuleConfig" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+    <!-- Add "Control Lots" sub-menu item -->
+    <changeSet author="openelisglobal" id="qc-020-add-menu-qc-control-lots">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc_control_lots'
+            </sqlCheck>
+        </preConditions>
+        <comment>Adds Control Lots sub-menu item</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_analyzers_qc')" />
+            <column name="presentation_order" value="3" />
+            <column name="element_id" value="menu_analyzers_qc_control_lots" />
+            <column name="action_url" value="/analyzers/qc/control-lots" />
+            <column name="display_key" value="analyzer.navigation.qcControlLots" />
+            <column name="tool_tip_key" value="analyzer.navigation.qcControlLots" />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

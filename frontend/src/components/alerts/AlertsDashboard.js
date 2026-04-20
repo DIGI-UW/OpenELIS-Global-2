@@ -65,7 +65,7 @@ const AlertsDashboard = () => {
   };
 
   const handleAcknowledgeSubmit = (alertId, comment) => {
-    const payload = comment ? JSON.stringify({ comment }) : "{}";
+    const payload = comment ? JSON.stringify({ notes: comment }) : "{}";
     putToOpenElisServer(
       `/rest/alerts/${alertId}/acknowledge`,
       payload,

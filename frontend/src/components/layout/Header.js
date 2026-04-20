@@ -95,6 +95,7 @@ function OEHeader({
   const [readNotifications, setReadNotifications] = useState([]);
   const [searchBar, setSearchBar] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [isTrainingInstallation, setIsTrainingInstallation] = useState(false);
   scrollRef.current = window.scrollY;
   useLayoutEffect(() => {
     window.scrollTo(0, scrollRef.current);
@@ -142,6 +143,16 @@ function OEHeader({
     return () => {
       window.removeEventListener("branding-updated", handleBrandingUpdate);
     };
+  }, [userSessionDetails.authenticated]);
+
+  useEffect(() => {
+    if (userSessionDetails.authenticated) {
+      getFromOpenElisServer("/rest/database-cleaning/status", (response) => {
+        if (response) {
+          setIsTrainingInstallation(response.trainingInstallation);
+        }
+      });
+    }
   }, [userSessionDetails.authenticated]);
 
   const panelSwitchLabel = () => {
@@ -274,7 +285,7 @@ function OEHeader({
     // Add cache-busting parameter to prevent stale logo display after upload
     const logoSrc = headerLogoUrl
       ? `${config.serverBaseUrl}${headerLogoUrl}?v=${logoVersion}`
-      : `../images/openelis_logo.png`;
+      : `/images/openelis_logo.png`;
 
     return (
       <>
@@ -286,7 +297,9 @@ function OEHeader({
             style={{ objectFit: "contain", maxHeight: "71px" }}
             onError={(e) => {
               // Fallback to default logo if custom logo fails to load
-              e.target.src = `../images/openelis_logo.png`;
+              // Clear onError to prevent infinite loop if fallback also fails
+              e.target.onerror = null;
+              e.target.src = `/images/openelis_logo.png`;
             }}
           />
         </picture>
@@ -642,6 +655,11 @@ function OEHeader({
                 <p>
                   <FormattedMessage id="header.label.version" /> &nbsp;{" "}
                   {configurationProperties?.releaseNumber}
+                  {isTrainingInstallation && (
+                    <span className="training-installation-badge">
+                      <FormattedMessage id="training.installation.message" />
+                    </span>
+                  )}
                 </p>
               </div>
             </HeaderName>

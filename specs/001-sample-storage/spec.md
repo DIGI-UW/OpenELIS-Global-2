@@ -2273,6 +2273,21 @@ post-POC iterations.
 - **SC-FUTURE-004**: Disposed Sample Prevention - System prevents reassignment
   of disposed samples
 
+## Clarifications
+
+### Session 2026-04-18
+
+- **Architecture clarification:** Storage UI delivery has shifted from a single
+  tabbed dashboard implementation to a tile landing page plus per-resource
+  routes (for example: `/Storage/sample-items`, `/Storage/rooms`,
+  `/Storage/devices`, `/Storage/shelves`, `/Storage/racks`, `/Storage/boxes`).
+- **Capability restoration clarification:** Room/Device/Shelf/Rack/Box CRUD
+  actions and the Sample Items dispose action are restored on the routed pages.
+- **Spec alignment note:** Route and behavior details for location CRUD and
+  cascade delete are further specified in
+  `specs/OGC-68-storage-location-crud/spec.md` and pagination route behavior is
+  clarified in `specs/OGC-150-storage-pagination/spec.md`.
+
 ## Dependencies
 
 - Existing OpenELIS sample entity and database schema

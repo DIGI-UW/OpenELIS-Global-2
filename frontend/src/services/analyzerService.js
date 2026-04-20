@@ -53,8 +53,9 @@ export const copyMappings = (
  * Get all analyzers with optional filters
  * @param {Object} filters - Optional filters { status, search }
  * @param {Function} callback - Callback function (data) => void
+ * @param {AbortSignal|null} signal - Optional AbortSignal to cancel on unmount
  */
-export const getAnalyzers = (filters, callback) => {
+export const getAnalyzers = (filters, callback, signal = null) => {
   let endpoint = "/rest/analyzer/analyzers";
   const params = new URLSearchParams();
 
@@ -71,7 +72,7 @@ export const getAnalyzers = (filters, callback) => {
     endpoint += "?" + params.toString();
   }
 
-  getFromOpenElisServer(endpoint, callback);
+  getFromOpenElisServer(endpoint, callback, signal);
 };
 
 /**
@@ -804,6 +805,93 @@ export const getPendingCodes = (analyzerId, callback) => {
  * @param {Function} callback - Callback function (response, extraParams) => void
  * @param {*} extraParams
  */
+// ============================================================
+// FR-15: QC Sample Identification Rules
+// ============================================================
+
+export const getQcRules = (analyzerId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
+  getFromOpenElisServer(endpoint, callback);
+};
+
+export const createQcRule = (analyzerId, ruleData, callback, extraParams) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules`;
+  const payload = JSON.stringify(ruleData);
+  postToOpenElisServerJsonResponse(endpoint, payload, callback, extraParams);
+};
+
+export const updateQcRule = (
+  analyzerId,
+  ruleId,
+  ruleData,
+  callback,
+  extraParams,
+) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
+  const payload = JSON.stringify(ruleData);
+
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+    body: payload,
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        callback(
+          {
+            ...json,
+            status: response.status,
+            error: json.error || `HTTP ${response.status}`,
+          },
+          extraParams,
+        );
+        return;
+      }
+      callback(json, extraParams);
+    })
+    .catch((error) => {
+      callback(
+        { error: error.message || "Network error", status: 0 },
+        extraParams,
+      );
+    });
+};
+
+export const deleteQcRule = (analyzerId, ruleId, callback) => {
+  const endpoint = `/rest/analyzer/analyzers/${analyzerId}/qc-rules/${ruleId}`;
+
+  fetch(config.serverBaseUrl + endpoint, {
+    credentials: "include",
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF"),
+    },
+  })
+    .then(async (response) => {
+      if (response.ok || response.status === 204) {
+        callback(true, null);
+      } else {
+        const errorData = await response.json().catch(() => ({
+          error: `HTTP ${response.status}: ${response.statusText}`,
+        }));
+        callback(false, errorData);
+      }
+    })
+    .catch((error) => {
+      callback(false, { error: error.message || "Network error" });
+    });
+};
+
+// ============================================================
+// Pending Codes
+// ============================================================
+
 export const updatePendingCodeStatus = (
   analyzerId,
   pendingCodeId,

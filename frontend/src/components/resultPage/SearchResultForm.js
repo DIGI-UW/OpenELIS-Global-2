@@ -27,6 +27,7 @@ import { Copy, ArrowLeft, ArrowRight } from "@carbon/icons-react";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import DataTable from "react-data-table-component";
 import { Formik, Field } from "formik";
+import { jpGet, jpSet } from "../utils/JsonPath";
 import SearchResultFormValues from "../formModel/innitialValues/SearchResultFormValues";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
@@ -37,10 +38,20 @@ import config from "../../config.json";
 import CustomDatePicker from "../common/CustomDatePicker";
 import AsyncAvatar from "../patient/photoManagement/photoAvatar/AyncAvatar";
 import CompactFileInput from "./fileUpload/FileInput";
-import StorageLocationSelector from "../storage/StorageLocationSelector";
+import LocationPickerModal from "../storage/LocationPicker/LocationPickerModal";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+} from "../storage/LocationPicker/locationSelectionMapper";
+import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAssignmentResponse";
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
+import InlineNceForm from "../nonconform/common/InlineNceForm";
+import { Warning } from "@carbon/icons-react";
+import ESignatureButton, {
+  SignatureMeaning,
+} from "../esignature/ESignatureButton";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -178,7 +189,22 @@ export function SearchResultForm(props) {
     setPatient(patient);
   };
   useEffect(() => {
-    querySearch(searchFormValues);
+    // Only fire a patient-driven search when no URL accession/date params will
+    // trigger their own authoritative search from the [searchBy] effect. This
+    // prevents a broad (empty-accession) request from overwriting the URL-driven
+    // accession search with stale or wider results.
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasUrlSearch =
+      urlParams.get("accessionNumber") ||
+      urlParams.get("upperAccessionNumber") ||
+      urlParams.get("collectionDate") ||
+      urlParams.get("recievedDate") ||
+      urlParams.get("selectedTest") ||
+      urlParams.get("selectedSampleStatus") ||
+      urlParams.get("selectedAnalysisStatus");
+    if (!hasUrlSearch) {
+      querySearch(searchFormValues);
+    }
   }, [patient]);
 
   const querySearch = (values) => {
@@ -393,15 +419,26 @@ export function SearchResultForm(props) {
     let upperAccessionNumber = new URLSearchParams(window.location.search).get(
       "upperAccessionNumber",
     );
-    if (accessionNumber) {
+    if (accessionNumber && !upperAccessionNumber) {
+      // Single-accession lookup: use the dedicated /rest/accession-results
+      // endpoint which is faster than the general-purpose LogbookResults
+      // (no N+1 queries, no in-memory pagination overhead).
+      let labNo = labNumberForLogbookSearch(accessionNumber);
       let searchValues = {
         ...searchFormValues,
         accessionNumber: accessionNumber,
       };
       setSearchFormValues(searchValues);
-      querySearch(searchValues);
-    }
-    if (accessionNumber || upperAccessionNumber) {
+      setLoading(true);
+      props.setResults({ testResult: [] });
+      props.setSearchBy?.({ type: "order", doRange: false });
+      props.setParam("&accessionNumber=" + labNo);
+      getFromOpenElisServer(
+        "/rest/accession-results?accessionNumber=" + encodeURIComponent(labNo),
+        setResultsWithId,
+      );
+    } else if (accessionNumber || upperAccessionNumber) {
+      // Range lookup or fallback: use LogbookResults
       let searchValues = {
         ...searchFormValues,
         accessionNumber: accessionNumber,
@@ -808,6 +845,9 @@ export function SearchResults(props) {
   const [referTest, setReferTest] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sampleLocations, setSampleLocations] = useState({}); // Track location by analysisId
+  const [nceFormOpenRow, setNceFormOpenRow] = useState(null); // Track which row has NCE form open
+  // Which analysisId's storage-picker modal is open (one at a time).
+  const [storageModalRow, setStorageModalRow] = useState(null);
 
   const componentMounted = useRef(false);
 
@@ -1081,6 +1121,12 @@ export function SearchResults(props) {
           <div className="sampleInfo">
             <br></br>
             {testName}
+            {row.unitsOfMeasure && (
+              <>
+                <br></br>
+                {row.unitsOfMeasure}
+              </>
+            )}
             <br></br>
             {sampleType}
           </div>
@@ -1154,10 +1200,9 @@ export function SearchResults(props) {
                 rows={1}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
-              <div
-                className="note"
-                dangerouslySetInnerHTML={{ __html: row.pastNotes }}
-              />
+              <div className="note" style={{ whiteSpace: "pre-wrap" }}>
+                {row.pastNotes?.replace(/<br\s*\/?>/gi, "\n")}
+              </div>
             </div>
           </>
         );
@@ -1336,29 +1381,30 @@ export function SearchResults(props) {
               sampleAccessionNumber: response.sampleAccessionNumber || "",
             },
           }));
+        } else {
+          // SampleItem may not have location assigned yet
+          console.debug("No location found for SampleItem:", sampleItemId);
+          setSampleLocations((prev) => ({
+            ...prev,
+            [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
+          }));
         }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
-        setSampleLocations((prev) => ({
-          ...prev,
-          [analysisId]: { locationPath: "", sampleItemId: sampleItemId },
-        }));
       },
     );
   };
 
-  // Handle location assignment
-  // Uses SampleItem ID from stored location data or from locationData
+  // Handle location assignment/movement using shared location mapping rules.
   const handleLocationAssignment = async (
     locationData,
     analysisId,
     sampleItemId,
   ) => {
-    // locationData format: { sample, newLocation, reason?, conditionNotes?, positionCoordinate? }
-    const newLocation = locationData?.newLocation || locationData;
+    // locationData format: { sample, selection, reason?, conditionNotes?, positionCoordinate? }
+    const selection =
+      locationData?.selection || locationData?.newLocation || {};
+    const deepest = getDeepestLocationSelection(selection, {
+      requireAssignable: true,
+    });
 
     // Use sampleItemId from parameter or stored location data
     const actualSampleItemId =
@@ -1370,41 +1416,52 @@ export function SearchResults(props) {
         ? sampleLocations[analysisId].sampleItemId
         : null);
 
-    if (!actualSampleItemId || !newLocation) {
+    if (!actualSampleItemId || !deepest) {
       console.error("Missing SampleItem ID or location for assignment", {
         sampleItemId: actualSampleItemId,
-        newLocation,
+        selection,
       });
       return;
     }
 
+    const isMovement =
+      locationData?.isMovement ||
+      Boolean(locationData?.currentLocationPath) ||
+      Boolean(
+        sampleLocations[analysisId] &&
+          typeof sampleLocations[analysisId] === "object" &&
+          sampleLocations[analysisId].locationPath,
+      );
+
     try {
-      // Call assignment API with SampleItem ID
+      // Call assignment or movement API with SampleItem ID
       const assignmentData = {
         sampleItemId: actualSampleItemId,
-        locationId:
-          newLocation.rack?.id ||
-          newLocation.shelf?.id ||
-          newLocation.device?.id,
-        locationType: newLocation.rack
-          ? "rack"
-          : newLocation.shelf
-            ? "shelf"
-            : "device",
+        locationId: String(deepest.value.id),
+        locationType: deepest.type,
         positionCoordinate:
           locationData.positionCoordinate ||
-          newLocation.position?.coordinate ||
+          positionToCoordinate(locationData.position) ||
           "",
         notes: locationData.conditionNotes || "", // Assignment form uses "notes" field
       };
+      if (isMovement) {
+        assignmentData.reason =
+          locationData.reason || "Reassignment from result entry workflow";
+      }
 
       postToOpenElisServerJsonResponse(
-        "/rest/storage/sample-items/assign",
+        isMovement
+          ? "/rest/storage/sample-items/move"
+          : "/rest/storage/sample-items/assign",
         JSON.stringify(assignmentData),
         (response) => {
-          if (response && response.success) {
+          const isSuccess = isStorageAssignmentSuccess(response);
+
+          if (isSuccess) {
             // Update local state with location path
-            const locationPath = response.hierarchicalPath || "";
+            const locationPath =
+              response.newHierarchicalPath || response.hierarchicalPath || "";
             const storedData = sampleLocations[analysisId];
             setSampleLocations((prev) => ({
               ...prev,
@@ -1420,6 +1477,18 @@ export function SearchResults(props) {
                 defaultMessage: "Location assigned successfully",
               }),
               kind: NotificationKinds.success,
+            });
+            setNotificationVisible(true);
+          } else {
+            addNotification({
+              title: intl.formatMessage({ id: "notification.title" }),
+              message:
+                response?.message ||
+                intl.formatMessage({
+                  id: "storage.location.assigned.error",
+                  defaultMessage: "Failed to assign location",
+                }),
+              kind: NotificationKinds.error,
             });
             setNotificationVisible(true);
           }
@@ -1597,34 +1666,123 @@ export function SearchResults(props) {
             />
           </Column>
         </Grid>
-        {/* Storage Location Widget - INT-002: Integration point */}
+        {/* Storage location — modal variant. This row is inside a
+            deeply-nested expand, so page navigation would be jarring;
+            the picker opens in a modal when the trigger below is
+            clicked. */}
         <Grid style={{ marginTop: "1rem" }}>
           <Column lg={16}>
-            <StorageLocationSelector
-              workflow="results"
-              showQuickFind={true}
-              sampleInfo={{
-                sampleItemId: sampleItemId || null,
-                sampleItemExternalId:
-                  locationData && typeof locationData === "object"
-                    ? locationData.sampleItemExternalId
-                    : null,
-                sampleAccessionNumber: data.accessionNumber,
-                sampleId: sampleItemId || data.accessionNumber, // Use sampleItemId
-                type: data.sampleType || "",
-                status: data.sampleStatus || "Active",
-              }}
-              hierarchicalPath={currentLocationPath}
-              onLocationChange={(locationData) => {
-                handleLocationAssignment(
-                  locationData,
-                  analysisId,
-                  sampleItemId,
-                );
-              }}
-            />
+            <div className="result-entry-storage-section">
+              <div className="result-entry-storage-current">
+                <strong>
+                  <FormattedMessage
+                    id="storage.location.current"
+                    defaultMessage="Storage location"
+                  />
+                  :
+                </strong>{" "}
+                {currentLocationPath || (
+                  <FormattedMessage
+                    id="storage.location.unassigned"
+                    defaultMessage="Unassigned"
+                  />
+                )}
+              </div>
+              <Button
+                kind="tertiary"
+                size="sm"
+                onClick={() => setStorageModalRow(data.id)}
+              >
+                <FormattedMessage
+                  id={
+                    currentLocationPath
+                      ? "storage.location.move"
+                      : "storage.location.assign"
+                  }
+                  defaultMessage={
+                    currentLocationPath
+                      ? "Move storage location"
+                      : "Assign storage location"
+                  }
+                />
+              </Button>
+              <LocationPickerModal
+                isOpen={storageModalRow === data.id}
+                sample={{
+                  id: sampleItemId || data.accessionNumber,
+                  sampleAccessionNumber: data.accessionNumber,
+                  sampleType: data.sampleType || "",
+                  status: data.sampleStatus || "Active",
+                }}
+                onConfirm={({ selection, position, reason, notes }) => {
+                  handleLocationAssignment(
+                    {
+                      sample: {
+                        sampleItemId,
+                        sampleAccessionNumber: data.accessionNumber,
+                      },
+                      isMovement: Boolean(currentLocationPath),
+                      currentLocationPath,
+                      selection,
+                      position,
+                      positionCoordinate: positionToCoordinate(position, {
+                        emptyValue: null,
+                      }),
+                      conditionNotes: notes || "",
+                      reason: reason || null,
+                    },
+                    analysisId,
+                    sampleItemId,
+                  );
+                  setStorageModalRow(null);
+                }}
+                currentLocation={
+                  currentLocationPath
+                    ? {
+                        selection: {},
+                        hierarchicalPath: currentLocationPath,
+                        position:
+                          locationData &&
+                          typeof locationData === "object" &&
+                          locationData.positionCoordinate
+                            ? {
+                                mode: "text",
+                                value: locationData.positionCoordinate,
+                              }
+                            : null,
+                      }
+                    : null
+                }
+                onCancel={() => setStorageModalRow(null)}
+              />
+            </div>
           </Column>
         </Grid>
+        {/* Report NCE */}
+        <Grid style={{ marginTop: "1rem" }}>
+          <Column lg={16}>
+            <Button
+              kind="danger--tertiary"
+              size="sm"
+              renderIcon={Warning}
+              onClick={() =>
+                setNceFormOpenRow(nceFormOpenRow === data.id ? null : data.id)
+              }
+            >
+              <FormattedMessage
+                id="nce.button.reportNce"
+                defaultMessage="Report NCE"
+              />
+            </Button>
+          </Column>
+        </Grid>
+        {nceFormOpenRow === data.id && (
+          <InlineNceForm
+            resultRow={data}
+            onClose={() => setNceFormOpenRow(null)}
+            onSubmitSuccess={() => setNceFormOpenRow(null)}
+          />
+        )}
       </>
     );
   };
@@ -1755,50 +1913,44 @@ export function SearchResults(props) {
     // setState({value: e.target.value})
     console.debug("State updated to ", e.target.value);
     var form = { ...props.results };
-    var jp = require("jsonpath");
-    jp.value(form, name, value);
-    var refer = jp.query(form, "testResult[" + rowId + "].refer")[0];
-    var testId = jp.query(form, "testResult[" + rowId + "].testId")[0];
+    jpSet(form, name, value);
+    var refer = jpGet(form, "testResult[" + rowId + "].refer");
+    var testId = jpGet(form, "testResult[" + rowId + "].testId");
     var referList = { ...referTest };
     referList[rowId] = refer === "true" ? true : false;
     setReferTest(referList);
     if (refer == "true") {
-      jp.value(
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredTestId",
         testId,
       );
-      jp.value(
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         configurationProperties.currentDateAsText,
       );
     } else {
-      jp.value(
-        form,
-        "testResult[" + rowId + "].referralItem.referredTestId",
-        "",
-      );
-      jp.value(
+      jpSet(form, "testResult[" + rowId + "].referralItem.referredTestId", "");
+      jpSet(
         form,
         "testResult[" + rowId + "].referralItem.referredSendDate",
         "",
       );
     }
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    jpSet(form, isModified, "true");
     props.setResultForm(form);
   };
 
   const handleRejectCheckBoxChange = (e, rowId) => {
     const { name, checked } = e.target;
     var form = props.results;
-    var jp = require("jsonpath");
-    jp.value(form, name, checked);
+    jpSet(form, name, checked);
     var shadowRejected = "testResult[" + rowId + "].shadowRejected";
-    jp.value(form, shadowRejected, checked);
+    jpSet(form, shadowRejected, checked);
     var isModified = "testResult[" + rowId + "].isModified";
-    jp.value(form, isModified, "true");
+    jpSet(form, isModified, "true");
 
     var allrejectedItems = { ...rejectedItems };
     allrejectedItems[rowId] = checked;
@@ -1819,14 +1971,13 @@ export function SearchResults(props) {
     if (form.testResult[rowId].referralItem) {
       if (form.testResult[rowId].referralItem.referredSendDate != date) {
         console.debug("handleDatePickerChange:" + date);
-        var jp = require("jsonpath");
-        jp.value(
+        jpSet(
           form,
           "testResult[" + rowId + "].referralItem.referredSendDate",
           date,
         );
         var isModified = "testResult[" + rowId + "].isModified";
-        jp.value(form, isModified, "true");
+        jpSet(form, isModified, "true");
         props.setResultForm(form);
       }
     }
@@ -1849,13 +2000,48 @@ export function SearchResults(props) {
     setAcceptAsIs(newAcceptAsIs);
   };
 
-  const handleSave = (values) => {
-    console.debug("handleSave:" + values);
+  const buildSignContext = () => {
+    const results = (props.results && props.results.testResult) || [];
+    const count = results.length;
+    const accessions = [
+      ...new Set(results.map((r) => r.accessionNumber).filter(Boolean)),
+    ];
+    if (accessions.length === 1) {
+      return intl.formatMessage(
+        {
+          id: "esig.context.saveResults",
+          defaultMessage: "Save {count} result(s) for accession {accession}",
+        },
+        {
+          count,
+          accession:
+            convertAlphaNumLabNumForDisplay(accessions[0]) || accessions[0],
+        },
+      );
+    }
+    return intl.formatMessage(
+      {
+        id: "esig.context.saveResultsMulti",
+        defaultMessage:
+          "Save {count} result(s) across {accessionCount} accessions",
+      },
+      { count, accessionCount: accessions.length },
+    );
+  };
+
+  const getFirstAnalysisId = () => {
+    const results = (props.results && props.results.testResult) || [];
+    for (const r of results) {
+      if (r.analysisId) return Number(r.analysisId);
+    }
+    return 0;
+  };
+
+  const handleSave = () => {
     if (isSubmitting) {
       return;
     }
     setIsSubmitting(true);
-    values.status = saveStatus;
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
       result.reportable = result.reportable === "N" ? false : true;
@@ -2016,15 +2202,17 @@ export function SearchResults(props) {
                 }
               />
 
-              <Button
-                type="button"
-                id="saveResults"
-                onClick={handleSave}
-                style={{ marginTop: "16px" }}
+              <ESignatureButton
+                meaning={SignatureMeaning.AUTHORED}
+                context={buildSignContext()}
+                recordType="RESULT_BATCH"
+                recordId={getFirstAnalysisId()}
+                onSign={handleSave}
                 disabled={isSubmitting}
+                style={{ marginTop: "16px" }}
               >
                 <FormattedMessage id="label.button.save" />
-              </Button>
+              </ESignatureButton>
             </Form>
           )}
         </Formik>

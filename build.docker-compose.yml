@@ -59,7 +59,7 @@ services:
         ipv4_address: 172.20.1.121
     environment:
         - DEFAULT_PW=adminADMIN!
-        - TZ=Africa/Nairobi
+        - TZ=${TZ:-UTC}
         - SPRING_LIQUIBASE_CONTEXTS=test
         # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
         - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
@@ -105,7 +105,7 @@ services:
         - default
     restart: always
     environment:
-        TZ: Africa/Nairobi
+        TZ: ${TZ:-UTC}
         JAVA_OPTS: "-Djavax.net.ssl.trustStore=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore}
                         -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
                         -Djavax.net.ssl.trustStoreType=pkcs12
