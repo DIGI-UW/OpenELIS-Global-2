@@ -40,14 +40,11 @@ feature specification now includes:
 
 ### Reference Documents
 
-1. `.dev-docs/OGC-62/Build a box of samples.docx.md` - 2022 original
-   requirements
-2. `.dev-docs/OGC-62/laboratory-sample-workflow-detailed.md` - Laboratory
-   workflows
-3. `.dev-docs/OGC-62/referred-sample-management-spec.md` - Comprehensive
+1. `Build a box of samples.docx.md` - 2022 original requirements
+2. `laboratory-sample-workflow-detailed.md` - Laboratory workflows
+3. `spec.md` (formerly `referred-sample-management-spec.md`) - Comprehensive
    functional spec
-4. `.dev-docs/OGC-62/unassigned-tests-feature-summary.md` - Unassigned tests
-   feature
+4. `unassigned-tests-feature-summary.md` - Unassigned tests feature
 
 ---
 
@@ -410,7 +407,8 @@ All 8 constitution principles documented in spec:
    - Enhanced existing FR-008, FR-019, FR-027
    - Clarified Out of Scope
 
-2. **.dev-docs/OGC-62/spec-analysis.md** - This document (UPDATED)
+2. **`specs/OGC-62-referred-sample-management/spec-analysis.md`** - This
+   document (UPDATED)
 
 ---
 

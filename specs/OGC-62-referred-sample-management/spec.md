@@ -1,5 +1,16 @@
 # Referred Sample Container Management System
 
+> **Status:** DEFERRED — design-only; no implementation scheduled.
+> **Last reconciled:** 2026-04-20
+> **Reality notes:** This spec (Nov 2025, v1.0) was drafted as OGC-62
+> referred-sample-container management, originally stored under `.dev-docs/`
+> before being promoted into `specs/` during the 2026-04-20 repo cleanup.
+> No implementation has landed. Sibling research notes
+> (`spec-analysis.md`, `laboratory-sample-workflow-detailed.md`,
+> `Build a box of samples.docx.md`, `unassigned-tests-feature-summary.md`)
+> captured the design context at the time of drafting; revisit all five
+> together if the feature is revived.
+
 ## Comprehensive Functional Specification
 
 **Version:** 1.0  
