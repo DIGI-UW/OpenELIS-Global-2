@@ -2009,7 +2009,7 @@ public class NoteBookServiceImpl extends AuditableBaseObjectServiceImpl<NoteBook
             }
         }
 
-        if (!Boolean.TRUE.equals(noteBook.getIsTemplate())) {
+        if (!Boolean.TRUE.equals(noteBook.getIsTemplate()) && noteBook.getId() != null) {
             NoteBook parentTemplate = baseObjectDAO.findParentTemplate(noteBook.getId());
             workflowType = getWorkflowTypeIfPresent(parentTemplate);
             if (workflowType != null) {
