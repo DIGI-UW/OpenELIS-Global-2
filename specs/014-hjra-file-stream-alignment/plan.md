@@ -1,38 +1,38 @@
-> **STATUS: Code shipped, validation + test coverage open (updated
-> 2026-04-20).** M1A / M1B / M3 code landed on the consolidation branch; M2 code
-> landed but several frontend Jest + upload E2E tasks remain deferred; M4
-> (Wondfo) watcher-integration and upload E2E are deferred. File parsing is
-> bridge-owned (see `FileImportServiceImpl`), backed by `CSVAnalyzerReader` /
-> `AnalyzerXLSLineReader` in the plugins submodule; GenericFile is a peer of
-> GenericASTM/GenericHL7; all shipped FILE analyzers (QuantStudio 5/7,
-> FluoroCycler, Tecan F50, Multiskan FC, Wondfo Finecare) flow through the
-> generic-file path.
+> **STATUS: Architecture shipped, deferred test coverage + site validation open
+> (updated 2026-04-20).** The `GenericFile` plugin, file-reader dispatch, and
+> Upload/Review UI foundation (OGC-329 / OGC-324) are on `develop`. File parsing
+> is bridge-owned (see `FileImportServiceImpl`), backed by `CSVAnalyzerReader` /
+> `AnalyzerXLSLineReader` in the plugins submodule; `GenericFile` is a peer of
+> `GenericASTM` / `GenericHL7`. Adding a new flat-file analyzer is now a
+> profile-JSON drop in
+> [`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
 >
-> - **Live status:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
-> - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`
+> - **Live per-analyzer status:** > [Confluence analyzer tracker][tracker]
+>   (canonical for Pattern C).
+> - **Live harness:** `projects/analyzer-harness/seed-analyzers.sh`.
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ## Remaining Work to Finish Line (2026-04-20)
 
-**Site validation (Herbert):**
-
-- [ ] Tecan F50 (OGC-417) — validate with Herbert's site samples
-- [ ] Multiskan FC (OGC-418) — validate with Herbert's site samples
+This plan's scope is the **generic FILE stream architecture**. Per-analyzer
+field validation, vendor-doc review, and site-deployment readiness live on the
+Confluence tracker, not here.
 
 **Deferred test coverage (code shipped, tests not):**
 
 - [ ] M2 Upload/Review UI: T030–T031 (Jest component tests) + T038–T045
       (upload-flow Playwright E2E) — see [tasks.md § M2](./tasks.md)
-- [ ] M4 Wondfo: T073 (bridge watcher integration test) + T078 (upload-flow E2E)
-      — see [tasks.md § M4](./tasks.md)
-
-**Blocked:**
-
-- [ ] Attune CytPix (OGC-350) — no CSV export; re-open when export becomes
-      available
+- [ ] M4 watcher + upload: T073 (bridge watcher integration test) + T078
+      (upload-flow E2E) — see [tasks.md § M4](./tasks.md)
 
 **Record demo evidence:**
 
-- [ ] FILE E2E demo video (QuantStudio file drop → bridge → OE → Accept results)
+- [ ] GenericFile E2E demo video (file drop → bridge → OE → Accept results)
+
+**Not tracked here (see Confluence tracker):** per-instrument site validation,
+format-fixture collection, vendor-export file availability, and deprioritization
+decisions for instruments without LIS connectivity.
 
 ---
 

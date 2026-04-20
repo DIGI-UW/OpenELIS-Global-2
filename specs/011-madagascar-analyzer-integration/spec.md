@@ -9,38 +9,67 @@ validation + post-MVP work open.
 
 ## Current Status (2026-04-20)
 
-This spec is the umbrella for three protocol tracks: **HL7 (coordinated in
-`specs/013`)**, **ASTM (core 011 work)**, and **FILE (coordinated in
-`specs/014`)**. The January 2026 scope below (12-analyzer matrix, RS232 bridge,
-contract deadline 2026-02-28) framed the initial plan. Actual delivery has
-diverged in places — the canonical status table lives in
-[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
-The authoritative analyzer fleet lives in
-[`projects/analyzer-harness/seed-analyzers.sh`](../../projects/analyzer-harness/seed-analyzers.sh)
-and
-[`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
-(distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+This spec is the umbrella for the **generic analyzer integration architecture**
+that underpins the Madagascar (and subsequent) analyzer deployments. The January
+2026 body below (12-analyzer contract matrix, RS232-via-bridge framing, contract
+deadline 2026-02-28, M0–M21 milestones) is kept for audit/history; the canonical
+**architecture** is now: three generic plugins + profile JSON drops, with all
+per-instrument detail tracked out-of-repo.
 
-| Track               | Shipped (E2E verified)                                                         | Validation Pending                                                  | Blocked / Deprioritized                                |
-| ------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------ |
-| **HL7** (013)       | Mindray BC-5380, BS-200, BS-300                                                | HJRA site networking, MLLP traffic proofs                           | —                                                      |
-| **ASTM** (011 core) | Cepheid GeneXpert                                                              | Video evidence for GeneXpert E2E flow                               | Wondfo Finecare ASTM (OGC-345 — awaiting ASTM capture) |
-| **FILE** (014)      | QuantStudio 5/7, FluoroCycler XT, Wondfo Finecare CSV, Tecan F50, Multiskan FC | Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert site samples | Attune CytPix (OGC-350 — no CSV export; deprioritized) |
+### How an analyzer gets integrated
 
-**Cross-cutting remaining work** (see roadmap for the canonical list):
+Adding a new analyzer on an already-supported protocol is a **profile-JSON
+drop** — no new code path per instrument. The three supported integration
+patterns are:
+
+| Pattern      | Generic plugin | Transport                                 | Profile directory                  | Typical add-an-analyzer workflow                                         |
+| ------------ | -------------- | ----------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------ |
+| **A2** (HL7) | `GenericHL7`   | Bridge MLLP listener (OGC-325)            | `projects/analyzer-profiles/hl7/`  | Drop profile JSON; register via admin UI                                 |
+| **A** (ASTM) | `GenericASTM`  | Bridge ASTM TCP listener                  | `projects/analyzer-profiles/astm/` | Drop profile JSON; register via admin UI                                 |
+| **C** (FILE) | `GenericFile`  | Bridge watcher or Upload UI (OGC-324/329) | `projects/analyzer-profiles/file/` | Drop profile JSON; add a reader only if the file format is genuinely new |
+
+Patterns B (pipeline — e.g., TB-Profiler) and E (proprietary serial — e.g.,
+Stago, BCI) are out of scope for the generic plugins; they use dedicated
+adapters tracked separately.
+
+### Where per-analyzer detail lives
+
+The specs in `specs/011`, `specs/013`, `specs/014` deliberately do **not**
+enumerate per-instrument status. That lives here:
+
+- **Live per-analyzer tracker (canonical):** [OpenELIS Global — Analyzer
+  Integration Tracker][tracker] on Confluence — integration pattern, Jira issue,
+  spec/companion confidence rating (`VALIDATED` / `HIGH` / `MEDIUM-HIGH` /
+  `MEDIUM` / `LOW` / `N/A`), vendor docs, real-file availability, deployment
+  status.
+- **Profile JSONs (the code-level analyzer list):**
+  [`projects/analyzer-profiles/{astm,hl7,file}/*.json`](../../projects/analyzer-profiles/)
+  (distro `configs/analyzer-profiles/` is authoritative; repo is a mirror).
+- **Protocol fixtures, captures, and mock flows:**
+  `projects/analyzer-mock-server/` + `tools/openelis-analyzer-bridge` — those
+  projects own the instrument-technical details (ASTM/HL7 captures, file
+  fixtures, bridge-specific per-analyzer wiring).
+
+### Cross-cutting remaining work (architecture-level)
 
 - PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
-- `communication` blocks on the 8 remaining ASTM/HL7 profiles (5 of 13 done —
-  `genexpert-astm`, `genexpert-hl7`, `mindray-bc5380`, `mindray-bs200`,
-  `mindray-bs300`)
-- Video evidence for HL7 / ASTM / FILE demo flows
-- Post-MVP: Unified FHIR R4 bridge interface; HL7 bidirectional (ORM^O01,
-  QRY^Q02); GeneXpert HL7 mode (OGC-336); LIS-initiated bridge outbound;
-  `@Scheduled` periodic bridge sync; TLS consolidation
+- `communication` blocks on the remaining 8 ASTM/HL7 profiles (5 of 13 currently
+  have them)
+- Site validation at HJRA (networking + per-instrument field validation —
+  tracked in Confluence, not here)
+- Unified FHIR R4 bridge interface — bridge parses all formats, delivers FHIR
+  transaction Bundles to OE (Phase 3B post-MVP)
+- HL7 bidirectional (ORM^O01 worklist, QRY^Q02 order download)
+- GeneXpert HL7 mode (OGC-336) — QBP queries
+- Bridge outbound MLLP/ASTM client (LIS_INITIATED mode)
+- TLS consolidation (shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`)
+- `@Scheduled` periodic bridge sync (currently fires only on OE startup)
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 > The body below is **the original January 2026 scoping document** — kept
-> verbatim for audit/history. Where it conflicts with the Current Status table
-> above or the canonical roadmap, the canonical sources win.
+> verbatim for audit/history. Where it conflicts with the architecture summary
+> above or the Confluence tracker, the canonical sources win.
 
 ---
 
