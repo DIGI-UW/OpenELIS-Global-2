@@ -122,10 +122,12 @@ services:
       
   frontend.openelis.org:
     image: frontend
+    # No `target:` → defaults to the final stage of the multi-stage
+    # frontend/Dockerfile, which is `runtime` (nginx serving dist/).
     build:
       context: ./frontend
-      dockerfile: ./Dockerfile.prod
-    container_name: openelisglobal-front-end  
+      dockerfile: ./Dockerfile
+    container_name: openelisglobal-front-end
     networks:
         - default
     environment:

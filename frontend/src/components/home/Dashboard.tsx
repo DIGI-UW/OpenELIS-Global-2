@@ -29,7 +29,7 @@ import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
   hasRole,
-} from "../utils/Utils.js";
+} from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";

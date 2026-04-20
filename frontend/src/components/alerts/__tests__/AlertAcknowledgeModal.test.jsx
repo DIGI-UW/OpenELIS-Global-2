@@ -14,8 +14,8 @@ const renderWithIntl = (component) => {
 };
 
 describe("AlertAcknowledgeModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnSubmit = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnSubmit = vi.fn();
 
   const warningAlert = {
     id: 1,
@@ -34,7 +34,7 @@ describe("AlertAcknowledgeModal", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders modal when open", () => {

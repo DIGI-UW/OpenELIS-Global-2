@@ -24,6 +24,13 @@ Interpret arguments best-effort. Support these patterns:
 - `/restart-analyzer-harness --build` → Build WAR before restarting
 - `/restart-analyzer-harness --letsencrypt` → Add LE compose overlay
 - `/restart-analyzer-harness --skip-letsencrypt` → Skip LE even when env is set
+- `/restart-analyzer-harness --ci-parity` → **Bring up the CI-parity stack**
+  (`build.docker-compose.yml` + `.github/ci/ci.analyzer-harness.yml`) instead of
+  the local dev stack. Selects frontend Dockerfile `target: runtime` (nginx
+  serving minified `dist/`) — the exact image CI runs. Use this to locally
+  reproduce CI E2E failures (e.g. React #130-class regressions that only fire
+  under the production bundle) before pushing. Implicitly forces
+  `--skip-letsencrypt` (CI compose files don't include the LE overlay).
 - Combine flags as needed
 
 ## Safety Rules (non-negotiable)

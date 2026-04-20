@@ -4,29 +4,35 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import ManageLocationPage from "./ManageLocationPage";
 
-let mockHistoryPush = jest.fn();
+let mockHistoryPush = vi.fn();
 let mockLocationState = {};
 let capturedPickerProps = null;
-let mockAssignSampleItem = jest.fn();
-let mockMoveSampleItem = jest.fn();
+let mockAssignSampleItem = vi.fn();
+let mockMoveSampleItem = vi.fn();
 
-jest.mock("react-router-dom", () => ({
+vi.mock("react-router-dom", () => ({
   useParams: () => ({ id: "42" }),
   useHistory: () => ({ push: mockHistoryPush }),
   useLocation: () => ({ state: mockLocationState }),
 }));
 
-jest.mock("../LocationPicker/LocationPickerPage", () => (props) => {
-  capturedPickerProps = props;
-  return <div data-testid="location-picker-page-mock" />;
-});
-
-jest.mock("../hooks/useSampleStorage", () => () => ({
-  assignSampleItem: mockAssignSampleItem,
-  moveSampleItem: mockMoveSampleItem,
+vi.mock("../LocationPicker/LocationPickerPage", () => ({
+  default: (props) => {
+    capturedPickerProps = props;
+    return <div data-testid="location-picker-page-mock" />;
+  },
 }));
 
-jest.mock("../components/BreadcrumbNav", () => () => null);
+vi.mock("../hooks/useSampleStorage", () => ({
+  default: () => ({
+    assignSampleItem: mockAssignSampleItem,
+    moveSampleItem: mockMoveSampleItem,
+  }),
+}));
+
+vi.mock("../components/BreadcrumbNav", () => ({
+  default: () => null,
+}));
 
 const renderPage = () =>
   render(
@@ -36,9 +42,9 @@ const renderPage = () =>
   );
 
 beforeEach(() => {
-  mockHistoryPush = jest.fn();
-  mockAssignSampleItem = jest.fn().mockResolvedValue({});
-  mockMoveSampleItem = jest.fn().mockResolvedValue({});
+  mockHistoryPush = vi.fn();
+  mockAssignSampleItem = vi.fn().mockResolvedValue({});
+  mockMoveSampleItem = vi.fn().mockResolvedValue({});
   capturedPickerProps = null;
 });
 

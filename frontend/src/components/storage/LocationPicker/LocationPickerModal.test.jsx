@@ -15,9 +15,9 @@ import { IntlProvider } from "react-intl";
 import LocationPickerModal from "./LocationPickerModal";
 import * as Utils from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
 // Replace Carbon's ComposedModal with a plain div. The real component
@@ -26,8 +26,8 @@ jest.mock("../../utils/Utils", () => ({
 // hangs waiting for the event loop to empty. Here we only care about
 // the modal's *contract* (renders when `open`, shows title, body,
 // footer), not its portal/focus-trap implementation.
-jest.mock("@carbon/react", () => {
-  const actual = jest.requireActual("@carbon/react");
+vi.mock("@carbon/react", async () => {
+  const actual = await vi.importActual("@carbon/react");
   return {
     ...actual,
     ComposedModal: ({ open, children, onClose }) =>
@@ -72,8 +72,8 @@ describe("LocationPickerModal", () => {
       <LocationPickerModal
         isOpen={false}
         sample={mockSample}
-        onConfirm={jest.fn()}
-        onCancel={jest.fn()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     // Carbon's ComposedModal still mounts but has no .is-visible class
@@ -85,8 +85,8 @@ describe("LocationPickerModal", () => {
       <LocationPickerModal
         isOpen
         sample={mockSample}
-        onConfirm={jest.fn()}
-        onCancel={jest.fn()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(screen.getByText(/assign storage location/i)).toBeInTheDocument();
@@ -101,8 +101,8 @@ describe("LocationPickerModal", () => {
           selection: { room: { id: 1, name: "Main Lab" } },
           position: null,
         }}
-        onConfirm={jest.fn()}
-        onCancel={jest.fn()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(screen.getByText(/move sample/i)).toBeInTheDocument();
@@ -113,8 +113,8 @@ describe("LocationPickerModal", () => {
       <LocationPickerModal
         isOpen
         sample={mockSample}
-        onConfirm={jest.fn()}
-        onCancel={jest.fn()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(screen.getByText("DEV0126-001")).toBeInTheDocument();
@@ -127,8 +127,8 @@ describe("LocationPickerModal", () => {
       <LocationPickerModal
         isOpen
         sample={mockSample}
-        onConfirm={jest.fn()}
-        onCancel={jest.fn()}
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(screen.queryByLabelText(/reason for move/i)).toBeNull();
@@ -142,8 +142,8 @@ describe("LocationPickerModal", () => {
             selection: { room: { id: 1, name: "Main Lab" } },
             position: null,
           }}
-          onConfirm={jest.fn()}
-          onCancel={jest.fn()}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
         />
       </IntlProvider>,
     );
@@ -151,8 +151,8 @@ describe("LocationPickerModal", () => {
   });
 
   it("Cancel button fires onCancel without invoking onConfirm", () => {
-    const onCancel = jest.fn();
-    const onConfirm = jest.fn();
+    const onCancel = vi.fn();
+    const onConfirm = vi.fn();
     renderWithIntl(
       <LocationPickerModal
         isOpen
@@ -173,8 +173,8 @@ describe("LocationPickerModal", () => {
           isOpen={isOpen}
           sample={mockSample}
           currentLocation={currentLocation}
-          onConfirm={jest.fn()}
-          onCancel={jest.fn()}
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
         />
       </IntlProvider>
     );
@@ -226,13 +226,13 @@ describe("LocationPickerModal", () => {
         cb([{ id: 1, name: "Main Lab" }]);
       else cb([]);
     });
-    const onConfirm = jest.fn();
+    const onConfirm = vi.fn();
     renderWithIntl(
       <LocationPickerModal
         isOpen
         sample={mockSample}
         onConfirm={onConfirm}
-        onCancel={jest.fn()}
+        onCancel={vi.fn()}
       />,
     );
     // Pick a room via create-mode cascade
