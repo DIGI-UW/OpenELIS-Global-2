@@ -639,9 +639,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 String resultValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
                 TestResult resolvedTestResult = getTestResultForResult(resultItem);
                 result.setTestResult(resolvedTestResult);
-                if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null
+                if (resolvedTestResult != null && "D".equals(resolvedTestResult.getTestResultType())
                         && !resultItem.getIsRejected()) {
                     result.setValue(resolvedTestResult.getValue());
+                    result.setResultType("D");
                 } else {
                     result.setValue(resultValue);
                 }
@@ -663,12 +664,17 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         String rawValue = resultItem.getIsRejected() ? REJECT_VALUE : resultItem.getResult();
         TestResult resolvedTestResult = getTestResultForResult(resultItem);
         result.setTestResult(resolvedTestResult);
-        if ("D".equals(resultItem.getTestResultType()) && resolvedTestResult != null && !resultItem.getIsRejected()) {
+        if (resolvedTestResult != null && "D".equals(resolvedTestResult.getTestResultType())
+                && !resultItem.getIsRejected()) {
             result.setValue(resolvedTestResult.getValue());
+            result.setResultType("D");
+        } else if (resolvedTestResult != null) {
+            result.setValue(rawValue);
+            result.setResultType(resolvedTestResult.getTestResultType());
         } else {
             result.setValue(rawValue);
+            result.setResultType(resultItem.getTestResultType());
         }
-        result.setResultType(resultItem.getTestResultType());
         if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
             if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
                 result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
@@ -709,35 +715,33 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     private TestResult getTestResultForResult(AnalyzerResultItem resultItem) {
-        if ("D".equals(resultItem.getTestResultType())) {
+        List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        boolean hasDictCandidates = candidates.stream().anyMatch(c -> "D".equals(c.getTestResultType()));
+        if (hasDictCandidates) {
             TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
                     resultItem.getResult());
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
                 String desired = resultItem.getResult().trim();
-                List<TestResult> candidates = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
-                if (candidates != null) {
-                    for (TestResult candidate : candidates) {
-                        if (!"D".equals(candidate.getTestResultType())) {
-                            continue;
-                        }
-                        Dictionary dict = dictionaryService.get(candidate.getValue());
-                        if (dict != null && dict.getDictEntry() != null
-                                && desired.equalsIgnoreCase(dict.getDictEntry().trim())) {
-                            testResult = candidate;
-                            break;
-                        }
+                for (TestResult candidate : candidates) {
+                    if (!"D".equals(candidate.getTestResultType())) {
+                        continue;
+                    }
+                    Dictionary dict = dictionaryService.get(candidate.getValue());
+                    if (dict != null && dict.getDictEntry() != null
+                            && desired.equalsIgnoreCase(dict.getDictEntry().trim())) {
+                        testResult = candidate;
+                        break;
                     }
                 }
             }
-            return testResult;
-        } else {
-            List<TestResult> testResultList = testResultService.getActiveTestResultsByTest(resultItem.getTestId());
-            if (!testResultList.isEmpty()) {
-                return testResultList.get(0);
+            if (testResult != null) {
+                return testResult;
             }
         }
-
-        return null;
+        return candidates.get(0);
     }
 
     private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {

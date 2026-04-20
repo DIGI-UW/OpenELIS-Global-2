@@ -38,7 +38,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile.prod
+          file: ./frontend/Dockerfile
           push: false
 
   static-checks:
@@ -56,7 +56,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Check Format
@@ -67,8 +67,8 @@ jobs:
         run: npm run pw:guard
         working-directory: frontend
 
-      - name: Run Frontend Unit Tests (Jest)
-        run: npm test -- --watchAll=false --coverage=false
+      - name: Run Frontend Unit Tests (Vitest)
+        run: npm test
         working-directory: frontend
         env:
           CI: true

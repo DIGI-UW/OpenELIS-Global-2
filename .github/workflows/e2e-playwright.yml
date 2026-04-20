@@ -5,7 +5,7 @@ name: 03 - E2E
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, fix/madagascar-accession-results-file-e2e]
   push:
     branches: [develop]
   release:
@@ -51,7 +51,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Prepare .env

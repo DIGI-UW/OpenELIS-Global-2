@@ -15,8 +15,8 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../services/analyzerService", () => ({
-  previewMapping: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  previewMapping: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -61,7 +61,7 @@ const renderWithIntl = (component) => {
 // ========== TESTS ==========
 
 describe("TestMappingModal", () => {
-  const mockOnClose = jest.fn();
+  const mockOnClose = vi.fn();
   const defaultProps = {
     open: true,
     onClose: mockOnClose,
@@ -72,7 +72,7 @@ describe("TestMappingModal", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**

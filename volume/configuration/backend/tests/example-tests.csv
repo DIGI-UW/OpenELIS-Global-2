@@ -77,6 +77,13 @@ CD4 Absolute,Hemato-Immunology,Whole Blood,,Y,Y,70,mm3,CD4 Absolute count (mm3),
 CD4 Percent,Hemato-Immunology,Whole Blood,,Y,Y,71,%,CD4 percent (%),Dénombrement des lymphocytes CD4 (%),CD4 porcentaje (%),CD4 persen (%)
 Viral Load,Hemato-Immunology,Whole Blood,,Y,Y,72,copies/ml,Viral load,Mesure de la charge virale,Carga Viral,Viral Load
 # ============================================================================
+# MOLECULAR BIOLOGY - Cartridge-based PCR assays (GeneXpert)
+# ============================================================================
+HIV-1 Viral Load,Molecular Biology,Plasma|Serum,20447-9,Y,Y,73,copies/mL,HIV-1 Viral Load,Charge Virale VIH-1,Carga Viral VIH-1,Viral Load HIV-1
+SARS-CoV-2 PCR,Molecular Biology,Nasopharyngeal Swab|Sputum,94500-6,Y,Y,74,,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR
+Xpert MTB/RIF,Molecular Biology,Sputum,85362-2,Y,Y,75,,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF
+Rifampin Resistance,Molecular Biology,Sputum,46244-0,Y,Y,76,,Rifampin Resistance,Résistance à la Rifampicine,Resistencia a Rifampicina,Resistensi Rifampin
+# ============================================================================
 # MICROBIOLOGY - AFB, Gram Stain, Wet Prep
 # ============================================================================
 AFB Smear Sputum,Microbiology,Sputum,11477-7,Y,Y,80,,Microscopic observation Acid fast stain Nom (Sput),Examen Microscopique Coloration Ziehl (Crachat),Tinción Ácido-Alcohol Resistente (Esputo),Pewarnaan BTA (Dahak)
