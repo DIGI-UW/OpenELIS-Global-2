@@ -136,3 +136,11 @@ docs/debug-local/
 # Playwright MCP / Java build metadata
 .playwright-mcp/
 META-INF/
+
+# Vitest run logs + cache (local test-output scratch)
+frontend/vitest-*.log
+frontend/full_vitest_run.log
+.vite/
+
+# Per-PR scratch session notes (never commit)
+PR-*-STATUS-REPORT.md

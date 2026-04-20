@@ -12,9 +12,9 @@ import { IntlProvider } from "react-intl";
 import LocationPickerPage from "./LocationPickerPage";
 import * as Utils from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
 const renderWithIntl = (component) =>
@@ -42,8 +42,8 @@ describe("LocationPickerPage", () => {
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(
@@ -62,8 +62,8 @@ describe("LocationPickerPage", () => {
           selection: { room: { id: 1, name: "Main Lab" } },
           position: null,
         }}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(
@@ -75,8 +75,8 @@ describe("LocationPickerPage", () => {
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     expect(screen.getByText("DEV0126-001")).toBeInTheDocument();
@@ -84,11 +84,11 @@ describe("LocationPickerPage", () => {
   });
 
   it("Cancel button fires onCancel", () => {
-    const onCancel = jest.fn();
+    const onCancel = vi.fn();
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
-        onSave={jest.fn()}
+        onSave={vi.fn()}
         onCancel={onCancel}
       />,
     );
@@ -102,12 +102,12 @@ describe("LocationPickerPage", () => {
         cb([{ id: 1, name: "Main Lab" }]);
       else cb([]);
     });
-    const onSave = jest.fn();
+    const onSave = vi.fn();
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
         onSave={onSave}
-        onCancel={jest.fn()}
+        onCancel={vi.fn()}
       />,
     );
     // Pick a room via create-mode cascade
@@ -133,8 +133,8 @@ describe("LocationPickerPage", () => {
     renderWithIntl(
       <LocationPickerPage
         sample={mockSample}
-        onSave={jest.fn()}
-        onCancel={jest.fn()}
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
         breadcrumb={<nav aria-label="Breadcrumb">crumb</nav>}
       />,
     );

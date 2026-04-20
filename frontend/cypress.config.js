@@ -1,10 +1,11 @@
-const { defineConfig } = require("cypress");
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+import { defineConfig } from "cypress";
+import fs from "fs";
+import { execSync } from "child_process";
+import https from "https";
+import http from "http";
 
 // Get project root - cypress.config.js is in frontend/, so go up one level
-const PROJECT_ROOT = path.resolve(__dirname, "..");
+const PROJECT_ROOT = new URL("..", import.meta.url).pathname;
 
 /**
  * Auto-detect base URL for cross-environment testing (localhost vs subdomains).
@@ -42,7 +43,7 @@ function detectBaseUrl() {
 
   // 3. Fallback to .env file in project root
   try {
-    const envPath = path.join(PROJECT_ROOT, ".env");
+    const envPath = new URL("../.env", import.meta.url).pathname;
     if (fs.existsSync(envPath)) {
       const envContent = fs.readFileSync(envPath, "utf-8");
       const match = envContent.match(/LETSENCRYPT_DOMAIN=(.+)/);
@@ -79,7 +80,7 @@ if (isCI) {
     process.env.CYPRESS_PASSWORD || process.env.TEST_PASS || "adminADMIN!";
 }
 
-module.exports = defineConfig({
+export default defineConfig({
   defaultCommandTimeout: 3000, // 3 seconds - use Cypress retry-ability instead of long timeouts
   pageLoadTimeout: 120000, // 2 minutes for development mode with large unminified bundle.js (25MB)
   viewportWidth: 1920, // Large desktop for full modal visibility (including warnings/checkboxes)
@@ -117,16 +118,13 @@ module.exports = defineConfig({
     FORCE_FIXTURES: process.env.CYPRESS_FORCE_FIXTURES === "true",
   },
   e2e: {
-    setupNodeEvents(on, config) {
-      // Register cypress-fail-fast plugin for fail-fast support
-      // Controlled by FAIL_FAST_ENABLED env variable
-      require("cypress-fail-fast/plugin")(on, config);
-
-      // NOTE: Storage E2E tests (001-sample-storage) are currently disabled
-      // Storage tests excluded via excludeSpecPattern in e2e config
-      // Storage support imports commented out in e2e.js
-      // Storage tasks below remain registered but won't be called (harmless)
-      // To re-enable: Uncomment imports in e2e.js and remove excludeSpecPattern
+    async setupNodeEvents(on, config) {
+      // Register cypress-fail-fast plugin via ESM dynamic import
+      const failFastMod = await import("cypress-fail-fast/plugin.js").catch(
+        () => import("cypress-fail-fast/plugin"),
+      );
+      const failFastPlugin = failFastMod.default || failFastMod;
+      failFastPlugin(on, config);
 
       // Register all Cypress tasks in ONE handler (Cypress does not merge task handlers).
       // This keeps logging/diagnostics and fixture utilities available across specs.
@@ -141,9 +139,7 @@ module.exports = defineConfig({
 
           const attempt = (attemptNum) =>
             new Promise((resolve, reject) => {
-              const lib = url.startsWith("https")
-                ? require("https")
-                : require("http");
+              const lib = url.startsWith("https") ? https : http;
               const parsed = new URL(url);
               const isLocalhost = ["localhost", "127.0.0.1"].includes(
                 parsed.hostname,
@@ -204,11 +200,10 @@ module.exports = defineConfig({
       // Patient Merge tasks
       on("task", {
         loadPatientMergeTestData() {
-          const { execSync } = require("child_process");
-          const sqlFile = path.join(
-            __dirname,
-            "cypress/support/patient-merge-setup.sql",
-          );
+          const sqlFile = new URL(
+            "./cypress/support/patient-merge-setup.sql",
+            import.meta.url,
+          ).pathname;
           if (!fs.existsSync(sqlFile)) {
             throw new Error(`Patient merge SQL fixture not found: ${sqlFile}`);
           }
@@ -228,7 +223,6 @@ module.exports = defineConfig({
           }
         },
         checkPatientMergeFixturesExist() {
-          const { execSync } = require("child_process");
           const checkSql = `SELECT COUNT(*) as count FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%';`;
           try {
             const result = execSync(
@@ -247,7 +241,6 @@ module.exports = defineConfig({
           }
         },
         cleanPatientMergeTestData() {
-          const { execSync } = require("child_process");
           const sql = `
             DELETE FROM clinlims.sample_human WHERE patient_id IN (SELECT id FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%');
             DELETE FROM clinlims.patient_identity WHERE patient_id IN (SELECT id FROM clinlims.patient WHERE national_id LIKE 'UG-MERGE-%');
@@ -272,7 +265,6 @@ module.exports = defineConfig({
         },
         // Verification task: Get sample count for a patient by national ID
         getPatientSampleCount(nationalId) {
-          const { execSync } = require("child_process");
           const sql = `
             SELECT COUNT(*) as sample_count
             FROM clinlims.sample_human sh
@@ -296,7 +288,6 @@ module.exports = defineConfig({
         },
         // Verification task: Get patient demographics by national ID
         getPatientDemographics(nationalId) {
-          const { execSync } = require("child_process");
           const sql = `
             SELECT
               per.first_name,
@@ -345,8 +336,7 @@ module.exports = defineConfig({
         },
         // Verification task: Check if merge audit record exists
         getMergeAuditRecord(mergedPatientNationalId) {
-          const { execSync } = require("child_process");
-          // Column names per Liquibase schema (016-patient-merge-create-audit-table.xml):
+          // Column names per Liquibase schema:
           // - reason (not merge_reason)
           // - merge_date (not merged_at)
           const sql = `
@@ -390,7 +380,7 @@ module.exports = defineConfig({
       });
 
       try {
-        const e2eFolder = path.join(__dirname, "cypress/e2e");
+        const e2eFolder = new URL("./cypress/e2e", import.meta.url).pathname;
 
         // Define the first four prioritized tests
         const prioritizedTests = [
@@ -407,13 +397,15 @@ module.exports = defineConfig({
           const files = fs.readdirSync(dir);
 
           for (const file of files) {
-            const fullPath = path.join(dir, file);
+            const fullPath = new URL("./" + file, "file://" + dir + "/")
+              .pathname;
             const stat = fs.statSync(fullPath);
 
             if (stat.isDirectory()) {
               results = results.concat(findTestFiles(fullPath));
             } else if (file.endsWith(".cy.js")) {
-              const relativePath = fullPath.replace(__dirname + path.sep, "");
+              const rootDir = new URL(".", import.meta.url).pathname;
+              const relativePath = fullPath.replace(rootDir, "");
               if (!prioritizedTests.includes(relativePath)) {
                 results.push(relativePath);
               }

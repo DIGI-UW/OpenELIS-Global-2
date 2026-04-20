@@ -1,4 +1,4 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page } from "../../../helpers/test-base";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { createAndCompleteAccessions } from "../../../helpers/seed-tat-data";
 import { seedHolidays } from "../../../helpers/seed-calendar-data";
@@ -150,11 +150,13 @@ test.describe("OGC-307: TAT Report (US2-US5)", () => {
       // table lives in the sibling <TabPanel>. Use the active tabpanel
       // (Carbon hides inactive panels with `hidden`) as the scope.
       const activePanel = page.locator('[role="tabpanel"]:not([hidden])');
+      // `toBeVisible` on .first() is the ≥1-row assertion — auto-retrying
+      // and sufficient. The subsequent `count() + expect(n).toBeGreaterThanOrEqual(1)`
+      // was redundant and non-retrying (asserting on a raw number after a
+      // one-shot snapshot), so it added flake surface without adding coverage.
       await expect(activePanel.locator("table tbody tr").first()).toBeVisible({
         timeout: 10_000,
       });
-      const rowCount = await activePanel.locator("table tbody tr").count();
-      expect(rowCount).toBeGreaterThanOrEqual(1);
       await demo.pause(2000);
       await demo.evidence("US3.1-detail-list-populated");
     });

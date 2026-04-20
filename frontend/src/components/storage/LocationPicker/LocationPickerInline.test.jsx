@@ -11,9 +11,9 @@ import { IntlProvider } from "react-intl";
 import LocationPickerInline from "./LocationPickerInline";
 import * as Utils from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerJsonResponse: jest.fn(),
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
 const renderWithIntl = (component) =>
@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe("LocationPickerInline", () => {
   it("renders in search mode by default", () => {
-    renderWithIntl(<LocationPickerInline onChange={jest.fn()} />);
+    renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
     // Search mode renders the SearchField (a textbox)
     expect(
       screen.getByLabelText(/search for a storage location/i),
@@ -41,7 +41,7 @@ describe("LocationPickerInline", () => {
   });
 
   it("toggles to create mode when 'Create new location' is clicked", () => {
-    renderWithIntl(<LocationPickerInline onChange={jest.fn()} />);
+    renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
     // Toggle button labeled with create-related text
     fireEvent.click(
       screen.getByRole("button", { name: /create new location/i }),
@@ -51,7 +51,7 @@ describe("LocationPickerInline", () => {
   });
 
   it("toggles back to search mode from create mode", () => {
-    renderWithIntl(<LocationPickerInline onChange={jest.fn()} />);
+    renderWithIntl(<LocationPickerInline onChange={vi.fn()} />);
     fireEvent.click(
       screen.getByRole("button", { name: /create new location/i }),
     );
@@ -70,7 +70,7 @@ describe("LocationPickerInline", () => {
           room: { id: 1, name: "Main Lab" },
           device: { id: 5, name: "Freezer 1" },
         }}
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     );
     // The compact summary string composes the selected levels with " > "
@@ -78,7 +78,7 @@ describe("LocationPickerInline", () => {
   });
 
   it("does not fire onChange when only the parent re-renders with a new callback identity", () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     function Parent({ counter }) {
       // Inline arrow ⇒ a fresh callback identity every render. If Inline's
       // effect depended on `onChange`, the effect would re-fire on every
@@ -102,7 +102,7 @@ describe("LocationPickerInline", () => {
   });
 
   it("calls onChange whenever the selection changes", () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     Utils.getFromOpenElisServer.mockImplementation((url, cb) => {
       if (url.startsWith("/rest/storage/rooms"))
         cb([{ id: 1, name: "Main Lab" }]);

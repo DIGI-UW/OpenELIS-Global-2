@@ -15,10 +15,10 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../services/analyzerService", () => ({
-  getAnalyzers: jest.fn(),
-  getMappings: jest.fn(),
-  copyMappings: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  getAnalyzers: vi.fn(),
+  getMappings: vi.fn(),
+  copyMappings: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -64,8 +64,8 @@ const renderWithIntl = (component) => {
 // ========== TEST SUITE ==========
 
 describe("CopyMappingsModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnSuccess = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnSuccess = vi.fn();
   const defaultProps = {
     open: true,
     onClose: mockOnClose,
@@ -76,7 +76,7 @@ describe("CopyMappingsModal", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     analyzerService.getAnalyzers.mockImplementation((filters, callback) => {
       callback({
         analyzers: [

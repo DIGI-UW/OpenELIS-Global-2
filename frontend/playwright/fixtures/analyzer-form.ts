@@ -102,34 +102,9 @@ export class AnalyzerFormPage {
     const listbox = dropdown.getByRole("listbox");
     await expect(listbox).toBeVisible({ timeout: UI_TIMEOUT });
 
-    try {
-      // Reset to top, then navigate down to the target option
-      const option = listbox.getByRole("option", { name: text }).first();
-      await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
-
-      await this.page.keyboard.press("Home");
-      const maxPresses = 20;
-      for (let i = 0; i < maxPresses; i++) {
-        const selected = await option.getAttribute("aria-selected");
-        if (selected === "true") break;
-        await this.page.keyboard.press("ArrowDown");
-      }
-
-      // Fail explicitly if we didn't reach the target
-      const finalSelected = await option.getAttribute("aria-selected");
-      if (finalSelected !== "true") {
-        throw new Error(
-          `Could not navigate to option "${text}" after ${maxPresses} ArrowDown presses`,
-        );
-      }
-
-      await this.page.keyboard.press("Enter");
-    } catch (e) {
-      // Close the listbox so it doesn't interfere with subsequent interactions
-      await this.page.keyboard.press("Escape");
-      await expect(listbox).not.toBeVisible({ timeout: UI_TIMEOUT });
-      throw e;
-    }
+    const option = listbox.getByRole("option", { name: text }).first();
+    await expect(option).toBeVisible({ timeout: UI_TIMEOUT });
+    await option.click();
 
     // Ensure the listbox is fully closed before returning
     await expect(listbox).not.toBeVisible({ timeout: UI_TIMEOUT });

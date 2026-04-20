@@ -12,25 +12,28 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../services/analyzerService", () => ({
-  getAnalyzers: jest.fn(),
-  getAnalyzerTypes: jest.fn(),
-  getDefaultConfigs: jest.fn(),
-  getDefaultConfig: jest.fn(),
-  createAnalyzer: jest.fn(),
-  updateAnalyzer: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  getAnalyzers: vi.fn(),
+  getAnalyzerTypes: vi.fn(),
+  getDefaultConfigs: vi.fn(),
+  getDefaultConfig: vi.fn(),
+  createAnalyzer: vi.fn(),
+  updateAnalyzer: vi.fn(),
 }));
 
 const mockHistory = {
-  push: jest.fn(),
-  replace: jest.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
 };
 
-jest.mock("react-router-dom", () => ({
-  ...jest.requireActual("react-router-dom"),
-  useHistory: () => mockHistory,
-  useLocation: () => ({ pathname: "/analyzers" }),
-}));
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    useHistory: () => mockHistory,
+    useLocation: () => ({ pathname: "/analyzers" }),
+  };
+});
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
 
@@ -96,7 +99,7 @@ const createMockAnalyzer = (overrides = {}) => ({
 describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockHistory.push.mockClear();
     mockHistory.replace.mockClear();
 

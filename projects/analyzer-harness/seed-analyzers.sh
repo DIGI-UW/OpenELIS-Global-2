@@ -27,21 +27,19 @@ if [[ "${1:-}" == "--no-clean" ]]; then
 fi
 
 BASE_URL="${BASE_URL:-https://localhost}"
-TEST_USER="${TEST_USER:-admin}"
-TEST_PASS="${TEST_PASS:-}"
-API="${BASE_URL}/api/OpenELIS-Global/rest/analyzer/analyzers"
 
-if [ -z "$TEST_PASS" ]; then
-  # Try sourcing .env from repo root
-  if [ -f "$REPO_ROOT/.env" ]; then
-    set -a && . "$REPO_ROOT/.env" && set +a
-    TEST_PASS="${TEST_PASS:-}"
-  fi
-  if [ -z "$TEST_PASS" ]; then
-    echo "ERROR: TEST_PASS not set. Export it or add to .env" >&2
-    exit 1
-  fi
+# Source .env if present so TEST_USER/TEST_PASS overrides take effect even when
+# this script is invoked directly (reset-env.sh already does this for its own
+# context; doing it here makes the script self-contained).
+if [ -f "$REPO_ROOT/.env" ]; then
+  set -a && . "$REPO_ROOT/.env" && set +a
 fi
+
+# Local-dev defaults: match .env.example and verify-login.sh. A .env file or
+# explicit TEST_USER/TEST_PASS exports still win (set -a above preserves them).
+TEST_USER="${TEST_USER:-admin}"
+TEST_PASS="${TEST_PASS:-adminADMIN!}"
+API="${BASE_URL}/api/OpenELIS-Global/rest/analyzer/analyzers"
 
 sql_escape() {
   printf '%s' "${1//\'/\'\'}"
