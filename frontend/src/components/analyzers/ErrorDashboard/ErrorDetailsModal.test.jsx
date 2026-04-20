@@ -76,11 +76,11 @@ const createMockError = (overrides = {}) => ({
 // ========== TESTS ==========
 
 describe("ErrorDetailsModal", () => {
-  const mockOnClose = jest.fn();
-  const mockOnAcknowledge = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnAcknowledge = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**

@@ -5,7 +5,7 @@ SET search_path TO clinlims;
 --    Runs before dashboard cleanup on every full fixture load. Storage E2E
 --    samples (E2E001, etc.) are intentionally untouched.
 -- ============================================================================
-DELETE FROM analyzer_results WHERE accession_number LIKE 'HARN-%';
+DELETE FROM analyzer_results WHERE accession_number LIKE 'DEV0126%';
 
 DROP TABLE IF EXISTS tmp_harn_analysis_ids;
 CREATE TEMP TABLE tmp_harn_analysis_ids AS
@@ -13,7 +13,7 @@ SELECT a.id
   FROM analysis a
   JOIN sample_item si ON si.id = a.sampitem_id
   JOIN sample s ON s.id = si.samp_id
- WHERE s.accession_number LIKE 'HARN-%';
+ WHERE s.accession_number LIKE 'DEV0126%';
 
 DELETE FROM referral_result
  WHERE referral_id IN (SELECT id FROM referral WHERE analysis_id IN (SELECT id FROM tmp_harn_analysis_ids));
@@ -29,15 +29,15 @@ DELETE FROM analysis WHERE id IN (SELECT id FROM tmp_harn_analysis_ids);
 DROP TABLE IF EXISTS tmp_harn_analysis_ids;
 
 DELETE FROM observation_history
-WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%')
+WHERE sample_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%')
    OR sample_item_id IN (
        SELECT id FROM sample_item WHERE samp_id IN (
-           SELECT id FROM sample WHERE accession_number LIKE 'HARN-%'
+           SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%'
        )
    );
-DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
-DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'HARN-%');
-DELETE FROM sample WHERE accession_number LIKE 'HARN-%';
+DELETE FROM sample_human WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+DELETE FROM sample_item WHERE samp_id IN (SELECT id FROM sample WHERE accession_number LIKE 'DEV0126%');
+DELETE FROM sample WHERE accession_number LIKE 'DEV0126%';
 
 -- ============================================================================
 -- E2E Cleanup + Dashboard Preparation

@@ -154,7 +154,8 @@ public class AnalyzerError extends BaseObject<String> {
     }
 
     public enum ErrorType {
-        MAPPING, VALIDATION, TIMEOUT, PROTOCOL, CONNECTION, QC_MAPPING_INCOMPLETE, QC_SERVICE_UNAVAILABLE
+        MAPPING, VALIDATION, TIMEOUT, PROTOCOL, CONNECTION, QC_MAPPING_INCOMPLETE, QC_SERVICE_UNAVAILABLE,
+        UNREGISTERED_SOURCE
     }
 
     public enum Severity {

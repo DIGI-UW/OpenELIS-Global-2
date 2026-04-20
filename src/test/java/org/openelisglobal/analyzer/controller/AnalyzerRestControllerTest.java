@@ -1,80 +1,82 @@
 package org.openelisglobal.analyzer.controller;
 
 import static org.junit.Assert.*;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analyzer.service.AnalyzerQueryService;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.history.service.HistoryService;
+import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * Integration tests for AnalyzerRestController Following TDD approach: Write
- * tests BEFORE implementation
- * 
+ * Integration tests for AnalyzerRestController against the real Spring context,
+ * real services, and real DB (via JdbcTemplate for setup + verification). No
+ * mocks are injected into Spring-managed controllers by this class.
+ *
+ * <p>
+ * Note on the audit trail: the global test config in
+ * {@code AppTestConfig#auditTrailService} provides a Mockito mock of
+ * {@link org.openelisglobal.audittrail.dao.AuditTrailService}. That mock
+ * silently no-ops {@code saveHistory} calls, which means any integration test
+ * that doesn't explicitly replace it is NOT exercising the audit path. The
+ * {@link #testDeleteAnalyzer_FreshDbRow_PersistsWithoutAuditError()} regression
+ * test installs a real {@link AuditTrailServiceImpl} for the duration of that
+ * single method via try/finally to actually catch audit-trail regressions.
+ *
+ * <p>
+ * Query/status endpoints that delegate to AnalyzerQueryService are NOT covered
+ * here — those paths require a live TCP analyzer and are exercised by
+ * AnalyzerQueryServiceIntegrationTest and related service-layer integration
+ * tests running against the openelis-analyzer-mock container.
  */
 public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private DataSource dataSource;
 
-    @Mock
-    private AnalyzerQueryService analyzerQueryService;
+    @Autowired
+    private AnalyzerService analyzerService;
+
+    @Autowired
+    private HistoryService historyService;
+
+    @Autowired
+    private ReferenceTablesService referenceTablesService;
 
     private ObjectMapper objectMapper;
     private JdbcTemplate jdbcTemplate;
+    private String testIp;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        MockitoAnnotations.initMocks(this);
         objectMapper = new ObjectMapper();
         jdbcTemplate = new JdbcTemplate(dataSource);
-        // Get controller from application context and inject mock service
-        AnalyzerRestController controller = webApplicationContext.getBean(AnalyzerRestController.class);
-        ReflectionTestUtils.setField(controller, "analyzerQueryService", analyzerQueryService);
-        // Clean up analyzer test data before each test
-        cleanAnalyzerTestData();
+        AnalyzerTestCleanup.clean(jdbcTemplate);
+        testIp = AnalyzerTestCleanup.uniqueIp();
     }
 
-    /**
-     * Clean up analyzer-related test data Note: Must delete in order due to foreign
-     * key constraints
-     */
-    private void cleanAnalyzerTestData() {
-        try {
-            // Delete test-created analyzer data in order (respecting foreign keys)
-            String analyzerIdSubquery = "(SELECT id FROM analyzer WHERE name LIKE 'TEST-%')";
-            jdbcTemplate.execute("DELETE FROM analyzer_field_mapping WHERE analyzer_field_id IN "
-                    + "(SELECT id FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery + ")");
-            jdbcTemplate.execute("DELETE FROM analyzer_field WHERE analyzer_id IN " + analyzerIdSubquery);
-            // Delete analyzer (clean by name pattern)
-            jdbcTemplate.execute("DELETE FROM analyzer WHERE name LIKE 'TEST-%'");
-
-            // Ensure analyzer sequence is synchronized with existing data
-            // This prevents ID collisions when tests run together
-            // Get max ID and set sequence to maxId+1 (so nextval returns maxId+1)
-            Integer maxId = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(id), 0) FROM analyzer", Integer.class);
-            // Set sequence to maxId (next nextval() will return maxId+1)
-            jdbcTemplate.execute("SELECT setval('analyzer_seq', " + maxId + ", true)");
-        } catch (Exception e) {
-            // Cleanup is best effort - don't fail if it doesn't work
-        }
+    @After
+    public void tearDown() {
+        AnalyzerTestCleanup.clean(jdbcTemplate);
     }
 
     /**
@@ -95,9 +97,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testCreateAnalyzer_WithValidData_ReturnsCreated() throws Exception {
         // Arrange: Create analyzer form JSON
         String uniqueName = "TEST-Analyzer-" + System.currentTimeMillis();
-        String requestBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         // Act & Assert: Endpoint should create analyzer
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(requestBody))
@@ -112,9 +113,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testTestConnection_WithValidConfig_ReturnsSuccess() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Connection-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -135,7 +135,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.ipAddress").value("192.168.1.100")).andExpect(jsonPath("$.port").value(5000));
+                .andExpect(jsonPath("$.ipAddress").value(testIp)).andExpect(jsonPath("$.port").value(5000));
     }
 
     /**
@@ -145,9 +145,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzer_WithValidId_ReturnsAnalyzer() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Get-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -183,9 +182,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testUpdateAnalyzer_WithValidData_ReturnsUpdated() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Update-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -208,20 +206,22 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Test: POST /rest/analyzer/analyzers/{id}/delete soft deletes analyzer
+     * Test: POST /rest/analyzer/analyzers/{id}/delete soft-deletes an analyzer that
+     * was just created in the same test.
      *
-     * Note: Uses POST /delete endpoint (not HTTP DELETE) — the duplicate
-     * 
-     * @DeleteMapping was removed per PR review. The POST endpoint has 90-day soft
-     *                delete logic which is the canonical behavior used by the UI.
+     * <p>
+     * This covers the happy path where the analyzer is still live in the Hibernate
+     * L1 cache from the prior create call. See
+     * {@link #testDeleteAnalyzer_FreshDbRow_PersistsWithoutAuditError()} for the
+     * production-realistic path where the analyzer exists in the DB from a prior
+     * HTTP session.
      */
     @Test
     public void testDeleteAnalyzer_WithValidId_ReturnsNoContent() throws Exception {
         // Arrange: Create analyzer first
         String uniqueName = "TEST-Delete-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -234,137 +234,107 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
                 });
         String analyzerId = String.valueOf(responseMap.get("id"));
 
-        // Act & Assert: POST delete endpoint returns 200 with deletion result
-        // (fresh analyzer has no recent results → hard delete → 200 with message)
-        mockMvc.perform(
-                post("/rest/analyzer/analyzers/" + analyzerId + "/delete").contentType(MediaType.APPLICATION_JSON))
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/delete")
+                .contentType(MediaType.APPLICATION_JSON).sessionAttr(IActionConstants.USER_SESSION_DATA, usd))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
     }
 
     /**
-     * Test: POST /rest/analyzer/analyzers/{id}/query starts query job
-     * 
-     * This test verifies the controller endpoint correctly delegates to
-     * AnalyzerQueryService and returns the expected HTTP response.
-     * 
-     * 
-     * Note: This test mocks AnalyzerQueryService to avoid real TCP connections.
-     * Real end-to-end testing with the mock server should be done in Cypress E2E
-     * tests.
+     * Regression test for the audit-trail sysUserId bug fixed in v6.1.
+     *
+     * <p>
+     * Production scenario: an analyzer already exists in the DB from a prior HTTP
+     * session. An admin presses "Delete" in the UI. The controller fetches the
+     * analyzer fresh from the DB, so every transient field (including
+     * {@code sysUserId} on
+     * {@link org.openelisglobal.common.valueholder.BaseObject}) is {@code null}.
+     * Without an explicit {@code setSysUserId} before
+     * {@code analyzerService.update(...)}, the real audit-trail writer throws
+     * {@code LIMSRuntimeException: System User ID is null} and the delete 500s.
+     *
+     * <p>
+     * Two things are needed to make this reproducible in-process:
+     * <ol>
+     * <li>Insert the analyzer row directly via {@link JdbcTemplate} so Hibernate's
+     * L1 cache never sees it — otherwise a prior inline create would leave the
+     * transient {@code sysUserId} populated in memory and hide the bug.</li>
+     * <li>Temporarily swap the Mockito-mocked {@code AuditTrailService} (installed
+     * by {@code AppTestConfig}) for a real {@link AuditTrailServiceImpl} — without
+     * this, {@code saveHistory} is a no-op and the null-user check never runs. The
+     * mock is restored in a finally block so other tests in this class are
+     * unaffected.</li>
+     * </ol>
      */
     @Test
-    public void testQueryAnalyzer_StartsQueryJob() throws Exception {
-        // Arrange: Create analyzer first
-        String uniqueName = "TEST-Query-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\"172.20.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+    public void testDeleteAnalyzer_FreshDbRow_PersistsWithoutAuditError() throws Exception {
+        // Install a real AuditTrailService on the analyzerService for this test
+        // only. AppTestConfig#auditTrailService provides a Mockito mock that
+        // silently swallows saveHistory calls; we need the real writer here so
+        // the null-sysUserId path actually throws when the bug is present.
+        Object analyzerServiceTarget = AopTestUtils.getUltimateTargetObject(analyzerService);
+        Object originalAuditTrailService = ReflectionTestUtils.getField(analyzerServiceTarget, "auditTrailService");
+        AuditTrailServiceImpl realAuditTrailService = new AuditTrailServiceImpl();
+        ReflectionTestUtils.setField(realAuditTrailService, "referenceTablesService", referenceTablesService);
+        ReflectionTestUtils.setField(realAuditTrailService, "historyService", historyService);
+        ReflectionTestUtils.setField(analyzerServiceTarget, "auditTrailService", realAuditTrailService);
 
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated()).andReturn();
+        try {
+            // Guard: restore shared seed data that prior test classes may have
+            // truncated (SystemAuditTrailIntegrationTest truncates reference_tables
+            // and system_user via cleanRowsInCurrentConnection). Without these rows,
+            // the real AuditTrailServiceImpl can't resolve the "analyzer" reference
+            // table or the sys_user FK when writing history.
+            jdbcTemplate.update(
+                    "INSERT INTO clinlims.reference_tables " + "(id, name, keep_history, is_hl7_encoded, lastupdated) "
+                            + "VALUES (182, 'analyzer', 'Y', 'N', now()) ON CONFLICT (id) DO NOTHING");
+            jdbcTemplate.update("INSERT INTO clinlims.system_user "
+                    + "(id, login_name, last_name, first_name, is_active, is_employee, external_id, lastupdated) "
+                    + "VALUES (1, 'admin', 'admin', 'admin', 'Y', 'Y', 'admin', now()) ON CONFLICT (id) DO NOTHING");
 
-        String responseBody = createResult.getResponse().getContentAsString();
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
-                new TypeReference<Map<String, Object>>() {
-                });
-        String analyzerId = String.valueOf(responseMap.get("id"));
+            // Arrange: insert analyzer row directly via JDBC, bypassing Hibernate.
+            // analyzer_type_id is intentionally NULL — the delete path doesn't
+            // care about the type, and the test DB doesn't seed analyzer_type.
+            String uniqueName = "TEST-DeleteFreshDb-" + System.currentTimeMillis();
+            Integer analyzerId = jdbcTemplate.queryForObject("SELECT nextval('analyzer_seq')", Integer.class);
+            jdbcTemplate.update("INSERT INTO clinlims.analyzer (id, name, is_active, status, last_updated) "
+                    + "VALUES (?, ?, true, 'ACTIVE', now())", analyzerId, uniqueName);
 
-        // Mock service to return job ID
-        String mockJobId = "test-job-id-123";
-        when(analyzerQueryService.startQuery(analyzerId)).thenReturn(mockJobId);
+            // Act: hit the delete endpoint exactly as the UI does — the session
+            // attribute carries the logged-in user.
+            UserSessionData usd = new UserSessionData();
+            usd.setSytemUserId(1);
+            mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/delete")
+                    .contentType(MediaType.APPLICATION_JSON).sessionAttr(IActionConstants.USER_SESSION_DATA, usd))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.deleted").value(true));
 
-        // Act & Assert: POST query endpoint should return 202 Accepted with job ID
-        mockMvc.perform(
-                post("/rest/analyzer/analyzers/" + analyzerId + "/query").contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isAccepted()).andExpect(jsonPath("$.jobId").value(mockJobId))
-                .andExpect(jsonPath("$.analyzerId").value(analyzerId)).andExpect(jsonPath("$.status").value("started"));
-    }
+            // Assert: soft-delete landed in the DB. If the sysUserId bug fires,
+            // the real audit writer throws LIMSRuntimeException before the update
+            // commits, the controller's catch block returns 500, and the status
+            // assertion above fails.
+            Map<String, Object> row = jdbcTemplate
+                    .queryForMap("SELECT status, is_active FROM clinlims.analyzer WHERE id = ?", analyzerId);
+            assertEquals("DELETED", row.get("status"));
+            assertEquals(Boolean.FALSE, row.get("is_active"));
 
-    /**
-     * Test: GET /rest/analyzer/analyzers/{id}/query/{jobId}/status returns query
-     * status
-     * 
-     * This test verifies the controller endpoint correctly delegates to
-     * AnalyzerQueryService and returns the expected HTTP response.
-     * 
-     * 
-     * Note: This test mocks AnalyzerQueryService to avoid real TCP connections.
-     * Real end-to-end testing with the mock server should be done in Cypress E2E
-     * tests.
-     */
-    @Test
-    public void testGetQueryStatus_ReturnsStatus() throws Exception {
-        // Arrange: Create analyzer first
-        String uniqueName = "TEST-Query-Status-Test-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\"172.20.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
-
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated()).andReturn();
-
-        String responseBody = createResult.getResponse().getContentAsString();
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
-                new TypeReference<Map<String, Object>>() {
-                });
-        String analyzerId = String.valueOf(responseMap.get("id"));
-
-        String jobId = "test-job-id-456";
-
-        // Mock service to return status
-        Map<String, Object> mockStatus = new HashMap<>();
-        mockStatus.put("analyzerId", analyzerId);
-        mockStatus.put("jobId", jobId);
-        mockStatus.put("state", "completed");
-        mockStatus.put("progress", 100);
-        mockStatus.put("createdAt", System.currentTimeMillis());
-
-        when(analyzerQueryService.getStatus(analyzerId, jobId)).thenReturn(mockStatus);
-
-        // Act & Assert: GET status endpoint should return 200 OK with status
-        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId + "/query/" + jobId + "/status")
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.analyzerId").value(analyzerId)).andExpect(jsonPath("$.jobId").value(jobId))
-                .andExpect(jsonPath("$.state").value("completed")).andExpect(jsonPath("$.progress").value(100));
-    }
-
-    /**
-     * Test: GET /rest/analyzer/analyzers/{id}/query/{jobId}/status returns 404 for
-     * non-existent job
-     * 
-     */
-    @Test
-    public void testGetQueryStatus_WithInvalidJobId_ReturnsNotFound() throws Exception {
-        // Arrange: Create analyzer first
-        String uniqueName = "TEST-Query-Status-NotFound-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Hematology Analyzer\",\"ipAddress\":\"172.20.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
-
-        MvcResult createResult = mockMvc
-                .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
-                .andExpect(status().isCreated()).andReturn();
-
-        String responseBody = createResult.getResponse().getContentAsString();
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, Object> responseMap = objectMapper.readValue(responseBody,
-                new TypeReference<Map<String, Object>>() {
-                });
-        String analyzerId = String.valueOf(responseMap.get("id"));
-
-        String invalidJobId = "invalid-job-id";
-
-        // Mock service to return null (job not found)
-        when(analyzerQueryService.getStatus(analyzerId, invalidJobId)).thenReturn(null);
-
-        // Act & Assert: GET status endpoint should return 404 Not Found
-        mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId + "/query/" + invalidJobId + "/status")
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").exists());
+            // Assert: a history row landed, attributed to the session user.
+            // This verifies the audit trail actually ran (not just that the
+            // delete didn't throw).
+            List<Map<String, Object>> historyRows = jdbcTemplate.queryForList(
+                    "SELECT sys_user_id, activity FROM clinlims.history WHERE reference_id = ? AND reference_table ="
+                            + " (SELECT id FROM clinlims.reference_tables WHERE name = 'analyzer')",
+                    analyzerId);
+            assertFalse("Expected at least one audit-trail history row for the deleted analyzer",
+                    historyRows.isEmpty());
+            boolean attributedToUser1 = historyRows.stream()
+                    .anyMatch(r -> "1".equals(String.valueOf(r.get("sys_user_id"))));
+            assertTrue("Expected a history row attributed to sys_user_id=1, got: " + historyRows, attributedToUser1);
+        } finally {
+            // Restore the mocked AuditTrailService so sibling tests see the
+            // default (mocked) behavior.
+            ReflectionTestUtils.setField(analyzerServiceTarget, "auditTrailService", originalAuditTrailService);
+        }
     }
 
     /**
@@ -378,9 +348,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzers_ResponseIncludesPluginLoadedField() throws Exception {
         // Arrange: Create a test analyzer
         String uniqueName = "TEST-PluginLoaded-List-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         mockMvc.perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
                 .andExpect(status().isCreated());
@@ -413,9 +382,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testGetAnalyzer_PluginLoadedFalse_WhenNoMatchingPlugin() throws Exception {
         // Arrange: Create analyzer (no real plugin JAR loaded for "Chemistry Analyzer")
         String uniqueName = "TEST-PluginLoaded-False-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5000,\"testUnitIds\":[]}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"Chemistry Analyzer\",\"ipAddress\":\""
+                + testIp + "\"," + "\"port\":5000,\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -446,7 +414,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testCreateAnalyzer_WithNonNumericPluginTypeId_ReturnsCreated() throws Exception {
         String uniqueName = "TEST-NonNumericPlugin-" + System.currentTimeMillis();
         String requestBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
-                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+                + "\"pluginTypeId\":\"generic-astm\"," + "\"ipAddress\":\"" + testIp + "\",\"port\":1200}";
 
         // Should return 201 (gracefully ignoring unresolvable pluginTypeId)
         // instead of 500 NumberFormatException
@@ -465,8 +433,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     public void testUpdateAnalyzer_WithNonNumericPluginTypeId_ReturnsOk() throws Exception {
         // Arrange: Create analyzer first (without pluginTypeId)
         String uniqueName = "TEST-NonNumericPluginUpdate-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\","
-                + "\"ipAddress\":\"192.168.1.100\",\"port\":1200}";
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"MOLECULAR\"," + "\"ipAddress\":\""
+                + testIp + "\",\"port\":1200}";
 
         MvcResult createResult = mockMvc
                 .perform(post("/rest/analyzer/analyzers").contentType(MediaType.APPLICATION_JSON).content(createBody))
@@ -494,9 +462,8 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
     @Test
     public void testTestConnection_WithHl7Protocol_ReturnsExpectedFields() throws Exception {
         String uniqueName = "TEST-HL7-Connection-" + System.currentTimeMillis();
-        String createBody = "{\"name\":\"" + uniqueName
-                + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"192.168.1.100\","
-                + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
+        String createBody = "{\"name\":\"" + uniqueName + "\",\"analyzerType\":\"HEMATOLOGY\",\"ipAddress\":\"" + testIp
+                + "\"," + "\"port\":5380,\"protocolVersion\":\"HL7_V2_3_1\","
                 + "\"communicationMode\":\"ANALYZER_INITIATED\",\"testUnitIds\":[]}";
 
         MvcResult createResult = mockMvc
@@ -512,7 +479,7 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         mockMvc.perform(post("/rest/analyzer/analyzers/" + analyzerId + "/test-connection")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").exists()).andExpect(jsonPath("$.analyzerId").value(analyzerId))
-                .andExpect(jsonPath("$.ipAddress").value("192.168.1.100")).andExpect(jsonPath("$.port").value(5380))
+                .andExpect(jsonPath("$.ipAddress").value(testIp)).andExpect(jsonPath("$.port").value(5380))
                 .andExpect(jsonPath("$.communicationMode").value("ANALYZER_INITIATED"))
                 .andExpect(jsonPath("$.protocol").value("HL7_V2_3_1"))
                 // Must have TCP reachability info (not just hardcoded success)
@@ -588,5 +555,84 @@ public class AnalyzerRestControllerTest extends BaseWebContextSensitiveTest {
         // communicationMode should be null (not set), but effective should default
         mockMvc.perform(get("/rest/analyzer/analyzers/" + analyzerId)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.effectiveCommunicationMode").value("ANALYZER_INITIATED"));
+    }
+
+    // === OGC-526: Discovered sources endpoint tests ===
+
+    @Test
+    public void testDiscoveredSources_CreatesStubAnalyzer() throws Exception {
+        String body = "{\"sourceId\":\"" + AnalyzerTestCleanup.uniqueSourceId()
+                + "\",\"protocol\":\"ASTM\",\"transport\":\"TCP\",\"protocolHint\":\"GENEXPERT\"}";
+
+        MvcResult result = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> response = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertNotNull("Should return analyzerId", response.get("analyzerId"));
+        assertEquals("PENDING_REGISTRATION", response.get("status"));
+        assertEquals(false, response.get("alreadyExists"));
+    }
+
+    @Test
+    public void testDiscoveredSources_CreatesStubAnalyzerWithFhirUuid() throws Exception {
+        String sourceId = "10.0.0.52";
+        String body = "{\"sourceId\":\"" + sourceId
+                + "\",\"protocol\":\"ASTM\",\"transport\":\"TCP\",\"protocolHint\":\"GENEXPERT\"}";
+
+        MvcResult result = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> response = objectMapper.readValue(result.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        String analyzerId = String.valueOf(response.get("analyzerId"));
+
+        String fhirUuid = jdbcTemplate.queryForObject("SELECT fhir_uuid::text FROM analyzer WHERE id = ?", String.class,
+                Integer.valueOf(analyzerId));
+        assertNotNull("Discovered-source stub should persist a fhir_uuid", fhirUuid);
+        assertFalse("Discovered-source stub fhir_uuid should not be blank", fhirUuid.trim().isEmpty());
+    }
+
+    @Test
+    public void testDiscoveredSources_IdempotentOnDuplicateSourceId() throws Exception {
+        String srcId = AnalyzerTestCleanup.uniqueSourceId();
+        String body = "{\"sourceId\":\"" + srcId + "\",\"protocol\":\"HL7\",\"transport\":\"MLLP\"}";
+
+        // First call — creates stub
+        MvcResult first = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated()).andReturn();
+
+        Map<String, Object> firstResponse = objectMapper.readValue(first.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        String firstId = String.valueOf(firstResponse.get("analyzerId"));
+
+        // Second call — returns existing stub
+        MvcResult second = mockMvc
+                .perform(
+                        post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+
+        Map<String, Object> secondResponse = objectMapper.readValue(second.getResponse().getContentAsString(),
+                new TypeReference<>() {
+                });
+        assertEquals("Same analyzer ID on duplicate", firstId, String.valueOf(secondResponse.get("analyzerId")));
+        assertEquals(true, secondResponse.get("alreadyExists"));
+    }
+
+    @Test
+    public void testDiscoveredSources_MissingSourceId_Returns400() throws Exception {
+        String body = "{\"protocol\":\"ASTM\",\"transport\":\"TCP\"}";
+
+        mockMvc.perform(post("/rest/analyzer/discovered-sources").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest());
     }
 }

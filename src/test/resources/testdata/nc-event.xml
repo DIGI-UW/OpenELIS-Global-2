@@ -96,7 +96,8 @@
         control_action="Double-check label against order form."
         comments="Incident detected early, no patient harm." effective="YES"
         signature="Jane Doe" date_completed="2025-04-16" nce_type_id="1"
-        status="Resolved" discussion_date="2025-04-17 13:00:00.0" />
+        status="Resolved" discussion_date="2025-04-17 13:00:00.0"
+        last_updated="2025-04-17 14:00:00" />
 
     <nc_event id="2" name="Reagent Expiry Overlooked"
         name_of_reporter="Mr. John Tester" report_date="2025-04-10"
@@ -112,7 +113,8 @@
         comments="Issue addressed quickly, no impact on results."
         effective="YES" signature="John Tester" date_completed="2025-04-12"
         nce_type_id="2" status="Closed"
-        discussion_date="2025-04-13 13:00:00.0" />
+        discussion_date="2025-04-13 13:00:00.0"
+        last_updated="2025-04-13 14:00:00" />
 
     <nc_event id="3" name="Instrument Calibration Error"
         name_of_reporter="Dr. Lee" report_date="2025-03-30"
@@ -129,6 +131,7 @@
         comments="Error identified post-run, corrective action completed."
         effective="YES" signature="Dr. Lee" date_completed="2025-04-01"
         nce_type_id="3" status="Resolved"
-        discussion_date="2025-04-02 13:00:00.0" />
+        discussion_date="2025-04-02 13:00:00.0"
+        last_updated="2025-04-02 14:00:00" />
 
 </dataset>

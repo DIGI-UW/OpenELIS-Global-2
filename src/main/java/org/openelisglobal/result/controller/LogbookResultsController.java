@@ -921,9 +921,9 @@ public class LogbookResultsController extends LogbookResultsBaseController {
         if (FWD_SUCCESS_INSERT.equals(forward)) {
             return "redirect:/AccessionResults";
         } else if (FWD_VALIDATION_ERROR.equals(forward)) {
-            return "accessionResultDefinition";
+            return "redirect:/AccessionResults";
         } else if (FWD_FAIL_INSERT.equals(forward)) {
-            return "accessionResultDefinition";
+            return "redirect:/AccessionResults";
         } else {
             return "PageNotFound";
         }
