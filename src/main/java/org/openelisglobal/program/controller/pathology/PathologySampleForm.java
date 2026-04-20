@@ -1,8 +1,11 @@
 package org.openelisglobal.program.controller.pathology;
 
+import jakarta.validation.constraints.Min;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import org.openelisglobal.barcode.form.LabelsSectionForm;
+import org.openelisglobal.barcode.form.PostSavePrintDialogForm;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologyReport;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
@@ -46,6 +49,25 @@ public class PathologySampleForm {
     private List<String> immunoHistoChemistryTestIds;
 
     private List<PathologyReportForm> reports;
+
+    @Min(1)
+    private Integer numOrderLabels;
+
+    @Min(1)
+    private Integer numSpecimenLabels;
+
+    @Min(1)
+    private Integer numBlockLabels;
+
+    @Min(1)
+    private Integer numSlideLabels;
+
+    @Min(1)
+    private Integer numFreezerLabels;
+
+    private LabelsSectionForm labelsSection;
+
+    private PostSavePrintDialogForm postSavePrintDialog;
 
     public PathologyStatus getStatus() {
         return status;
@@ -181,6 +203,62 @@ public class PathologySampleForm {
 
     public void setReports(List<PathologyReportForm> reports) {
         this.reports = reports;
+    }
+
+    public Integer getNumOrderLabels() {
+        return numOrderLabels;
+    }
+
+    public void setNumOrderLabels(Integer numOrderLabels) {
+        this.numOrderLabels = numOrderLabels;
+    }
+
+    public Integer getNumSpecimenLabels() {
+        return numSpecimenLabels;
+    }
+
+    public void setNumSpecimenLabels(Integer numSpecimenLabels) {
+        this.numSpecimenLabels = numSpecimenLabels;
+    }
+
+    public Integer getNumBlockLabels() {
+        return numBlockLabels;
+    }
+
+    public void setNumBlockLabels(Integer numBlockLabels) {
+        this.numBlockLabels = numBlockLabels;
+    }
+
+    public Integer getNumSlideLabels() {
+        return numSlideLabels;
+    }
+
+    public void setNumSlideLabels(Integer numSlideLabels) {
+        this.numSlideLabels = numSlideLabels;
+    }
+
+    public Integer getNumFreezerLabels() {
+        return numFreezerLabels;
+    }
+
+    public void setNumFreezerLabels(Integer numFreezerLabels) {
+        this.numFreezerLabels = numFreezerLabels;
+    }
+
+    public LabelsSectionForm getLabelsSection() {
+        return labelsSection;
+    }
+
+    public void setLabelsSection(LabelsSectionForm labelsSection) {
+        this.labelsSection = labelsSection;
+    }
+
+    public PostSavePrintDialogForm getPostSavePrintDialog() {
+        return postSavePrintDialog;
+    }
+
+    public void setPostSavePrintDialog(PostSavePrintDialogForm postSavePrintDialog) {
+        this.postSavePrintDialog = postSavePrintDialog;
     }
 
     public List<String> getImmunoHistoChemistryTestIds() {

@@ -35,6 +35,7 @@ import PatientHeader from "../common/PatientHeader";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 
 function PathologyCaseView() {
   const intl = useIntl();
@@ -71,6 +72,7 @@ function PathologyCaseView() {
   const [currentApiPage, setCurrentApiPage] = useState(null);
   const [totalApiPages, setTotalApiPages] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [postSavePrintModel, setPostSavePrintModel] = useState(null);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -94,6 +96,7 @@ function PathologyCaseView() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.save.msg" }),
       });
+      setPostSavePrintModel(body?.postSavePrintDialog || null);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -151,6 +154,7 @@ function PathologyCaseView() {
       return;
     }
     setIsSubmitting(true);
+    setPostSavePrintModel(null);
     let submitValues = {
       assignedTechnicianId: pathologySampleInfo.assignedTechnicianId,
       assignedPathologistId: pathologySampleInfo.assignedPathologistId,
@@ -390,6 +394,14 @@ function PathologyCaseView() {
             <FormattedMessage id="label.button.save" />
           </Button>
         </Column>
+        {postSavePrintModel?.accessionNumber && (
+          <Column lg={16} md={8} sm={4}>
+            <PostSavePrintDialog
+              accessionNumber={postSavePrintModel.accessionNumber}
+              printableLabelTypes={postSavePrintModel.printableLabelTypes || []}
+            />
+          </Column>
+        )}
         <Column lg={16} md={8} sm={4}>
           <div> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;</div>
         </Column>

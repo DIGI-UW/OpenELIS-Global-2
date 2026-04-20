@@ -31,7 +31,6 @@ import org.openelisglobal.test.valueholder.Test;
 
 public class AnalyzerTestNameCache {
 
-    protected AnalyzerService analyzerService = SpringContext.getBean(AnalyzerService.class);
     protected AnalyzerTestMappingService analyzerTestMappingService = SpringContext
             .getBean(AnalyzerTestMappingService.class);
     protected TestService testService = SpringContext.getBean(TestService.class);
@@ -48,10 +47,17 @@ public class AnalyzerTestNameCache {
     public static final String FACSCANTO = "FacsCanto";
     public static final String COBAS_DBS = "CobasDBS";
     public static final String COBAS_C311 = "Cobas C311";
-    private final HashMap<String, Map<String, MappedTestName>> analyzerNameToTestNameMap = new HashMap<>();
-    private Map<String, String> analyzerNameToIdMap;
+    // Legacy index: keyed by AnalyzerType name (e.g., "Sysmex XT 2000", "Generic
+    // HL7")
+    // Used by legacy readers where type = analyzer (1:1 relationship)
+    private volatile Map<String, Map<String, MappedTestName>> analyzerNameToTestNameMap = new HashMap<>();
+    // Per-analyzer index: keyed by Analyzer.id (e.g., "6" for BC-5380)
+    // Provides correct isolation when multiple analyzers share a generic type
+    // (OGC-492)
+    private volatile Map<String, Map<String, MappedTestName>> analyzerIdToTestNameMap = new HashMap<>();
+    private volatile Map<String, String> analyzerNameToIdMap;
     private Map<String, String> requestTODBName = new HashMap<>();
-    private boolean isMapped = false;
+    private volatile boolean initialLoadDone = false;
 
     private AnalyzerTestNameCache() {
         requestTODBName.put("sysmex", SYSMEX_XT2000_NAME);
@@ -73,15 +79,13 @@ public class AnalyzerTestNameCache {
     }
 
     public List<String> getAnalyzerNames() {
-        insureMapsLoaded();
+        ensureInitialLoad();
         List<String> nameList = new ArrayList<>();
         nameList.addAll(analyzerNameToIdMap.keySet());
         return nameList;
     }
 
-    public MappedTestName getMappedTest(String analyzerName, String analyzerTestName) {
-        // This will look for a mapping for the analyzer and if it is found will then
-        // look for a mapping for the test name
+    public synchronized MappedTestName getMappedTest(String analyzerName, String analyzerTestName) {
         Map<String, MappedTestName> testMap = getMappedTestsForAnalyzer(analyzerName);
 
         if (testMap != null) {
@@ -91,54 +95,115 @@ public class AnalyzerTestNameCache {
         return null;
     }
 
-    public void registerPluginAnalyzer(String analyzerName, String analyzerId) {
+    /**
+     * Per-analyzer lookup — uses analyzer ID (not type name) for correct isolation
+     * when multiple analyzers share a generic plugin type (OGC-492).
+     */
+    public synchronized MappedTestName getMappedTestByAnalyzerId(String analyzerId, String testCode) {
+        ensureInitialLoad();
+        Map<String, MappedTestName> testMap = analyzerIdToTestNameMap.get(analyzerId);
+        if (testMap != null) {
+            MappedTestName result = testMap.get(testCode);
+            if (result == null) {
+                org.openelisglobal.common.log.LogEvent.logWarn("AnalyzerTestNameCache", "getMappedTestByAnalyzerId",
+                        "Cache HIT for analyzer " + analyzerId + " (" + testMap.size() + " codes: " + testMap.keySet()
+                                + ") but testCode '" + testCode + "' not found");
+            }
+            return result;
+        }
+        org.openelisglobal.common.log.LogEvent.logWarn("AnalyzerTestNameCache", "getMappedTestByAnalyzerId",
+                "Cache MISS: no entry for analyzerId=" + analyzerId + " (cache has "
+                        + analyzerIdToTestNameMap.keySet().size() + " analyzers: " + analyzerIdToTestNameMap.keySet()
+                        + ")");
+        return null;
+    }
+
+    /**
+     * Register an analyzer name in the request-to-DB name map. Used by legacy
+     * plugins to register their name for URL-based lookups.
+     */
+    public void registerAnalyzerName(String analyzerName) {
         requestTODBName.put(analyzerName, analyzerName);
-        if (isMapped) {
-            analyzerNameToIdMap.put(analyzerName, analyzerId);
-        }
     }
 
-    private synchronized void insureMapsLoaded() {
-        if (!isMapped) {
+    private synchronized void ensureInitialLoad() {
+        if (!initialLoadDone) {
             loadMaps();
-            isMapped = true;
+            initialLoadDone = true;
+            org.openelisglobal.common.log.LogEvent.logInfo("AnalyzerTestNameCache", "ensureInitialLoad",
+                    "Initial cache load: " + analyzerIdToTestNameMap.size() + " analyzers, "
+                            + analyzerIdToTestNameMap.values().stream().mapToInt(Map::size).sum() + " total mappings");
         }
     }
 
-    public Map<String, MappedTestName> getMappedTestsForAnalyzer(String analyzerName) {
-        insureMapsLoaded();
+    public synchronized Map<String, MappedTestName> getMappedTestsForAnalyzer(String analyzerName) {
+        ensureInitialLoad();
         return analyzerNameToTestNameMap.get(analyzerName);
     }
 
+    /**
+     * Eagerly reload the cache. Called after test mappings change (e.g., analyzer
+     * creation). Replaces the old lazy-invalidation pattern that set a flag and
+     * hoped the next caller would reload — which had a race condition when loads
+     * overlapped with invalidations.
+     */
     public synchronized void reloadCache() {
-        isMapped = false;
+        loadMaps();
+        org.openelisglobal.common.log.LogEvent.logInfo("AnalyzerTestNameCache", "reloadCache",
+                "Cache reloaded: " + analyzerIdToTestNameMap.size() + " analyzers, "
+                        + analyzerIdToTestNameMap.values().stream().mapToInt(Map::size).sum() + " total mappings");
     }
 
+    /**
+     * Load test mappings keyed by analyzer. Two indexes: - analyzerIdToTestNameMap:
+     * analyzerId → testCode → MappedTestName (primary) - analyzerNameToTestNameMap:
+     * analyzerName → testCode → MappedTestName (for legacy readers that use name
+     * constants like SYSMEX_XT2000_NAME)
+     */
     private void loadMaps() {
-        List<Analyzer> analyzerList = analyzerService.getAll();
-        analyzerNameToTestNameMap.clear();
+        // Build entirely new maps, then swap references atomically.
+        // This eliminates the window where maps are cleared but not yet rebuilt,
+        // which caused concurrent readers to see empty/inconsistent state.
+        HashMap<String, Map<String, MappedTestName>> newNameMap = new HashMap<>();
+        HashMap<String, Map<String, MappedTestName>> newIdMap = new HashMap<>();
+        HashMap<String, String> newNameToIdMap = new HashMap<>();
 
-        analyzerNameToIdMap = new HashMap<>();
-
+        // Build analyzer ID → name map
+        AnalyzerService analyzerServiceLocal = SpringContext.getBean(AnalyzerService.class);
+        List<Analyzer> analyzerList = analyzerServiceLocal.getAll();
+        Map<String, String> idToName = new HashMap<>();
         for (Analyzer analyzer : analyzerList) {
-            analyzerNameToIdMap.put(analyzer.getName(), analyzer.getId());
-            analyzerNameToTestNameMap.put(analyzer.getName(), new HashMap<String, MappedTestName>());
+            idToName.put(analyzer.getId(), analyzer.getName());
+            newNameToIdMap.put(analyzer.getName(), analyzer.getId());
         }
 
+        // Load all test mappings — PK is now (analyzer_id, analyzer_test_name)
         List<AnalyzerTestMapping> mappingList = analyzerTestMappingService.getAll();
 
         for (AnalyzerTestMapping mapping : mappingList) {
+            String analyzerId = mapping.getAnalyzerId();
+            if (analyzerId == null || analyzerId.isEmpty()) {
+                continue;
+            }
+
             MappedTestName mappedTestName = createMappedTestName(testService, mapping);
 
-            Analyzer analyzer = new Analyzer();
-            analyzer.setId(mapping.getAnalyzerId());
-            analyzer = analyzerService.get(analyzer.getId());
+            // Primary index: by analyzer ID
+            newIdMap.computeIfAbsent(analyzerId, k -> new HashMap<>()).put(mapping.getAnalyzerTestName(),
+                    mappedTestName);
 
-            Map<String, MappedTestName> testMap = analyzerNameToTestNameMap.get(analyzer.getName());
-            if (testMap != null) {
-                testMap.put(mapping.getAnalyzerTestName(), mappedTestName);
+            // Secondary index: by analyzer name (for legacy readers)
+            String analyzerName = idToName.get(analyzerId);
+            if (analyzerName != null) {
+                newNameMap.computeIfAbsent(analyzerName, k -> new HashMap<>()).put(mapping.getAnalyzerTestName(),
+                        mappedTestName);
             }
         }
+
+        // Atomic swap — readers see either the old complete map or the new complete map
+        analyzerIdToTestNameMap = newIdMap;
+        analyzerNameToTestNameMap = newNameMap;
+        analyzerNameToIdMap = newNameToIdMap;
     }
 
     private MappedTestName createMappedTestName(TestService testService, AnalyzerTestMapping mapping) {
@@ -161,7 +226,7 @@ public class AnalyzerTestNameCache {
     }
 
     public MappedTestName getEmptyMappedTestName(String analyzerName, String analyzerTestName) {
-        insureMapsLoaded();
+        ensureInitialLoad();
         MappedTestName mappedTest = new MappedTestName();
         mappedTest.setAnalyzerTestName(analyzerTestName);
         mappedTest.setTestId(null);
@@ -172,7 +237,7 @@ public class AnalyzerTestNameCache {
     }
 
     public String getAnalyzerIdForName(String analyzerName) {
-        insureMapsLoaded();
+        ensureInitialLoad();
 
         return analyzerNameToIdMap.get(analyzerName);
     }

@@ -49,7 +49,7 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
         // performOclImport now only takes fileDir parameter (marker file logic removed)
         oclImportInitializer.performOclImport(oclDirPath);
         test = testService.getTestByLocalizedName("TEST C en", Locale.ENGLISH);
+        assertNotNull("OCL import should create test 'TEST C en'", test);
         System.out.println("Test Result : " + testService.getResultType(test));
-        assertNotNull(test);
     }
 }
