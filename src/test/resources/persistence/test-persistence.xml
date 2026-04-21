@@ -165,6 +165,12 @@
         <class>org.openelisglobal.eqa.valueholder.EQAProgramTest</class>
         <class>org.openelisglobal.eqa.valueholder.EQAResult</class>
 
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionContact</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnection</class>
+        <class>org.openelisglobal.externalconnections.valueholder.BasicAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.ExternalConnectionAuthenticationData</class>
+        <class>org.openelisglobal.externalconnections.valueholder.CertificateAuthenticationData</class>
+
         <!-- Electronic Signature entities (21 CFR Part 11) -->
         <class>org.openelisglobal.esig.valueholder.ElectronicSignature</class>
         <class>org.openelisglobal.esig.valueholder.EsigFirstUseCertification</class>
