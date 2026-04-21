@@ -86,6 +86,18 @@ public interface BiorepositoryDashboardService {
     Map<String, Object> getQCDiscrepancyBreakdown();
 
     /**
+     * Get completed QC inspection history for reporting dashboards.
+     *
+     * @param limit maximum number of most-recent records to return (optional,
+     *              defaults to 50)
+     * @return Map with keys: - source (String): underlying source table/entity -
+     *         count (Integer): number of returned records - items (List<Map>):
+     *         completed inspection records with date/result/technician/location
+     *         context
+     */
+    Map<String, Object> getQCHistory(Integer limit);
+
+    /**
      * Get retrieval statistics within a date range.
      *
      * @param startDate Start date (optional, defaults to 30 days ago)
