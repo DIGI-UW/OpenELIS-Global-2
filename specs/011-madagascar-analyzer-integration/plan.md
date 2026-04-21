@@ -1,55 +1,59 @@
 > **STATUS: Superseded as a delivery tracker (updated 2026-04-20).** The January
 > 2026 milestone structure below (M0–M21, RS232-via-bridge framing, Cypress 12.x
 > as E2E, contract deadline 2026-02-28) no longer describes how the work is
-> landing. MVP code is shipped for 7 analyzers (3 Mindray HL7, 1 GeneXpert ASTM,
-> 3 FILE) — but site validation and post-MVP work (below) are still open. Do not
-> use the M0–M21 numbering below to plan current work; track delivery through
-> Jira OGC-\* + per-PR commits.
+> landing. The MVP architecture (three generic plugins + profile JSONs) is
+> shipped on `develop`; per-analyzer site validation and post-MVP architecture
+> evolution are open. Do not use the M0–M21 numbering below to plan current
+> work; track delivery through the Confluence tracker and per-PR commits.
 >
-> **Canonical sources:**
->
-> - **Live roadmap:** `specs/roadmaps/madagascar-analyzer-roadmap.md`
->   (2026-03-26) — per-analyzer status + immediate / post-MVP sections
-> - **Test harness:** `projects/analyzer-harness/seed-analyzers.sh` +
->   `ci-parity-test.sh`
+> **Canonical sources.** The architecture-level roadmap is at
+> `specs/roadmaps/madagascar-analyzer-roadmap.md`. The canonical per-analyzer
+> source is the
+> [Confluence Analyzer Integration Tracker](https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396).
+> The test harness entry points are
+> `projects/analyzer-harness/seed-analyzers.sh` and `ci-parity-test.sh`.
 
 ## Remaining Work to Finish Line (2026-04-20)
 
-Per the canonical roadmap, the three tracks have the following work left before
-the MVP is considered site-validated and the post-MVP slate is closed:
+The umbrella 011 work is now **architecture-level**, not per-instrument. Adding
+another analyzer on an already-supported protocol is a profile-JSON drop in
+[`projects/analyzer-profiles/`](../../projects/analyzer-profiles/); per-analyzer
+deployment status, site validation, and vendor-specific blockers live on the
+[Confluence tracker][tracker], not in this plan.
 
-**HL7 track (013):**
+**Remaining architecture + cross-cutting work:**
 
-- HJRA site networking — Mindray analyzers → bridge MLLP
-- PR #3195 merge (test-connection + `CommunicationMode`)
-- Record HL7 E2E demo video (BC-5380 flow)
+- PR #3195 merge (HL7 test-connection + `CommunicationMode` enum)
+- `communication` blocks on the remaining 8 ASTM/HL7 profiles (5 of 13 have them
+  today)
+- E2E demo video evidence for the three generic plugins (GenericHL7 /
+  GenericASTM / GenericFile flows)
+- HJRA site networking + per-instrument field validation — tracked in the
+  Confluence tracker
 
-**ASTM track (011 core):**
+**Post-MVP (architecture evolution):**
 
-- Record ASTM E2E demo video (GeneXpert flow)
-- Wondfo Finecare ASTM (OGC-345) — awaiting real ASTM capture
-- Add `communication` blocks on remaining ASTM/HL7 profiles (only 5 of 12)
+- **Unified FHIR R4 bridge interface** — bridge parses all formats, delivers
+  FHIR transaction Bundles (`DiagnosticReport` + `Observation`) to OE so OE
+  becomes format-agnostic. See `specs/roadmaps/pr-3195-remediation-plan.md`
+  Phase 3B.
+- **HL7 bidirectional** — `ORM^O01` worklist download + `QRY^Q02` host queries
+  (needs bridge outbound MLLP client)
+- **ASTM bidirectional** — query-initiated result requests (deferred, #3032)
+- **GeneXpert HL7 mode** (OGC-336) — QBP queries
+- **`LIS_INITIATED` communication mode** — OE-to-analyzer outbound (needs bridge
+  outbound ASTM/MLLP client)
+- **`autoCreateTestMappings`** profile-field-naming fix
+- **TLS consolidation** — extract shared `BridgeSslUtil`; add
+  `analyzer.bridge.tls.verify` config
+- **`@Scheduled` periodic bridge sync** (currently only on OE startup)
 
-**FILE track (014):**
+**Not architecture work:** per-instrument specs, vendor-doc review, real-file
+collection, and site deployment sequencing live on the [Confluence
+tracker][tracker]. New instruments that land as profile JSONs don't add work to
+this plan.
 
-- Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert site samples
-- Record FILE E2E demo video (QuantStudio flow)
-- Attune CytPix (OGC-350) — blocked on CSV export
-
-**Post-MVP (cross-track, deferred):**
-
-- Unified FHIR R4 bridge interface (bridge parses all formats, delivers FHIR
-  transaction Bundles to OE) — `specs/roadmaps/pr-3195-remediation-plan.md`
-  Phase 3B
-- HL7 bidirectional (ORM^O01 worklist download OGC-327, QRY^Q02 order download
-  OGC-326)
-- GeneXpert HL7 mode (OGC-336) — QBP queries
-- Bridge outbound MLLP/ASTM client (required for LIS_INITIATED mode)
-- `autoCreateTestMappings` profile-field-naming fix
-- TLS consolidation (shared `BridgeSslUtil`, `analyzer.bridge.tls.verify`
-  config)
-- `@Scheduled` periodic bridge sync (currently fires only on OE startup)
-- Stago STart 4, DNA Technology DT-Prime XML parser (new instruments)
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ---
 

@@ -384,8 +384,8 @@ docker exec openelis-astm-simulator netstat -tuln | grep 2575
 
 ```bash
 # Restart mock server with HL7 mode
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml down
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml down)
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
 ```
 
 ---
@@ -414,7 +414,7 @@ docker exec openelis-astm-bridge ping -c 3 172.20.1.100
 
 ```bash
 # Rebuild and restart bridge
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d --no-deps --force-recreate openelis-analyzer-bridge
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d --no-deps --force-recreate openelis-analyzer-bridge)
 ```
 
 ---
@@ -443,9 +443,9 @@ docker compose logs virtual-serial
 
 ```bash
 # Recreate virtual serial infrastructure
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml down
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml down)
 docker volume rm openelis-global-2_serial-vol
-docker compose -f dev.docker-compose.yml -f analyzer-setup.docker-compose.yml up -d
+(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
 ```
 
 ---
