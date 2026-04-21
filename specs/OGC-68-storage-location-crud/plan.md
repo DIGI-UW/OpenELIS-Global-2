@@ -210,7 +210,7 @@ frontend/cypress/e2e/
 
 - [x] **Frontend Unit Tests**: React component logic (Jest + React Testing
       Library)
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - Test modal state management, form validation, error display
 - [x] **E2E Tests**: Critical user workflows (Cypress)
   - Template: `.specify/templates/testing/CypressE2E.cy.js.template`
