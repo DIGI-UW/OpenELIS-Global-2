@@ -114,6 +114,10 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Inventory item ID must be specified");
         }
 
+        if (lotData.getLotNumber() == null || lotData.getLotNumber().trim().isEmpty()) {
+            throw new IllegalArgumentException("Lot number must be specified");
+        }
+
         // Fetch managed InventoryItem entity to avoid transient instance error
         Long itemId = lotData.getInventoryItem().getId();
         InventoryItem managedItem = inventoryItemService.get(itemId);
