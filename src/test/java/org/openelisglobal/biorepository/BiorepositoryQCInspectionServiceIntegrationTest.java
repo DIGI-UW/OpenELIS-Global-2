@@ -5,6 +5,7 @@ import static org.junit.Assert.*;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -20,6 +21,12 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.valueholder.StorageBox;
+import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -52,6 +59,12 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
 
     @Autowired
     private SystemUserService systemUserService;
+
+    @Autowired
+    private SampleStorageService sampleStorageService;
+
+    @Autowired
+    private StorageLocationService storageLocationService;
 
     private SystemUser testUser;
     private TypeOfSample serumType;
@@ -479,7 +492,162 @@ public class BiorepositoryQCInspectionServiceIntegrationTest extends BaseWebCont
         assertNull("Should return null for null input", parsed);
     }
 
+    @Test
+    public void testApplyCorrectionWorkflow_UpdateLocation_PersistsAuditFields() {
+        BioSample bioSample = createTestBioSample("QC-CORR-UPDATE-" + System.currentTimeMillis());
+        LocationTarget initialLocation = selectActiveLocation("box");
+        String initialCoordinate = "QA-" + (System.currentTimeMillis() % 10000);
+        sampleStorageService.assignSampleItemWithLocation(bioSample.getSampleItem().getId(), initialLocation.id,
+                initialLocation.type, initialCoordinate, "Initial assignment for QC correction");
+
+        BiorepositoryQCInspection inspection = qcInspectionService.createInspection(bioSample.getId(), "Inspector",
+                new Timestamp(System.currentTimeMillis()), true, true, true, true, false, "MISPLACED_SAMPLE_FOUND",
+                "Sample appears misplaced", "Initial discrepancy", testUser.getId().toString());
+
+        LocationTarget targetLocation = selectActiveLocation("rack");
+        Map<String, Object> correction = qcInspectionService.applyCorrectionWorkflow(inspection, "UPDATE_LOCATION",
+                targetLocation.id, targetLocation.type, "B2", "Moved to correct rack", "Moved to correct rack",
+                "Confirmed during QC", testUser.getId().toString());
+
+        BiorepositoryQCInspection updated = qcInspectionService.get(inspection.getId());
+        assertEquals("UPDATE_LOCATION", updated.getCorrectionActionType());
+        assertNotNull("Correction timestamp should be persisted", updated.getCorrectionTimestamp());
+        assertEquals("Correction user should be persisted", testUser.getId().toString(), updated.getCorrectionByUser());
+        assertNotNull("Correction old coordinate should be persisted", updated.getCorrectionOldCoordinate());
+        assertNotNull("Correction new coordinate should be persisted", updated.getCorrectionNewCoordinate());
+        assertTrue("Correction reason should include action prefix",
+                updated.getCorrectionReason().startsWith("UPDATE_LOCATION:"));
+        assertTrue("Returned correction should include movementId", correction.containsKey("movementId"));
+        assertTrue("Returned correction should include auditTrail", correction.containsKey("auditTrail"));
+    }
+
+    @Test
+    public void testApplyCorrectionWorkflow_ReassignPosition_PersistsAuditFields() {
+        BioSample bioSample = createTestBioSample("QC-CORR-REASSIGN-" + System.currentTimeMillis());
+        LocationTarget initialLocation = selectActiveLocation("box");
+        String initialCoordinate = "QB-" + (System.currentTimeMillis() % 10000);
+        sampleStorageService.assignSampleItemWithLocation(bioSample.getSampleItem().getId(), initialLocation.id,
+                initialLocation.type, initialCoordinate, "Initial assignment for position reassign");
+
+        BiorepositoryQCInspection inspection = qcInspectionService.createInspection(bioSample.getId(), "Inspector",
+                new Timestamp(System.currentTimeMillis()), true, true, true, true, false, "MISPLACED_SAMPLE_FOUND",
+                "Position mismatch", "Detected wrong coordinate", testUser.getId().toString());
+
+        Map<String, Object> correction = qcInspectionService.applyCorrectionWorkflow(inspection, "REASSIGN_POSITION",
+                initialLocation.id, initialLocation.type, "C7", "Reassigned to correct position",
+                "Reassigned to correct position", "Confirmed coordinate update", testUser.getId().toString());
+
+        BiorepositoryQCInspection updated = qcInspectionService.get(inspection.getId());
+        assertEquals("REASSIGN_POSITION", updated.getCorrectionActionType());
+        assertNotNull("Correction timestamp should be persisted", updated.getCorrectionTimestamp());
+        assertEquals("Correction user should be persisted", testUser.getId().toString(), updated.getCorrectionByUser());
+        assertTrue("New coordinate should include updated position",
+                updated.getCorrectionNewCoordinate() != null && updated.getCorrectionNewCoordinate().contains("C7"));
+        assertTrue("Returned correction should include auditTrail", correction.containsKey("auditTrail"));
+    }
+
+    @Test
+    public void testApplyCorrectionWorkflow_MarkMissing_PersistsAuditFields() {
+        BioSample bioSample = createTestBioSample("QC-CORR-MISSING-" + System.currentTimeMillis());
+        LocationTarget initialLocation = selectActiveLocation("box");
+        String initialCoordinate = "QC-" + (System.currentTimeMillis() % 10000);
+        sampleStorageService.assignSampleItemWithLocation(bioSample.getSampleItem().getId(), initialLocation.id,
+                initialLocation.type, initialCoordinate, "Initial assignment before missing mark");
+
+        BiorepositoryQCInspection inspection = qcInspectionService.createInspection(bioSample.getId(), "Inspector",
+                new Timestamp(System.currentTimeMillis()), false, true, true, true, true, "SAMPLE_MISSING",
+                "Sample not found", "Missing during QC", testUser.getId().toString());
+
+        Map<String, Object> correction = qcInspectionService.applyCorrectionWorkflow(inspection, "MARK_MISSING", null,
+                null, null, "Unable to locate sample in expected box", "Unable to locate sample in expected box",
+                "Escalate to inventory review", testUser.getId().toString());
+
+        BiorepositoryQCInspection updated = qcInspectionService.get(inspection.getId());
+        assertEquals("MARK_MISSING", updated.getCorrectionActionType());
+        assertNotNull("Correction timestamp should be persisted", updated.getCorrectionTimestamp());
+        assertEquals("Correction user should be persisted", testUser.getId().toString(), updated.getCorrectionByUser());
+        assertEquals("Missing correction should persist canonical target coordinate", "Missing (not found during QC)",
+                updated.getCorrectionNewCoordinate());
+        assertTrue("Correction reason should include action prefix",
+                updated.getCorrectionReason().startsWith("MARK_MISSING:"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> updatedLocation = (Map<String, Object>) correction.get("updatedLocation");
+        assertEquals("MISSING", updatedLocation.get("status"));
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testApplyCorrectionWorkflow_MarkMissing_RejectsLocationFields() {
+        BioSample bioSample = createTestBioSample("QC-CORR-MISSING-INVALID-" + System.currentTimeMillis());
+        LocationTarget initialLocation = selectActiveLocation("box");
+        sampleStorageService.assignSampleItemWithLocation(bioSample.getSampleItem().getId(), initialLocation.id,
+                initialLocation.type, "QD-1", "Initial assignment before invalid missing mark");
+
+        BiorepositoryQCInspection inspection = qcInspectionService.createInspection(bioSample.getId(), "Inspector",
+                new Timestamp(System.currentTimeMillis()), false, true, true, true, true, "SAMPLE_MISSING",
+                "Sample not found", "Missing during QC", testUser.getId().toString());
+
+        qcInspectionService.applyCorrectionWorkflow(inspection, "MARK_MISSING", initialLocation.id, initialLocation.type, "B2",
+                "invalid request", "invalid request", "invalid request", testUser.getId().toString());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testApplyCorrectionWorkflow_ReassignPosition_RequiresPositionCoordinate() {
+        BioSample bioSample = createTestBioSample("QC-CORR-REASSIGN-INVALID-" + System.currentTimeMillis());
+        LocationTarget initialLocation = selectActiveLocation("box");
+        sampleStorageService.assignSampleItemWithLocation(bioSample.getSampleItem().getId(), initialLocation.id,
+                initialLocation.type, "QE-1", "Initial assignment before invalid reassign");
+
+        BiorepositoryQCInspection inspection = qcInspectionService.createInspection(bioSample.getId(), "Inspector",
+                new Timestamp(System.currentTimeMillis()), true, true, true, true, false, "MISPLACED_SAMPLE_FOUND",
+                "Position mismatch", "Detected wrong coordinate", testUser.getId().toString());
+
+        qcInspectionService.applyCorrectionWorkflow(inspection, "REASSIGN_POSITION", initialLocation.id, initialLocation.type,
+                null, "invalid request", "invalid request", "invalid request", testUser.getId().toString());
+    }
+
     // ========== HELPER METHODS ==========
+
+    private LocationTarget selectActiveLocation(String preferredType) {
+        if ("box".equals(preferredType)) {
+            for (StorageBox box : storageLocationService.getAllBoxes()) {
+                if (box != null && Boolean.TRUE.equals(box.getActive()) && box.getId() != null) {
+                    return new LocationTarget(box.getId().toString(), "box");
+                }
+            }
+        }
+
+        if ("rack".equals(preferredType)) {
+            for (StorageRack rack : storageLocationService.getAllRacks()) {
+                if (rack != null && Boolean.TRUE.equals(rack.getActive()) && rack.getId() != null) {
+                    return new LocationTarget(rack.getId().toString(), "rack");
+                }
+            }
+        }
+
+        for (StorageShelf shelf : storageLocationService.getAllShelves()) {
+            if (shelf != null && Boolean.TRUE.equals(shelf.getActive()) && shelf.getId() != null) {
+                return new LocationTarget(shelf.getId().toString(), "shelf");
+            }
+        }
+
+        for (StorageDevice device : storageLocationService.getAllDevices()) {
+            if (device != null && Boolean.TRUE.equals(device.getActive()) && device.getId() != null) {
+                return new LocationTarget(device.getId().toString(), "device");
+            }
+        }
+
+        throw new IllegalStateException("No active storage location available for correction workflow test");
+    }
+
+    private static class LocationTarget {
+        private final String id;
+        private final String type;
+
+        private LocationTarget(String id, String type) {
+            this.id = id;
+            this.type = type;
+        }
+    }
 
     /**
      * Create a test BioSample with STORED workflow status.

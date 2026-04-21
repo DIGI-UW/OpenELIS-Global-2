@@ -104,4 +104,9 @@
     <include file="liquibase/3.5.x.x/031-biorepository-qc-round-hardening.xml"/>
     <include file="liquibase/3.5.x.x/034-add-biorepository-storage-flag.xml"/>
 
+    <!-- M14: QC core behavior alignment (required discrepancy + coordinate snapshot) -->
+    <include file="liquibase/3.5.x.x/034-qc-core-alignment.xml"/>
+    <!-- M15: Persist QC correction workflow audit fields -->
+    <include file="liquibase/3.5.x.x/035-qc-correction-audit-fields.xml"/>
+
 </databaseChangeLog>

@@ -2,6 +2,7 @@ package org.openelisglobal.biorepository.controller.rest;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.biorepository.service.BiorepositoryDashboardService;
@@ -147,6 +148,26 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
     }
 
     /**
+     * Get completed QC inspection history for dashboard/reporting.
+     *
+     * Returns map with source metadata and most recent completed checks.
+     *
+     * @param limit maximum rows to return (default 50)
+     * @return ResponseEntity with QC history source/list map
+     */
+    @GetMapping(value = "/qc-history", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getQCHistory(
+            @RequestParam(required = false, defaultValue = "50") Integer limit) {
+        try {
+            Map<String, Object> history = dashboardService.getQCHistory(limit);
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to load QC history: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Get retrieval statistics within date range.
      *
      * Returns: - totalRequests, completedRequests, pendingRequests,
@@ -162,11 +183,13 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getRetrievalStats(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         try {
-            LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
-            LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
+            LocalDate start = parseOptionalIsoDate(startDate);
+            LocalDate end = parseOptionalIsoDate(endDate);
 
             Map<String, Object> stats = dashboardService.getRetrievalStatistics(start, end);
             return ResponseEntity.ok(stats);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load retrieval statistics: " + e.getMessage()));
@@ -188,11 +211,13 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getDisposalStats(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         try {
-            LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
-            LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
+            LocalDate start = parseOptionalIsoDate(startDate);
+            LocalDate end = parseOptionalIsoDate(endDate);
 
             Map<String, Object> stats = dashboardService.getDisposalStatistics(start, end);
             return ResponseEntity.ok(stats);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load disposal statistics: " + e.getMessage()));
@@ -216,8 +241,8 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String freezerId) {
         try {
-            LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
-            LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
+            LocalDate start = parseOptionalIsoDate(startDate);
+            LocalDate end = parseOptionalIsoDate(endDate);
 
             List<Map<String, Object>> excursions = dashboardService.getTemperatureExcursions(start, end);
 
@@ -227,8 +252,21 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(excursions);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(List.of(Map.of("error", e.getMessage())));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private LocalDate parseOptionalIsoDate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("Invalid date format '" + value + "'. Expected YYYY-MM-DD");
         }
     }
 

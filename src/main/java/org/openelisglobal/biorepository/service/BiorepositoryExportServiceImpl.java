@@ -2,6 +2,16 @@ package org.openelisglobal.biorepository.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.PageSize;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Phrase;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -14,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -106,7 +115,7 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
         // Create header style
         CellStyle headerStyle = workbook.createCellStyle();
-        Font headerFont = workbook.createFont();
+        org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
         headerFont.setBold(true);
         headerStyle.setFont(headerFont);
 
@@ -190,9 +199,55 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
     @Override
     @Transactional(readOnly = true)
     public byte[] exportDashboardToPDF() throws IOException {
-        // Simplified PDF implementation - return JSON for now
-        // TODO: Implement proper PDF generation with iText or PDFBox if needed
-        return exportDashboardToJSON();
+        Map<String, Object> dashboardData = aggregateDashboardMetrics();
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4, 36, 36, 36, 36);
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            Font titleFont = new Font(Font.FontFamily.HELVETICA, 16, Font.BOLD);
+            Font sectionFont = new Font(Font.FontFamily.HELVETICA, 12, Font.BOLD);
+            Font bodyFont = new Font(Font.FontFamily.HELVETICA, 10, Font.NORMAL);
+            Paragraph title = new Paragraph("Biorepository Dashboard Metrics", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(16f);
+            document.add(title);
+
+            Map<String, Object> capacity = castMap(dashboardData.get("storageCapacity"));
+            Map<String, Object> aging = castMap(dashboardData.get("sampleAging"));
+            Map<String, Object> qc = castMap(dashboardData.get("qcCompliance"));
+            Map<String, Object> retrieval = castMap(dashboardData.get("retrievalStats"));
+
+            addMetricTable(document, "Storage Capacity", capacity, bodyFont, sectionFont, List.of(
+                    metricRow("Total Devices", capacity.get("totalDevices")),
+                    metricRow("Total Samples Stored", capacity.get("totalSamplesStored")),
+                    metricRow("Pending Storage", capacity.get("pendingStorage")),
+                    metricRow("Average Utilization %", capacity.get("averageUtilization"))));
+
+            addMetricTable(document, "Sample Aging", aging, bodyFont, sectionFont, List.of(
+                    metricRow("Total Active Samples", aging.get("total")),
+                    metricRow("Expiring within 30 days", aging.get("expiring30Days")),
+                    metricRow("Expiring within 60 days", aging.get("expiring60Days")),
+                    metricRow("Expiring within 90 days", aging.get("expiring90Days")),
+                    metricRow("Expired Samples", aging.get("expired"))));
+
+            addMetricTable(document, "QC Compliance", qc, bodyFont, sectionFont, List.of(
+                    metricRow("Total Inspections", qc.get("totalInspections")),
+                    metricRow("Passed Inspections", qc.get("passedInspections")),
+                    metricRow("Failed Inspections", qc.get("failedInspections")),
+                    metricRow("Compliance Rate %", qc.get("complianceRate"))));
+
+            addMetricTable(document, "Retrieval Statistics", retrieval, bodyFont, sectionFont, List.of(
+                    metricRow("Total Requests", retrieval.get("totalRequests")),
+                    metricRow("Pending Requests", retrieval.get("pendingRequests")),
+                    metricRow("Rejected Requests", retrieval.get("rejectedRequests")),
+                    metricRow("Completed Requests", retrieval.get("completedRequests"))));
+
+            document.close();
+            return baos.toByteArray();
+        } catch (DocumentException e) {
+            throw new IOException("Failed to generate dashboard PDF export", e);
+        }
     }
 
     // ==================== Audit Trail Exports ====================
@@ -261,7 +316,7 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
         // Create header style
         CellStyle headerStyle = workbook.createCellStyle();
-        Font headerFont = workbook.createFont();
+        org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
         headerFont.setBold(true);
         headerStyle.setFont(headerFont);
 
@@ -377,9 +432,65 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
     @Transactional(readOnly = true)
     public byte[] exportAuditTrailToPDF(String sampleExternalId, CustodyAction action, Integer custodianId,
             Timestamp startDate, Timestamp endDate) throws IOException {
-        // Simplified PDF implementation - return JSON for now
-        // TODO: Implement proper PDF generation with iText or PDFBox if needed
-        return exportAuditTrailToJSON(sampleExternalId, action, custodianId, startDate, endDate);
+        List<ChainOfCustodyLog> logs = custodyService.searchCustodyLogs(sampleExternalId, action, custodianId,
+                startDate, endDate, 0, Integer.MAX_VALUE);
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4.rotate(), 24, 24, 24, 24);
+            PdfWriter.getInstance(document, baos);
+            document.open();
+
+            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+            Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
+            Font bodyFont = new Font(Font.FontFamily.HELVETICA, 8, Font.NORMAL);
+            Paragraph title = new Paragraph("Biorepository Audit Trail Export", titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(10f);
+            document.add(title);
+            document.add(new Paragraph("Records: " + logs.size(), bodyFont));
+            document.add(new Paragraph("Generated: " + Timestamp.valueOf(java.time.LocalDateTime.now()), bodyFont));
+            document.add(new Paragraph(" ", bodyFont));
+
+            PdfPTable table = new PdfPTable(new float[] { 1.6f, 1.4f, 1.8f, 1.4f, 1.6f, 1.6f, 1.8f, 1.0f, 1.8f });
+            table.setWidthPercentage(100f);
+            addHeaderCell(table, "Timestamp", headerFont);
+            addHeaderCell(table, "Barcode", headerFont);
+            addHeaderCell(table, "Accession", headerFont);
+            addHeaderCell(table, "Action", headerFont);
+            addHeaderCell(table, "From", headerFont);
+            addHeaderCell(table, "To", headerFont);
+            addHeaderCell(table, "Custodian", headerFont);
+            addHeaderCell(table, "Temp (C)", headerFont);
+            addHeaderCell(table, "Notes", headerFont);
+
+            for (ChainOfCustodyLog log : logs) {
+                addBodyCell(table, log.getActionTimestamp() != null ? log.getActionTimestamp().toString() : "", bodyFont);
+                addBodyCell(table,
+                        log.getSampleItem() != null && log.getSampleItem().getExternalId() != null
+                                ? log.getSampleItem().getExternalId()
+                                : "",
+                        bodyFont);
+                addBodyCell(table,
+                        log.getSampleItem() != null && log.getSampleItem().getSample() != null
+                                && log.getSampleItem().getSample().getAccessionNumber() != null
+                                        ? log.getSampleItem().getSample().getAccessionNumber()
+                                        : "",
+                        bodyFont);
+                addBodyCell(table, log.getCustodyAction() != null ? log.getCustodyAction().name() : "", bodyFont);
+                addBodyCell(table, log.getFromLocation() != null ? log.getFromLocation() : "", bodyFont);
+                addBodyCell(table, log.getToLocation() != null ? log.getToLocation() : "", bodyFont);
+                String custodian = log.getToCustodian() != null ? log.getToCustodian().getNameForDisplay()
+                        : (log.getFromCustodian() != null ? log.getFromCustodian().getNameForDisplay() : "");
+                addBodyCell(table, custodian, bodyFont);
+                addBodyCell(table, log.getTemperature() != null ? log.getTemperature().toString() : "", bodyFont);
+                addBodyCell(table, log.getNotes() != null ? log.getNotes() : "", bodyFont);
+            }
+
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch (DocumentException e) {
+            throw new IOException("Failed to generate audit trail PDF export", e);
+        }
     }
 
     // ==================== Helper Methods ====================
@@ -439,5 +550,42 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
         if (style != null) {
             cell.setCellStyle(style);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castMap(Object value) {
+        return value instanceof Map ? (Map<String, Object>) value : Map.of();
+    }
+
+    private String[] metricRow(String metric, Object value) {
+        return new String[] { metric, value != null ? String.valueOf(value) : "" };
+    }
+
+    private void addMetricTable(Document document, String sectionTitle, Map<String, Object> source, Font bodyFont,
+            Font sectionFont, List<String[]> rows) throws DocumentException {
+        document.add(new Paragraph(sectionTitle, sectionFont));
+        PdfPTable table = new PdfPTable(new float[] { 2.2f, 1.2f });
+        table.setWidthPercentage(100f);
+        for (String[] row : rows) {
+            addBodyCell(table, row[0], bodyFont);
+            addBodyCell(table, row[1], bodyFont);
+        }
+        table.setSpacingAfter(10f);
+        if (!source.isEmpty()) {
+            document.add(table);
+        } else {
+            document.add(new Paragraph("No data available", bodyFont));
+        }
+    }
+
+    private void addHeaderCell(PdfPTable table, String value, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(value, font));
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        table.addCell(cell);
+    }
+
+    private void addBodyCell(PdfPTable table, String value, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(value != null ? value : "", font));
+        table.addCell(cell);
     }
 }

@@ -67,6 +67,12 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
         },
       ).then((r) => r.json()),
       fetch(
+        `${config.serverBaseUrl}/rest/biorepository/dashboard/storage-utilization`,
+        {
+          credentials: "include",
+        },
+      ).then((r) => r.json()),
+      fetch(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/sample-aging`,
         {
           credentials: "include",
@@ -77,6 +83,12 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
       }).then((r) => r.json()),
       fetch(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/qc-discrepancies`,
+        {
+          credentials: "include",
+        },
+      ).then((r) => r.json()),
+      fetch(
+        `${config.serverBaseUrl}/rest/biorepository/dashboard/qc-history?limit=100`,
         {
           credentials: "include",
         },
@@ -94,17 +106,30 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
         },
       ).then((r) => r.json()),
     ])
-      .then(([capacity, aging, qc, discrepancies, retrieval, disposal]) => {
-        setMetricsData({
+      .then(
+        ([
           capacity,
+          storageUtilization,
           aging,
           qc,
           discrepancies,
+          qcHistory,
+          retrieval,
+          disposal,
+        ]) => {
+        setMetricsData({
+          capacity,
+          storageUtilization,
+          aging,
+          qc,
+          discrepancies,
+          qcHistory,
           retrieval,
           disposal,
         });
         setIsLoading(false);
-      })
+      },
+      )
       .catch((err) => {
         setError(err.message);
         setIsLoading(false);
@@ -172,8 +197,25 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     );
   }
 
-  const { capacity, aging, qc, discrepancies, retrieval, disposal } =
+  const {
+    capacity,
+    storageUtilization,
+    aging,
+    qc,
+    discrepancies,
+    qcHistory,
+    retrieval,
+    disposal,
+  } =
     metricsData;
+
+  const formatPercent = (value) => {
+    const numeric = Number(value);
+    if (Number.isNaN(numeric)) {
+      return "N/A";
+    }
+    return `${numeric.toFixed(1)}%`;
+  };
 
   // Storage capacity rows
   const storageRows = [
@@ -195,6 +237,27 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     { key: "status", header: "Status" },
     { key: "count", header: "Sample Count" },
     { key: "percentage", header: "Percentage" },
+  ];
+
+  const storageUtilizationRows = (storageUtilization?.devices || []).map(
+    (device, idx) => ({
+      id: `storage-device-${idx}`,
+      deviceName: device.deviceName || device.deviceCode || "Unknown",
+      deviceType: device.deviceType || "N/A",
+      currentUsage: device.currentUsage ?? 0,
+      totalCapacity: device.totalCapacity ?? 0,
+      utilizationPercent: formatPercent(device.utilizationPercent),
+      capacitySource: device.capacitySource || "UNDEFINED",
+    }),
+  );
+
+  const storageUtilizationHeaders = [
+    { key: "deviceName", header: "Device" },
+    { key: "deviceType", header: "Type" },
+    { key: "currentUsage", header: "Current Usage" },
+    { key: "totalCapacity", header: "Total Capacity" },
+    { key: "utilizationPercent", header: "Utilization" },
+    { key: "capacitySource", header: "Capacity Source" },
   ];
 
   // Sample aging rows
@@ -284,6 +347,248 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
   const qcHeaders = [
     { key: "checkpoint", header: "Checkpoint" },
     { key: "passRate", header: "Pass Rate" },
+  ];
+
+  const qcSummaryRows = [
+    {
+      id: "qc-summary-1",
+      metric: "Pass Rate",
+      value: formatPercent(qc.passRate ?? qc.complianceRate),
+    },
+    {
+      id: "qc-summary-2",
+      metric: "Fail Count",
+      value: qc.failCount ?? qc.failedInspections ?? 0,
+    },
+    {
+      id: "qc-summary-3",
+      metric: "Fail Trend Basis",
+      value: qc.failTrendBasis
+        ? `${qc.failTrendBasis.granularity || "day"}, ${qc.failTrendBasis.windowDays || 30} days, source: ${qc.failTrendBasis.source || "N/A"}`
+        : "N/A",
+    },
+  ];
+
+  const qcSummaryHeaders = [
+    { key: "metric", header: "QC Summary Metric" },
+    { key: "value", header: "Value" },
+  ];
+
+  const failTrendRows = (qc.failTrend || []).map((point, idx) => ({
+    id: `fail-trend-${idx}`,
+    date: point.date || "-",
+    failedInspections: point.failedInspections ?? 0,
+    totalInspections: point.totalInspections ?? 0,
+    passRate: formatPercent(point.passRate),
+  }));
+
+  const failTrendHeaders = [
+    { key: "date", header: "Date" },
+    { key: "failedInspections", header: "Fail Count" },
+    { key: "totalInspections", header: "Total Checks" },
+    { key: "passRate", header: "Pass Rate" },
+  ];
+
+  const mapBreakdownRows = (rows, prefix) =>
+    (rows || []).map((entry, idx) => ({
+      id: `${prefix}-${idx}`,
+      key: entry.key || "Unknown",
+      totalInspections: entry.totalInspections ?? 0,
+      failedInspections: entry.failedInspections ?? 0,
+      passRate: formatPercent(entry.passRate),
+    }));
+
+  const breakdownHeaders = [
+    { key: "key", header: "Dimension" },
+    { key: "totalInspections", header: "Total Checks" },
+    { key: "failedInspections", header: "Fail Count" },
+    { key: "passRate", header: "Pass Rate" },
+  ];
+
+  const freezerBreakdownRows = mapBreakdownRows(
+    qc.breakdownByFreezer,
+    "freezer-breakdown",
+  );
+  const rackBreakdownRows = mapBreakdownRows(
+    qc.breakdownByRack,
+    "rack-breakdown",
+  );
+  const technicianBreakdownRows = mapBreakdownRows(
+    qc.breakdownByTechnician,
+    "technician-breakdown",
+  );
+
+  const escalationSignals = qc.escalationSignals || {};
+  const escalationSummaryRows = [
+    {
+      id: "qc-escalation-1",
+      signal: "Batch Fail Rate",
+      value: `${formatPercent(escalationSignals.batchFailRatePercent)} (threshold ${Number.isFinite(Number(escalationSignals.batchFailRateThresholdPercent)) ? Number(escalationSignals.batchFailRateThresholdPercent).toFixed(1) : "5.0"}%)`,
+    },
+    {
+      id: "qc-escalation-2",
+      signal: "Threshold Exceeded",
+      value: escalationSignals.batchFailRateExceeded ? "Yes" : "No",
+    },
+    {
+      id: "qc-escalation-3",
+      signal: "Repeated Failure (Box/Rack)",
+      value: escalationSignals.repeatedFailureInSameBoxOrRack
+        ? `Yes (boxes: ${escalationSignals.repeatedFailureBoxesCount || 0}, racks: ${escalationSignals.repeatedFailureRacksCount || 0})`
+        : "No",
+    },
+    {
+      id: "qc-escalation-4",
+      signal: "Critical Missing Samples",
+      value: escalationSignals.criticalMissingSamples || 0,
+    },
+    {
+      id: "qc-escalation-5",
+      signal: "Triggered Rules",
+      value: Array.isArray(escalationSignals.triggeredRules)
+        ? escalationSignals.triggeredRules.join(", ") || "None"
+        : "None",
+    },
+  ];
+
+  const escalationSummaryHeaders = [
+    { key: "signal", header: "Escalation Signal" },
+    { key: "value", header: "Value" },
+  ];
+
+  const investigationBoxRows = (qc.underInvestigationBoxes || []).map(
+    (entry, idx) => ({
+      id: `investigation-box-${idx}`,
+      key: entry.key || "Unknown",
+      failedInspections: entry.failedInspections ?? 0,
+      totalInspections: entry.totalInspections ?? 0,
+      failRate: formatPercent(entry.failRate),
+    }),
+  );
+
+  const flaggedFreezerRows = (
+    escalationSignals.flaggedFreezers || []
+  ).map((entry, idx) => ({
+    id: `flagged-freezer-${idx}`,
+    key: entry.key || "Unknown",
+    failedInspections: entry.failedInspections ?? 0,
+    totalInspections: entry.totalInspections ?? 0,
+    failRate: formatPercent(entry.failRate),
+  }));
+
+  const problematicLocationRows = (
+    qc.frequentlyProblematicLocations || []
+  ).map((entry, idx) => ({
+    id: `problematic-location-${idx}`,
+    locationType: entry.locationType || "Unknown",
+    key: entry.key || "Unknown",
+    failedInspections: entry.failedInspections ?? 0,
+    totalInspections: entry.totalInspections ?? 0,
+    failRate: formatPercent(entry.failRate),
+  }));
+
+  const problematicLocationHeaders = [
+    { key: "locationType", header: "Type" },
+    { key: "key", header: "Location" },
+    { key: "failedInspections", header: "Fail Count" },
+    { key: "totalInspections", header: "Total Checks" },
+    { key: "failRate", header: "Fail Rate" },
+  ];
+
+  const deriveQcStatus = (item) => item.qcStatus || "UNKNOWN";
+
+  const deriveLifecycleOutcome = (item) => item.lifecycleOutcome || "UNKNOWN";
+
+  const formatLifecycleOutcome = (value) => {
+    const labels = {
+      PASSED: "Passed",
+      FAILED_PENDING_CORRECTION: "Failed (pending correction)",
+      FAILED_CORRECTED: "Failed (correction logged)",
+      FAILED_MARKED_MISSING: "Failed (marked missing)",
+      UNKNOWN: "Unknown",
+    };
+    return labels[value] || value || "Unknown";
+  };
+
+  const historyRows = (qcHistory?.items || []).map((item, idx) => ({
+    id: `qc-history-${idx}`,
+    inspectionDate: item.inspectionDate
+      ? new Date(item.inspectionDate).toLocaleString()
+      : "-",
+    qcResult: item.qcResult || "-",
+    qcStatus: deriveQcStatus(item),
+    lifecycleOutcome: formatLifecycleOutcome(deriveLifecycleOutcome(item)),
+    sampleFlag: item.sampleFlag || "-",
+    qcFailed: item.qcFailed ? "Yes" : "No",
+    inspectorName: item.inspectorName || item.technicianId || "-",
+    freezer: item.freezer || "Unknown",
+    freezerFlag: item.freezerFlag || "NORMAL",
+    rack: item.rack || "Unknown",
+    boxFlag: item.boxFlag || "NORMAL",
+    escalationTriggered: item.escalationTriggered ? "Yes" : "No",
+    failureResolution: item.failureResolution || "N/A",
+    discrepancyType: item.discrepancyType || "-",
+    failureComment: item.failureComment || item.remarks || "-",
+    correctiveAction: item.correctiveAction || "-",
+    correctionFrom:
+      item.auditTrail?.fromCoordinates || item.auditTrail?.oldCoordinate || "-",
+    correctionTo:
+      item.auditTrail?.toCoordinates || item.auditTrail?.newCoordinate || "-",
+    correctedBy:
+      item.auditTrail?.correctedBy ||
+      item.auditTrail?.user ||
+      item.inspectorName ||
+      item.technicianId ||
+      "-",
+    correctedAt: item.auditTrail?.correctedAt || item.auditTrail?.timestamp
+      ? new Date(item.auditTrail.correctedAt || item.auditTrail.timestamp).toLocaleString()
+      : "-",
+    correctionReason: item.auditTrail?.reason || "-",
+    remarks: item.remarks || "-",
+  }));
+
+  const discrepancyHistoryCount = historyRows.filter(
+    (row) => row.qcResult === "DISCREPANCY_FOUND",
+  ).length;
+  const correctiveActionCount = historyRows.filter(
+    (row) => row.correctiveAction && row.correctiveAction !== "-",
+  ).length;
+  const correctedOutcomeCount =
+    qc?.failureResolutionSummary?.correctedVsUnresolved?.corrected ??
+    historyRows.filter(
+      (row) =>
+        row.lifecycleOutcome === "Failed (correction logged)" ||
+        row.lifecycleOutcome === "Failed (marked missing)",
+    ).length;
+  const pendingCorrectionCount =
+    qc?.failureResolutionSummary?.correctedVsUnresolved?.unresolved ??
+    historyRows.filter(
+      (row) => row.lifecycleOutcome === "Failed (pending correction)",
+    ).length;
+
+  const historyHeaders = [
+    { key: "inspectionDate", header: "Inspection Date" },
+    { key: "qcResult", header: "Result" },
+    { key: "qcStatus", header: "QC Status" },
+    { key: "lifecycleOutcome", header: "Lifecycle Outcome" },
+    { key: "sampleFlag", header: "Sample Flag" },
+    { key: "qcFailed", header: "QC Failed" },
+    { key: "inspectorName", header: "Technician" },
+    { key: "freezer", header: "Freezer" },
+    { key: "freezerFlag", header: "Freezer Flag" },
+    { key: "rack", header: "Rack" },
+    { key: "boxFlag", header: "Box Flag" },
+    { key: "escalationTriggered", header: "Escalation Triggered" },
+    { key: "failureResolution", header: "Failure Resolution" },
+    { key: "discrepancyType", header: "Discrepancy Type" },
+    { key: "failureComment", header: "Failure Comment" },
+    { key: "correctiveAction", header: "Corrective Action" },
+    { key: "correctionFrom", header: "Correction From" },
+    { key: "correctionTo", header: "Correction To" },
+    { key: "correctedBy", header: "Corrected By" },
+    { key: "correctedAt", header: "Corrected At" },
+    { key: "correctionReason", header: "Correction Reason" },
+    { key: "remarks", header: "Remarks" },
   ];
 
   // Retrieval stats rows
@@ -485,6 +790,49 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                   </TableContainer>
                 )}
               </DataTable>
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable
+                  rows={storageUtilizationRows}
+                  headers={storageUtilizationHeaders}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Storage Utilization by Device"
+                      description={`Devices: ${storageUtilization?.totalDevices ?? 0} | Capacity-defined: ${storageUtilization?.capacityDefinedDevices ?? 0} | Undefined capacity: ${storageUtilization?.capacityUndefinedDevices ?? 0} | Weighted utilization: ${formatPercent(storageUtilization?.averageUtilization)}`}
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
             </AccordionItem>
 
             {/* Sample Aging Breakdown */}
@@ -544,6 +892,45 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                 defaultMessage: "QC Checkpoint Statistics",
               })}
             >
+              <DataTable rows={qcSummaryRows} headers={qcSummaryHeaders}>
+                {({
+                  rows,
+                  headers,
+                  getTableProps,
+                  getHeaderProps,
+                  getRowProps,
+                }) => (
+                  <TableContainer
+                    title="QC Core Summary"
+                    description="Pass rate, fail count, and fail trend basis used by the dashboard"
+                  >
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map((row) => (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            {row.cells.map((cell) => (
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </DataTable>
+
               <DataTable rows={qcCheckpointRows} headers={qcHeaders}>
                 {({
                   rows,
@@ -570,6 +957,387 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                         failed: qc.failedInspections || 0,
                       },
                     )}
+                  >
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map((row) => (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            {row.cells.map((cell) => (
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </DataTable>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable rows={failTrendRows} headers={failTrendHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Fail Trend (Daily Basis)"
+                      description="Trend basis: QC inspection date, daily aggregation, rolling 30-day window"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable rows={freezerBreakdownRows} headers={breakdownHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="QC Breakdown by Freezer"
+                      description="Grouped where expected location snapshot data is available"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable rows={rackBreakdownRows} headers={breakdownHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="QC Breakdown by Rack"
+                      description="Grouped where expected location snapshot data is available"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable rows={technicianBreakdownRows} headers={breakdownHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="QC Breakdown by Technician"
+                      description="Grouped by inspector/technician where current data supports it"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable
+                  rows={escalationSummaryRows}
+                  headers={escalationSummaryHeaders}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Escalation Basis Snapshot"
+                      description="Minimal rule basis from AHRI guidance: batch fail rate, repeated location failures, and missing-sample triggers"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable rows={investigationBoxRows} headers={breakdownHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Boxes Under Investigation"
+                      description="Boxes with repeated failures (two or more failed checks)"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable rows={flaggedFreezerRows} headers={breakdownHeaders}>
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Flagged Freezers"
+                      description="Freezers whose fail rate exceeds the 5% threshold"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable
+                  rows={problematicLocationRows}
+                  headers={problematicLocationHeaders}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Frequently Problematic Locations"
+                      description="Highest-failure locations based on current QC history"
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
+            </AccordionItem>
+
+            {/* QC History for Completed Checks */}
+            <AccordionItem
+              title={intl.formatMessage({
+                id: "biorepository.reporting.metrics.qc.history.title",
+                defaultMessage: "QC History (Completed Checks)",
+              })}
+            >
+              <DataTable rows={historyRows} headers={historyHeaders}>
+                {({
+                  rows,
+                  headers,
+                  getTableProps,
+                  getHeaderProps,
+                  getRowProps,
+                }) => (
+                  <TableContainer
+                    title="Completed QC Check History"
+                    description={`Source: ${qcHistory?.source || "N/A"} | Records: ${qcHistory?.count || 0} | Discrepancies: ${discrepancyHistoryCount} | Corrective actions logged: ${correctiveActionCount} | Failed outcomes corrected: ${correctedOutcomeCount} | Pending corrections: ${pendingCorrectionCount} | Per-record flags: sample/box/freezer escalation visibility enabled`}
                   >
                     <Table {...getTableProps()}>
                       <TableHead>
