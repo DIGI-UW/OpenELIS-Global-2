@@ -434,8 +434,10 @@ public class PatientDashBoardProvider {
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
             return convertAnalysesToUserOrdersBean(analyses);
         case ORDERS_REJECTED_TODAY:
-            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(DateUtil.getNowAsSqlDate(),
-                    DateUtil.getNowAsSqlDate(), iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+            java.sql.Date rejectedToday = DateUtil.getNowAsSqlDate();
+            java.sql.Date rejectedTomorrow = new java.sql.Date(rejectedToday.getTime() + 86400000L);
+            analyses = analysisService.getAnalysisStartedOnRangeByStatusId(rejectedToday, rejectedTomorrow,
+                    iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             return convertAnalysesToOrderBean(analyses);
         case UN_PRINTED_RESULTS:
             return convertAnalysesToOrderBean(unprintedResults());

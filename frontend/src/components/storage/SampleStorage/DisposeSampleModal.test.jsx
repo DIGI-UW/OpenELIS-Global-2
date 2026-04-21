@@ -24,11 +24,11 @@ describe("DisposeSampleModal", () => {
     path: "Main Laboratory > Freezer Unit 1 > Shelf-A > Rack R1 > Position A5",
   };
 
-  const mockOnClose = jest.fn();
-  const mockOnConfirm = jest.fn();
+  const mockOnClose = vi.fn();
+  const mockOnConfirm = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -164,7 +164,7 @@ describe("DisposeSampleModal", () => {
    * This test verifies the prop is properly accepted without errors.
    */
   test("testAcceptsOnDisposalSuccessCallbackProp", () => {
-    const mockOnDisposalSuccess = jest.fn();
+    const mockOnDisposalSuccess = vi.fn();
 
     // Render modal with onDisposalSuccess prop
     renderWithIntl(

@@ -140,6 +140,9 @@ public class UserServiceImpl implements UserService {
 
     private void updateUserRoles(List<String> selectedRoles, SystemUser systemUser, String loggedOnUserId,
             Boolean isLabRole) {
+        if (selectedRoles == null) {
+            selectedRoles = new ArrayList<>();
+        }
         List<String> currentUserRoles = userRoleService.getRoleIdsForUser(systemUser.getId());
         List<UserRole> deletedUserRoles = new ArrayList<>();
         if (isLabRole) {

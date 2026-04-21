@@ -3,7 +3,7 @@ class UserManagementPage {
     this.selectors = {
       pageTitle: "h2",
       userPageTitle: "h3",
-      span: "span",
+      span: ".cds--checkbox-label-text",
       addButton: "[data-cy='add-button']",
       modifyUser: "[data-cy='modify-button']",
       deactivateUser: "[data-cy='deactivate-button']",

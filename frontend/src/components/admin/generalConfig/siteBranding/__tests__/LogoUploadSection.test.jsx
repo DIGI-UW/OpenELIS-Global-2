@@ -10,18 +10,18 @@
 
 // ========== MOCKS (MUST be before imports - Jest hoisting) ==========
 
-jest.mock("../../../../utils/Utils", () => ({
-  postToOpenElisServerFormData: jest.fn(),
+vi.mock("../../../../utils/Utils", () => ({
+  postToOpenElisServerFormData: vi.fn(),
 }));
 
-jest.mock("../../../../utils/BrandingUtils", () => ({
-  removeLogo: jest.fn(),
+vi.mock("../../../../utils/BrandingUtils", () => ({
+  removeLogo: vi.fn(),
 }));
 
 // ========== IMPORTS ==========
 
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import {
   render,
   screen,
@@ -53,7 +53,7 @@ const renderWithIntl = (component) => {
 
 describe("LogoUploadSection", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -134,7 +134,7 @@ describe("LogoUploadSection", () => {
    * Task Reference: T028
    */
   test("uploads valid file and calls onLogoUploaded callback", async () => {
-    const onLogoUploaded = jest.fn();
+    const onLogoUploaded = vi.fn();
     const ref = React.createRef();
 
     postToOpenElisServerFormData.mockImplementation(
@@ -179,7 +179,7 @@ describe("LogoUploadSection", () => {
         type="login"
         currentLogoUrl={null}
         useHeaderLogoForLogin={false}
-        onUseHeaderLogoChange={jest.fn()}
+        onUseHeaderLogoChange={vi.fn()}
       />,
     );
 
@@ -197,7 +197,7 @@ describe("LogoUploadSection", () => {
         type="login"
         currentLogoUrl={null}
         useHeaderLogoForLogin={true}
-        onUseHeaderLogoChange={jest.fn()}
+        onUseHeaderLogoChange={vi.fn()}
       />,
     );
 
@@ -212,7 +212,7 @@ describe("LogoUploadSection", () => {
    * Task Reference: T037
    */
   test("toggles useHeaderLogoForLogin when checkbox is clicked", async () => {
-    const onUseHeaderLogoChange = jest.fn();
+    const onUseHeaderLogoChange = vi.fn();
 
     renderWithIntl(
       <LogoUploadSection
@@ -286,7 +286,7 @@ describe("LogoUploadSection", () => {
    * Test: Logo removal - successful removal
    */
   test("removes logo when confirmed", async () => {
-    const onLogoRemoved = jest.fn();
+    const onLogoRemoved = vi.fn();
 
     removeLogo.mockImplementation((type, callback) => {
       callback({ status: 200, ok: true, json: () => Promise.resolve({}) });

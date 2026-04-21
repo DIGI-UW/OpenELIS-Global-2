@@ -13,7 +13,7 @@
 // ========== IMPORTS ==========
 
 import React from "react";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -45,7 +45,7 @@ describe("ColorPickerSection", () => {
       <ColorPickerSection
         label="Primary Color"
         value="#1d4ed8"
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     );
 
@@ -59,7 +59,7 @@ describe("ColorPickerSection", () => {
    * Task Reference: T049
    */
   test("updates color input when color picker changes", async () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
 
     renderWithIntl(
       <ColorPickerSection
@@ -69,8 +69,10 @@ describe("ColorPickerSection", () => {
       />,
     );
 
+    // getByLabelText(/primary color/i) returns the HTML5 <input type="color">
+    // which doesn't support userEvent.type(). Use fireEvent.change instead.
     const colorInput = screen.getByLabelText(/primary color/i);
-    await userEvent.type(colorInput, "#ff0000");
+    fireEvent.change(colorInput, { target: { value: "#ff0000" } });
 
     expect(onChange).toHaveBeenCalled();
   });
@@ -80,7 +82,7 @@ describe("ColorPickerSection", () => {
    * Task Reference: T049
    */
   test("updates color picker when color input changes", async () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
 
     renderWithIntl(
       <ColorPickerSection
@@ -90,9 +92,10 @@ describe("ColorPickerSection", () => {
       />,
     );
 
-    const colorInput = screen.getByLabelText(/primary color/i);
-    fireEvent.change(colorInput, { target: { value: "" } });
-    await userEvent.type(colorInput, "#00ff00");
+    // Target the Carbon TextInput via its placeholder instead of the
+    // HTML5 color picker (which doesn't support clear/type).
+    const textInput = screen.getByPlaceholderText(/#0f62fe or blue/i);
+    fireEvent.change(textInput, { target: { value: "#00ff00" } });
 
     expect(onChange).toHaveBeenCalled();
   });
@@ -105,7 +108,7 @@ describe("ColorPickerSection", () => {
    * The color preview square shows whether the color is valid in CSS.
    */
   test("accepts CSS named colors without showing validation error", async () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
 
     renderWithIntl(
       <ColorPickerSection
@@ -115,9 +118,10 @@ describe("ColorPickerSection", () => {
       />,
     );
 
-    const colorInput = screen.getByLabelText(/primary color/i);
-    fireEvent.change(colorInput, { target: { value: "" } });
-    await userEvent.type(colorInput, "rebeccapurple");
+    // Target the Carbon TextInput via its placeholder instead of the
+    // HTML5 color picker (which doesn't support clear/type).
+    const textInput = screen.getByPlaceholderText(/#0f62fe or blue/i);
+    fireEvent.change(textInput, { target: { value: "rebeccapurple" } });
 
     // Should call onChange with the named color
     expect(onChange).toHaveBeenCalled();
@@ -135,7 +139,7 @@ describe("ColorPickerSection", () => {
       <ColorPickerSection
         label="Primary Color"
         value="#ff0000"
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     );
 
@@ -153,7 +157,7 @@ describe("ColorPickerSection", () => {
       <ColorPickerSection
         label="Secondary Color"
         value="#64748b"
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     );
 
@@ -172,7 +176,7 @@ describe("ColorPickerSection", () => {
       <ColorPickerSection
         label="Header Color"
         value="#295785"
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     );
 
@@ -187,11 +191,7 @@ describe("ColorPickerSection", () => {
    */
   test("uses default color when value is empty", () => {
     renderWithIntl(
-      <ColorPickerSection
-        label="Primary Color"
-        value=""
-        onChange={jest.fn()}
-      />,
+      <ColorPickerSection label="Primary Color" value="" onChange={vi.fn()} />,
     );
 
     // Should use Carbon's default color #0f62fe
@@ -207,7 +207,7 @@ describe("ColorPickerSection", () => {
       <ColorPickerSection
         label="Primary Color"
         value={null}
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     );
 
@@ -221,7 +221,7 @@ describe("ColorPickerSection", () => {
    * The component checks `if (onChange && newColor)` before calling onChange
    */
   test("does not call onChange when text input is cleared to empty", async () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
 
     renderWithIntl(
       <ColorPickerSection
@@ -246,7 +246,7 @@ describe("ColorPickerSection", () => {
    * Test: HTML5 color picker triggers onChange
    */
   test("HTML5 color picker change triggers onChange", async () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
 
     renderWithIntl(
       <ColorPickerSection

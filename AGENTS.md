@@ -993,13 +993,16 @@ for comprehensive guide.
 
 ```bash
 # Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --reset
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
 
 # Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --no-verify
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 ```
 
 **Fixture Loading:**
@@ -1663,10 +1666,10 @@ must be explicitly added to a project's `testMatch` allowlist in
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                                    |
-| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | -------------------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `file-import-e2e.sql`                              |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `analyzer-harness-e2e.sql` + `file-import-e2e.sql` |
+| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
+| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
+| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
+| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 #### Key Patterns
 

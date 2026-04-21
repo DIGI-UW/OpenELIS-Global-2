@@ -473,6 +473,7 @@ public class ResultsValidationUtility {
                 normalResult = true;
             } else if (!TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
                     && !GenericValidator.isBlankOrNull(result.getValue())
+                    && GenericValidator.isDouble(result.getValue(true))
                     && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
                             && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
                 normalResult = true;
