@@ -29,6 +29,7 @@ import org.openelisglobal.notification.service.AnalysisNotificationConfigService
 import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationService;
 import org.openelisglobal.notification.service.TestNotificationServiceImpl;
+import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.odoo.client.OdooClient;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
@@ -198,6 +199,12 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public AnalysisNotificationConfigService analysisNotificationConfigService() {
         return mock(AnalysisNotificationConfigService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public NotificationDAO notificationDAO() {
+        return mock(NotificationDAO.class);
     }
 
     @Bean()

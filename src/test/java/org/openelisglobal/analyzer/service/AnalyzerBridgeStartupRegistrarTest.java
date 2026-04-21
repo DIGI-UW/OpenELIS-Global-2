@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextRefreshedEvent;
 
@@ -33,6 +34,9 @@ public class AnalyzerBridgeStartupRegistrarTest {
     @Mock
     private BridgeRegistrationService bridgeRegistrationService;
 
+    @Mock
+    private AnalyzerTestMappingService analyzerTestMappingService;
+
     @InjectMocks
     private AnalyzerBridgeStartupRegistrar registrar;
 
@@ -44,6 +48,7 @@ public class AnalyzerBridgeStartupRegistrarTest {
         analyzer.setId("2009");
         analyzer.setName("QuantStudio 7 Flex");
         analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        when(analyzerTestMappingService.getAllForAnalyzer(any())).thenReturn(List.of());
     }
 
     private static ContextRefreshedEvent rootContextRefreshedEvent() {
@@ -64,13 +69,13 @@ public class AnalyzerBridgeStartupRegistrarTest {
         analyzer.setSkipRows(0);
 
         when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
-        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(true);
 
         registrar.onStartup(rootContextRefreshedEvent());
 
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
-                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"), eq(Map.of()), eq("CSV"), eq(","), eq(0));
+                eq("/data/analyzer-imports/quantstudio"), eq("*.csv"), eq(Map.of()), eq("CSV"), eq(","), eq(0), any());
     }
 
     @Test
@@ -81,14 +86,14 @@ public class AnalyzerBridgeStartupRegistrarTest {
         analyzer.setColumnMappings(Map.of("Sample Name", "sampleId", "CT", "result"));
 
         when(analyzerService.getAllWithTypes()).thenReturn(List.of(analyzer));
-        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(bridgeRegistrationService.registerFile(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(true);
 
         registrar.onStartup(rootContextRefreshedEvent());
 
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS)).registerFile(eq("2009"), eq("QuantStudio 7 Flex"),
                 eq("/data/analyzer-imports/quantstudio"), eq("*.xlsx"),
-                eq(Map.of("Sample Name", "sampleId", "CT", "result")), eq("EXCEL"), any(), any());
+                eq(Map.of("Sample Name", "sampleId", "CT", "result")), eq("EXCEL"), any(), any(), any());
     }
 
     @Test
@@ -98,7 +103,7 @@ public class AnalyzerBridgeStartupRegistrarTest {
         registrar.onStartup(rootContextRefreshedEvent());
 
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerFile(any(), any(), any(), any(),
-                any(), any(), any(), any());
+                any(), any(), any(), any(), any());
         verify(bridgeRegistrationService, timeout(ASYNC_TIMEOUT_MS).times(0)).registerTcp(any(), any(), any(), any(),
                 any());
     }

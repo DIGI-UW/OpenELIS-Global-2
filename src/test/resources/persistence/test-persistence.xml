@@ -119,6 +119,7 @@
         <class>org.openelisglobal.analyzer.valueholder.CustomFieldType</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerFieldMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPluginConfig</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerQcRule</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerPendingCode</class>
         <class>org.openelisglobal.analyzer.valueholder.QualitativeResultMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.UnitMapping</class>
@@ -127,6 +128,15 @@
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerType</class>
+
+        <!-- Westgard QC entities (003-westgard-qc) -->
+        <class>org.openelisglobal.qc.valueholder.QCControlLot</class>
+        <class>org.openelisglobal.qc.valueholder.QCResult</class>
+        <class>org.openelisglobal.qc.valueholder.QCStatistics</class>
+        <class>org.openelisglobal.qc.valueholder.QCRuleViolation</class>
+        <class>org.openelisglobal.qc.valueholder.QCViolationResult</class>
+        <class>org.openelisglobal.qc.valueholder.WestgardRuleConfig</class>
+        <class>org.openelisglobal.qc.valueholder.QCAlert</class>
 
         <!-- RS232 Serial Port Configuration entity (011-madagascar-analyzer-integration
             M2) -->

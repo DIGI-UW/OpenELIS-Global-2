@@ -1395,3 +1395,16 @@
     pointer-events: auto;
   }
 }
+
+/* ==========================================================================
+   Consent Accordion Section (OGC-557)
+   ==========================================================================
+   Carbon Accordion + Tile handle most container styling. Only the audit
+   heading label needs a small helper class.
+   ========================================================================== */
+.consent-audit-heading {
+  margin: 0 0 0.5rem 0;
+  font-size: var(--cds-label-01-font-size, 0.75rem);
+  font-weight: var(--cds-label-01-font-weight, 400);
+  color: var(--cds-text-secondary);
+}

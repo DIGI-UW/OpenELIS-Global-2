@@ -2,7 +2,10 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
+import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +46,9 @@ public class AnalyzerBridgeStartupRegistrar {
 
     @Autowired
     private BridgeRegistrationService bridgeRegistrationService;
+
+    @Autowired
+    private AnalyzerTestMappingService analyzerTestMappingService;
 
     @EventListener(ContextRefreshedEvent.class)
     public void onStartup(ContextRefreshedEvent event) {
@@ -112,9 +118,11 @@ public class AnalyzerBridgeStartupRegistrar {
 
                 // FILE analyzers — read from unified Analyzer entity
                 if (analyzer.getImportDirectory() != null && !analyzer.getImportDirectory().isBlank()) {
+                    List<String> testMappings = analyzerTestMappingService.getAllForAnalyzer(analyzerId).stream()
+                            .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
                     if (bridgeRegistrationService.registerFile(analyzerId, analyzerName, analyzer.getImportDirectory(),
                             analyzer.getFilePattern(), analyzer.getColumnMappings(), analyzer.getFileFormat(),
-                            analyzer.getDelimiter(), analyzer.getSkipRows())) {
+                            analyzer.getDelimiter(), analyzer.getSkipRows(), testMappings)) {
                         registered++;
                         bridgeReachable = true;
                     }
@@ -122,7 +130,72 @@ public class AnalyzerBridgeStartupRegistrar {
             }
 
             // If we tried to register but nothing succeeded, bridge is likely down
-            return bridgeReachable ? registered : -1;
+            if (!bridgeReachable) {
+                return -1;
+            }
+
+            // v5 §4.3: after the per-analyzer push loop, call the bridge's
+            // PUT /api/analyzers/sync endpoint with the full list for
+            // full-state reconciliation. This handles cases where the bridge
+            // has stale entries from deleted analyzers, or where a partial
+            // failure during the loop above left the bridge in an inconsistent
+            // state. The webapp is the config authority; bridge's local
+            // state must mirror it.
+            try {
+                List<java.util.Map<String, Object>> syncPayloads = new java.util.ArrayList<>();
+                for (Analyzer a : analyzers) {
+                    if (a.getStatus() == Analyzer.AnalyzerStatus.DELETED) {
+                        continue;
+                    }
+                    if (a.getIpAddress() != null && !a.getIpAddress().isBlank()) {
+                        java.util.Map<String, Object> p = new java.util.LinkedHashMap<>();
+                        p.put("oeAnalyzerId", a.getId());
+                        p.put("sourceId", a.getIpAddress());
+                        p.put("name", a.getName());
+                        p.put("protocol",
+                                a.getProtocolVersion() != null && a.getProtocolVersion().isHl7() ? "HL7" : "ASTM");
+                        syncPayloads.add(p);
+                    }
+                    if (a.getImportDirectory() != null && !a.getImportDirectory().isBlank()) {
+                        List<String> tm = analyzerTestMappingService.getAllForAnalyzer(a.getId()).stream()
+                                .map(AnalyzerTestMapping::getAnalyzerTestName).distinct().collect(Collectors.toList());
+                        java.util.Map<String, Object> p = new java.util.LinkedHashMap<>();
+                        p.put("oeAnalyzerId", a.getId());
+                        p.put("sourceId", a.getImportDirectory());
+                        p.put("name", a.getName());
+                        p.put("protocol", "FILE");
+                        p.put("filePattern", a.getFilePattern() != null ? a.getFilePattern() : "");
+                        if (a.getColumnMappings() != null && !a.getColumnMappings().isEmpty()) {
+                            p.put("columnMappings", a.getColumnMappings());
+                        }
+                        if (a.getFileFormat() != null && !a.getFileFormat().isBlank()) {
+                            p.put("fileFormat", a.getFileFormat());
+                        }
+                        if (a.getDelimiter() != null && !a.getDelimiter().isEmpty()) {
+                            p.put("delimiter", a.getDelimiter());
+                        }
+                        if (a.getSkipRows() != null && a.getSkipRows() > 0) {
+                            p.put("skipRows", a.getSkipRows());
+                        }
+                        if (tm != null && !tm.isEmpty()) {
+                            p.put("testMappings", tm);
+                        }
+                        syncPayloads.add(p);
+                    }
+                }
+                boolean syncOk = bridgeRegistrationService.syncAll(syncPayloads);
+                if (syncOk) {
+                    logger.info("Bridge full-state sync reconciled {} analyzers", syncPayloads.size());
+                } else {
+                    logger.warn(
+                            "Bridge full-state sync failed — per-analyzer pushes above succeeded but reconciliation did not");
+                }
+            } catch (Exception e) {
+                logger.warn("Bridge full-state sync threw: {}", e.getMessage());
+                // Non-fatal: per-analyzer pushes already succeeded
+            }
+
+            return registered;
         } catch (Exception e) {
             logger.debug("Bridge registration attempt failed: {}", e.getMessage());
             return -1;
