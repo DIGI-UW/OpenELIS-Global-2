@@ -1,5 +1,5 @@
 # Override file for Let's Encrypt certificate support
-# Usage: docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
+# Usage: docker compose -f compose.yaml -f compose.letsencrypt.yaml up -d
 #
 # Certificates must be generated first: ./scripts/generate-letsencrypt-certs.sh
 # Env: LETSENCRYPT_EMAIL (required for generation), LETSENCRYPT_DOMAIN (default storage.openelis-global.org)

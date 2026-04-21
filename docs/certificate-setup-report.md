@@ -16,7 +16,7 @@ environment.
 - The project uses a Docker container (`itechuw/certgen:main`) to generate
   **self-signed certificates** for development
 - Certificates are generated in the `certs` service (lines 2-15 in
-  `dev.docker-compose.yml`)
+  `compose.override.yaml`)
 - Generated certificates include:
   - **Self-signed certificate**: `/etc/ssl/certs/apache-selfsigned.crt`
   - **Private key**: `/etc/ssl/private/apache-selfsigned.key`
@@ -84,7 +84,7 @@ To add Let's Encrypt support for `storage.openelis-global.org`, we need to:
 
 ### Step-by-Step Implementation
 
-#### Step 1: Update `dev.docker-compose.yml`
+#### Step 1: Update `compose.override.yaml`
 
 Add a new Certbot service and update the proxy service:
 
@@ -247,7 +247,7 @@ Before starting the services, ensure DNS is configured:
 2. **First-time Certificate Request:**
 
    ```bash
-   docker compose -f dev.docker-compose.yml run --rm certbot certonly \
+   docker compose -f compose.override.yaml run --rm certbot certonly \
      --webroot \
      --webroot-path=/var/www/certbot \
      --email your-email@example.com \
@@ -258,7 +258,7 @@ Before starting the services, ensure DNS is configured:
 
 3. **Start Services:**
    ```bash
-   docker compose -f dev.docker-compose.yml up -d
+   docker compose -f compose.override.yaml up -d
    ```
 
 #### Step 4: Automatic Renewal Setup
@@ -267,7 +267,7 @@ Create a renewal script and add it to a cron job or use a scheduled container:
 
 **Option A: Scheduled Container (Recommended)**
 
-Add to `dev.docker-compose.yml`:
+Add to `compose.override.yaml`:
 
 ```yaml
 certbot-renew:
@@ -290,10 +290,10 @@ Add to host crontab (use absolute path or `cd` pattern for reliability):
 
 ```bash
 # Using cd pattern (recommended for cron jobs)
-0 3 * * * cd /path/to/OpenELIS-Global-2 && docker compose -f dev.docker-compose.yml run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f dev.docker-compose.yml restart proxy
+0 3 * * * cd /path/to/OpenELIS-Global-2 && docker compose -f compose.override.yaml run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f compose.override.yaml restart proxy
 
 # OR using absolute paths
-0 3 * * * docker compose -f /path/to/OpenELIS-Global-2/dev.docker-compose.yml run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f /path/to/OpenELIS-Global-2/dev.docker-compose.yml restart proxy
+0 3 * * * docker compose -f /path/to/OpenELIS-Global-2/compose.override.yaml run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f /path/to/OpenELIS-Global-2/compose.override.yaml restart proxy
 ```
 
 ### Alternative: Using Nginx Proxy with Automatic Let's Encrypt
@@ -452,7 +452,7 @@ The current certificate setup uses self-signed certificates suitable for
 development but not production. To add Let's Encrypt support for
 `storage.openelis-global.org`:
 
-1. Add Certbot container to `dev.docker-compose.yml`
+1. Add Certbot container to `compose.override.yaml`
 2. Update nginx configuration with subdomain-specific server block
 3. Configure ACME challenge handling
 4. Set up automatic renewal

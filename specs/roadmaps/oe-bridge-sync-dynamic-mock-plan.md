@@ -243,7 +243,7 @@ superseded by unified demo flow).
 | `tools/analyzer-mock-server/server.py`                                              | `/analyzers` API for dynamic network management              |
 | `tools/analyzer-mock-server/requirements.txt`                                       | Add `docker` package                                         |
 | **Harness**                                                                         |                                                              |
-| `projects/analyzer-harness/docker-compose.analyzer-test.yml`                        | Docker socket mount, env vars                                |
+| `projects/analyzer-harness/compose.harness.yaml`                        | Docker socket mount, env vars                                |
 | `projects/analyzer-harness/seed-analyzers.sh`                                       | Dynamic IP provisioning via mock API                         |
 
 ## PR + Submodule Strategy

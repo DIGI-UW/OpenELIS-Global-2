@@ -6,8 +6,8 @@ This directory now follows a single authoritative path for analyzer E2E parity.
 
 The analyzer harness CI gate runs from the repository root using:
 
-- `projects/analyzer-harness/docker-compose.base.yml`
-- `build.docker-compose.yml`
+- `projects/analyzer-harness/compose.yaml`
+- `compose.build.yaml`
 - `.github/ci/ci.analyzer-harness.yml`
 - `.github/workflows/e2e-playwright-analyzer-harness-reusable.yml`
 
@@ -41,10 +41,10 @@ required profile mappings for the seeded analyzers.
 Local harness startup now uses the same canonical service identities as CI, with
 local-only overrides layered on top:
 
-- `docker-compose.base.yml`
-- `docker-compose.dev.yml`
-- `docker-compose.analyzer-test.yml`
-- `docker-compose.letsencrypt.yml`
+- `compose.yaml`
+- `compose.yaml`
+- `compose.harness.yaml`
+- `compose.letsencrypt.yaml`
 
 These files must not drift behaviorally from the authoritative CI harness path
 for critical analyzer flows.
@@ -67,10 +67,10 @@ From this directory:
 cd /home/ubuntu/OpenELIS-Global-2/projects/analyzer-harness
 
 # Start core stack
-docker compose -f docker-compose.dev.yml -f docker-compose.base.yml up -d
+docker compose -f compose.yaml up -d
 
 # Start analyzer test infrastructure (bridge + simulator + virtual serial)
-docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d
+docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d
 ```
 
 Then seed analyzers via the OE REST API (matches CI step
@@ -97,8 +97,8 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # From harness directory — force-recreate clears the Tomcat WAR cache
 cd projects/analyzer-harness
-docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml \
-  -f docker-compose.letsencrypt.yml up -d --force-recreate oe.openelis.org
+docker compose -f compose.yaml -f compose.harness.yaml --profile harness \
+  -f compose.letsencrypt.yaml up -d --force-recreate oe.openelis.org
 ```
 
 Frontend changes hot-reload automatically (mounted volume).

@@ -13,7 +13,7 @@
 1. Start development environment:
 
    ```bash
-   docker compose -f dev.docker-compose.yml up -d
+   docker compose -f compose.override.yaml up -d
    ```
 
 2. Ensure database contains 100,000+ sample storage assignments for performance

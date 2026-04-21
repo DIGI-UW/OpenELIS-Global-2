@@ -9,7 +9,7 @@ target/
 **/target/
 *.log
 *.tmp
-Dockerfile.dev
+Dockerfile
 Dockerfile.prod
 Dockerfile.certs
 volume/

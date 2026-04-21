@@ -139,11 +139,11 @@ jobs:
           ' _ {} < /tmp/e2e-image-map/e2e-image-map-base.txt
 
       - name: Start containers
-        run: docker compose -f build.docker-compose.yml up -d --no-build --wait --wait-timeout 600
+        run: docker compose -f compose.build.yaml up -d --no-build --wait --wait-timeout 600
 
       - name: Load test fixtures into database
         run: |
-          docker compose -f build.docker-compose.yml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
+          docker compose -f compose.build.yaml exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
 
       - name: Compute catch-all specs for independent shard
         if: matrix.shard == 'independent'
@@ -195,10 +195,10 @@ jobs:
         if: always()
         run: |
           echo "=== OpenELIS Backend Logs (last 500 lines) ==="
-          docker compose -f build.docker-compose.yml logs --tail=500 oe.openelis.org 2>&1 || true
+          docker compose -f compose.build.yaml logs --tail=500 oe.openelis.org 2>&1 || true
           echo ""
           echo "=== Database Logs (last 200 lines) ==="
-          docker compose -f build.docker-compose.yml logs --tail=200 db.openelis.org 2>&1 || true
+          docker compose -f compose.build.yaml logs --tail=200 db.openelis.org 2>&1 || true
 
       - name: Dump docker logs on failure
         if: failure()

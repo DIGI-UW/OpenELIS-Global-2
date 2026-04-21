@@ -390,7 +390,7 @@ constitution compliance
       Coverage, No @Transactional in controller, Input validation, etc.) - ✅
       All 8 principles verified
 - [x] T050 Manual testing with large dataset: Start dev environment
-      `docker compose -f dev.docker-compose.yml up -d`, navigate to
+      `docker compose -f compose.override.yaml up -d`, navigate to
       `https://localhost/Storage/sample-items`, verify page loads in <2 seconds
       with 100k+ samples, verify pagination controls work (Next, Previous, page
       numbers, page size selector), verify page state preserved when switching

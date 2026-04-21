@@ -58,7 +58,7 @@ cd "$PROJECT_ROOT"
 echo "Step 1: Checking proxy service..."
 if ! docker ps | grep -q openelisglobal-proxy; then
     echo_warn "Proxy service is not running. Starting it..."
-    docker compose -f dev.docker-compose.yml up -d proxy
+    docker compose -f compose.override.yaml up -d proxy
     echo_info "Waiting for proxy to be ready..."
     sleep 5
 else
@@ -76,7 +76,7 @@ fi
 # Step 3: Start services with Let's Encrypt support
 echo ""
 echo "Step 3: Starting services with Let's Encrypt support..."
-docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
+docker compose -f compose.yaml -f compose.letsencrypt.yaml up -d
 
 echo ""
 echo "=========================================="

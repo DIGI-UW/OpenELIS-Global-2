@@ -216,9 +216,9 @@ added nothing but silent staleness.
    fires 0 times on fresh DB)
 4. Run Fluorocycler test only:
    ```
-   COMPOSE_PROFILES=demo docker compose -f docker-compose.yml \
+   COMPOSE_PROFILES=demo docker compose -f compose.yaml \
      -f docker-compose.validate.yml -f docker-compose.local-images.yml \
-     -f docker-compose.letsencrypt.yml run --rm demo-tests \
+     -f compose.letsencrypt.yaml run --rm demo-tests \
      npx playwright test --project=harness-demo-video --grep FluoroCycler
    ```
 5. Verify DB:

@@ -31,7 +31,7 @@ services:
 EOF
 
 # Start containers with override (removes test context)
-docker compose -f build.docker-compose.yml -f /tmp/build.docker-compose.ci-simulation.yml up -d --build --wait --wait-timeout 600
+docker compose -f compose.build.yaml -f /tmp/build.docker-compose.ci-simulation.yml up -d --build --wait --wait-timeout 600
 
 echo "✅ Containers started"
 echo ""
@@ -92,8 +92,8 @@ echo "  - load-test-fixtures.sh fails: ✅"
 echo "  - Cypress test fails: ✅"
 echo ""
 echo "To fix and test:"
-echo "  1. Stop containers: docker compose -f build.docker-compose.yml -f /tmp/build.docker-compose.ci-simulation.yml down"
-echo "  2. Start with test context: docker compose -f build.docker-compose.yml up -d"
+echo "  1. Stop containers: docker compose -f compose.build.yaml -f /tmp/build.docker-compose.ci-simulation.yml down"
+echo "  2. Start with test context: docker compose -f compose.build.yaml up -d"
 echo "  3. Verify storage rooms exist: docker exec openelisglobal-database psql -U clinlims -d clinlims -c \"SELECT code FROM storage_room WHERE code IN ('MAIN', 'SEC', 'INACTIVE');\""
 echo "  4. Run load-test-fixtures.sh: ./src/test/resources/load-test-fixtures.sh"
 echo "  5. Run Cypress test: cd frontend && npm run cy:run -- --spec \"cypress/e2e/storageAssignment.cy.js\""

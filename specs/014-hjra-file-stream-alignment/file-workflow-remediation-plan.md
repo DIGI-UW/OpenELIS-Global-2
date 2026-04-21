@@ -115,8 +115,8 @@ Implement on parent repo branch in the new worktree.
 - Update CI harness wiring so bridge can actually watch shared dirs:
   - `.github/ci/ci.analyzer-harness.yml`
 - Update dev compose wiring equivalently:
-  - `dev.docker-compose.yml`
-  - `projects/analyzer-harness/docker-compose.dev.yml`
+  - `compose.override.yaml`
+  - `projects/analyzer-harness/compose.yaml`
 - Remove obsolete OE poll interval tuning and temporary debug-only CI steps
   where no longer needed.
 

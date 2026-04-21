@@ -34,7 +34,7 @@ fi
 # Check if proxy is running (required for ACME challenge)
 if ! docker ps | grep -q openelisglobal-proxy; then
     echo "ERROR: Proxy container (openelisglobal-proxy) must be running for ACME challenge"
-    echo "Start it with: docker compose -f dev.docker-compose.yml up -d proxy"
+    echo "Start it with: docker compose -f compose.override.yaml up -d proxy"
     exit 1
 fi
 
@@ -64,7 +64,7 @@ if [ -f "$CERT_PATH" ]; then
         echo ""
         echo "Next steps:"
         echo "1. Restart the proxy to use renewed certificates:"
-        echo "   docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml restart proxy"
+        echo "   docker compose -f compose.yaml -f compose.letsencrypt.yaml restart proxy"
     else
         echo "✗ Failed to renew certificate for ${DOMAIN}"
         exit 1
@@ -96,9 +96,9 @@ else
         echo ""
         echo "Next steps:"
         echo "1. Restart the proxy to use Let's Encrypt certificates:"
-        echo "   docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml restart proxy"
+        echo "   docker compose -f compose.yaml -f compose.letsencrypt.yaml restart proxy"
         echo "2. Or restart all services:"
-        echo "   docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d"
+        echo "   docker compose -f compose.yaml -f compose.letsencrypt.yaml up -d"
     else
         echo "✗ Failed to generate certificate for ${DOMAIN}"
         exit 1

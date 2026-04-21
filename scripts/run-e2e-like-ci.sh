@@ -31,7 +31,7 @@ echo -e "${YELLOW}[1/5] Checking Docker containers...${NC}"
 if ! docker ps | grep -q "openelisglobal-webapp"; then
   echo -e "${RED}ERROR: Docker containers not running${NC}"
   echo "Start containers with:"
-  echo "  docker compose -f build.docker-compose.yml up -d --build --wait --wait-timeout 600"
+  echo "  docker compose -f compose.build.yaml up -d --build --wait --wait-timeout 600"
   exit 1
 fi
 
@@ -44,7 +44,7 @@ echo ""
 
 # Step 2: Load test fixtures (EXACTLY like CI - same files and ON_ERROR_STOP=on)
 echo -e "${YELLOW}[2/5] Loading test fixtures (CI parity)...${NC}"
-./scripts/load-ci-fixtures.sh -f build.docker-compose.yml
+./scripts/load-ci-fixtures.sh -f compose.build.yaml
 echo -e "${GREEN}✓ Fixtures loaded${NC}"
 echo ""
 

@@ -41,7 +41,7 @@ cd catalyst-gateway && poetry run honcho -f ../Procfile.dev start
 ## Prerequisites
 
 - [ ] OpenELIS development environment running
-      (`docker compose -f dev.docker-compose.yml up -d`)
+      (`docker compose -f compose.override.yaml up -d`)
 - [ ] Java 21 installed (`java -version` shows 21.x.x)
 - [ ] Python 3.11+ installed (`python3 --version`)
 - [ ] Node.js 16+ installed
@@ -56,7 +56,7 @@ cd catalyst-gateway && poetry run honcho -f ../Procfile.dev start
 
 ```bash
 # 1. Start A2A agents + MCP server + OpenELIS
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
+docker compose -f projects/catalyst/catalyst-compose.override.yaml up -d
 
 # 2. Configure LLM provider
 # Create projects/catalyst/catalyst.env file:
@@ -77,7 +77,7 @@ EOF
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # 4. Restart OpenELIS container
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 
 # 5. Test the endpoint (Stage A: generate SQL, review before execution)
 curl -k -X POST https://localhost/rest/catalyst/query \
@@ -99,7 +99,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 
 ```bash
 # 1. Start A2A agents + MCP server
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d
+docker compose -f projects/catalyst/catalyst-compose.override.yaml up -d
 
 # 2. Start LM Studio on host machine (download from https://lmstudio.ai/)
 # Load a model (use most recent available OpenAI-compatible model)
@@ -116,11 +116,11 @@ curl http://localhost:1234/v1/models
 #       model: local-model  # Match the model name in LM Studio
 
 # 5. Restart agent runtime to load config
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml restart catalyst-agents
+docker compose -f projects/catalyst/catalyst-compose.override.yaml restart catalyst-agents
 
 # 6. Build and start OpenELIS
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 
 # 7. Test (generate SQL first, then execute with confirmation)
 curl -k -X POST https://localhost/rest/catalyst/query \
@@ -137,7 +137,7 @@ curl -k -X POST https://localhost/rest/catalyst/query \
 # 3. Start the local server (default: http://localhost:1234)
 
 # 4. Start A2A agents + MCP server
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-agents catalyst-mcp
+docker compose -f projects/catalyst/catalyst-compose.override.yaml up -d catalyst-agents catalyst-mcp
 
 # 5. Configure agent runtime for LM Studio
 # Edit projects/catalyst/catalyst-agents/src/config/agents_config.yaml:
@@ -148,11 +148,11 @@ docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d cataly
 #       model: local-model
 
 # 6. Restart agent runtime to load config
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml restart catalyst-agents
+docker compose -f projects/catalyst/catalyst-compose.override.yaml restart catalyst-agents
 
 # 7. Build and start OpenELIS
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ---
@@ -166,7 +166,7 @@ schema retrieval:
 
 ```bash
 # Start agents + MCP server via Docker (recommended)
-docker compose -f projects/catalyst/catalyst-dev.docker-compose.yml up -d catalyst-agents catalyst-mcp
+docker compose -f projects/catalyst/catalyst-compose.override.yaml up -d catalyst-agents catalyst-mcp
 
 # OR for local development:
 # Agent runtime:
@@ -247,7 +247,7 @@ mvn spotless:apply
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Restart OpenELIS container
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 
 # Check logs for startup
 docker logs -f oe.openelis.org 2>&1 | grep -i catalyst
@@ -333,7 +333,7 @@ cd projects/catalyst/catalyst-mcp
 pytest
 
 # 3. Restart server
-docker compose -f ../catalyst-dev.docker-compose.yml restart catalyst-mcp
+docker compose -f ../catalyst-compose.override.yaml restart catalyst-mcp
 ```
 
 ### Backend Changes (Java)
@@ -349,7 +349,7 @@ mvn test -Dtest=CatalystQueryServiceTest
 
 # 4. Build and redeploy
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ### Frontend Changes (React)
@@ -435,7 +435,7 @@ docker logs oe.openelis.org 2>&1 | grep -i "blocked table"
 
 ## Docker Compose Services
 
-The `projects/catalyst/catalyst-dev.docker-compose.yml` includes:
+The `projects/catalyst/catalyst-compose.override.yaml` includes:
 
 ```yaml
 services:

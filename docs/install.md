@@ -110,7 +110,7 @@ This Option can be used where there is fast internet connectivity
 
 1.  Build and Run the docker images from source code
 
-    docker compose -f build.docker-compose.yml up -d --build
+    docker compose -f compose.build.yaml up -d --build
 
 ### Downloaded Installer Offline Setup
 

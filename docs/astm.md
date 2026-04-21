@@ -27,7 +27,7 @@
 - **OpenELIS Analyzer Bridge (Development Setup)**
   - The bridge is now integrated into the standard development environment
   - Bridge starts automatically with
-    `docker compose -f dev.docker-compose.yml up -d`
+    `docker compose -f compose.override.yaml up -d`
   - Configuration file location:
     `volume/openelis-analyzer-bridge/configuration.yml`
   - Bridge accessible at `172.20.1.101:5001` from within Docker network

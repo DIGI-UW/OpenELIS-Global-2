@@ -117,7 +117,7 @@ required gate and the thing we must reproduce exactly.
 
 Authoritative base files:
 
-- [build.docker-compose.yml](build.docker-compose.yml) -- base stack definition
+- [compose.build.yaml](compose.build.yaml) -- base stack definition
 - [.github/ci/ci.analyzer-harness.yml](.github/ci/ci.analyzer-harness.yml) --
   harness service overlay
 - [.github/workflows/e2e-playwright-analyzer-harness-reusable.yml](.github/workflows/e2e-playwright-analyzer-harness-reusable.yml)
@@ -163,7 +163,7 @@ Exact CI step sequence the script must mirror (from reusable workflow lines
 1. Create
    `projects/analyzer-harness/volume/analyzer-imports/{quantstudio-5,quantstudio-7,fluorocycler-xt}/incoming`
    directories and fix permissions.
-2. `docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900`
+2. `docker compose -f compose.build.yaml -f .github/ci/ci.analyzer-harness.yml up -d --no-build --wait --wait-timeout 900`
 3. Readiness: `curl -k -s -f https://localhost/`,
    `curl -k -s -f https://localhost:8442/actuator/health`,
    `curl -s -f http://localhost:8085/health` (each with 120s timeout).
@@ -240,8 +240,8 @@ Key files:
 - [projects/analyzer-harness/reset-env.sh](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/reset-env.sh)
 - [projects/analyzer-harness/bootstrap.sh](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/bootstrap.sh)
 - [projects/analyzer-harness/build.sh](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/build.sh)
-- [projects/analyzer-harness/docker-compose.dev.yml](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/docker-compose.dev.yml)
-- [projects/analyzer-harness/docker-compose.analyzer-test.yml](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/docker-compose.analyzer-test.yml)
+- [projects/analyzer-harness/compose.yaml](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/compose.yaml)
+- [projects/analyzer-harness/compose.harness.yaml](/Users/pmanko/code/OpenELIS-Global-2/projects/analyzer-harness/compose.harness.yaml)
 
 Target state:
 

@@ -6,7 +6,7 @@ live alongside OpenELIS Global.
 ### Intended contents
 
 - `projects/catalyst/catalyst-mcp/`: Python MCP server (schema RAG / retrieval)
-- `projects/catalyst/catalyst-dev.docker-compose.yml`: Docker Compose for
+- `projects/catalyst/catalyst-compose.override.yaml`: Docker Compose for
   Catalyst dev services
 - `projects/catalyst/scripts/`: helper scripts (optional)
 
@@ -103,7 +103,7 @@ sign-off checklist.
 
 ```bash
 cd projects/catalyst
-docker compose -f catalyst-dev.docker-compose.yml up -d
+docker compose -f catalyst-compose.override.yaml up -d
 ```
 
 ### MCP Database Access Architecture

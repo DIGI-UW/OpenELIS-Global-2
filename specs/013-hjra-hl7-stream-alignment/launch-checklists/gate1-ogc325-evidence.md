@@ -14,7 +14,7 @@ branches.
 - [x] `/analyzer/hl7` endpoint accepts valid HL7, rejects invalid —
       `AnalyzerImportControllerHL7Test` (3 tests)
 - [x] Harness config wires MLLP port 2575 + correct forward URI —
-      `projects/analyzer-harness/docker-compose.analyzer-test.yml`
+      `projects/analyzer-harness/compose.harness.yaml`
 - [x] Strict 013 mock E2E path validated through bridge MLLP with profile-backed
       templates: `projects/analyzer-harness/scripts/test-hl7-profiles.sh`
       (BC-5380, BS-200, BS-300)

@@ -1,6 +1,6 @@
 # Unified Playwright E2E executor — parameterized for both core and harness.
 # Called by e2e-authoritative-reusable.yml twice: once for core projects
-# (build.docker-compose.yml only) and once for harness projects (with
+# (compose.build.yaml only) and once for harness projects (with
 # analyzer bridge overlay). Runs test shards, merges blob reports into
 # a single HTML report, and enforces a gate.
 name: E2E / Playwright (Reusable)
@@ -20,7 +20,7 @@ on:
         description: "Comma-separated Docker Compose files to start"
         required: false
         type: string
-        default: "build.docker-compose.yml"
+        default: "compose.build.yaml"
       fixture_mode:
         description: "Fixture loading mode: core or harness via unified load-test-fixtures.sh"
         required: false

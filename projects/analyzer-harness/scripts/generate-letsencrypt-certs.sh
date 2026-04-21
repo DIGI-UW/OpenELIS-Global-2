@@ -41,7 +41,7 @@ echo ""
 # Proxy must be running for ACME webroot (harness proxy name varies by compose project)
 if ! docker ps --format '{{.Names}}' | grep -q proxy; then
   echo "ERROR: Proxy container must be running for ACME challenge."
-  echo "Start harness: docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml up -d proxy"
+  echo "Start harness: docker compose -f compose.yaml -f compose.harness.yaml -f compose.letsencrypt.yaml --profile harness up -d proxy"
   exit 1
 fi
 
@@ -54,7 +54,7 @@ if [ -f "$CERT_PATH" ]; then
     -v "$CERTBOT_WEBROOT:/var/www/certbot" \
     certbot/certbot:latest \
     renew --webroot --webroot-path=/var/www/certbot
-  echo "Done. Restart proxy to pick up certs: docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml restart proxy"
+  echo "Done. Restart proxy to pick up certs: docker compose -f compose.yaml -f compose.harness.yaml -f compose.letsencrypt.yaml --profile harness restart proxy"
   exit 0
 fi
 
@@ -83,4 +83,4 @@ if ! docker run --rm \
 fi
 
 echo "Certificate generated at $CERT_PATH"
-echo "Restart proxy: docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml restart proxy"
+echo "Restart proxy: docker compose -f compose.yaml -f compose.harness.yaml -f compose.letsencrypt.yaml --profile harness restart proxy"

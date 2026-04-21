@@ -100,7 +100,7 @@ docker compose.
 
 #### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
 
-    docker compose -f build.docker-compose.yml up -d --build
+    docker compose -f compose.build.yaml up -d --build
 
 #### Running OpenELIS Global2 with docker compose For Development
 
@@ -132,7 +132,7 @@ speeds up the development process
 
 1.  Start the containers to mount the locally compiled artifacts
 
-        docker compose -f dev.docker-compose.yml up -d
+        docker compose -f compose.override.yaml up -d
 
     Note : For Reflecting Local changes in the Running Containers ;
 
@@ -146,7 +146,7 @@ speeds up the development process
 
   - Recreate the Openelis webapp container
 
-        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+        docker compose -f compose.override.yaml up -d  --no-deps --force-recreate oe.openelis.org
 
 #### The Instances can be accessed at
 

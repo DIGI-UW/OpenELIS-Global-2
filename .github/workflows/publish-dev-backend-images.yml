@@ -59,7 +59,8 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile.dev
+          file: ./Dockerfile
+          target: dev
           # push: true
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}

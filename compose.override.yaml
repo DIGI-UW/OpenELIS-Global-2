@@ -38,11 +38,14 @@ services:
             retries: 10 
             
     oe.openelis.org:
-        container_name: openelisglobal-webapp 
+        container_name: openelisglobal-webapp
+        # Uncomment to build from source using the consolidated multi-stage
+        # Dockerfile (target: dev) instead of pulling the pre-built image.
         # build:
         #     context: .
-        #     dockerfile: Dockerfile.dev
-        image: itechuw/openelis-global-2-dev:develop  
+        #     dockerfile: Dockerfile
+        #     target: dev
+        image: itechuw/openelis-global-2-dev:develop
        # platform: linux/amd64
         depends_on:
             - db.openelis.org

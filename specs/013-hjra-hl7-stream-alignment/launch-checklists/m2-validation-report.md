@@ -51,7 +51,7 @@ plugins module.
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Gate 1 passed              | Inherited from M1 (PR #3033)                                                                                                         |
 | BC-5380 in HL7 lane        | `madagascar-analyzer-test-data.xml` analyzer 2007: `protocol_version="HL7_V2_3_1"`, `identifier_pattern="MINDRAY.*BC.?5380\|BC5380"` |
-| BC-5380 uses listener path | Harness `docker-compose.analyzer-test.yml`: MLLP 2575, `ORG_ITECH_AHB_MLLP_ENABLED=true`, forwards to `/analyzer`                    |
+| BC-5380 uses listener path | Harness `compose.harness.yaml`: MLLP 2575, `ORG_ITECH_AHB_MLLP_ENABLED=true`, forwards to `/analyzer`                    |
 | Profile seed               | `projects/analyzer-profiles/hl7/mindray-bc5380.json` exists                                                                          |
 | HL7 fixture                | `testdata/hl7/mindray/bc5380-cbc-result.hl7` — MSH-3 "MINDRAY BC-5380" matches pattern                                               |
 

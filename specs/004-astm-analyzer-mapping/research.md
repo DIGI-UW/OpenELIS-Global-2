@@ -753,7 +753,7 @@ seamless communication between analyzers and OpenELIS.
 **Implementation Approach**:
 
 - **Bridge Deployment**: ASTM-HTTP bridge is integrated into the standard
-  development environment via `dev.docker-compose.yml`
+  development environment via `compose.override.yaml`
   - Container: `openelis-astm-bridge` (image:
     `digiuw/openelis-analyzer-bridge:latest`)
   - Static IP: `172.20.1.101` (within Docker network)
@@ -772,7 +772,7 @@ seamless communication between analyzers and OpenELIS.
   - Logging Level: `DEBUG` for development troubleshooting
 - **Integration Points**:
   - Bridge starts automatically with
-    `docker compose -f dev.docker-compose.yml up -d`
+    `docker compose -f compose.override.yaml up -d`
   - Bridge accessible at `172.20.1.101:5001` from within Docker network
   - Analyzers configured with bridge IP address for TCP communication
   - OpenELIS receives HTTP POST requests from bridge at `/analyzer/astm`
@@ -789,7 +789,7 @@ seamless communication between analyzers and OpenELIS.
 
 **References**:
 
-- `dev.docker-compose.yml` - Bridge service definition
+- `compose.override.yaml` - Bridge service definition
 - `volume/astm-bridge/configuration.yml` - Bridge configuration
 - `docs/astm.md` - ASTM bi-directional interface documentation
 - [DIGI-UW/openelis-analyzer-bridge](https://github.com/DIGI-UW/openelis-analyzer-bridge) -

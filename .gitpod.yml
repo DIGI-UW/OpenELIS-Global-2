@@ -19,7 +19,7 @@ tasks:
       npm install
       cd ..
     command: |
-      docker-compose -f dev.docker-compose.yml up -d
+      docker-compose -f compose.override.yaml up -d
  
 
 

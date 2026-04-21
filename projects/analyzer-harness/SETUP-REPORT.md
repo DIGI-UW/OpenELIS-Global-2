@@ -906,13 +906,13 @@ DISABLE_ESLINT_PLUGIN=true npm run build
 cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 cd projects/analyzer-harness
-docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml -f docker-compose.letsencrypt.yml up -d --no-deps --force-recreate oe
+docker compose -f compose.yaml -f compose.harness.yaml -f compose.letsencrypt.yaml --profile harness up -d --no-deps --force-recreate oe
 ```
 
 ### Issue: Defaults API returns empty array
 
 **Cause**: `projects/analyzer-defaults/` not mounted  
-**Fix**: Verify mount in `docker-compose.dev.yml`:
+**Fix**: Verify mount in `compose.yaml`:
 
 ```yaml
 oe:
@@ -940,7 +940,7 @@ docker logs analyzer-harness-astm-simulator-1 | grep "H|"
 
 **Cause**: Socat command syntax error (3 addresses instead of 2)  
 **Status**: Non-critical (serial port bridge still works for testing)  
-**Fix**: Review `docker-compose.analyzer-test.yml` socat command format
+**Fix**: Review `compose.harness.yaml` socat command format
 
 ---
 

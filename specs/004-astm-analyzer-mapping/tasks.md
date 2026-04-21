@@ -142,7 +142,7 @@ SiteInformation (`clinlims.site_information`) keys.
       `analyzer.lifecycle.stage.maintenance`), Validation Rules
       (`analyzer.validation.rule.type.regex`,
       `analyzer.validation.rule.expression`, `analyzer.validation.rule.test`)
-- [x] T011a [P] Update `dev.docker-compose.yml` to include
+- [x] T011a [P] Update `compose.override.yaml` to include
       `openelis-analyzer-bridge` and `analyzer-mock-server` services - Add
       service definition for `openelis-analyzer-bridge` using latest image from
       `tools/openelis-analyzer-bridge` (mount
@@ -151,7 +151,7 @@ SiteInformation (`clinlims.site_information`) keys.
       `tools/analyzer-mock-server` (expose port 5000 for analyzer simulation) -
       Configure network connectivity to allow OpenELIS → Bridge → Mock Server
       bi-directional communication - Verify services start with
-      `docker compose -f dev.docker-compose.yml up -d` and check logs for
+      `docker compose -f compose.override.yaml up -d` and check logs for
       successful startup - This infrastructure supports query analyzer testing
       (FR-002) and ASTM message processing workflows
 

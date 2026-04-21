@@ -1,5 +1,5 @@
 > **STATUS: Historical (bannered 2026-04-18)** — instructions below reference
-> the retired `dev.docker-compose.yml + analyzer-setup.docker-compose.yml` stack
+> the retired `compose.override.yaml + analyzer-setup.compose.yaml` stack
 > and `load-analyzer-test-data.sh --dataset-011` fixture loader. Current harness
 > path:
 >
@@ -48,7 +48,7 @@ cd dataexport && mvn clean install -DskipTests && cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Start dev environment
-docker compose -f dev.docker-compose.yml up -d
+docker compose -f compose.override.yaml up -d
 ```
 
 ### 2. Feature 004 Verification
@@ -69,7 +69,7 @@ For development without physical analyzers:
 
 ```bash
 # Bring up OpenELIS with the ASTM/HL7 simulator (from repo root)
-docker compose -f dev.docker-compose.yml -f docker-compose.astm-test.yml up -d
+docker compose -f compose.override.yaml -f docker-compose.astm-test.yml up -d
 
 # ASTM simulator: TCP port 5000 (openelis-astm-simulator)
 # OpenELIS: https://localhost/ (or your DOMAIN)
@@ -216,7 +216,7 @@ src/main/java/org/openelisglobal/analyzer/
 
 3. **Docker Configuration** for serial pass-through:
    ```yaml
-   # dev.docker-compose.yml additions
+   # compose.override.yaml additions
    services:
      oe.openelis.org:
        devices:
@@ -397,7 +397,7 @@ mvn test -Dtest="org.openelisglobal.analyzer.*Test"
 
 ```bash
 # Run with simulator
-docker compose -f dev.docker-compose.yml up -d
+docker compose -f compose.override.yaml up -d
 mvn verify -Pit
 
 # Check integration test coverage

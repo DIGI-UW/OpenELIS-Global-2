@@ -228,7 +228,7 @@ projects/analyzer-profiles/hl7/
 
 projects/analyzer-harness/
 ├── README.md
-├── docker-compose.analyzer-test.yml
+├── compose.harness.yaml
 └── [additional scripts and configs]
 
 tools/openelis-analyzer-bridge/

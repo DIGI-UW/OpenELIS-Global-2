@@ -25,7 +25,7 @@ Interpret arguments best-effort. Support these patterns:
 - `/restart-analyzer-harness --letsencrypt` → Add LE compose overlay
 - `/restart-analyzer-harness --skip-letsencrypt` → Skip LE even when env is set
 - `/restart-analyzer-harness --ci-parity` → **Bring up the CI-parity stack**
-  (`build.docker-compose.yml` + `.github/ci/ci.analyzer-harness.yml`) instead of
+  (`compose.build.yaml` + `.github/ci/ci.analyzer-harness.yml`) instead of
   the local dev stack. Selects frontend Dockerfile `target: runtime` (nginx
   serving minified `dist/`) — the exact image CI runs. Use this to locally
   reproduce CI E2E failures (e.g. React #130-class regressions that only fire
@@ -49,21 +49,23 @@ The harness compose stack is defined in
 
 - `compose_args_local()` — returns the local-dev compose file list:
   ```
-  -f docker-compose.dev.yml
-  -f docker-compose.base.yml          ← DEFINES ALL NAMED VOLUMES + SERVICES
-  -f docker-compose.analyzer-test.yml
-  [-f docker-compose.letsencrypt.yml]  ← only when --letsencrypt
+  -f compose.yaml                ← defines all named volumes + core services
+  -f compose.harness.yaml        ← analyzer E2E services (profile-gated)
+  [-f compose.letsencrypt.yaml]  ← only when --letsencrypt
+  --profile harness              ← activates analyzer services
   ```
 - `compose_args_ci()` — returns the CI compose file list (not used here)
 
-**CRITICAL: `docker-compose.base.yml` must ALWAYS be included.** It defines:
+**CRITICAL: `compose.yaml` must ALWAYS be included.** It defines:
 
 - All named volumes (`db-data`, `key_trust-store-volume`, `certs-vol`,
   `keys-vol`, `lucene_index-vol`)
 - Core service definitions (`db.openelis.org`, `oe.openelis.org`,
   `fhir.openelis.org`, `frontend.openelis.org`, `proxy`, `certs`)
 
-Without `base.yml`, compose fails with "undefined volume" errors.
+Without `compose.yaml`, compose fails with "undefined volume" errors. The
+`--profile harness` flag is required to bring up the analyzer simulator,
+bridge, and virtual-serial services.
 
 ### Service names vs container names
 

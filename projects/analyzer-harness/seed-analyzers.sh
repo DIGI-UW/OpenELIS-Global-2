@@ -315,7 +315,7 @@ echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
 # Clean stale data (default). Ensures clean baseline on every startup.
-# Matches container_name on db.openelis.org in docker-compose.base.yml / build.docker-compose.yml.
+# Matches container_name on db.openelis.org in compose.yaml / compose.build.yaml.
 resolve_db_container() {
   if [ -n "${DB_CONTAINER:-}" ]; then
     echo "$DB_CONTAINER"

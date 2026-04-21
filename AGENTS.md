@@ -572,7 +572,7 @@ cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Start development containers
-docker compose -f dev.docker-compose.yml up -d
+docker compose -f compose.override.yaml up -d
 ```
 
 **Access Points:**
@@ -714,7 +714,7 @@ mvn spotless:check
 
 # Hot reload (after code changes)
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 **Frontend:**
@@ -745,16 +745,16 @@ npm run cy:run
 
 ```bash
 # Start development environment
-docker compose -f dev.docker-compose.yml up -d
+docker compose -f compose.override.yaml up -d
 
 # Stop all containers
-docker compose -f dev.docker-compose.yml down
+docker compose -f compose.override.yaml down
 
 # Rebuild specific container (after code changes)
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 
 # View logs
-docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
+docker compose -f compose.override.yaml logs -f oe.openelis.org
 ```
 
 ### Branch Strategy
@@ -1673,8 +1673,8 @@ must be explicitly added to a project's `testMatch` allowlist in
 
 | Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
 | ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
+| `e2e-playwright.yml` (`playwright-core`)   | `compose.build.yaml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
+| `e2e-playwright-analyzer-harness-reusable` | `compose.build.yaml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 #### Key Patterns
 
@@ -2291,7 +2291,7 @@ mvn spotless:apply && cd frontend && npm run format && cd ..
 
 # Hot reload backend
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
 
 # E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
 npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
