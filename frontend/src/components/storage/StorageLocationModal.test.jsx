@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -85,10 +85,46 @@ describe("StorageLocationModal", () => {
     );
 
     await screen.findByTestId("storage-location-modal");
-    await screen.findByLabelText(/location name/i);
+    await screen.findByLabelText(/^name$/i);
     await screen.findByLabelText(/ip address/i);
     await screen.findByLabelText(/^port$/i);
     await screen.findByLabelText(/communication protocol/i);
+  });
+
+  test("testStorageLocationModal_ShelfCreateMode_CompartmentSelectionUpdatesTitleAndLabel", async () => {
+    Utils.getFromOpenElisServerV2.mockResolvedValue([
+      {
+        id: "11",
+        name: "Ultra-Low Freezer 1",
+        active: true,
+      },
+    ]);
+
+    renderWithIntl(
+      <StorageLocationModal
+        open={true}
+        locationType="shelf"
+        mode="create"
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+      />,
+    );
+
+    await screen.findByTestId("storage-location-modal");
+
+    await screen.findByText(/add shelf/i);
+    await screen.findByLabelText(/shelf label/i);
+
+    const storageTypeDropdown = await screen.findByTestId(
+      "shelf-storage-type-dropdown",
+    );
+    const dropdownButton = within(storageTypeDropdown).getByRole("button");
+
+    await userEvent.click(dropdownButton);
+    await userEvent.click(await screen.findByText(/^compartment$/i));
+
+    await screen.findByText(/add compartment/i);
+    await screen.findByLabelText(/compartment label/i);
   });
 
   /**
@@ -213,7 +249,7 @@ describe("StorageLocationModal", () => {
     );
 
     // Assert: Verify fields are pre-filled
-    const nameInput = await screen.findByLabelText(/location name/i);
+    const nameInput = await screen.findByLabelText(/^name$/i);
     expect(nameInput.value).toBe("Freezer Unit 1");
 
     const ipInput = await screen.findByLabelText(/ip address/i);

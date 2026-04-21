@@ -73,6 +73,8 @@ const StorageLocationModal = ({
   const [selectedParentRoomId, setSelectedParentRoomId] = useState(null);
   const [selectedParentDeviceId, setSelectedParentDeviceId] = useState(null);
   const [selectedParentShelfId, setSelectedParentShelfId] = useState(null);
+  const [selectedStorageLevel3Type, setSelectedStorageLevel3Type] =
+    useState("shelf");
 
   // Helper to get plural form for API endpoints
   const getPluralType = (type) => {
@@ -232,6 +234,7 @@ const StorageLocationModal = ({
       setSelectedParentRoomId(null);
       setSelectedParentDeviceId(null);
       setSelectedParentShelfId(null);
+      setSelectedStorageLevel3Type("shelf");
     }
   }, [open]);
 
@@ -479,7 +482,45 @@ const StorageLocationModal = ({
     { id: "other", label: "Other" },
   ];
 
+  const storageLevel3TypeOptions = [
+    {
+      id: "shelf",
+      label: intl.formatMessage({
+        id: "storage.type.shelf",
+        defaultMessage: "Shelf",
+      }),
+    },
+    {
+      id: "compartment",
+      label: intl.formatMessage({
+        id: "storage.type.compartment",
+        defaultMessage: "Compartment",
+      }),
+    },
+  ];
+
+  const selectedStorageLevel3Option = storageLevel3TypeOptions.find(
+    (option) => option.id === selectedStorageLevel3Type,
+  );
+
+  const storageLevel3Label =
+    selectedStorageLevel3Option?.label ||
+    intl.formatMessage({
+      id: "storage.type.shelf",
+      defaultMessage: "Shelf",
+    });
+
   const getModalTitle = () => {
+    if (locationType === "shelf" && mode === "create") {
+      return intl.formatMessage(
+        {
+          id: "storage.add.level3.dynamic",
+          defaultMessage: "Add {locationLabel}",
+        },
+        { locationLabel: storageLevel3Label },
+      );
+    }
+
     const action = mode === "create" ? "add" : "edit";
     const typeKey = `storage.${action}.${locationType}`;
     return intl.formatMessage(
@@ -751,12 +792,44 @@ const StorageLocationModal = ({
           {/* Shelf fields */}
           {locationType === "shelf" && (
             <>
+              {mode === "create" && (
+                <Dropdown
+                  id="shelf-storage-type"
+                  data-testid="shelf-storage-type-dropdown"
+                  titleText={intl.formatMessage({
+                    id: "storage.shelf.label.type",
+                    defaultMessage: "Label Type (labeling only)",
+                  })}
+                  label={intl.formatMessage({
+                    id: "storage.shelf.label.type.select",
+                    defaultMessage: "Select label type",
+                  })}
+                  items={storageLevel3TypeOptions}
+                  selectedItem={selectedStorageLevel3Option || null}
+                  onChange={({ selectedItem }) => {
+                    if (selectedItem?.id) {
+                      setSelectedStorageLevel3Type(selectedItem.id);
+                    }
+                  }}
+                  itemToString={(item) => (item ? item.label : "")}
+                />
+              )}
               <TextInput
                 id="shelf-label"
-                labelText={intl.formatMessage({
-                  id: "storage.shelf.label",
-                  defaultMessage: "Label",
-                })}
+                labelText={
+                  mode === "create"
+                    ? intl.formatMessage(
+                        {
+                          id: "storage.level3.label.dynamic",
+                          defaultMessage: "{locationLabel} Label",
+                        },
+                        { locationLabel: storageLevel3Label },
+                      )
+                    : intl.formatMessage({
+                        id: "storage.shelf.label",
+                        defaultMessage: "Label",
+                      })
+                }
                 value={formData.label || ""}
                 onChange={(e) => handleFieldChange("label", e.target.value)}
                 invalid={!!errors.label}
