@@ -312,7 +312,8 @@ prevents unsafe mappings (e.g., text → numeric).
 **References**:
 
 - Specification FR-004, FR-005 (unit and qualitative mapping requirements)
-- OGC-49 specification (if available in `.dev-docs/OGC-49/`)
+- OGC-49 specification (external — source docs not in-repo; see Figma links in
+  spec.md)
 
 ## 4. Error Queue and Reprocessing
 

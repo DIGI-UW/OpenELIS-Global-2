@@ -9,8 +9,9 @@
 
 ## Remaining Work to Finish Line (2026-04-20)
 
-From this task list, the following are code-shipped but test/validation-
-incomplete and should be finished before 014 can be declared closed:
+From this task list, the following architecture-level tasks are code-shipped but
+test-incomplete and should be finished before the GenericFile work is declared
+closed.
 
 **M2 (Upload / Review UI) — deferred tests:**
 
@@ -18,18 +19,17 @@ incomplete and should be finished before 014 can be declared closed:
 - [ ] T031 — Jest component test: upload-form validation summary
 - [ ] T038–T045 — Playwright E2E: upload → preview → submit flow
 
-**M4 (Wondfo CSV) — deferred tests:**
+**M4 (new-profile drop) — deferred tests:**
 
-- [ ] T073 — Bridge watcher integration test (Wondfo drop → bridge → OE)
-- [ ] T078 — Playwright E2E: Wondfo upload flow
+- [ ] T073 — Bridge watcher integration test (file drop → bridge → OE)
+- [ ] T078 — Playwright E2E: upload flow for a new profile
 
-**Site validation (not a code task, but a gate):**
+**Not tracked here (see Confluence tracker):** site validation at HJRA,
+real-file collection per instrument, vendor-specific export gaps,
+deprioritization of instruments without LIS connectivity. Those live on the
+[analyzer integration tracker][tracker].
 
-- [ ] Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert site samples
-
-**Blocked (do not attempt):**
-
-- [ ] Attune CytPix (OGC-350) — awaiting CSV export
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ---
 
