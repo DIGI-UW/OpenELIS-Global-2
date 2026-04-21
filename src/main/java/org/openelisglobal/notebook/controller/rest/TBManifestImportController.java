@@ -1,6 +1,7 @@
 package org.openelisglobal.notebook.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -9,17 +10,22 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.notebook.form.TBIndividualSampleForm;
 import org.openelisglobal.notebook.form.TBManifestImportForm;
 import org.openelisglobal.notebook.service.NotebookEntryService;
 import org.openelisglobal.notebook.service.TBManifestImportService;
 import org.openelisglobal.notebook.service.TBManifestImportService.ParseError;
 import org.openelisglobal.notebook.service.TBManifestImportService.ParsedManifest;
 import org.openelisglobal.notebook.service.TBManifestImportService.TBManifestImportResult;
+import org.openelisglobal.notebook.service.TBSampleCreationService;
+import org.openelisglobal.notebook.service.TBSampleCreationService.RowCreationResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -40,7 +46,24 @@ public class TBManifestImportController extends BaseRestController {
     private TBManifestImportService tbManifestImportService;
 
     @Autowired
+    private TBSampleCreationService tbSampleCreationService;
+
+    @Autowired
     private NotebookEntryService notebookEntryService;
+
+    /**
+     * Get valid sample types for the TB laboratory. GET
+     * /rest/notebook/tb/sample-types
+     */
+    @GetMapping(value = "/sample-types", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getValidSampleTypes() {
+        List<Map<String, String>> sampleTypes = tbManifestImportService.getValidTbSampleTypes();
+        Map<String, Object> response = new HashMap<>();
+        response.put("sampleTypes", sampleTypes);
+        response.put("total", sampleTypes.size());
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * Preview TB manifest CSV for a notebook entry. POST
@@ -213,6 +236,60 @@ public class TBManifestImportController extends BaseRestController {
             error.put("error", "Failed to read file: " + e.getMessage());
             return ResponseEntity.badRequest().body(error);
         }
+    }
+
+    /**
+     * Register an individual TB sample for a notebook entry. POST
+     * /rest/notebook/tb/entry/{entryId}/samples/register
+     *
+     * @param entryId     the notebook entry ID
+     * @param form        the individual sample form data
+     * @param httpRequest for getting user session
+     * @return creation result with accession number
+     */
+    @PostMapping(value = "/entry/{entryId}/samples/register", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> registerIndividualSample(@PathVariable("entryId") Integer entryId,
+            @Valid @RequestBody TBIndividualSampleForm form, HttpServletRequest httpRequest) {
+
+        // Verify entry exists
+        java.util.Optional<org.openelisglobal.notebook.valueholder.NotebookEntry> optEntry = notebookEntryService
+                .getMatch("id", entryId);
+        if (optEntry.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String sysUserId = getSysUserId(httpRequest);
+        if (sysUserId == null) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", "User session not found");
+            return ResponseEntity.status(401).body(error);
+        }
+
+        // Convert form to a TBManifestRow and reuse the sample creation service
+        TBManifestImportService.TBManifestRow row = form.toManifestRow();
+        RowCreationResult result = tbSampleCreationService.createSamplesForRow(entryId, row, sysUserId);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", result.success());
+        response.put("entryId", entryId);
+
+        if (result.success()) {
+            response.put("totalCreated", result.createdSamples().size());
+            response.put("createdAccessionNumbers", result.accessionNumbers());
+            response.put("createdSamples", result.createdSamples().stream().map(sample -> {
+                Map<String, Object> sampleMap = new HashMap<>();
+                sampleMap.put("id", sample.getId());
+                sampleMap.put("externalId", sample.getExternalId());
+                sampleMap.put("specimenType",
+                        sample.getTypeOfSample() != null ? sample.getTypeOfSample().getDescription() : null);
+                return sampleMap;
+            }).collect(Collectors.toList()));
+        } else {
+            response.put("error", result.errorMessage());
+        }
+
+        return result.success() ? ResponseEntity.ok(response) : ResponseEntity.badRequest().body(response);
     }
 
     @Override

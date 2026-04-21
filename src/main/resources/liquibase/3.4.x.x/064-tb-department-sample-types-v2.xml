@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- ======================================================== -->
+    <!-- LINK TB SAMPLE TYPES TO TUBERCULOSIS LABORATORY          -->
+    <!-- Uses the department_sample_type table to link sample      -->
+    <!-- types to the Tuberculosis Laboratory test section for     -->
+    <!-- specimen type validation in manifest imports and          -->
+    <!-- individual sample registration.                          -->
+    <!-- ======================================================== -->
+
+    <changeSet id="link-tb-dept-v2-sputum" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'sputum'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Sputum to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 1, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'sputum';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-bronchoalveolar-lavage" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'bronchoalveolar lavage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Bronchoalveolar Lavage (BAL) to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 2, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'bronchoalveolar lavage';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-pleural-fluid" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'pleural fluid'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Pleural Fluid to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 3, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'pleural fluid';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-cerebrospinal-fluid" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'cerebrospinal fluid'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Cerebrospinal Fluid to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 4, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'cerebrospinal fluid';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-tissue" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'tissue'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Tissue to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 5, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'tissue';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-body-fluid" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'body fluid'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Body Fluid to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 6, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'body fluid';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-urine" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'urine'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Urine to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 7, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'urine';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-stool" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'stool'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Stool to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 8, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'stool';
+        </sql>
+    </changeSet>
+
+    <changeSet id="link-tb-dept-v2-lymph-node" author="openelis-tb">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="department_sample_type" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.test_section WHERE name = 'Tuberculosis Laboratory'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.department_sample_type dst
+                JOIN clinlims.test_section ts ON dst.test_section_id = ts.id
+                JOIN clinlims.type_of_sample tos ON dst.sample_type_id = tos.id
+                WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'lymph node'
+            </sqlCheck>
+        </preConditions>
+        <comment>Link Lymph Node to Tuberculosis Laboratory department</comment>
+        <sql>
+            INSERT INTO clinlims.department_sample_type (id, test_section_id, sample_type_id, is_active, sort_order, lastupdated)
+            SELECT nextval('clinlims.department_sample_type_seq'), ts.id, tos.id, 'Y', 9, now()
+            FROM clinlims.test_section ts, clinlims.type_of_sample tos
+            WHERE ts.name = 'Tuberculosis Laboratory' AND LOWER(tos.description) = 'lymph node';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

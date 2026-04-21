@@ -2,6 +2,7 @@ package org.openelisglobal.notebook.service;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.notebook.form.TBManifestImportForm;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
@@ -106,4 +107,11 @@ public interface TBManifestImportService {
      * @return the formatted external ID
      */
     String generateExternalId(String sampleId, int sequenceNumber);
+
+    /**
+     * Get valid sample types for the TB laboratory.
+     *
+     * @return List of maps containing sample type info (id, description)
+     */
+    List<Map<String, String>> getValidTbSampleTypes();
 }

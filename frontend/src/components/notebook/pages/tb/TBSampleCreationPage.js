@@ -14,7 +14,7 @@ import {
   Tag,
   Modal,
 } from "@carbon/react";
-import { Upload, Checkmark, Printer, DataShare } from "@carbon/react/icons";
+import { Upload, Checkmark, Printer, DataShare, Add } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
@@ -23,6 +23,7 @@ import {
 import config from "../../../../config.json";
 import SampleGrid from "../../workflow/SampleGrid";
 import TBManifestImportModal from "../../workflow/TBManifestImportModal";
+import TBIndividualSampleRegistrationModal from "../../workflow/TBIndividualSampleRegistrationModal";
 import BiorepoSampleImportPage from "../common/BiorepoSampleImportPage";
 import "../../workflow/NotebookWorkflow.css";
 
@@ -64,6 +65,7 @@ function TBSampleCreationPage({
   const [successMessage, setSuccessMessage] = useState(null);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [biorepoImportOpen, setBiorepoImportOpen] = useState(false);
 
   // Load samples for this page
@@ -131,6 +133,14 @@ function TBSampleCreationPage({
 
   const handleImportSuccess = useCallback(() => {
     setImportModalOpen(false);
+    loadPageSamples();
+    if (onProgressUpdate) {
+      onProgressUpdate();
+    }
+  }, [loadPageSamples, onProgressUpdate]);
+
+  const handleRegisterSuccess = useCallback(() => {
+    setRegisterModalOpen(false);
     loadPageSamples();
     if (onProgressUpdate) {
       onProgressUpdate();
@@ -343,7 +353,7 @@ function TBSampleCreationPage({
         <p className="page-description">
           <FormattedMessage
             id="notebook.page.tb.sampleAccession.description"
-            defaultMessage="Import TB samples from delivery manifest with complete metadata. Select samples and mark as Verified to proceed to Quality Check."
+            defaultMessage="Register individual TB samples or import from delivery manifest with complete metadata. Select samples and mark as Verified to proceed to Quality Check."
           />
         </p>
       </div>
@@ -394,6 +404,18 @@ function TBSampleCreationPage({
           <FormattedMessage
             id="notebook.page.tb.importFromBiorepo"
             defaultMessage="Import from Biorepository"
+          />
+        </Button>
+
+        <Button
+          kind="primary"
+          size="sm"
+          renderIcon={Add}
+          onClick={() => setRegisterModalOpen(true)}
+        >
+          <FormattedMessage
+            id="notebook.page.tb.registerSample"
+            defaultMessage="Register Sample"
           />
         </Button>
 
@@ -484,7 +506,7 @@ function TBSampleCreationPage({
               <p>
                 <FormattedMessage
                   id="notebook.page.tb.pendingSamples.empty"
-                  defaultMessage="No pending samples. Import a delivery manifest to add samples."
+                  defaultMessage="No pending samples. Register a sample or import a delivery manifest to add samples."
                 />
               </p>
             </div>
@@ -549,11 +571,19 @@ function TBSampleCreationPage({
           <p>
             <FormattedMessage
               id="notebook.page.tb.empty"
-              defaultMessage="No samples have been added yet. Import a delivery manifest to add samples with complete TB metadata."
+              defaultMessage="No samples have been added yet. Register an individual sample or import a delivery manifest to add samples with complete TB metadata."
             />
           </p>
         </div>
       )}
+
+      {/* Individual Sample Registration Modal */}
+      <TBIndividualSampleRegistrationModal
+        open={registerModalOpen}
+        onClose={() => setRegisterModalOpen(false)}
+        entryId={entryId}
+        onRegisterSuccess={handleRegisterSuccess}
+      />
 
       {/* Manifest Import Modal */}
       <TBManifestImportModal

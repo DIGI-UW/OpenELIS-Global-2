@@ -67,7 +67,7 @@ public class DepartmentSampleTypeDAOImpl extends BaseDAOImpl<DepartmentSampleTyp
     @Transactional(readOnly = true)
     public List<DepartmentSampleType> getActiveByTestSectionId(String testSectionId) throws LIMSRuntimeException {
         String sql = "FROM DepartmentSampleType dst " + "WHERE dst.testSectionId = :testSectionId "
-                + "AND dst.isActive = true " + "ORDER BY dst.sortOrder";
+                + "AND dst.isActive = 'Y' " + "ORDER BY dst.sortOrder";
         try {
             Query<DepartmentSampleType> query = entityManager.unwrap(Session.class).createQuery(sql,
                     DepartmentSampleType.class);
