@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="qc-add-correction-audit-columns" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+
+        <comment>
+            Persist correction workflow audit fields so old/new coordinate, user,
+            timestamp, and reason are durable across UPDATE_LOCATION,
+            REASSIGN_POSITION, and MARK_MISSING actions.
+        </comment>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_action_type" type="VARCHAR(50)"/>
+        </addColumn>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_old_coordinate" type="TEXT"/>
+        </addColumn>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_new_coordinate" type="TEXT"/>
+        </addColumn>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_reason" type="TEXT"/>
+        </addColumn>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_by_user" type="VARCHAR(36)"/>
+        </addColumn>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="correction_timestamp" type="TIMESTAMP"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

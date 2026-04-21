@@ -49,11 +49,21 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
      * Types of discrepancies that can be found during QC inspection.
      */
     public enum DiscrepancyType {
-        MISSING_SAMPLE("Missing Sample"), WRONG_SAMPLE_IN_POSITION("Wrong Sample In Position"),
-        MISPLACED_ITEM("Misplaced Item (Found Elsewhere)"),
-        EMPTY_POSITION_REGISTERED_OCCUPIED("Empty Position But Registered Occupied"), LABELING_ERROR("Labeling Error"),
-        BOX_RACK_MISPLACEMENT("Box/Rack Misplacement"), DAMAGED_LABEL("Damaged/Illegible Label"),
-        CONTAINER_DAMAGE("Container Damage"), VOLUME_DISCREPANCY("Volume Discrepancy"), OTHER("Other");
+        // Document-aligned core discrepancy classes
+        SAMPLE_MISSING("Sample missing"),
+        WRONG_SAMPLE_IN_POSITION("Wrong sample in position"),
+        MISPLACED_SAMPLE_FOUND("Misplaced sample (found elsewhere)"),
+        EMPTY_POSITION_REGISTERED("Empty position but registered as occupied"),
+        EMPTY_POSITION_REGISTERED_OCCUPIED("Empty Position But Registered Occupied"),
+        LABELING_ERROR("Labeling error"),
+        BOX_RACK_MISPLACEMENT("Box/rack misplacement"),
+        // Legacy values retained for backward compatibility with existing records
+        MISSING_SAMPLE("Missing Sample"),
+        DAMAGED_LABEL("Damaged/Illegible Label"),
+        MISPLACED_ITEM("Misplaced Item (wrong position)"),
+        CONTAINER_DAMAGE("Container Damage"),
+        VOLUME_DISCREPANCY("Volume Discrepancy"),
+        OTHER("Other");
 
         private final String displayValue;
 
@@ -71,6 +81,31 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
         public static DiscrepancyType fromString(String value) {
             if (value == null || value.trim().isEmpty()) {
                 return null;
+            }
+            String normalized = value.trim().toUpperCase();
+            switch (normalized) {
+            case "SAMPLE_MISSING":
+            case "MISSING_SAMPLE":
+                return SAMPLE_MISSING;
+            case "WRONG_SAMPLE_IN_POSITION":
+            case "WRONG_SAMPLE":
+                return WRONG_SAMPLE_IN_POSITION;
+            case "MISPLACED_SAMPLE_FOUND":
+            case "MISPLACED_SAMPLE_FOUND_ELSEWHERE":
+            case "MISPLACED_ITEM":
+                return MISPLACED_SAMPLE_FOUND;
+            case "EMPTY_POSITION_REGISTERED":
+            case "EMPTY_POSITION_BUT_REGISTERED_AS_OCCUPIED":
+                return EMPTY_POSITION_REGISTERED;
+            case "LABELING_ERROR":
+            case "DAMAGED_LABEL":
+                return LABELING_ERROR;
+            case "BOX_RACK_MISPLACEMENT":
+            case "BOX_OR_RACK_MISPLACEMENT":
+            case "CONTAINER_DAMAGE":
+                return BOX_RACK_MISPLACEMENT;
+            default:
+                break;
             }
             for (DiscrepancyType type : values()) {
                 if (type.name().equalsIgnoreCase(value)) {
@@ -144,6 +179,38 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     @Column(name = "expected_coordinate_snapshot", length = 512)
     private String expectedCoordinateSnapshot;
+
+    // ========================================
+    // Expected coordinate snapshot at inspection time
+    // ========================================
+
+    @Column(name = "expected_location_path", columnDefinition = "TEXT")
+    private String expectedLocationPath;
+
+    @Column(name = "expected_position_coordinate", length = 50)
+    private String expectedPositionCoordinate;
+
+    // ========================================
+    // Correction workflow audit fields
+    // ========================================
+
+    @Column(name = "correction_action_type", length = 50)
+    private String correctionActionType;
+
+    @Column(name = "correction_old_coordinate", columnDefinition = "TEXT")
+    private String correctionOldCoordinate;
+
+    @Column(name = "correction_new_coordinate", columnDefinition = "TEXT")
+    private String correctionNewCoordinate;
+
+    @Column(name = "correction_reason", columnDefinition = "TEXT")
+    private String correctionReason;
+
+    @Column(name = "correction_by_user", length = 36)
+    private String correctionByUser;
+
+    @Column(name = "correction_timestamp")
+    private Timestamp correctionTimestamp;
 
     // ========================================
     // Inspection Metadata
@@ -291,6 +358,70 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     public void setExpectedCoordinateSnapshot(String expectedCoordinateSnapshot) {
         this.expectedCoordinateSnapshot = expectedCoordinateSnapshot;
+    }
+
+    public String getExpectedLocationPath() {
+        return expectedLocationPath;
+    }
+
+    public void setExpectedLocationPath(String expectedLocationPath) {
+        this.expectedLocationPath = expectedLocationPath;
+    }
+
+    public String getExpectedPositionCoordinate() {
+        return expectedPositionCoordinate;
+    }
+
+    public void setExpectedPositionCoordinate(String expectedPositionCoordinate) {
+        this.expectedPositionCoordinate = expectedPositionCoordinate;
+    }
+
+    public String getCorrectionActionType() {
+        return correctionActionType;
+    }
+
+    public void setCorrectionActionType(String correctionActionType) {
+        this.correctionActionType = correctionActionType;
+    }
+
+    public String getCorrectionOldCoordinate() {
+        return correctionOldCoordinate;
+    }
+
+    public void setCorrectionOldCoordinate(String correctionOldCoordinate) {
+        this.correctionOldCoordinate = correctionOldCoordinate;
+    }
+
+    public String getCorrectionNewCoordinate() {
+        return correctionNewCoordinate;
+    }
+
+    public void setCorrectionNewCoordinate(String correctionNewCoordinate) {
+        this.correctionNewCoordinate = correctionNewCoordinate;
+    }
+
+    public String getCorrectionReason() {
+        return correctionReason;
+    }
+
+    public void setCorrectionReason(String correctionReason) {
+        this.correctionReason = correctionReason;
+    }
+
+    public String getCorrectionByUser() {
+        return correctionByUser;
+    }
+
+    public void setCorrectionByUser(String correctionByUser) {
+        this.correctionByUser = correctionByUser;
+    }
+
+    public Timestamp getCorrectionTimestamp() {
+        return correctionTimestamp;
+    }
+
+    public void setCorrectionTimestamp(Timestamp correctionTimestamp) {
+        this.correctionTimestamp = correctionTimestamp;
     }
 
     public String getInspectorName() {

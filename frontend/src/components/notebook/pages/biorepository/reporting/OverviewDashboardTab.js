@@ -128,6 +128,14 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
   }
 
   const { capacity, aging, qc, retrieval } = dashboardData;
+  const escalationSignals = qc?.escalationSignals || {};
+  const failureResolutionSummary = qc?.failureResolutionSummary || {};
+  const triggeredRules = Array.isArray(escalationSignals.triggeredRules)
+    ? escalationSignals.triggeredRules
+    : [];
+  const recommendedActions = Array.isArray(escalationSignals.recommendedActions)
+    ? escalationSignals.recommendedActions
+    : [];
 
   return (
     <div className="overview-dashboard-tab" style={{ padding: "1.5rem" }}>
@@ -221,7 +229,9 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                 margin: "0.5rem 0 0 0",
               }}
             >
-              {qc?.complianceRate ? `${qc.complianceRate.toFixed(1)}%` : "N/A"}
+              {Number.isFinite(Number(qc?.passRate ?? qc?.complianceRate))
+                ? `${Number(qc?.passRate ?? qc?.complianceRate).toFixed(1)}%`
+                : "N/A"}
             </h2>
             <p
               style={{
@@ -232,12 +242,24 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
             >
               <FormattedMessage
                 id="biorepository.reporting.kpi.qcInspections"
-                defaultMessage="{passed} of {total} inspections passed"
+                defaultMessage="{passed} of {total} inspections passed | {failed} failed"
                 values={{
                   passed: qc?.passedInspections || 0,
                   total: qc?.totalInspections || 0,
+                  failed: (qc?.failCount ?? qc?.failedInspections) || 0,
                 }}
               />
+            </p>
+            <p
+              style={{
+                fontSize: "0.75rem",
+                color: triggeredRules.length ? "#da1e28" : "#525252",
+                marginTop: "0.25rem",
+              }}
+            >
+              {triggeredRules.length
+                ? `Escalation: ${triggeredRules.join(", ")}`
+                : "Escalation: none triggered"}
             </p>
           </Tile>
         </Column>
@@ -417,6 +439,38 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                       values={{ count: retrieval?.overdueReturns || 0 }}
                     />
                   </li>
+                  <li>
+                    {`Storage utilization (weighted): ${Number.isFinite(Number(capacity?.averageUtilization)) ? Number(capacity.averageUtilization).toFixed(1) : "N/A"}% across ${capacity?.totalDevices ?? 0} active devices`}
+                  </li>
+                  <li>
+                    {`QC fail rate: ${Number.isFinite(Number(escalationSignals.batchFailRatePercent)) ? Number(escalationSignals.batchFailRatePercent).toFixed(1) : "N/A"}% (threshold ${Number.isFinite(Number(escalationSignals.batchFailRateThresholdPercent)) ? Number(escalationSignals.batchFailRateThresholdPercent).toFixed(1) : "5.0"}%)`}
+                  </li>
+                  <li>
+                    {`Repeated failure flags (box/rack): ${
+                      escalationSignals.repeatedFailureInSameBoxOrRack
+                        ? "Yes"
+                        : "No"
+                    }`}
+                  </li>
+                  <li>
+                    {`Flagged freezers: ${
+                      Array.isArray(escalationSignals.flaggedFreezers)
+                        ? escalationSignals.flaggedFreezers.length
+                        : 0
+                    }`}
+                  </li>
+                  <li>
+                    {`Failed outcomes corrected vs unresolved: ${
+                      failureResolutionSummary?.correctedVsUnresolved?.corrected ??
+                      0
+                    } / ${
+                      failureResolutionSummary?.correctedVsUnresolved
+                        ?.unresolved ?? 0
+                    }`}
+                  </li>
+                  {recommendedActions.length > 0 && (
+                    <li>{`Recommended actions: ${recommendedActions.join("; ")}`}</li>
+                  )}
                 </ul>
               </Column>
             </Grid>

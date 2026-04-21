@@ -56,6 +56,17 @@ public interface SampleStorageService {
     String moveSampleItemWithLocation(String sampleItemId, String locationId, String locationType,
             String positionCoordinate, String reason, String notes);
 
+    /**
+     * Mark a sample item as missing by clearing its current assignment location while
+     * retaining the assignment row for audit/traceability.
+     *
+     * @param sampleItemId SampleItem ID
+     * @param reason       Required reason for missing state
+     * @param notes        Optional notes
+     * @return Map containing movementId, status, and updatedLocation details
+     */
+    java.util.Map<String, Object> markSampleItemMissing(String sampleItemId, String reason, String notes);
+
     java.util.Map<String, Object> updateAssignmentMetadata(String sampleItemId, String positionCoordinate,
             String notes);
 

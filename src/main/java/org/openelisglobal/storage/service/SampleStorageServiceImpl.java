@@ -287,6 +287,84 @@ public class SampleStorageServiceImpl implements SampleStorageService {
 
     @Override
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public Map<String, Object> markSampleItemMissing(String sampleItemId, String reason, String notes) {
+        try {
+            if (sampleItemId == null || sampleItemId.trim().isEmpty()) {
+                throw new LIMSRuntimeException("SampleItem ID is required");
+            }
+            if (reason == null || reason.trim().isEmpty()) {
+                throw new LIMSRuntimeException("Reason is required when marking sample as missing");
+            }
+
+            SampleItem sampleItem = resolveSampleItem(sampleItemId);
+            SampleStorageAssignment existingAssignment = sampleStorageAssignmentDAO.findBySampleItemId(sampleItem.getId());
+
+            Integer previousLocationId = null;
+            String previousLocationType = null;
+            String previousPositionCoordinate = null;
+            String previousLocationPath = null;
+
+            if (existingAssignment != null) {
+                previousLocationId = existingAssignment.getLocationId();
+                previousLocationType = existingAssignment.getLocationType();
+                previousPositionCoordinate = existingAssignment.getPositionCoordinate();
+                previousLocationPath = buildHierarchicalPathForAssignment(existingAssignment);
+
+                existingAssignment.setLocationId(null);
+                existingAssignment.setLocationType(null);
+                existingAssignment.setPositionCoordinate(null);
+                existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
+
+                String trimmedNotes = notes != null ? notes.trim() : null;
+                if (trimmedNotes == null || trimmedNotes.isEmpty()) {
+                    existingAssignment.setNotes("MARK_MISSING: " + reason.trim());
+                } else {
+                    existingAssignment.setNotes(trimmedNotes);
+                }
+
+                sampleStorageAssignmentDAO.update(existingAssignment);
+            }
+
+            Integer movementIdInt = null;
+            if (previousLocationId != null && previousLocationType != null) {
+                SampleStorageMovement movement = new SampleStorageMovement();
+                movement.setSampleItem(sampleItem);
+                movement.setPreviousLocationId(previousLocationId);
+                movement.setPreviousLocationType(previousLocationType);
+                movement.setPreviousPositionCoordinate(previousPositionCoordinate);
+                movement.setNewLocationId(null);
+                movement.setNewLocationType(null);
+                movement.setNewPositionCoordinate(null);
+                movement.setMovementDate(new Timestamp(System.currentTimeMillis()));
+                movement.setReason("MARK_MISSING: " + reason.trim());
+                movement.setMovedByUserId(1);
+                movementIdInt = sampleStorageMovementDAO.insert(movement);
+            }
+
+            Map<String, Object> updatedLocation = new HashMap<>();
+            updatedLocation.put("hierarchicalPath", "Missing (not found during QC)");
+            updatedLocation.put("positionCoordinate", null);
+            updatedLocation.put("status", "MISSING");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("movementId", movementIdInt != null ? movementIdInt.toString() : null);
+            response.put("sampleItemId", sampleItem.getId());
+            response.put("status", "MISSING");
+            response.put("reason", reason.trim());
+            response.put("updatedLocation", updatedLocation);
+            if (previousLocationPath != null) {
+                response.put("previousLocation", previousLocationPath);
+            }
+
+            return response;
+        } catch (StaleObjectStateException e) {
+            throw new LIMSRuntimeException("Sample was just modified by another user. Please refresh and try again.",
+                    e);
+        }
+    }
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public Map<String, Object> disposeSampleItem(String sampleItemId, String reason, String method, String notes) {
         try {
             // Validate inputs
