@@ -37,21 +37,65 @@ import BoxDetails from "./components/shipment/BoxDetails";
 import ReceptionWorkflow from "./components/shipment/ReceptionWorkflow";
 import Login from "./components/Login";
 import LandingPage from "./components/home/LandingPage";
-const AnalyzersPage = React.lazy(() => import("./pages/AnalyzersPage"));
-const FieldMapping = React.lazy(
+
+/**
+ * Wraps `React.lazy` with retry-on-failure semantics for the dynamic
+ * `import()` factory. Handles transient chunk-fetch failures — e.g.
+ * Chrome's `ERR_NETWORK_CHANGED` when the browser's network state
+ * flickers during a chunk request, or any single failed resource fetch
+ * that leaves the lazy component permanently broken until page reload.
+ *
+ * Without retry, a single chunk-fetch blip crashes the route and
+ * surfaces as an E2E failure: the RouteErrorBoundary catches the
+ * `TypeError: Failed to fetch dynamically imported module` and shows
+ * its "module could not be loaded" fallback. Seen as a recurring
+ * develop-CI flake on AnalyzerForm chunk fetch; the retry wrapper
+ * gives the browser three chances with backoff before giving up.
+ *
+ * Backoff is intentionally short (0.5s/1s/1.5s): the real failures
+ * are transient TCP / Docker-network conditions that resolve in
+ * milliseconds. Longer waits would harm real error reporting when the
+ * chunk is genuinely missing (e.g., deploy mismatch).
+ */
+function lazyWithRetry(factory, retries = 3, backoffMs = 500) {
+  // eslint-disable-next-line local/no-raw-react-lazy --
+  // This IS the lazyWithRetry helper: it legitimately wraps React.lazy
+  // with retry semantics. The rule flags direct callers elsewhere.
+  return React.lazy(async () => {
+    let lastError;
+    for (let attempt = 0; attempt < retries; attempt += 1) {
+      try {
+        return await factory();
+      } catch (err) {
+        lastError = err;
+        if (attempt < retries - 1) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, backoffMs * (attempt + 1)),
+          );
+        }
+      }
+    }
+    throw lastError;
+  });
+}
+
+const AnalyzersPage = lazyWithRetry(() => import("./pages/AnalyzersPage"));
+const FieldMapping = lazyWithRetry(
   () => import("./components/analyzers/FieldMapping/FieldMapping"),
 );
-const ErrorDashboardPage = React.lazy(
+const ErrorDashboardPage = lazyWithRetry(
   () => import("./pages/ErrorDashboardPage"),
 );
-const CustomFieldTypeManagementPage = React.lazy(
+const CustomFieldTypeManagementPage = lazyWithRetry(
   () => import("./pages/CustomFieldTypeManagementPage"),
 );
-const AnalyzerTypesPage = React.lazy(() => import("./pages/AnalyzerTypesPage"));
-const AnalyzerFormPage = React.lazy(
+const AnalyzerTypesPage = lazyWithRetry(
+  () => import("./pages/AnalyzerTypesPage"),
+);
+const AnalyzerFormPage = lazyWithRetry(
   () => import("./components/analyzers/AnalyzerForm/AnalyzerForm"),
 );
-const QcRulePage = React.lazy(
+const QcRulePage = lazyWithRetry(
   () => import("./components/analyzers/QcRules/QcRuleBuilderModal"),
 );
 import {
@@ -81,7 +125,7 @@ import RoutineReports from "./components/reports/Routine";
 import StudyReports from "./components/reports/Study";
 import TATReport from "./components/reports/tat";
 import StudyValidation from "./components/validation/Index";
-const AnalyserResultIndex = React.lazy(
+const AnalyserResultIndex = lazyWithRetry(
   () => import("./components/analyserResults/Index"),
 );
 import PathologyDashboard from "./components/pathology/PathologyDashboard";
@@ -92,7 +136,7 @@ import CytologyCaseView from "./components/cytology/CytologyCaseView";
 import PathologyCaseView from "./components/pathology/PathologyCaseView";
 import ImmunohistochemistryDashboard from "./components/immunohistochemistry/ImmunohistochemistryDashboard";
 import ImmunohistochemistryCaseView from "./components/immunohistochemistry/ImmunohistochemistryCaseView";
-const RoutedResultsViewer = React.lazy(
+const RoutedResultsViewer = lazyWithRetry(
   () => import("./components/patient/resultsViewer/results-viewer.tsx"),
 );
 import EOrderPage from "./components/eOrder/Index";
@@ -107,26 +151,26 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
-const FreezerMonitoringDashboard = React.lazy(
+const FreezerMonitoringDashboard = lazyWithRetry(
   () => import("./components/coldStorage/FreezerMonitoringDashboard"),
 );
 import ProgramDashboard from "./components/program/programDashboard.jsx";
 import ProgramCaseView from "./components/program/programCaseView.jsx";
 import SampleManagement from "./components/sampleManagement/SampleManagement";
-const ShipmentReport = React.lazy(
+const ShipmentReport = lazyWithRetry(
   () => import("./components/shipment/ShipmentReport"),
 );
 
-const GenericSampleOrder = React.lazy(
+const GenericSampleOrder = lazyWithRetry(
   () => import("./components/genericSample/GenericSampleOrder"),
 );
-const GenericSampleOrderEdit = React.lazy(
+const GenericSampleOrderEdit = lazyWithRetry(
   () => import("./components/genericSample/GenericSampleOrderEdit"),
 );
-const GenericSampleOrderImport = React.lazy(
+const GenericSampleOrderImport = lazyWithRetry(
   () => import("./components/genericSample/GenericSampleOrderImport"),
 );
-const GenericSampleResults = React.lazy(
+const GenericSampleResults = lazyWithRetry(
   () => import("./components/genericSample/GenericSampleResults"),
 );
 

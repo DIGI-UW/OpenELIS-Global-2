@@ -1,10 +1,4 @@
-import {
-  expect,
-  test,
-  Page,
-  Locator,
-  TestInfo,
-} from "../../../helpers/test-base";
+import { expect, test, Page, Locator } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
 import {

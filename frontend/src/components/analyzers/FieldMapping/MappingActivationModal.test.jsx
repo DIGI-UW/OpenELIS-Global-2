@@ -3,7 +3,7 @@
  *
  * References:
  * - Testing Roadmap: .specify/guides/testing-roadmap.md
- * - Jest Best Practices: .specify/guides/jest-best-practices.md
+ * - Vitest Best Practices: .specify/guides/vitest-best-practices.md
  *
  * TDD Workflow (MANDATORY):
  * - RED: Write failing test first
