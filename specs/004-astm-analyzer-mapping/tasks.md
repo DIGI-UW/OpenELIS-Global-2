@@ -151,7 +151,7 @@ SiteInformation (`clinlims.site_information`) keys.
       `tools/analyzer-mock-server` (expose port 5000 for analyzer simulation) -
       Configure network connectivity to allow OpenELIS → Bridge → Mock Server
       bi-directional communication - Verify services start with
-      `docker compose -f compose.override.yaml up -d` and check logs for
+      `docker compose up -d` and check logs for
       successful startup - This infrastructure supports query analyzer testing
       (FR-002) and ASTM message processing workflows
 

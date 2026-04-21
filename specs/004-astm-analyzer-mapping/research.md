@@ -772,7 +772,7 @@ seamless communication between analyzers and OpenELIS.
   - Logging Level: `DEBUG` for development troubleshooting
 - **Integration Points**:
   - Bridge starts automatically with
-    `docker compose -f compose.override.yaml up -d`
+    `docker compose up -d`
   - Bridge accessible at `172.20.1.101:5001` from within Docker network
   - Analyzers configured with bridge IP address for TCP communication
   - OpenELIS receives HTTP POST requests from bridge at `/analyzer/astm`

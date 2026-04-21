@@ -15,7 +15,7 @@ storage.openelis-global.org domain using a simplified standalone approach.
 2. **Start the proxy service (required for ACME challenge):**
 
    ```bash
-   docker compose -f compose.override.yaml up -d proxy
+   docker compose up -d proxy
    ```
 
 3. **Generate Let's Encrypt certificates:**
@@ -220,7 +220,7 @@ as it contains your SSL certificates.
 To run without Let's Encrypt support (using self-signed certificates):
 
 ```bash
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 ```
 
 The proxy will automatically fall back to self-signed certificates if Let's

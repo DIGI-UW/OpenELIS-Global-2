@@ -48,7 +48,7 @@ cd dataexport && mvn clean install -DskipTests && cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Start dev environment
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 ```
 
 ### 2. Feature 004 Verification
@@ -69,7 +69,7 @@ For development without physical analyzers:
 
 ```bash
 # Bring up OpenELIS with the ASTM/HL7 simulator (from repo root)
-docker compose -f compose.override.yaml -f docker-compose.astm-test.yml up -d
+docker compose -f docker-compose.astm-test.yml up -d
 
 # ASTM simulator: TCP port 5000 (openelis-astm-simulator)
 # OpenELIS: https://localhost/ (or your DOMAIN)
@@ -397,7 +397,7 @@ mvn test -Dtest="org.openelisglobal.analyzer.*Test"
 
 ```bash
 # Run with simulator
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 mvn verify -Pit
 
 # Check integration test coverage

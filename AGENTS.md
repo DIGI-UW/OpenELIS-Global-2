@@ -572,7 +572,7 @@ cd ..
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Start development containers
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 ```
 
 **Access Points:**
@@ -714,7 +714,7 @@ mvn spotless:check
 
 # Hot reload (after code changes)
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 **Frontend:**
@@ -745,16 +745,16 @@ npm run cy:run
 
 ```bash
 # Start development environment
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 
 # Stop all containers
-docker compose -f compose.override.yaml down
+docker compose down
 
 # Rebuild specific container (after code changes)
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 # View logs
-docker compose -f compose.override.yaml logs -f oe.openelis.org
+docker compose logs -f oe.openelis.org
 ```
 
 ### Branch Strategy
@@ -2291,7 +2291,7 @@ mvn spotless:apply && cd frontend && npm run format && cd ..
 
 # Hot reload backend
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 # E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
 npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)

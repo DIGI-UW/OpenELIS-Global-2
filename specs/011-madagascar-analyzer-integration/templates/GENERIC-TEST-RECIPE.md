@@ -474,7 +474,7 @@ ls -la volume/analyzer-imports/genexpert/
 mkdir -p volume/analyzer-imports/{genexpert,fluorocycler,quantstudio}
 
 # Restart OE container to mount volume
-docker compose -f compose.override.yaml restart oe.openelis.org
+docker compose restart oe.openelis.org
 ```
 
 ---

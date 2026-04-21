@@ -100,14 +100,14 @@ Choose command based on `--full-reset` flag:
 - **With `--full-reset`**:
 
   ```bash
-  docker compose -f compose.override.yaml down -v
+  docker compose down -v
   ```
 
   This removes ALL volumes including database data.
 
 - **Without `--full-reset`** (default):
   ```bash
-  docker compose -f compose.override.yaml down
+  docker compose down
   ```
   This preserves database data.
 
@@ -131,7 +131,7 @@ Only if `LETSENCRYPT_DOMAIN` is set and not `localhost`:
 
    - Start proxy first (required for ACME challenge):
      ```bash
-     docker compose -f compose.override.yaml up -d proxy
+     docker compose up -d proxy
      ```
    - Wait 5 seconds for proxy to be ready
    - Run certificate generation:
@@ -156,13 +156,13 @@ Choose compose command based on Let's Encrypt status:
 
 - **Without Let's Encrypt** (localhost or no certs):
   ```bash
-  docker compose -f compose.override.yaml up -d
+  docker compose up -d
   ```
 
 Then force-recreate the webapp container to pick up the new WAR:
 
 ```bash
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 Report container startup status.
@@ -221,7 +221,7 @@ Produce a concise report including:
 **Container Status:**
 
 ```bash
-docker compose -f compose.override.yaml ps --format "table {{.Name}}\t{{.Status}}"
+docker compose ps --format "table {{.Name}}\t{{.Status}}"
 ```
 
 **Access Points:**

@@ -896,7 +896,7 @@ to M5 to allow independent testing
 ### M4 Sign-off Checklist
 
 - [ ] All component tests pass (Java + Python + React)
-- [ ] Full stack starts: `docker compose -f compose.override.yaml up` + Python
+- [ ] Full stack starts: `docker compose up` + Python
       services
 - [ ] Cypress E2E: Basic query returns results
 - [ ] Cypress E2E: JOIN query returns results (FR-015)

@@ -41,7 +41,7 @@ cd catalyst-gateway && poetry run honcho -f ../Procfile.dev start
 ## Prerequisites
 
 - [ ] OpenELIS development environment running
-      (`docker compose -f compose.override.yaml up -d`)
+      (`docker compose up -d`)
 - [ ] Java 21 installed (`java -version` shows 21.x.x)
 - [ ] Python 3.11+ installed (`python3 --version`)
 - [ ] Node.js 16+ installed
@@ -77,7 +77,7 @@ EOF
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # 4. Restart OpenELIS container
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 # 5. Test the endpoint (Stage A: generate SQL, review before execution)
 curl -k -X POST https://localhost/rest/catalyst/query \
@@ -120,7 +120,7 @@ docker compose -f projects/catalyst/catalyst-compose.override.yaml restart catal
 
 # 6. Build and start OpenELIS
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 # 7. Test (generate SQL first, then execute with confirmation)
 curl -k -X POST https://localhost/rest/catalyst/query \
@@ -152,7 +152,7 @@ docker compose -f projects/catalyst/catalyst-compose.override.yaml restart catal
 
 # 7. Build and start OpenELIS
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ---
@@ -247,7 +247,7 @@ mvn spotless:apply
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Restart OpenELIS container
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 # Check logs for startup
 docker logs -f oe.openelis.org 2>&1 | grep -i catalyst
@@ -349,7 +349,7 @@ mvn test -Dtest=CatalystQueryServiceTest
 
 # 4. Build and redeploy
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ### Frontend Changes (React)

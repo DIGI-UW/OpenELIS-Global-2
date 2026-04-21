@@ -213,12 +213,12 @@ describe("Storage Location CRUD", () => {
 
 ```bash
 # Force Liquibase update
-docker compose -f compose.override.yaml exec db psql -U clinlims -c \
+docker compose exec db psql -U clinlims -c \
   "DELETE FROM databasechangelog WHERE id LIKE 'storage-151%';"
 
 # Rebuild and restart
 mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f compose.override.yaml up -d --force-recreate oe.openelis.org
+docker compose up -d --force-recreate oe.openelis.org
 ```
 
 ### Issue: FHIR sync failing

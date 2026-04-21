@@ -34,7 +34,7 @@ fi
 # Check if proxy is running (required for ACME challenge)
 if ! docker ps | grep -q openelisglobal-proxy; then
     echo "ERROR: Proxy container (openelisglobal-proxy) must be running for ACME challenge"
-    echo "Start it with: docker compose -f compose.override.yaml up -d proxy"
+    echo "Start it with: docker compose up -d proxy"
     exit 1
 fi
 

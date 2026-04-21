@@ -31,7 +31,7 @@ grep -A 20 "openelis-analyzer-bridge" compose.override.yaml
 cat volume/astm-bridge/configuration.yml
 
 # Start development environment (includes bridge)
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 
 # Verify bridge container is running
 docker ps | grep astm-bridge
@@ -491,7 +491,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 ### 6.2 Start Development Environment
 
 ```bash
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 ```
 
 ### 6.3 Access Application

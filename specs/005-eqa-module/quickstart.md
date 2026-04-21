@@ -349,7 +349,7 @@ mvn jacoco:report
 
 ```bash
 # From repository root
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 
 # Watch logs
 docker logs -f oe.openelis.org
@@ -373,7 +373,7 @@ After making Java code changes:
 mvn clean install -DskipTests -Dmaven.test.skip=true
 
 # Recreate backend container only
-docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 # Watch logs for startup confirmation
 docker logs -f oe.openelis.org
@@ -913,7 +913,7 @@ ls cypress/screenshots/
 
 1. Edit Java file
 2. `mvn clean install -DskipTests -Dmaven.test.skip=true`
-3. `docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org`
+3. `docker compose up -d --no-deps --force-recreate oe.openelis.org`
 4. Test in browser
 
 **Frontend changes**:

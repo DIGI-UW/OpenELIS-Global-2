@@ -247,7 +247,7 @@ Before starting the services, ensure DNS is configured:
 2. **First-time Certificate Request:**
 
    ```bash
-   docker compose -f compose.override.yaml run --rm certbot certonly \
+   docker compose run --rm certbot certonly \
      --webroot \
      --webroot-path=/var/www/certbot \
      --email your-email@example.com \
@@ -258,7 +258,7 @@ Before starting the services, ensure DNS is configured:
 
 3. **Start Services:**
    ```bash
-   docker compose -f compose.override.yaml up -d
+   docker compose up -d
    ```
 
 #### Step 4: Automatic Renewal Setup
@@ -290,7 +290,7 @@ Add to host crontab (use absolute path or `cd` pattern for reliability):
 
 ```bash
 # Using cd pattern (recommended for cron jobs)
-0 3 * * * cd /path/to/OpenELIS-Global-2 && docker compose -f compose.override.yaml run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f compose.override.yaml restart proxy
+0 3 * * * cd /path/to/OpenELIS-Global-2 && docker compose run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose restart proxy
 
 # OR using absolute paths
 0 3 * * * docker compose -f /path/to/OpenELIS-Global-2/compose.override.yaml run --rm certbot renew --webroot --webroot-path=/var/www/certbot && docker compose -f /path/to/OpenELIS-Global-2/compose.override.yaml restart proxy

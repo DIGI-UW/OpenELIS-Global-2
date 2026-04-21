@@ -58,7 +58,7 @@ cd "$PROJECT_ROOT"
 echo "Step 1: Checking proxy service..."
 if ! docker ps | grep -q openelisglobal-proxy; then
     echo_warn "Proxy service is not running. Starting it..."
-    docker compose -f compose.override.yaml up -d proxy
+    docker compose up -d proxy
     echo_info "Waiting for proxy to be ready..."
     sleep 5
 else

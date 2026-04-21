@@ -259,7 +259,7 @@ docker logs -f openelisglobal-webapp
 docker logs --tail 50 openelisglobal-webapp
 
 # Restart container if needed
-docker compose -f compose.override.yaml restart oe.openelis.org
+docker compose restart oe.openelis.org
 ```
 
 ---
@@ -277,14 +277,14 @@ docker compose -f compose.override.yaml restart oe.openelis.org
 
 1. Rebuild WAR: `mvn clean install -DskipTests -Dmaven.test.skip=true`
 2. Force recreate container:
-   `docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org`
+   `docker compose up -d --no-deps --force-recreate oe.openelis.org`
 
 ### Frontend Not Updating
 
 1. Check frontend container:
    `docker ps --filter "name=openelisglobal-front-end"`
 2. Restart frontend:
-   `docker compose -f compose.override.yaml restart frontend.openelis.org`
+   `docker compose restart frontend.openelis.org`
 
 ---
 

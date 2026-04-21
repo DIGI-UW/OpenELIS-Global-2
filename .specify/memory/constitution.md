@@ -1525,7 +1525,7 @@ cd dataexport && mvn clean install -DskipTests && cd ..
 mvn clean install -DskipTests
 
 # Start development containers
-docker compose -f compose.override.yaml up -d
+docker compose up -d
 ```
 
 **Access Points**:
@@ -1539,7 +1539,7 @@ docker compose -f compose.override.yaml up -d
 - Frontend: Changes in `frontend/src/` auto-reload (Webpack HMR)
 - Backend: Rebuild WAR (`mvn clean install -DskipTests`) + recreate container:
   ```bash
-  docker compose -f compose.override.yaml up -d --no-deps --force-recreate oe.openelis.org
+  docker compose up -d --no-deps --force-recreate oe.openelis.org
   ```
 
 **Reference**: [dev_setup.md](docs/dev_setup.md)
