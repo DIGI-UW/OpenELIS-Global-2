@@ -1,4 +1,5 @@
 import { Page, expect, Locator } from "@playwright/test";
+import { SHORT_TIMEOUT } from "../helpers/timeouts";
 
 /**
  * Sidenav Page Object - encapsulates sidenav interactions
@@ -118,9 +119,12 @@ export class Sidenav {
   }
 
   /** Navigate to storage section and wait for load */
-  async gotoStorage(path = "samples") {
-    await this.page.goto(`/Storage/${path}`);
+  async gotoStorage(path = "sample-items") {
+    await this.page.goto(`/Storage/${path}`, {
+      waitUntil: "domcontentloaded",
+    });
     await expect(this.page).toHaveURL(new RegExp(`/Storage/${path}`));
+    await expect(this.menuButton).toBeVisible();
   }
 
   /**
@@ -130,7 +134,7 @@ export class Sidenav {
   async hasStorageSubnav(): Promise<boolean> {
     const btn = this.nav.getByRole("button", { name: "Storage", exact: true });
     try {
-      await btn.waitFor({ state: "visible", timeout: 3000 });
+      await btn.waitFor({ state: "visible", timeout: SHORT_TIMEOUT });
       return true;
     } catch {
       return false;
@@ -139,8 +143,11 @@ export class Sidenav {
 
   /** Navigate to freezer monitoring */
   async gotoFreezer(tab = 0) {
-    await this.page.goto(`/FreezerMonitoring?tab=${tab}`);
+    await this.page.goto(`/FreezerMonitoring?tab=${tab}`, {
+      waitUntil: "domcontentloaded",
+    });
     await expect(this.page).toHaveURL(/FreezerMonitoring/);
+    await expect(this.menuButton).toBeVisible();
   }
 
   /**

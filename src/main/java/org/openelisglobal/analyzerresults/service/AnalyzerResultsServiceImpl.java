@@ -7,6 +7,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.analyzerresults.valueholder.SampleGrouping;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
@@ -15,7 +16,6 @@ import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.result.action.util.ResultUtil;
-import org.openelisglobal.result.controller.AnalyzerResultsController.SampleGrouping;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
@@ -60,7 +60,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerResults> getResultsbyAnalyzer(String analyzerId) {
-        return baseObjectDAO.getAllMatchingOrdered("analyzerId", Integer.parseInt(analyzerId), "id", false);
+        return baseObjectDAO.getAllMatchingOrdered("analyzerId", analyzerId, "id", false);
     }
 
     @Override
@@ -69,6 +69,56 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerResults> findWithImportIssues(int limit) {
+        return getBaseObjectDAO().findWithImportIssues(limit);
+    }
+
+    /**
+     * Upsert / dedupe staging persistence for analyzer results.
+     *
+     * <p>
+     * This is the single entry point for every analyzer import path in the system —
+     * legacy plugins (GenericASTM, GenericHL7, GenericFile, per-device plugins
+     * under {@code plugins/analyzers/**}) route through
+     * {@code AnalyzerLineInserter.persistImport()} and the new FHIR bridge path
+     * ({@code AnalyzerFhirImportController.importFhirBundle}) calls it directly.
+     * </p>
+     *
+     * <p>
+     * <b>Dedupe key</b>: {@code (analyzerId, accessionNumber, testName)}. See
+     * {@code AnalyzerResultsDAOImpl.getDuplicateResultByAccessionAndTest}.
+     * </p>
+     *
+     * <p>
+     * <b>Three-case contract</b> (validated by
+     * {@code AnalyzerResultsServiceImplTest}):
+     * </p>
+     * <ol>
+     * <li><b>No previous row</b> — fresh insert, nothing flagged.</li>
+     * <li><b>Exact re-import</b> — previous row with the same key AND
+     * ({@code completeDate} equal OR {@code result} value equal): skip silently.
+     * This makes re-dropping an identical file completely idempotent (the "same
+     * file output twice" scenario).</li>
+     * <li><b>Corrected re-export</b> — previous row with the same key but BOTH
+     * {@code completeDate} AND {@code result} value differ: insert the incoming row
+     * as a linked correction ({@code readOnly=true},
+     * {@code duplicateAnalyzerResultId} backlink on both rows). The staging UI then
+     * shows both rows linked so a tech can pick which to accept. This preserves an
+     * implicit audit trail without a separate history table.</li>
+     * </ol>
+     *
+     * <p>
+     * This contract satisfies the plan <em>mellow-honking-cascade</em> Phase 1.6
+     * upsert invariants — the bridge (DIGI-UW/openelis-analyzer-bridge#34) relies
+     * on it to make the corrected-result workflow observable in the staging UI. Do
+     * not rip out the duplicate-detection block without replacing it with an
+     * equivalent semantic — the bridge's content-hash keyed state store produces
+     * new FHIR POSTs whenever file content changes, and this method is what stops
+     * those from creating duplicate staging rows.
+     * </p>
+     */
+    @Override
     public void insertAnalyzerResults(List<AnalyzerResults> results, String sysUserId) {
         try {
             for (AnalyzerResults result : results) {
@@ -76,15 +126,21 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
                 List<AnalyzerResults> previousResults = baseObjectDAO.getDuplicateResultByAccessionAndTest(result);
                 AnalyzerResults previousResult = null;
 
-                // This next block may seem more complicated then it need be but it covers the
-                // case where there may be a third duplicate
-                // and it covers rereading the same file
+                // Duplicate detection: skip insert if an existing staging entry matches.
+                // Match on timestamp (instrument date) OR result value (re-import of same
+                // data).
+                // This makes re-importing the same file idempotent while still staging
+                // genuinely new results (corrections with different values) for user review.
                 if (previousResults != null) {
                     duplicateByAccessionAndTestOnly = true;
                     for (AnalyzerResults foundResult : previousResults) {
                         previousResult = foundResult;
                         if (foundResult.getCompleteDate() != null
                                 && foundResult.getCompleteDate().equals(result.getCompleteDate())) {
+                            duplicateByAccessionAndTestOnly = false;
+                            break;
+                        }
+                        if (foundResult.getResult() != null && foundResult.getResult().equals(result.getResult())) {
                             duplicateByAccessionAndTestOnly = false;
                             break;
                         }

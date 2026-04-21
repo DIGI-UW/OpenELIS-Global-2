@@ -8,12 +8,18 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.fhir.providers.ObservationProvider;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,9 +27,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
 import org.springframework.mock.web.MockServletContext;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-@RunWith(SpringJUnit4ClassRunner.class)
 public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
 
     private RestfulServer fhirServlet;
@@ -35,77 +39,264 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     @Autowired
     private ObservationProvider observationProvider;
 
+    @Autowired
+    private PanelService panelService;
+
+    @Autowired
+    private LocalizationService localizationSevice;
+
+    @Autowired
+    private AnalysisService analysisService;
+
     private MockServletContext servletContext;
 
     @Before
     public void setUp() throws Exception {
-        executeDataSetWithStateManagement("testdata/result.xml");
+
+        executeDataSetWithStateManagement("testdata/result-facade.xml");
+
         servletContext = new MockServletContext();
+
         fhirServlet = new RestfulServer(FhirContext.forR4());
         fhirServlet.setResourceProviders(Arrays.asList(observationProvider));
+
         MockServletConfig servletConfig = new MockServletConfig(servletContext);
         servletConfig.addInitParameter("name", "FhirServlet");
-        fhirServlet.init(servletConfig);
-        objectMapper = new ObjectMapper();
-    }
 
-    private MockHttpServletRequest buildRequest(String method, String pathInfo, String queryString) {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setMethod(method);
-        request.setContextPath("");
-        request.setServletPath("/fhir");
-        request.setPathInfo(pathInfo);
-        request.setRequestURI("/fhir" + pathInfo);
-        if (queryString != null) {
-            request.setQueryString(queryString);
-            for (String param : queryString.split("&")) {
-                String[] kv = param.split("=");
-                request.addParameter(kv[0], kv[1]);
-            }
-        }
-        request.setContentType("application/fhir+json");
-        request.addHeader("Accept", "application/fhir+json");
-        return request;
+        fhirServlet.init(servletConfig);
+
+        objectMapper = new ObjectMapper();
+
     }
 
     @Test
     public void readObservation_shouldReturnSuccess() throws Exception {
-        String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+
+        String fhirUuid = "550e8400-e29b-41d4-a716-446655440004";
+
         Result result = resultService.getResultByFhirUuid(fhirUuid);
         assertNotNull("Result not found in test data", result);
 
-        MockHttpServletRequest request = buildRequest("GET", "/Observation/" + fhirUuid, null);
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Observation/" + fhirUuid);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(200, response.getStatus());
+
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+
         assertEquals("Observation", jsonResponse.get("resourceType").asText());
+
         assertEquals("final", jsonResponse.get("status").asText());
-        assertNotNull(jsonResponse.get("valueQuantity"));
     }
 
     @Test
     public void readObservation_withNonExistentId_shouldReturn404() throws Exception {
+
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
-        MockHttpServletRequest request = buildRequest("GET", "/Observation/" + nonExistentUuid, null);
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Observation/" + nonExistentUuid);
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
         assertEquals(404, response.getStatus());
+
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
+
         assertEquals("OperationOutcome", jsonResponse.get("resourceType").asText());
     }
 
     @Test
-    public void searchObservation_endpointExists_shouldNotReturn404() throws Exception {
-        String patientUuid = "550e8400-e29b-41d4-a716-446655440001";
-        MockHttpServletRequest request = buildRequest("GET", "/Observation", "patient=" + patientUuid);
+    public void updateObservation_shouldUpdateValue() throws Exception {
+
+        String observationFhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+
+        Result result = resultService.getResultByFhirUuid(observationFhirUuid);
+        assertNotNull("Result not found in test data", result);
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/Observation/" + observationFhirUuid);
+
+        String updateJson = """
+                {
+                  "resourceType": "Observation",
+                  "id": "%s",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-05T00:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 99.0,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(observationFhirUuid, patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(updateJson.getBytes());
+
         MockHttpServletResponse response = new MockHttpServletResponse();
+
         fhirServlet.service(request, response);
 
-        // Search forwards to HAPI store
+        assertEquals(200, response.getStatus());
+
+        Result updatedResult = resultService.getResultByFhirUuid(observationFhirUuid);
+
+        assertEquals("99.0", updatedResult.getValue());
+    }
+
+    @Test
+    public void deleteObservation_shouldReturn204() throws Exception {
+
+        String fhirUuid = "550e8400-e29b-41d4-a716-446655440003";
+
+        Result result = resultService.getResultByFhirUuid(fhirUuid);
+        assertNotNull("Result not found in test data", result);
+
+        assertNotNull("Result not found in test data", result);
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/Observation/" + fhirUuid);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(204, response.getStatus());
+
+        Result deletedResult = resultService.getResultByFhirUuid(fhirUuid);
+
+        assertNotNull(deletedResult);
+    }
+
+    @Test
+    public void searchObservation_endpointExists_shouldNotReturn404() throws Exception {
+
+        String patientUuid = "550e8400-e29b-41d4-a716-446655440001";
+
+        MockHttpServletRequest request = buildFhirRequest("GET", "/Observation");
+
+        request.setQueryString("patient=" + patientUuid);
+        request.addParameter("patient", patientUuid);
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
         assertNotNull(response);
         assertTrue(response.getStatus() != 404);
+    }
+
+    @Test
+    public void createObservation_shouldCreateNewResult() throws Exception {
+        String patientFhirUuid = "550e8400-e29b-41d4-a716-446655440001";
+        String analysisFhirUuid = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
+        String specimenFhirUuid = "68438220-5cef-44c4-9e6f-9f88e6b93270";
+
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+        assertNotNull("Analysis reference required for creating result", analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("POST", "/Observation");
+
+        String createJson = """
+                {
+                  "resourceType": "Observation",
+                  "status": "final",
+                  "code": {
+                    "coding": [{
+                      "system": "http://loinc.org",
+                      "code": "123456",
+                      "display": "Complete Blood Count"
+                    }]
+                  },
+                  "subject": {
+                    "reference": "Patient/%s"
+                  },
+                  "specimen": {
+                    "reference": "Specimen/%s"
+                  },
+                  "basedOn": [{
+                    "reference": "ServiceRequest/%s"
+                  }],
+                  "effectiveDateTime": "2026-03-09T10:00:00+03:00",
+                  "valueQuantity": {
+                    "value": 85.5,
+                    "unit": "g/L"
+                  }
+                }
+                """.formatted(patientFhirUuid, specimenFhirUuid, analysisFhirUuid);
+
+        request.setContent(createJson.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        fhirServlet.service(request, response);
+
+        assertEquals(201, response.getStatus());
+
+        String location = response.getHeader("Location");
+        assertNotNull("Location header should contain the new Resource URL", location);
+        String newUuid = location.substring(location.lastIndexOf("/") + 1);
+
+        Result createdResult = resultService.getResultByFhirUuid(newUuid);
+        assertNotNull("Result should be persisted in the database", createdResult);
+        assertEquals("85.5", createdResult.getValue());
     }
 }

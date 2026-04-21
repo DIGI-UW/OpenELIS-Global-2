@@ -97,6 +97,9 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         copyPropertiesPreferDestination(defaultProperties, finalProperties);
         copyPropertiesPreferDestination(hardcodedDefaultProperties, finalProperties);
         copyPropertiesPreferSource(changeProperty, finalProperties);
+        // External connection properties (SMTP, BMP, SMPP) always come fresh
+        // from the external_connection table, overriding any cached values.
+        loadExternalConnectionsIntoFinalProperties();
         try {
             moveConfigFile(changeValuePropertyFile, changedValuePropertyFile);
         } catch (IOException e) {
@@ -161,6 +164,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                         // not a db value, nothing to save
                     } else {
                         siteInformation.setValue(propertyHolder.getValue());
+                        siteInformation.setSysUserId("1");
                         siteInformationService.save(siteInformation);
                     }
                 }
@@ -207,7 +211,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
     private void moveConfigFile(String source, String destination) throws IOException {
         Path sourcePath = Paths.get(source);
         if (Files.isRegularFile(sourcePath)) {
-            Files.move(Paths.get(source), Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(sourcePath, Paths.get(destination), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
@@ -298,24 +302,58 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED, "true");
 
         properties.setPropertyValue(Property.QA_SAMPLE_ID_REQUIRED, "false");
-        properties.setPropertyValue(Property.MAX_ORDER_PRINTED, "10");
-        properties.setPropertyValue(Property.MAX_SPECIMEN_PRINTED, "1");
-        properties.setPropertyValue(Property.MAX_ALIQUOT_PRINTED, "1");
-        properties.setPropertyValue(Property.DEFAULT_ORDER_PRINTED, "2");
-        properties.setPropertyValue(Property.DEFAULT_SPECIMEN_PRINTED, "1");
-        properties.setPropertyValue(Property.DEFAULT_ALIQUOT_PRINTED, "1");
-        properties.setPropertyValue(Property.ORDER_BARCODE_HEIGHT, "25.4");
-        properties.setPropertyValue(Property.ORDER_BARCODE_WIDTH, "76.2");
-        properties.setPropertyValue(Property.SPECIMEN_BARCODE_HEIGHT, "25.4");
-        properties.setPropertyValue(Property.SPECIMEN_BARCODE_WIDTH, "76.2");
-        properties.setPropertyValue(Property.BLOCK_BARCODE_HEIGHT, "25.4");
-        properties.setPropertyValue(Property.BLOCK_BARCODE_WIDTH, "76.2");
-        properties.setPropertyValue(Property.SLIDE_BARCODE_HEIGHT, "25.4");
-        properties.setPropertyValue(Property.SLIDE_BARCODE_WIDTH, "76.2");
-        properties.setPropertyValue(Property.SPECIMEN_FIELD_DATE, "true");
-        properties.setPropertyValue(Property.SPECIMEN_FIELD_COLLECTED_BY, "true");
-        properties.setPropertyValue(Property.SPECIMEN_FIELD_SEX, "true");
-        properties.setPropertyValue(Property.SPECIMEN_FIELD_TESTS, "true");
+        properties.setPropertyValue(Property.MAX_ORDER_LABEL_PRINTED, "10");
+        properties.setPropertyValue(Property.MAX_SPECIMEN_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.MAX_ALIQUOT_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.MAX_SLIDE_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.MAX_BLOCK_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.MAX_FREEZER_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED, "2");
+        properties.setPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.DEFAULT_ALIQUOT_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.DEFAULT_SLIDE_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.DEFAULT_BLOCK_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.DEFAULT_FREEZER_LABEL_PRINTED, "1");
+        properties.setPropertyValue(Property.ORDER_LABEL_BARCODE_HEIGHT, "25.4");
+        properties.setPropertyValue(Property.ORDER_LABEL_BARCODE_WIDTH, "76.2");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_BARCODE_HEIGHT, "25.4");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_BARCODE_WIDTH, "76.2");
+        properties.setPropertyValue(Property.BLOCK_LABEL_BARCODE_HEIGHT, "25.4");
+        properties.setPropertyValue(Property.BLOCK_LABEL_BARCODE_WIDTH, "76.2");
+        properties.setPropertyValue(Property.SLIDE_LABEL_BARCODE_HEIGHT, "25.4");
+        properties.setPropertyValue(Property.SLIDE_LABEL_BARCODE_WIDTH, "76.2");
+        properties.setPropertyValue(Property.FREEZER_LABEL_BARCODE_HEIGHT, "25.4");
+        properties.setPropertyValue(Property.FREEZER_LABEL_BARCODE_WIDTH, "76.2");
+
+        properties.setPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_DOB, "true");
+        properties.setPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_ID, "true");
+        properties.setPropertyValue(Property.ORDER_LABEL_FIELD_PATIENT_NAME, "true");
+        properties.setPropertyValue(Property.ORDER_LABEL_FIELD_SITE_ID, "true");
+
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_PATIENT_DOB, "true");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_PATIENT_ID, "true");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_PATIENT_NAME, "true");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_COLLECTION_DATE, "true");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_COLLECTED_BY, "true");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_TESTS, "true");
+        properties.setPropertyValue(Property.SPECIMEN_LABEL_FIELD_PATIENT_SEX, "true");
+
+        properties.setPropertyValue(Property.SLIDE_LABEL_FIELD_PATIENT_ID, "true");
+        properties.setPropertyValue(Property.SLIDE_LABEL_FIELD_SLIDE_ID, "true");
+        properties.setPropertyValue(Property.SLIDE_LABEL_FIELD_STAIN_TYPE, "true");
+        properties.setPropertyValue(Property.SLIDE_LABEL_FIELD_BLOCK_ID, "true");
+        properties.setPropertyValue(Property.SLIDE_LABEL_FIELD_CASE_NUMBER, "true");
+
+        properties.setPropertyValue(Property.BLOCK_LABEL_FIELD_PATIENT_ID, "true");
+        properties.setPropertyValue(Property.BLOCK_LABEL_FIELD_BLOCK_ID, "true");
+        properties.setPropertyValue(Property.BLOCK_LABEL_FIELD_SPECIMEN_TYPE, "true");
+        properties.setPropertyValue(Property.BLOCK_LABEL_FIELD_CASE_NUMBER, "true");
+
+        properties.setPropertyValue(Property.FREEZER_LABEL_FIELD_PATIENT_ID, "true");
+        properties.setPropertyValue(Property.FREEZER_LABEL_FIELD_STORAGE_LOCATION, "true");
+        properties.setPropertyValue(Property.FREEZER_LABEL_FIELD_SPECIMEN_TYPE, "true");
+        properties.setPropertyValue(Property.FREEZER_LABEL_FIELD_COLLECTION_DATE, "true");
+        properties.setPropertyValue(Property.FREEZER_LABEL_FIELD_EXPIRY_DATE, "true");
 
         properties.setPropertyValue(Property.ALT_ACCESSION_PREFIX, "");
         properties.setPropertyValue(Property.USE_ALT_ACCESSION_PREFIX, "false");
@@ -331,6 +369,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.GPS_ENABLED, "false");
         properties.setPropertyValue(Property.GPS_ACCURACY_METERS, "100");
         properties.setPropertyValue(Property.GPS_TIMEOUT_SECONDS, "10");
+        properties.setPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY, "true"); // Default to new address hierarchy
         return properties;
     }
 
@@ -346,13 +385,22 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                     .getByExternalConnection(externalConnection.get().getId());
             // basic auth is required for info highway
             if (basicAuthData.isPresent()) {
-                properties.setProperty(address.name(), externalConnection.get().getUri().toString());
+                properties.setProperty(address.name(),
+                        externalConnection.get().getUri() != null ? externalConnection.get().getUri().toString() : "");
                 properties.setProperty(username.name(), basicAuthData.get().getUsername());
                 properties.setProperty(password.name(), basicAuthData.get().getPassword());
                 if (externalConnection.get().getActive() != null) {
                     properties.setProperty(enabled.name(), externalConnection.get().getActive().toString());
                 }
             }
+        }
+    }
+
+    private void loadExternalConnectionsIntoFinalProperties() {
+        Properties ecProperties = new Properties();
+        loadExternalConnectionsFromDatabase(ecProperties);
+        for (String propertyName : ecProperties.stringPropertyNames()) {
+            finalProperties.setPropertyValue(propertyName, ecProperties.getProperty(propertyName));
         }
     }
 
@@ -634,8 +682,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
                             propertyHolder.setLocalizationValue(Locale.forLanguageTag(namePortions[1]),
                                     localization.getLocalizedValue(Locale.forLanguageTag(namePortions[1])));
                         } else {
-                            for (Entry<Locale, String> localizationEntry : localization.getLocaleValues().entrySet()) {
-                                propertyHolder.setLocalizationValue(localizationEntry.getKey(),
+                            for (Entry<String, String> localizationEntry : localization.getValuesAsMap().entrySet()) {
+                                propertyHolder.setLocalizationValue(Locale.forLanguageTag(localizationEntry.getKey()),
                                         localizationEntry.getValue());
                             }
                         }

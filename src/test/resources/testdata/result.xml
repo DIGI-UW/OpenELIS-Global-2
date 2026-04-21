@@ -1,15 +1,40 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <dataset>
-    <localization id="1" description="Test Description 1"
-        english="TB" french="TB" />
-    <localization id="2" description="Test Description 2"
-        english="Urinalysis" french="Urinalysis" />
-    <localization id="3" description="Test Description 3"
-        english="blood test" french="Merci" />
-    <localization id="4" description="Reporting Test Name"
-        english="GPT/ALAT" french="GPT/ALAT" />
-    <localization id="5" description="Type of Sample Name"
-        english="Serum" french="Sérum" />
+    <!-- Required for QAService static initializer (used by ResultsLoadUtility) -->
+    <reference_tables id="9999" name="SAMPLE_QAEVENT"
+        keep_history="Y" is_hl7_encoded="N" lastupdated="2023-11-01 12:00:00" />
+
+    <localization id="1" description="Test Description 1" />
+    <localization id="2" description="Test Description 2" />
+    <localization id="3" description="Test Description 3" />
+    <localization id="4" description="Reporting Test Name" />
+    <localization id="5" description="Type of Sample Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="TB" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="TB" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="Urinalysis" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="Urinalysis" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="blood test" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Merci" />
+    <localization_value id="7" localization_id="4"
+        locale="en" value="GPT/ALAT" />
+    <localization_value id="8" localization_id="4"
+        locale="fr" value="GPT/ALAT" />
+    <localization_value id="9" localization_id="5"
+        locale="en" value="Serum" />
+    <localization_value id="10" localization_id="5"
+        locale="fr" value="Sérum" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
 
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
@@ -223,5 +248,54 @@
     <!-- Sample Human -->
     <sample_human id="1" samp_id="1" patient_id="1"
         lastupdated="2023-11-01 12:00:00" />
+    <sample_human id="2" samp_id="2" patient_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+
+
+    <!-- All system_role rows from seed data (post-Liquibase rename). executeDataSetWithStateManagement
+        TRUNCATEs every table in this fixture, so we must include the full role set
+        to avoid breaking dependent tests. -->
+    <system_role id="1" name="Global Administrator"
+        description="Change tests, panels etc." is_grouping_role="false"
+        display_key="role.maintenance" active="true" editable="true" />
+    <system_role id="2" name="User Account Administrator"
+        description="Add/remove users and assign roles."
+        is_grouping_role="false" display_key="role.users" active="true"
+        editable="true" />
+    <system_role id="4" name="Reception"
+        description="Sample entry and patient management."
+        is_grouping_role="false" display_key="role.intake" active="true"
+        editable="true" />
+    <system_role id="5" name="Results"
+        description="Enter and review results." is_grouping_role="false"
+        display_key="role.results" active="true" editable="true" />
+    <system_role id="6" name="Inventory mgr"
+        description="Add and de/reactivate kits." is_grouping_role="false"
+        display_key="role.inventory" active="false" editable="false" />
+    <system_role id="7" name="Reports"
+        description="Generate reports." is_grouping_role="false"
+        display_key="role.reports" active="true" editable="true" />
+    <system_role id="9" name="Results modifier"
+        description="Has permission to modify already entered results"
+        is_grouping_role="false" display_key="role.result.modifier"
+        active="false" editable="true" />
+    <system_role id="10" name="Validation"
+        description="A person who can validate results"
+        is_grouping_role="false" display_key="role.validator" active="true"
+        editable="true" />
+    <system_role id="11" name="Audit Trail"
+        description="Able to view the audit trail" is_grouping_role="false"
+        display_key="role.audittrail" active="true" editable="false" />
+    <system_role id="12" name="Test Management"
+        description="Able to modify test catalog" is_grouping_role="false"
+        display_key="role.test.configuration" active="true" editable="false" />
+    <system_role id="66" name="Results Admin"
+        description="Able to access all results forms"
+        is_grouping_role="false" display_key="role.results.all" active="true"
+        editable="false" />
+    <system_role id="67" name="Identifying Information Edit"
+        description="Able to edit already entered patients and sample primary IDs"
+        is_grouping_role="false" display_key="role.edit.identifiers"
+        active="true" editable="false" />
 
 </dataset>

@@ -126,6 +126,12 @@ assertions.
 | M8  | Hardcoded English in REST responses | `\.put\(\s*"(message\|error\|detail)",\s*"[A-Z]` in Java controller files                                                                                                        | MEDIUM   | No      |
 | M9  | Swallowed exceptions                | `catch\s*\([^)]*\)\s*\{` where the catch body (next 1-2 lines) contains only a comment or is empty before `}`                                                                    | HIGH     | No      |
 | M10 | i18n duplicate keys                 | Run Python duplicate-key detector on ALL files in `frontend/src/languages/*.json` (not just diff — duplicates can pre-exist). Reuse the pattern from the i18n-check CI workflow. | CRITICAL | No      |
+| M11 | Assert-on-mock-return               | `when\(.*\)\.thenReturn\((\w+)\)` where same identifier appears in `assertEquals` within 5 lines (in test Java files)                                                            | HIGH     | No      |
+| M12 | any() matcher abuse                 | `verify\(.*\)\.\w+\(any\(\)` without `argThat` nearby (in test Java files)                                                                                                       | MEDIUM   | No      |
+| M13 | Missing test assertions             | Test method (`@Test` or `test(` or `it(`) with no `assert`/`expect`/`verify` call in body                                                                                        | HIGH     | No      |
+| M14 | Raw fetch in component              | `fetch\(` in `frontend/src/components/**/*.{js,jsx,ts,tsx}`, excluding `frontend/src/components/utils/Utils.js` (components should use Utils)                                    | HIGH     | No      |
+| M15 | Deprecated wait import              | `import.*\bwait\b.*from.*testing-library`                                                                                                                                        | MEDIUM   | Yes     |
+| M16 | Render-only Jest test               | `it\(` or `test\(` block with `render(` but no `fireEvent`/`userEvent`/`screen.getBy`/`expect` beyond `toBeInTheDocument`                                                        | MEDIUM   | No      |
 
 For each finding, record:
 `{rule_id, severity, file_path, line_number, matched_text (trimmed to 120 chars), suggested_action}`.
@@ -167,6 +173,10 @@ evaluation context. Group diff chunks by file category and analyze:
 | S6  | Inconsistent patterns              | New code that uses different conventions than existing code in the same file (naming style, error handling approach, response format).                                                                                                | MEDIUM   |
 | S7  | Over-engineering                   | Unnecessary abstraction layers, feature flags for non-configurable behavior, wrapper classes that add no logic.                                                                                                                       | MEDIUM   |
 | S8  | Security anti-patterns             | Hardcoded credentials or API keys, missing input validation on controller parameters, weak cryptographic choices (MD5, SHA1 for security purposes), SQL injection vectors.                                                            | CRITICAL |
+| S9  | Test-mock tautology                | Test where every assertion traces back to a mock setup with no transformation                                                                                                                                                         | HIGH     |
+| S10 | Missing negative tests             | Test class with >3 tests but zero tests for null/invalid/error inputs                                                                                                                                                                 | MEDIUM   |
+| S11 | Filter param ignored               | Controller accepts `@RequestParam` but service method never uses it in query                                                                                                                                                          | HIGH     |
+| S12 | Auth ordering violation            | Controller method calls service before calling auth check method                                                                                                                                                                      | CRITICAL |
 
 ### 4) Report
 

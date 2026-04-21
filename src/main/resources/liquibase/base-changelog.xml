@@ -17,4 +17,17 @@
   <include file="liquibase/3.2.x.x/base.xml" />
   <include file="liquibase/3.3.x.x/base.xml" />
   <include file="liquibase/3.4.x.x/base.xml" />
+  <include file="liquibase/3.4.14.x/base.xml" />
+  <include file="liquibase/3.5.x.x/base.xml" />
+  <!-- Analyzer QC Rule Migrations -->
+  <include file="liquibase/analyzer/base.xml" />
+  <!-- QC (Quality Control) Westgard Rules Feature -->
+  <include file="liquibase/qc/001-create-qc-tables.xml" />
+  <include file="liquibase/qc/002-create-westgard-rule-config.xml" />
+  <include file="liquibase/qc/003-create-qc-violation-tables.xml" />
+  <include file="liquibase/qc/005-create-qc-alert.xml" />
+  <include file="liquibase/qc/006-fix-lastupdated-column.xml" />
+  <include file="liquibase/qc/007-add-qc-menu-items.xml" />
+  <include file="liquibase/qc/008-add-instrument-fk-constraints.xml" />
+  <include file="liquibase/qc/009-nullable-unit-of-measure.xml" />
 </databaseChangeLog>

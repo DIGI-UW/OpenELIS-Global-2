@@ -35,6 +35,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.result.valueholder.Result;
@@ -990,7 +991,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return getAnalysisStartedOn(collectionDate);
         }
 
-        String sql = "from Analysis a where a.startedDate = :startedDate and a.statusId not in ( :statusList )";
+        String sql = "from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId not in ( :statusList )";
 
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -1011,7 +1012,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getAnalysesCompletedOnByStatusId(Date completedDate, String statusId)
             throws LIMSRuntimeException {
 
-        String sql = "from Analysis a where a.releasedDate = :releasedDate and a.statusId = :statusId ";
+        String sql = "from Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId = :statusId ";
 
         try {
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
@@ -1396,12 +1397,13 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
             return new ArrayList<>();
         }
 
-        String sql = "From Analysis a where (a.test.localizedTestName.english in (:testNames) or"
-                + " a.test.localizedTestName.french in (:testNames)) and a.completedDate BETWEEN"
-                + " :lowDate AND :highDate";
+        String sql = "SELECT DISTINCT a.* FROM clinlims.analysis a" + " JOIN clinlims.test t ON a.test_id = t.id"
+                + " JOIN clinlims.localization l ON t.name_localization_id = l.id"
+                + " JOIN clinlims.localization_value lv ON l.id = lv.localization_id"
+                + " WHERE lv.value IN (:testNames) AND a.completed_date BETWEEN :lowDate AND :highDate";
 
         try {
-            Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
+            Query<Analysis> query = entityManager.unwrap(Session.class).createNativeQuery(sql, Analysis.class);
             query.setParameterList("testNames", testNames);
             query.setParameter("lowDate", lowDate);
             query.setParameter("highDate", highDate);
@@ -1566,7 +1568,9 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     public List<Analysis> getPageAnalysisByStatusFromAccession(List<Integer> analysisStatusList,
             List<Integer> sampleStatusList, String accessionNumber) {
 
-        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber >= :accessionNumber" //
+        // Strict equality: only return analyses for the exact requested accession.
+        // The 4-arg overload handles range searches separately.
+        String sql = "From Analysis a WHERE a.sampleItem.sample.accessionNumber = :accessionNumber" //
                 + " AND length(a.sampleItem.sample.accessionNumber) = length(:accessionNumber)" //
                 + " AND a.statusId IN (:analysisStatusList)" //
                 + " AND a.sampleItem.sample.statusId IN (:sampleStatusList)" //
@@ -1620,6 +1624,8 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
                     SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
             analysisStatusList.add(Integer.parseInt(
                     SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+            sampleStatusList.add(
+                    Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(OrderStatus.Finished)));
         }
 
         String sql = "";
@@ -1736,7 +1742,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     public int getCountOfAnalysisCompletedOnByStatusId(Date completedDate, List<Integer> statusIds) {
-        String sql = "SELECT COUNT(*) From Analysis a where a.releasedDate = :releasedDate and a.statusId in ("
+        String sql = "SELECT COUNT(*) From Analysis a where DATE(a.releasedDate) = DATE(:releasedDate) and a.statusId in ("
                 + " :statusList )";
 
         try {
@@ -1756,7 +1762,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Override
     public int getCountOfAnalysisStartedOnExcludedByStatusId(Date collectionDate, Set<Integer> statusIds) {
 
-        String sql = "SELECT COUNT(*) from Analysis a where a.startedDate = :startedDate and a.statusId not in ("
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId not in ("
                 + " :statusList )";
 
         try {
@@ -1775,7 +1781,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     public int getCountOfAnalysisStartedOnByStatusId(Date startedDate, List<Integer> statusIds) {
-        String sql = "SELECT COUNT(*) from Analysis a where a.startedDate = :startedDate and a.statusId in ("
+        String sql = "SELECT COUNT(*) from Analysis a where DATE(a.startedDate) = DATE(:startedDate) and a.statusId in ("
                 + " :statusList )";
 
         try {
@@ -1795,7 +1801,7 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
     @Override
     public List<Analysis> getAnalysesResultEnteredOnExcludedByStatusId(Date completedDate, Set<Integer> statusIds)
             throws LIMSRuntimeException {
-        String sql = "from Analysis a where a.completedDate = :completedDate and a.statusId not in ( :statusList"
+        String sql = "from Analysis a where DATE(a.completedDate) = DATE(:completedDate) and a.statusId not in ( :statusList"
                 + " )";
 
         try {
