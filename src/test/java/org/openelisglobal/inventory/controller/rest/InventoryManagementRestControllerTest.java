@@ -67,6 +67,32 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
     }
 
     @Test
+    public void testConsumeInventory_InvalidItemId_ShouldReturn500() throws Exception {
+        ConsumeRequest request = new ConsumeRequest();
+        request.setItemId("abc");
+        request.setQuantity(10.0);
+
+        mockMvc.perform(post("/rest/inventory/management/consume")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .session(mockSession))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void testConsumeInventory_NullItemId_ShouldReturn500() throws Exception {
+        ConsumeRequest request = new ConsumeRequest();
+        request.setItemId(null);
+        request.setQuantity(10.0);
+
+        mockMvc.perform(post("/rest/inventory/management/consume")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request))
+                .session(mockSession))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
     public void testReceiveInventory_ShouldSucceed() throws Exception {
         InventoryItem item = new InventoryItem();
         item.setId(1001L);
@@ -90,6 +116,37 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
     }
 
     @Test
+    public void testReceiveInventory_MissingLotNumber_ShouldReturnBadRequest() throws Exception {
+        InventoryItem item = new InventoryItem();
+        item.setId(1001L);
+
+        InventoryLot lot = new InventoryLot();
+        lot.setInventoryItem(item);
+        // lotNumber is missing
+
+        mockMvc.perform(post("/rest/inventory/management/receive")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lot))
+                .session(mockSession))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testReceiveInventory_MissingInventoryItem_ShouldReturnBadRequest() throws Exception {
+        InventoryLot lot = new InventoryLot();
+        lot.setLotNumber("NEW-LOT-002");
+        lot.setInitialQuantity(10.0);
+        lot.setCurrentQuantity(10.0);
+        // inventoryItem is missing
+
+        mockMvc.perform(post("/rest/inventory/management/receive")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lot))
+                .session(mockSession))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void testCheckAvailability_ShouldReturnTrue() throws Exception {
         mockMvc.perform(get("/rest/inventory/management/check-availability")
                 .param("itemId", "1000")
@@ -108,6 +165,20 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
     }
 
     @Test
+    public void testCheckAvailability_InvalidItemId_ShouldReturn500() throws Exception {
+        mockMvc.perform(get("/rest/inventory/management/check-availability")
+                .param("itemId", "xyz")
+                .param("quantity", "10.0"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void testCheckAvailability_MissingParams_ShouldReturnBadRequest() throws Exception {
+        mockMvc.perform(get("/rest/inventory/management/check-availability"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void testGetAlerts_ShouldReturnAlerts() throws Exception {
         mockMvc.perform(get("/rest/inventory/management/alerts")
                 .param("expirationWarningDays", "30"))
@@ -115,5 +186,11 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
                 .andExpect(jsonPath("$.lowStockItems").isArray())
                 .andExpect(jsonPath("$.expiringLots").isArray())
                 .andExpect(jsonPath("$.expiredLots").isArray());
+    }
+
+    @Test
+    public void testGetAlerts_DefaultBehavior_ShouldReturnOk() throws Exception {
+        mockMvc.perform(get("/rest/inventory/management/alerts"))
+                .andExpect(status().isOk());
     }
 }
