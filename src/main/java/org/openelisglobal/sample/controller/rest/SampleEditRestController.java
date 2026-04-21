@@ -37,6 +37,7 @@ import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.form.SampleEditForm.SampleEdit;
 import org.openelisglobal.sample.service.SampleEditService;
+import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.validator.SampleEditFormValidator;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -126,6 +127,11 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         SampleEditForm form = new SampleEditForm();
         form.setFormAction("SampleEdit");
+        int changeableLength = AccessionNumberUtil.getChangeableLength();
+        int invariantLength = AccessionNumberUtil.getInvarientLength();
+        form.setEditableAccession(changeableLength);
+        form.setNonEditableAccession(invariantLength);
+        form.setMaxAccessionLength(changeableLength + invariantLength);
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 

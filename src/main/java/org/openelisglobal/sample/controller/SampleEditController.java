@@ -147,6 +147,11 @@ public class SampleEditController extends BaseController {
         }
         SampleEditForm form = new SampleEditForm();
         form.setFormAction("SampleEdit");
+        int changeableLength = AccessionNumberUtil.getChangeableLength();
+        int invariantLength = AccessionNumberUtil.getInvarientLength();
+        form.setEditableAccession(changeableLength);
+        form.setNonEditableAccession(invariantLength);
+        form.setMaxAccessionLength(changeableLength + invariantLength);
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 

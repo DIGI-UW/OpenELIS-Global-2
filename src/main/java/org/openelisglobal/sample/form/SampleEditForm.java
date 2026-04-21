@@ -13,7 +13,6 @@ import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.validation.annotations.ValidAccessionNumber;
 import org.openelisglobal.validation.annotations.ValidDate;
 import org.openelisglobal.validation.annotations.ValidName;
@@ -103,13 +102,13 @@ public class SampleEditForm extends BaseForm {
     private String accessionFormat = ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat);
 
     // in validator
-    private int editableAccession = AccessionNumberUtil.getChangeableLength();
+    private int editableAccession;
 
     // in validator
-    private int nonEditableAccession = AccessionNumberUtil.getInvarientLength();
+    private int nonEditableAccession;
 
     // in validator
-    private int maxAccessionLength = editableAccession + nonEditableAccession;
+    private int maxAccessionLength;
 
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
