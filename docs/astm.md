@@ -26,8 +26,7 @@
     directory (will require a jar version of OE to be specified in the pom.xml)
 - **OpenELIS Analyzer Bridge (Development Setup)**
   - The bridge is now integrated into the standard development environment
-  - Bridge starts automatically with
-    `docker compose up -d`
+  - Bridge starts automatically with `docker compose up -d`
   - Configuration file location:
     `volume/openelis-analyzer-bridge/configuration.yml`
   - Bridge accessible at `172.20.1.101:5001` from within Docker network

@@ -98,17 +98,17 @@ docker compose.
 
 OpenELIS follows the Compose Specification convention:
 
-| File                     | Purpose                                                                                                    |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `compose.yaml`           | Base / prod-like stack (pulls published images from Docker Hub)                                            |
-| `compose.override.yaml`  | **Auto-applied** on `docker compose up`. Dev overrides: local WAR mount, dev image tag, dev env vars       |
-| `compose.build.yaml`     | Build-from-source overlay. Rebuilds every service from the local Dockerfiles                               |
-| `compose.letsencrypt.yaml` | Let's Encrypt overlay. Replaces proxy volumes with live cert bind-mounts                                 |
+| File                       | Purpose                                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `compose.yaml`             | Base / prod-like stack (pulls published images from Docker Hub)                                      |
+| `compose.override.yaml`    | **Auto-applied** on `docker compose up`. Dev overrides: local WAR mount, dev image tag, dev env vars |
+| `compose.build.yaml`       | Build-from-source overlay. Rebuilds every service from the local Dockerfiles                         |
+| `compose.letsencrypt.yaml` | Let's Encrypt overlay. Replaces proxy volumes with live cert bind-mounts                             |
 
 Because `compose.override.yaml` auto-merges on `docker compose up` (Compose
-Specification default), `docker compose up -d` is the **local dev** entry
-point. Pass an explicit `-f compose.yaml` to skip the override and get the
-prod-style stack.
+Specification default), `docker compose up -d` is the **local dev** entry point.
+Pass an explicit `-f compose.yaml` to skip the override and get the prod-style
+stack.
 
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
@@ -148,8 +148,8 @@ speeds up the development process
 
           mvn clean install -DskipTests -Dmaven.test.skip=true
 
-1.  Start the containers (compose.override.yaml auto-merges for local-dev
-    bind mounts)
+1.  Start the containers (compose.override.yaml auto-merges for local-dev bind
+    mounts)
 
         docker compose up -d
 

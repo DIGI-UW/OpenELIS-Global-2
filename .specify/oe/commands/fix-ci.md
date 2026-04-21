@@ -33,18 +33,18 @@ user text directly into shell commands. Support these patterns:
 
 **Behavior options:**
 
-| Flag                    | Default                | Description                                                                                                       |
-| ----------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                                                       |
-| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                                               |
-| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                                           |
-| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                                                          |
-| `--compose-file <path>` | compose.override.yaml | Docker Compose file for local E2E (use `compose.build.yaml` to match CI exactly)                            |
-| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                                            |
-| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                                                |
-| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
-| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                                              |
-| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                                                  |
+| Flag                    | Default               | Description                                                                                                       |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `--max-iterations N`    | 5                     | Max fix-push-check cycles before escalating                                                                       |
+| `--dry-run`             | off                   | Diagnose only — no fixes, no pushes                                                                               |
+| `--local-e2e`           | off                   | Run full local E2E suite in parallel with CI after push                                                           |
+| `--reset-env`           | off                   | Reset local E2E environment (fixtures) before local runs                                                          |
+| `--compose-file <path>` | compose.override.yaml | Docker Compose file for local E2E (use `compose.build.yaml` to match CI exactly)                                  |
+| `--flaky-retry N`       | 0                     | Re-run suspected flaky tests N times before diagnosing                                                            |
+| `--skip-local-validate` | off                   | Skip local validation (push immediately after fix)                                                                |
+| `--jobs <job-names>`    | all                   | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
+| `--notify`              | off                   | Force NOTIFY level (always summarize, even for AUTO)                                                              |
+| `--report-to-pr`        | off                   | Post resolution report as a PR comment when done                                                                  |
 
 **Examples:**
 

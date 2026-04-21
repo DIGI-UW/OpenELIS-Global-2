@@ -283,8 +283,7 @@ docker compose restart oe.openelis.org
 
 1. Check frontend container:
    `docker ps --filter "name=openelisglobal-front-end"`
-2. Restart frontend:
-   `docker compose restart frontend.openelis.org`
+2. Restart frontend: `docker compose restart frontend.openelis.org`
 
 ---
 

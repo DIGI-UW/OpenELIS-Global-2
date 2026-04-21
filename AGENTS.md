@@ -1671,8 +1671,8 @@ must be explicitly added to a project's `testMatch` allowlist in
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
-| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
+| Workflow                                   | Compose Files                                    | Projects Run               | Fixtures Loaded                           |
+| ------------------------------------------ | ------------------------------------------------ | -------------------------- | ----------------------------------------- |
 | `e2e-playwright.yml` (`playwright-core`)   | `compose.build.yaml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
 | `e2e-playwright-analyzer-harness-reusable` | `compose.build.yaml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 

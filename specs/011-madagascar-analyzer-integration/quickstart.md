@@ -1,6 +1,6 @@
 > **STATUS: Historical (bannered 2026-04-18)** — instructions below reference
-> the retired `compose.override.yaml + analyzer-setup.compose.yaml` stack
-> and `load-analyzer-test-data.sh --dataset-011` fixture loader. Current harness
+> the retired `compose.override.yaml + analyzer-setup.compose.yaml` stack and
+> `load-analyzer-test-data.sh --dataset-011` fixture loader. Current harness
 > path:
 >
 > - **`projects/analyzer-harness/README.md`**

@@ -514,8 +514,8 @@ support via accurate schema metadata)
 
 - [ ] T054 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
       containerized MCP server deployment
-- [ ] T055 [M1] Update `projects/catalyst/catalyst-compose.override.yaml` to
-      add MCP server as separate container (if not already present)
+- [ ] T055 [M1] Update `projects/catalyst/catalyst-compose.override.yaml` to add
+      MCP server as separate container (if not already present)
 
 ### M1.10: Verification & PR
 
@@ -896,8 +896,7 @@ to M5 to allow independent testing
 ### M4 Sign-off Checklist
 
 - [ ] All component tests pass (Java + Python + React)
-- [ ] Full stack starts: `docker compose up` + Python
-      services
+- [ ] Full stack starts: `docker compose up` + Python services
 - [ ] Cypress E2E: Basic query returns results
 - [ ] Cypress E2E: JOIN query returns results (FR-015)
 - [ ] Cypress E2E: Aggregation query returns results (FR-015)

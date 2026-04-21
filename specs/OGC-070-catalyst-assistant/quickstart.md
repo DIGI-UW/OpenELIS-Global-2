@@ -40,8 +40,7 @@ cd catalyst-gateway && poetry run honcho -f ../Procfile.dev start
 
 ## Prerequisites
 
-- [ ] OpenELIS development environment running
-      (`docker compose up -d`)
+- [ ] OpenELIS development environment running (`docker compose up -d`)
 - [ ] Java 21 installed (`java -version` shows 21.x.x)
 - [ ] Python 3.11+ installed (`python3 --version`)
 - [ ] Node.js 16+ installed

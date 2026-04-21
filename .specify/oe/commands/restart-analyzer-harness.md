@@ -25,12 +25,12 @@ Interpret arguments best-effort. Support these patterns:
 - `/restart-analyzer-harness --letsencrypt` → Add LE compose overlay
 - `/restart-analyzer-harness --skip-letsencrypt` → Skip LE even when env is set
 - `/restart-analyzer-harness --ci-parity` → **Bring up the CI-parity stack**
-  (`compose.build.yaml` + `.github/ci/ci.analyzer-harness.yml`) instead of
-  the local dev stack. Selects frontend Dockerfile `target: runtime` (nginx
-  serving minified `dist/`) — the exact image CI runs. Use this to locally
-  reproduce CI E2E failures (e.g. React #130-class regressions that only fire
-  under the production bundle) before pushing. Implicitly forces
-  `--skip-letsencrypt` (CI compose files don't include the LE overlay).
+  (`compose.build.yaml` + `.github/ci/ci.analyzer-harness.yml`) instead of the
+  local dev stack. Selects frontend Dockerfile `target: runtime` (nginx serving
+  minified `dist/`) — the exact image CI runs. Use this to locally reproduce CI
+  E2E failures (e.g. React #130-class regressions that only fire under the
+  production bundle) before pushing. Implicitly forces `--skip-letsencrypt` (CI
+  compose files don't include the LE overlay).
 - Combine flags as needed
 
 ## Safety Rules (non-negotiable)
@@ -64,8 +64,8 @@ The harness compose stack is defined in
   `fhir.openelis.org`, `frontend.openelis.org`, `proxy`, `certs`)
 
 Without `compose.yaml`, compose fails with "undefined volume" errors. The
-`--profile harness` flag is required to bring up the analyzer simulator,
-bridge, and virtual-serial services.
+`--profile harness` flag is required to bring up the analyzer simulator, bridge,
+and virtual-serial services.
 
 ### Service names vs container names
 

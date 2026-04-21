@@ -41,12 +41,13 @@ required profile mappings for the seeded analyzers.
 Local harness startup uses the same canonical service identities as CI. The
 compose files are (relative to `projects/analyzer-harness/`):
 
-- `compose.yaml` — core stack: certs, db, oe (webapp with dev WAR mount),
-  fhir, frontend, proxy. Merged from the former `docker-compose.base.yml +
-  docker-compose.dev.yml` during the Docker modernization refactor.
+- `compose.yaml` — core stack: certs, db, oe (webapp with dev WAR mount), fhir,
+  frontend, proxy. Merged from the former
+  `docker-compose.base.yml + docker-compose.dev.yml` during the Docker
+  modernization refactor.
 - `compose.harness.yaml` — analyzer E2E overlay: astm-simulator, bridge,
-  virtual-serial (all gated behind `--profile harness`). Also extends
-  oe/proxy onto `analyzer-net`.
+  virtual-serial (all gated behind `--profile harness`). Also extends oe/proxy
+  onto `analyzer-net`.
 - `compose.letsencrypt.yaml` — optional Let's Encrypt cert overlay.
 
 These files must not drift behaviorally from the authoritative CI harness path

@@ -231,8 +231,8 @@ Canonical ids live in
    `*-javadoc.jar`
 5. **E2E assertions unscoped** (`astm-genexpert-results.spec.ts`) — scope to
    parent row
-6. **Hostname verification comment** (`compose.harness.yaml`) — add
-   test-only warning
+6. **Hostname verification comment** (`compose.harness.yaml`) — add test-only
+   warning
 
 ## Fix 6: Clean test-results before recording
 
@@ -276,7 +276,7 @@ rm -rf frontend/test-results/*
 | `src/main/.../ASTMAnalyzerReader.java`                                                           | No legacy fallback, single pluginService                 |
 | `projects/analyzer-harness/scripts/verify-login.sh`                                              | Whitespace-tolerant grep                                 |
 | `projects/analyzer-harness/bootstrap.sh`                                                         | Checksum cleanup, JAR filter                             |
-| `projects/analyzer-harness/compose.harness.yaml`                                     | Test-only comment                                        |
+| `projects/analyzer-harness/compose.harness.yaml`                                                 | Test-only comment                                        |
 
 ## LOINC Reference
 
