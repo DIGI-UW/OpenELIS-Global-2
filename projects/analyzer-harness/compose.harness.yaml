@@ -1,18 +1,27 @@
-# Analyzer Testing Services
+# Analyzer Harness — analyzer E2E overlay.
 #
-# Multi-protocol mock server (ASTM + HL7), bridge, and virtual serial ports for E2E testing.
-# The mock supports all templates via its HTTP API — trigger any analyzer:
-#   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
-#   GET/POST http://localhost:8085/simulate/hl7/mindray_bs200
+# Pulled in when running end-to-end analyzer tests. All analyzer services
+# share a single `harness` profile — activate with `--profile harness`.
 #
-# ASTM_TEMPLATE env var sets the default template for the ASTM listen port
-# (what the bridge gets when it connects). All other templates available via API.
+# This overlay also extends `oe.openelis.org` and `proxy` to join the
+# `analyzer-net` network (separate subnet from the core default network)
+# so the bridge and simulator can reach the webapp.
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d
+#
+# Services behind the `harness` profile:
+#   - astm-simulator            multi-protocol mock (ASTM + HL7)
+#   - openelis-analyzer-bridge  ASTM/MLLP listener + HTTP forwarder
+#   - virtual-serial            socat PTY pairs for RS232 testing
+#
+# Notes:
+# - astm-simulator is currently in need of modernization (tracked separately).
+# - Bridge is MANDATORY per architecture invariant (see feedback_bridge_mandatory).
 
 services:
-  # Multi-protocol mock server — serves all ASTM and HL7 analyzer templates.
-  # Default ASTM template: genexpert_astm (GeneXpert ASTM, fixture ID 2013)
-  # HL7 templates available via /simulate/hl7/{template} API.
   astm-simulator:
+    profiles: [harness]
     container_name: openelis-astm-simulator
     build:
       context: ../../tools/analyzer-mock-server
@@ -20,14 +29,14 @@ services:
     image: openelis-astm-simulator.harness
     volumes:
       - ./e2e-fixtures/genexpert_astm.json:/app/templates/genexpert_astm.json:ro
-      - ./volume/analyzer-imports:/data/analyzer-imports  # FILE fixture drops into bridge watched folders
+      - ./volume/analyzer-imports:/data/analyzer-imports
       - /var/run/docker.sock:/var/run/docker.sock  # TEST/HARNESS ONLY — dynamic analyzer network management
     ports:
-      - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
-      - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
-      - "5380:5380" # HL7 listen (Mindray BC-5380)
-      - "6001:6001" # HL7 listen (Mindray BS-200)
-      - "6002:6002" # HL7 listen (Mindray BS-300)
+      - "${ASTM_SIMULATOR_PORT:-5050}:9600"       # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay)
+      - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080"  # HTTP simulate API
+      - "5380:5380"                               # HL7 listen (Mindray BC-5380)
+      - "6001:6001"                               # HL7 listen (Mindray BS-200)
+      - "6002:6002"                               # HL7 listen (Mindray BS-300)
     environment:
       - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
       - RESPONSE_DELAY_MS=0
@@ -55,11 +64,8 @@ services:
       retries: 3
       start_period: 10s
 
-  # ASTM-HTTP Bridge — always running, handles all analyzers.
-  # Inbound: ASTM 12001, MLLP 2575 (HL7); forwards to OE via HTTP.
-  # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
-  #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
+    profiles: [harness]
     container_name: openelis-analyzer-bridge
     # Run as root in CI/test harness to avoid bind-mount permission mismatches
     # between the CI runner (creates files) and the bridge (archives/deletes them).
@@ -70,9 +76,9 @@ services:
       dockerfile: Dockerfile
     image: openelis-analyzer-bridge.harness
     ports:
-      - "8442:8443" # HTTPS API port
+      - "8442:8443"   # HTTPS API port
       - "12000:12001" # ASTM listen port (inbound from analyzers)
-      - "2575:2575" # MLLP HL7 listener (OGC-325)
+      - "2575:2575"   # MLLP HL7 listener (OGC-325)
     volumes:
       - ../../volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
       - ./volume/analyzer-imports:/data/analyzer-imports
@@ -82,7 +88,7 @@ services:
         condition: service_completed_successfully
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
+      - BRIDGE_AUTH_PASSWORD=changeme
       - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
       # Bridge connects directly to OE (not through proxy), so no /api/ prefix
@@ -104,6 +110,7 @@ services:
     restart: unless-stopped
 
   virtual-serial:
+    profiles: [harness]
     image: alpine/socat
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -120,7 +127,9 @@ services:
       - analyzer-net
     restart: unless-stopped
 
-  # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
+  # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (bridge/simulator).
+  # Not profile-gated — joining analyzer-net when the overlay is layered is harmless
+  # even if analyzer services aren't running.
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
@@ -139,9 +148,6 @@ services:
       default:
       analyzer-net:
 
-  # Seed service — creates mock networks + analyzer records on startup.
-  # Runs once after OE and mock-server are healthy. Idempotent.
-  # Default: cleans stale data before seeding (--no-clean to skip).
 networks:
   analyzer-net:
     driver: bridge

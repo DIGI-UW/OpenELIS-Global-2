@@ -1,26 +1,61 @@
+# Analyzer Harness — core stack (Compose Specification).
+#
+# This is the base harness environment: certs, db, oe (backend), fhir,
+# frontend, proxy. Analyzer E2E services (astm-simulator, bridge,
+# virtual-serial) live in compose.harness.yaml under the `harness` profile.
+#
+# Usage:
+#   docker compose up -d                                                # core harness only
+#   docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d  # core + analyzer E2E
+#   docker compose -f compose.yaml -f compose.letsencrypt.yaml up -d    # core + LE certs
+#
+# Merged from the former docker-compose.base.yml + docker-compose.dev.yml
+# during the Round 3 Docker modernization (chore/docker-compose-modernization).
+
 services:
   certs:
+    container_name: oe-certs
     image: itechuw/certgen:main
     platform: linux/amd64
     restart: "no"
+    environment:
+      KEYSTORE_PW: '"kspass"'
+      TRUSTSTORE_PW: '"tspass"'
+    volumes:
+      - key_trust-store-volume:/etc/openelis-global
+      - keys-vol:/etc/ssl/private/
+      - certs-vol:/etc/ssl/certs/
 
   db.openelis.org:
+    container_name: openelisglobal-database
     image: postgres:14.4
+    ports:
+      - "15432:5432"
     restart: always
     env_file:
       - ./volume/database/database.env
+    environment:
+      DB_PASSWORD: ${OE_DB_PASSWORD:-clinlims}
+      DB_SUPERUSER_PASSWORD: ${ADMIN_PASSWORD:-superuser}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./volume/database/dbInit:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-d", "clinlims", "-U", "clinlims"]
+      timeout: 45s
+      interval: 10s
+      retries: 10
 
   oe.openelis.org:
+    container_name: openelisglobal-webapp
     image: itechuw/openelis-global-2-dev:develop
-    # Local build: `docker compose build oe.openelis.org` (or `reset-env.sh --build`)
-    # rebuilds this image from the branch's Dockerfile.dev so local source drives the
-    # webapp, overriding the pulled :develop image tag.
+    # Local build: `docker compose build oe.openelis.org` rebuilds this image
+    # from the branch's consolidated multi-stage Dockerfile (target: dev),
+    # overriding the pulled :develop image tag. See ../../Dockerfile for stages.
     build:
       context: ../..
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: dev
     depends_on:
       db.openelis.org:
         condition: service_healthy
@@ -29,7 +64,13 @@ services:
       fhir.openelis.org:
         condition: service_healthy
     restart: always
+    ports:
+      - "8080:8080"
+      - "8443:8443"
     environment:
+      DEFAULT_PW: adminADMIN!
+      TZ: Africa/Nairobi
+      SPRING_LIQUIBASE_CONTEXTS: test
       CATALINA_OPTS: -Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
       JDK_JAVA_OPTIONS: -Djdk.internal.httpclient.disableHostnameVerification=true
     volumes:
@@ -47,11 +88,21 @@ services:
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
       - ./volume/analyzer-imports:/data/analyzer-imports
       - ../../projects/analyzer-profiles:/data/analyzer-profiles:ro
+    networks:
+      default:
+        ipv4_address: 172.20.1.121
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 2m
     secrets:
       - source: datasource.password
       - source: common.properties
 
   fhir.openelis.org:
+    container_name: external-fhir-api
     image: hapiproject/hapi:v6.6.0-tomcat
     depends_on:
       db.openelis.org:
@@ -59,6 +110,9 @@ services:
       certs:
         condition: service_started
     restart: always
+    ports:
+      - "8081:8080"
+      - "8444:8443"
     environment:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
       TZ: Africa/Nairobi
@@ -81,14 +135,11 @@ services:
       start_period: 60s
 
   frontend.openelis.org:
+    container_name: openelisglobal-front-end
     image: itechuw/openelis-global-2-frontend-dev:develop
-    # Local-dev default: `target: dev` selects the Vite dev-server stage
-    # of the single multi-stage Dockerfile — HMR + unminified React for
-    # legible errors during iteration. For CI-parity (ship-artifact) mode,
-    # use `compose_args_ci()` in compose-stack.sh which routes through
-    # build.docker-compose.yml (no `target:` → defaults to the `runtime`
-    # stage = nginx serving dist/). Both stages listen on :80 so the
-    # outer proxy config doesn't care which mode is active.
+    # Local-dev default: `target: dev` selects the Vite dev-server stage of
+    # the consolidated multi-stage frontend/Dockerfile (HMR + unminified React).
+    # For CI-parity (ship-artifact) mode, use compose.ci or build.target:runtime.
     build:
       context: ../../frontend
       dockerfile: Dockerfile
@@ -96,9 +147,16 @@ services:
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+    tty: true
 
   proxy:
+    container_name: openelisglobal-proxy
     image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
       - certs-vol:/etc/nginx/certs/
       - keys-vol:/etc/nginx/keys/
@@ -120,3 +178,16 @@ secrets:
   hapi_application.yaml:
     file: ./volume/properties/hapi_application.yaml
 
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.1.0/24
+
+volumes:
+  db-data:
+  key_trust-store-volume:
+  certs-vol:
+  keys-vol:
+  lucene_index-vol:
