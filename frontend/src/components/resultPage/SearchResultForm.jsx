@@ -47,11 +47,6 @@ import { isStorageAssignmentSuccess } from "../storage/LocationPicker/storageAss
 import ResultMultiSelect from "../common/multiSelect";
 import CascadingMultiSelect from "../common/cascadingMultiSelect";
 import EQABadge from "../eqa/EQABadge";
-import InlineNceForm from "../nonconform/common/InlineNceForm";
-import { Warning } from "@carbon/icons-react";
-import ESignatureButton, {
-  SignatureMeaning,
-} from "../esignature/ESignatureButton";
 
 /**
  * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
@@ -1257,6 +1252,7 @@ export function SearchResults(props) {
 
           case "N":
             return (
+              <>
               <TextInput
                 id={"ResultValue" + row.id}
                 name={"testResult[" + row.id + "].resultValue"}
@@ -1306,6 +1302,12 @@ export function SearchResults(props) {
                   }
                 }}
               />
+              {validationState[row.id]?.outsideValid && (
+                <div style={{ color: "red", fontSize: "12px" }}>
+                  {intl.formatMessage({ id: "validation.outOfRange" })}
+                </div>
+              )}
+              </>
             );
 
           case "R":
