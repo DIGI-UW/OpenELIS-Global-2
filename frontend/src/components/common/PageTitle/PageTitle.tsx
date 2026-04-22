@@ -80,6 +80,7 @@ const PageTitle: React.FC<PageTitleProps> = ({
             <React.Fragment key={index}>
               {crumb.link ? (
                 <button
+                  type="button"
                   className="page-title-breadcrumb-link"
                   onClick={() => history.push(crumb.link!)}
                   data-testid={`breadcrumb-link-${index}`}
