@@ -29,6 +29,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 
+
 public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
 
     private static final byte[] fileContent = Base64.getDecoder()
@@ -374,6 +375,157 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
         Assert.assertEquals(analysis.getId(), updatedAnalysis.getId());
         Assert.assertEquals("resultfile.txt", updatedAnalysis.getResultFile().getFileName());
     }
+
+    @Test
+    public void getAnalysisType_shouldReturnEmpty_whenAnalysisIsNull() {
+        String result = aService.getAnalysisType(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getAnalysisType_shouldReturnValue_whenAnalysisIsValid() {
+        Analysis analysis = new Analysis();
+        analysis.setAnalysisType("MANUAL");
+
+        String result = aService.getAnalysisType(analysis);
+
+        Assert.assertEquals("MANUAL", result);
+    }
+
+    @Test
+    public void getStatusId_shouldReturnEmpty_whenAnalysisIsNull() {
+        String result = aService.getStatusId(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getStatusId_shouldReturnValue_WhenStatusIsNull(){
+        Analysis analysis = new Analysis();
+        analysis.setStatusId(null);
+
+        String result = aService.getStatusId(analysis);
+
+        Assert.assertEquals("", result);
+    }
+    @Test
+    public void getStatusId_shouldReturnValue_WhenStatusIsPresent() {
+        Analysis analysis = new Analysis();
+        analysis.setStatusId("1");
+
+        String result = aService.getStatusId(analysis);
+
+        Assert.assertEquals("1", result);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnFalse_whenAnalysisIsNull() {
+        Boolean result = aService.getTriggeredReflex(null);
+        Assert.assertFalse(result);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnTrue_whenTriggeredReflexIsFalse() {
+        Analysis analysis = new Analysis();
+        analysis.setTriggeredReflex(false);
+
+        Boolean result = aService.getTriggeredReflex(analysis);
+
+        Assert.assertFalse(result);
+    }
+
+    @Test
+    public void getTriggeredReflex_shouldReturnTrue_whenTriggeredReflexIsTrue() {
+        Analysis analysis = new Analysis();
+        analysis.setTriggeredReflex(true);
+
+        Boolean result = aService.getTriggeredReflex(analysis);
+
+        Assert.assertTrue(result);
+    }
+
+    @Test
+    public void getCompletedDateForDisplay_shouldReturnEmpty_whenAnalysisIsNull() {
+        String result = aService.getCompletedDateForDisplay(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getCompletedDateForDisplay_shouldReturnEmpty_whenCompletedDateIsNull() {
+        Analysis analysis = new Analysis();
+
+        String result = aService.getCompletedDateForDisplay(analysis);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getCompletedDateForDisplay_shouldReturnFormattedDate_whenCompletedDateIsPresent() {
+        Analysis analysis = new Analysis();
+        Date completedDate = Date.valueOf("2025-10-01");
+        analysis.setCompletedDate(completedDate);
+
+        String result = aService.getCompletedDateForDisplay(analysis);
+        Assert.assertEquals("2025-10-01", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnEmpty_whenAnalysisIsNull() {
+        String result = aService.getMethodId(null);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnEmpty_whenMethodIsNull() {
+        Analysis analysis = new Analysis();
+        analysis.setMethod(null);
+
+        String result = aService.getMethodId(analysis);
+        Assert.assertEquals("", result);
+    }
+
+    @Test
+    public void getMethodId_shouldReturnValue_whenMethodIsPresent() {
+        Analysis analysis = new Analysis();
+        Method method = new Method();
+        method.setId("123");
+        analysis.setMethod(method);
+
+        String result = aService.getMethodId(analysis);
+        Assert.assertEquals("123", result);
+    }
+
+
+    @Test
+    public void hasBeenCorrectedSinceLastPatientReport_shouldReturnFalse_whenAnalysisIsNull() {
+        boolean result = aService.hasBeenCorrectedSinceLastPatientReport(null);
+        Assert.assertFalse(result);
+    }
+
+    @Test
+    public void hasBeenCorrectedSinceLastPatientReport_shouldReturnTrue_whenCorrected() {
+        Analysis analysis = new Analysis();
+        analysis.setCorrectedSincePatientReport(true);
+
+        boolean result = aService.hasBeenCorrectedSinceLastPatientReport(analysis);
+        Assert.assertTrue(result);
+    }
+
+    @Test
+    public void getTest_shouldReturnNull_whenAnalysisIsNull() {
+        org.openelisglobal.test.valueholder.Test result = aService.getTest(null);
+        Assert.assertNull(result);
+    }
+
+    @Test
+    public void getTest_shouldReturnTest_whenExists() {
+        Analysis analysis = new Analysis();
+        org.openelisglobal.test.valueholder.Test test = tService.get("1");
+        analysis.setTest(test);
+
+        org.openelisglobal.test.valueholder.Test result = aService.getTest(analysis);
+        Assert.assertNotNull(result);
+    }
+
+
 
     public Analysis createDemoAnalysis() {
         Analysis analysis1 = aService.getAnalysisById("2");
