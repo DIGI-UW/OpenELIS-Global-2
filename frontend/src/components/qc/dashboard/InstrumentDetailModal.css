@@ -1,0 +1,200 @@
+/* InstrumentDetailModal styles */
+
+/* Subtitle with instrument metadata */
+.instrument-detail-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.instrument-detail-subtitle__separator {
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+/* Section spacing */
+.instrument-detail-section {
+  margin-bottom: 1.5rem;
+}
+
+.instrument-detail-section h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.75rem;
+}
+
+/* Analyte cards grid */
+.instrument-detail-analytes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.instrument-detail-analyte-card {
+  min-width: 160px;
+  max-width: 240px;
+  padding: 0.75rem;
+}
+
+.instrument-detail-analyte-card__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.25rem;
+}
+
+.instrument-detail-analyte-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.instrument-detail-analyte-card__detail {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.instrument-detail-analyte-card__time {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+}
+
+/* Activity Timeline */
+.instrument-detail-timeline {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.instrument-detail-timeline__item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.instrument-detail-timeline__item:last-child {
+  border-bottom: none;
+}
+
+.instrument-detail-timeline__item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.instrument-detail-timeline__item-rule {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.instrument-detail-timeline__item-test {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}
+
+.instrument-detail-timeline__item-time {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+  margin-left: auto;
+}
+
+.instrument-detail-timeline__item-status {
+  margin-top: 0.25rem;
+}
+
+.instrument-detail-timeline__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.instrument-detail-timeline__loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+/* Control Chart */
+.instrument-detail-chart__controls {
+  margin-bottom: 1rem;
+  max-width: 300px;
+}
+
+.instrument-detail-chart__analyte-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+.instrument-detail-chart {
+  min-height: 350px;
+}
+
+.instrument-detail-chart__empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.instrument-detail-chart__loading {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+/* Statistics Cards */
+.instrument-detail-chart__stats-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.instrument-detail-chart__stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.instrument-detail-chart__stat-label {
+  font-size: 0.75rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: 0.25rem;
+}
+
+.instrument-detail-chart__stat-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+}
+
+/* Active QC Rules */
+.instrument-detail-chart__rules-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+}
+
+.instrument-detail-chart__rules-section h5 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  margin-bottom: 0.5rem;
+}
+
+.instrument-detail-chart__rules-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.instrument-detail-chart__no-rules {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+}

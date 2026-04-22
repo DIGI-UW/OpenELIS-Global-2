@@ -50,7 +50,7 @@ class MenuConfigPage {
   }
 
   uncheckNonConform() {
-    cy.contains("span", this.selectors.nonConformCheck)
+    cy.contains(".cds--checkbox-label-text", this.selectors.nonConformCheck)
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
@@ -71,7 +71,7 @@ class MenuConfigPage {
   }
 
   uncheckPatientMenu() {
-    cy.contains("span", this.selectors.patientCheck)
+    cy.contains(".cds--checkbox-label-text", this.selectors.patientCheck)
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
@@ -104,7 +104,7 @@ class MenuConfigPage {
   }
 
   uncheckBillingMenu() {
-    cy.contains("span", this.selectors.billingMenuCheck)
+    cy.contains(".cds--checkbox-label-text", this.selectors.billingMenuCheck)
       .scrollIntoView()
       .should("exist")
       .click({ force: true });
