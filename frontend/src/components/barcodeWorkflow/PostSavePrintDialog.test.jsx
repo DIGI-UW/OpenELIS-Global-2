@@ -33,8 +33,8 @@ describe("PostSavePrintDialog", () => {
   });
 
   test("invokes callbacks for print and done actions", () => {
-    const onPrint = jest.fn();
-    const onDone = jest.fn();
+    const onPrint = vi.fn();
+    const onDone = vi.fn();
 
     renderWithIntl(
       <PostSavePrintDialog

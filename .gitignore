@@ -86,6 +86,7 @@ projects/*/volume/
 .dev-docs/
 
 # Playwright test artifacts (generated, not source)
+.playwright-mcp/
 **/playwright-report/
 **/playwright/.cache/
 **/playwright/.auth/
@@ -110,7 +111,43 @@ specs/*/research/AnalyzerDocs/
 docs/analyzers/012/
 specs/012-generic-astm-plugin-profiles/docs/
 
+# CI artifact downloads (gh run download)
+core-blob-report-*/
+core-screenshots-*/
+core-traces-*/
+core-playwright-report-*/
+harness-blob-report-*/
+harness-screenshots-*/
+harness-traces-*/
+
+# E2E evidence screenshots
+frontend/e2e-evidence/
+e2e-evidence-*.zip
+
 # Miscellaneous dev artifacts
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties
+
+# Real analyzer files from Herbert's Madagascar mount (contain PII)
+# Keep as a working copy for local debugging; never commit.
+docs/debug-local/
+
+# Playwright MCP / Java build metadata
+.playwright-mcp/
+META-INF/
+
+# Vitest run logs + cache (local test-output scratch)
+frontend/vitest-*.log
+frontend/full_vitest_run.log
+.vite/
+
+# Additional local test-output scratch (Jest / CRA-era, scripted runs)
+frontend/npm-test-*.log
+
+# Playwright demo/report zips at repo root (never commit)
+/playwright-*.zip
+/playwright-demo-report/
+
+# Per-PR scratch session notes (never commit)
+PR-*-STATUS-REPORT.md

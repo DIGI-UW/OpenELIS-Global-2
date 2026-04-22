@@ -46,7 +46,17 @@
       "unit": "g/dL"
     }
   ],
-  "configDefaults": {},
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
   "notes": "CRITICAL: BA-88A is a 2008-era semi-automatic analyzer. LIS capabilities may be limited or absent. VERIFY with deployment team before configuring. This default config assumes ASTM/RS232 support. If analyzer has no LIS, manual entry required. May have been confused with BS-series models (BS-120, BS-360E) which have full LIS support.",
   "verification_required": true
 }

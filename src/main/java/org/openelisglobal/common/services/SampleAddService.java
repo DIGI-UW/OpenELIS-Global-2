@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.common.services;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -151,6 +152,25 @@ public class SampleAddService {
                     item.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
                 }
                 item.setCollector(sampleItem.attributeValue("collector"));
+                item.setCollectionConditions(sampleItem.attributeValue("collectionConditions"));
+
+                String receivedDateStr = sampleItem.attributeValue("receivedDate");
+                String receivedTimeStr = sampleItem.attributeValue("receivedTime");
+                if (!GenericValidator.isBlankOrNull(receivedDateStr)) {
+                    String receivedDateTime = receivedDateStr;
+                    if (!GenericValidator.isBlankOrNull(receivedTimeStr)) {
+                        receivedDateTime += " " + receivedTimeStr;
+                    } else {
+                        receivedDateTime += " 00:00";
+                    }
+                    try {
+                        Timestamp ts = DateUtil.convertStringDateToTimestamp(receivedDateTime);
+                        item.setReceivedDate(ts);
+                    } catch (Exception e) {
+                        LogEvent.logError("SampleAddService", "createSampleTestCollection",
+                                "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
+                    }
+                }
 
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {
@@ -186,11 +206,16 @@ public class SampleAddService {
                 int numOrderLabels = parseLabelQuantity(sampleItem.attributeValue("numOrderLabels"));
                 int numSpecimenLabels = parseLabelQuantity(sampleItem.attributeValue("numSpecimenLabels"));
 
-                sampleItemsTests.add(new SampleTestCollection(item, tests,
+                // Parse existing sample item ID for updates
+                String existingSampleItemId = sampleItem.attributeValue("sampleItemId");
+
+                SampleTestCollection stc = new SampleTestCollection(item, tests,
                         USE_RECEIVE_DATE_FOR_COLLECTION_DATE ? collectionDateFromRecieveDate : collectionDateTime,
                         initialConditionList, testIdToUserSectionMap, testIdToSampleTypeMap, sampleNature,
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
-                        gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels));
+                        gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
+                stc.existingSampleItemId = existingSampleItemId;
+                sampleItemsTests.add(stc);
             }
         } catch (DocumentException e) {
             LogEvent.logDebug(e);
@@ -322,6 +347,9 @@ public class SampleAddService {
         public String gpsCaptureMethod;
         public int numOrderLabels = 1;
         public int numSpecimenLabels = 1;
+
+        // Existing sample item ID - for updates, identifies which sample_item to update
+        public String existingSampleItemId;
 
         public SampleTestCollection(SampleItem item, List<Test> tests, String collectionDate,
                 List<ObservationHistory> initialConditionList, Map<String, String> testIdToUserSectionMap,

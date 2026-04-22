@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QC Rule Violation Table -->
+    <changeSet id="qc-006-create-qc-rule-violation" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_rule_violation"/>
+            </not>
+        </preConditions>
+        <comment>Create QC rule violation table for tracking Westgard rule violations</comment>
+        <createTable tableName="qc_rule_violation">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="triggering_result_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rule_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="violation_date_time" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolution_status" type="VARCHAR(50)" defaultValue="UNRESOLVED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="resolved_date_time" type="TIMESTAMP"/>
+            <column name="resolved_by_user_id" type="INT"/>
+            <column name="resolution_notes" type="TEXT"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="qc_rule_violation"
+            baseColumnNames="triggering_result_id"
+            constraintName="fk_qc_violation_result"
+            referencedTableName="qc_result"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_rule_violation"
+            baseColumnNames="test_id"
+            constraintName="fk_qc_violation_test"
+            referencedTableName="test"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_rule_violation"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_qc_violation_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="qc_rule_violation" indexName="idx_qc_violation_instrument">
+            <column name="instrument_id"/>
+        </createIndex>
+        <createIndex tableName="qc_rule_violation" indexName="idx_qc_violation_status">
+            <column name="resolution_status"/>
+        </createIndex>
+        <createIndex tableName="qc_rule_violation" indexName="idx_qc_violation_severity">
+            <column name="severity"/>
+        </createIndex>
+        <createIndex tableName="qc_rule_violation" indexName="idx_qc_violation_date">
+            <column name="violation_date_time" descending="true"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="qc_rule_violation"/>
+        </rollback>
+    </changeSet>
+
+    <!-- QC Violation Results Junction Table (for multi-result violations like 2_2s, R_4s) -->
+    <changeSet id="qc-007-create-qc-violation-results" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_violation_results"/>
+            </not>
+        </preConditions>
+        <comment>Create junction table linking violations to all involved QC results</comment>
+        <createTable tableName="qc_violation_results">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="violation_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="qc_violation_results"
+            baseColumnNames="violation_id"
+            constraintName="fk_violation_results_violation"
+            referencedTableName="qc_rule_violation"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_violation_results"
+            baseColumnNames="result_id"
+            constraintName="fk_violation_results_result"
+            referencedTableName="qc_result"
+            referencedColumnNames="id"/>
+        <createIndex tableName="qc_violation_results" indexName="idx_violation_results_violation">
+            <column name="violation_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="qc_violation_results"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,11 +1,7 @@
-import { expect, test, Page, TestInfo } from "@playwright/test";
+import { expect, test, Page } from "../../../helpers/test-base";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
-import {
-  SHORT_TIMEOUT,
-  UI_TIMEOUT,
-  LONG_TIMEOUT,
-} from "../../../helpers/timeouts";
+import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
  * OGC-62 — Shipment management workflow (user stories)
@@ -271,8 +267,18 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   // The create button state depends on whether a facility and sample were
   // added. On a fresh demo DB without unassigned samples it stays disabled.
   // Either state proves the form validation logic works.
-  const isEnabled = await createBtn.isEnabled();
-  if (isEnabled) {
+  //
+  // Give the button a bounded window to stabilize into its final state
+  // (enabled if form is valid, disabled otherwise). `toBeEnabled` auto-
+  // retries; catching the rejection is intentional — "disabled" is a
+  // legitimate terminal state here, not a failure. try/catch (vs `.catch()`
+  // chained) keeps ESLint's missing-playwright-await happy.
+  try {
+    await expect(createBtn).toBeEnabled({ timeout: UI_TIMEOUT });
+  } catch {
+    // disabled is a valid terminal state for this demo
+  }
+  if (await createBtn.isEnabled()) {
     await createBtn.click();
 
     const successNotification = page.getByText(/created|success/i);
@@ -394,4 +400,9 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     4000,
     testInfo,
   );
+
+  // Close the US3 flow with a URL sanity check — the user must have
+  // landed on a shipment route (dashboard or receive page) for the
+  // video to have captured the intended story.
+  await expect(page).toHaveURL(/\/SampleShipment|\/shipment/i);
 });
