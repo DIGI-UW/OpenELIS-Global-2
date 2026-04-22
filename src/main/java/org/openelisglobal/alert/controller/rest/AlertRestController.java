@@ -1,5 +1,6 @@
 package org.openelisglobal.alert.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/alerts")
-public class AlertRestController {
+public class AlertRestController extends ControllerUtills {
 
     @Autowired
     private AlertService alertService;
@@ -61,27 +63,28 @@ public class AlertRestController {
 
     @PutMapping("/{id}/acknowledge")
     public ResponseEntity<AlertDTO> acknowledgeAlert(@PathVariable Long id,
-            @RequestBody AcknowledgeAlertRequest request) {
+            @RequestBody AcknowledgeAlertRequest request, HttpServletRequest httpRequest) {
         try {
-            Alert acknowledgedAlert = alertService.acknowledgeAlert(id, request.getUserId());
+            Integer userId = Integer.valueOf(getSysUserId(httpRequest));
+            Alert acknowledgedAlert = alertService.acknowledgeAlert(id, userId);
             return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            // Handle optimistic locking failures and other exceptions
             return ResponseEntity.status(500).build();
         }
     }
 
     @PutMapping("/{id}/resolve")
-    public ResponseEntity<AlertDTO> resolveAlert(@PathVariable Long id, @RequestBody ResolveAlertRequest request) {
+    public ResponseEntity<AlertDTO> resolveAlert(@PathVariable Long id, @RequestBody ResolveAlertRequest request,
+            HttpServletRequest httpRequest) {
         try {
-            Alert resolvedAlert = alertService.resolveAlert(id, request.getUserId(), request.getResolutionNotes());
+            Integer userId = Integer.valueOf(getSysUserId(httpRequest));
+            Alert resolvedAlert = alertService.resolveAlert(id, userId, request.getResolutionNotes());
             return ResponseEntity.ok(convertToDTO(resolvedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            // Handle optimistic locking failures and other exceptions
             return ResponseEntity.status(500).build();
         }
     }
@@ -130,8 +133,7 @@ public class AlertRestController {
                     dto.setFreezer(freezerDTO);
                 }
             } catch (Exception e) {
-                // Log error but don't fail the entire request
-                // The frontend will fall back to showing "Unknown"
+                // Frontend falls back to showing "Unknown"
             }
         }
 

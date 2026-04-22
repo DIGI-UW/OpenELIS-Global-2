@@ -9,13 +9,13 @@
 
 ## Summary
 
-Add server-side pagination to the Sample Storage Dashboard (`/Storage/samples`)
-to support large datasets (100,000+ samples) without performance degradation.
-Currently, the page loads all sample storage assignments at once, causing 10-20
-second page loads with large datasets. This enhancement implements pagination
-following the existing pattern in the NoteBook module, using Spring Data JPA
-`Pageable` + `Page<T>` on the backend and Carbon Design System `<Pagination>`
-component on the frontend.
+Add server-side pagination to the Sample Storage Dashboard
+(`/Storage/sample-items`) to support large datasets (100,000+ samples) without
+performance degradation. Currently, the page loads all sample storage
+assignments at once, causing 10-20 second page loads with large datasets. This
+enhancement implements pagination following the existing pattern in the NoteBook
+module, using Spring Data JPA `Pageable` + `Page<T>` on the backend and Carbon
+Design System `<Pagination>` component on the frontend.
 
 **Technical Approach**:
 

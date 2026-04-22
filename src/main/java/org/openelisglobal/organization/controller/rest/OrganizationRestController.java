@@ -5,11 +5,14 @@ import jakarta.validation.Valid;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.OrganizationAddressService;
 import org.openelisglobal.address.valueholder.AddressPart;
@@ -38,6 +41,7 @@ import org.openelisglobal.organization.valueholder.OrganizationType;
 import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
@@ -47,6 +51,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.support.SessionStatus;
 
@@ -445,17 +450,40 @@ public class OrganizationRestController extends BaseController {
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.REFERRAL_ORGANIZATIONS);
         DisplayListService.getInstance().refreshLists();
 
-        // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
-        // status.setComplete();
-        // return findForward(FWD_SUCCESS_INSERT, form);
-        return ResponseEntity.ok("Organization saved or updated successfully.");
+        Map<String, Object> result2 = new HashMap<>();
+        result2.put("id", organization.getId());
+        result2.put("organizationName", organization.getOrganizationName());
+        result2.put("shortName", organization.getShortName());
+        result2.put("success", true);
+        return ResponseEntity.ok(result2);
     }
 
-    // private void setDefaultButtonAttributes(HttpServletRequest request) {
-    // request.setAttribute(ALLOW_EDITS_KEY, "true");
-    // request.setAttribute(PREVIOUS_DISABLED, "false");
-    // request.setAttribute(NEXT_DISABLED, "false");
-    // }
+    /**
+     * Get all organization types.
+     */
+    @GetMapping(value = "/organization/types", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<OrganizationType>> getOrganizationTypes() {
+        return ResponseEntity.ok(organizationTypeService.getAll());
+    }
+
+    /**
+     * Generate a unique, sequential site code for new sampling sites. Format:
+     * SYYMMDD-NNNNN (e.g., S260408-00001) — max 14 chars, fits short_name(15). Uses
+     * a DB sequence (site_code_seq) for guaranteed uniqueness.
+     */
+    @GetMapping(value = "/organization/generate-site-code", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, String>> generateSiteCode() {
+        try {
+            String code = organizationService.generateSiteCode();
+            Map<String, String> response = new HashMap<>();
+            response.put("siteCode", code);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "generateSiteCode",
+                    "Error generating site code: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     private void persistAddressParts(Organization organization, Map<String, OrganizationAddress> addressParts) {
         OrganizationAddress departmentAddress = addressParts.get(DEPARTMENT_ADDRESS_KEY);
@@ -596,6 +624,141 @@ public class OrganizationRestController extends BaseController {
             newParent.setId(childOrg.getId());
             childOrg.setOrganization(newParent);
         }
+    }
 
+    @GetMapping(value = "/organization/search", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> searchOrganizations(@RequestParam(required = false) String search,
+            @RequestParam(required = false) String type, @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+
+        try {
+            List<Organization> organizations;
+            int totalCount;
+
+            if (!GenericValidator.isBlankOrNull(search)) {
+                organizations = organizationService.searchOrganizationsWithTypes(search);
+
+                if (!GenericValidator.isBlankOrNull(type)) {
+                    organizations = filterByType(organizations, type);
+                } else {
+                    organizations = filterByReferringSiteTypes(organizations);
+                }
+
+                totalCount = organizations.size();
+
+                int startIndex = (page - 1) * pageSize;
+                int endIndex = Math.min(startIndex + pageSize, organizations.size());
+                if (startIndex < organizations.size()) {
+                    organizations = organizations.subList(startIndex, endIndex);
+                } else {
+                    organizations = new ArrayList<>();
+                }
+            } else {
+                int startRecNo = ((page - 1) * pageSize) + 1;
+                organizations = organizationService.getPageOfOrganizations(startRecNo);
+                // DAO fetches pageSize+1 rows for "has next page" detection — trim to requested
+                // size
+                if (organizations.size() > pageSize) {
+                    organizations = organizations.subList(0, pageSize);
+                }
+                organizations = filterByReferringSiteTypes(organizations);
+                totalCount = organizationService.getTotalOrganizationCount();
+            }
+
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (Organization org : organizations) {
+                Map<String, Object> orgData = new HashMap<>();
+                orgData.put("id", org.getId());
+                orgData.put("organizationName", org.getOrganizationName());
+                orgData.put("name", org.getOrganizationName());
+                orgData.put("shortName", org.getShortName());
+                orgData.put("code", org.getOrganizationLocalAbbreviation());
+                orgData.put("streetAddress", org.getStreetAddress());
+                orgData.put("city", org.getCity() != null ? org.getCity() : "");
+                orgData.put("state", org.getState());
+                orgData.put("isActive", "Y".equals(org.getIsActive()));
+
+                List<String> typeIds = organizationService.getTypeIdsForOrganizationId(org.getId());
+                String orgTypeName = "";
+                if (!typeIds.isEmpty()) {
+                    OrganizationType orgType = organizationTypeService.get(typeIds.get(0));
+                    if (orgType != null && orgType.getName() != null) {
+                        orgTypeName = orgType.getName();
+                    }
+                }
+                orgData.put("organizationType", orgTypeName);
+
+                if (org.getOrganization() != null) {
+                    Map<String, Object> parentData = new HashMap<>();
+                    parentData.put("id", org.getOrganization().getId());
+                    parentData.put("name", org.getOrganization().getOrganizationName());
+                    orgData.put("parent", parentData);
+                }
+
+                results.add(orgData);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("organizations", results);
+            response.put("totalCount", totalCount);
+            response.put("page", page);
+            response.put("pageSize", pageSize);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getName(), "searchOrganizations",
+                    "Error searching organizations: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private List<Organization> filterByType(List<Organization> organizations, String typeName) {
+        List<Organization> filtered = new ArrayList<>();
+        OrganizationType targetType = organizationTypeService.getOrganizationTypeByName(typeName);
+
+        if (targetType == null) {
+            return organizations;
+        }
+
+        for (Organization org : organizations) {
+            List<String> typeIds = organizationService.getTypeIdsForOrganizationId(org.getId());
+            if (typeIds.contains(targetType.getId())) {
+                filtered.add(org);
+            }
+        }
+
+        return filtered;
+    }
+
+    private List<Organization> filterByReferringSiteTypes(List<Organization> organizations) {
+        List<Organization> filtered = new ArrayList<>();
+
+        OrganizationType referringClinicType = organizationTypeService.getOrganizationTypeByName("referring clinic");
+        OrganizationType patientReferralType = organizationTypeService.getOrganizationTypeByName("patient referral");
+
+        Set<String> validTypeIds = new HashSet<>();
+        if (referringClinicType != null) {
+            validTypeIds.add(referringClinicType.getId());
+        }
+        if (patientReferralType != null) {
+            validTypeIds.add(patientReferralType.getId());
+        }
+
+        if (validTypeIds.isEmpty()) {
+            return filtered;
+        }
+
+        for (Organization org : organizations) {
+            List<String> typeIds = organizationService.getTypeIdsForOrganizationId(org.getId());
+            for (String typeId : typeIds) {
+                if (validTypeIds.contains(typeId)) {
+                    filtered.add(org);
+                    break;
+                }
+            }
+        }
+
+        return filtered;
     }
 }

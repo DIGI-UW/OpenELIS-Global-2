@@ -31,6 +31,9 @@ public class AnalyzerPluginConfigServiceTest {
     @Mock
     private AnalyzerService analyzerService;
 
+    @Mock
+    private AnalyzerQcRuleService analyzerQcRuleService;
+
     @InjectMocks
     private AnalyzerPluginConfigServiceImpl service;
 
@@ -112,20 +115,14 @@ public class AnalyzerPluginConfigServiceTest {
 
     @Test
     public void testHasAtLeastOneActiveQcRule_WithActiveRule_ReturnsTrue() {
-        AnalyzerPluginConfig config = new AnalyzerPluginConfig();
-        config.setAnalyzerId("101");
-        config.setConfig("{\"qcRules\":[{\"isActive\":false},{\"isActive\":true}]}");
-        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(config));
+        when(analyzerQcRuleService.hasAtLeastOneActiveRule("101")).thenReturn(true);
 
         assertTrue(service.hasAtLeastOneActiveQcRule("101"));
     }
 
     @Test
     public void testHasAtLeastOneActiveQcRule_WithNoRules_ReturnsFalse() {
-        AnalyzerPluginConfig config = new AnalyzerPluginConfig();
-        config.setAnalyzerId("101");
-        config.setConfig("{\"qcRules\":[]}");
-        when(analyzerPluginConfigDAO.findByAnalyzerId("101")).thenReturn(Optional.of(config));
+        when(analyzerQcRuleService.hasAtLeastOneActiveRule("101")).thenReturn(false);
 
         assertFalse(service.hasAtLeastOneActiveQcRule("101"));
     }

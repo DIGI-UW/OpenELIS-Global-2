@@ -19,6 +19,7 @@ public class PanelServiceImpl extends AuditableBaseObjectServiceImpl<Panel, Stri
 
     PanelServiceImpl() {
         super(Panel.class);
+        this.auditTrailLog = true;
     }
 
     @Override

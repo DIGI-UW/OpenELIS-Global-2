@@ -1,0 +1,79 @@
+/**
+ * QCSummaryTiles Styles
+ * Uses Carbon Design System tokens
+ */
+
+.qc-summary-tiles {
+  margin-bottom: 1.5rem;
+}
+
+.qc-summary-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  min-height: 120px;
+  border-left: 4px solid transparent;
+}
+
+.qc-summary-tile--green {
+  border-left-color: var(--cds-support-success, #24a148);
+}
+
+.qc-summary-tile--green .qc-summary-tile__icon {
+  color: var(--cds-support-success, #24a148);
+}
+
+.qc-summary-tile--yellow {
+  border-left-color: var(--cds-support-warning, #f1c21b);
+}
+
+.qc-summary-tile--yellow .qc-summary-tile__icon {
+  color: var(--cds-support-warning, #f1c21b);
+}
+
+.qc-summary-tile--red {
+  border-left-color: var(--cds-support-error, #da1e28);
+}
+
+.qc-summary-tile--red .qc-summary-tile__icon {
+  color: var(--cds-support-error, #da1e28);
+}
+
+.qc-summary-tile--passrate {
+  border-left-color: var(--cds-interactive, #0f62fe);
+}
+
+.qc-summary-tile__icon {
+  flex-shrink: 0;
+  margin-top: 0.25rem;
+}
+
+.qc-summary-tile__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.qc-summary-tile__label {
+  font-size: 0.875rem;
+  color: var(--cds-text-secondary, #525252);
+  margin-bottom: 0.25rem;
+}
+
+.qc-summary-tile__count {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--cds-text-primary, #161616);
+  line-height: 1.2;
+}
+
+.qc-summary-tile__count--large {
+  font-size: 2.5rem;
+}
+
+.qc-summary-tile__subtitle {
+  font-size: 0.75rem;
+  color: var(--cds-text-helper, #6f6f6f);
+  margin-top: 0.25rem;
+}
