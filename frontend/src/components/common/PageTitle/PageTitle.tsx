@@ -53,10 +53,9 @@ const PageTitle: React.FC<PageTitleProps> = ({
     }
   };
 
-  const separator = intl.formatMessage(
-    { id: "page.breadcrumb.separator" },
-    { defaultMessage: " > " },
-  );
+  const separator = intl.formatMessage({
+    id: "page.breadcrumb.separator",
+  });
 
   return (
     <div className="page-title" data-testid="page-title">
