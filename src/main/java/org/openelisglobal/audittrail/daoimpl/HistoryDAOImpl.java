@@ -1,7 +1,9 @@
 package org.openelisglobal.audittrail.daoimpl;
 
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.List;
+import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -54,6 +56,12 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     public List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search, int page, int pageSize)
             throws LIMSRuntimeException {
+        // sysUserId binds through LIMSStringNumberUserType, which calls
+        // Integer.parseInt during binding; short-circuit to an empty result for
+        // non-numeric input so bad client filters don't surface as 500s.
+        if (sysUserId != null && !sysUserId.isEmpty() && !GenericValidator.isInt(sysUserId)) {
+            return Collections.emptyList();
+        }
         try {
             StringBuilder hql = new StringBuilder("from History h where 1=1");
             appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search);
@@ -74,6 +82,9 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     @Transactional(readOnly = true)
     public long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException {
+        if (sysUserId != null && !sysUserId.isEmpty() && !GenericValidator.isInt(sysUserId)) {
+            return 0L;
+        }
         try {
             StringBuilder hql = new StringBuilder("select count(*) from History h where 1=1");
             appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search);
