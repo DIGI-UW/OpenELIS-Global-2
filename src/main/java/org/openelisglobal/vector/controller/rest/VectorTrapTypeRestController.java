@@ -2,6 +2,8 @@ package org.openelisglobal.vector.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ControllerUtills;
@@ -28,8 +30,7 @@ public class VectorTrapTypeRestController {
     private VectorTrapTypeService vectorTrapTypeService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<VectorTrapType>> getTrapTypes(
-            @RequestParam(required = false) String groupId) {
+    public ResponseEntity<List<VectorTrapType>> getTrapTypes(@RequestParam(required = false) Integer groupId) {
         try {
             List<VectorTrapType> result = groupId != null
                     ? vectorTrapTypeService.getByGroupId(groupId)
@@ -42,7 +43,7 @@ public class VectorTrapTypeRestController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorTrapType> getTrapType(@PathVariable String id) {
+    public ResponseEntity<VectorTrapType> getTrapType(@PathVariable Integer id) {
         try {
             return ResponseEntity.ok(vectorTrapTypeService.get(id));
         } catch (Exception e) {
@@ -55,8 +56,10 @@ public class VectorTrapTypeRestController {
     public ResponseEntity<VectorTrapType> createTrapType(@RequestBody VectorTrapType trapType,
             HttpServletRequest request) {
         try {
-            trapType.setSysUserId(ControllerUtills.getSysUserId(request));
-            String id = vectorTrapTypeService.insert(trapType);
+            Set<Integer> groupIds = trapType.getGroups().stream()
+                    .map(g -> g.getId())
+                    .collect(Collectors.toSet());
+            Integer id = vectorTrapTypeService.create(trapType, groupIds, ControllerUtills.getSysUserId(request));
             trapType.setId(id);
             return ResponseEntity.status(HttpStatus.CREATED).body(trapType);
         } catch (LIMSRuntimeException e) {
@@ -65,14 +68,15 @@ public class VectorTrapTypeRestController {
         }
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorTrapType> updateTrapType(@PathVariable String id,
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<VectorTrapType> updateTrapType(@PathVariable Integer id,
             @RequestBody VectorTrapType trapType, HttpServletRequest request) {
         try {
-            trapType.setId(id);
-            trapType.setSysUserId(ControllerUtills.getSysUserId(request));
-            VectorTrapType updated = vectorTrapTypeService.update(trapType);
+            Set<Integer> groupIds = trapType.getGroups().stream()
+                    .map(g -> g.getId())
+                    .collect(Collectors.toSet());
+            VectorTrapType updated = vectorTrapTypeService.patchUpdate(id, trapType, groupIds,
+                    ControllerUtills.getSysUserId(request));
             return ResponseEntity.ok(updated);
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);

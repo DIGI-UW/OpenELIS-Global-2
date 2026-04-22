@@ -25,6 +25,7 @@ import {
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PatientSearchSection from "./sections/PatientSearchSection";
 import LocationSection from "./sections/LocationSection";
+import VectorSection from "./sections/VectorSection";
 import ProgramSection from "./sections/ProgramSection";
 import ClinicalInfoSection from "./sections/ClinicalInfoSection";
 import RequesterSection from "./sections/RequesterSection";
@@ -72,7 +73,7 @@ const OrderEnter = () => {
   const [workflowType, setWorkflowType] = useState(
     orderData?.sampleOrderItems?.environmentalFields?.workflowType ||
       "clinical",
-  ); // "clinical" | "environmental"
+  ); // "clinical" | "environmental" | "vector"
   const [labUnitConfig, setLabUnitConfig] = useState(null);
   const [isGeneratingLabNo, setIsGeneratingLabNo] = useState(false);
   const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
@@ -165,7 +166,8 @@ const OrderEnter = () => {
 
   // Handle workflow type switch
   const handleWorkflowTypeChange = (index) => {
-    const newWorkflowType = index === 0 ? "clinical" : "environmental";
+    const newWorkflowType =
+      index === 0 ? "clinical" : index === 1 ? "environmental" : "vector";
     setWorkflowType(newWorkflowType);
 
     // Persist workflow type to orderData for backend storage
@@ -174,14 +176,13 @@ const OrderEnter = () => {
       ...prev,
       // Set top-level patientUpdateStatus for backend
       patientUpdateStatus:
-        newWorkflowType === "environmental"
+        newWorkflowType === "environmental" || newWorkflowType === "vector"
           ? "NO_ACTION"
           : prev.patientUpdateStatus,
       patientProperties: {
         ...prev.patientProperties,
-        // Also set inside patientProperties where backend reads it
         patientUpdateStatus:
-          newWorkflowType === "environmental"
+          newWorkflowType === "environmental" || newWorkflowType === "vector"
             ? "NO_ACTION"
             : prev.patientProperties?.patientUpdateStatus,
       },
@@ -201,10 +202,12 @@ const OrderEnter = () => {
   const hasPatientOrSite =
     workflowType === "environmental"
       ? !!(envFields.samplingSiteId || envFields.samplingSiteName)
-      : !!(
-          orderData?.patientProperties?.lastName ||
-          orderData?.patientProperties?.nationalId
-        );
+      : workflowType === "vector"
+        ? !!envFields.vecOrganismGroupId
+        : !!(
+            orderData?.patientProperties?.lastName ||
+            orderData?.patientProperties?.nationalId
+          );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
   const canSave = localLabNumber && hasPatientOrSite && hasSampleTypes;
 
@@ -458,7 +461,13 @@ const OrderEnter = () => {
             </h4>
             <ContentSwitcher
               onChange={({ index }) => handleWorkflowTypeChange(index)}
-              selectedIndex={workflowType === "clinical" ? 0 : 1}
+              selectedIndex={
+                workflowType === "clinical"
+                  ? 0
+                  : workflowType === "environmental"
+                    ? 1
+                    : 2
+              }
             >
               <Switch name="clinical">
                 <FormattedMessage
@@ -470,6 +479,12 @@ const OrderEnter = () => {
                 <FormattedMessage
                   id="workflow.environmental"
                   defaultMessage="Environmental / Other"
+                />
+              </Switch>
+              <Switch name="vector">
+                <FormattedMessage
+                  id="workflow.vector"
+                  defaultMessage="Vector Surveillance"
                 />
               </Switch>
             </ContentSwitcher>
@@ -495,6 +510,15 @@ const OrderEnter = () => {
         {/* Section 3: Location (Environmental) */}
         {workflowType === "environmental" && (
           <LocationSection
+            orderData={orderData}
+            setOrderData={setOrderData}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        )}
+
+        {/* Section 3: Vector Surveillance */}
+        {workflowType === "vector" && (
+          <VectorSection
             orderData={orderData}
             setOrderData={setOrderData}
             isReadOnly={isReadOnly && !isEditMode}

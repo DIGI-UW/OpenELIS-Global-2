@@ -1,0 +1,15 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+vecPathogens,Dengue,Dengue,Y,10,,Dengue,Dengue,Dengue,Dengue
+vecPathogens,Zika,Zika,Y,20,,Zika,Zika,Zika,Zika
+vecPathogens,Chikungunya,Chikungunya,Y,30,,Chikungunya,Chikungunya,Chikungunya,Chikungunya
+vecPathogens,Malaria,Malaria,Y,40,,Malaria,Paludisme,Malaria,Malaria
+vecPathogens,Yellow Fever,YellowFever,Y,50,,Yellow Fever,Fievre Jaune,Fiebre Amarilla,Demam Kuning
+vecPathogens,West Nile Virus,WestNile,Y,60,,West Nile Virus,Virus du Nil Occidental,Virus del Nilo Occidental,Virus Nil Barat
+vecPathogens,Rift Valley Fever,RiftValley,Y,70,,Rift Valley Fever,Fievre de la Vallee du Rift,Fiebre del Valle del Rift,Demam Lembah Rift
+vecPathogens,Plague,Plague,Y,80,,Plague,Peste,Plaga,Pes
+vecPathogens,Typhus,Typhus,Y,90,,Typhus,Typhus,Tifus,Tifus
+vecLifecycleStages,Adult,ADULT,Y,10,,Adult,Adulte,Adulto,Dewasa
+vecLifecycleStages,Larva,LARVA,Y,20,,Larva,Larve,Larva,Larva
+vecLifecycleStages,Pupa,PUPA,Y,30,,Pupa,Pupe,Pupa,Pupa
+vecLifecycleStages,Egg,EGG,Y,40,,Egg,Oeuf,Huevo,Telur
+vecLifecycleStages,Nymph,NYMPH,Y,50,,Nymph,Nymphe,Ninfa,Nimfa

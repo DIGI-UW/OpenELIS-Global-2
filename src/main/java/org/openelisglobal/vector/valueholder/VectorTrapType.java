@@ -1,39 +1,49 @@
 package org.openelisglobal.vector.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import java.util.HashSet;
+import java.util.Set;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "vector_trap_type", schema = "clinlims")
 @DynamicUpdate
-public class VectorTrapType extends BaseObject<String> {
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
+public class VectorTrapType extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "id", precision = 10, scale = 0)
-    @GeneratedValue(generator = "vector_trap_type_seq_gen")
-    @GenericGenerator(name = "vector_trap_type_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "vector_trap_type_seq"))
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "vector_trap_type_seq_gen")
+    @SequenceGenerator(name = "vector_trap_type_seq_gen", sequenceName = "vector_trap_type_seq", schema = "clinlims", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
 
     @Column(name = "name", length = 100, nullable = false)
     private String name;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id", nullable = false)
-    private VectorOrganismGroup group;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        schema = "clinlims",
+        name = "vector_trap_type_group",
+        joinColumns = @JoinColumn(name = "trap_type_id"),
+        inverseJoinColumns = @JoinColumn(name = "group_id")
+    )
+    private Set<VectorOrganismGroup> groups = new HashSet<>();
 
     @Column(name = "description", length = 255)
     private String description;
@@ -42,12 +52,12 @@ public class VectorTrapType extends BaseObject<String> {
     private Boolean active;
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -59,12 +69,12 @@ public class VectorTrapType extends BaseObject<String> {
         this.name = name;
     }
 
-    public VectorOrganismGroup getGroup() {
-        return group;
+    public Set<VectorOrganismGroup> getGroups() {
+        return groups;
     }
 
-    public void setGroup(VectorOrganismGroup group) {
-        this.group = group;
+    public void setGroups(Set<VectorOrganismGroup> groups) {
+        this.groups = groups != null ? groups : new HashSet<>();
     }
 
     public String getDescription() {

@@ -366,7 +366,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         updateData.validateSample(result, requireSampleItems);
 
-        // OGC-356: For environmental/vector workflow, ignore patient-related validation errors
+        // OGC-356: For environmental/vector workflow, ignore patient-related validation
+        // errors
         boolean hasNonPatientErrors = result.hasErrors();
         if (hasNonPatientErrors && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
             // Check if all errors are patient-related

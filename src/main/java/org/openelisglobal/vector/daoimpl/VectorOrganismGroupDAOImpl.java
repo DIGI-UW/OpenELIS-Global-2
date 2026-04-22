@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class VectorOrganismGroupDAOImpl extends BaseDAOImpl<VectorOrganismGroup, String>
+public class VectorOrganismGroupDAOImpl extends BaseDAOImpl<VectorOrganismGroup, Integer>
         implements VectorOrganismGroupDAO {
 
     public VectorOrganismGroupDAOImpl() {
@@ -24,7 +24,8 @@ public class VectorOrganismGroupDAOImpl extends BaseDAOImpl<VectorOrganismGroup,
     public List<VectorOrganismGroup> getActiveGroups() throws LIMSRuntimeException {
         try {
             TypedQuery<VectorOrganismGroup> query = entityManager.createQuery(
-                    "from VectorOrganismGroup where active = true order by label", VectorOrganismGroup.class);
+                    "select g from VectorOrganismGroup g where g.active = true order by g.label",
+                    VectorOrganismGroup.class);
             return query.getResultList();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -37,7 +38,7 @@ public class VectorOrganismGroupDAOImpl extends BaseDAOImpl<VectorOrganismGroup,
     public VectorOrganismGroup getByCode(String code) throws LIMSRuntimeException {
         try {
             TypedQuery<VectorOrganismGroup> query = entityManager.createQuery(
-                    "from VectorOrganismGroup where code = :code", VectorOrganismGroup.class);
+                    "select g from VectorOrganismGroup g where g.code = :code", VectorOrganismGroup.class);
             query.setParameter("code", code);
             List<VectorOrganismGroup> list = query.getResultList();
             return list.isEmpty() ? null : list.get(0);

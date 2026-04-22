@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Transactional
-public class VectorSpeciesDAOImpl extends BaseDAOImpl<VectorSpecies, String> implements VectorSpeciesDAO {
+public class VectorSpeciesDAOImpl extends BaseDAOImpl<VectorSpecies, Integer> implements VectorSpeciesDAO {
 
     public VectorSpeciesDAOImpl() {
         super(VectorSpecies.class);
@@ -20,10 +20,10 @@ public class VectorSpeciesDAOImpl extends BaseDAOImpl<VectorSpecies, String> imp
 
     @Override
     @Transactional(readOnly = true)
-    public List<VectorSpecies> getByGroupId(String groupId) throws LIMSRuntimeException {
+    public List<VectorSpecies> getByGroupId(Integer groupId) throws LIMSRuntimeException {
         try {
             TypedQuery<VectorSpecies> query = entityManager.createQuery(
-                    "from VectorSpecies where group.id = :groupId and active = true order by genus, species",
+                    "select s from VectorSpecies s where s.group.id = :groupId and s.active = true order by s.genus, s.species",
                     VectorSpecies.class);
             query.setParameter("groupId", groupId);
             return query.getResultList();

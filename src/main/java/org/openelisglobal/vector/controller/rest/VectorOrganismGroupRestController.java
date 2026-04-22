@@ -47,10 +47,9 @@ public class VectorOrganismGroupRestController {
     }
 
     @GetMapping(value = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorOrganismGroup> getGroup(@PathVariable String id) {
+    public ResponseEntity<VectorOrganismGroup> getGroup(@PathVariable Integer id) {
         try {
-            VectorOrganismGroup group = vectorOrganismGroupService.get(id);
-            return ResponseEntity.ok(group);
+            return ResponseEntity.ok(vectorOrganismGroupService.get(id));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -62,7 +61,7 @@ public class VectorOrganismGroupRestController {
             HttpServletRequest request) {
         try {
             group.setSysUserId(ControllerUtills.getSysUserId(request));
-            String id = vectorOrganismGroupService.insert(group);
+            Integer id = vectorOrganismGroupService.insert(group);
             group.setId(id);
             return ResponseEntity.status(HttpStatus.CREATED).body(group);
         } catch (LIMSRuntimeException e) {
@@ -71,14 +70,12 @@ public class VectorOrganismGroupRestController {
         }
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<VectorOrganismGroup> updateGroup(@PathVariable String id,
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<VectorOrganismGroup> updateGroup(@PathVariable Integer id,
             @RequestBody VectorOrganismGroup group, HttpServletRequest request) {
         try {
-            group.setId(id);
-            group.setSysUserId(ControllerUtills.getSysUserId(request));
-            VectorOrganismGroup updated = vectorOrganismGroupService.update(group);
+            VectorOrganismGroup updated = vectorOrganismGroupService.patchUpdate(id, group,
+                    ControllerUtills.getSysUserId(request));
             return ResponseEntity.ok(updated);
         } catch (LIMSRuntimeException e) {
             LogEvent.logError(e);

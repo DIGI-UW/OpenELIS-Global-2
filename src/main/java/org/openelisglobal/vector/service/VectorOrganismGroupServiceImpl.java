@@ -1,6 +1,7 @@
 package org.openelisglobal.vector.service;
 
 import java.util.List;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.vector.dao.VectorOrganismGroupDAO;
 import org.openelisglobal.vector.valueholder.VectorOrganismGroup;
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class VectorOrganismGroupServiceImpl extends AuditableBaseObjectServiceImpl<VectorOrganismGroup, String>
+public class VectorOrganismGroupServiceImpl extends AuditableBaseObjectServiceImpl<VectorOrganismGroup, Integer>
         implements VectorOrganismGroupService {
 
     @Autowired
@@ -34,5 +35,20 @@ public class VectorOrganismGroupServiceImpl extends AuditableBaseObjectServiceIm
     @Transactional(readOnly = true)
     public VectorOrganismGroup getByCode(String code) {
         return getBaseObjectDAO().getByCode(code);
+    }
+
+    @Override
+    @Transactional
+    public VectorOrganismGroup patchUpdate(Integer id, VectorOrganismGroup patch, String sysUserId) {
+        VectorOrganismGroup existing = getBaseObjectDAO().get(id)
+                .orElseThrow(() -> new ObjectNotFoundException(id, VectorOrganismGroup.class.getName()));
+        existing.setLabel(patch.getLabel());
+        existing.setColorTag(patch.getColorTag());
+        existing.setDescription(patch.getDescription());
+        if (!Boolean.TRUE.equals(existing.getIsSystem())) {
+            existing.setCode(patch.getCode());
+        }
+        existing.setSysUserId(sysUserId);
+        return getBaseObjectDAO().update(existing);
     }
 }

@@ -1,29 +1,31 @@
 package org.openelisglobal.vector.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 @Entity
 @Table(name = "vector_organism_group", schema = "clinlims")
 @DynamicUpdate
-public class VectorOrganismGroup extends BaseObject<String> {
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
+public class VectorOrganismGroup extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "id", precision = 10, scale = 0)
-    @GeneratedValue(generator = "vector_organism_group_seq_gen")
-    @GenericGenerator(name = "vector_organism_group_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "vector_organism_group_seq"))
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "vector_organism_group_seq_gen")
+    @SequenceGenerator(name = "vector_organism_group_seq_gen", sequenceName = "vector_organism_group_seq", schema = "clinlims", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
 
     @Column(name = "code", length = 20, nullable = false, unique = true)
     private String code;
@@ -44,12 +46,12 @@ public class VectorOrganismGroup extends BaseObject<String> {
     private Boolean active;
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

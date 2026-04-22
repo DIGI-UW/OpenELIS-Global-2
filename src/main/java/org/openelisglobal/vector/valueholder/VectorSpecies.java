@@ -1,32 +1,41 @@
 package org.openelisglobal.vector.valueholder;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import java.util.HashSet;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
 import org.hibernate.annotations.DynamicUpdate;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 
 @Entity
 @Table(name = "vector_species", schema = "clinlims")
 @DynamicUpdate
-public class VectorSpecies extends BaseObject<String> {
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@AttributeOverride(name = "lastupdated", column = @Column(name = "lastupdated"))
+public class VectorSpecies extends BaseObject<Integer> {
 
     private static final long serialVersionUID = 1L;
 
     @Id
-    @Column(name = "id", precision = 10, scale = 0)
-    @GeneratedValue(generator = "vector_species_seq_gen")
-    @GenericGenerator(name = "vector_species_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "vector_species_seq"))
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String id;
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "vector_species_seq_gen")
+    @SequenceGenerator(name = "vector_species_seq_gen", sequenceName = "vector_species_seq", schema = "clinlims", allocationSize = 1)
+    @Column(name = "id")
+    private Integer id;
 
     @Column(name = "genus", length = 100, nullable = false)
     private String genus;
@@ -37,26 +46,38 @@ public class VectorSpecies extends BaseObject<String> {
     @Column(name = "subspecies", length = 100)
     private String subspecies;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "group_id", nullable = false)
     private VectorOrganismGroup group;
 
-    @Column(name = "pathogens_of_interest", length = 255)
-    private String pathogensOfInterest;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        schema = "clinlims",
+        name = "vector_species_pathogen",
+        joinColumns = @JoinColumn(name = "species_id"),
+        inverseJoinColumns = @JoinColumn(name = "dictionary_id")
+    )
+    private Set<Dictionary> pathogensOfInterest = new HashSet<>();
 
-    @Column(name = "lifecycle_stages", length = 100)
-    private String lifecycleStages;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+        schema = "clinlims",
+        name = "vector_species_lifecycle_stage",
+        joinColumns = @JoinColumn(name = "species_id"),
+        inverseJoinColumns = @JoinColumn(name = "dictionary_id")
+    )
+    private Set<Dictionary> lifecycleStages = new HashSet<>();
 
     @Column(name = "active")
     private Boolean active;
 
     @Override
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
     @Override
-    public void setId(String id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -92,20 +113,20 @@ public class VectorSpecies extends BaseObject<String> {
         this.group = group;
     }
 
-    public String getPathogensOfInterest() {
+    public Set<Dictionary> getPathogensOfInterest() {
         return pathogensOfInterest;
     }
 
-    public void setPathogensOfInterest(String pathogensOfInterest) {
-        this.pathogensOfInterest = pathogensOfInterest;
+    public void setPathogensOfInterest(Set<Dictionary> pathogensOfInterest) {
+        this.pathogensOfInterest = pathogensOfInterest != null ? pathogensOfInterest : new HashSet<>();
     }
 
-    public String getLifecycleStages() {
+    public Set<Dictionary> getLifecycleStages() {
         return lifecycleStages;
     }
 
-    public void setLifecycleStages(String lifecycleStages) {
-        this.lifecycleStages = lifecycleStages;
+    public void setLifecycleStages(Set<Dictionary> lifecycleStages) {
+        this.lifecycleStages = lifecycleStages != null ? lifecycleStages : new HashSet<>();
     }
 
     public Boolean getActive() {
