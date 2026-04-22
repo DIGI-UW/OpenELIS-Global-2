@@ -1,5 +1,13 @@
 # Feature Specification: Box Storage Hierarchy Enhancement
 
+> **Status:** DEFERRED — design-only; no implementation work scheduled. **Last
+> reconciled:** 2026-04-20 **Reality notes:** Storage subsystem saw heavy
+> refactor work through early 2026 (picker decomposition in PR #3430, storage
+> CRUD hardening, canonical ARIA picker pattern) but did not add a Box hierarchy
+> level. The Virtual Position architectural shift described here is
+> unimplemented. Spec retained as the design-of-record for when this work is
+> picked up; plan/tasks not yet drafted.
+
 **Feature Branch**: `spec/clarify/OGC-149-box-plate-hierarchy`  
 **Created**: December 5, 2025  
 **Updated**: December 9, 2025  
