@@ -345,6 +345,17 @@ public class PatientMergeServiceImpl implements PatientMergeService {
         Patient primaryPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient1 : patient2;
         Patient mergedPatient = request.getPrimaryPatientId().equals(patient1.getId()) ? patient2 : patient1;
 
+        // FR-015: Verify FHIR resources exist *before* doing any merge transactions
+        if (fhirPatientLinkService.hasFhirResource(primaryPatient.getId())
+                && fhirPatientLinkService.hasFhirResource(mergedPatient.getId())) {
+            try {
+                fhirPatientLinkService.verifyFhirResources(primaryPatient.getFhirUuidAsString(),
+                        mergedPatient.getFhirUuidAsString());
+            } catch (FhirLocalPersistingException e) {
+                return PatientMergeExecutionResultDTO.failure("FHIR integration error: " + e.getMessage());
+            }
+        }
+
         // Mark merged patient as inactive
         mergedPatient.setIsMerged(true);
         mergedPatient.setMergedIntoPatientId(primaryPatient.getId());
@@ -451,36 +462,36 @@ public class PatientMergeServiceImpl implements PatientMergeService {
             return "Unknown";
         }
         switch (identityType.toUpperCase()) {
-        case "SUBJECT":
-            return "Subject Number";
-        case "NATIONAL":
-            return "National ID";
-        case "ST":
-            return "ST Number";
-        case "INSURANCE":
-            return "Insurance ID";
-        case "OCCUPATION":
-            return "Occupation";
-        case "ORG_SITE":
-            return "Organization Site";
-        case "EDUCATION":
-            return "Education";
-        case "MARITIAL":
-            return "Marital Status";
-        case "NATIONALITY":
-            return "Nationality";
-        case "OTHER NATIONALITY":
-            return "Other Nationality";
-        case "HEALTH DISTRICT":
-            return "Health District";
-        case "HEALTH REGION":
-            return "Health Region";
-        case "OB_NUMBER":
-            return "OB Number";
-        case "PC_NUMBER":
-            return "PC Number";
-        default:
-            return identityType;
+            case "SUBJECT":
+                return "Subject Number";
+            case "NATIONAL":
+                return "National ID";
+            case "ST":
+                return "ST Number";
+            case "INSURANCE":
+                return "Insurance ID";
+            case "OCCUPATION":
+                return "Occupation";
+            case "ORG_SITE":
+                return "Organization Site";
+            case "EDUCATION":
+                return "Education";
+            case "MARITIAL":
+                return "Marital Status";
+            case "NATIONALITY":
+                return "Nationality";
+            case "OTHER NATIONALITY":
+                return "Other Nationality";
+            case "HEALTH DISTRICT":
+                return "Health District";
+            case "HEALTH REGION":
+                return "Health Region";
+            case "OB_NUMBER":
+                return "OB Number";
+            case "PC_NUMBER":
+                return "PC Number";
+            default:
+                return identityType;
         }
     }
 }

@@ -106,7 +106,7 @@ public class SampleProjectDAOImpl extends BaseDAOImpl<SampleProject, String> imp
         try {
             String sql = "from SampleProject sp where sp.sample.id = :sampleId";
             Query<SampleProject> query = entityManager.unwrap(Session.class).createQuery(sql, SampleProject.class);
-            query.setParameter("sampleId", Integer.parseInt(id));
+            query.setParameter("sampleId", id);
 
             sampleProjects = query.list();
 
@@ -132,7 +132,7 @@ public class SampleProjectDAOImpl extends BaseDAOImpl<SampleProject, String> imp
             query.setParameter("projectName", projectName);
             query.setParameter("dateLow", lowReceivedDate);
             query.setParameter("dateHigh", highReceivedDate);
-            query.setParameter("organizationId", Integer.valueOf(organizationId));
+            query.setParameter("organizationId", organizationId);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
