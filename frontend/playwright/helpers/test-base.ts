@@ -14,6 +14,8 @@
  */
 
 import { test as base, expect } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 
 export const test = base.extend<{
   crashDiagnostics: void;
@@ -29,6 +31,12 @@ export const test = base.extend<{
       const MAX_BUFFER = 20;
       let lastUrl = "";
       let navCount = 0;
+
+      // Initialize error context file for persistent logging
+      const errorContextPath = path.join(process.cwd(), "error-context.md");
+      const timestamp = new Date().toISOString();
+      const header = `\n\n=== Test Session: ${timestamp} ===\n`;
+      fs.appendFileSync(errorContextPath, header, "utf8");
 
       function safeUrl(): string {
         try {
@@ -64,12 +72,20 @@ export const test = base.extend<{
       };
       const onConsole = (msg: import("@playwright/test").ConsoleMessage) => {
         if (msg.type() === "error" || msg.type() === "warning") {
+          const logMessage = `Browser Console ${msg.type()}: ${msg.text()}`;
           recentConsole.push(`[${msg.type()}] ${msg.text()}`);
           if (recentConsole.length > MAX_BUFFER) recentConsole.shift();
+
+          // Save to file for artifact
+          fs.appendFileSync(errorContextPath, `${logMessage}\n`, "utf8");
         }
       };
       const onPageError = (error: Error) => {
         console.error(`[pageerror] ${error.message}\n${error.stack ?? ""}`);
+
+        // Save to file for artifact
+        const logMessage = `Page Error: ${error.message}\n${error.stack || ""}\n`;
+        fs.appendFileSync(errorContextPath, logMessage, "utf8");
       };
       const onCrash = () => dumpContext("CRASH");
       const onClose = () => {
@@ -105,6 +121,10 @@ export const test = base.extend<{
 
       try {
         await use();
+
+        // Add summary to error context file
+        const summary = `\n--- Summary: ${recentConsole.length} console messages captured ---\n`;
+        fs.appendFileSync(errorContextPath, summary, "utf8");
       } finally {
         page.off("framenavigated", onFrameNavigated);
         page.off("console", onConsole);
@@ -170,8 +190,10 @@ export const test = base.extend<{
         );
       }
 
-      await cdp?.detach().catch(() => {
-        /* detach on crashed page is harmless; swallow */
+      await cdp?.detach().catch((error) => {
+        console.error(
+          `[memory] ${testInfo.title}: CDP detach error: ${error.message}`,
+        );
       });
     },
     { auto: true },

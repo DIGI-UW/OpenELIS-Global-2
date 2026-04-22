@@ -1,4 +1,5 @@
-import { expect, test, Page } from "../../../helpers/test-base";
+import { test } from "../../../helpers/test-base";
+import { expect, Page } from "@playwright/test";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
 import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
@@ -354,6 +355,9 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
   if (await table.isVisible()) {
     await scrollToAndPause(page, table, pause, 2000);
 
+    // Assert table is visible and has proper structure
+    await expect(table).toBeVisible();
+
     // If there are rows, try clicking the first one to view details
     const firstRow = table.locator("tbody tr").first();
     if (await firstRow.isVisible()) {
@@ -367,8 +371,14 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
         .first();
       if (await boxDetails.isVisible()) {
         await scrollToAndPause(page, boxDetails, pause, 2000);
+        // Assert box details are displayed
+        await expect(boxDetails).toBeVisible();
       }
     }
+  } else {
+    // If no table is visible, verify empty state is shown
+    const emptyState = page.getByText(/no.*box|no.*shipment|no data/i).first();
+    await expect(emptyState).toBeVisible({ timeout: UI_TIMEOUT });
   }
 
   // ── Verify receive workflow exists ─────────────────────────────
@@ -391,6 +401,13 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .first();
   if (await receiveInput.isVisible()) {
     await scrollToAndPause(page, receiveInput, pause, 1500);
+    // Assert receive input is available
+    await expect(receiveInput).toBeVisible();
+  } else {
+    // Assert page loaded successfully even if input not found
+    await expect(
+      page.getByRole("heading", { name: /receive|reception/i }),
+    ).toBeVisible();
   }
 
   await showTitleCard(

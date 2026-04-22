@@ -1,4 +1,5 @@
-import { test, expect } from "../../../helpers/test-base";
+import { test } from "../../../helpers/test-base";
+import { expect } from "@playwright/test";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import {
   seedHolidays,

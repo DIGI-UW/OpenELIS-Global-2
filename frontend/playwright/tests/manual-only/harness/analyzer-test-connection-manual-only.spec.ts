@@ -1,4 +1,5 @@
-import { test, expect } from "../../../helpers/test-base";
+import { test } from "../../../helpers/test-base";
+import { expect } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerFormPage } from "../../../fixtures/analyzer-form";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
