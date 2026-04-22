@@ -800,6 +800,7 @@
                 <configuration>
                     <!-- move to release when we compile in java versions >= 9 -->
                     <release>${maven.java.release}</release>
+                    <proc>full</proc>
                     <parameters>true</parameters>
                     <!-- legacy for java versions < 9 -->
                     <!-- <source>${maven.compiler.source}</source> -->
