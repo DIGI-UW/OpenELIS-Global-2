@@ -35,7 +35,6 @@ import {
   RESULTS_TIMEOUT,
   MAX_TIMEOUT,
 } from "../../../helpers/timeouts";
-import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
 import type {
   AnalyzerTestConfig,
   PushResult,

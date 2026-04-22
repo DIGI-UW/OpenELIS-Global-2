@@ -1,4 +1,4 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect } from "../helpers/test-base";
 import {
   SHORT_TIMEOUT,
   LONG_TIMEOUT,

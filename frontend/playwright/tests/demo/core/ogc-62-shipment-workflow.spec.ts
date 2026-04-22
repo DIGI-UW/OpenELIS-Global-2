@@ -1,5 +1,5 @@
-import { test } from "../../../helpers/test-base";
-import { Page, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
 import {
@@ -10,8 +10,8 @@ import {
   LONG_PAUSE,
   MODERATE_PAUSE,
   SHORT_PAUSE,
-  QUICK_TIMEOUT,
-  MINIMAL_TIMEOUT,
+  VIDEO_PAUSE_SHORT,
+  VIDEO_PAUSE_EXTENDED,
 } from "../../../helpers/timeouts";
 
 /**
@@ -134,7 +134,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
 
   const tabList = page.locator('[role="tablist"]').first();
   if (await tabList.isVisible()) {
-    await scrollToAndPause(page, tabList, pause, QUICK_TIMEOUT);
+    await scrollToAndPause(page, tabList, pause, VIDEO_PAUSE_EXTENDED);
   }
 
   // ── Verify Shipment Boxes tab ──────────────────────────────────
@@ -298,9 +298,9 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     await expect(successNotification.or(boxDetailsPage).first()).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
-    await pause(QUICK_TIMEOUT);
+    await pause(VIDEO_PAUSE_EXTENDED);
   } else {
-    await pause(MINIMAL_TIMEOUT);
+    await pause(VIDEO_PAUSE_SHORT);
   }
 
   await showTitleCard(
@@ -364,21 +364,21 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
 
   const table = page.locator("table").first();
   if (await table.isVisible()) {
-    await scrollToAndPause(page, table, pause, QUICK_TIMEOUT);
+    await scrollToAndPause(page, table, pause, VIDEO_PAUSE_EXTENDED);
 
     // If there are rows, try clicking the first one to view details
     const firstRow = table.locator("tbody tr").first();
     if (await firstRow.isVisible()) {
       await showSceneLabel(page, "US3 · Click Box for Details", testInfo);
       await firstRow.click();
-      await pause(QUICK_TIMEOUT);
+      await pause(VIDEO_PAUSE_EXTENDED);
 
       // Verify we navigated to box details or a modal opened
       const boxDetails = page
         .getByText(/box.*detail|sample.*count|manifest/i)
         .first();
       if (await boxDetails.isVisible()) {
-        await scrollToAndPause(page, boxDetails, pause, QUICK_TIMEOUT);
+        await scrollToAndPause(page, boxDetails, pause, VIDEO_PAUSE_EXTENDED);
       }
     }
   }

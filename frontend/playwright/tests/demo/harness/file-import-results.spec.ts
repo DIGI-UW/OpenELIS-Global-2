@@ -1,5 +1,5 @@
-import { test } from "../../../helpers/test-base";
-import { Page, expect } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -23,7 +23,6 @@ import {
   dropFixtureViaMock,
   type MockFileResult,
 } from "../../../helpers/file-import-delivery";
-// import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
 
 /**
  * Analyzer harness: FILE drop → staged results → accept.
