@@ -26,10 +26,8 @@ services:
       - "${ASTM_SIMULATOR_PORT:-5050}:9600" # ASTM listen (GeneXpert; 5050 avoids macOS AirPlay on 5000)
       - "${ASTM_SIMULATOR_HTTP_PORT:-8085}:8080" # HTTP simulate API
       - "5380:5380" # HL7 listen (Mindray BC-5380)
-      - "6001:6001" # HL7 listen (Mindray BS-200)
-      - "6002:6002" # HL7 listen (Mindray BS-300)
     environment:
-      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380","6001":"mindray_bs200","6002":"mindray_bs300"}'
+      - 'ASTM_PORT_TEMPLATES={"9600":"genexpert_astm","5380":"mindray_bc5380"}'
       - RESPONSE_DELAY_MS=0
       - BRIDGE_CONTAINER_NAME=openelis-analyzer-bridge
       - MOCK_CONTAINER_NAME=openelis-astm-simulator
