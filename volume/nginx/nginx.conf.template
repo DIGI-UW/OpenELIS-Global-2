@@ -117,10 +117,18 @@ http {
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers off;
 
-        # Convenience: bridge's "/" is POST-only and Spring does not auto-
-        # serve index.html for "/admin/upload/" (404). Redirect root straight
-        # to the explicit file so the subdomain "just works" in a browser.
+        # Convenience redirects: Spring serves the upload UI's static asset at
+        # /admin/upload/index.html, but does NOT auto-resolve /admin/upload/ →
+        # index.html (Spring returns the Whitelabel Error Page 404). Bridge's
+        # "/" is POST-only (405). Redirect both common entry points to the
+        # explicit file so any browser request lands on the upload UI.
         location = / {
+            return 301 /admin/upload/index.html;
+        }
+        location = /admin/upload/ {
+            return 301 /admin/upload/index.html;
+        }
+        location = /admin/upload {
             return 301 /admin/upload/index.html;
         }
 
