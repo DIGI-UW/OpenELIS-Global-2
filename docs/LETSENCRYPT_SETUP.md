@@ -15,7 +15,7 @@ storage.openelis-global.org domain using a simplified standalone approach.
 2. **Start the proxy service (required for ACME challenge):**
 
    ```bash
-   docker compose -f dev.docker-compose.yml up -d proxy
+   docker compose up -d proxy
    ```
 
 3. **Generate Let's Encrypt certificates:**
@@ -27,7 +27,7 @@ storage.openelis-global.org domain using a simplified standalone approach.
 4. **Start services with Let's Encrypt support:**
 
    ```bash
-   docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml up -d
+   docker compose -f compose.yaml -f compose.letsencrypt.yaml up -d
    ```
 
 The proxy will automatically detect and use Let's Encrypt certificates if they
@@ -135,7 +135,7 @@ docker run --rm \
 After renewal, restart the proxy:
 
 ```bash
-docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml restart proxy
+docker compose -f compose.yaml -f compose.letsencrypt.yaml restart proxy
 ```
 
 ## Troubleshooting
@@ -201,7 +201,7 @@ docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml resta
 4. **Restart proxy:**
 
    ```bash
-   docker compose -f dev.docker-compose.yml -f docker-compose.letsencrypt.yml restart proxy
+   docker compose -f compose.yaml -f compose.letsencrypt.yaml restart proxy
    ```
 
 ## Certificate Storage
@@ -220,7 +220,7 @@ as it contains your SSL certificates.
 To run without Let's Encrypt support (using self-signed certificates):
 
 ```bash
-docker compose -f dev.docker-compose.yml up -d
+docker compose up -d
 ```
 
 The proxy will automatically fall back to self-signed certificates if Let's
@@ -232,7 +232,7 @@ The simplified setup works as follows:
 
 1. **Certificate Generation**: Standalone script runs certbot in a one-off
    container, generating certificates to `./volume/letsencrypt/`
-2. **Proxy Override**: `docker-compose.letsencrypt.yml` mounts the Let's Encrypt
+2. **Proxy Override**: `compose.letsencrypt.yaml` mounts the Let's Encrypt
    volume and uses a custom entrypoint
 3. **Entrypoint Logic**: The entrypoint script checks for Let's Encrypt
    certificates and creates symlinks to the expected nginx paths if they exist

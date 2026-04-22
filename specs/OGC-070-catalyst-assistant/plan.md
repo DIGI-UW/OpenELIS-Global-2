@@ -587,7 +587,7 @@ src/main/java/org/openelisglobal/catalyst/
 
 frontend/cypress/e2e/catalyst.cy.js        # Basic E2E test (without security)
 
-projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack compose
+projects/catalyst/catalyst-compose.override.yaml  # Full stack compose
 ```
 
 **Verification (M4)**:
@@ -813,7 +813,7 @@ frontend/cypress/e2e/
 volume/properties/catalyst.properties    # Java backend config (gateway URL, guardrails)
 projects/catalyst/catalyst-gateway/src/config/gateway_config.yaml  # Gateway config (A2A RouterAgent URL, mode)
 projects/catalyst/catalyst-agents/src/config/agents_config.yaml  # Agent runtime config (LLM provider, MCP URL)
-projects/catalyst/catalyst-dev.docker-compose.yml  # Full stack (gateway + agents + MCP)
+projects/catalyst/catalyst-compose.override.yaml  # Full stack (gateway + agents + MCP)
 ```
 
 **Structure Decision**: Multi-agent architecture - Python A2A agent runtime

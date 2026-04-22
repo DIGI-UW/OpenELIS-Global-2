@@ -77,7 +77,7 @@ enabled for HL7 E2E proof:
 
    ```bash
    cd projects/analyzer-harness
-   docker compose -f docker-compose.dev.yml -f docker-compose.analyzer-test.yml up -d
+   docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d
    ```
 
 2. **Bridge configuration**: MLLP listener on port 2575; forwards to

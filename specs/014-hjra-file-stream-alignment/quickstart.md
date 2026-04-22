@@ -35,7 +35,7 @@ standalone WAR parsers.
 
 - Java 21 (`java -version` → 21.x.x)
 - Docker + Docker Compose running
-- OpenELIS dev environment up (`docker compose -f dev.docker-compose.yml up -d`)
+- OpenELIS dev environment up (`docker compose up -d`)
 - Plugins submodule checked out (`git submodule update --init plugins`)
 
 ## Branch Setup
@@ -89,7 +89,7 @@ cd ..
 #   npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts playwright/tests/demo/harness/file-import-results.spec.ts
 
 # Hot reload
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+docker compose up -d --no-deps --force-recreate oe.openelis.org
 ```
 
 ## M3: GenericFile Plugin + QuantStudio Profile (OGC-348)

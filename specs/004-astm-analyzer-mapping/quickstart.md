@@ -25,13 +25,13 @@ starts automatically with the dev Docker Compose setup.
 
 ```bash
 # Check bridge service in docker-compose
-grep -A 20 "openelis-analyzer-bridge" dev.docker-compose.yml
+grep -A 20 "openelis-analyzer-bridge" compose.override.yaml
 
 # Verify bridge configuration file exists
 cat volume/astm-bridge/configuration.yml
 
 # Start development environment (includes bridge)
-docker compose -f dev.docker-compose.yml up -d
+docker compose up -d
 
 # Verify bridge container is running
 docker ps | grep astm-bridge
@@ -491,7 +491,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 ### 6.2 Start Development Environment
 
 ```bash
-docker compose -f dev.docker-compose.yml up -d
+docker compose up -d
 ```
 
 ### 6.3 Access Application

@@ -504,7 +504,7 @@ support via accurate schema metadata)
 - [ ] T053h [M1] Pin ChromaDB version in
       `projects/catalyst/catalyst-mcp/pyproject.toml` (e.g., chromadb==0.4.22)
 - [ ] T053i [M1] Configure persistence volume for ChromaDB in
-      `projects/catalyst/catalyst-dev.docker-compose.yml` (mount
+      `projects/catalyst/catalyst-compose.override.yaml` (mount
       `/app/chroma_data`)
 - [ ] T053j [M1] Document index rebuild procedure in
       `projects/catalyst/catalyst-mcp/README.md` (schema change → re-embed →
@@ -514,8 +514,8 @@ support via accurate schema metadata)
 
 - [ ] T054 [M1] Create Dockerfile.mcp in `projects/catalyst/Dockerfile.mcp` for
       containerized MCP server deployment
-- [ ] T055 [M1] Update `projects/catalyst/catalyst-dev.docker-compose.yml` to
-      add MCP server as separate container (if not already present)
+- [ ] T055 [M1] Update `projects/catalyst/catalyst-compose.override.yaml` to add
+      MCP server as separate container (if not already present)
 
 ### M1.10: Verification & PR
 
@@ -862,7 +862,7 @@ to M5 to allow independent testing
 - [ ] T106a [M4] Implement basic query handling in frontend (confirmation token
       handling deferred to M5)
 - [ ] T107 [M4] Configure full stack Docker Compose in
-      `projects/catalyst/catalyst-dev.docker-compose.yml` (agents + MCP +
+      `projects/catalyst/catalyst-compose.override.yaml` (agents + MCP +
       OpenELIS + frontend)
 - [ ] T108 [M4] Add Agent Card discovery endpoint proxy at
       `/.well-known/agent.json` in
@@ -896,8 +896,7 @@ to M5 to allow independent testing
 ### M4 Sign-off Checklist
 
 - [ ] All component tests pass (Java + Python + React)
-- [ ] Full stack starts: `docker compose -f dev.docker-compose.yml up` + Python
-      services
+- [ ] Full stack starts: `docker compose up` + Python services
 - [ ] Cypress E2E: Basic query returns results
 - [ ] Cypress E2E: JOIN query returns results (FR-015)
 - [ ] Cypress E2E: Aggregation query returns results (FR-015)

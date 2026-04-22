@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-COMPOSE_FILES="-f dev.docker-compose.yml -f docker-compose.letsencrypt.yml"
+COMPOSE_FILES="-f compose.yaml -f compose.letsencrypt.yaml"
 
 cd "$(dirname "$0")/.."
 PROJECT_ROOT=$(pwd)

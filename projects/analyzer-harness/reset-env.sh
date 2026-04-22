@@ -8,7 +8,7 @@
 #   --full-reset   Remove DB (and other) volumes before starting (wipe DB)
 #   --skip-fixtures   Skip loading test fixtures after startup
 #   --skip-letsencrypt Do not run Let's Encrypt setup even when LETSENCRYPT_* env is set
-#   --ci-parity    Bring up the CI-parity stack (build.docker-compose.yml +
+#   --ci-parity    Bring up the CI-parity stack (compose.build.yaml +
 #                  ci.analyzer-harness.yml) instead of the local dev stack.
 #                  Selects frontend Dockerfile `target: runtime` (nginx +
 #                  minified dist/) — the same image CI runs. Lets local
@@ -97,11 +97,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$CI_PARITY" = true ]; then
-    # CI-parity: run the exact stack CI uses — build.docker-compose.yml selects
+    # CI-parity: run the exact stack CI uses — compose.build.yaml selects
     # frontend target: runtime, proxy mounts nginx-prod.conf. Same image path
     # that e2e-playwright.yml exercises locally.
     LOCAL_COMPOSE_FILES=($(compose_args_ci))
-    echo -e "${BLUE}Mode: CI parity (build.docker-compose.yml + ci.analyzer-harness.yml)${NC}"
+    echo -e "${BLUE}Mode: CI parity (compose.build.yaml + ci.analyzer-harness.yml)${NC}"
 else
     LOCAL_COMPOSE_FILES=($(compose_args_local "$USE_LETSENCRYPT"))
 fi

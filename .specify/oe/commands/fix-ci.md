@@ -33,18 +33,18 @@ user text directly into shell commands. Support these patterns:
 
 **Behavior options:**
 
-| Flag                    | Default                | Description                                                                                                       |
-| ----------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                                                       |
-| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                                               |
-| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                                           |
-| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                                                          |
-| `--compose-file <path>` | dev.docker-compose.yml | Docker Compose file for local E2E (use `build.docker-compose.yml` to match CI exactly)                            |
-| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                                            |
-| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                                                |
-| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
-| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                                              |
-| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                                                  |
+| Flag                    | Default               | Description                                                                                                       |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `--max-iterations N`    | 5                     | Max fix-push-check cycles before escalating                                                                       |
+| `--dry-run`             | off                   | Diagnose only — no fixes, no pushes                                                                               |
+| `--local-e2e`           | off                   | Run full local E2E suite in parallel with CI after push                                                           |
+| `--reset-env`           | off                   | Reset local E2E environment (fixtures) before local runs                                                          |
+| `--compose-file <path>` | compose.override.yaml | Docker Compose file for local E2E (use `compose.build.yaml` to match CI exactly)                                  |
+| `--flaky-retry N`       | 0                     | Re-run suspected flaky tests N times before diagnosing                                                            |
+| `--skip-local-validate` | off                   | Skip local validation (push immediately after fix)                                                                |
+| `--jobs <job-names>`    | all                   | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
+| `--notify`              | off                   | Force NOTIFY level (always summarize, even for AUTO)                                                              |
+| `--report-to-pr`        | off                   | Post resolution report as a PR comment when done                                                                  |
 
 **Examples:**
 
@@ -53,7 +53,7 @@ user text directly into shell commands. Support these patterns:
 /fix-ci --pr 123 --local-e2e              # Fix PR 123, run local E2E in parallel
 /fix-ci --dry-run                          # Diagnose only, show what would be fixed
 /fix-ci --local-e2e --reset-env            # Full local replication + CI in parallel
-/fix-ci --local-e2e --compose-file build.docker-compose.yml  # Match CI exactly
+/fix-ci --local-e2e --compose-file compose.build.yaml  # Match CI exactly
 /fix-ci --flaky-retry 2                    # Retry suspected flaky tests twice
 /fix-ci --max-iterations 2 --jobs "E2E / Cypress (Deprecated) / Core"  # Fix deprecated Cypress core shard only
 /fix-ci --notify --report-to-pr            # Verbose + post report to PR
@@ -470,7 +470,7 @@ If containers are not running or are unhealthy, restart them first:
 
 ```bash
 # Quick restart using configured compose file (preserves DB, reloads fixtures)
-# Default: dev.docker-compose.yml. Use --compose-file build.docker-compose.yml
+# Default: compose.override.yaml. Use --compose-file compose.build.yaml
 # to match CI exactly (builds from source instead of using pre-built images).
 docker compose -f $COMPOSE_FILE up -d
 ./src/test/resources/load-ci-fixtures.sh

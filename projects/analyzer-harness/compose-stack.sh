@@ -2,23 +2,27 @@
 # Shared compose layering for analyzer harness local and CI/parity flows.
 #
 # Contract: DB service `db.openelis.org` uses container_name `openelisglobal-database`
-# (see docker-compose.base.yml). Bridge import dir on host:
+# (see compose.yaml). Bridge import dir on host:
 # `projects/analyzer-harness/volume/analyzer-imports`.
+#
+# After the Docker modernization (chore/docker-compose-modernization), the
+# harness base + dev were merged into a single `compose.yaml`. Analyzer E2E
+# services live in `compose.harness.yaml` under the `harness` profile.
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/../.." && pwd)"
 
-HARNESS_BASE_COMPOSE="$HARNESS_DIR/docker-compose.base.yml"
-HARNESS_LOCAL_COMPOSE="$HARNESS_DIR/docker-compose.dev.yml"
-HARNESS_ANALYZER_COMPOSE="$HARNESS_DIR/docker-compose.analyzer-test.yml"
-HARNESS_LETSENCRYPT_COMPOSE="$HARNESS_DIR/docker-compose.letsencrypt.yml"
-CI_BUILD_COMPOSE="$REPO_ROOT/build.docker-compose.yml"
+HARNESS_BASE_COMPOSE="$HARNESS_DIR/compose.yaml"
+HARNESS_ANALYZER_COMPOSE="$HARNESS_DIR/compose.harness.yaml"
+HARNESS_LETSENCRYPT_COMPOSE="$HARNESS_DIR/compose.letsencrypt.yaml"
+CI_BUILD_COMPOSE="$REPO_ROOT/compose.build.yaml"
 CI_HARNESS_COMPOSE="$REPO_ROOT/.github/ci/ci.analyzer-harness.yml"
 
+# Emit compose args for local dev / CI-parity runs. Callers should also pass
+# `--profile harness` to activate the analyzer services.
 compose_args_local() {
   local include_letsencrypt="${1:-true}"
   local -a args=(
-    -f "$HARNESS_LOCAL_COMPOSE"
     -f "$HARNESS_BASE_COMPOSE"
     -f "$HARNESS_ANALYZER_COMPOSE"
   )

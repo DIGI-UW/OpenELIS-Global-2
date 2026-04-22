@@ -46,8 +46,8 @@ All Playwright tests run through a single parameterized reusable workflow
 
 | Call               | Compose Files                                 | Projects                                | Fixtures                                  |
 | ------------------ | --------------------------------------------- | --------------------------------------- | ----------------------------------------- |
-| Playwright Core    | `build.docker-compose.yml`                    | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`    |
-| Playwright Harness | `build.docker-compose.yml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
+| Playwright Core    | `compose.build.yaml`                    | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`    |
+| Playwright Harness | `compose.build.yaml` + harness overlays | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 Both follow the same pattern: **test-shards → merge-reports → gate**. Each
 produces a merged HTML report artifact:
@@ -86,7 +86,7 @@ Analyzer rows used by harness tests are created via REST API seeding:
 ### Harness environment contract
 
 - **Database container**: `openelisglobal-database` (service `db.openelis.org` in
-  `build.docker-compose.yml` / `projects/analyzer-harness/docker-compose.base.yml`).
+  `compose.build.yaml` / `projects/analyzer-harness/compose.yaml`).
   Playwright helpers honor `HARNESS_DB_CONTAINER`, `DATABASE_CONTAINER`, or
   `DB_CONTAINER` (first match).
 - **Host import directory**: `projects/analyzer-harness/volume/analyzer-imports`
@@ -193,7 +193,7 @@ npm run pw:test:ui
 
 ### Examples
 
-**Core-app tests** (build stack — `docker compose -f build.docker-compose.yml`):
+**Core-app tests** (build stack — `docker compose -f compose.build.yaml`):
 
 ```bash
 cd frontend

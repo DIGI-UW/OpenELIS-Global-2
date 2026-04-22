@@ -132,7 +132,7 @@ cd /path/to/OpenELIS-Global-2
 Ensure the database container is running:
 
 ```bash
-docker compose -f dev.docker-compose.yml up -d database
+docker compose up -d database
 ```
 
 ### Direct psql Connection Issues

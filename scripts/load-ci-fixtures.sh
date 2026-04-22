@@ -3,8 +3,8 @@
 # load-ci-fixtures.sh - Load the same test fixtures that CI loads (frontend-qa workflow)
 #
 # Usage:
-#   ./scripts/load-ci-fixtures.sh                    # dev.docker-compose.yml
-#   ./scripts/load-ci-fixtures.sh -f build.docker-compose.yml
+#   ./scripts/load-ci-fixtures.sh                    # compose.override.yaml
+#   ./scripts/load-ci-fixtures.sh -f compose.build.yaml
 #
 # Loads:
 #   src/test/resources/e2e-foundational-data.sql
@@ -20,13 +20,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-COMPOSE_FILE="dev.docker-compose.yml"
+COMPOSE_FILE="compose.override.yaml"
 while getopts "f:h" opt; do
   case $opt in
     f) COMPOSE_FILE="$OPTARG" ;;
     h)
       echo "Usage: $0 [-f COMPOSE_FILE]"
-      echo "  -f COMPOSE_FILE  Compose file (default: dev.docker-compose.yml)"
+      echo "  -f COMPOSE_FILE  Compose file (default: compose.override.yaml)"
       echo ""
       echo "Loads same fixtures as CI (frontend-qa): e2e-foundational-data.sql"
       exit 0

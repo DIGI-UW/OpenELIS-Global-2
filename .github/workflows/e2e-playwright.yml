@@ -126,7 +126,7 @@ jobs:
           retry_wait_seconds: 60
           command: |
             docker buildx bake \
-              -f build.docker-compose.yml \
+              -f compose.build.yaml \
               -f .github/ci/ci.analyzer-harness.yml \
               --load \
               --set "*.cache-from=type=gha,scope=e2e-shared" \
@@ -141,15 +141,15 @@ jobs:
           retry_wait_seconds: 60
           command: |
             docker buildx bake \
-              -f build.docker-compose.yml \
+              -f compose.build.yaml \
               -f .github/ci/ci.analyzer-harness.yml \
               --load \
               --set "*.cache-from=type=gha,scope=e2e-shared"
 
       - name: Enumerate compose images
         run: |
-          docker compose -f build.docker-compose.yml config --images | sort -u > /tmp/e2e-images-base.txt
-          docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
+          docker compose -f compose.build.yaml config --images | sort -u > /tmp/e2e-images-base.txt
+          docker compose -f compose.build.yaml -f .github/ci/ci.analyzer-harness.yml config --images | sort -u > /tmp/e2e-images-full.txt
 
       - name: Export fork image handoff artifact
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == true

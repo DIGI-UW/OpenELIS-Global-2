@@ -604,7 +604,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 1. Start development environment:
 
 ```bash
-docker compose -f dev.docker-compose.yml up -d
+docker compose up -d
 ```
 
 2. Navigate to `https://localhost/Storage/sample-items`

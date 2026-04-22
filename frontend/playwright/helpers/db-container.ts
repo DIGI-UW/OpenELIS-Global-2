@@ -2,7 +2,7 @@
  * Canonical Postgres container name for optional Playwright `docker exec` helpers.
  *
  * Compose contract: `container_name: openelisglobal-database` on `db.openelis.org`
- * (`build.docker-compose.yml`, `projects/analyzer-harness/docker-compose.base.yml`).
+ * (`compose.build.yaml`, `projects/analyzer-harness/compose.yaml`).
  *
  * Override when targeting a non-standard stack (first match wins):
  * `HARNESS_DB_CONTAINER`, `DATABASE_CONTAINER`, `DB_CONTAINER`.

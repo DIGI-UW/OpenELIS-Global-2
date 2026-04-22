@@ -75,7 +75,7 @@ jobs:
     with:
       projects: "core-app,core-demo"
       artifact_prefix: "core"
-      compose_files: "build.docker-compose.yml"
+      compose_files: "compose.build.yaml"
       fixture_mode: "core"
       setup_analyzer_harness: false
       build_run_id: ${{ inputs.build_run_id }}
@@ -97,7 +97,7 @@ jobs:
     with:
       projects: "harness-foundational,harness-demo"
       artifact_prefix: "harness"
-      compose_files: "build.docker-compose.yml,projects/analyzer-harness/docker-compose.base.yml,.github/ci/ci.analyzer-harness.yml"
+      compose_files: "compose.build.yaml,projects/analyzer-harness/compose.yaml,.github/ci/ci.analyzer-harness.yml"
       fixture_mode: "harness"
       setup_analyzer_harness: true
       build_run_id: ${{ inputs.build_run_id }}

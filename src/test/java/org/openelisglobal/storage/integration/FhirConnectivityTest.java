@@ -21,7 +21,7 @@ public class FhirConnectivityTest {
     public void setup() {
         fhirContext = FhirContext.forR4();
 
-        // Use localhost:8444 for FHIR server (mapped port from dev.docker-compose.yml)
+        // Use localhost:8444 for FHIR server (mapped port from compose.override.yaml)
         // Disable SSL validation for local testing
         fhirContext.getRestfulClientFactory().setSocketTimeout(5000);
 

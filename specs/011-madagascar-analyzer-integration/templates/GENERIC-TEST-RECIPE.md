@@ -384,8 +384,8 @@ docker exec openelis-astm-simulator netstat -tuln | grep 2575
 
 ```bash
 # Restart mock server with HL7 mode
-(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml down)
-(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
+(cd projects/analyzer-harness && docker compose -f compose.yaml -f compose.harness.yaml --profile harness down)
+(cd projects/analyzer-harness && docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d)
 ```
 
 ---
@@ -414,7 +414,7 @@ docker exec openelis-astm-bridge ping -c 3 172.20.1.100
 
 ```bash
 # Rebuild and restart bridge
-(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d --no-deps --force-recreate openelis-analyzer-bridge)
+(cd projects/analyzer-harness && docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d --no-deps --force-recreate openelis-analyzer-bridge)
 ```
 
 ---
@@ -443,9 +443,9 @@ docker compose logs virtual-serial
 
 ```bash
 # Recreate virtual serial infrastructure
-(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml down)
+(cd projects/analyzer-harness && docker compose -f compose.yaml -f compose.harness.yaml --profile harness down)
 docker volume rm openelis-global-2_serial-vol
-(cd projects/analyzer-harness && docker compose -f docker-compose.dev.yml -f docker-compose.base.yml -f docker-compose.analyzer-test.yml up -d)
+(cd projects/analyzer-harness && docker compose -f compose.yaml -f compose.harness.yaml --profile harness up -d)
 ```
 
 ---
@@ -474,7 +474,7 @@ ls -la volume/analyzer-imports/genexpert/
 mkdir -p volume/analyzer-imports/{genexpert,fluorocycler,quantstudio}
 
 # Restart OE container to mount volume
-docker compose -f dev.docker-compose.yml restart oe.openelis.org
+docker compose restart oe.openelis.org
 ```
 
 ---

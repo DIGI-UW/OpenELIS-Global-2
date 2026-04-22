@@ -729,7 +729,7 @@ deployment/infrastructure setup):
 - **ASTM-HTTP Bridge**: The ASTM-HTTP bridge is a middleware component that
   translates between ASTM TCP protocol (used by analyzers) and HTTP POST (used
   by OpenELIS). The bridge is integrated into the standard development
-  environment via `dev.docker-compose.yml` and starts automatically with the
+  environment via `compose.override.yaml` and starts automatically with the
   development Docker Compose setup. Bridge configuration is documented in
   `volume/astm-bridge/configuration.yml` and `docs/astm.md`. The bridge enables
   **bi-directional** production-like communication flows:

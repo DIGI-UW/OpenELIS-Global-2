@@ -2,7 +2,7 @@
 # Build script for analyzer harness: WAR + harness Docker images + CI parity images.
 #
 # The local reset flow uses the dev/analyzer-test compose stack, but the local
-# CI parity flow (`ci-parity-test.sh`) uses `build.docker-compose.yml` plus the
+# CI parity flow (`ci-parity-test.sh`) uses `compose.build.yaml` plus the
 # analyzer harness CI overlay with `--no-build`. After a cold Docker cleanup we
 # need both image sets available, otherwise the supported reboot path and the
 # supported parity path drift apart.

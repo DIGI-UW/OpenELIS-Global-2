@@ -94,13 +94,31 @@ domain, etc.). See `.env.example` for detailed documentation of each variable.
 server-specific settings. CI copies `.env.example` to `.env` before running
 docker compose.
 
+#### Compose file layout
+
+OpenELIS follows the Compose Specification convention:
+
+| File                       | Purpose                                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `compose.yaml`             | Base / prod-like stack (pulls published images from Docker Hub)                                      |
+| `compose.override.yaml`    | **Auto-applied** on `docker compose up`. Dev overrides: local WAR mount, dev image tag, dev env vars |
+| `compose.build.yaml`       | Build-from-source overlay. Rebuilds every service from the local Dockerfiles                         |
+| `compose.letsencrypt.yaml` | Let's Encrypt overlay. Replaces proxy volumes with live cert bind-mounts                             |
+
+Because `compose.override.yaml` auto-merges on `docker compose up` (Compose
+Specification default), `docker compose up -d` is the **local dev** entry point.
+Pass an explicit `-f compose.yaml` to skip the override and get the prod-style
+stack.
+
 #### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
 
-    docker compose up -d
+    docker compose -f compose.yaml up -d
+
+(Skips `compose.override.yaml` so no local WAR mount is required.)
 
 #### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
 
-    docker compose -f build.docker-compose.yml up -d --build
+    docker compose -f compose.yaml -f compose.build.yaml up -d --build
 
 #### Running OpenELIS Global2 with docker compose For Development
 
@@ -130,9 +148,10 @@ speeds up the development process
 
           mvn clean install -DskipTests -Dmaven.test.skip=true
 
-1.  Start the containers to mount the locally compiled artifacts
+1.  Start the containers (compose.override.yaml auto-merges for local-dev bind
+    mounts)
 
-        docker compose -f dev.docker-compose.yml up -d
+        docker compose up -d
 
     Note : For Reflecting Local changes in the Running Containers ;
 
@@ -146,7 +165,7 @@ speeds up the development process
 
   - Recreate the Openelis webapp container
 
-        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+        docker compose up -d --no-deps --force-recreate oe.openelis.org
 
 #### The Instances can be accessed at
 
