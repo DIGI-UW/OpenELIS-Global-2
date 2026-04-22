@@ -19,7 +19,7 @@ import TreeViewWrapper from "./tree-view";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import config from "../../../config.json";
 import { getFromOpenElisServer } from "../../utils/Utils";
-import PatientHeader from "../../common/PatientHeader.js";
+import PatientHeader from "../../common/PatientHeader";
 
 interface ResultsViewerProps {
   basePath: string;

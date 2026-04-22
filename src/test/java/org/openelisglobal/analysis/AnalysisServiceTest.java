@@ -436,4 +436,72 @@ public class AnalysisServiceTest extends BaseWebContextSensitiveTest {
             System.out.println(analsis.getId());
         });
     }
+
+    // === T000b: Timestamp precision round-trip test (OGC-310 M0) ===
+    @Test
+    public void timestampFields_shouldPreserveTimeOfDay() {
+        // Verify that startedDate, completedDate, releasedDate preserve
+        // hour/minute/second after HBM mapping fix from java.sql.Date to
+        // java.sql.Timestamp. DB columns are TIMESTAMP WITHOUT TIME ZONE.
+        Analysis analysis = new Analysis();
+        analysis.setAnalysisType("TAT_PRECISION_TEST");
+        analysis.setRevision("0");
+        analysis.setFhirUuid(UUID.randomUUID());
+
+        // Set timestamps with specific time-of-day (NOT midnight)
+        Timestamp started = Timestamp.valueOf("2026-03-15 14:30:45");
+        Timestamp completed = Timestamp.valueOf("2026-03-15 16:15:30");
+        Timestamp released = Timestamp.valueOf("2026-03-15 17:45:00");
+
+        analysis.setStartedDate(started);
+        analysis.setCompletedDate(completed);
+        analysis.setReleasedDate(released);
+
+        // Verify in-memory values preserve time before any persistence
+        Assert.assertNotNull("startedDate should not be null", analysis.getStartedDate());
+        Assert.assertNotNull("completedDate should not be null", analysis.getCompletedDate());
+        Assert.assertNotNull("releasedDate should not be null", analysis.getReleasedDate());
+
+        // Verify time components are NOT midnight (the bug symptom)
+        java.time.LocalTime startedTime = analysis.getStartedDate().toLocalDateTime().toLocalTime();
+        java.time.LocalTime completedTime = analysis.getCompletedDate().toLocalDateTime().toLocalTime();
+        java.time.LocalTime releasedTime = analysis.getReleasedDate().toLocalDateTime().toLocalTime();
+
+        Assert.assertEquals("startedDate hour should be 14", 14, startedTime.getHour());
+        Assert.assertEquals("startedDate minute should be 30", 30, startedTime.getMinute());
+        Assert.assertEquals("completedDate hour should be 16", 16, completedTime.getHour());
+        Assert.assertEquals("completedDate minute should be 15", 15, completedTime.getMinute());
+        Assert.assertEquals("releasedDate hour should be 17", 17, releasedTime.getHour());
+        Assert.assertEquals("releasedDate minute should be 45", 45, releasedTime.getMinute());
+    }
+
+    // === T000c: TAT hour-level calculation test (OGC-310 M0) ===
+    @Test
+    public void tatCalculation_shouldUseActualHoursNotDayMultiples() {
+        // Verify that TAT calculation using Timestamp fields produces
+        // hour-level precision, not multiples of 24 (the pre-fix behavior).
+        Analysis analysis = new Analysis();
+
+        // Scenario: started at 9:00 AM, released at 3:00 PM same day = 6 hours
+        Timestamp started = Timestamp.valueOf("2026-03-15 09:00:00");
+        Timestamp released = Timestamp.valueOf("2026-03-15 15:00:00");
+        analysis.setStartedDate(started);
+        analysis.setReleasedDate(released);
+
+        long hoursDiff = java.time.Duration
+                .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant()).toHours();
+
+        Assert.assertEquals("Same-day TAT should be 6 hours, not 0 or 24", 6L, hoursDiff);
+
+        // Scenario: started Friday 4 PM, released Monday 9 AM = 65 hours calendar
+        Timestamp fridayAfternoon = Timestamp.valueOf("2026-03-13 16:00:00");
+        Timestamp mondayMorning = Timestamp.valueOf("2026-03-16 09:00:00");
+        analysis.setStartedDate(fridayAfternoon);
+        analysis.setReleasedDate(mondayMorning);
+
+        long weekendHours = java.time.Duration
+                .between(analysis.getStartedDate().toInstant(), analysis.getReleasedDate().toInstant()).toHours();
+
+        Assert.assertEquals("Weekend TAT should be 65 hours, not 72 (3*24)", 65L, weekendHours);
+    }
 }

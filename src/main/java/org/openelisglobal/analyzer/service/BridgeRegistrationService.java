@@ -67,11 +67,12 @@ public class BridgeRegistrationService {
     }
 
     /**
-     * Register a FILE analyzer with the bridge, including column mappings for FHIR
-     * parsing.
+     * Register a FILE analyzer with the bridge, including all config needed for
+     * file parsing (column mappings, format, delimiter, skipRows).
      */
     public boolean registerFile(String oeAnalyzerId, String name, String watchDir, String filePattern,
-            java.util.Map<String, String> columnMappings) {
+            java.util.Map<String, String> columnMappings, String fileFormat, String delimiter, Integer skipRows,
+            java.util.List<String> testMappings) {
         if (!isBridgeConfigured()) {
             return false;
         }
@@ -86,10 +87,108 @@ public class BridgeRegistrationService {
             if (columnMappings != null && !columnMappings.isEmpty()) {
                 payload.put("columnMappings", columnMappings);
             }
+            if (fileFormat != null && !fileFormat.isBlank()) {
+                payload.put("fileFormat", fileFormat);
+            }
+            if (delimiter != null && !delimiter.isEmpty()) {
+                payload.put("delimiter", delimiter);
+            }
+            if (skipRows != null && skipRows > 0) {
+                payload.put("skipRows", skipRows);
+            }
+            if (testMappings != null && !testMappings.isEmpty()) {
+                payload.put("testMappings", testMappings);
+            }
             String json = objectMapper.writeValueAsString(payload);
             return callRegister(json, oeAnalyzerId);
         } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             LogEvent.logError(CLASS_NAME, "registerFile", "Failed to build registration JSON: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Fetch the bridge's view of registered analyzers (v5 §4.1 two-way sync). Used
+     * for drift detection — the webapp is the config authority, but the bridge's
+     * local state should mirror it. Any mismatch is a sync bug to investigate.
+     *
+     * @return list of {id, name, protocol, sourceId, mappedTestCodes, ...} maps or
+     *         an empty list if the bridge is unreachable / unconfigured.
+     */
+    @SuppressWarnings("unchecked")
+    public java.util.List<java.util.Map<String, Object>> fetchBridgeState() {
+        if (!isBridgeConfigured()) {
+            return java.util.Collections.emptyList();
+        }
+        try {
+            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers";
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint)).GET()
+                    .timeout(Duration.ofSeconds(10)).build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                LogEvent.logWarn(CLASS_NAME, "fetchBridgeState",
+                        "Bridge GET /api/analyzers returned " + response.statusCode());
+                return java.util.Collections.emptyList();
+            }
+            // Response shape: {"<sourceId>": {id, name, expectedProtocol, mappedTestCodes,
+            // ...}, ...}
+            java.util.Map<String, Object> raw = objectMapper.readValue(response.body(), java.util.Map.class);
+            java.util.List<java.util.Map<String, Object>> flat = new java.util.ArrayList<>();
+            for (java.util.Map.Entry<String, Object> e : raw.entrySet()) {
+                if (e.getValue() instanceof java.util.Map) {
+                    java.util.Map<String, Object> entry = new java.util.LinkedHashMap<>(
+                            (java.util.Map<String, Object>) e.getValue());
+                    entry.put("sourceId", e.getKey());
+                    flat.add(entry);
+                }
+            }
+            return flat;
+        } catch (Exception e) {
+            LogEvent.logWarn(CLASS_NAME, "fetchBridgeState", "Failed to fetch bridge state: " + e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
+     * Full-state reconciliation with the bridge (v5 §4.2 two-way sync). The webapp
+     * is the config authority. This call sends the webapp's full list of analyzer
+     * registration payloads to the bridge, which deletes any entries not in the
+     * list and adds/updates the ones that are. Handles:
+     *
+     * <ul>
+     * <li>Bridge restarted after webapp's per-analyzer push loop
+     * <li>Bridge has a stale entry from an analyzer the webapp deleted
+     * <li>Partial registration failure during webapp boot
+     * </ul>
+     *
+     * Call once on webapp boot after the per-analyzer registration loop.
+     *
+     * @param payloads list of registration maps (same shape as POST /register
+     *                 bodies). Caller builds them from Analyzer entities.
+     * @return true if the sync call succeeded (2xx response), false otherwise
+     */
+    public boolean syncAll(java.util.List<java.util.Map<String, Object>> payloads) {
+        if (!isBridgeConfigured()) {
+            return false;
+        }
+        try {
+            String json = objectMapper.writeValueAsString(payloads);
+            String endpoint = bridgeBaseUrl.replaceAll("/+$", "") + "/api/analyzers/sync";
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(endpoint))
+                    .header("Content-Type", "application/json").PUT(HttpRequest.BodyPublishers.ofString(json))
+                    .timeout(Duration.ofSeconds(30)).build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                LogEvent.logInfo(CLASS_NAME, "syncAll",
+                        "Bridge sync reconciled " + payloads.size() + " analyzers: " + response.body());
+                return true;
+            } else {
+                LogEvent.logWarn(CLASS_NAME, "syncAll",
+                        "Bridge PUT /api/analyzers/sync returned " + response.statusCode() + ": " + response.body());
+                return false;
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(CLASS_NAME, "syncAll", "Failed to sync analyzer list with bridge: " + e.getMessage());
             return false;
         }
     }

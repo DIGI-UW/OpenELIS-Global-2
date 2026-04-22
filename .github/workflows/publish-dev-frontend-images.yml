@@ -63,6 +63,11 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
+          # Select the `dev` stage of the multi-stage frontend/Dockerfile.
+          # Without this, the default final stage (runtime = nginx serving
+          # dist/) would be published under the -frontend-dev: tag, which
+          # contradicts the workflow's intent.
+          target: dev
           # push: true
           platforms: linux/${{ matrix.platform }}
           # tags: ${{ steps.meta.outputs.tags }}

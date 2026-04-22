@@ -55,7 +55,7 @@ services:
             - default
         environment:
             - DEFAULT_PW=adminADMIN! 
-            - TZ=Africa/Nairobi
+            - TZ=${TZ:-UTC}
             - SPRING_LIQUIBASE_CONTEXTS=test
               # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
             - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Dspring.liquibase.contexts=test
@@ -75,6 +75,7 @@ services:
             - ./volume/branding:/var/lib/openelis-global/branding
             - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
             - ./volume/analyzer-imports:/data/analyzer-imports  # FILE-based analyzer import directories
+            - ./volume/nce-attachments:/var/lib/openelis-global/nce-attachments  # NCE file attachments
         # devices:
             # Serial port device mapping example for RS232 analyzer integration
             # Uncomment and adjust device path as needed for your system
@@ -98,7 +99,7 @@ services:
         restart: always
         environment:
           SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
-          TZ: Africa/Nairobi
+          TZ: ${TZ:-UTC}
 
           JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore 
                       -Djavax.net.ssl.trustStorePassword=tspass
@@ -123,6 +124,9 @@ services:
         volumes:
             - './frontend/src:/app/src'
             - './frontend/public:/app/public'
+            - './frontend/package.json:/app/package.json:ro'
+            - './frontend/package-lock.json:/app/package-lock.json:ro'
+            - './frontend/vite.config.ts:/app/vite.config.ts:ro'
         environment:
             - CHOKIDAR_USEPOLLING=true
         tty: true
