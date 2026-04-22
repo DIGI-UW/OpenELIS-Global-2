@@ -5,6 +5,12 @@ import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
+  EXTENDED_TIMEOUT,
+  DEMO_TIMEOUT,
+  MINIMAL_PAUSE,
+  SHORT_PAUSE,
+  MODERATE_PAUSE,
+  LONG_PAUSE,
 } from "../../../helpers/timeouts";
 
 /**
@@ -25,11 +31,11 @@ async function pickFirstAutosuggestOptional(page: Page, pause: PauseFn) {
   try {
     await expect(suggestion).toBeVisible({ timeout: SHORT_TIMEOUT });
     await suggestion.click();
-    await pause(500);
+    await pause(SHORT_PAUSE);
   } catch {
     // No suggestions rendered (empty DB, no match) — accept free text via Tab
     await page.keyboard.press("Tab");
-    await pause(200);
+    await pause(MINIMAL_PAUSE);
   }
 }
 
@@ -283,7 +289,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
     for (const query of siteQueries) {
       await siteInput.clear();
       await siteInput.fill(query);
-      await pause(900);
+      await pause(MODERATE_PAUSE);
       await pickFirstAutosuggestOptional(page, pause);
       if ((await siteInput.inputValue()).trim()) {
         break;
@@ -304,7 +310,7 @@ async function fillOrderDetails(page: Page, pause: PauseFn) {
   if (await requesterLookup.isVisible()) {
     await requesterLookup.clear();
     await requesterLookup.fill("Prime");
-    await pause(800);
+    await pause(MODERATE_PAUSE);
     await pickFirstAutosuggestOptional(page, pause);
   }
 
@@ -405,7 +411,7 @@ async function gotoPrintBarcode(page: Page) {
 test("US1 — Admin configures barcode label quantities", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(EXTENDED_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -509,7 +515,7 @@ test("US1 — Admin configures barcode label quantities", async ({
 test("US2 — Capture label quantities during sample creation", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(DEMO_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -565,14 +571,14 @@ test("US2 — Capture label quantities during sample creation", async ({
   const orderInput = labelsSection.locator("#labels-order");
   await scrollToAndPause(page, orderInput, pause, 800);
   await orderInput.fill("3");
-  await pause(1000);
+  await pause(LONG_PAUSE);
 
   // Edit specimen labels
   const specimenInput = labelsSection.locator("#sample-row-1");
   if (await specimenInput.isVisible()) {
     await scrollToAndPause(page, specimenInput, pause, 600);
     await specimenInput.fill("2");
-    await pause(800);
+    await pause(MODERATE_PAUSE);
   }
 
   // Running total
@@ -616,7 +622,7 @@ test("US2 — Capture label quantities during sample creation", async ({
 // ─── User Story 3: Post-save print dialog + reprint ──────────────────────────
 
 test("US3 — Post-save print dialog and reprint", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(DEMO_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(

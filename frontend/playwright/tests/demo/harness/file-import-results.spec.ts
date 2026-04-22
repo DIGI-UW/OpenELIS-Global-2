@@ -1,4 +1,5 @@
-import { expect, Page, test } from "../../../helpers/test-base";
+import { test } from "../../../helpers/test-base";
+import { Page, expect } from "@playwright/test";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -11,11 +12,18 @@ import {
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  LONG_TIMEOUT,
+  UI_TIMEOUT,
+  SHORT_TIMEOUT,
+  DEMO_TIMEOUT,
+  VIDEO_PAUSE_LONG,
+} from "../../../helpers/timeouts";
 import {
   dropFixtureViaMock,
   type MockFileResult,
 } from "../../../helpers/file-import-delivery";
+// import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
 
 /**
  * Analyzer harness: FILE drop → staged results → accept.
@@ -108,7 +116,7 @@ async function verifyImportedResults(
     expectedResults[0].sampleId,
     {
       timeoutMs: fileImportTimeoutMs(),
-      perAttemptTimeoutMs: 5_000,
+      perAttemptTimeoutMs: SHORT_TIMEOUT, // centralized timeout
       allExpectedAccessions: allAccessions,
     },
   );
@@ -123,12 +131,12 @@ async function verifyImportedResults(
     await expectResultVisible(resultsRegion, expected.result);
   }
 
-  await presentation.pause(2_000);
+  await presentation.pause(VIDEO_PAUSE_LONG);
 }
 
 for (const scenario of FILE_IMPORT_SCENARIOS) {
   test.describe(`${scenario.analyzerName} file import harness`, () => {
-    test.setTimeout(180_000);
+    test.setTimeout(DEMO_TIMEOUT);
 
     test("import and accept results from a watched folder", async ({
       page,

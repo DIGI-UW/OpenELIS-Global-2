@@ -29,14 +29,19 @@ import {
   expectResultVisible,
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
-import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  LONG_TIMEOUT,
+  UI_TIMEOUT,
+  RESULTS_TIMEOUT,
+  MAX_TIMEOUT,
+} from "../../../helpers/timeouts";
+import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
 import type {
   AnalyzerTestConfig,
   PushResult,
 } from "../../../helpers/analyzer-test-config";
 
 const SIMULATOR_URL = "http://localhost:8085";
-const RESULTS_TIMEOUT = 90_000;
 
 // ── Analyzer Configurations ──────────────────────────────────────
 //
@@ -242,7 +247,7 @@ async function verifyResults(
 // ── Test Suite ───────────────────────────────────────────────────
 
 test.describe("Madagascar analyzer demo flows", () => {
-  test.setTimeout(240_000);
+  test.setTimeout(MAX_TIMEOUT);
 
   for (const config of CONFIGS) {
     test(`${config.displayName}: full E2E flow`, async ({ page }, testInfo) => {

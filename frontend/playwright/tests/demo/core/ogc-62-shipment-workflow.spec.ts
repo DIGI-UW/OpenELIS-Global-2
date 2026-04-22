@@ -1,7 +1,16 @@
-import { expect, test, Page } from "../../../helpers/test-base";
+import { test } from "../../../helpers/test-base";
+import { Page, expect } from "@playwright/test";
 import { showSceneLabel, showTitleCard } from "../../../helpers/title-card";
 import { videoPause } from "../../../helpers/video-pause";
-import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  UI_TIMEOUT,
+  LONG_TIMEOUT,
+  EXTENDED_TIMEOUT,
+  DEMO_TIMEOUT,
+  LONG_PAUSE,
+  MODERATE_PAUSE,
+  SHORT_PAUSE,
+} from "../../../helpers/timeouts";
 
 /**
  * OGC-62 — Shipment management workflow (user stories)
@@ -96,7 +105,7 @@ async function scrollToAndPause(
 test("US1 — Navigate to shipment dashboard and verify overview", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(EXTENDED_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -110,7 +119,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
   // ── Navigate to dashboard ──────────────────────────────────────
   await gotoShipmentDashboard(page);
   await showSceneLabel(page, "US1 · Shipment Dashboard", testInfo);
-  await pause(1500);
+  await pause(LONG_PAUSE);
 
   // ── Verify navigation tabs ─────────────────────────────────────
   await showTitleCard(
@@ -123,7 +132,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
 
   const tabList = page.locator('[role="tablist"]').first();
   if (await tabList.isVisible()) {
-    await scrollToAndPause(page, tabList, pause, 2000);
+    await scrollToAndPause(page, tabList, pause, LONG_PAUSE * 1.33);
   }
 
   // ── Verify Shipment Boxes tab ──────────────────────────────────
@@ -138,7 +147,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
   await expect(boxesTable.or(emptyState).first()).toBeVisible({
     timeout: UI_TIMEOUT,
   });
-  await pause(1500);
+  await pause(LONG_PAUSE);
 
   // ── Switch to Unassigned tab ───────────────────────────────────
   await showSceneLabel(page, "US1 · Unassigned Tests Tab", testInfo);
@@ -149,7 +158,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
     .first();
   if (await unassignedTab.isVisible()) {
     await unassignedTab.click();
-    await pause(1500);
+    await pause(LONG_PAUSE);
 
     // Should show unassigned referral tests table or empty state
     const unassignedTable = page.locator("table").first();
@@ -159,7 +168,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
     await expect(unassignedTable.or(unassignedEmpty).first()).toBeVisible({
       timeout: UI_TIMEOUT,
     });
-    await pause(1500);
+    await pause(LONG_PAUSE);
   }
 
   await showTitleCard(
@@ -174,7 +183,7 @@ test("US1 — Navigate to shipment dashboard and verify overview", async ({
 // ─── US2: Create a new shipment box ───────────────────────────────────────────
 
 test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(DEMO_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -188,7 +197,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
   // ── Navigate to Create Box ──────────────────────────────────────
   await gotoCreateBox(page);
   await showSceneLabel(page, "US2 · Create Box Form", testInfo);
-  await pause(1500);
+  await pause(LONG_PAUSE);
 
   // ── Select destination facility ─────────────────────────────────
   await showTitleCard(
@@ -206,7 +215,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .or(page.locator("select"))
     .first();
   await expect(facilityDropdown).toBeVisible({ timeout: UI_TIMEOUT });
-  await scrollToAndPause(page, facilityDropdown, pause, 1200);
+  await scrollToAndPause(page, facilityDropdown, pause, LONG_PAUSE);
 
   // Carbon Dropdown — click label to open, then select first item
   const isSelect =
@@ -223,7 +232,8 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     });
     await page.locator('[role="option"]').first().click();
   }
-  await pause(800);
+
+  await pause(MODERATE_PAUSE);
 
   // ── Sample search field ─────────────────────────────────────────
   await showSceneLabel(page, "US2 · Sample Search Field", testInfo);
@@ -232,7 +242,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .getByPlaceholder(/accession|sample|search/i)
     .first();
   if (await sampleSearchInput.isVisible()) {
-    await scrollToAndPause(page, sampleSearchInput, pause, 1200);
+    await scrollToAndPause(page, sampleSearchInput, pause, LONG_PAUSE);
   }
 
   // ── Fill optional fields ───────────────────────────────────────
@@ -243,9 +253,9 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .or(page.getByPlaceholder(/note/i))
     .first();
   if (await notesInput.isVisible()) {
-    await scrollToAndPause(page, notesInput, pause, 800);
+    await scrollToAndPause(page, notesInput, pause, MODERATE_PAUSE);
     await notesInput.fill("E2E test shipment box — OGC-62 demo");
-    await pause(600);
+    await pause(SHORT_PAUSE);
   }
 
   // ── Create the box ──────────────────────────────────────────────
@@ -262,7 +272,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     .getByRole("button", { name: /create|save|submit/i })
     .first();
   await expect(createBtn).toBeVisible({ timeout: UI_TIMEOUT });
-  await scrollToAndPause(page, createBtn, pause, 1000);
+  await scrollToAndPause(page, createBtn, pause, LONG_PAUSE);
 
   // The create button state depends on whether a facility and sample were
   // added. On a fresh demo DB without unassigned samples it stays disabled.
@@ -286,9 +296,9 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
     await expect(successNotification.or(boxDetailsPage).first()).toBeVisible({
       timeout: LONG_TIMEOUT,
     });
-    await pause(2000);
+    await pause(LONG_PAUSE * 1.33);
   } else {
-    await pause(1000);
+    await pause(LONG_PAUSE * 0.67);
   }
 
   await showTitleCard(
@@ -303,7 +313,7 @@ test("US2 — Create a new shipment box", async ({ page }, testInfo) => {
 // ─── US3: View box details and dashboard state ────────────────────────────────
 
 test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(EXTENDED_TIMEOUT);
   const pause: PauseFn = (ms) => videoPause(page, ms, testInfo);
 
   await showTitleCard(
@@ -317,7 +327,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
   // ── Navigate to dashboard ──────────────────────────────────────
   await gotoShipmentDashboard(page);
   await showSceneLabel(page, "US3 · Dashboard Overview", testInfo);
-  await pause(1500);
+  await pause(LONG_PAUSE);
 
   // ── Filter controls ────────────────────────────────────────────
   await showTitleCard(
@@ -335,7 +345,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .or(page.getByPlaceholder(/search/i))
     .first();
   if (await searchInput.isVisible()) {
-    await scrollToAndPause(page, searchInput, pause, 1200);
+    await scrollToAndPause(page, searchInput, pause, LONG_PAUSE);
   }
 
   // State filter dropdown
@@ -344,7 +354,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .or(page.locator('[role="combobox"]').first())
     .first();
   if (await stateFilter.isVisible()) {
-    await scrollToAndPause(page, stateFilter, pause, 1200);
+    await scrollToAndPause(page, stateFilter, pause, LONG_PAUSE);
   }
 
   // ── View box table ─────────────────────────────────────────────
@@ -352,21 +362,21 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
 
   const table = page.locator("table").first();
   if (await table.isVisible()) {
-    await scrollToAndPause(page, table, pause, 2000);
+    await scrollToAndPause(page, table, pause, LONG_PAUSE * 1.33);
 
     // If there are rows, try clicking the first one to view details
     const firstRow = table.locator("tbody tr").first();
     if (await firstRow.isVisible()) {
       await showSceneLabel(page, "US3 · Click Box for Details", testInfo);
       await firstRow.click();
-      await pause(2000);
+      await pause(LONG_PAUSE * 1.33);
 
       // Verify we navigated to box details or a modal opened
       const boxDetails = page
         .getByText(/box.*detail|sample.*count|manifest/i)
         .first();
       if (await boxDetails.isVisible()) {
-        await scrollToAndPause(page, boxDetails, pause, 2000);
+        await scrollToAndPause(page, boxDetails, pause, LONG_PAUSE * 1.33);
       }
     }
   }
@@ -382,7 +392,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
   await showSceneLabel(page, "US3 · Receive Workflow", testInfo);
 
   await gotoReceiveBox(page);
-  await pause(1500);
+  await pause(LONG_PAUSE);
 
   // Look for the scan/search input on receive page
   const receiveInput = page
@@ -390,7 +400,7 @@ test("US3 — View shipment boxes on dashboard", async ({ page }, testInfo) => {
     .or(page.getByRole("searchbox"))
     .first();
   if (await receiveInput.isVisible()) {
-    await scrollToAndPause(page, receiveInput, pause, 1500);
+    await scrollToAndPause(page, receiveInput, pause, LONG_PAUSE);
   }
 
   await showTitleCard(

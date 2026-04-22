@@ -18,7 +18,7 @@ import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { cleanupAnalyzerByName } from "./cleanup-analyzer";
 import type { DemoPresentation } from "./demo-presentation";
 import type { AnalyzerTestConfig } from "./analyzer-test-config";
-import { LONG_TIMEOUT } from "./timeouts";
+import { LONG_TIMEOUT, SHORT_PAUSE, LONG_PAUSE } from "./timeouts";
 import { resolveDbContainer } from "./db-container";
 
 const SIMULATOR_URL = "http://localhost:8085";
@@ -158,19 +158,19 @@ export async function createAnalyzerFromProfile(
 
   await list.goto();
   await list.expectLoaded();
-  await presentation.pause(500);
+  await presentation.pause(SHORT_PAUSE);
 
   await list.clickAdd();
   await form.expectOpen();
 
   // Select plugin type
   await form.selectPluginType(config.pluginType);
-  await presentation.pause(500);
+  await presentation.pause(SHORT_PAUSE);
 
   // Select profile (auto-fills fields)
   if (config.profileName) {
     await form.selectDefaultConfig(config.profileName);
-    await presentation.pause(500);
+    await presentation.pause(SHORT_PAUSE);
   }
 
   // Select analyzer type (may already be set by profile)
@@ -178,7 +178,7 @@ export async function createAnalyzerFromProfile(
 
   // Fill name
   await form.fillName(config.name);
-  await presentation.pause(500);
+  await presentation.pause(SHORT_PAUSE);
 
   // Fill IP and port for TCP analyzers
   if (config.protocol !== "FILE") {
@@ -189,7 +189,7 @@ export async function createAnalyzerFromProfile(
     if (config.port) {
       await form.fillPort(String(config.port));
     }
-    await presentation.pause(500);
+    await presentation.pause(SHORT_PAUSE);
   }
 
   // Fill required import directory for FILE analyzers. The UI intentionally
@@ -213,7 +213,7 @@ export async function createAnalyzerFromProfile(
 
   // Wait for modal to close
   await expect(form.modal).not.toBeVisible({ timeout: LONG_TIMEOUT });
-  await presentation.pause(1_000);
+  await presentation.pause(LONG_PAUSE);
 
   return assignedIp;
 }
