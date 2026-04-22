@@ -202,17 +202,20 @@ fi
 # ${LETSENCRYPT_DOMAIN} flows through to server_name and cert paths without
 # editing nginx.conf by hand. Fallback to plain copy if only nginx.conf exists.
 if [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
-  if command -v envsubst >/dev/null 2>&1; then
-    # Pass a restricted var set so unrelated shell vars (e.g. $host, $scheme
-    # used as nginx runtime variables) don't get substituted out.
-    envsubst '${LETSENCRYPT_DOMAIN} ${LETSENCRYPT_BRIDGE_DOMAIN}' \
-      < "$ROOT_VOLUME/nginx/nginx.conf.template" \
-      > "$HARNESS_VOLUME/nginx/nginx.conf"
-    echo "  rendered volume/nginx/nginx.conf from template (LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN}, LETSENCRYPT_BRIDGE_DOMAIN=${LETSENCRYPT_BRIDGE_DOMAIN})"
-  else
-    echo -e "  ${YELLOW}⚠ envsubst not found; falling back to raw nginx.conf copy${NC}"
-    cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
+  if ! command -v envsubst >/dev/null 2>&1; then
+    # No silent fallback — the committed nginx.conf is a stale snapshot of the
+    # template and lacks the bridge vhost + env-substituted domain names.
+    # Falling back to it silently mis-serves HTTPS and hides config drift.
+    echo "ERROR: envsubst is required to render nginx.conf.template but was not found." >&2
+    echo "  Install it (apt: gettext-base, brew: gettext) and rerun." >&2
+    exit 1
   fi
+  # Pass a restricted var set so unrelated shell vars (e.g. $host, $scheme
+  # used as nginx runtime variables) don't get substituted out.
+  envsubst '${LETSENCRYPT_DOMAIN} ${LETSENCRYPT_BRIDGE_DOMAIN}' \
+    < "$ROOT_VOLUME/nginx/nginx.conf.template" \
+    > "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  rendered volume/nginx/nginx.conf from template (LETSENCRYPT_DOMAIN=${LETSENCRYPT_DOMAIN}, LETSENCRYPT_BRIDGE_DOMAIN=${LETSENCRYPT_BRIDGE_DOMAIN})"
 elif [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
   cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
   echo "  copied volume/nginx/nginx.conf (no template found)"

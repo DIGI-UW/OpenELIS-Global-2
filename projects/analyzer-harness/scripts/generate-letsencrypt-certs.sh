@@ -57,7 +57,11 @@ mkdir -p "$CERTBOT_WEBROOT"
 
 MODE="prod"
 [ "$STAGING" = "true" ] && MODE="staging"
-[ "$DRY_RUN" = "true" ] && MODE="dry-run${STAGING:+/staging}"
+# certbot's --dry-run implicitly uses the staging CA, so the label always
+# reflects both. The earlier form used ${STAGING:+/staging}, which expands
+# whenever STAGING is non-empty — and STAGING is always "true" or "false",
+# so the suffix was never omitted. Explicit label avoids the trap.
+[ "$DRY_RUN" = "true" ] && MODE="dry-run/staging"
 
 echo "Let's Encrypt certificate issuance (mode: ${MODE})"
 echo "  Primary domain: ${DOMAIN}"

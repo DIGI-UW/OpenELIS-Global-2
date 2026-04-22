@@ -104,8 +104,11 @@ http {
     # that overlay the upstream DNS resolution fails; nginx keeps running for
     # the other vhosts regardless.
     #
-    # Bridge uses self-signed TLS + Basic Auth (user: bridge, pass: changeme).
-    # We hand the Authorization header straight through to the bridge.
+    # Bridge uses self-signed TLS + Basic Auth. Credentials are aligned with
+    # OE admin (admin / adminADMIN!) via BRIDGE_SECURITY_USERNAME /
+    # BRIDGE_SECURITY_PASSWORD on the bridge service — one credential pair for
+    # the whole harness, not two. We hand the Authorization header straight
+    # through to the bridge.
     # ==========================================================================
     server {
         listen 443 ssl;

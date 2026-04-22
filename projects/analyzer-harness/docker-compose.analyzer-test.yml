@@ -80,7 +80,14 @@ services:
         condition: service_completed_successfully
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-      - BRIDGE_AUTH_PASSWORD=changeme   # Dev profile allows default; set explicitly for clarity
+      # Bridge admin/upload UI Basic Auth. Aligned with OE admin so the harness
+      # ships one credential pair instead of two — closes the known-default
+      # (bridge/changeme) exposure once the bridge vhost is served over LE.
+      # Property keys per bridge SecurityConfig: bridge.security.*.
+      # Note: BRIDGE_AUTH_PASSWORD is a silent no-op — nothing in the bridge
+      # reads it; the correct keys are BRIDGE_SECURITY_USERNAME / _PASSWORD.
+      - BRIDGE_SECURITY_USERNAME=admin
+      - BRIDGE_SECURITY_PASSWORD=adminADMIN!
       - BRIDGE_FILE_ENABLED=true
       - LOGGING_LEVEL_ORG_ITECH=INFO
       # Bridge connects directly to OE (not through proxy), so no /api/ prefix
