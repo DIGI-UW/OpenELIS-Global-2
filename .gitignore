@@ -142,5 +142,12 @@ frontend/vitest-*.log
 frontend/full_vitest_run.log
 .vite/
 
+# Additional local test-output scratch (Jest / CRA-era, scripted runs)
+frontend/npm-test-*.log
+
+# Playwright demo/report zips at repo root (never commit)
+/playwright-*.zip
+/playwright-demo-report/
+
 # Per-PR scratch session notes (never commit)
 PR-*-STATUS-REPORT.md

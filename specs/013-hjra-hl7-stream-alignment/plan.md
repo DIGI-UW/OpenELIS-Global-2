@@ -8,29 +8,35 @@
 ## Remaining Work to Finish Line (2026-04-20)
 
 **Coordination artifacts**: complete (M0 validation tasks all checked in
-[tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity +
-`CommunicationMode`) is merged pending final review.
+[tasks.md](./tasks.md)). **Cross-cutting PR #3195** (test-connection parity and
+the `CommunicationMode` enum) is currently in review (not yet merged).
+
+Once any new HL7 analyzer's profile JSON is in
+[`projects/analyzer-profiles/hl7/`](../../projects/analyzer-profiles/hl7/) and
+the Jira-tracked milestone branch is opened, the work here is **architecture +
+readiness**, not per-instrument.
 
 **Still to do, in order:**
 
-1. **Pre-M1 readiness** (T009, T010): sync `develop` +
-   `tools/openelis-analyzer-bridge` + `plugins` submodule pins; capture paired
-   bridge + main-repo team agreement in `launch-checklists/pre-m1-readiness.md`.
-2. **HJRA site networking**: get Mindray analyzers routable to the bridge MLLP
-   listener (not just local mock).
+1. **Pre-M1 readiness** (T009, T010): sync `develop`,
+   `tools/openelis-analyzer-bridge`, and `plugins` submodule pins; capture
+   paired bridge + main-repo team agreement in
+   `launch-checklists/pre-m1-readiness.md`.
+2. **Site networking**: HJRA bridge MLLP connectivity from live analyzer
+   networks (tracked per-site on Confluence, not here).
 3. **M1 (OGC-325)** — `feat/013-ogc-325-hl7-listener-foundation`: paired
    bridge + main-repo PR, MLLP listener → `/analyzer/hl7`, Gate 1 evidence (see
    `launch-checklists/gate1-ogc325-evidence.md`), mock-with-profile E2E proof.
-4. **M2 (OGC-327)** — `feat/013-ogc-327-bc5380-hl7`: BC-5380 as first proving
-   target, Gate 2 evidence.
-5. **M3 (OGC-326)** — `feat/013-ogc-326-bs-series-hl7`: BS-200 + BS-300
-   together, early BS-300 evidence, Gate 3 evidence.
+4. **M2 (OGC-327)** — first proving-target HL7 analyzer branch, Gate 2 evidence.
+5. **M3 (OGC-326)** — follow-on HL7 analyzer branch, Gate 3 evidence.
 6. **Post-MVP (optional)**: OGC-336 GeneXpert HL7 mode (QBP queries); HL7
-   bidirectional (ORM^O01 worklist OGC-327, QRY^Q02 order download OGC-326);
-   LIS-initiated outbound MLLP from the bridge.
+   bidirectional (`ORM^O01` worklist, `QRY^Q02` order download); `LIS_INITIATED`
+   outbound MLLP from the bridge.
 
-Canonical roadmap:
-[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
+**Per-analyzer status** (confidence, spec/companion versions, real-file
+availability, site deployment) lives on the [Confluence tracker][tracker].
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ---
 

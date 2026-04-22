@@ -2,20 +2,61 @@
 
 ## Current Status (updated 2026-04-20)
 
-**Scope shipped**: GenericFile plugin + Upload/Review UI + 5 analyzer profiles
-(QuantStudio 5/7, FluoroCycler XT, Wondfo Finecare, Tecan F50, Multiskan FC) —
-all in `projects/analyzer-profiles/file/` and seeded by
-[`seed-analyzers.sh`](../../projects/analyzer-harness/seed-analyzers.sh).  
-**Validation pending**: Tecan F50 (OGC-417) + Multiskan FC (OGC-418) — Herbert
-site samples still in flight.  
-**Blocked**: Attune CytPix (OGC-350) — no CSV export available.  
-**Deferred test coverage (not blocking MVP)**: some M2 frontend Jest tests
-(T030–T031, T038–T045) and M4 watcher-integration + upload E2E (T073, T078) —
-see [tasks.md](./tasks.md) § "Remaining Work to Finish Line".
+This spec coordinates the **FILE stream** (Pattern C) — flat-file ingestion
+(CSV, XLSX, XML, vendor-custom templates), handled by the `GenericFile` plugin
+against profile JSONs in
+[`projects/analyzer-profiles/file/`](../../projects/analyzer-profiles/file/).
+Integrating a new flat-file analyzer whose format is already supported (CSV /
+TSV / Excel) is a **profile-JSON drop**; a genuinely new format may need an
+additional reader.
 
-Full status table: [§ Stream Boundaries](#stream-boundaries) below and the
-canonical
-[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
+### Generic FILE support — capabilities
+
+- **Plugin**: `GenericFile` handles format-dispatch (`FileImportService` selects
+  a reader by profile `fileFormat`). Current readers: delimited text (CSV/TSV)
+  via `CSVAnalyzerReader`; Excel workbooks via `AnalyzerXLSLineReader` / Apache
+  POI.
+- **Transport**: Two ingestion paths share the review/preview flow.
+  - **Bridge watcher** — bridge polls a configured directory and sends the raw
+    file (or its binary contents) to OpenELIS; OpenELIS parses via
+    `FileImportService` and the configured reader. Per the 2026-03-18 Ownership
+    Override (below), the bridge owns watching/transport and OpenELIS owns
+    parsing/ingestion.
+  - **Admin Upload UI** (OGC-324 / OGC-329) — direct upload + slot-based
+    preview + review for formats where no live watcher is wanted.
+- **Profile schema**: `FileImportConfiguration` carries `fileFormat`, delimiter,
+  header rules, and column mappings; per-analyzer interpretation (sheet
+  selection, cutoff logic, QC sample naming) is the plugin's job driven by the
+  profile.
+
+### Remaining work (this stream, architecture-level)
+
+- **Shipped** (code): foundation pair (OGC-329 file config + OGC-324 upload UI),
+  `GenericFile` plugin, file-reader dispatch, and several analyzer profiles on
+  `develop` — see the Confluence tracker for the current list.
+- **Deferred test coverage**: some M2 frontend Jest tests (T030–T031, T038–T045)
+  and M4 watcher-integration + upload E2E (T073, T078) — see
+  [tasks.md § "Remaining Work to Finish Line"](./tasks.md).
+- **Site validation** is tracked in Confluence, not here — per-analyzer field
+  validation at the site is an instrument-level concern, not a GenericFile
+  plugin concern.
+
+### Where per-analyzer FILE status lives
+
+- **Live tracker (canonical)**: [OpenELIS Global — Analyzer Integration
+  Tracker][tracker] on Confluence — spec confidence, real-file availability,
+  vendor-doc links, deployment status for each Pattern-C analyzer.
+- **Format fixtures + mock flows**: `projects/analyzer-mock-server/`.
+- **Watcher + ingestion transport**: `tools/openelis-analyzer-bridge` (watches
+  analyzer output directories, enriches via `X-Analyzer-Id`).
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
+
+> The § Stream Boundaries table and narrative below are the **original 2026-03
+> scoping document** — kept for audit/history. The canonical per-analyzer
+> FILE-stream status is in the Confluence tracker linked above; where the body
+> conflicts with the Current Status section or the tracker, the canonical
+> sources win.
 
 ---
 
@@ -38,7 +79,9 @@ section as the authoritative override during remediation.
 
 **Feature Branch**: `spec/014-hjra-file-stream-alignment`  
 **Created**: 2026-03-10  
-**Status**: Draft  
+**Updated**: 2026-04-20 (status reckoning)  
+**Status**: **In Progress** — GenericFile plugin + 5 analyzer profiles shipped;
+Herbert site validation + deferred test coverage open.  
 **Epic**: OGC-304 (Madagascar Analyzer Work)  
 **Input**: Coordinate file import work across OGC-324, OGC-329, OGC-344,
 OGC-348, OGC-350, OGC-351, OGC-417, OGC-418
@@ -558,9 +601,11 @@ Both validate different aspects of the foundation.
 - **SC-005**: Zero ASTM-specific coupling exists in the GenericFile import path
   — the file reader, configuration, and plugin interface operate independently
   of ASTM framing.
-- **SC-006**: Blocked analyzers (Attune, FluoroCycler, Tecan, Multiskan) are
-  clearly documented as pending export file availability, with no incomplete
-  parser code deployed.
+- **SC-006**: Any FILE-stream analyzer that cannot yet be validated (missing
+  real export files, no LIS connectivity confirmed) is documented in the
+  [Confluence tracker][tracker] with its confidence rating and the specific
+  blocker, and no incomplete parser code ships on `develop` for it.
+  (Per-analyzer status lives in the tracker, not in this spec.)
 
 ---
 

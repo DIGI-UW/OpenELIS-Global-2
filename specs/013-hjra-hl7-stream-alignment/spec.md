@@ -12,29 +12,50 @@ implementation branches, and keep this stage planning-only."
 
 ## Current Status (2026-04-20)
 
-**Shipped / merged**: HL7 MLLP listener + BC-5380, BS-200, BS-300 profiles
-(#3035). Test-connection parity + `CommunicationMode` enum (#3195, in review).
-Locally E2E-verified through Mock → MLLP → Bridge → OE → Results page for all
-three Mindray analyzers.
+This spec coordinates the **HL7 stream** (Pattern A2) — HL7 v2.x over MLLP,
+handled by the `GenericHL7` plugin against profile JSONs in
+[`projects/analyzer-profiles/hl7/`](../../projects/analyzer-profiles/hl7/).
+Integrating any new HL7 analyzer is a **profile-JSON drop** on top of this
+stack; this spec's remaining work is about **stream infrastructure** and
+**coordinated Jira-tracked milestones**, not per-instrument integration details.
 
-**Still to ship / validate**:
+### Generic HL7 support — capabilities
 
-- **HJRA site networking** — get Mindray analyzers talking to the bridge MLLP
-  listener at the HJRA site (not local mock).
-- **Pre-M1 readiness** — T009/T010 in [tasks.md](./tasks.md): sync `develop` +
-  `tools/openelis-analyzer-bridge` + `plugins` submodule pins, and capture
-  paired-PR team agreement before opening `feat/013-ogc-325-*`.
-- **M1 (OGC-325)** — MLLP listener foundation branch (paired bridge + main
-  repo).
-- **M2 (OGC-327)** — BC-5380 HL7 adapter branch, first proving target.
-- **M3 (OGC-326)** — BS-series branch (BS-200 + BS-300 together, early BS-300
-  evidence).
-- **Optional / post-MVP**: OGC-336 GeneXpert HL7 mode (QBP queries); HL7
-  bidirectional (ORM^O01 worklist, QRY^Q02 order download); LIS-initiated
-  outbound MLLP.
+- **Transport**: MLLP listener owned by the bridge submodule (OGC-325). Accepts
+  multiple concurrent analyzer connections routed by `MSH-3` + `MSH-4` + the
+  `X-Analyzer-Id` forwarding header.
+- **Plugin**: `GenericHL7` handles `ORU^R01` results via profile-driven
+  `OBR`/`OBX` field mapping. `ORM^O01` outbound and `QRY^Q02` host queries are
+  **post-MVP** and not yet shipped.
+- **Communication mode**: `ANALYZER_INITIATED` only for MVP; `LIS_INITIATED` +
+  `BOTH` are post-MVP (bridge outbound MLLP client needed).
 
-Canonical roadmap:
-[`specs/roadmaps/madagascar-analyzer-roadmap.md`](../roadmaps/madagascar-analyzer-roadmap.md).
+### Remaining work (this stream, architecture-level)
+
+- **Shared infrastructure shipped**: MLLP listener + `GenericHL7` code merged to
+  develop (#3035). `X-Analyzer-Id` / `MSH-3+MSH-4` pattern matching (#3191).
+  Cross-cutting test-connection parity + `CommunicationMode` enum in review as
+  PR #3195.
+- **Pre-M1 readiness** (T009/T010 in [tasks.md](./tasks.md)): sync `develop`,
+  `tools/openelis-analyzer-bridge` and `plugins` submodule pins; document
+  paired-PR team agreement.
+- **M1 (OGC-325)** — MLLP listener foundation branch (paired bridge + main-repo
+  PR), Gate 1 evidence.
+- **M2 (OGC-327)** — first proving-target HL7 analyzer branch, Gate 2.
+- **M3 (OGC-326)** — follow-on HL7 analyzer branch, Gate 3.
+- **Post-MVP**: OGC-336 GeneXpert HL7 mode (QBP queries); HL7 bidirectional
+  (ORM^O01 worklist, QRY^Q02 order download); LIS-initiated outbound MLLP from
+  the bridge.
+
+### Where per-analyzer HL7 status lives
+
+- **Live tracker (canonical)**: [OpenELIS Global — Analyzer Integration
+  Tracker][tracker] on Confluence — current spec confidence, deployment status,
+  site-validation notes for each HL7 analyzer.
+- **Protocol-level technical detail** (captures, mock flows, bridge specifics):
+  `projects/analyzer-mock-server/` + `tools/openelis-analyzer-bridge`.
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ## Clarifications
 
