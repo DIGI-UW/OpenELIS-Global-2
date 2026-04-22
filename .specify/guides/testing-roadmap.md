@@ -1176,7 +1176,7 @@ official patterns.
 
 This section provides comprehensive technical guidance for implementing Jest +
 React Testing Library unit tests. For quick reference, see
-[Jest Best Practices Guide](.specify/guides/jest-best-practices.md).
+[Vitest Best Practices Guide](.specify/guides/vitest-best-practices.md).
 
 #### TDD Workflow Integration
 
@@ -2619,7 +2619,7 @@ npm run pw:test -- file.spec.ts  # Run specific file
   `.specify/templates/testing/WebMvcTestController.java.template`
 - Backend DAO: `.specify/templates/testing/DataJpaTestDao.java.template`
 - Frontend Component:
-  `.specify/templates/testing/JestComponent.test.jsx.template`
+  `.specify/templates/testing/VitestComponent.test.jsx.template`
 - Frontend E2E (Cypress): `.specify/templates/testing/CypressE2E.cy.js.template`
 - Frontend E2E (Playwright):
   [Playwright Best Practices](.specify/guides/playwright-best-practices.md)

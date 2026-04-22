@@ -41,10 +41,10 @@ You can find more information on how to set up OpenELIS at our
 
 For the current fork/non-fork E2E validation design, artifact contracts, and
 checkpoint/status model, see
-[`.specify/reports/ci-e2e-architecture-spec.md`](.specify/reports/ci-e2e-architecture-spec.md).
+[`specs/plans/ci-e2e-architecture-spec.md`](specs/plans/ci-e2e-architecture-spec.md).
 
 For operational troubleshooting of the E2E wrapper and downstream execution, see
-[`.github/e2e-ci-operator-model.md`](.github/e2e-ci-operator-model.md).
+[`specs/plans/e2e-ci-operator-model.md`](specs/plans/e2e-ci-operator-model.md).
 
 ### Contributing
 
