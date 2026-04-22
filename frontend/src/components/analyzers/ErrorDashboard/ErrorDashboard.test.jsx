@@ -12,9 +12,9 @@
 
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
-jest.mock("../../../components/utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-  postToOpenElisServerFullResponse: jest.fn(),
+vi.mock("../../../components/utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+  postToOpenElisServerFullResponse: vi.fn(),
 }));
 
 // ========== IMPORTS (Standard order - MANDATORY) ==========
@@ -79,7 +79,11 @@ const createMockError = (overrides = {}) => ({
 
 describe("ErrorDashboard", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await new Promise((r) => setTimeout(r, 0));
   });
 
   /**

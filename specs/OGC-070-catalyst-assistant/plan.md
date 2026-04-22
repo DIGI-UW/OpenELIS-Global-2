@@ -873,7 +873,7 @@ SQL execution + audit, React frontend for chat UI.
 
   - `CatalystSidebar.test.jsx` - Component rendering, i18n
   - `ChatInterface.test.jsx` - Message display
-  - Template: `.specify/templates/testing/JestComponent.test.jsx.template`
+  - Template: `.specify/templates/testing/VitestComponent.test.jsx.template`
   - **SDD Checkpoint**: After M3, Jest tests MUST pass
 
 - [x] **E2E Tests**: Critical workflow (Cypress)

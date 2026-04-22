@@ -91,12 +91,10 @@ describe("PageTitle Component", () => {
 
   it("should call custom onBack handler when provided", async () => {
     const mockOnBack = jest.fn<void, []>();
-
     const breadcrumbs: Breadcrumb[] = [
       { label: "Analyzers", link: "/analyzers" },
       { label: "Field Mappings" },
     ];
-
     renderWithIntl(
       <PageTitle
         breadcrumbs={breadcrumbs}

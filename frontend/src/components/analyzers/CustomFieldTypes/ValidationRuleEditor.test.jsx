@@ -1,16 +1,16 @@
 // Mock utilities BEFORE imports that use them
-jest.mock("../../../services/analyzerService", () => ({
-  getValidationRules: jest.fn(),
-  createValidationRule: jest.fn(),
-  updateValidationRule: jest.fn(),
-  deleteValidationRule: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  getValidationRules: vi.fn(),
+  createValidationRule: vi.fn(),
+  updateValidationRule: vi.fn(),
+  deleteValidationRule: vi.fn(),
 }));
 
 // React
 import React from "react";
 
 // Testing Library (all utilities in one import)
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 
 // userEvent (PREFERRED for user interactions)
@@ -67,12 +67,12 @@ const renderWithIntl = (component) => {
 };
 
 describe("ValidationRuleEditor Component", () => {
-  const mockOnSave = jest.fn();
-  const mockOnCancel = jest.fn();
+  const mockOnSave = vi.fn();
+  const mockOnCancel = vi.fn();
   const customFieldTypeId = "CFT-001";
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   /**
@@ -122,6 +122,8 @@ describe("ValidationRuleEditor Component", () => {
    * Test: Regex rule with invalid pattern shows error
    */
   test("testRegexRule_WithInvalidPattern_ShowsError", async () => {
+    const user = userEvent.setup();
+
     renderWithIntl(
       <ValidationRuleEditor
         customFieldTypeId={customFieldTypeId}
@@ -130,17 +132,18 @@ describe("ValidationRuleEditor Component", () => {
       />,
     );
 
-    // Enter invalid regex pattern
+    // Enter invalid regex pattern — "[" is a keyboard modifier prefix in
+    // user-event v14, so use fireEvent.change for this special-char value.
     const patternInput = screen.getByTestId("regex-pattern-input");
-    await userEvent.type(patternInput, "[invalid");
+    fireEvent.change(patternInput, { target: { value: "[invalid" } });
 
     // Enter rule name
     const ruleNameInput = screen.getByTestId("rule-name-input");
-    await userEvent.type(ruleNameInput, "Test Rule");
+    await user.type(ruleNameInput, "Test Rule");
 
     // Try to save
     const saveButton = screen.getByTestId("save-rule-button");
-    await userEvent.click(saveButton);
+    await user.click(saveButton);
 
     // Should show validation error
     await waitFor(() => {
@@ -190,6 +193,8 @@ describe("ValidationRuleEditor Component", () => {
    * Test: Test validation with sample value displays result
    */
   test("testTestValidation_WithSampleValue_DisplaysResult", async () => {
+    const user = userEvent.setup();
+
     renderWithIntl(
       <ValidationRuleEditor
         customFieldTypeId={customFieldTypeId}
@@ -198,20 +203,20 @@ describe("ValidationRuleEditor Component", () => {
       />,
     );
 
-    // Enter regex pattern
+    // Enter regex pattern — contains "[" chars which are keyboard modifier
+    // prefixes in user-event v14, so use fireEvent.change.
     const patternInput = screen.getByTestId("regex-pattern-input");
-    await userEvent.type(
-      patternInput,
-      "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
-    );
+    fireEvent.change(patternInput, {
+      target: { value: "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$" },
+    });
 
     // Enter test value
     const testValueInput = screen.getByTestId("test-value-input");
-    await userEvent.type(testValueInput, "test@example.com");
+    await user.type(testValueInput, "test@example.com");
 
     // Click test button
     const testButton = screen.getByTestId("test-rule-button");
-    await userEvent.click(testButton);
+    await user.click(testButton);
 
     // Should show test result
     await waitFor(() => {
@@ -278,10 +283,11 @@ describe("ValidationRuleEditor Component", () => {
     await userEvent.type(ruleNameInput, "Email Pattern");
 
     const patternInput = screen.getByTestId("regex-pattern-input");
-    await userEvent.type(
-      patternInput,
-      "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$",
-    );
+    // Regex contains "[" and "{" which are keyboard modifier prefixes in
+    // user-event v14, so use fireEvent.change.
+    fireEvent.change(patternInput, {
+      target: { value: "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$" },
+    });
 
     // Save
     const saveButton = screen.getByTestId("save-rule-button");

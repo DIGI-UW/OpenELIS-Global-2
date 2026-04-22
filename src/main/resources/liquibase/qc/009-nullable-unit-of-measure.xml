@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="qc-009-nullable-unit-of-measure" author="mvp-flow-fix">
+        <comment>Make unit_of_measure nullable — qualitative PCR results have no units</comment>
+        <dropNotNullConstraint tableName="qc_result" columnName="unit_of_measure"
+            columnDataType="varchar(50)" schemaName="clinlims"/>
+    </changeSet>
+</databaseChangeLog>
