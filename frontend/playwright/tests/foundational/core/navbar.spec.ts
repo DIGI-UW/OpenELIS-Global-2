@@ -15,7 +15,6 @@ test.describe("Navbar (Header) actions", () => {
 
     await expect(page.locator("#sidenav-menu-button")).toBeVisible();
 
-
     // Carbon HeaderName renders an anchor; clicking should navigate home
     await page.locator("#mainHeader a.cds--header__name").click();
     await expect(page).toHaveURL(/\/$/);

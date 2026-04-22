@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import "@testing-library/jest-dom/extend-expect";
+import "@testing-library/jest-dom";
 import { Formik, Form } from "formik";
 import { IntlProvider } from "react-intl";
 import FormTextAreaField from "../FormTextAreaField";
