@@ -117,12 +117,20 @@ const TestConnectionModal = ({ analyzer, open, onClose }) => {
             <p>
               <strong>Name:</strong> {analyzer.name}
             </p>
-            <p>
-              <strong>IP:</strong> {analyzer.ipAddress}
-            </p>
-            <p>
-              <strong>Port:</strong> {analyzer.port}
-            </p>
+            {analyzer.importDirectory ? (
+              <p>
+                <strong>Import Directory:</strong> {analyzer.importDirectory}
+              </p>
+            ) : (
+              <>
+                <p>
+                  <strong>IP:</strong> {analyzer.ipAddress}
+                </p>
+                <p>
+                  <strong>Port:</strong> {analyzer.port}
+                </p>
+              </>
+            )}
           </div>
         )}
 

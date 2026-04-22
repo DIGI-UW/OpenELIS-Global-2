@@ -220,7 +220,25 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         addFlashMsgsToRequest(request);
 
         for (AnalysisItem analysisItem : filteredresultList) {
-            analysisItem.setPatientName(patientName);
+            Sample itemSample = sampleService.getSampleByAccessionNumber(analysisItem.getAccessionNumber());
+            if (itemSample == null) {
+                continue;
+            }
+            Patient itemPatient = sampleHumanService.getPatientForSample(itemSample);
+            if (itemPatient == null) {
+                continue;
+            }
+            analysisItem
+                    .setPatientName(
+                            itemPatient
+                                    .getPerson() == null
+                                            ? ""
+                                            : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
+                                                    + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
+                                                    .trim());
+            analysisItem.setPatientInfo(StringUtils.trimToEmpty(itemPatient.getNationalId()) + ", "
+                    + StringUtils.trimToEmpty(itemPatient.getGender()) + ", "
+                    + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
         }
 
         return form;

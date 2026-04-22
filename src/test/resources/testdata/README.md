@@ -185,7 +185,8 @@ on-demand from the authoritative DBUnit XML:
 - **Authoritative Source**: `storage-e2e.xml` (DBUnit XML)
 - **Generated Output**: `storage-e2e.generated.sql` (never committed to git)
 - **Converter**: `xml-to-sql.py` (Python script)
-- **How**: `load-test-fixtures.sh` generates SQL on-the-fly before loading
+- **How**: `load-test-fixtures.sh --profile=core|harness` generates SQL
+  on-the-fly before loading
 
 **IMPORTANT**: The `*.generated.sql` files are **NEVER committed** to git (see
 `.gitignore`). They are generated on-demand during test runs to avoid

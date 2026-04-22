@@ -278,6 +278,7 @@ public class DictionaryConfigurationHandler implements DomainConfigurationHandle
                 // Use category name as description to avoid duplicate description conflicts
                 category.setDescription(categoryName);
                 category.setLocalAbbreviation(abbreviation);
+                category.setSysUserId("1"); // System user for configuration loading
 
                 String categoryId = dictionaryCategoryService.insert(category);
                 category = dictionaryCategoryService.get(categoryId);
