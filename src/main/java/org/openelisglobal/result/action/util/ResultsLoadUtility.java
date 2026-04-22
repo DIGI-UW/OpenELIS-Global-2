@@ -114,9 +114,9 @@ public class ResultsLoadUtility {
     private String currentDate = "";
     private Sample currSample;
 
-    private Set<Integer> excludedAnalysisStatus = new HashSet<>();
-    private List<Integer> analysisStatusList = new ArrayList<>();
-    private List<Integer> sampleStatusList = new ArrayList<>();
+    private Set<String> excludedAnalysisStatus = new HashSet<>();
+    private List<String> analysisStatusList = new ArrayList<>();
+    private List<String> sampleStatusList = new ArrayList<>();
 
     // TODO: Re-enable after new inventory frontend integration
     // private List<InventoryKitItem> activeKits;
@@ -1066,15 +1066,15 @@ public class ResultsLoadUtility {
     }
 
     public void addExcludedAnalysisStatus(AnalysisStatus status) {
-        excludedAnalysisStatus.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        excludedAnalysisStatus.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     public void addIncludedSampleStatus(OrderStatus status) {
-        sampleStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        sampleStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     public void addIncludedAnalysisStatus(AnalysisStatus status) {
-        analysisStatusList.add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(status)));
+        analysisStatusList.add(SpringContext.getBean(IStatusService.class).getStatusID(status));
     }
 
     // TODO: Re-enable after new inventory frontend integration

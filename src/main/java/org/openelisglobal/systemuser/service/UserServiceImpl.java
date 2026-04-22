@@ -289,9 +289,9 @@ public class UserServiceImpl implements UserService {
     public List<IdValuePair> getUserSampleTypes(String systemUserId, String roleName) {
         String resultsRoleId = roleService.getRoleByName(roleName).getId();
         List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
-        List<Integer> testUnitIds = new ArrayList<>();
+        List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(Integer.valueOf(testSection.getId())));
+            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
 
         List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
@@ -324,9 +324,9 @@ public class UserServiceImpl implements UserService {
         List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
         TestSection testSection = testSectionService.getTestSectionByName(testSectionName);
         // List<String> testUnitIds = new ArrayList<>();
-        List<Integer> testUnitIds = new ArrayList<>();
+        List<String> testUnitIds = new ArrayList<>();
         if (ObjectUtils.isNotEmpty(testSection)) {
-            testSections.forEach(testSection2 -> testUnitIds.add(Integer.valueOf(testSection2.getId())));
+            testSections.forEach(testSection2 -> testUnitIds.add(testSection2.getId()));
             // testUnitIds=
             // testSections.stream().filter(el->el.getId().equals(testSection.getId())).map(e->e.getId()).collect(Collectors.toList());
         }
@@ -376,9 +376,9 @@ public class UserServiceImpl implements UserService {
             String roleName) {
         String resultsRoleId = roleService.getRoleByName(roleName).getId();
         List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
-        List<Integer> testUnitIds = new ArrayList<>();
+        List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(Integer.valueOf(testSection.getId())));
+            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
         org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "filterResultsByLabUnitRoles",
                 "User " + systemUserId + " has " + (testSections != null ? testSections.size() : 0) + " test sections: "
@@ -400,9 +400,9 @@ public class UserServiceImpl implements UserService {
     public List<IdValuePair> getAllDisplayUserTestsByLabUnit(String SystemUserId, String roleName) {
         String resultsRoleId = roleService.getRoleByName(roleName).getId();
         List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<Integer> testUnitIds = new ArrayList<>();
+        List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(Integer.valueOf(testSection.getId())));
+            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
 
         List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
@@ -420,9 +420,9 @@ public class UserServiceImpl implements UserService {
             String roleName) {
         String resultsRoleId = roleService.getRoleByName(roleName).getId();
         List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<Integer> testUnitIds = new ArrayList<>();
+        List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(Integer.valueOf(testSection.getId())));
+            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
 
         List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);
@@ -435,9 +435,9 @@ public class UserServiceImpl implements UserService {
     public List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName) {
         String resultsRoleId = roleService.getRoleByName(roleName).getId();
         List<IdValuePair> testSections = getUserTestSections(SystemUserId, resultsRoleId);
-        List<Integer> testUnitIds = new ArrayList<>();
+        List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
-            testSections.forEach(testSection -> testUnitIds.add(Integer.valueOf(testSection.getId())));
+            testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
         }
 
         List<Test> allTests = testService.getTestsByTestSectionIds(testUnitIds);

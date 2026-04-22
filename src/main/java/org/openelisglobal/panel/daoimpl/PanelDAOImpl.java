@@ -195,7 +195,7 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             if (!StringUtil.isNullorNill(panel.getId())) {
                 panelId = panel.getId();
             }
-            query.setParameter("panelId", Integer.parseInt(panelId));
+            query.setParameter("panelId", panelId);
 
             list = query.list();
 
@@ -229,7 +229,7 @@ public class PanelDAOImpl extends BaseDAOImpl<Panel, String> implements PanelDAO
             if (!StringUtil.isNullorNill(panel.getId())) {
                 panelId = panel.getId();
             }
-            query.setParameter("panelId", Integer.parseInt(panelId));
+            query.setParameter("panelId", panelId);
 
             list = query.list();
 
