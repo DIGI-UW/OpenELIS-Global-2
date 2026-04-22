@@ -130,10 +130,13 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     sampleItem.getTypeOfSample() != null && sampleItem.getTypeOfSample().getDescription() != null
                             ? sampleItem.getTypeOfSample().getDescription()
                             : "");
-            // Store actual status ID for filtering (OGC-150: supports all status types from
-            // dropdown)
-            // Frontend dropdown loads all status types and filters by ID
-            // Default to "active" if no status ID (backward compatibility)
+            // Internal map carries the raw DB status ID so
+            // StorageDashboardServiceImpl.filterSamples can call
+            // statusService.matches without another lookup. The REST controller
+            // translates this to the spec-compliant "active"|"disposed" enum
+            // (specs/001-sample-storage/contracts/storage-api.json:862,885)
+            // before serializing to the client — see SampleStorageRestController
+            // .normalizeStatusForResponse.
             map.put("status", sampleItem.getStatusId() != null ? sampleItem.getStatusId() : "active");
 
             // Check if this sample item has an assignment
@@ -850,8 +853,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     existingAssignment.setPositionCoordinate(null);
                 }
                 existingAssignment.setAssignedDate(new Timestamp(System.currentTimeMillis()));
-                if (reason != null) {
-                    existingAssignment.setNotes(reason);
+                // Update notes if provided (notes parameter takes precedence over reason)
+                if (notes != null && !notes.trim().isEmpty()) {
+                    existingAssignment.setNotes(notes.trim());
+                } else if (reason != null && !reason.trim().isEmpty()) {
+                    // Fall back to reason if notes not provided
+                    existingAssignment.setNotes(reason.trim());
                 }
                 sampleStorageAssignmentDAO.update(existingAssignment);
 

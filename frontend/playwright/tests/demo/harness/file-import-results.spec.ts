@@ -1,6 +1,4 @@
 import { expect, Page, test } from "../../../helpers/test-base";
-import * as fs from "fs";
-import * as path from "path";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -14,80 +12,95 @@ import {
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
-import { resolveHarnessImportsDir } from "../../../helpers/workspace-paths";
+import {
+  dropFixtureViaMock,
+  type MockFileResult,
+} from "../../../helpers/file-import-delivery";
 
 /**
- * Analyzer harness: FILE drop → staged results → accept (one story per FILE
- * analyzer seeded by `projects/analyzer-harness/seed-analyzers.sh`).
+ * Analyzer harness: FILE drop → staged results → accept.
  *
- * Coverage: QuantStudio 5, QuantStudio 7, FluoroCycler XT (Generic File).
- * Cepheid GeneXpert (ASTM) uses TCP + ASTM framing — see
- * `astm-genexpert-results.spec.ts`, not this file.
+ * All FILE analyzers use the same template workflow:
+ * 1. Mock server drops the real fixture file into the watched folder
+ * 2. Mock returns parsed metadata (accessions, results) — the single source of truth
+ * 3. Test verifies results appear in OE and accepts them
  *
- * Requires `projects/analyzer-harness/volume/analyzer-imports` bind-mount
- * (skipped automatically when the directory is absent).
+ * Fixture files live in the mock server (tools/analyzer-mock-server/fixtures/).
+ * The test never parses files or hardcodes expected values.
  */
 
-const FIXTURES_DIR = path.resolve(__dirname, "../../../fixtures");
-const HOST_IMPORTS_BASE = resolveHarnessImportsDir(__dirname);
+const MOCK_API_URL = process.env.MOCK_SIMULATOR_URL || "http://localhost:8085";
 
 const DEFAULT_FILE_IMPORT_POLL_MS = 60_000;
 const DEFAULT_FILE_IMPORT_DROP_BUFFER_MS = 45_000;
 
 type FileImportHarnessScenario = {
   readonly analyzerName: string;
-  /** Subdirectory under analyzer-imports (matches seeded FileImportConfig path). */
+  /** Subdirectory under analyzer-imports (matches seeded analyzer import path). */
   readonly importDirSafeName: string;
-  readonly fixture: string;
-  readonly filePrefix: string;
-  readonly expectedResults: ReadonlyArray<{
-    readonly sampleId: string;
-    readonly result: string;
-  }>;
+  /** Mock server template name (maps to templates/{name}.json). */
+  readonly mockTemplate: string;
   readonly demoTitle: string;
   readonly demoSubtitle: string;
+  /**
+   * Admin-declared test code for upload path (production parity). Set for
+   * analyzers whose fixture files have no per-row test-code column —
+   * matches the testCode field a lab tech fills in the bridge admin
+   * upload UI. When set, the test uses the bridge `/admin/upload` flow
+   * instead of a direct watched-dir drop.
+   */
+  readonly uploadTestCode?: string;
 };
 
-/** Fixtures use `HARN-*` accessions from `analyzer-harness-lane-data.sql`. */
 const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
   {
     analyzerName: "QuantStudio 7",
     importDirSafeName: "quantstudio-7",
-    fixture: "quantstudio-e2e-results.xlsx",
-    filePrefix: "qs7-results-",
-    expectedResults: [
-      { sampleId: "HARN-QS7-2026-00001", result: "1520.5" },
-      { sampleId: "HARN-QS7-2026-00002", result: "45200" },
-      { sampleId: "HARN-QS7-2026-00005", result: "3200.8" },
-    ],
+    mockTemplate: "quantstudio7",
     demoTitle: "QuantStudio 7 File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
   },
   {
     analyzerName: "QuantStudio 5",
     importDirSafeName: "quantstudio-5",
-    fixture: "quantstudio-e2e-results-qs5.xls",
-    filePrefix: "qs5-results-",
-    expectedResults: [
-      { sampleId: "HARN-QS5-2026-00001", result: "1520.5" },
-      { sampleId: "HARN-QS5-2026-00002", result: "45200" },
-      { sampleId: "HARN-QS5-2026-00005", result: "3200.8" },
-    ],
+    mockTemplate: "quantstudio5",
     demoTitle: "QuantStudio 5 File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
   },
   {
     analyzerName: "FluoroCycler XT",
     importDirSafeName: "fluorocycler-xt",
-    fixture: "fluorocycler-e2e-results.xlsx",
-    filePrefix: "fc-results-",
-    expectedResults: [
-      { sampleId: "HARN-FC-2026-00001", result: "28.5" },
-      { sampleId: "HARN-FC-2026-00002", result: "31.2" },
-      { sampleId: "HARN-FC-2026-00003", result: "Negative" },
-    ],
+    mockTemplate: "hain_fluorocycler",
     demoTitle: "FluoroCycler XT File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
+    // FluoroCycler real files carry no per-row test-code column — the lab
+    // tech declares VIH-1 in the bridge admin upload UI. Mirror that by
+    // routing this scenario through the upload path instead of a direct
+    // watched-dir drop.
+    uploadTestCode: "VIH-1",
+  },
+  {
+    analyzerName: "Wondfo Finecare FS-205",
+    importDirSafeName: "wondfo-finecare-fs-205",
+    mockTemplate: "wondfo_finecare",
+    demoTitle: "Wondfo Finecare FS-205 File Import",
+    demoSubtitle:
+      "CSV import from POCT immunoassay — comparison operators preserved.",
+  },
+  {
+    analyzerName: "Tecan Infinite F50",
+    importDirSafeName: "tecan-infinite-f50",
+    mockTemplate: "tecan_f50",
+    demoTitle: "Tecan Infinite F50 File Import",
+    demoSubtitle: "ELISA OD results from well-per-row CSV export.",
+  },
+  {
+    analyzerName: "Thermo Multiskan FC",
+    importDirSafeName: "thermo-multiskan-fc",
+    mockTemplate: "multiskan_fc",
+    demoTitle: "Thermo Multiskan FC File Import",
+    demoSubtitle:
+      "ELISA OD results from well-per-row CSV export — French locale support.",
   },
 ];
 
@@ -105,65 +118,23 @@ function fileImportTimeoutMs(): number {
     "FILE_IMPORT_DROP_BUFFER_MS",
     DEFAULT_FILE_IMPORT_DROP_BUFFER_MS,
   );
-  return 2 * pollMs + bufferMs;
-}
-
-function chmodSharedImportPathChain(dir: string) {
-  const base = path.resolve(HOST_IMPORTS_BASE);
-  let currentDir = path.resolve(dir);
-
-  while (currentDir.startsWith(base) && currentDir !== base) {
-    try {
-      if (fs.existsSync(currentDir)) {
-        fs.chmodSync(currentDir, 0o777);
-      }
-    } catch {
-      // Best-effort local permission fix for harness bind mounts.
-    }
-    currentDir = path.dirname(currentDir);
-  }
-}
-
-async function dropFixtureFile(
-  hostImportDir: string,
-  presentation: DemoPresentation,
-  scenario: FileImportHarnessScenario,
-) {
-  const fixtureFile = path.join(FIXTURES_DIR, scenario.fixture);
-  const fileExtension = path.extname(scenario.fixture);
-
-  fs.mkdirSync(hostImportDir, { recursive: true });
-  chmodSharedImportPathChain(hostImportDir);
-
-  const droppedFilePath = path.join(
-    hostImportDir,
-    `${scenario.filePrefix}${Date.now()}${fileExtension}`,
-  );
-
-  // Copy fixture and append a unique timestamp so the bridge's hash-based
-  // dedup doesn't skip re-imports of the same fixture across test runs.
-  const original = fs.readFileSync(fixtureFile);
-  const uniqueSuffix = Buffer.from(`\n${Date.now()}`);
-  fs.writeFileSync(droppedFilePath, Buffer.concat([original, uniqueSuffix]));
-  expect(fs.existsSync(droppedFilePath)).toBeTruthy();
-  await presentation.pause(1_000);
-
-  return droppedFilePath;
+  return Math.max(2 * pollMs + bufferMs, 60_000);
 }
 
 async function verifyImportedResults(
   page: Page,
   presentation: DemoPresentation,
   scenario: FileImportHarnessScenario,
+  expectedResults: ReadonlyArray<MockFileResult>,
 ) {
-  const allAccessions = scenario.expectedResults
+  const allAccessions = expectedResults
     .map((r) => r.sampleId)
     .filter((v, i, a) => a.indexOf(v) === i);
 
   await openAnalyzerResultsAndWaitForText(
     page,
     scenario.analyzerName,
-    scenario.expectedResults[0].sampleId,
+    expectedResults[0].sampleId,
     {
       timeoutMs: fileImportTimeoutMs(),
       perAttemptTimeoutMs: 5_000,
@@ -174,7 +145,7 @@ async function verifyImportedResults(
   const resultsRegion = page.locator(".orderLegendBody, table").first();
   await expect(resultsRegion).toBeVisible({ timeout: UI_TIMEOUT });
 
-  for (const expected of scenario.expectedResults) {
+  for (const expected of expectedResults) {
     await expect(
       resultsRegion.getByText(accessionTextRegExp(expected.sampleId)).first(),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
@@ -188,22 +159,10 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
   test.describe(`${scenario.analyzerName} file import harness`, () => {
     test.setTimeout(180_000);
 
-    let droppedFilePath: string | undefined;
-
     test("import and accept results from a watched folder", async ({
       page,
     }, testInfo) => {
-      test.skip(
-        !fs.existsSync(HOST_IMPORTS_BASE),
-        "Requires analyzer harness bind-mount (analyzer-imports not found)",
-      );
-
       const presentation = createDemoPresentation(page, testInfo);
-      const hostImportDir = path.join(
-        HOST_IMPORTS_BASE,
-        scenario.importDirSafeName,
-        "incoming",
-      );
 
       await presentation.title(scenario.demoTitle, scenario.demoSubtitle);
 
@@ -215,43 +174,40 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
       );
       await findAnalyzerRow(page, scenario.analyzerName, testInfo);
 
-      await presentation.step(2, "Drop a result file into the watched folder");
-      droppedFilePath = await dropFixtureFile(
-        hostImportDir,
-        presentation,
-        scenario,
+      await presentation.step(
+        2,
+        "Mock server drops a fixture file into the watched folder",
       );
+      const mockResponse = await dropFixtureViaMock(page, {
+        mockTemplate: scenario.mockTemplate,
+        analyzerName: scenario.analyzerName,
+        importDirSafeName: scenario.importDirSafeName,
+        uploadTestCode: scenario.uploadTestCode,
+        mockApiUrl: MOCK_API_URL,
+      });
+      const expectedResults = mockResponse.metadata.results;
+
+      await presentation.pause(1_000);
 
       await presentation.step(3, "Review the imported results");
-      await verifyImportedResults(page, presentation, scenario);
+      await verifyImportedResults(
+        page,
+        presentation,
+        scenario,
+        expectedResults,
+      );
 
       await acceptAndVerifyResults(
         page,
         presentation,
         3,
-        scenario.expectedResults[0].sampleId,
+        expectedResults[0].sampleId,
       );
 
       await presentation.title(
         "Story Complete",
         "The file import flow relies on visible UI evidence only.",
       );
-    });
-
-    test.afterEach(async () => {
-      if (!droppedFilePath) {
-        return;
-      }
-
-      try {
-        if (fs.existsSync(droppedFilePath)) {
-          fs.unlinkSync(droppedFilePath);
-        }
-      } catch {
-        // Best-effort cleanup so repeated local runs start cleaner.
-      }
-
-      droppedFilePath = undefined;
     });
   });
 }

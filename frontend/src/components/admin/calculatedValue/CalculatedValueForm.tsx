@@ -18,7 +18,7 @@ import {
   Heading,
   TextArea,
 } from "@carbon/react";
-import AutoComplete from "../../common/AutoComplete.js";
+import AutoComplete from "../../common/AutoComplete";
 import { Add, Subtract, Save } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
@@ -27,10 +27,7 @@ import {
   OperationType,
   OperationModel,
 } from "../../formModel/innitialValues/CalculatedValueFormSchema";
-import {
-  getFromOpenElisServer,
-  postToOpenElisServer,
-} from "../../utils/Utils.js";
+import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,

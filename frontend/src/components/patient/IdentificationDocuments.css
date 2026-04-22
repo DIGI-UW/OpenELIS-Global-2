@@ -1,0 +1,246 @@
+.id-documents-section {
+  margin-top: 1rem;
+}
+
+.id-documents-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.id-documents-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+  margin: 0;
+}
+
+.id-documents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.id-document-card {
+  padding: 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.id-document-card.pending {
+  border-style: dashed;
+  border-color: #0f62fe;
+  background-color: #f4f7fb;
+}
+
+.id-document-thumbnail {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 4px;
+  background-color: #f4f4f4;
+  cursor: pointer;
+}
+
+.id-document-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.id-document-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.id-document-description {
+  font-size: 0.75rem;
+  color: #525252;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.id-document-actions {
+  display: flex;
+  gap: 0;
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.id-documents-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: #8d8d8d;
+  text-align: center;
+}
+
+.id-documents-empty p {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.id-documents-upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.id-document-view-container {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.id-document-view-image {
+  max-width: 100%;
+  max-height: 70vh;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.id-document-view-pdf {
+  width: 100%;
+  height: 70vh;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+/* Upload area */
+.id-doc-upload-area {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.id-doc-dropzone {
+  border: 2px dashed #c6c6c6;
+  border-radius: 8px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.id-doc-dropzone:hover {
+  border-color: #0f62fe;
+  background-color: #e5f6ff;
+}
+
+.id-doc-dropzone-active {
+  border-color: #0f62fe;
+  background-color: #d0e2ff;
+  border-style: solid;
+}
+
+.id-doc-dropzone-icon {
+  color: #0f62fe;
+  opacity: 0.7;
+}
+
+.id-doc-dropzone-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #161616;
+  margin: 0;
+}
+
+.id-doc-dropzone-subtitle {
+  font-size: 0.875rem;
+  color: #525252;
+  margin: 0;
+}
+
+.id-doc-dropzone-formats {
+  font-size: 0.75rem;
+  color: #8d8d8d;
+  margin: 0;
+}
+
+.id-doc-camera-btn {
+  align-self: flex-start;
+}
+
+.id-doc-file-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0;
+}
+
+.id-doc-preview-image {
+  max-width: 100%;
+  max-height: 250px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.id-doc-pdf-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  color: #da1e28;
+}
+
+.id-doc-pdf-indicator span {
+  font-size: 0.875rem;
+  color: #525252;
+}
+
+.id-doc-pdf-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: #da1e28;
+  height: 100%;
+}
+
+.id-doc-pdf-thumb span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #525252;
+}
+
+.id-doc-error {
+  color: #da1e28;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+@media (max-width: 672px) {
+  .id-documents-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .id-document-thumbnail {
+    height: 90px;
+  }
+}
