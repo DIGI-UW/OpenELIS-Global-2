@@ -83,9 +83,9 @@ public class SampleProjectDAOImpl extends BaseDAOImpl<SampleProject, String> imp
         List<SampleProject> sampleProjects = new ArrayList<>();
 
         try {
-            String sql = "from SampleProject sp where sp.project = :param";
+            String sql = "from SampleProject sp where sp.project.id = :param";
             Query<SampleProject> query = entityManager.unwrap(Session.class).createQuery(sql, SampleProject.class);
-            query.setParameter("param", projId);
+            query.setParameter("param", Long.parseLong(projId));
 
             sampleProjects = query.list();
 
@@ -106,7 +106,7 @@ public class SampleProjectDAOImpl extends BaseDAOImpl<SampleProject, String> imp
         try {
             String sql = "from SampleProject sp where sp.sample.id = :sampleId";
             Query<SampleProject> query = entityManager.unwrap(Session.class).createQuery(sql, SampleProject.class);
-            query.setParameter("sampleId", Integer.parseInt(id));
+            query.setParameter("sampleId", Long.parseLong(id));
 
             sampleProjects = query.list();
 
