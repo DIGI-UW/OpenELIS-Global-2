@@ -10,29 +10,36 @@
 
 ## Remaining Work to Finish Line (2026-04-20)
 
-Use this list, not the M0–M21 task list below, to track what's left. Cross-
-references are to the canonical roadmap.
+Use this architecture-level list, not the M0–M21 task list below, to track
+what's left on the umbrella 011 scope. Per-instrument tasks are tracked on the
+[Confluence tracker][tracker]; new analyzers on a supported protocol land as
+profile JSONs, not as tasks here.
 
-**Immediate (site validation + pending PRs):**
+**Immediate (architecture + cross-cutting):**
 
 - [ ] PR #3195 merged (HL7 test-connection + `CommunicationMode` enum)
-- [ ] HJRA site networking configured (Mindray analyzers → bridge MLLP)
-- [ ] Tecan F50 (OGC-417) / Multiskan FC (OGC-418) validated at Herbert's site
-- [ ] Wondfo Finecare ASTM assessment (OGC-345 — capture needed)
-- [ ] Add `communication` blocks to remaining 7 ASTM/HL7 profiles (5 of 12 done)
-- [ ] Record HL7 / ASTM / FILE E2E demo videos (3 recordings)
+- [ ] Add `communication` blocks to the remaining 8 ASTM/HL7 profiles (5 of 13
+      have them today)
+- [ ] Record E2E demo videos for the three generic plugins (GenericHL7 /
+      GenericASTM / GenericFile flows)
 - [ ] Package Playwright HTML reports for stakeholder review
 
-**Post-MVP (deferred):**
+**Post-MVP (architecture evolution):**
 
 - [ ] Unified FHIR R4 bridge interface (Phase 3B)
-- [ ] HL7 bidirectional — ORM^O01 (OGC-327) + QRY^Q02 (OGC-326)
+- [ ] HL7 bidirectional — `ORM^O01` + `QRY^Q02`
+- [ ] ASTM bidirectional — query-initiated result requests (#3032)
 - [ ] GeneXpert HL7 mode (OGC-336) — QBP queries
-- [ ] Bridge outbound MLLP/ASTM client (LIS_INITIATED mode)
+- [ ] Bridge outbound MLLP/ASTM client (enables `LIS_INITIATED` mode)
 - [ ] `autoCreateTestMappings` profile-field-naming fix
-- [ ] TLS consolidation (shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`)
+- [ ] TLS consolidation — shared `BridgeSslUtil` + `analyzer.bridge.tls.verify`
 - [ ] `@Scheduled` periodic bridge sync
-- [ ] Stago STart 4, DNA Technology DT-Prime XML parser
+
+**Not tracked here (see Confluence):** HJRA site networking; per-instrument
+field validation; real-file collection for analyzer specs; vendor-doc reviews;
+site deployment sequencing.
+
+[tracker]: https://uwdigi.atlassian.net/wiki/spaces/mdgoe/pages/1097531396
 
 ---
 

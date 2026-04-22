@@ -26,7 +26,6 @@ import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
-import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
@@ -43,6 +42,7 @@ import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.security.certs.service.TruststoreService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
@@ -104,7 +104,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
         "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.calendar", "org.openelisglobal.esig" }, excludeFilters = {
+        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
+        "org.openelisglobal.esig" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -132,6 +133,12 @@ public class AppTestConfig implements WebMvcConfigurer {
         when(encryptor.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(encryptor.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         return encryptor;
+    }
+
+    @Bean
+    @Profile("test")
+    public TruststoreService truststoreService() {
+        return mock(TruststoreService.class);
     }
 
     @Bean()
@@ -162,12 +169,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public FhirContext fhirContext() {
         return mock(FhirContext.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ExternalConnectionService externalConnectService() {
-        return mock(ExternalConnectionService.class);
     }
 
     @Bean()

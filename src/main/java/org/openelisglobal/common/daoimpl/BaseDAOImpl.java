@@ -26,6 +26,8 @@ import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.io.Serializable;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -678,14 +680,20 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
                     && comparisonOperation.getComparison() != DBComparison.LIKE) {
                 propertyValue = Enum.valueOf((Class<Enum>) pathToProperty.getJavaType(), (String) propertyValue);
             }
+            // Convert String values to URI when the entity property is a URI
+            // (skip for LIKE: wildcards aren't valid URIs, so we cast the path instead)
+            if (pathToProperty.getJavaType() == URI.class && propertyValue instanceof String
+                    && comparisonOperation.getComparison() != DBComparison.LIKE) {
+                propertyValue = toUri((String) propertyValue);
+            }
             Predicate predicate;
             switch (comparisonOperation.getComparison()) {
             case EQ:
                 predicate = criteriaBuilder.equal(pathToProperty, propertyValue);
                 break;
             case LIKE:
-                if (pathToProperty.getJavaType().isEnum()) {
-                    // For enum properties, cast to string for LIKE comparison
+                if (pathToProperty.getJavaType().isEnum() || pathToProperty.getJavaType() == URI.class) {
+                    // For enum and URI properties, cast to string for LIKE comparison
                     predicate = criteriaBuilder.like(criteriaBuilder.lower(pathToProperty.as(String.class)),
                             "%" + ((String) propertyValue).toLowerCase() + "%");
                 } else {
@@ -703,6 +711,10 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
                         } else {
                             inClause.value(item);
                         }
+                    }
+                } else if (pathToProperty.getJavaType() == URI.class) {
+                    for (Object item : (List<?>) propertyValue) {
+                        inClause.value(item instanceof String ? toUri((String) item) : item);
                     }
                 } else {
                     for (Object item : (List<?>) propertyValue) {
@@ -1009,4 +1021,12 @@ public abstract class BaseDAOImpl<T extends BaseObject<PK>, PK extends Serializa
     // }
     // }
     // }
+
+    private static URI toUri(String value) {
+        try {
+            return new URI(value);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid URI: " + value, e);
+        }
+    }
 }
