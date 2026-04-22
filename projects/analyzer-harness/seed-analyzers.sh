@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# seed-analyzers.sh — Create harness analyzers via OE REST API.
+# seed-analyzers.sh — Create harness analyzers via OE REST API
 #
-# Idempotent: re-running creates missing analyzers and skips ones that already
-# exist (REST returns 409 → "Exists: skipped"). To start from a clean DB, use
-# the harness restart command's --full-reset flag, which drops the DB volume.
-# This script does NOT mutate clinlims.* directly — all state changes go through
-# OE's REST API so the analyzer-bridge in-memory registry stays in sync.
+# Default (clean mode): wipes stale analyzer data, then creates 4 representative
+# seed analyzers covering each transport. Ensures a clean baseline on every startup.
 #
 # Seeded set (one per transport class):
 #   - Cepheid GeneXpert (ASTM Mode) — ASTM over TCP (molecular)
@@ -13,19 +10,27 @@
 #   - QuantStudio 5                — FILE (.xls Excel, molecular)
 #   - QuantStudio 7                — FILE (.xls/.xlsx Excel, molecular)
 #
+# --no-clean: skips cleanup, runs idempotently (for manual testing).
+#
 # Uses profile-based defaultConfigId, which triggers:
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
 #
 # Usage:
-#   ./seed-analyzers.sh                          # idempotent — creates missing
+#   ./seed-analyzers.sh                          # clean + seed (default)
+#   ./seed-analyzers.sh --no-clean               # seed only (idempotent)
 #   BASE_URL=https://myhost TEST_USER=u TEST_PASS=p ./seed-analyzers.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+CLEAN=true
+if [[ "${1:-}" == "--no-clean" ]]; then
+  CLEAN=false
+fi
 
 BASE_URL="${BASE_URL:-https://localhost}"
 
@@ -303,9 +308,8 @@ PY
 echo "Seeding analyzers via REST API at ${API}"
 echo ""
 
-# READ-ONLY queries against the DB are needed by verify_seed_contract below
-# to check that profile LOINCs resolve to active tests after seeding. Mutating
-# operations all go through OE's REST API.
+# Clean stale data (default). Ensures clean baseline on every startup.
+# Matches container_name on db.openelis.org in docker-compose.base.yml / build.docker-compose.yml.
 resolve_db_container() {
   if [ -n "${DB_CONTAINER:-}" ]; then
     echo "$DB_CONTAINER"
@@ -316,16 +320,21 @@ resolve_db_container() {
 
 DB_CONTAINER="$(resolve_db_container)"
 
-# Refresh mock networks unconditionally — these are mock-server-side only
-# (no OE/bridge state involved) and cheap to recreate. Ensures TCP analyzers
-# get fresh, predictable IPs on every run. Includes legacy mock names so a
-# stack started with a previous seed list still cleans up.
-echo "Refreshing mock analyzer networks..."
-for name in genexpert bc5380 bs200 bs300; do
-  curl -sk --connect-timeout 3 --max-time 10 -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
-done
-echo "  Mock network reset done"
-echo ""
+if [ "$CLEAN" = true ]; then
+  echo "Cleaning stale analyzer data..."
+  docker exec -i "$DB_CONTAINER" psql -U clinlims -d clinlims -c \
+    "DELETE FROM clinlims.analyzer_results; DELETE FROM clinlims.analyzer;" \
+    2>&1 | sed 's/^/  /'
+  echo "  DB cleanup done"
+
+  # Remove mock networks (per-analyzer endpoint). Includes legacy names
+  # (bs200/bs300) so an existing stack seeded with a previous list cleans up.
+  for name in genexpert bc5380 bs200 bs300; do
+    curl -sk --connect-timeout 3 --max-time 10 -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
+  done
+  echo "  Mock network cleanup done"
+  echo ""
+fi
 
 # Create dynamic networks for TCP analyzers.
 # Wait 2s between calls: the mock server attaches itself to each new Docker
