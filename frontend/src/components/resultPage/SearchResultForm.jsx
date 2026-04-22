@@ -612,7 +612,7 @@ export function SearchResultForm(props) {
                           <CustomDatePicker
                             id={field.name}
                             labelText={intl.formatMessage({
-                              id: "search.label.recieveddate",
+                              id: "search.label.receiveddate",
                             })}
                             value={values[field.name]}
                             onChange={(date) =>
