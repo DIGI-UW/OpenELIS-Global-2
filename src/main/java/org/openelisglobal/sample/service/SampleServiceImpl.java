@@ -606,4 +606,9 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     public List<Sample> getSamplesByPriority(OrderPriority priority) {
         return sampleDAO.getSamplesByPriority(priority);
     }
+
+    @Override
+    public Sample getSampleByFhirUuid(String fhirUuid) {
+        return getBaseObjectDAO().getSampleByFhirUuid(fhirUuid);
+    }
 }

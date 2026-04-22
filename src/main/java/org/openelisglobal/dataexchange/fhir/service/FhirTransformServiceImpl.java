@@ -649,62 +649,121 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return contactPoints;
     }
 
-    private Task transformToTask(String sampleId) {
-        return this.transformToTask(sampleService.get(sampleId));
+    @Override
+    public Task transformToTask(String sampleId) {
+        if (sampleId == null) {
+            return null;
+        }
+        Sample sample = sampleService.get(sampleId);
+        return transformToTask(sample);
     }
 
+    /**
+     * Core transformation used by TaskProvider (READ / UPDATE / SEARCH) and by
+     * transformPersistOrderEntryFhirObjects /
+     * transformPersistResultValidationFhirObjects.
+     *
+     * <p>
+     * Produces a complete FHIR R4 Task including status, patient reference,
+     * authored-on date, priority, identifiers, basedOn ServiceRequest links, output
+     * DiagnosticReport links (for finished orders), and partOf chain for referred
+     * tasks.
+     */
     private Task transformToTask(Sample sample) {
-        LogEvent.logTrace(this.getClass().getSimpleName(), "transformToTask", "transformToTask called");
-
-        Task task = new Task();
-        Patient patient = sampleHumanService.getPatientForSample(sample);
-        List<Analysis> analysises = sampleService.getAnalysis(sample);
-        task.setId(sample.getFhirUuidAsString());
-        Optional<Task> referredTask = getReferringTaskForSample(sample);
-        if (referredTask.isPresent()) {
-            task.addPartOf(this.createReferenceFor(referredTask.get()));
-            task.setIntent(TaskIntent.ORDER);
-        } else {
-            task.setIntent(TaskIntent.ORIGINALORDER);
+        String method = "transformToTask";
+        if (sample == null) {
+            LogEvent.logWarn(getClass().getSimpleName(), method, "Sample is null");
+            return null;
         }
-        if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Entered))) {
-            task.setStatus(TaskStatus.READY);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Started))
-                || sample.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
-            task.setStatus(TaskStatus.INPROGRESS);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalRejected))) {
-            task.setStatus(TaskStatus.FAILED);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.NonConforming_depricated))
-                || sample.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
-            task.setStatus(TaskStatus.REJECTED);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
-            task.setStatus(TaskStatus.COMPLETED);
-        } else {
-            task.setStatus(TaskStatus.NULL);
-        }
-        task.setAuthoredOn(sample.getEnteredDate());
-        task.setPriority(convertToTaskPriority(sample.getPriority()));
-        task.addIdentifier(
-                this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_uuid", sample.getFhirUuidAsString()));
-        task.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_accessionNumber",
-                sample.getAccessionNumber()));
 
-        for (Analysis analysis : analysises) {
-            task.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
-            if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
-                task.addOutput() //
-                        .setType(new CodeableConcept().addCoding(new Coding().setCode("reference"))) //
-                        .setValue(
-                                this.createReferenceFor(ResourceType.DiagnosticReport, analysis.getFhirUuidAsString()));
+        try {
+            Task task = new Task();
+
+            // ID — prefer fhir_uuid, fall back to DB id
+            String taskId = sample.getFhirUuid() != null ? sample.getFhirUuidAsString() : sample.getId();
+            task.setId(taskId);
+
+            // Status
+            task.setStatus(mapOrderStatusToTaskStatus(sample.getStatusId()));
+
+            Patient patient = sampleHumanService.getPatientForSample(sample);
+            // OGC-356: Environmental samples don't have a patient, so only set the patient
+            // reference if patient exists
+            if (patient != null) {
+                task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
             }
+            // Authored On — prefer enteredDate, fall back to receivedDate
+            if (sample.getEnteredDate() != null) {
+                task.setAuthoredOn(sample.getEnteredDate());
+            } else if (sample.getReceivedDate() != null) {
+                task.setAuthoredOn(sample.getReceivedDate());
+            }
+
+            // Priority
+            task.setPriority(convertToTaskPriority(sample.getPriority()));
+
+            // Intent — ORDER if part of a referring chain, ORIGINALORDER otherwise
+            Optional<Task> referredTask = getReferringTaskForSample(sample);
+            if (referredTask.isPresent()) {
+                task.addPartOf(this.createReferenceFor(referredTask.get()));
+                task.setIntent(TaskIntent.ORDER);
+            } else {
+                task.setIntent(TaskIntent.ORIGINALORDER);
+            }
+
+            // Identifiers
+            task.addIdentifier(
+                    this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_uuid", sample.getFhirUuidAsString()));
+            if (!GenericValidator.isBlankOrNull(sample.getAccessionNumber())) {
+                task.addIdentifier(this.createIdentifier(fhirConfig.getOeFhirSystem() + "/order_accessionNumber",
+                        sample.getAccessionNumber()));
+            }
+
+            // BasedOn ServiceRequest links + output DiagnosticReport for finished orders
+            List<Analysis> analyses = sampleService.getAnalysis(sample);
+            for (Analysis analysis : analyses) {
+                task.addBasedOn(this.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
+                if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
+                    task.addOutput().setType(new CodeableConcept().addCoding(new Coding().setCode("reference")))
+                            .setValue(this.createReferenceFor(ResourceType.DiagnosticReport,
+                                    analysis.getFhirUuidAsString()));
+                }
+            }
+
+            LogEvent.logDebug(getClass().getSimpleName(), method, "Transformed Task for sample " + sample.getId());
+            return task;
+
+        } catch (Exception e) {
+            LogEvent.logError(getClass().getSimpleName(), method,
+                    "Error transforming sample " + sample.getId() + ": " + e.getMessage());
+            return null;
         }
-        // OGC-356: Environmental samples don't have a patient, so only set the patient
-        // reference if patient exists
-        if (patient != null) {
-            task.setFor(this.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
+    }
+
+    private Task.TaskStatus mapOrderStatusToTaskStatus(String statusId) {
+        if (statusId == null) {
+            return TaskStatus.READY;
         }
 
-        return task;
+        if (statusId.equals(statusService.getStatusID(OrderStatus.Entered))) {
+            return TaskStatus.READY;
+        }
+        if (statusId.equals(statusService.getStatusID(OrderStatus.Started))
+                || statusId.equals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
+            return TaskStatus.INPROGRESS;
+        }
+        if (statusId.equals(statusService.getStatusID(OrderStatus.Finished))) {
+            return TaskStatus.COMPLETED;
+        }
+        if (statusId.equals(statusService.getStatusID(AnalysisStatus.TechnicalRejected))) {
+            return TaskStatus.FAILED;
+        }
+        if (statusId.equals(statusService.getStatusID(OrderStatus.NonConforming_depricated))
+                || statusId.equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
+            return TaskStatus.REJECTED;
+        }
+
+        return TaskStatus.READY; // default
     }
 
     private TaskPriority convertToTaskPriority(OrderPriority orderPriority) {
