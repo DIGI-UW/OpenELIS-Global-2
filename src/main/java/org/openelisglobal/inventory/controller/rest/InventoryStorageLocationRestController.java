@@ -45,10 +45,9 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<InventoryStorageLocation> getById(@PathVariable String id) {
         try {
             InventoryStorageLocation location = storageLocationService.get(Long.valueOf(id));
-            if (location == null) {
-                return ResponseEntity.notFound().build();
-            }
             return ResponseEntity.ok(location);
+        } catch (org.hibernate.ObjectNotFoundException | IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -129,6 +128,9 @@ public class InventoryStorageLocationRestController extends BaseRestController {
             HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+            if (usd == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setSysUserId(sysUserId);
 
@@ -144,18 +146,20 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<InventoryStorageLocation> update(@PathVariable String id,
             @Valid @RequestBody InventoryStorageLocation location, HttpServletRequest request) {
         try {
-            InventoryStorageLocation existingLocation = storageLocationService.get(Long.valueOf(id));
-            if (existingLocation == null) {
-                return ResponseEntity.notFound().build();
-            }
+            storageLocationService.get(Long.valueOf(id));
 
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+            if (usd == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
             String sysUserId = String.valueOf(usd.getSystemUserId());
             location.setId(Long.valueOf(id));
             location.setSysUserId(sysUserId);
 
             InventoryStorageLocation updatedLocation = storageLocationService.update(location);
             return ResponseEntity.ok(updatedLocation);
+        } catch (org.hibernate.ObjectNotFoundException | IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -166,10 +170,15 @@ public class InventoryStorageLocationRestController extends BaseRestController {
     public ResponseEntity<?> deactivate(@PathVariable String id, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
+            if (usd == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
             storageLocationService.deactivateLocation(Long.valueOf(id), sysUserId);
             return ResponseEntity.ok().build();
+        } catch (org.hibernate.ObjectNotFoundException | IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(e.getMessage()));

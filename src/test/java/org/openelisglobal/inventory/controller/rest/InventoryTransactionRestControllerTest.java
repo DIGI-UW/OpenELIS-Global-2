@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.controller.rest;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.CoreMatchers.*;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -22,7 +23,22 @@ public class InventoryTransactionRestControllerTest extends BaseWebContextSensit
         mockMvc.perform(get("/rest/inventory/transactions/1000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1000))
-                .andExpect(jsonPath("$.transactionType").value("RECEIPT"));
+                .andExpect(jsonPath("$.transactionType").value("RECEIPT"))
+                .andExpect(jsonPath("$.quantityChange").value(100.0))
+                .andExpect(jsonPath("$.lot.id").value(1000));
+    }
+
+    @Test
+    public void testGetById_InvalidId_ShouldReturn500() throws Exception {
+        // BaseObjectService throws an exception if the entity is not found by ID in this project's configuration
+        mockMvc.perform(get("/rest/inventory/transactions/9999"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void testGetById_NonNumericId_ShouldReturn400() throws Exception {
+        mockMvc.perform(get("/rest/inventory/transactions/abc"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -30,7 +46,7 @@ public class InventoryTransactionRestControllerTest extends BaseWebContextSensit
         mockMvc.perform(get("/rest/inventory/transactions/lot/1000"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$[0].lotId").value(1000));
+                .andExpect(jsonPath("$[0].lot.id").value(1000));
     }
 
     @Test
@@ -42,12 +58,25 @@ public class InventoryTransactionRestControllerTest extends BaseWebContextSensit
     }
 
     @Test
-    public void testGetByDateRange_ShouldReturnList() throws Exception {
+    public void testGetByType_InvalidEnum_ShouldReturn400() throws Exception {
+        mockMvc.perform(get("/rest/inventory/transactions/type/INVALID_TYPE"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testGetByDateRange_WithData_ShouldReturnNonEmptyList() throws Exception {
         mockMvc.perform(get("/rest/inventory/transactions/date-range")
                 .param("startDate", "2025-01-01")
                 .param("endDate", "2025-12-31"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isArray());
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(not(0)));
+    }
+
+    @Test
+    public void testGetByDateRange_MissingParams_ShouldReturn400() throws Exception {
+        mockMvc.perform(get("/rest/inventory/transactions/date-range"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -58,5 +87,11 @@ public class InventoryTransactionRestControllerTest extends BaseWebContextSensit
                 .param("referenceType", "USER"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray());
+    }
+
+    @Test
+    public void testGetByReference_MissingParams_ShouldReturn400() throws Exception {
+        mockMvc.perform(get("/rest/inventory/transactions/reference"))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -40,7 +40,7 @@ public class InventoryStorageLocationDAOImpl extends BaseDAOImpl<InventoryStorag
             String hql = "FROM InventoryStorageLocation s WHERE s.locationType = :locationType AND s.isActive = true ORDER BY s.name";
             Query<InventoryStorageLocation> query = entityManager.unwrap(Session.class).createQuery(hql,
                     InventoryStorageLocation.class);
-            query.setParameter("locationType", locationType);
+            query.setParameter("locationType", locationType.name());
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting storage locations by type", e);

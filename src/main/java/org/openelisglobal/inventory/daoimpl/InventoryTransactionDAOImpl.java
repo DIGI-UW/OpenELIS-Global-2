@@ -43,7 +43,7 @@ public class InventoryTransactionDAOImpl extends BaseDAOImpl<InventoryTransactio
             String hql = "FROM InventoryTransaction t WHERE t.transactionType = :transactionType ORDER BY t.transactionDate DESC";
             Query<InventoryTransaction> query = entityManager.unwrap(Session.class).createQuery(hql,
                     InventoryTransaction.class);
-            query.setParameter("transactionType", transactionType);
+            query.setParameter("transactionType", transactionType.name());
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting transactions by type", e);

@@ -56,4 +56,16 @@ public class InventoryUsageRestControllerTest extends BaseWebContextSensitiveTes
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].analysisId").value(6000));
     }
+
+    @Test
+    public void testGetById_InvalidId_ShouldReturn500() throws Exception {
+        mockMvc.perform(get("/rest/inventory/usage/9999"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void testGetById_NonNumericId_ShouldReturn400() throws Exception {
+        mockMvc.perform(get("/rest/inventory/usage/abc"))
+                .andExpect(status().isBadRequest());
+    }
 }
