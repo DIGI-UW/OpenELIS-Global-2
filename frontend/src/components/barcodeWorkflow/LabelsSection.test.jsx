@@ -73,7 +73,7 @@ describe("LabelsSection component", () => {
   });
 
   test("calls onChange with updated model when increment button clicked", () => {
-    const onChange = jest.fn();
+    const onChange = vi.fn();
     const { container } = render(
       <LabelsSection
         orderQuantity={2}

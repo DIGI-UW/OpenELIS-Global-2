@@ -34,9 +34,9 @@ public interface ElectronicOrderService extends BaseObjectService<ElectronicOrde
     int getCountOfElectronicOrdersByTimestampAndStatus(Timestamp startTimestamp, Timestamp endTimestamp,
             String statusId);
 
-    int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds);
+    int getCountOfElectronicOrdersByStatusList(List<String> statusIds);
 
-    List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<Integer> statusIds, SortOrder sortOrder);
+    List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<String> statusIds, SortOrder sortOrder);
 
     List<ElectronicOrder> searchForElectronicOrders(ElectronicOrderViewForm form);
 

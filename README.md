@@ -41,10 +41,10 @@ You can find more information on how to set up OpenELIS at our
 
 For the current fork/non-fork E2E validation design, artifact contracts, and
 checkpoint/status model, see
-[`.specify/reports/ci-e2e-architecture-spec.md`](.specify/reports/ci-e2e-architecture-spec.md).
+[`specs/plans/ci-e2e-architecture-spec.md`](specs/plans/ci-e2e-architecture-spec.md).
 
 For operational troubleshooting of the E2E wrapper and downstream execution, see
-[`.github/e2e-ci-operator-model.md`](.github/e2e-ci-operator-model.md).
+[`specs/plans/e2e-ci-operator-model.md`](specs/plans/e2e-ci-operator-model.md).
 
 ### Contributing
 
@@ -265,13 +265,16 @@ For E2E testing, integration testing, and manual testing, load test fixtures:
 
 ```bash
 # Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh
+./src/test/resources/load-test-fixtures.sh --profile=core
+
+# Harness fixture lane (includes HARN-* lane data)
+./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --reset
+./src/test/resources/load-test-fixtures.sh --profile=core --reset
 
 # Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --no-verify
+./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 ```
 
 **Note**: The unified loader script provides dependency checks, verification,

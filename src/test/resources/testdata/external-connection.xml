@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <localization id="1" description="Test Description 1"
+        lastupdated="2020-01-23 08:46:11.217 +0300" />
+    <localization id="2" description="Test Description 2"
+        lastupdated="2020-01-23 08:46:11.217 +0300" />
+    <localization id="3" description="Test Description 3"
+        lastupdated="2020-01-23 08:46:11.217 +0300" />
+    <localization id="4" description="Test Description 4"
+        lastupdated="2020-01-23 08:46:11.217 +0300" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="OPENMRS"
+        last_updated="2020-01-23 08:46:11.217 +0300" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="OPENHIS"
+        last_updated="2020-01-23 08:46:11.217 +0300" />
+    <localization_value id="3" localization_id="3"
+        locale="en" value="OPENHIE"
+        last_updated="2020-01-23 08:46:11.217 +0300" />
+    <localization_value id="4" localization_id="4"
+        locale="en" value="OPENHIS"
+        last_updated="2020-01-23 08:46:11.217 +0300" />
+    <quartz_cron_scheduler id="1"
+        cron_statement="never" last_run="2024-03-01 08:00:00" active="false"
+        run_if_past="true" name="Daily Backup" job_name="backupDatabaseJob"
+        display_key="scheduler.backup.display"
+        description_key="siteInfo.reportConfig.reportDirectory" />
+
+    <site_information_domain id="6"
+        name="siteIdentity"
+        description="Identityfing items which don't change the behavior" />
+    <site_information_domain id="11"
+        name="formating"
+        description="Items which specify the format of artifacts" />
+
+
+    <dictionary_category id="1"
+        description="Test Category 1" local_abbrev="TEST1"
+        name="TEST_CATEGORY_ONE" lastupdated="2023-01-01 12:00:00.000" />
+
+    <site_information id="1" name="siteName"
+        description="the directory for the reports" value="en_US"
+        encrypted="false" domain_id="11" value_type="dictionary"
+        schedule_id="1" tag="report" dictionary_category_id="1"
+        description_key="siteInfo.reportConfig.reportDirectory"
+        name_key="scheduler.backup.display" lastupdated="2023-02-15 09:30:45" />
+
+    <external_connection id="1" active="true"
+        uri="https://openmrs.example.org/api"
+        programmed_connection="SMTP_SERVER" name_localization_id="1"
+        description_localization_id="1" active_authentication_type="BASIC"
+        last_updated="2024-01-01" />
+
+    <external_connection id="2" active="true"
+        uri="https://openhim.example.org/api"
+        programmed_connection="SMPP_SERVER" name_localization_id="2"
+        description_localization_id="2" active_authentication_type="NONE"
+        last_updated="2024-01-01" />
+
+    <external_connection id="3" active="true"
+        uri="https://openhie.example.org/api"
+        programmed_connection="BMP_SMS_SERVER" name_localization_id="3"
+        description_localization_id="3" active_authentication_type="BASIC"
+        last_updated="2024-01-01" />
+
+    <external_connection id="4" active="true"
+        uri="https://dhis2.example.org/api"
+        programmed_connection="INFO_HIGHWAY" name_localization_id="4"
+        description_localization_id="4"
+        active_authentication_type="CERTIFICATE" last_updated="2024-01-01" />
+
+    <basic_authentication_data id="1"
+        external_connection_id="1" username="admin" password="admin123"
+        last_updated="2026-04-04" />
+
+    <basic_authentication_data id="2"
+        external_connection_id="3" username="admin" password="adminAdmin"
+        last_updated="2026-04-04" />
+
+    <person id="1" last_name="Doe" first_name="John"
+        middle_name="joddy" city="Kampala" state="Kampala metropolitan"
+        zip_code="256" country="Uganda" work_phone="12345678"
+        home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
+        fax="3456" email="john@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Mulizi" first_name="James"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="james@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+    <person id="3" last_name="Gorge" first_name="Washington"
+        middle_name="Mark" city="Orion" state="Texas" zip_code="004"
+        country="USA" work_phone="10000001" home_phone="8000001"
+        cell_phone="0000000" primary_phone="10000001" fax="0001"
+        email="washington@gmail.com" lastUpdated="2023-11-01 12:00:00" />
+
+    <external_connection_contact id="1"
+        external_connection_id="1" person_id="1" last_updated="2024-01-01" />
+
+    <external_connection_contact id="3"
+        external_connection_id="3" person_id="2" last_updated="2024-01-01" />
+
+    <external_connection_contact id="4"
+        external_connection_id="4" person_id="3" last_updated="2024-01-01" />
+
+</dataset>

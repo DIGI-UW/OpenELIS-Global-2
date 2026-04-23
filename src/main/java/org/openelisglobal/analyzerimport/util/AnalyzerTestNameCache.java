@@ -31,6 +31,13 @@ import org.openelisglobal.test.valueholder.Test;
 
 public class AnalyzerTestNameCache {
 
+    public static String normalizeTestCode(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        return raw.trim().toUpperCase().replaceAll("[^A-Z0-9]", "");
+    }
+
     protected AnalyzerTestMappingService analyzerTestMappingService = SpringContext
             .getBean(AnalyzerTestMappingService.class);
     protected TestService testService = SpringContext.getBean(TestService.class);
@@ -89,7 +96,7 @@ public class AnalyzerTestNameCache {
         Map<String, MappedTestName> testMap = getMappedTestsForAnalyzer(analyzerName);
 
         if (testMap != null) {
-            return testMap.get(analyzerTestName);
+            return testMap.get(normalizeTestCode(analyzerTestName));
         }
 
         return null;
@@ -103,7 +110,7 @@ public class AnalyzerTestNameCache {
         ensureInitialLoad();
         Map<String, MappedTestName> testMap = analyzerIdToTestNameMap.get(analyzerId);
         if (testMap != null) {
-            MappedTestName result = testMap.get(testCode);
+            MappedTestName result = testMap.get(normalizeTestCode(testCode));
             if (result == null) {
                 org.openelisglobal.common.log.LogEvent.logWarn("AnalyzerTestNameCache", "getMappedTestByAnalyzerId",
                         "Cache HIT for analyzer " + analyzerId + " (" + testMap.size() + " codes: " + testMap.keySet()
@@ -188,15 +195,15 @@ public class AnalyzerTestNameCache {
 
             MappedTestName mappedTestName = createMappedTestName(testService, mapping);
 
-            // Primary index: by analyzer ID
-            newIdMap.computeIfAbsent(analyzerId, k -> new HashMap<>()).put(mapping.getAnalyzerTestName(),
-                    mappedTestName);
+            String normalizedCode = normalizeTestCode(mapping.getAnalyzerTestName());
+
+            // Primary index: by analyzer ID (normalized key)
+            newIdMap.computeIfAbsent(analyzerId, k -> new HashMap<>()).put(normalizedCode, mappedTestName);
 
             // Secondary index: by analyzer name (for legacy readers)
             String analyzerName = idToName.get(analyzerId);
             if (analyzerName != null) {
-                newNameMap.computeIfAbsent(analyzerName, k -> new HashMap<>()).put(mapping.getAnalyzerTestName(),
-                        mappedTestName);
+                newNameMap.computeIfAbsent(analyzerName, k -> new HashMap<>()).put(normalizedCode, mappedTestName);
             }
         }
 
