@@ -44,11 +44,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         request.setItemId("1000");
         request.setQuantity(10.0);
 
-        mockMvc.perform(post("/rest/inventory/management/consume")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .session(mockSession))
-                .andExpect(status().isOk())
+        mockMvc.perform(post("/rest/inventory/management/consume").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.consumedLots").isArray())
                 .andExpect(jsonPath("$.consumedLots[0].quantityConsumed").value(10.0));
     }
@@ -59,10 +56,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         request.setItemId("1000");
         request.setQuantity(1000.0);
 
-        mockMvc.perform(post("/rest/inventory/management/consume")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .session(mockSession))
+        mockMvc.perform(post("/rest/inventory/management/consume").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession))
                 .andExpect(status().isConflict());
     }
 
@@ -72,10 +67,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         request.setItemId("abc");
         request.setQuantity(10.0);
 
-        mockMvc.perform(post("/rest/inventory/management/consume")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .session(mockSession))
+        mockMvc.perform(post("/rest/inventory/management/consume").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession))
                 .andExpect(status().isBadRequest()); // NumberFormatException is an IllegalArgumentException
     }
 
@@ -85,10 +78,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         request.setItemId(null);
         request.setQuantity(10.0);
 
-        mockMvc.perform(post("/rest/inventory/management/consume")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .session(mockSession))
+        mockMvc.perform(post("/rest/inventory/management/consume").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)).session(mockSession))
                 .andExpect(status().isBadRequest()); // Long.valueOf(null) throws NumberFormatException("null")
     }
 
@@ -96,7 +87,7 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
     public void testReceiveInventory_ShouldSucceed() throws Exception {
         InventoryItem item = new InventoryItem();
         item.setId(1001L);
-        
+
         InventoryStorageLocation location = new InventoryStorageLocation();
         location.setId(1001L);
 
@@ -107,11 +98,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         lot.setInitialQuantity(50.0);
         lot.setCurrentQuantity(50.0);
 
-        mockMvc.perform(post("/rest/inventory/management/receive")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(lot))
-                .session(mockSession))
-                .andExpect(status().isCreated())
+        mockMvc.perform(post("/rest/inventory/management/receive").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lot)).session(mockSession)).andExpect(status().isCreated())
                 .andExpect(jsonPath("$.lotNumber").value("NEW-LOT-001"));
     }
 
@@ -126,11 +114,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         lot.setCurrentQuantity(10.0);
         // lotNumber is missing
 
-        mockMvc.perform(post("/rest/inventory/management/receive")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(lot))
-                .session(mockSession))
-                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/rest/inventory/management/receive").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lot)).session(mockSession)).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -141,58 +126,45 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
         lot.setCurrentQuantity(10.0);
         // inventoryItem is missing
 
-        mockMvc.perform(post("/rest/inventory/management/receive")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(lot))
-                .session(mockSession))
-                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/rest/inventory/management/receive").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(lot)).session(mockSession)).andExpect(status().isBadRequest());
     }
 
     @Test
     public void testCheckAvailability_ShouldReturnTrue() throws Exception {
-        mockMvc.perform(get("/rest/inventory/management/check-availability")
-                .param("itemId", "1000")
-                .param("quantity", "50.0"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isAvailable").value(true));
+        mockMvc.perform(
+                get("/rest/inventory/management/check-availability").param("itemId", "1000").param("quantity", "50.0"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.isAvailable").value(true));
     }
 
     @Test
     public void testCheckAvailability_ShouldReturnFalse() throws Exception {
-        mockMvc.perform(get("/rest/inventory/management/check-availability")
-                .param("itemId", "1000")
-                .param("quantity", "500.0"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.isAvailable").value(false));
+        mockMvc.perform(
+                get("/rest/inventory/management/check-availability").param("itemId", "1000").param("quantity", "500.0"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.isAvailable").value(false));
     }
 
     @Test
     public void testCheckAvailability_InvalidItemId_ShouldReturn500() throws Exception {
-        mockMvc.perform(get("/rest/inventory/management/check-availability")
-                .param("itemId", "xyz")
-                .param("quantity", "10.0"))
+        mockMvc.perform(
+                get("/rest/inventory/management/check-availability").param("itemId", "xyz").param("quantity", "10.0"))
                 .andExpect(status().isInternalServerError());
     }
 
     @Test
     public void testCheckAvailability_MissingParams_ShouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/rest/inventory/management/check-availability"))
-                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/rest/inventory/management/check-availability")).andExpect(status().isBadRequest());
     }
 
     @Test
     public void testGetAlerts_ShouldReturnAlerts() throws Exception {
-        mockMvc.perform(get("/rest/inventory/management/alerts")
-                .param("expirationWarningDays", "30"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.lowStockItems").isArray())
-                .andExpect(jsonPath("$.expiringLots").isArray())
-                .andExpect(jsonPath("$.expiredLots").isArray());
+        mockMvc.perform(get("/rest/inventory/management/alerts").param("expirationWarningDays", "30"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.lowStockItems").isArray())
+                .andExpect(jsonPath("$.expiringLots").isArray()).andExpect(jsonPath("$.expiredLots").isArray());
     }
 
     @Test
     public void testGetAlerts_DefaultBehavior_ShouldReturnOk() throws Exception {
-        mockMvc.perform(get("/rest/inventory/management/alerts"))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/inventory/management/alerts")).andExpect(status().isOk());
     }
 }
