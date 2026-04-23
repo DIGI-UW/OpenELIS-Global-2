@@ -189,7 +189,7 @@ public class ReportNonConformEventsRestController extends BaseRestController {
                 }
 
                 NcEvent newEvent = nonConformingEventWorker.create(form.getLabOrderNumber(), specimens, sysUserId,
-                        nceNumber);
+                        nceNumber, form.getAnalysisId());
                 form.setId(String.valueOf(newEvent.getId()));
             }
 

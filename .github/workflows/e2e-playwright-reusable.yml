@@ -22,7 +22,7 @@ on:
         type: string
         default: "build.docker-compose.yml"
       fixture_mode:
-        description: "Fixture loading mode: core (SQL files) or harness (load-test-fixtures.sh)"
+        description: "Fixture loading mode: core or harness via unified load-test-fixtures.sh"
         required: false
         type: string
         default: "core"
@@ -96,7 +96,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Restore Playwright browser cache
@@ -217,22 +217,13 @@ jobs:
 
       # ── Fixture Loading ─────────────────────────────────────────────────────
 
-      - name: Load core SQL fixtures
+      - name: Load core fixtures
         if: inputs.fixture_mode == 'core'
-        run: |
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/e2e-foundational-data.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/analyzer-harness-e2e.sql
-          docker exec -i openelisglobal-database \
-            psql -U clinlims -d clinlims -v ON_ERROR_STOP=1 \
-            < src/test/resources/fixtures/file-import-e2e.sql
+        run: ./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
 
       - name: Load harness fixtures
         if: inputs.fixture_mode == 'harness'
-        run: ./src/test/resources/load-test-fixtures.sh --analyzers=full --no-verify
+        run: ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
 
       - name: Create core analyzer import directories
         if: inputs.fixture_mode == 'core'
@@ -253,16 +244,10 @@ jobs:
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           DB_CONTAINER: openelisglobal-database
 
-      - name: Post-seed setup (permissions + bridge restart)
+      - name: Fix analyzer-imports permissions after seeding
         if: inputs.setup_analyzer_harness
         run: |
-          # Fix permissions on all directories created by seed script / autoCreateFromProfile
           sudo chmod -R a+rwX projects/analyzer-harness/volume/analyzer-imports
-          # Restart bridge so it re-bootstraps watch directories for all seeded analyzers
-          docker restart openelis-analyzer-bridge
-          # Wait for bridge to be healthy again (not a fixed sleep)
-          timeout 60 bash -c 'until curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health > /dev/null 2>&1; do sleep 2; done'
-          echo "Bridge is healthy after restart."
 
       # ── Memory Instrumentation ─────────────────────────────────────────────
 

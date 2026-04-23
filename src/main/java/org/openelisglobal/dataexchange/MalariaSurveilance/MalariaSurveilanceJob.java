@@ -224,10 +224,10 @@ public class MalariaSurveilanceJob implements Job {
             bucket.put(key, 0);
         }
 
-        List<Integer> analysisIdList = new ArrayList<>();
+        List<String> analysisIdList = new ArrayList<>();
         for (Analysis analysis : analysisList) {
             if (FINISHED_STATUS_ID.equals(analysis.getStatusId())) {
-                analysisIdList.add(Integer.parseInt(analysis.getId()));
+                analysisIdList.add(analysis.getId());
             }
         }
         List<Result> results = resultService.getResultsForAnalysisIdList(analysisIdList);

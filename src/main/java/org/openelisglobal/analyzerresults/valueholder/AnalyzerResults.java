@@ -81,6 +81,17 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "complete_date")
     private Timestamp completeDate;
 
+    @Column(name = "import_issue_reason", length = 200)
+    private String importIssueReason;
+
+    public String getImportIssueReason() {
+        return importIssueReason;
+    }
+
+    public void setImportIssueReason(String importIssueReason) {
+        this.importIssueReason = importIssueReason;
+    }
+
     public Object clone() throws CloneNotSupportedException {
         return super.clone();
     }

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Analyzer harness lane fixtures (deterministic demo data)
 -- =============================================================================
--- Loaded AFTER storage-e2e fixtures by load-test-fixtures.sh (--analyzers=full).
+-- Loaded AFTER storage-e2e fixtures by load-test-fixtures.sh (--profile=harness).
 -- Uses accession numbers with prefix DEV0126 (valid SiteYearNum) (isolated from storage E2E*** samples).
 --
 -- See: projects/analyzer-harness/LANE-IDENTIFIERS.md

@@ -44,25 +44,22 @@ import org.openelisglobal.test.valueholder.Test;
 
 public class PatientCILNSPClinical extends PatientReport implements IReportCreator, IReportParameterSetter {
 
-    private static Set<Integer> analysisStatusIds;
+    private static Set<String> analysisStatusIds;
     protected List<ClinicalPatientData> clinicalReportItems;
 
     static {
         analysisStatusIds = new HashSet<>();
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized)));
-        analysisStatusIds.add(Integer.parseInt(
-                SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted)));
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance)));
-        analysisStatusIds.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
-        analysisStatusIds.add(Integer
-                .parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected)));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.BiologistRejected));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NonConforming_depricated));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance));
+        analysisStatusIds.add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
+        analysisStatusIds
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected));
     }
 
     static final String configName = ConfigurationProperties.getInstance().getPropertyValue(Property.configurationName);

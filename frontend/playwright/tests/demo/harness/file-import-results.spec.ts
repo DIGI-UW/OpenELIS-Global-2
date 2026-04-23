@@ -12,6 +12,10 @@ import {
   openAnalyzerResultsAndWaitForText,
 } from "../../../helpers/results-ui";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import {
+  dropFixtureViaMock,
+  type MockFileResult,
+} from "../../../helpers/file-import-delivery";
 
 /**
  * Analyzer harness: FILE drop → staged results → accept.
@@ -38,25 +42,22 @@ type FileImportHarnessScenario = {
   readonly mockTemplate: string;
   readonly demoTitle: string;
   readonly demoSubtitle: string;
+  /**
+   * Admin-declared test code for upload path (production parity). Set for
+   * analyzers whose fixture files have no per-row test-code column —
+   * matches the testCode field a lab tech fills in the bridge admin
+   * upload UI. When set, the test uses the bridge `/admin/upload` flow
+   * instead of a direct watched-dir drop.
+   */
+  readonly uploadTestCode?: string;
 };
 
-type MockFileResult = {
-  readonly sampleId: string;
-  readonly result: string;
-  readonly testCode?: string;
-};
-
-type MockFileResponse = {
-  status: string;
-  written_path: string | null;
-  metadata: {
-    analyzerName: string;
-    format: string;
-    fixture: string;
-    results: MockFileResult[];
-  };
-};
-
+// Scenarios are limited to analyzers seeded by projects/analyzer-harness/
+// seed-analyzers.sh. The harness baseline trimmed to 4 representative
+// analyzers (one per transport class); FILE coverage is QS5 + QS7 here.
+// Coverage for FluoroCycler / Wondfo / Tecan / Multiskan lives in
+// analyzer-demo-flow.spec.ts, which creates analyzers from scratch via the
+// dashboard UI rather than relying on the harness seed.
 const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
   {
     analyzerName: "QuantStudio 7",
@@ -71,36 +72,6 @@ const FILE_IMPORT_SCENARIOS: readonly FileImportHarnessScenario[] = [
     mockTemplate: "quantstudio5",
     demoTitle: "QuantStudio 5 File Import",
     demoSubtitle: "Drop a result file, review staged results, and accept them.",
-  },
-  {
-    analyzerName: "FluoroCycler XT",
-    importDirSafeName: "fluorocycler-xt",
-    mockTemplate: "hain_fluorocycler",
-    demoTitle: "FluoroCycler XT File Import",
-    demoSubtitle: "Drop a result file, review staged results, and accept them.",
-  },
-  {
-    analyzerName: "Wondfo Finecare FS-205",
-    importDirSafeName: "wondfo-finecare-fs-205",
-    mockTemplate: "wondfo_finecare",
-    demoTitle: "Wondfo Finecare FS-205 File Import",
-    demoSubtitle:
-      "CSV import from POCT immunoassay — comparison operators preserved.",
-  },
-  {
-    analyzerName: "Tecan Infinite F50",
-    importDirSafeName: "tecan-infinite-f50",
-    mockTemplate: "tecan_f50",
-    demoTitle: "Tecan Infinite F50 File Import",
-    demoSubtitle: "ELISA OD results from well-per-row CSV export.",
-  },
-  {
-    analyzerName: "Thermo Multiskan FC",
-    importDirSafeName: "thermo-multiskan-fc",
-    mockTemplate: "multiskan_fc",
-    demoTitle: "Thermo Multiskan FC File Import",
-    demoSubtitle:
-      "ELISA OD results from well-per-row CSV export — French locale support.",
   },
 ];
 
@@ -119,42 +90,6 @@ function fileImportTimeoutMs(): number {
     DEFAULT_FILE_IMPORT_DROP_BUFFER_MS,
   );
   return Math.max(2 * pollMs + bufferMs, 60_000);
-}
-
-/**
- * Ask the mock server to drop a fixture file into the bridge watched folder
- * and return the parsed metadata (accessions + results).
- */
-async function dropFixtureViaMock(
-  scenario: FileImportHarnessScenario,
-): Promise<MockFileResponse> {
-  const targetDir = `/data/analyzer-imports/${scenario.importDirSafeName}/incoming`;
-
-  const response = await fetch(
-    `${MOCK_API_URL}/simulate/file/${scenario.mockTemplate}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ target_dir: targetDir }),
-    },
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(
-      `Mock server POST /simulate/file/${scenario.mockTemplate} failed: ${response.status} ${text}`,
-    );
-  }
-
-  const data = (await response.json()) as MockFileResponse;
-
-  if (!data.metadata?.results?.length) {
-    throw new Error(
-      `Mock server returned no results for ${scenario.mockTemplate}: ${JSON.stringify(data)}`,
-    );
-  }
-
-  return data;
 }
 
 async function verifyImportedResults(
@@ -191,11 +126,8 @@ async function verifyImportedResults(
   await presentation.pause(2_000);
 }
 
-const SKIP_IN_CI = !!process.env.CI;
-
 for (const scenario of FILE_IMPORT_SCENARIOS) {
-  const describeBlock = SKIP_IN_CI ? test.describe.skip : test.describe;
-  describeBlock(`${scenario.analyzerName} file import harness`, () => {
+  test.describe(`${scenario.analyzerName} file import harness`, () => {
     test.setTimeout(180_000);
 
     test("import and accept results from a watched folder", async ({
@@ -217,7 +149,13 @@ for (const scenario of FILE_IMPORT_SCENARIOS) {
         2,
         "Mock server drops a fixture file into the watched folder",
       );
-      const mockResponse = await dropFixtureViaMock(scenario);
+      const mockResponse = await dropFixtureViaMock(page, {
+        mockTemplate: scenario.mockTemplate,
+        analyzerName: scenario.analyzerName,
+        importDirSafeName: scenario.importDirSafeName,
+        uploadTestCode: scenario.uploadTestCode,
+        mockApiUrl: MOCK_API_URL,
+      });
       const expectedResults = mockResponse.metadata.results;
 
       await presentation.pause(1_000);

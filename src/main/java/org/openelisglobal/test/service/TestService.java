@@ -27,7 +27,7 @@ public interface TestService extends BaseObjectService<Test, String> {
 
     List<Test> getTestsByTestSectionId(String id);
 
-    List<Test> getTestsByTestSectionIds(List<Integer> ids);
+    List<Test> getTestsByTestSectionIds(List<String> ids);
 
     List<Test> getPageOfTestsBySysUserId(int startingRecNo, int sysUserId);
 
