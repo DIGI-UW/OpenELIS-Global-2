@@ -301,20 +301,22 @@ public class SamplePatientUpdateData {
         if (sampleItemsTests.isEmpty()) {
             errors.reject("errors.no.sample", "No specimen type/test combination was found. "
                     + "Please select at least one specimen container and one test.");
-        // assure that there is at least 1 sample (skip for order-entry-only mode)
-        if (requireSampleItems && sampleItemsTests.isEmpty()) {
-            errors.reject("errors.no.sample");
+            // assure that there is at least 1 sample (skip for order-entry-only mode)
+            if (requireSampleItems && sampleItemsTests.isEmpty()) {
+                errors.reject("errors.no.sample");
+            }
+
+            // assure that all samples have tests (skip for order-entry-only mode)
+            if (requireSampleItems && !allSamplesHaveTests()) {
+                errors.reject("errors.samples.with.no.tests");
+            }
+
+            // check patient errors
+            if (patientErrors.hasErrors()) {
+                errors.addAllErrors(patientErrors);
+            }
         }
 
-        // assure that all samples have tests (skip for order-entry-only mode)
-        if (requireSampleItems && !allSamplesHaveTests()) {
-            errors.reject("errors.samples.with.no.tests");
-        }
-
-        // check patient errors
-        if (patientErrors.hasErrors()) {
-            errors.addAllErrors(patientErrors);
-        }
     }
 
     private boolean allSamplesHaveTests() {
