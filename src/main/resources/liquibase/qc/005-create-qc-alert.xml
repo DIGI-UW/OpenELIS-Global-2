@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- QC Alert Table -->
+    <changeSet id="qc-009-create-qc-alert" author="openelisglobal">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="qc_alert"/>
+            </not>
+        </preConditions>
+        <comment>Create QC alert table for tracking notifications sent about violations</comment>
+        <createTable tableName="qc_alert">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="violation_id" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="alert_type" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recipient_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recipient_email" type="VARCHAR(255)"/>
+            <column name="sent_date_time" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="read_status" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="read_date_time" type="TIMESTAMP"/>
+            <column name="message_subject" type="VARCHAR(500)"/>
+            <column name="message_body" type="TEXT"/>
+            <column name="sys_user_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint
+            baseTableName="qc_alert"
+            baseColumnNames="violation_id"
+            constraintName="fk_qc_alert_violation"
+            referencedTableName="qc_rule_violation"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_alert"
+            baseColumnNames="recipient_user_id"
+            constraintName="fk_qc_alert_recipient"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <addForeignKeyConstraint
+            baseTableName="qc_alert"
+            baseColumnNames="sys_user_id"
+            constraintName="fk_qc_alert_sys_user"
+            referencedTableName="system_user"
+            referencedColumnNames="id"/>
+        <createIndex tableName="qc_alert" indexName="idx_qc_alert_violation">
+            <column name="violation_id"/>
+        </createIndex>
+        <createIndex tableName="qc_alert" indexName="idx_qc_alert_recipient">
+            <column name="recipient_user_id"/>
+        </createIndex>
+        <createIndex tableName="qc_alert" indexName="idx_qc_alert_read_status">
+            <column name="read_status"/>
+        </createIndex>
+        <createIndex tableName="qc_alert" indexName="idx_qc_alert_sent_date">
+            <column name="sent_date_time" descending="true"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="qc_alert"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

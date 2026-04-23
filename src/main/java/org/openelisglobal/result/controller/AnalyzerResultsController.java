@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -209,20 +210,32 @@ public class AnalyzerResultsController extends BaseController {
     @RequestMapping(value = "/rest/AnalyzerResults", produces = MediaType.APPLICATION_JSON_VALUE, method = RequestMethod.GET)
     @ResponseBody
     public AnalyzerResultsForm showRestAnalyzerResults(@RequestParam(required = false) String type,
-            HttpServletRequest request)
+            @RequestParam(required = false) String id, HttpServletRequest request)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
         AnalyzerResultsForm form = new AnalyzerResultsForm();
 
         request.getSession().setAttribute(SAVE_DISABLED, TRUE);
 
-        form.setType(type);
-        if (GenericValidator.isBlankOrNull(type)) {
+        String requestedAnalyzerId = id;
+        String effectiveType = type;
+        if (GenericValidator.isBlankOrNull(effectiveType) && !GenericValidator.isBlankOrNull(requestedAnalyzerId)) {
+            try {
+                Analyzer analyzer = analyzerService.get(requestedAnalyzerId);
+                effectiveType = analyzer.getName();
+            } catch (Exception e) {
+                LogEvent.logWarn(AnalyzerResultsController.class.getSimpleName(), "showRestAnalyzerResults",
+                        "Could not resolve analyzer for id: " + requestedAnalyzerId);
+            }
+        }
+
+        form.setType(effectiveType);
+        if (GenericValidator.isBlankOrNull(effectiveType) && GenericValidator.isBlankOrNull(requestedAnalyzerId)) {
             return form;
         }
         List<AnalyzerResults> analyzerResultsList = new ArrayList<>();
         try {
-            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService.getPluginByAnalyzerId(
-                    AnalyzerTestNameCache.getInstance().getAnalyzerIdForName(getAnalyzerIdFromRequest()));
+            AnalyzerImporterPlugin analyzerPlugin = pluginAnalyzerService
+                    .getPluginByAnalyzerId(getAnalyzerIdFromRequest());
             if (analyzerPlugin instanceof BidirectionalAnalyzer) {
                 BidirectionalAnalyzer bidirectionalAnalyzer = (BidirectionalAnalyzer) analyzerPlugin;
                 form.setSupportedLISActions(bidirectionalAnalyzer.getSupportedLISActions());
@@ -660,11 +673,15 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     protected String getAnalyzerTypeNameFromRequest() {
-        Analyzer analyzer = analyzerService.get(getAnalyzerIdFromRequest());
-        if (analyzer.getAnalyzerType() != null) {
-            return analyzer.getAnalyzerType().getName();
+        try {
+            Analyzer analyzer = analyzerService.get(getAnalyzerIdFromRequest());
+            if (analyzer.getAnalyzerType() != null) {
+                return analyzer.getAnalyzerType().getName();
+            }
+            return "";
+        } catch (ObjectNotFoundException e) {
+            return "";
         }
-        return "";
     }
 
     protected String getActualAnalyzerNameFromRequest() {

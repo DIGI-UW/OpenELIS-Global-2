@@ -9,12 +9,12 @@ import messages from "../../../../languages/en.json";
 import * as analyzerService from "../../../../services/analyzerService";
 
 // Mock analyzer service
-jest.mock("../../../../services/analyzerService", () => ({
-  getDefaultConfigs: jest.fn(),
-  getDefaultConfig: jest.fn(),
-  getAnalyzerTypes: jest.fn(),
-  createAnalyzer: jest.fn(),
-  updateAnalyzer: jest.fn(),
+vi.mock("../../../../services/analyzerService", () => ({
+  getDefaultConfigs: vi.fn(),
+  getDefaultConfig: vi.fn(),
+  getAnalyzerTypes: vi.fn(),
+  createAnalyzer: vi.fn(),
+  updateAnalyzer: vi.fn(),
 }));
 
 const renderWithIntl = (component) => {
@@ -142,12 +142,12 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("should NOT display Load Default Config dropdown when no generic plugin is selected", async () => {
     // Arrange & Act: Render in create mode without selecting a plugin type
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     // Assert: Dropdown should NOT be visible (requires isGenericPlugin === true)
     await wait(() => {
@@ -170,7 +170,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
     // Act: Render in edit mode
     renderWithIntl(
-      <AnalyzerForm analyzer={mockAnalyzer} open={true} onClose={jest.fn()} />,
+      <AnalyzerForm analyzer={mockAnalyzer} open={true} onClose={vi.fn()} />,
     );
 
     // Assert: Dropdown should NOT be visible
@@ -184,7 +184,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
   test("should load default configs list when modal opens in create mode", async () => {
     // Arrange & Act
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     // Assert: getDefaultConfigs should be called
     await wait(() => {
@@ -198,7 +198,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
   test.skip("should populate form when default config is selected", async () => {
     // Arrange
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     // Wait for defaults to load
     await wait(() => {
@@ -240,7 +240,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
   test.skip("should show success notification when default config loads", async () => {
     // Arrange
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     await wait(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
       },
     );
 
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     await wait(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
@@ -300,7 +300,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
   test.skip("should populate different fields for ASTM vs HL7 configs", async () => {
     // Arrange
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     await wait(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();
@@ -330,7 +330,7 @@ describe("AnalyzerForm - Default Configs (M20)", () => {
 
   test.skip("should allow user to customize fields after loading default", async () => {
     // Arrange
-    renderWithIntl(<AnalyzerForm open={true} onClose={jest.fn()} />);
+    renderWithIntl(<AnalyzerForm open={true} onClose={vi.fn()} />);
 
     await wait(() => {
       expect(analyzerService.getDefaultConfigs).toHaveBeenCalled();

@@ -31,6 +31,7 @@ import org.owasp.encoder.Encode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
@@ -42,6 +43,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/rest")
 @SessionAttributes("form")
 @SuppressWarnings("unused")
+@PreAuthorize("hasRole('ADMIN')")
 public class DictionaryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "dirtyFormFields", "id",
@@ -173,7 +175,7 @@ public class DictionaryRestController extends BaseController {
 
         try {
             String id = form.getId();
-            if (!(id == null || "0".equals(id))) {
+            if (StringUtils.isNotBlank(id) && !"0".equals(id)) {
                 // UPDATE
                 // bugzilla 2062
                 boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);

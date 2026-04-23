@@ -8,6 +8,7 @@ class TestManagementPage {
       toggleSwitch: "div.cds--toggle__switch",
       selectTests: "#carbon-multiselect-example-3-input",
       checkAll: "#carbon-multiselect-example-3-item-0-item",
+      checkAllLabel: "label[for='carbon-multiselect-example-3-item-0-item']",
     };
   }
 
@@ -35,7 +36,7 @@ class TestManagementPage {
 
   selectTests() {
     cy.get(this.selectors.selectTests).click();
-    cy.get(this.selectors.checkAll).click();
+    cy.get(this.selectors.checkAllLabel).click();
   }
 
   button(buttonType) {

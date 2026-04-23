@@ -1,6 +1,8 @@
 package org.openelisglobal;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -15,6 +17,7 @@ import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
+import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
@@ -23,12 +26,12 @@ import org.openelisglobal.common.util.Versioning;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.externalconnections.service.BasicAuthenticationDataService;
-import org.openelisglobal.externalconnections.service.ExternalConnectionService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.notification.service.AnalysisNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationConfigService;
 import org.openelisglobal.notification.service.TestNotificationService;
 import org.openelisglobal.notification.service.TestNotificationServiceImpl;
+import org.openelisglobal.notifications.dao.NotificationDAO;
 import org.openelisglobal.odoo.client.OdooClient;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
@@ -37,6 +40,10 @@ import org.openelisglobal.referral.fhir.service.FhirReferralService;
 import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.requester.service.RequesterTypeService;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
+import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.security.certs.service.TruststoreService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
@@ -92,12 +99,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.projectorganization", "org.openelisglobal.sourceofsample",
         "org.openelisglobal.testconfiguration", "org.openelisglobal.usertestsection",
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
-        "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.storage",
-        "org.openelisglobal.coldstorage", "org.openelisglobal.alert", "org.openelisglobal.notification",
+        "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.coldstorage",
+        "org.openelisglobal.alert", "org.openelisglobal.notification", "org.openelisglobal.shipment",
         "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler", "org.openelisglobal.sitebranding",
         "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin", "org.openelisglobal.fhir.providers",
-        "org.openelisglobal.common.dao", "org.openelisglobal.eqa", "org.openelisglobal.qc" }, excludeFilters = {
-
+        "org.openelisglobal.common.dao", "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
+        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
+        "org.openelisglobal.esig" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.*"),
@@ -120,7 +128,17 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public TextEncryptor textEncryptor() {
-        return mock(TextEncryptor.class);
+        TextEncryptor encryptor = mock(TextEncryptor.class);
+        // Return input unchanged so JPA @Convert works with plain-text test data
+        when(encryptor.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(encryptor.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
+        return encryptor;
+    }
+
+    @Bean
+    @Profile("test")
+    public TruststoreService truststoreService() {
+        return mock(TruststoreService.class);
     }
 
     @Bean()
@@ -151,12 +169,6 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public FhirContext fhirContext() {
         return mock(FhirContext.class);
-    }
-
-    @Bean()
-    @Profile("test")
-    public ExternalConnectionService externalConnectService() {
-        return mock(ExternalConnectionService.class);
     }
 
     @Bean()
@@ -193,6 +205,12 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public AnalysisNotificationConfigService analysisNotificationConfigService() {
         return mock(AnalysisNotificationConfigService.class);
+    }
+
+    @Bean()
+    @Profile("test")
+    public NotificationDAO notificationDAO() {
+        return mock(NotificationDAO.class);
     }
 
     @Bean()
@@ -315,8 +333,19 @@ public class AppTestConfig implements WebMvcConfigurer {
     }
 
     @Bean()
-    public AnalyzerResultsController analyzerResultsController() {
-        return mock(AnalyzerResultsController.class);
+    public AnalyzerResultsController analyzerResultsController(TypeOfSampleService typeOfSampleService) {
+        return new AnalyzerResultsController(typeOfSampleService);
+    }
+
+    @Bean
+    public AccessionResultsRestController accessionResultsRestController(RoleService roleService) {
+        return new AccessionResultsRestController(roleService);
+    }
+
+    @Bean
+    @Profile("test")
+    public PagingProperties pagingProperties() {
+        return new PagingProperties();
     }
 
     @Bean

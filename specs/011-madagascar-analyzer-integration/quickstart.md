@@ -1,3 +1,13 @@
+> **STATUS: Historical (bannered 2026-04-18)** — instructions below reference
+> the retired `dev.docker-compose.yml + analyzer-setup.docker-compose.yml` stack
+> and `load-analyzer-test-data.sh --dataset-011` fixture loader. Current harness
+> path:
+>
+> - **`projects/analyzer-harness/README.md`**
+> - **`projects/analyzer-harness/ci-parity-test.sh`** (runs `seed-analyzers.sh`)
+> - Dynamic per-analyzer mock networks via
+>   `tools/analyzer-mock-server/analyzer_network_manager.py`
+
 # Quickstart: Madagascar Analyzer Integration (Feature 011)
 
 **Feature**: 011-madagascar-analyzer-integration **Purpose**: Developer
