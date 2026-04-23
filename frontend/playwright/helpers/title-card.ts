@@ -1,4 +1,4 @@
-import { Page, TestInfo } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 import { isVideoProject } from "./video-pause";
 
 /**

@@ -1,4 +1,5 @@
-import { Page, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import type { DemoPresentation } from "./demo-presentation";
 import {
   accessionTextRegExp,
@@ -10,6 +11,8 @@ import {
   UI_TIMEOUT,
   LONG_TIMEOUT,
   NAV_TIMEOUT,
+  LONG_PAUSE_PLUS,
+  EXTENDED_PAUSE_PLUS,
 } from "./timeouts";
 
 /**
@@ -87,7 +90,7 @@ export async function acceptAndVerifyResults(
       await page.locator(`label[for="${checkboxId}"]`).click();
     }
   }
-  await presentation.pause(1_500);
+  await presentation.pause(LONG_PAUSE_PLUS);
 
   // ── Save ────────────────────────────────────────────────────────
   await presentation.step(stepOffset + 2, "Save Accepted Results");
@@ -168,5 +171,5 @@ export async function acceptAndVerifyResults(
     timeout: UI_TIMEOUT,
   });
   // Hold on AccessionResults so the viewer can see the final outcome
-  await presentation.pause(5_000);
+  await presentation.pause(EXTENDED_PAUSE_PLUS);
 }

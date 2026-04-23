@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Page, TestInfo } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 import { showSceneLabel, showStepCard, showTitleCard } from "./title-card";
 import { isVideoProject, videoPause } from "./video-pause";
 

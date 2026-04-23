@@ -1,8 +1,10 @@
-import { expect, test, Page } from "../../../helpers/test-base";
+import { expect, test } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
+  UI_TIMEOUT_PLUS,
 } from "../../../helpers/timeouts";
 
 /**
@@ -187,7 +189,7 @@ async function postOrder(
   // Navigate so the browser context has a CSRF token + JSESSIONID for SamplePatientEntry.
   await page.goto("/SamplePatientEntry", {
     waitUntil: "domcontentloaded",
-    timeout: 15_000,
+    timeout: UI_TIMEOUT_PLUS,
   });
 
   const form = await buildOrderForm(page, consent);
@@ -351,7 +353,7 @@ test.describe("OGC-557 — UI smoke", () => {
 
     await page.goto("/SamplePatientEntry", {
       waitUntil: "domcontentloaded",
-      timeout: 15_000,
+      timeout: UI_TIMEOUT_PLUS,
     });
 
     // Wait for the patient search tab — proves React rendered the page.

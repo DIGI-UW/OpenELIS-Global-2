@@ -1,4 +1,4 @@
-import { Page, TestInfo } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 
 const VIDEO_PROJECTS = new Set(["core-demo-video", "harness-demo-video"]);
 

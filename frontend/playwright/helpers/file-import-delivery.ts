@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 /**
  * Harness helper for FILE analyzer fixture delivery.

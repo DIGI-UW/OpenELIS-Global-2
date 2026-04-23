@@ -1,5 +1,5 @@
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
-import { Locator, Page } from "@playwright/test";
 import { acceptAndVerifyResults } from "../../../helpers/accept-results";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import type { DemoPresentation } from "../../../helpers/demo-presentation";
@@ -17,8 +17,12 @@ import {
   SHORT_TIMEOUT,
   UI_TIMEOUT,
   LONG_TIMEOUT,
-  RESULTS_TIMEOUT,
+  SHORT_PAUSE,
   DEMO_TIMEOUT,
+  EXTENDED_PAUSE,
+  RESULTS_TIMEOUT,
+  LONG_PAUSE,
+  LONG_PAUSE_PLUS,
 } from "../../../helpers/timeouts";
 
 const SIMULATOR_URL = "http://localhost:8085";
@@ -40,7 +44,7 @@ async function testConnection(
     .locator('[data-testid^="analyzer-row-overflow-"]')
     .first();
   await overflow.click();
-  await presentation.pause(500);
+  await presentation.pause(SHORT_PAUSE);
 
   const testConnectionAction = page
     .locator('[data-testid*="analyzer-action-test-connection"]')
@@ -76,7 +80,7 @@ async function testConnection(
     }
   }
   expect(connected).toBeTruthy();
-  await presentation.pause(1_500);
+  await presentation.pause(LONG_PAUSE_PLUS);
 
   await connectionModal
     .locator('[data-testid="test-connection-close-button"]')
@@ -101,7 +105,7 @@ async function pushAstmMessage(
   const body = await response.json();
   const sampleId = body?.results?.[0]?.sample_id;
   if (!sampleId) throw new Error("Push returned no sample_id");
-  await presentation.pause(1_000);
+  await presentation.pause(LONG_PAUSE);
   return sampleId;
 }
 
@@ -124,7 +128,7 @@ async function verifyResults(
   ).toBeVisible({ timeout: UI_TIMEOUT });
   await expectResultVisible(resultsRegion, EXPECTED_RESULT);
 
-  await presentation.pause(2_000);
+  await presentation.pause(EXTENDED_PAUSE);
 }
 
 test.describe("GeneXpert ASTM demo story", () => {

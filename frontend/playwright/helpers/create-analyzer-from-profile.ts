@@ -12,19 +12,24 @@
  */
 
 import { execFileSync } from "child_process";
-import { Page, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { AnalyzerFormPage } from "../fixtures/analyzer-form";
 import { AnalyzerListPage } from "../fixtures/analyzer-list";
 import { cleanupAnalyzerByName } from "./cleanup-analyzer";
 import type { DemoPresentation } from "./demo-presentation";
 import type { AnalyzerTestConfig } from "./analyzer-test-config";
-import { LONG_TIMEOUT, SHORT_PAUSE, LONG_PAUSE } from "./timeouts";
+import {
+  LONG_TIMEOUT,
+  SHORT_PAUSE,
+  SHORT_VIDEO_PAUSE,
+  API_READY_TIMEOUT_MS,
+  API_RETRY_DELAY_MS,
+} from "./timeouts";
 import { resolveDbContainer } from "./db-container";
 
 const SIMULATOR_URL = "http://localhost:8085";
 const ANALYZER_API_PATH = "/api/OpenELIS-Global/rest/analyzer/analyzers";
-const API_READY_TIMEOUT_MS = 15_000;
-const API_RETRY_DELAY_MS = 500;
 
 function getAnalyzerApiUrl(): string {
   const baseUrl = (process.env.BASE_URL || "https://localhost").replace(
@@ -203,7 +208,7 @@ export async function createAnalyzerFromProfile(
           `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`
         : `/data/analyzer-imports/${config.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}/incoming`;
     await form.fillImportDirectory(importDir);
-    await presentation.pause(500);
+    await presentation.pause(SHORT_PAUSE);
   }
 
   // Save
@@ -213,7 +218,7 @@ export async function createAnalyzerFromProfile(
 
   // Wait for modal to close
   await expect(form.modal).not.toBeVisible({ timeout: LONG_TIMEOUT });
-  await presentation.pause(LONG_PAUSE);
+  await presentation.pause(SHORT_VIDEO_PAUSE);
 
   return assignedIp;
 }

@@ -1,5 +1,11 @@
-import { expect, Locator, Page } from "@playwright/test";
-import { LONG_TIMEOUT, SHORT_TIMEOUT, UI_TIMEOUT } from "./timeouts";
+import type { Locator, Page } from "@playwright/test";
+import { expect } from "@playwright/test";
+import {
+  LONG_TIMEOUT,
+  RESULTS_UI_POLL_INTERVALS,
+  SHORT_TIMEOUT,
+  UI_TIMEOUT,
+} from "./timeouts";
 
 /**
  * Mirrors {@link frontend/src/components/utils/Utils.js} `convertAlphaNumLabNumForDisplay`.
@@ -50,7 +56,7 @@ export function convertAlphaNumLabNumForDisplay(labNumber: string): string {
   return labNumberForDisplay.toUpperCase();
 }
 
-function escapeRegExp(s: string): string {
+export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
@@ -137,7 +143,7 @@ async function navigateUntilVisible(
         {
           message: `Waiting for results matching "${options?.apiPollMatch}" at ${options.apiPollUrl}`,
           timeout: timeoutMs,
-          intervals: [2_000],
+          intervals: RESULTS_UI_POLL_INTERVALS,
         },
       )
       .toBeTruthy();

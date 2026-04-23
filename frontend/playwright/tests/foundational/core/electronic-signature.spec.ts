@@ -1,5 +1,7 @@
-import { test, expect, Page } from "../../../helpers/test-base";
+import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
 import { SiteInformationPage } from "../../../fixtures/esig-admin";
+import { UI_TIMEOUT_PLUS } from "../../../helpers/timeouts";
 
 const API = "/api/OpenELIS-Global/rest/esig";
 
@@ -124,7 +126,10 @@ test.describe
       storageState: "playwright/.auth/user.json",
     });
     const page = await ctx.newPage();
-    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 });
+    await page.goto("/", {
+      waitUntil: "domcontentloaded",
+      timeout: UI_TIMEOUT_PLUS,
+    });
     const headers = await csrfHeaders(page);
     // Best-effort: re-certify if decertified
     const check = await page.request.get(`${API}/certified/${username}`);

@@ -32,8 +32,10 @@ import {
 import {
   LONG_TIMEOUT,
   UI_TIMEOUT,
-  RESULTS_TIMEOUT,
   MAX_TIMEOUT,
+  EXTENDED_PAUSE,
+  RESULTS_TIMEOUT,
+  DEMO_PAUSE,
 } from "../../../helpers/timeouts";
 import type {
   AnalyzerTestConfig,
@@ -240,7 +242,7 @@ async function verifyResults(
     }
   }
 
-  await presentation.pause(2_000);
+  await presentation.pause(EXTENDED_PAUSE);
 }
 
 // ── Test Suite ───────────────────────────────────────────────────
@@ -328,7 +330,7 @@ test.describe("Madagascar analyzer demo flows", () => {
       );
 
       await presentation.step(step, "Results staged — ready to accept");
-      await presentation.pause(3_000);
+      await presentation.pause(DEMO_PAUSE);
 
       // Step 5: Accept results
       await acceptAndVerifyResults(page, presentation, step, primarySampleId);

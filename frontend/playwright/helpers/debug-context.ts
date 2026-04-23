@@ -1,4 +1,4 @@
-import { Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { QUICK_TIMEOUT } from "./timeouts";
 
 export async function captureDebugContext(
