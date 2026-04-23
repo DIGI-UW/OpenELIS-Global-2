@@ -109,7 +109,7 @@ public class AnalyteDAOImpl extends BaseDAOImpl<Analyte, String> implements Anal
 
             String analyteId = !StringUtil.isNullorNill(analyte.getId()) ? analyte.getId() : "0";
 
-            query.setParameter("id", Integer.parseInt(analyteId));
+            query.setParameter("id", analyteId);
 
             list = query.list();
 

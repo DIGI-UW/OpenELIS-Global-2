@@ -1,4 +1,4 @@
-import { test as setup, expect } from "@playwright/test";
+import { test as setup, expect } from "../helpers/test-base";
 import { SHORT_TIMEOUT, LONG_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
 const AUTH_FILE = "playwright/.auth/user.json";
@@ -25,16 +25,11 @@ const AUTH_FILE = "playwright/.auth/user.json";
 setup("authenticate", async ({ page, request, context }, testInfo) => {
   testInfo.setTimeout(NAV_TIMEOUT);
 
-  const username = process.env.TEST_USER;
-  const password = process.env.TEST_PASS;
-
-  if (!username || !password) {
-    throw new Error(
-      "TEST_USER and TEST_PASS environment variables must be set.\n" +
-        "  Source .env from repo root: set -a; . .env; set +a\n" +
-        "  Or use ANSI-C quoting: export TEST_PASS=$'adminADMIN!'",
-    );
-  }
+  // Defaults match .env.example, frontend/playwright/helpers/verify-login.sh,
+  // and projects/analyzer-harness/seed-analyzers.sh: admin / adminADMIN!.
+  // A .env file or explicit exports still take precedence.
+  const username = process.env.TEST_USER || "admin";
+  const password = process.env.TEST_PASS || "adminADMIN!";
 
   // ── Step 1: Backend health check ──────────────────────────────
   const healthCheckResult = await expect

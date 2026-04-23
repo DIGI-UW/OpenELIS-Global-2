@@ -40,7 +40,7 @@ public class TestDictionaryDAOImpl extends BaseDAOImpl<TestDictionary, String> i
         String sql = "FROM TestDictionary td where td.testId = :testId";
         try {
             Query<TestDictionary> query = entityManager.unwrap(Session.class).createQuery(sql, TestDictionary.class);
-            query.setParameter("testId", Integer.parseInt(testId));
+            query.setParameter("testId", testId);
             TestDictionary testDictionary = query.uniqueResult();
             return testDictionary;
         } catch (HibernateException e) {

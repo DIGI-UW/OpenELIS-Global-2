@@ -41,13 +41,13 @@
         type_of_sample_name="Urine" corrected="true" />
     <analysis_qaevent id="1" qa_event_id="101"
         analysis_id="201" lastupdated="2025-06-24 11:30:00"
-        completed_date="2025-06-25 09:00:00" />
+        completed_date="2025-06-25" />
 
     <analysis_qaevent id="2" qa_event_id="102"
         analysis_id="202" lastupdated="2025-06-24 11:30:00"
-        completed_date="2025-06-23 15:30:00" />
+        completed_date="2025-06-23" />
 
     <analysis_qaevent id="3" qa_event_id="102"
         analysis_id="202" lastupdated="2025-06-23 14:45:00"
-        completed_date="2025-06-23 15:30:00" />
+        completed_date="2025-06-23" />
 </dataset>

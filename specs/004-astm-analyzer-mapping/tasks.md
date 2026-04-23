@@ -391,7 +391,8 @@ OpenELIS orders/results without manual intervention.
       passing ✓
 - [x] T037 [P] [US1] Frontend unit test for AnalyzersList component in
       `frontend/src/components/analyzers/AnalyzersList/AnalyzersList.test.jsx`
-      (Template: `.specify/templates/testing/JestComponent.test.jsx.template`) -
+      (Template:
+      `.specify/templates/testing/VitestComponent.test.jsx.template`) -
       Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
       **Import Order**: React → Testing Library → userEvent → jest-dom → Intl →

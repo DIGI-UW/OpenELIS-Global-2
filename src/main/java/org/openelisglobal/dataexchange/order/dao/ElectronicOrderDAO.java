@@ -40,7 +40,7 @@ public interface ElectronicOrderDAO extends BaseDAO<ElectronicOrder, String> {
             String patientLastName, String patientFirstName, String gender, SortOrder order);
 
     public List<ElectronicOrder> getElectronicOrdersContainingValueExludedByOrderedBy(String searchValue,
-            List<Integer> exludedStatusIds, SortOrder sortOrder);
+            List<String> exludedStatusIds, SortOrder sortOrder);
 
     List<ElectronicOrder> getAllElectronicOrdersByDateAndStatus(Date startDate, Date endDate, String statusId,
             SortOrder sortOrder);
@@ -56,7 +56,7 @@ public interface ElectronicOrderDAO extends BaseDAO<ElectronicOrder, String> {
 
     int getCountOfAllElectronicOrdersByDateAndStatus(Date startDate, Date endDate, String statusId);
 
-    int getCountOfElectronicOrdersByStatusList(List<Integer> statusIds);
+    int getCountOfElectronicOrdersByStatusList(List<String> statusIds);
 
-    List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<Integer> statusIds, SortOrder sortOrder);
+    List<ElectronicOrder> getAllElectronicOrdersByStatusList(List<String> statusIds, SortOrder sortOrder);
 }

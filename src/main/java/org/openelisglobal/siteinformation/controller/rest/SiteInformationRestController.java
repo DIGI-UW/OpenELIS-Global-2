@@ -386,6 +386,27 @@ public class SiteInformationRestController extends BaseController {
         return ResponseEntity.status(HttpStatus.OK).body("Cancellation successful");
     }
 
+    @GetMapping(value = "/labUnit/config", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<java.util.Map<String, Object>> getLabUnitConfig() {
+        try {
+            java.util.Map<String, Object> config = new java.util.HashMap<>();
+
+            String configuredWorkflow = ConfigurationProperties.getInstance()
+                    .getPropertyValue(Property.ORDER_ENTRY_WORKFLOW_TYPE);
+            String workflowType = configuredWorkflow != null ? configuredWorkflow : "Both";
+            config.put("workflowType", workflowType);
+            config.put("labName", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
+            config.put("useAccessionNumberValidation", ConfigurationProperties.getInstance()
+                    .isPropertyValueEqual(Property.ACCESSION_NUMBER_VALIDATE, "true"));
+            config.put("accessionFormat",
+                    ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat));
+
+            return ResponseEntity.ok(config);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @Override
     protected String findLocalForward(String forward) {
         String pathNoSuffix = URLUtil.getReourcePathFromRequest(request);
