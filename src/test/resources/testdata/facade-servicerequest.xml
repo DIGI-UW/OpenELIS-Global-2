@@ -6,6 +6,17 @@
     <localization id="2" description="Test Name"
         lastupdated="2025-03-08 12:00:00" />
 
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Complete Blood Count" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Complete Blood Count" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
     <system_user id="1" external_id="EXT003" login_name="admin"
         last_name="Doe" first_name="John" initials="JD" is_active="Y"
         is_employee="Y" lastupdated="2025-03-08 12:00:00" />
@@ -195,14 +206,6 @@
         method_id="1" lastupdated="2025-07-07 14:00:00"
         fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01" />
 
-    <analysis id="2" sampitem_id="602" test_id="1"
-        test_sect_id="1" revision="1" status_id="6" analysis_type="CONFIRM"
-        started_date="2025-07-07 11:00:00"
-        completed_date="2025-07-07 13:00:00"
-        released_date="2025-07-07 14:00:00" printed_date="2025-07-07 15:00:00"
-        entry_date="2025-07-07 10:00:00" panel_id="2" is_reportable="Y"
-        method_id="2" lastupdated="2025-07-07 14:00:00"
-        fhir_uuid="f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b02" />
 
     <result id="3" analysis_id="1" sort_order="1" result_type="N"
         value="85.0" analyte_id="3" test_result_id="1" is_reportable="Y"
@@ -210,19 +213,11 @@
         significant_digits="1" grouping="0"
         fhir_uuid="550e8400-e29b-41d4-a716-446655440003" />
 
-    <result id="4" analysis_id="2" sort_order="2" result_type="N"
-        value="14.5" analyte_id="4" test_result_id="2" is_reportable="Y"
-        lastupdated="2025-07-07 14:00:00" min_normal="12.0" max_normal="16.0"
-        significant_digits="1" grouping="0"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
 
     <result_signature id="2" result_id="3"
         system_user_id="1" is_supervisor="true"
         lastupdated="2025-07-07 17:45:00.000" non_user_name="" />
 
-    <result_signature id="3" result_id="4"
-        system_user_id="2" is_supervisor="false"
-        lastupdated="2025-07-06 08:00:00.000" non_user_name="External Doctor" />
 
 
     <patient_identity_type id="9"
@@ -253,11 +248,6 @@
         home_phone="87654321" cell_phone="09785432" primary_phone="12345678"
         fax="3456" email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
 
-    <person id="2" last_name="Mulizi" first_name="James"
-        middle_name="Mark" city="Orion" state="Texas" zip_code="001"
-        country="USA" work_phone="10000001" home_phone="8000001"
-        cell_phone="0000000" primary_phone="10000001" fax="0001"
-        email="james@gmail.com" lastupdated="2023-11-01 12:00:00" />
 
     <person id="3" last_name="Kukki" first_name="Faith"
         middle_name="Siannah" city="Dallas" state="Texas" zip_code="001"
@@ -281,12 +271,6 @@
         fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04635"
         entered_birth_date="1992-12-12" lastupdated="2023-11-01 12:00:02" />
 
-    <patient id="2" person_id="2" race="black" gender="F"
-        birth_date="1997-10-09 09:00:00" birth_time="1997-10-09 09:00:00"
-        national_id="56789" ethnicity="A" external_id="EX123"
-        school_attend="Merryland College" birth_place="Nevada"
-        fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04636"
-        entered_birth_date="1997-10-09" lastupdated="2023-11-01 12:00:02" />
 
     <patient id="3" person_id="3" race="black" gender="M"
         birth_date="1992-12-12 02:00:00" birth_time="1992-12-12 02:00:00"
@@ -313,21 +297,25 @@
     <patient_contact id="2" patient_id="3" person_id="3"
         lastupdated="2024-06-10 11:45:00" />
 
-    <patient id="2" person_id="2" lastupdated="2023-11-01 12:00:00"
-        fhir_uuid="550e8400-e29b-41d4-a716-446655440004" />
-
     <provider id="1" person_id="3" provider_type="P"
         fhir_uuid="550e8400-e29b-41d4-a716-446655441004"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <requester_type id="1" requester_type="provider" />
+    <requester_type id="2" requester_type="organization" />
+
+    <sample_requester id="1" sample_id="1"
+        requester_id="3" requester_type_id="1"
+        lastupdated="2023-11-01 12:00:00" />
+
+    <sample_requester id="4" sample_id="1"
+        requester_id="3" requester_type_id="2"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_human id="1" provider_id="1" samp_id="1"
         patient_id="1" lastupdated="2023-11-01 12:00:00" />
 
-    <sample_human id="2" provider_id="1" samp_id="2"
-        patient_id="2" lastupdated="2023-11-01 12:00:00" />
 
-    <sample_human id="2" samp_id="2" patient_id="2"
-        lastupdated="2023-11-01 12:00:00" />
 
     <reference_tables id="1" name="SAMPLE"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
@@ -336,27 +324,23 @@
     <reference_tables id="3" name="SAMPLE_QAEVENT"
         keep_history="Y" is_hl7_encoded="N" lastupdated="2023-10-01 12:00:00" />
 
-    <observation_history_type id="5"
-        type_name="program" description="Program type" />
+    <observation_history_type id="1"
+        type_name="program" description="Program type"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="2"
+        type_name="requestDate" description="Request Date type"
+        lastupdated="2023-11-01 12:00:00" />
+    <observation_history_type id="3"
+        type_name="testLocationCode" description="location code"
+        lastupdated="2023-11-01 12:00:00" />
 
     <observation_history id="1" patient_id="1"
-        sample_id="1" observation_history_type_id="5" value_type="L"
-        value="Histopathology" />
+        sample_id="1" observation_history_type_id="2" value_type="L"
+        value="Histopathology" lastupdated="2023-11-01 12:00:00" />
 
     <dictionary_category id="1"
         description="Category Description 1" local_Abbrev="CA1"
         name="resultRejectionReasons" lastUpdated="2023-11-01 12:00:00" />
-
-    <localization_value id="1" localization_id="1"
-        locale="en" value="Localized Name 1" />
-    <localization_value id="2" localization_id="1"
-        locale="fr" value="Nom localisé 1" />
-    <supported_locale id="1" locale_code="en"
-        display_name="English" is_active="true" is_fallback="true"
-        sort_order="1" />
-    <supported_locale id="2" locale_code="fr"
-        display_name="Français" is_active="true" is_fallback="false"
-        sort_order="2" />
 
     <!-- Dictionary Entries -->
     <dictionary id="1" is_active="Y"

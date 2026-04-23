@@ -138,13 +138,14 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean
     @Profile("test")
-<<<<<<< fhir
     public AccessionNumberValidatorFactory accessionNumberValidatorFactory() {
         return mock(AccessionNumberValidatorFactory.class);
-=======
+    }
+
+    @Bean
+    @Profile("test")
     public TruststoreService truststoreService() {
         return mock(TruststoreService.class);
->>>>>>> develop
     }
 
     @Bean()

@@ -155,7 +155,6 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
                     + fhirContext.newJsonParser().encodeResourceToString(transactionResponseBundle));
         } catch (Exception e) {
             LogEvent.logError(e);
-            throw new FhirLocalPersistingException(e);
         }
         return transactionResponseBundle;
     }
