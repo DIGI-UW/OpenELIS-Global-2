@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { Page, Route } from '@playwright/test';
+import { Page, Route } from "@playwright/test";
 import {
   UI_TIMEOUT,
   SHORT_TIMEOUT,
