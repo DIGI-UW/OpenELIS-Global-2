@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { Page, Route } from '@playwright/test';
 import {
   UI_TIMEOUT,
   SHORT_TIMEOUT,
@@ -94,8 +95,8 @@ const MOCK_STUDY_RESPONSE = {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function interceptSearch(page: any) {
-  await page.route("**/rest/patient-search-results**", async (route: any) => {
+async function interceptSearch(page: Page) {
+  await page.route("**/rest/patient-search-results**", async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -104,15 +105,15 @@ async function interceptSearch(page: any) {
   });
 }
 
-async function interceptStudyEdit(page: any) {
-  await page.route("**/rest/patient-study-view**", async (route: any) => {
+async function interceptStudyEdit(page: Page) {
+  await page.route("**/rest/patient-study-view**", async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(MOCK_STUDY_RESPONSE),
     });
   });
-  await page.route("**/rest/patient-study-edit", async (route: any) => {
+  await page.route("**/rest/patient-study-edit", async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
