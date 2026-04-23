@@ -1,8 +1,9 @@
 package org.openelisglobal.audittrail.daoimpl;
 
 import java.sql.Timestamp;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -40,8 +41,8 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
             String sql = "from History h where h.referenceId = :refId and h.referenceTable = :tableId order by"
                     + " h.timestamp desc, h.activity desc";
             Query<History> query = entityManager.unwrap(Session.class).createQuery(sql, History.class);
-            query.setParameter("refId", Integer.parseInt(refId));
-            query.setParameter("tableId", Integer.parseInt(tableId));
+            query.setParameter("refId", refId);
+            query.setParameter("tableId", tableId);
             list = query.list();
         } catch (HibernateException e) {
             LogEvent.logError(e);
@@ -55,6 +56,12 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     public List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search, int page, int pageSize)
             throws LIMSRuntimeException {
+        // sysUserId binds through LIMSStringNumberUserType, which calls
+        // Integer.parseInt during binding; short-circuit to an empty result for
+        // non-numeric input so bad client filters don't surface as 500s.
+        if (sysUserId != null && !sysUserId.isEmpty() && !GenericValidator.isInt(sysUserId)) {
+            return Collections.emptyList();
+        }
         try {
             StringBuilder hql = new StringBuilder("from History h where 1=1");
             appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search);
@@ -75,6 +82,9 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     @Transactional(readOnly = true)
     public long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
             List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException {
+        if (sysUserId != null && !sysUserId.isEmpty() && !GenericValidator.isInt(sysUserId)) {
+            return 0L;
+        }
         try {
             StringBuilder hql = new StringBuilder("select count(*) from History h where 1=1");
             appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search);
@@ -119,21 +129,10 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
             query.setParameter("endDate", endDate);
         }
         if (sysUserId != null && !sysUserId.isEmpty()) {
-            try {
-                query.setParameter("sysUserId", Integer.parseInt(sysUserId));
-            } catch (NumberFormatException e) {
-                LogEvent.logWarn("HistoryDAOImpl", "bindParameters", "Invalid sysUserId (non-numeric): " + sysUserId);
-                query.setParameter("sysUserId", -1);
-            }
+            query.setParameter("sysUserId", sysUserId);
         }
         if (referenceTableIds != null && !referenceTableIds.isEmpty()) {
-            try {
-                query.setParameterList("referenceTableIds",
-                        referenceTableIds.stream().map(Integer::parseInt).collect(Collectors.toList()));
-            } catch (NumberFormatException e) {
-                LogEvent.logWarn("HistoryDAOImpl", "bindParameters", "Invalid referenceTableId (non-numeric) in list");
-                query.setParameterList("referenceTableIds", List.of(-1));
-            }
+            query.setParameterList("referenceTableIds", referenceTableIds);
         }
         if (activity != null && !activity.isEmpty()) {
             query.setParameter("activity", activity);

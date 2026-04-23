@@ -3,7 +3,6 @@ package org.openelisglobal.program.dao.cytology;
 import jakarta.transaction.Transactional;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -22,7 +21,7 @@ public class CytologySampleDAOImpl extends BaseDAOImpl<CytologySample, Integer> 
     public List<CytologySample> getWithStatus(List<CytologyStatus> statuses) {
         String sql = "from CytologySample cs where status in (:statuses)";
         Query<CytologySample> query = entityManager.unwrap(Session.class).createQuery(sql, CytologySample.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         List<CytologySample> list = query.list();
 
         return list;
@@ -32,7 +31,7 @@ public class CytologySampleDAOImpl extends BaseDAOImpl<CytologySample, Integer> 
     public Long getCountWithStatus(List<CytologyStatus> statuses) {
         String sql = "select count(*) from CytologySample cs where status in (:statuses)";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         Long count = query.uniqueResult();
 
         return count;
@@ -43,7 +42,7 @@ public class CytologySampleDAOImpl extends BaseDAOImpl<CytologySample, Integer> 
         String sql = "from CytologySample cs where cs.status in (:statuses) and cs.sample.accessionNumber ="
                 + " :labNumber";
         Query<CytologySample> query = entityManager.unwrap(Session.class).createQuery(sql, CytologySample.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("labNumber", labNumber);
         List<CytologySample> list = query.list();
 
@@ -55,7 +54,7 @@ public class CytologySampleDAOImpl extends BaseDAOImpl<CytologySample, Integer> 
         String sql = "select count(*) from CytologySample cs where cs.status in (:statuses) and cs.lastupdated"
                 + " between :datefrom and :dateto";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("datefrom", from);
         query.setParameter("dateto", to);
         Long count = query.uniqueResult();

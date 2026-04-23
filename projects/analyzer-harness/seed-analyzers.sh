@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # seed-analyzers.sh — Create harness analyzers via OE REST API
 #
-# Default (clean mode): wipes stale analyzer data, then creates 7 seed analyzers
-# with mock networks. Ensures a clean baseline on every startup.
+# Default (clean mode): wipes stale analyzer data, then creates 4 representative
+# seed analyzers covering each transport. Ensures a clean baseline on every startup.
+#
+# Seeded set (one per transport class):
+#   - Cepheid GeneXpert (ASTM Mode) — ASTM over TCP (molecular)
+#   - Mindray BC-5380              — HL7/MLLP over TCP (hematology)
+#   - QuantStudio 5                — FILE (.xls Excel, molecular)
+#   - QuantStudio 7                — FILE (.xls/.xlsx Excel, molecular)
 #
 # --no-clean: skips cleanup, runs idempotently (for manual testing).
 #
-# Creates 7 analyzers using profile-based defaultConfigId, which triggers:
+# Uses profile-based defaultConfigId, which triggers:
 #   - autoCreateTestMappings() from profile LOINCs
 #   - autoCreateFromProfile() for FILE analyzers (FileImportConfig)
 #   - registerWithBridge() for TCP analyzers (bridge transport binding)
@@ -140,26 +146,14 @@ verify_realized_analyzer_mappings() {
 verify_seed_contract() {
   echo "Verifying harness profile prerequisites and realized mappings..."
   verify_profile_catalog_ready "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
+  verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
   verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
   verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
-  verify_profile_catalog_ready "FluoroCycler XT" "file/fluorocycler-xt"
-  verify_profile_catalog_ready "Mindray BC-5380" "hl7/mindray-bc5380"
-  verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
-  verify_profile_catalog_ready "Mindray BS-300" "hl7/mindray-bs300"
-  verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
-  verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
-  verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
+  verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
   verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
-  verify_realized_analyzer_mappings "FluoroCycler XT" "file/fluorocycler-xt"
-  verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
-  verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
-  verify_realized_analyzer_mappings "Mindray BS-300" "hl7/mindray-bs300"
-  verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
-  verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
-  verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
 }
 
@@ -333,7 +327,8 @@ if [ "$CLEAN" = true ]; then
     2>&1 | sed 's/^/  /'
   echo "  DB cleanup done"
 
-  # Remove mock networks (per-analyzer endpoint)
+  # Remove mock networks (per-analyzer endpoint). Includes legacy names
+  # (bs200/bs300) so an existing stack seeded with a previous list cleans up.
   for name in genexpert bc5380 bs200 bs300; do
     curl -sk --connect-timeout 3 --max-time 10 -X DELETE "${MOCK_URL}/analyzers/${name}" 2>/dev/null || true
   done
@@ -350,15 +345,11 @@ echo "Creating dynamic mock networks..."
 GX_IP=$(create_mock_network "genexpert" "genexpert_astm" 9600)
 sleep 2
 BC5380_IP=$(create_mock_network "bc5380" "mindray_bc5380" 5380)
-sleep 2
-BS200_IP=$(create_mock_network "bs200" "mindray_bs200" 6001)
-sleep 2
-BS300_IP=$(create_mock_network "bs300" "mindray_bs300" 6002)
 echo ""
 
-# 1. GeneXpert (ASTM) — fixed mock IP from dedicated analyzer network.
-# Source-binding is authoritative, so the seeded registration must match the
-# actual mock-network source identity used by ASTM pushes in the harness.
+# 1. GeneXpert (ASTM) — dynamic mock IP. Source-binding is authoritative, so
+# the seeded registration must match the actual mock-network source identity
+# used by ASTM pushes in the harness.
 create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"name\": \"Cepheid GeneXpert (ASTM Mode)\",
   \"analyzerType\": \"MOLECULAR\",
@@ -372,34 +363,7 @@ create_analyzer "Cepheid GeneXpert (ASTM Mode)" "{
   \"defaultConfigId\": \"astm/genexpert-astm\"
 }"
 
-# 2. QuantStudio 5 (FILE/EXCEL .xls)
-create_analyzer "QuantStudio 5" '{
-  "name": "QuantStudio 5",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/quantstudio"
-}'
-
-# 3. QuantStudio 7 (FILE/EXCEL — same profile as QS5, brace glob matches both .xls/.xlsx)
-create_analyzer "QuantStudio 7" '{
-  "name": "QuantStudio 7",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/quantstudio"
-}'
-
-# 4. FluoroCycler XT (FILE/EXCEL)
-create_analyzer "FluoroCycler XT" '{
-  "name": "FluoroCycler XT",
-  "analyzerType": "MOLECULAR",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/fluorocycler-xt"
-}'
-
-# 5. Mindray BC-5380 (HL7/MLLP — hematology) — dynamic IP
+# 2. Mindray BC-5380 (HL7/MLLP — hematology) — dynamic IP
 create_analyzer "Mindray BC-5380" "{
   \"name\": \"Mindray BC-5380\",
   \"analyzerType\": \"HEMATOLOGY\",
@@ -413,62 +377,25 @@ create_analyzer "Mindray BC-5380" "{
   \"defaultConfigId\": \"hl7/mindray-bc5380\"
 }"
 
-# 6. Mindray BS-200 (HL7/MLLP — chemistry) — dynamic IP
-create_analyzer "Mindray BS-200" "{
-  \"name\": \"Mindray BS-200\",
-  \"analyzerType\": \"CHEMISTRY\",
-  \"pluginTypeId\": \"generic-hl7\",
-  \"ipAddress\": \"${BS200_IP}\",
-  \"port\": 6001,
-  \"protocolVersion\": \"HL7_V2_3_1\",
-  \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"MINDRAY.*BS.?200|BS200\",
-  \"status\": \"ACTIVE\",
-  \"defaultConfigId\": \"hl7/mindray-bs200\"
-}"
-
-# 7. Mindray BS-300 (HL7/MLLP — chemistry) — dynamic IP
-create_analyzer "Mindray BS-300" "{
-  \"name\": \"Mindray BS-300\",
-  \"analyzerType\": \"CHEMISTRY\",
-  \"pluginTypeId\": \"generic-hl7\",
-  \"ipAddress\": \"${BS300_IP}\",
-  \"port\": 6002,
-  \"protocolVersion\": \"HL7_V2_3_1\",
-  \"communicationMode\": \"ANALYZER_INITIATED\",
-  \"identifierPattern\": \"MINDRAY.*BS.?300|BS300\",
-  \"status\": \"ACTIVE\",
-  \"defaultConfigId\": \"hl7/mindray-bs300\"
-}"
-
-# 8. Wondfo Finecare FS-205 (FILE/CSV — POCT immunoassay)
-create_analyzer "Wondfo Finecare FS-205" '{
-  "name": "Wondfo Finecare FS-205",
-  "analyzerType": "IMMUNOLOGY",
+# 3. QuantStudio 5 (FILE/EXCEL .xls) — no TCP mock; exercise via bridge upload UI
+create_analyzer "QuantStudio 5" '{
+  "name": "QuantStudio 5",
+  "analyzerType": "MOLECULAR",
   "pluginTypeId": "generic-file",
   "status": "ACTIVE",
-  "defaultConfigId": "file/wondfo-csv"
+  "defaultConfigId": "file/quantstudio"
 }'
 
-# 9. Tecan Infinite F50 (FILE/CSV — ELISA plate reader)
-create_analyzer "Tecan Infinite F50" '{
-  "name": "Tecan Infinite F50",
-  "analyzerType": "IMMUNOLOGY",
+# 4. QuantStudio 7 (FILE/EXCEL — same profile as QS5; brace glob matches both .xls/.xlsx)
+create_analyzer "QuantStudio 7" '{
+  "name": "QuantStudio 7",
+  "analyzerType": "MOLECULAR",
   "pluginTypeId": "generic-file",
   "status": "ACTIVE",
-  "defaultConfigId": "file/tecan-f50"
-}'
-
-# 10. Thermo Multiskan FC (FILE/CSV — ELISA plate reader)
-create_analyzer "Thermo Multiskan FC" '{
-  "name": "Thermo Multiskan FC",
-  "analyzerType": "IMMUNOLOGY",
-  "pluginTypeId": "generic-file",
-  "status": "ACTIVE",
-  "defaultConfigId": "file/multiskan-fc"
+  "defaultConfigId": "file/quantstudio"
 }'
 
 echo ""
 verify_seed_contract
 echo ""
-echo "Done. 10 analyzers seeded (4 ASTM/FILE + 3 HL7/MLLP + 3 new FILE)."
+echo "Done. 4 analyzers seeded (1 ASTM + 1 HL7/MLLP + 2 FILE)."

@@ -189,10 +189,10 @@ public class PatientMergeServiceImpl implements PatientMergeService {
     }
 
     private int countResultsForPatient(String patientId) {
-        Set<Integer> statusIdList = new HashSet<>();
-        statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.Canceled)));
-        statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.SampleRejected)));
-        statusIdList.add(Integer.parseInt(iStatusService.getStatusID(AnalysisStatus.NotStarted)));
+        Set<String> statusIdList = new HashSet<>();
+        statusIdList.add(iStatusService.getStatusID(AnalysisStatus.Canceled));
+        statusIdList.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
+        statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
         List<Analysis> allAnalyses = new ArrayList<>();
         List<Sample> samples = sampleHumanService.getSamplesForPatient(patientId);
         for (Sample sample : samples) {
