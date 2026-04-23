@@ -3,33 +3,40 @@ import { render, screen, act } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import EQAOrdersPage from "../EQAOrdersPage";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-jest.mock("react-router-dom", () => ({
-  useHistory: () => ({
-    push: jest.fn(),
-  }),
-}));
-
-jest.mock("../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
-}));
-
-jest.mock("../../layout/Layout", () => {
-  const React = require("react");
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal();
   return {
-    NotificationContext: React.createContext({
-      addNotification: jest.fn(),
+    ...actual,
+    useHistory: () => ({
+      push: vi.fn(),
     }),
   };
 });
 
-jest.mock("../../common/PageBreadCrumb", () => {
-  return function MockBreadCrumb() {
-    return <div data-testid="breadcrumb">breadcrumb</div>;
+vi.mock("../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
+}));
+
+vi.mock("../../layout/Layout", () => {
+  // Replaced inline React require
+  return {
+    NotificationContext: React.createContext({
+      addNotification: vi.fn(),
+    }),
   };
 });
 
-const { getFromOpenElisServer } = require("../../utils/Utils");
+vi.mock("../../common/PageBreadCrumb", () => {
+  return {
+    default: function MockBreadCrumb() {
+      return <div data-testid="breadcrumb">breadcrumb</div>;
+    },
+  };
+});
+
+// Replaced inline utils require
 
 const renderPage = () => {
   return render(
@@ -41,7 +48,7 @@ const renderPage = () => {
 
 describe("EQAOrdersPage", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url.includes("/rest/eqa/orders/summary")) {
         callback({

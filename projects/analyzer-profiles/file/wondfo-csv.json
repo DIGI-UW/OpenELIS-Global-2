@@ -16,55 +16,48 @@
   ],
   "column_mapping": {
     "Serial Number": "deviceSerialNumber",
+    "SerialNumber": "deviceSerialNumber",
     "Sample Number": "sampleId",
+    "SampleNumber": "sampleId",
+    "Sample ID": "sampleId",
     "Test Name": "testCode",
+    "TestName": "testCode",
     "Result": "result",
     "Unit": "unit",
     "Reference Range": "referenceRange",
+    "ReferenceRange": "referenceRange",
     "Date/Time": "dateTime",
+    "Date Time": "dateTime",
     "Reagent Lot": "reagentLot",
+    "ReagentLot": "reagentLot",
     "QC Status": "qcStatus"
   },
-  "column_spec": {
-    "reference": "OGC-344-finecare-fs205-field-mapping-v1.0",
-    "total_columns": 40,
-    "core_columns": [
-      "Serial Number",
-      "Sample Number",
-      "Test Name",
-      "Result",
-      "Unit",
-      "Reference Range",
-      "Date/Time",
-      "Reagent Lot",
-      "QC Status"
-    ],
-    "phi_excluded_columns": [
-      "Patient Name",
-      "Age",
-      "Gender"
-    ],
-    "notes": "Header names are inferred from OGC-344 column descriptions (Col 0=Serial Number, Col 1=Sample Number, etc.). Must be validated against real history.csv export. Column indices from spec: 0=Serial Number, 1=Sample Number, 3=Test Name, 4=Result, 5=Unit, 6=Reference Range, 21=Date/Time, 23=Reagent Lot, 25-27=PHI (excluded)."
-  },
-  "line_field_order": [
-    "sampleId",
-    "testCode",
-    "result",
-    "interpretation",
-    "position",
-    "dateTime",
-    "dateTime",
-    "unit"
-  ],
   "default_test_mappings": [
-    { "test_code": "TSH", "test_name_hint": "Thyroid Stimulating Hormone", "loinc": "11580-8", "unit": "mIU/L" },
-    { "test_code": "β-hCG", "test_name_hint": "Beta-Human Chorionic Gonadotropin", "loinc": "21198-7", "unit": "mIU/mL" }
+    {
+      "test_code": "TSH",
+      "test_name_hint": "Thyroid Stimulating Hormone",
+      "loinc": "11580-8",
+      "unit": "mIU/L"
+    },
+    {
+      "test_code": "β-hCG",
+      "test_name_hint": "Beta-Human Chorionic Gonadotropin",
+      "loinc": "21198-7",
+      "unit": "mIU/mL"
+    }
   ],
   "configDefaults": {
     "fileFormat": "CSV",
-    "delimiter": ",",
+    "delimiter": ";",
     "hasHeader": true,
-    "skipRows": 1
+    "skipRows": 1,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 }
+    ]
   },
   "parsing_notes": {
     "metadata_row": "Row 0 is a metadata line containing instrument serial number. Skipped via skipRows=1.",

@@ -9,11 +9,18 @@ ENV TRUSTSTORE_PW="tspass"
 ##
 # Prerequesites
 #
-RUN apt-get update && apt-get upgrade -y && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      openssl net-tools python default-jdk maven \ 
-      apache2-utils git apt-transport-https \
-      ca-certificates curl gnupg lsb-release software-properties-common\
+RUN sed -i 's|http://archive.ubuntu.com|http://azure.archive.ubuntu.com|g; s|http://security.ubuntu.com|http://azure.archive.ubuntu.com|g' \
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true \
+    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
+        --allow-releaseinfo-change -y update \
+    && apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
+        -y upgrade \
+    && DEBIAN_FRONTEND=noninteractive apt-get \
+        -o Acquire::Retries=5 -o Acquire::http::Timeout=60 \
+        -y --no-install-recommends install \
+        openssl net-tools default-jdk maven \
+        apache2-utils git apt-transport-https \
+        ca-certificates curl gnupg lsb-release software-properties-common \
     && apt-get clean
 
 ##

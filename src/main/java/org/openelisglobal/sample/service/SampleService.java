@@ -21,10 +21,10 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     List<Sample> getConfirmationSamplesReceivedInDateRange(Date receivedDateStart, Date receivedDateEnd);
 
-    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(List<Integer> inclusiveProjectIdList,
-            List<Integer> inclusiveStatusIdList, String minAccession, String maxAccession);
+    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(List<String> inclusiveProjectIdList,
+            List<String> inclusiveStatusIdList, String minAccession, String maxAccession);
 
-    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(String projectId, List<Integer> inclusiveStatusIdList,
+    List<Sample> getSamplesByProjectAndStatusIDAndAccessionRange(String projectId, List<String> inclusiveStatusIdList,
             String minAccession, String maxAccession);
 
     String getLargestAccessionNumberWithPrefix(String prefix);
