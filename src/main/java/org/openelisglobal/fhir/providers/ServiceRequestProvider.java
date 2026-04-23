@@ -456,23 +456,25 @@ public class ServiceRequestProvider implements IResourceProvider {
             }
 
             String sysUserId = FhirProviderUtils.getSysUserId(request);
-
-            // Get existing analysis by FHIR ID
             String analysisUuid = theId.getIdPart();
-            List<Analysis> existingAnalyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
 
+            List<Analysis> existingAnalyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
             if (existingAnalyses.isEmpty()) {
                 throw new ResourceNotFoundException("Analysis not found with UUID: " + analysisUuid);
             }
 
             Analysis analysis = existingAnalyses.get(0);
+
+            analysis = analysisService.get(analysis.getId());
+
+            // Cancel the analysis
             analysis.setSysUserId(sysUserId);
             analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
             Analysis updatedAnalysis = analysisService.update(analysis);
-            List<String> updatedAnalysisIds = new ArrayList<>();
-            updatedAnalysisIds.add(updatedAnalysis.getId());
-            fhirTransformService.transformAnalysisByIds(updatedAnalysisIds);
+
+            // Notify FHIR store about the change
+            fhirTransformService.transformAnalysisByIds(List.of(updatedAnalysis.getId()));
 
             MethodOutcome outcome = new MethodOutcome();
             outcome.setResponseStatusCode(204);
@@ -481,14 +483,13 @@ public class ServiceRequestProvider implements IResourceProvider {
         } catch (InvalidRequestException | ResourceNotFoundException e) {
             LogEvent.logError(this.getClass().getSimpleName(), method, "Client error: " + safeMessage(e));
             throw e;
-
         } catch (InternalErrorException e) {
             LogEvent.logError(this.getClass().getSimpleName(), method, "Internal error: " + safeMessage(e));
             throw e;
-
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getSimpleName(), method, "Unhandled exception: " + safeMessage(e));
-            throw new InternalErrorException("Unexpected server error while deleting ServiceRequest");
+            throw new InternalErrorException("Unexpected server error while deleting ServiceRequest: " + e.getMessage(),
+                    e);
         }
     }
 

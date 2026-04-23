@@ -10,16 +10,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.fhir.providers.ServiceRequestProvider;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -36,6 +43,15 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ServiceRequestProvider serviceRequestProvider;
+
+    @Autowired
+    private PanelService panelService;
+
+    @Autowired
+    private LocalizationService localizationSevice;
+
+    @Autowired
+    private AnalysisService analysisService;
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
@@ -59,7 +75,6 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
         Mockito.when(mockFactory.getValidator(Mockito.any())).thenReturn(mockValidator);
         Mockito.when(mockFactory.getGenerator(Mockito.any())).thenReturn(mockGenerator);
 
-        // inject static field
         Field field = AccessionNumberUtil.class.getDeclaredField("accessionNumberValidatorFactory");
         field.setAccessible(true);
         field.set(null, mockFactory);
@@ -329,5 +344,31 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
         assertEquals("ServiceRequest", jsonResponse.get("resourceType").asText());
+    }
+
+    @Test
+    public void delete_shouldDeleteServiceRequestByFhirUUID() throws ServletException, IOException {
+        Analysis analysis = analysisService.getAnalysisById("1");
+
+        Localization localizationOld = new Localization();
+        localizationOld.setDescription("Test Panel");
+        localizationOld.setLastupdated(new Timestamp(System.currentTimeMillis()));
+        Localization savedLocalization = localizationSevice.save(localizationOld);
+        Panel newPanel = new Panel();
+        newPanel.setPanelName("New Panel Name");
+        newPanel.setDescription("A test panel from dataset.");
+        newPanel.setLocalization(savedLocalization);
+        Panel panel = panelService.save(newPanel);
+        analysis.setPanel(panel);
+        analysisService.save(analysis);
+
+        MockHttpServletRequest request = buildFhirRequest("DELETE", "/ServiceRequest/" + ANALYSIS1_FHIRID);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(204, response.getStatus());
+        Analysis analysis1 = analysisService.get("1");
+        assertEquals("8", analysis1.getStatusId());
+
     }
 }
