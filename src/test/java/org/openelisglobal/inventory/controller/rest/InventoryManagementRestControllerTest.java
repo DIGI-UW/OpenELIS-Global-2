@@ -67,7 +67,7 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
     }
 
     @Test
-    public void testConsumeInventory_InvalidItemId_ShouldReturn500() throws Exception {
+    public void testConsumeInventory_InvalidItemId_ShouldReturn400() throws Exception {
         ConsumeRequest request = new ConsumeRequest();
         request.setItemId("abc");
         request.setQuantity(10.0);
@@ -76,11 +76,11 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .session(mockSession))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest()); // NumberFormatException is an IllegalArgumentException
     }
 
     @Test
-    public void testConsumeInventory_NullItemId_ShouldReturn500() throws Exception {
+    public void testConsumeInventory_NullItemId_ShouldReturn400() throws Exception {
         ConsumeRequest request = new ConsumeRequest();
         request.setItemId(null);
         request.setQuantity(10.0);
@@ -89,7 +89,7 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
                 .session(mockSession))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest()); // Long.valueOf(null) throws NumberFormatException("null")
     }
 
     @Test
@@ -122,6 +122,8 @@ public class InventoryManagementRestControllerTest extends BaseWebContextSensiti
 
         InventoryLot lot = new InventoryLot();
         lot.setInventoryItem(item);
+        lot.setInitialQuantity(10.0);
+        lot.setCurrentQuantity(10.0);
         // lotNumber is missing
 
         mockMvc.perform(post("/rest/inventory/management/receive")
