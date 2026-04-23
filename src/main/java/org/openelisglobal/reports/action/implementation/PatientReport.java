@@ -584,6 +584,7 @@ public abstract class PatientReport extends Report {
                 Result result = resultList.get(0);
                 setCorrectedStatus(result, data);
                 setNormalRange(data, test, result);
+                setRangeStatus(data, result);
                 data.setResult(getAugmentedResult(data, result));
                 data.setFinishDate(analysisService.getCompletedDateForDisplay(currentAnalysis));
                 data.setAlerts(getResultFlag(result, null, data));
@@ -616,6 +617,40 @@ public abstract class PatientReport extends Report {
         String uom = getUnitOfMeasure(test);
         data.setTestRefRange(addIfNotEmpty(getRange(result), appendUOMToRange() ? uom : null));
         data.setUom(uom);
+    }
+
+    private void setRangeStatus(ClinicalPatientData data, Result result) {
+        data.setRangeStatus(getRangeStatus(result));
+    }
+
+    private String getRangeStatus(Result result) {
+        if (result == null || !TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())
+                || GenericValidator.isBlankOrNull(result.getValue())) {
+            return "";
+        }
+
+        Double minNormal = result.getMinNormal();
+        Double maxNormal = result.getMaxNormal();
+        if (minNormal == null || maxNormal == null) {
+            return "";
+        }
+        if (minNormal.doubleValue() == 0.0 && maxNormal.doubleValue() == 0.0) {
+            return "";
+        }
+
+        try {
+            double resultValue = Double.valueOf(result.getValue(true));
+            if (resultValue < minNormal) {
+                return MessageUtil.getMessage("report.belowNormal");
+            }
+            if (resultValue > maxNormal) {
+                return MessageUtil.getMessage("report.aboveNormal");
+            }
+            return MessageUtil.getMessage("report.normal");
+        } catch (NumberFormatException e) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "getRangeStatus", e.getMessage());
+            return "";
+        }
     }
 
     private String getAugmentedResult(ClinicalPatientData data, Result result) {
