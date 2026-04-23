@@ -28,13 +28,13 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
 
     public Referral getReferralById(String referralId) throws LIMSRuntimeException;
 
-    public Referral getReferralByAnalysisId(Integer analysisId) throws LIMSRuntimeException;
+    public Referral getReferralByAnalysisId(String analysisId) throws LIMSRuntimeException;
 
     public List<Referral> getReferralsByStatus(List<ReferralStatus> status);
 
     // public void updateData(Referral referral) throws LIMSRuntimeException;
 
-    public List<Referral> getAllReferralsBySampleId(Integer id) throws LIMSRuntimeException;
+    public List<Referral> getAllReferralsBySampleId(String id) throws LIMSRuntimeException;
 
     /**
      * @param organizationId - the PK of an organization
@@ -42,12 +42,12 @@ public interface ReferralDAO extends BaseDAO<Referral, String> {
      * @param highDate       - referral request date high
      * @return a list in the of referrals
      */
-    public List<Referral> getAllReferralsByOrganization(Integer organizationId, Date lowDate, Date highDate);
+    public List<Referral> getAllReferralsByOrganization(String organizationId, Date lowDate, Date highDate);
 
-    public List<Referral> getReferralsByAnalysisIds(List<Integer> analysisIds);
+    public List<Referral> getReferralsByAnalysisIds(List<String> analysisIds);
 
     public List<Referral> getReferralsByTestAndDate(ReferDateType dateType, Timestamp startTimestamp,
-            Timestamp endTimestamp, List<Integer> testUnitIds, List<Integer> testIds);
+            Timestamp endTimestamp, List<String> testUnitIds, List<String> testIds);
 
     /**
      * Get all referrals that are not assigned to a shipping box

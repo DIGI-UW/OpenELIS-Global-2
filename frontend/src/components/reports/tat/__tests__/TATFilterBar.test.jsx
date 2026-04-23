@@ -6,8 +6,8 @@ import messages from "../../../../languages/en.json";
 import TATFilterBar from "../TATFilterBar";
 
 // Mock the API utility — filter dropdowns load options on mount
-jest.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn((url, callback) => {
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn((url, callback) => {
     if (url.includes("test-sections")) {
       callback([
         { id: "101", value: "Hematology" },
@@ -37,10 +37,10 @@ const renderWithIntl = (component) => {
 };
 
 describe("TATFilterBar", () => {
-  const mockOnGenerate = jest.fn();
+  const mockOnGenerate = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test("renders all filter controls", () => {

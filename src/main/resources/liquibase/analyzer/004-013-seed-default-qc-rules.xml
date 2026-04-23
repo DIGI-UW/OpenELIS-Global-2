@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+        FR-15: QC identification rules are now seeded from analyzer profile
+        JSONs at creation time via AnalyzerServiceImpl.createQcRulesFromProfile().
+        Each profile's configDefaults.qcRules carries instrument-appropriate
+        rules (e.g., QuantStudio: FIELD_EQUALS QC_TASK=STANDARD/NTC + prefix
+        matching; ELISA instruments: SPECIMEN_ID_PREFIX for NEG/POS/NC/PC/BLANC).
+
+        This changeset is retained as a no-op for deployment compatibility:
+        existing installations that already executed the original SQL have
+        the changeset ID recorded in DATABASECHANGELOG and will skip it.
+        Fresh installations execute the harmless SELECT 1.
+
+        Original SQL (removed): bulk-inserted default rules for all existing
+        analyzers at migration time. This was incorrect for the profile-driven
+        architecture where analyzers are created via REST API at runtime.
+    -->
+    <changeSet id="analyzer-013-seed-default-qc-rules" author="fr-15-qc-rules">
+        <validCheckSum>ANY</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="analyzer_qc_rule"/>
+        </preConditions>
+        <comment>FR-15: no-op — QC rules come from analyzer profiles now (see configDefaults.qcRules)</comment>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+
+</databaseChangeLog>

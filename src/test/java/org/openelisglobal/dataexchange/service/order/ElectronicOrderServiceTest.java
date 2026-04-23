@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.services.StatusService;
+import org.openelisglobal.dataexchange.order.dao.ElectronicOrderDAO;
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ElectronicOrderService electronicOrderService;
+
+    @Autowired
+    private ElectronicOrderDAO electronicOrderDAO;
 
     private List<ElectronicOrder> electronicOrders;
     private static int NUMBER_OF_ELECTRONIC_ORDERS = 0;
@@ -278,17 +282,17 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getCountOfElectronicOrdersByStatusList_ShouldReturnElectronicOrders_UsingListOfStatusIds() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
         NUMBER_OF_ELECTRONIC_ORDERS = electronicOrderService.getCountOfElectronicOrdersByStatusList(statusIds);
         assertEquals(2, NUMBER_OF_ELECTRONIC_ORDERS);
     }
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsSTATUS_ID() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.STATUS_ID);
         assertNotNull(electronicOrders);
@@ -298,9 +302,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsLAST_UPDATED_ASC() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.LAST_UPDATED_ASC);
         assertNotNull(electronicOrders);
@@ -310,9 +314,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsLAST_UPDATED_DESC() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.LAST_UPDATED_DESC);
         assertNotNull(electronicOrders);
@@ -322,9 +326,9 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getAllElectronicOrdersByStatusList_ShouldReturnElectronicOrders_WhenOrderIsEXTERNAL_ID() {
-        List<Integer> statusIds = new ArrayList<>();
-        statusIds.add(1);
-        statusIds.add(3);
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add("1");
+        statusIds.add("3");
         electronicOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
                 ElectronicOrder.SortOrder.EXTERNAL_ID);
         assertNotNull(electronicOrders);
@@ -366,6 +370,15 @@ public class ElectronicOrderServiceTest extends BaseWebContextSensitiveTest {
 //        assertEquals(3, electronicOrders.size());
 //        assertEquals("1", electronicOrders.get(0).getId());
 
+    }
+
+    @Test
+    public void getAllElectronicOrdersMatchingAnyValue_shouldReturnMatchingOrders() {
+        List<String> identifierValues = new ArrayList<>();
+        identifierValues.add("ext123456");
+        List<ElectronicOrder> orders = electronicOrderDAO.getAllElectronicOrdersMatchingAnyValue(identifierValues,
+                "John", ElectronicOrder.SortOrder.STATUS_ID);
+        assertNotNull(orders);
     }
 
     private Date convertDateFromUtilToSqlDate(String dateString) throws ParseException {

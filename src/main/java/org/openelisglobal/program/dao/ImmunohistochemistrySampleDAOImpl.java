@@ -2,7 +2,6 @@ package org.openelisglobal.program.dao;
 
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -24,7 +23,7 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
         String sql = "from ImmunohistochemistrySample is where is.status in (:statuses)";
         Query<ImmunohistochemistrySample> query = entityManager.unwrap(Session.class).createQuery(sql,
                 ImmunohistochemistrySample.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         List<ImmunohistochemistrySample> list = query.list();
 
         return list;
@@ -34,7 +33,7 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
     public Long getCountWithStatus(List<ImmunohistochemistryStatus> statuses) {
         String sql = "select count(*) from ImmunohistochemistrySample is where is.status in (:statuses)";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         Long count = query.uniqueResult();
 
         return count;
@@ -46,7 +45,7 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
         String sql = "select count(*) from ImmunohistochemistrySample is where is.status in (:statuses) and"
                 + " is.lastupdated between :datefrom and :dateto";
         Query<Long> query = entityManager.unwrap(Session.class).createQuery(sql, Long.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("datefrom", from);
         query.setParameter("dateto", to);
         Long count = query.uniqueResult();
@@ -60,7 +59,7 @@ public class ImmunohistochemistrySampleDAOImpl extends BaseDAOImpl<Immunohistoch
                 + " is.sample.accessionNumber = :labNumber";
         Query<ImmunohistochemistrySample> query = entityManager.unwrap(Session.class).createQuery(sql,
                 ImmunohistochemistrySample.class);
-        query.setParameterList("statuses", statuses.stream().map(e -> e.toString()).collect(Collectors.toList()));
+        query.setParameterList("statuses", statuses);
         query.setParameter("labNumber", labNumber);
         List<ImmunohistochemistrySample> list = query.list();
 

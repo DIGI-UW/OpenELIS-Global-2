@@ -48,7 +48,7 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
             String sql = "from AnalyzerResults a where a.analyzerId = :analyzerId and "
                     + "a.accessionNumber = :assessionNumber and " + "a.testName = :testName";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(sql, AnalyzerResults.class);
-            query.setParameter("analyzerId", Integer.parseInt(result.getAnalyzerId()));
+            query.setParameter("analyzerId", result.getAnalyzerId());
             query.setParameter("assessionNumber", result.getAccessionNumber());
             query.setParameter("testName", result.getTestName());
 
@@ -72,5 +72,20 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
             throw new LIMSRuntimeException("Error in AnalyzerResults readAnalyzerResults()", e);
         }
         return data;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerResults> findWithImportIssues(int limit) {
+        try {
+            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason IS NOT NULL "
+                    + "ORDER BY a.lastupdated DESC NULLS LAST, a.id DESC";
+            Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerResults.class);
+            query.setMaxResults(Math.max(1, limit));
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in AnalyzerResults findWithImportIssues()", e);
+        }
     }
 }

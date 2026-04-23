@@ -53,9 +53,8 @@
         <property name="clientReference" type="java.lang.String">
             <column name="CLIENT_REFERENCE" length="20" />
         </property>
-        <property name="status"
-            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
-            <column name="STATUS" length="3" />
+        <property name="status" type="java.lang.String">
+            <column name="STATUS" length="1" />
         </property>
         <property name="releasedDate" type="java.sql.Date">
             <column name="RELEASED_DATE" length="7" />
@@ -97,6 +96,18 @@
             type="java.lang.String" length="10" />
         <property name="gpsCaptureTimestamp"
             column="gps_capture_timestamp" type="java.sql.Timestamp" />
+        <property name="storageSkipped" column="storage_skipped"
+            type="java.lang.Boolean" />
+        <property name="consentGiven" column="consent_provided"
+            type="java.lang.Boolean" />
+        <property name="consentFormReference"
+            column="consent_reference_no" type="java.lang.String" length="100" />
+        <property name="consentRecordedAt"
+            column="consent_recorded_at" type="java.sql.Timestamp" />
+        <property name="consentRecordedBy"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="consent_recorded_by" precision="10" scale="0" />
+        </property>
 
         <!-- <set name="sampleOrganizations" inverse="true"> <key> <column name="SAMP_ID"
             precision="10" scale="0" /> </key> <one-to-many class="org.openelisglobal.sampleorganization.valueholder.SampleOrganization"

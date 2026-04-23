@@ -50,21 +50,20 @@
       "columns": ["WellPosition", "SampleID", "OD_450", "OD_620", "CorrectedOD", "Interpretation"]
     }
   },
-  "line_field_order": [
-    "sampleId",
-    "testCode",
-    "result",
-    "interpretation",
-    "position",
-    "testDate",
-    "testTime"
-  ],
   "default_test_mappings": [
     { "test_code": "HIV ELISA", "test_name_hint": "HIV ELISA (OD)", "loinc": "68961-2", "unit": "S/CO" }
   ],
   "configDefaults": {
     "fileFormat": "CSV",
     "delimiter": ",",
-    "hasHeader": true
+    "hasHeader": true,
+    "qcRules": [
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NEG", "isActive": true, "sortOrder": 1 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "POS", "isActive": true, "sortOrder": 2 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "NC", "isActive": true, "sortOrder": 3 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "PC", "isActive": true, "sortOrder": 4 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANC", "isActive": true, "sortOrder": 5 },
+      { "ruleType": "SPECIMEN_ID_PREFIX", "operand": "BLANK", "isActive": true, "sortOrder": 6 }
+    ]
   }
 }
