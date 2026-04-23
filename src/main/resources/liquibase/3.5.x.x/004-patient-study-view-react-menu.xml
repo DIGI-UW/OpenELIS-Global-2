@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+>
+
+    <changeSet author="sagar_khandagre" id="20250714001">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <sqlCheck
+                expectedResult="0"
+            >SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_patient_consult_react'</sqlCheck>
+            <sqlCheck
+                expectedResult="1"
+            >SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_patient_create'</sqlCheck>
+            <columnExists
+                tableName="menu"
+                schemaName="clinlims"
+                columnName="hide_in_old_ui"
+            />
+            <columnExists
+                tableName="menu"
+                schemaName="clinlims"
+                columnName="hide_in_new_ui"
+            />
+        </preConditions>
+        <comment
+        >Add React-only menu entry for Patient Study View under Patient -> Study. hide_in_old_ui=true keeps it out of the legacy JSP banner while the React header shows it normally.</comment>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq" />
+            <column
+                name="parent_id"
+                valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_patient_create')"
+            />
+            <column name="presentation_order" value="5" />
+            <column name="element_id" value="menu_patient_consult_react" />
+            <column name="action_url" value="/PatientStudyView" />
+            <column name="display_key" value="banner.menu.patientConsult" />
+            <column
+                name="tool_tip_key"
+                value="tooltip.banner.menu.patientConsult"
+            />
+            <column name="new_window" valueBoolean="false" />
+            <column name="is_active" valueBoolean="true" />
+            <column name="hide_in_old_ui" valueBoolean="true" />
+            <column name="hide_in_new_ui" valueBoolean="false" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="sagar_khandagre" id="20250714002">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module" schemaName="clinlims" />
+            <sqlCheck
+                expectedResult="0"
+            >SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'PatientStudyView'</sqlCheck>
+        </preConditions>
+        <comment
+        >Register PatientStudyView system module for role-based access control of the React Patient Study View page and its REST endpoint.</comment>
+        <insert tableName="system_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_seq" />
+            <column name="name" value="PatientStudyView" />
+            <column name="description" value="" />
+            <column name="has_select_flag" value="Y" />
+            <column name="has_add_flag" value="Y" />
+            <column name="has_update_flag" value="Y" />
+            <column name="has_delete_flag" value="Y" />
+        </insert>
+    </changeSet>
+
+    <changeSet author="sagar_khandagre" id="20250714003">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_module" schemaName="clinlims" />
+            <sqlCheck
+                expectedResult="1"
+            >SELECT COUNT(*) FROM clinlims.system_role WHERE name = 'Reception'</sqlCheck>
+            <sqlCheck
+                expectedResult="1"
+            >SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'PatientStudyView'</sqlCheck>
+        </preConditions>
+        <comment
+        >Map the PatientStudyView URLs to the system module and grant Reception role access.</comment>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/PatientStudyView" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PatientStudyView')"
+            />
+        </insert>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq" />
+            <column name="url_path" value="/rest/patient-study-view" />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PatientStudyView')"
+            />
+        </insert>
+        <insert tableName="system_role_module" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_role_module_seq" />
+            <column name="has_select" value="Y" />
+            <column name="has_add" value="Y" />
+            <column name="has_update" value="Y" />
+            <column
+                name="system_role_id"
+                valueComputed="(SELECT id FROM clinlims.system_role WHERE name = 'Reception')"
+            />
+            <column
+                name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'PatientStudyView')"
+            />
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

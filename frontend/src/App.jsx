@@ -151,6 +151,8 @@ import ReferredOutTests from "./components/resultPage/resultsReferredOut/Referre
 import { Roles } from "./components/utils/Utils";
 import NoteBookInstanceEntryForm from "./components/notebook/NoteBookInstanceEntryForm";
 import NotebookSampleOrder from "./components/notebook/NotebookSampleOrder";
+import PatientStudyView from "./components/patientStudyView/PatientStudyView";
+import PatientStudyEditView from "./components/patientStudyEdit/PatientStudyEditView";
 const FreezerMonitoringDashboard = lazyWithRetry(
   () => import("./components/coldStorage/FreezerMonitoringDashboard"),
 );
@@ -699,6 +701,18 @@ export default function App() {
                   path="/PatientManagement"
                   exact
                   component={() => <PatientManagement />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientStudyView"
+                  exact
+                  component={() => <PatientStudyView />}
+                  role={Roles.RECEPTION}
+                />
+                <SecureRoute
+                  path="/PatientStudyEdit"
+                  exact
+                  component={() => <PatientStudyEditView />}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute
