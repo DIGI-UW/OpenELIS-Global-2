@@ -19,7 +19,7 @@ import {
   Button,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Search, Reset } from "@carbon/icons-react";
+import { Search, Reset, Download } from "@carbon/icons-react";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
 
@@ -67,12 +67,6 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
         },
       ).then((r) => r.json()),
       fetch(
-        `${config.serverBaseUrl}/rest/biorepository/dashboard/storage-utilization`,
-        {
-          credentials: "include",
-        },
-      ).then((r) => r.json()),
-      fetch(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/sample-aging`,
         {
           credentials: "include",
@@ -109,7 +103,6 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
       .then(
         ([
           capacity,
-          storageUtilization,
           aging,
           qc,
           discrepancies,
@@ -119,7 +112,6 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
         ]) => {
         setMetricsData({
           capacity,
-          storageUtilization,
           aging,
           qc,
           discrepancies,
@@ -197,16 +189,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     );
   }
 
-  const {
-    capacity,
-    storageUtilization,
-    aging,
-    qc,
-    discrepancies,
-    qcHistory,
-    retrieval,
-    disposal,
-  } =
+  const { capacity, aging, qc, discrepancies, qcHistory, retrieval, disposal } =
     metricsData;
 
   const formatPercent = (value) => {
@@ -215,6 +198,40 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
       return "N/A";
     }
     return `${numeric.toFixed(1)}%`;
+  };
+
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportQcBatch = (qcBatchId, format = "pdf") => {
+    if (!qcBatchId || qcBatchId === "UNBATCHED") {
+      return;
+    }
+    fetch(
+      `${config.serverBaseUrl}/rest/biorepository/qc/export/${format}?qcBatchId=${encodeURIComponent(qcBatchId)}`,
+      {
+        credentials: "include",
+      },
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to export QC batch ${qcBatchId}`);
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        const stamp = new Date().toISOString().slice(0, 10);
+        downloadBlob(blob, `qc_batch_${qcBatchId}_${stamp}.${format}`);
+      })
+      .catch((err) => setError(err.message));
   };
 
   // Storage capacity rows
@@ -237,27 +254,6 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     { key: "status", header: "Status" },
     { key: "count", header: "Sample Count" },
     { key: "percentage", header: "Percentage" },
-  ];
-
-  const storageUtilizationRows = (storageUtilization?.devices || []).map(
-    (device, idx) => ({
-      id: `storage-device-${idx}`,
-      deviceName: device.deviceName || device.deviceCode || "Unknown",
-      deviceType: device.deviceType || "N/A",
-      currentUsage: device.currentUsage ?? 0,
-      totalCapacity: device.totalCapacity ?? 0,
-      utilizationPercent: formatPercent(device.utilizationPercent),
-      capacitySource: device.capacitySource || "UNDEFINED",
-    }),
-  );
-
-  const storageUtilizationHeaders = [
-    { key: "deviceName", header: "Device" },
-    { key: "deviceType", header: "Type" },
-    { key: "currentUsage", header: "Current Usage" },
-    { key: "totalCapacity", header: "Total Capacity" },
-    { key: "utilizationPercent", header: "Utilization" },
-    { key: "capacitySource", header: "Capacity Source" },
   ];
 
   // Sample aging rows
@@ -495,9 +491,32 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     { key: "failRate", header: "Fail Rate" },
   ];
 
-  const deriveQcStatus = (item) => item.qcStatus || "UNKNOWN";
+  const deriveQcStatus = (item) => {
+    if (item.qcStatus) return item.qcStatus;
+    if (item.qcResult === "VERIFIED") return "VALID";
+    if (item.qcResult === "DISCREPANCY_FOUND") {
+      return item.discrepancyType === "SAMPLE_MISSING" ? "MISSING" : "QC_FAILED";
+    }
+    return "UNKNOWN";
+  };
 
-  const deriveLifecycleOutcome = (item) => item.lifecycleOutcome || "UNKNOWN";
+  const deriveLifecycleOutcome = (item) => {
+    if (item.lifecycleOutcome) return item.lifecycleOutcome;
+    const status = deriveQcStatus(item);
+    if (item.qcResult === "VERIFIED" || status === "VALID") {
+      return "PASSED";
+    }
+    if (status === "MISSING") {
+      return "FAILED_MARKED_MISSING";
+    }
+    if (item.qcResult === "DISCREPANCY_FOUND" && item.correctiveAction) {
+      return "FAILED_CORRECTED";
+    }
+    if (item.qcResult === "DISCREPANCY_FOUND") {
+      return "FAILED_PENDING_CORRECTION";
+    }
+    return "UNKNOWN";
+  };
 
   const formatLifecycleOutcome = (value) => {
     const labels = {
@@ -512,6 +531,8 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
 
   const historyRows = (qcHistory?.items || []).map((item, idx) => ({
     id: `qc-history-${idx}`,
+    qcBatchId: item.qcBatchId || "UNBATCHED",
+    inspectionDateRaw: item.inspectionDate || null,
     inspectionDate: item.inspectionDate
       ? new Date(item.inspectionDate).toLocaleString()
       : "-",
@@ -522,11 +543,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     qcFailed: item.qcFailed ? "Yes" : "No",
     inspectorName: item.inspectorName || item.technicianId || "-",
     freezer: item.freezer || "Unknown",
-    freezerFlag: item.freezerFlag || "NORMAL",
     rack: item.rack || "Unknown",
-    boxFlag: item.boxFlag || "NORMAL",
-    escalationTriggered: item.escalationTriggered ? "Yes" : "No",
-    failureResolution: item.failureResolution || "N/A",
     discrepancyType: item.discrepancyType || "-",
     failureComment: item.failureComment || item.remarks || "-",
     correctiveAction: item.correctiveAction || "-",
@@ -547,27 +564,62 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     remarks: item.remarks || "-",
   }));
 
+  const historyBatchRows = (() => {
+    const grouped = new Map();
+    historyRows.forEach((row) => {
+      const key = row.qcBatchId || "UNBATCHED";
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          id: `qc-history-batch-${key}`,
+          qcBatchId: key,
+          latestInspectionDate: row.inspectionDate || "-",
+          latestInspectionDateRaw: row.inspectionDateRaw,
+          sampleCount: 0,
+          passCount: 0,
+          failCount: 0,
+        });
+      }
+      const batch = grouped.get(key);
+      batch.sampleCount += 1;
+      if (row.qcResult === "VERIFIED" || row.qcStatus === "VALID") {
+        batch.passCount += 1;
+      } else {
+        batch.failCount += 1;
+      }
+      if (
+        row.inspectionDateRaw &&
+        (!batch.latestInspectionDateRaw ||
+          new Date(row.inspectionDateRaw) > new Date(batch.latestInspectionDateRaw))
+      ) {
+        batch.latestInspectionDate = row.inspectionDate;
+        batch.latestInspectionDateRaw = row.inspectionDateRaw;
+      }
+    });
+    return Array.from(grouped.values()).sort(
+      (a, b) =>
+        new Date(b.latestInspectionDateRaw || 0).getTime() -
+        new Date(a.latestInspectionDateRaw || 0).getTime(),
+    );
+  })();
+
   const discrepancyHistoryCount = historyRows.filter(
     (row) => row.qcResult === "DISCREPANCY_FOUND",
   ).length;
   const correctiveActionCount = historyRows.filter(
     (row) => row.correctiveAction && row.correctiveAction !== "-",
   ).length;
-  const correctedOutcomeCount =
-    qc?.failureResolutionSummary?.correctedVsUnresolved?.corrected ??
-    historyRows.filter(
-      (row) =>
-        row.lifecycleOutcome === "Failed (correction logged)" ||
-        row.lifecycleOutcome === "Failed (marked missing)",
-    ).length;
-  const pendingCorrectionCount =
-    qc?.failureResolutionSummary?.correctedVsUnresolved?.unresolved ??
-    historyRows.filter(
-      (row) => row.lifecycleOutcome === "Failed (pending correction)",
-    ).length;
+  const correctedOutcomeCount = historyRows.filter(
+    (row) =>
+      row.lifecycleOutcome === "Failed (correction logged)" ||
+      row.lifecycleOutcome === "Failed (marked missing)",
+  ).length;
+  const pendingCorrectionCount = historyRows.filter(
+    (row) => row.lifecycleOutcome === "Failed (pending correction)",
+  ).length;
 
   const historyHeaders = [
     { key: "inspectionDate", header: "Inspection Date" },
+    { key: "qcBatchId", header: "QC Batch ID" },
     { key: "qcResult", header: "Result" },
     { key: "qcStatus", header: "QC Status" },
     { key: "lifecycleOutcome", header: "Lifecycle Outcome" },
@@ -575,11 +627,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     { key: "qcFailed", header: "QC Failed" },
     { key: "inspectorName", header: "Technician" },
     { key: "freezer", header: "Freezer" },
-    { key: "freezerFlag", header: "Freezer Flag" },
     { key: "rack", header: "Rack" },
-    { key: "boxFlag", header: "Box Flag" },
-    { key: "escalationTriggered", header: "Escalation Triggered" },
-    { key: "failureResolution", header: "Failure Resolution" },
     { key: "discrepancyType", header: "Discrepancy Type" },
     { key: "failureComment", header: "Failure Comment" },
     { key: "correctiveAction", header: "Corrective Action" },
@@ -589,6 +637,15 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     { key: "correctedAt", header: "Corrected At" },
     { key: "correctionReason", header: "Correction Reason" },
     { key: "remarks", header: "Remarks" },
+  ];
+
+  const historyBatchHeaders = [
+    { key: "qcBatchId", header: "QC Batch ID" },
+    { key: "latestInspectionDate", header: "Latest Inspection" },
+    { key: "sampleCount", header: "Samples" },
+    { key: "passCount", header: "Pass" },
+    { key: "failCount", header: "Fail" },
+    { key: "actions", header: "Batch Report" },
   ];
 
   // Retrieval stats rows
@@ -664,12 +721,29 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     <div className="detailed-metrics-tab" style={{ padding: "1.5rem" }}>
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>
-          <h4 style={{ marginBottom: "1rem" }}>
-            <FormattedMessage
-              id="biorepository.reporting.metrics.title"
-              defaultMessage="Detailed Metrics"
-            />
-          </h4>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1rem",
+              gap: "1rem",
+              flexWrap: "wrap",
+            }}
+          >
+            <h4 style={{ marginBottom: 0 }}>
+              <FormattedMessage
+                id="biorepository.reporting.metrics.title"
+                defaultMessage="Detailed Metrics"
+              />
+            </h4>
+            <Button kind="secondary" size="sm" onClick={() => window.print()}>
+              <FormattedMessage
+                id="biorepository.reporting.metrics.print"
+                defaultMessage="Print Current View"
+              />
+            </Button>
+          </div>
         </Column>
 
         {/* Date Range Filters */}
@@ -790,49 +864,6 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                   </TableContainer>
                 )}
               </DataTable>
-              <div style={{ marginTop: "1rem" }}>
-                <DataTable
-                  rows={storageUtilizationRows}
-                  headers={storageUtilizationHeaders}
-                >
-                  {({
-                    rows,
-                    headers,
-                    getTableProps,
-                    getHeaderProps,
-                    getRowProps,
-                  }) => (
-                    <TableContainer
-                      title="Storage Utilization by Device"
-                      description={`Devices: ${storageUtilization?.totalDevices ?? 0} | Capacity-defined: ${storageUtilization?.capacityDefinedDevices ?? 0} | Undefined capacity: ${storageUtilization?.capacityUndefinedDevices ?? 0} | Weighted utilization: ${formatPercent(storageUtilization?.averageUtilization)}`}
-                    >
-                      <Table {...getTableProps()}>
-                        <TableHead>
-                          <TableRow>
-                            {headers.map((header) => (
-                              <TableHeader
-                                key={header.key}
-                                {...getHeaderProps({ header })}
-                              >
-                                {header.header}
-                              </TableHeader>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {rows.map((row) => (
-                            <TableRow key={row.id} {...getRowProps({ row })}>
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  )}
-                </DataTable>
-              </div>
             </AccordionItem>
 
             {/* Sample Aging Breakdown */}
@@ -1327,6 +1358,93 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                 defaultMessage: "QC History (Completed Checks)",
               })}
             >
+              <DataTable rows={historyBatchRows} headers={historyBatchHeaders}>
+                {({
+                  rows,
+                  headers,
+                  getTableProps,
+                  getHeaderProps,
+                  getRowProps,
+                }) => (
+                  <TableContainer
+                    title="QC Batch Summary"
+                    description="Grouped by QC Batch ID for quick reporting and printable exports."
+                  >
+                    <Table {...getTableProps()}>
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((header) => (
+                            <TableHeader
+                              key={header.key}
+                              {...getHeaderProps({ header })}
+                            >
+                              {header.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {rows.map((row) => {
+                          const batchId =
+                            row.cells.find(
+                              (cell) => cell.info.header === "qcBatchId",
+                            )?.value || "UNBATCHED";
+                          return (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => {
+                                if (cell.info.header === "actions") {
+                                  return (
+                                    <TableCell key={cell.id}>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: "0.5rem",
+                                          flexWrap: "wrap",
+                                        }}
+                                      >
+                                        {batchId !== "UNBATCHED" ? (
+                                          <>
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              renderIcon={Download}
+                                              onClick={() =>
+                                                exportQcBatch(batchId, "pdf")
+                                              }
+                                            >
+                                              Print PDF
+                                            </Button>
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                exportQcBatch(batchId, "csv")
+                                              }
+                                            >
+                                              CSV
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          "N/A"
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  );
+                                }
+                                return (
+                                  <TableCell key={cell.id}>{cell.value}</TableCell>
+                                );
+                              })}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
+              </DataTable>
+
+              <div style={{ marginTop: "1rem" }}>
               <DataTable rows={historyRows} headers={historyHeaders}>
                 {({
                   rows,
@@ -1337,7 +1455,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                 }) => (
                   <TableContainer
                     title="Completed QC Check History"
-                    description={`Source: ${qcHistory?.source || "N/A"} | Records: ${qcHistory?.count || 0} | Discrepancies: ${discrepancyHistoryCount} | Corrective actions logged: ${correctiveActionCount} | Failed outcomes corrected: ${correctedOutcomeCount} | Pending corrections: ${pendingCorrectionCount} | Per-record flags: sample/box/freezer escalation visibility enabled`}
+                    description={`Source: ${qcHistory?.source || "N/A"} | Records: ${qcHistory?.count || 0} | Discrepancies: ${discrepancyHistoryCount} | Corrective actions logged: ${correctiveActionCount} | Failed outcomes corrected: ${correctedOutcomeCount} | Pending corrections: ${pendingCorrectionCount}`}
                   >
                     <Table {...getTableProps()}>
                       <TableHead>
@@ -1365,6 +1483,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                   </TableContainer>
                 )}
               </DataTable>
+              </div>
             </AccordionItem>
 
             {/* Retrieval Statistics */}
