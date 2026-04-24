@@ -67,6 +67,7 @@ import "../workflow/NotebookWorkflow.css";
 function SampleCollectionPage({
   entryId,
   pageData,
+  progress,
   onProgressUpdate,
   orderEntryPageId,
   notebookId,

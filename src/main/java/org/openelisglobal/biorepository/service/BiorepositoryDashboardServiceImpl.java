@@ -3,9 +3,11 @@ package org.openelisglobal.biorepository.service;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
@@ -15,6 +17,13 @@ import org.openelisglobal.notebook.service.NotebookEntryRoomEnvironmentLogServic
 import org.openelisglobal.notebook.service.NotebookEntryTemperatureLogService;
 import org.openelisglobal.notebook.valueholder.NotebookEntryRoomEnvironmentLog;
 import org.openelisglobal.notebook.valueholder.NotebookEntryTemperatureLog;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.valueholder.StorageBox;
+import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +54,12 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
     @Autowired
     private NotebookEntryRoomEnvironmentLogService roomEnvironmentLogService;
 
+        @Autowired
+        private SampleStorageService storageService;
+
+    @Autowired
+    private StorageLocationService storageLocationService;
+
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getStorageCapacityMetrics() {
@@ -63,10 +78,24 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         metrics.put("totalSamplesStored", totalStored);
         metrics.put("pendingStorage", pendingStorage);
 
-        // Note: Device-level utilization requires SampleStorageAssignment integration
-        // For MVP, provide basic counts
-        metrics.put("totalDevices", 0L); // Placeholder for Phase 2
-        metrics.put("averageUtilization", 0.0); // Placeholder for Phase 2
+        List<Map<String, Object>> deviceRows = buildStorageDeviceRows();
+        long totalConfiguredCapacity = deviceRows.stream()
+                .mapToLong(row -> ((Number) row.getOrDefault("totalCapacity", 0)).longValue())
+                .sum();
+        long totalCurrentUsage = deviceRows.stream()
+                .mapToLong(row -> ((Number) row.getOrDefault("currentUsage", 0)).longValue())
+                .sum();
+        long capacityDefinedDevices = deviceRows.stream()
+                .filter(row -> ((Number) row.getOrDefault("totalCapacity", 0)).longValue() > 0)
+                .count();
+
+        metrics.put("totalDevices", deviceRows.size());
+        metrics.put("capacityDefinedDevices", capacityDefinedDevices);
+        metrics.put("capacityUndefinedDevices", Math.max(0, deviceRows.size() - capacityDefinedDevices));
+        metrics.put("totalConfiguredCapacity", totalConfiguredCapacity);
+        metrics.put("totalCurrentUsage", totalCurrentUsage);
+        metrics.put("averageUtilization",
+                totalConfiguredCapacity > 0 ? (totalCurrentUsage * 100.0 / totalConfiguredCapacity) : 0.0);
 
         return metrics;
     }
@@ -75,11 +104,7 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
     @Transactional(readOnly = true)
     public Map<String, Object> getStorageUtilizationByDevice() {
         Map<String, Object> utilization = new HashMap<>();
-
-        // Note: Full implementation requires SampleStorageAssignment service
-        // integration
-        // Placeholder for MVP
-        utilization.put("devices", new ArrayList<>());
+        utilization.put("devices", buildStorageDeviceRows());
 
         return utilization;
     }
@@ -119,8 +144,12 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
                     return daysUntil > 60 && daysUntil <= 90;
                 }).count();
 
-        // Calculate average age (placeholder - would need collection dates)
-        double averageAgeYears = 0.0; // Placeholder for more complex calculation
+        double averageAgeYears = activeSamples.stream()
+                .map(this::resolveSampleAgeInDays)
+                .filter(days -> days >= 0)
+                .mapToLong(Long::longValue)
+                .average()
+                .orElse(0.0) / 365.0;
 
         metrics.put("expired", expired);
         metrics.put("expiring30Days", expiring30Days);
@@ -130,6 +159,94 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         metrics.put("averageAgeYears", averageAgeYears);
 
         return metrics;
+    }
+
+    private List<Map<String, Object>> buildStorageDeviceRows() {
+        List<StorageDevice> activeDevices = storageLocationService.getAllDevices().stream()
+                .filter(device -> Boolean.TRUE.equals(device.getActive()))
+                .sorted(Comparator.comparing(device -> device.getName() != null ? device.getName() : ""))
+                .collect(Collectors.toList());
+
+        Map<Integer, List<StorageBox>> boxesByDeviceId = groupActiveBoxesByDeviceId();
+
+        return activeDevices.stream().map(device -> {
+            long derivedCapacity = boxesByDeviceId.getOrDefault(device.getId(), List.of()).stream()
+                    .map(StorageBox::getCapacity)
+                    .filter(capacity -> capacity != null && capacity > 0)
+                    .mapToLong(Integer::longValue)
+                    .sum();
+
+            Integer configuredCapacity = device.getCapacityLimit();
+            long totalCapacity = configuredCapacity != null && configuredCapacity > 0 ? configuredCapacity : derivedCapacity;
+            String capacitySource = configuredCapacity != null && configuredCapacity > 0
+                    ? "DEVICE_CAPACITY_LIMIT"
+                    : (derivedCapacity > 0 ? "BOX_GRID_SUM" : "UNDEFINED");
+            long currentUsage = device.getId() != null ? storageLocationService.countOccupiedInDevice(device.getId()) : 0;
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("deviceId", device.getId());
+            row.put("deviceName", device.getName());
+            row.put("deviceCode", device.getCode());
+            row.put("totalCapacity", totalCapacity);
+            row.put("currentUsage", currentUsage);
+            row.put("availableCapacity", Math.max(0L, totalCapacity - currentUsage));
+            row.put("utilizationPercent", totalCapacity > 0 ? (currentUsage * 100.0 / totalCapacity) : 0.0);
+            row.put("capacitySource", capacitySource);
+            return row;
+        }).collect(Collectors.toList());
+    }
+
+    private Map<Integer, List<StorageBox>> groupActiveBoxesByDeviceId() {
+        Map<Integer, StorageShelf> activeShelves = storageLocationService.getAllShelves().stream()
+                .filter(shelf -> Boolean.TRUE.equals(shelf.getActive()) && shelf.getId() != null)
+                .collect(Collectors.toMap(StorageShelf::getId, Function.identity(), (left, right) -> left));
+        Map<Integer, StorageRack> activeRacks = storageLocationService.getAllRacks().stream()
+                .filter(rack -> Boolean.TRUE.equals(rack.getActive()) && rack.getId() != null)
+                .collect(Collectors.toMap(StorageRack::getId, Function.identity(), (left, right) -> left));
+
+        Map<Integer, List<StorageBox>> boxesByDeviceId = new HashMap<>();
+        for (StorageBox box : storageLocationService.getAllBoxes()) {
+            if (!Boolean.TRUE.equals(box.getActive()) || box.getParentRack() == null || box.getParentRack().getId() == null) {
+                continue;
+            }
+
+            StorageRack rack = activeRacks.get(box.getParentRack().getId());
+            if (rack == null || rack.getParentShelf() == null || rack.getParentShelf().getId() == null) {
+                continue;
+            }
+
+            StorageShelf shelf = activeShelves.get(rack.getParentShelf().getId());
+            if (shelf == null || shelf.getParentDevice() == null || shelf.getParentDevice().getId() == null) {
+                continue;
+            }
+
+            boxesByDeviceId.computeIfAbsent(shelf.getParentDevice().getId(), ignored -> new ArrayList<>()).add(box);
+        }
+
+        return boxesByDeviceId;
+    }
+
+    private long resolveSampleAgeInDays(BioSample bioSample) {
+        if (bioSample == null) {
+            return -1;
+        }
+
+        SampleItem sampleItem = bioSample.getSampleItem();
+        if (sampleItem == null) {
+            return -1;
+        }
+
+        LocalDate referenceDate = sampleItem.getCollectionDate() != null
+                ? sampleItem.getCollectionDate().toLocalDateTime().toLocalDate()
+                : (sampleItem.getSample() != null && sampleItem.getSample().getReceivedTimestamp() != null
+                        ? sampleItem.getSample().getReceivedTimestamp().toLocalDateTime().toLocalDate()
+                        : null);
+
+        if (referenceDate == null) {
+            return -1;
+        }
+
+        return Math.max(0L, ChronoUnit.DAYS.between(referenceDate, LocalDate.now()));
     }
 
     @Override
@@ -187,15 +304,101 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         metrics.put("totalInspections", totalInspections);
         metrics.put("passedInspections", passedInspections);
         metrics.put("failedInspections", failedInspections);
+                metrics.put("failCount", failedInspections);
         metrics.put("complianceRate", complianceRate);
+                metrics.put("passRate", complianceRate);
         metrics.put("samplePresentPassRate", samplePresentPassRate);
         metrics.put("labelIntegrityPassRate", labelIntegrityPassRate);
         metrics.put("containerIntegrityPassRate", containerIntegrityPassRate);
         metrics.put("volumeAcceptablePassRate", volumeAcceptablePassRate);
         metrics.put("correctPositionPassRate", correctPositionPassRate);
 
+                metrics.put("failTrend", buildDailyFailTrend(inspections, 30));
+
+                Map<String, Object> failTrendBasis = new HashMap<>();
+                failTrendBasis.put("source", "biorepository_qc_inspection.inspection_date");
+                failTrendBasis.put("granularity", "day");
+                failTrendBasis.put("windowDays", 30);
+                failTrendBasis.put("failureCriteria", BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.name());
+                failTrendBasis.put("completedCheckCriteria", "persisted QC inspection records");
+                metrics.put("failTrendBasis", failTrendBasis);
+
+                                List<Map<String, Object>> breakdownByFreezer = buildDimensionBreakdown(inspections,
+                                                                this::extractFreezerFromPath);
+                                List<Map<String, Object>> breakdownByRack = buildDimensionBreakdown(inspections, this::extractRackFromPath);
+                                List<Map<String, Object>> breakdownByTechnician = buildDimensionBreakdown(inspections,
+                                                                this::extractTechnicianKey);
+
+                                metrics.put("breakdownByFreezer", breakdownByFreezer);
+                                metrics.put("breakdownByRack", breakdownByRack);
+                                metrics.put("breakdownByTechnician", breakdownByTechnician);
+
+                                List<Map<String, Object>> underInvestigationBoxes = buildUnderInvestigationBoxes(inspections);
+                                List<Map<String, Object>> frequentlyProblematicLocations = buildFrequentlyProblematicLocations(
+                                                                underInvestigationBoxes, breakdownByRack);
+
+                                metrics.put("failureResolutionSummary", buildFailureResolutionSummary(inspections));
+                                metrics.put("underInvestigationBoxes", underInvestigationBoxes);
+                                metrics.put("frequentlyProblematicLocations", frequentlyProblematicLocations);
+                                metrics.put("escalationSignals",
+                                                                buildEscalationSignals(inspections, breakdownByFreezer, breakdownByRack,
+                                                                                                underInvestigationBoxes));
+
         return metrics;
     }
+
+        @Override
+        @Transactional(readOnly = true)
+        public Map<String, Object> getQCHistory(Integer limit) {
+                int safeLimit = limit == null ? 50 : Math.max(1, Math.min(limit, 500));
+
+                List<BiorepositoryQCInspection> inspections = qcInspectionService.getAll();
+                inspections.sort(Comparator.comparing(BiorepositoryQCInspection::getInspectionDate,
+                                Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+
+                List<Map<String, Object>> items = inspections.stream().limit(safeLimit).map(this::toQCHistoryItem)
+                                .collect(Collectors.toList());
+                decorateQCHistoryFlags(items, inspections);
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("source", "biorepository_qc_inspection");
+                result.put("recordType", "completed_qc_checks");
+                result.put("count", items.size());
+                result.put("items", items);
+                result.put("failureResolutionSummary", buildFailureResolutionSummary(inspections));
+                return result;
+        }
+
+        private void decorateQCHistoryFlags(List<Map<String, Object>> items,
+                        List<BiorepositoryQCInspection> allInspections) {
+                List<Map<String, Object>> underInvestigationBoxes = buildUnderInvestigationBoxes(allInspections);
+                List<Map<String, Object>> breakdownByFreezer = buildDimensionBreakdown(allInspections,
+                                this::extractFreezerFromPath);
+                List<Map<String, Object>> breakdownByRack = buildDimensionBreakdown(allInspections, this::extractRackFromPath);
+                Map<String, Object> escalationSignals = buildEscalationSignals(allInspections, breakdownByFreezer,
+                                breakdownByRack, underInvestigationBoxes);
+
+                java.util.Set<String> underInvestigationBoxKeys = underInvestigationBoxes.stream()
+                                .map(row -> String.valueOf(row.get("key"))).collect(Collectors.toSet());
+                @SuppressWarnings("unchecked")
+                java.util.Set<String> flaggedFreezerKeys = ((List<Map<String, Object>>) escalationSignals
+                                .getOrDefault("flaggedFreezers", List.of())).stream()
+                                                .map(row -> String.valueOf(row.get("key"))).collect(Collectors.toSet());
+
+                for (Map<String, Object> item : items) {
+                        boolean boxUnderInvestigation = underInvestigationBoxKeys.contains(String.valueOf(item.get("boxKey")));
+                        boolean freezerFlagged = flaggedFreezerKeys.contains(String.valueOf(item.get("freezer")));
+                        if (boxUnderInvestigation) {
+                                item.put("boxFlag", "UNDER_INVESTIGATION");
+                        }
+                        if (freezerFlagged) {
+                                item.put("freezerFlag", "THRESHOLD_EXCEEDED");
+                        }
+                        item.put("escalationTriggered", boxUnderInvestigation || freezerFlagged
+                                        || Boolean.TRUE.equals(escalationSignals.get("criticalSamplesMissing"))
+                                        || Boolean.TRUE.equals(escalationSignals.get("batchFailRateExceeded")));
+                }
+        }
 
     @Override
     @Transactional(readOnly = true)
@@ -394,4 +597,524 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
 
         return (passed * 100.0 / inspections.size());
     }
+
+        private List<Map<String, Object>> buildDailyFailTrend(List<BiorepositoryQCInspection> inspections,
+                        int windowDays) {
+                LocalDate today = LocalDate.now();
+                LocalDate start = today.minusDays(Math.max(windowDays - 1, 0));
+
+                Map<LocalDate, long[]> daily = new HashMap<>();
+                for (BiorepositoryQCInspection inspection : inspections) {
+                        if (inspection.getInspectionDate() == null) {
+                                continue;
+                        }
+                        LocalDate inspectionDay = inspection.getInspectionDate().toLocalDateTime().toLocalDate();
+                        if (inspectionDay.isBefore(start) || inspectionDay.isAfter(today)) {
+                                continue;
+                        }
+                        long[] counts = daily.computeIfAbsent(inspectionDay, k -> new long[2]);
+                        counts[0]++;
+                        if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+                                counts[1]++;
+                        }
+                }
+
+                List<Map<String, Object>> trend = new ArrayList<>();
+                for (int i = 0; i < windowDays; i++) {
+                        LocalDate day = start.plusDays(i);
+                        long[] counts = daily.getOrDefault(day, new long[2]);
+                        long total = counts[0];
+                        long failed = counts[1];
+                        Map<String, Object> row = new HashMap<>();
+                        row.put("date", day.toString());
+                        row.put("totalInspections", total);
+                        row.put("failedInspections", failed);
+                        row.put("passRate", total > 0 ? ((total - failed) * 100.0 / total) : 0.0);
+                        trend.add(row);
+                }
+                return trend;
+        }
+
+        private List<Map<String, Object>> buildDimensionBreakdown(List<BiorepositoryQCInspection> inspections,
+                        Function<BiorepositoryQCInspection, String> keyExtractor) {
+                Map<String, long[]> grouped = new HashMap<>();
+
+                for (BiorepositoryQCInspection inspection : inspections) {
+                        String key = normalizeLabel(keyExtractor.apply(inspection));
+                        long[] counts = grouped.computeIfAbsent(key, k -> new long[2]);
+                        counts[0]++;
+                        if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+                                counts[1]++;
+                        }
+                }
+
+                return grouped.entrySet().stream().map(entry -> {
+                        long total = entry.getValue()[0];
+                        long failed = entry.getValue()[1];
+                        Map<String, Object> row = new HashMap<>();
+                        row.put("key", entry.getKey());
+                        row.put("totalInspections", total);
+                        row.put("failedInspections", failed);
+                        row.put("passRate", total > 0 ? ((total - failed) * 100.0 / total) : 0.0);
+                        return row;
+                }).sorted((a, b) -> {
+                        long totalA = ((Number) a.get("totalInspections")).longValue();
+                        long totalB = ((Number) b.get("totalInspections")).longValue();
+                        int totalCompare = Long.compare(totalB, totalA);
+                        if (totalCompare != 0) {
+                                return totalCompare;
+                        }
+                        return String.valueOf(a.get("key")).compareToIgnoreCase(String.valueOf(b.get("key")));
+                }).collect(Collectors.toList());
+        }
+
+        private Map<String, Object> toQCHistoryItem(BiorepositoryQCInspection inspection) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", inspection.getId());
+                item.put("bioSampleId", inspection.getBioSample() != null ? inspection.getBioSample().getId() : null);
+                item.put("qcBatchId", inspection.getQcBatchId());
+                item.put("inspectionDate", inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : null);
+                item.put("lastQcDate", inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : null);
+                item.put("qcResult", inspection.getQcResult() != null ? inspection.getQcResult().name() : null);
+                String qcStatus = deriveQcStatus(inspection);
+                item.put("qcStatus", qcStatus);
+                item.put("sampleFlag", "VALID".equals(qcStatus) ? "QC_VALID" : "QC_FAILED");
+                item.put("qcFailed", !"VALID".equals(qcStatus));
+                item.put("lifecycleOutcome", deriveLifecycleOutcome(inspection));
+                item.put("inspectorName", inspection.getInspectorName());
+                item.put("technicianId", inspection.getSysUserId());
+                item.put("expectedLocationPath", inspection.getExpectedLocationPath());
+                item.put("expectedPositionCoordinate", inspection.getExpectedPositionCoordinate());
+                item.put("discrepancyType",
+                                inspection.getDiscrepancyType() != null ? inspection.getDiscrepancyType().name() : null);
+                item.put("correctiveAction", inspection.getCorrectiveAction());
+                item.put("remarks", inspection.getRemarks());
+                item.put("failureComment", inspection.getRemarks());
+                item.put("auditTrail", buildQCAuditTrail(inspection));
+
+                String[] levels = parseLocationLevels(inspection.getExpectedLocationPath());
+                item.put("freezer", levels[0]);
+                item.put("shelf", levels[1]);
+                item.put("rack", levels[2]);
+                item.put("box", levels[3]);
+                String boxKey = normalizeLabel(levels[0]) + " > " + normalizeLabel(levels[1]) + " > "
+                                + normalizeLabel(levels[2]) + " > " + normalizeLabel(levels[3]);
+                item.put("boxKey", boxKey);
+                item.put("failureResolution", toFailureResolution(inspection));
+
+                return item;
+        }
+
+        private String extractFreezerFromPath(BiorepositoryQCInspection inspection) {
+                return parseLocationLevels(inspection.getExpectedLocationPath())[0];
+        }
+
+        private String extractRackFromPath(BiorepositoryQCInspection inspection) {
+                String[] levels = parseLocationLevels(inspection.getExpectedLocationPath());
+                if ("Unknown".equals(levels[2])) {
+                        return "Unknown";
+                }
+                return levels[0] + " > " + levels[1] + " > " + levels[2];
+        }
+
+        private String extractTechnicianKey(BiorepositoryQCInspection inspection) {
+                String inspectorName = trimToNull(inspection.getInspectorName());
+                String technicianId = trimToNull(inspection.getSysUserId());
+
+                if (inspectorName != null && technicianId != null) {
+                        return inspectorName + " (" + technicianId + ")";
+                }
+                if (inspectorName != null) {
+                        return inspectorName;
+                }
+                if (technicianId != null) {
+                        return technicianId;
+                }
+                return "Unknown";
+        }
+
+        private String[] parseLocationLevels(String locationPath) {
+                String[] defaults = new String[] { "Unknown", "Unknown", "Unknown", "Unknown" };
+                String raw = trimToNull(locationPath);
+                if (raw == null) {
+                        return defaults;
+                }
+
+                List<String> segments = java.util.Arrays.stream(raw.split("\\s*>\\s*")).map(String::trim)
+                                .filter(s -> !s.isEmpty()).collect(Collectors.toList());
+                if (segments.isEmpty()) {
+                        return defaults;
+                }
+
+                int structuralEnd = segments.size();
+                String tail = segments.get(structuralEnd - 1);
+                if (tail.matches("^[A-Za-z]+\\d+$")) {
+                        structuralEnd = structuralEnd - 1;
+                }
+
+                List<String> structural = segments.subList(0, Math.max(structuralEnd, 0));
+                if (structural.isEmpty()) {
+                        return defaults;
+                }
+
+                int boxIdx = structural.size() - 1;
+                int rackIdx = structural.size() - 2;
+                int shelfIdx = structural.size() - 3;
+                int freezerIdx = structural.size() - 4;
+
+                return new String[] { freezerIdx >= 0 ? structural.get(freezerIdx) : "Unknown",
+                                shelfIdx >= 0 ? structural.get(shelfIdx) : "Unknown",
+                                rackIdx >= 0 ? structural.get(rackIdx) : "Unknown",
+                                boxIdx >= 0 ? structural.get(boxIdx) : "Unknown" };
+        }
+
+        private String trimToNull(String value) {
+                if (value == null) {
+                        return null;
+                }
+                String trimmed = value.trim();
+                return trimmed.isEmpty() ? null : trimmed;
+        }
+
+        private String normalizeLabel(String label) {
+                String normalized = trimToNull(label);
+                return normalized != null ? normalized : "Unknown";
+        }
+
+        private List<Map<String, Object>> buildUnderInvestigationBoxes(List<BiorepositoryQCInspection> inspections) {
+                Map<String, long[]> grouped = new HashMap<>();
+
+                for (BiorepositoryQCInspection inspection : inspections) {
+                        String[] levels = parseLocationLevels(inspection.getExpectedLocationPath());
+                        String boxKey = normalizeLabel(levels[0]) + " > " + normalizeLabel(levels[1]) + " > "
+                                        + normalizeLabel(levels[2]) + " > " + normalizeLabel(levels[3]);
+                        long[] counts = grouped.computeIfAbsent(boxKey, k -> new long[2]);
+                        counts[0]++;
+                        if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+                                counts[1]++;
+                        }
+                }
+
+                return grouped.entrySet().stream().filter(entry -> entry.getValue()[1] >= 2).map(entry -> {
+                        long total = entry.getValue()[0];
+                        long failed = entry.getValue()[1];
+                        Map<String, Object> row = new HashMap<>();
+                        row.put("key", entry.getKey());
+                        row.put("totalInspections", total);
+                        row.put("failedInspections", failed);
+                        row.put("failRate", total > 0 ? (failed * 100.0 / total) : 0.0);
+                        row.put("investigationFlag", true);
+                        return row;
+                }).sorted((a, b) -> {
+                        long failedA = ((Number) a.get("failedInspections")).longValue();
+                        long failedB = ((Number) b.get("failedInspections")).longValue();
+                        int failCompare = Long.compare(failedB, failedA);
+                        if (failCompare != 0) {
+                                return failCompare;
+                        }
+                        return String.valueOf(a.get("key")).compareToIgnoreCase(String.valueOf(b.get("key")));
+                }).collect(Collectors.toList());
+        }
+
+        private Map<String, Object> buildFailureResolutionSummary(List<BiorepositoryQCInspection> inspections) {
+                long failedPendingCorrection = inspections.stream()
+                                .filter(insp -> "FAILED_PENDING_CORRECTION".equals(deriveLifecycleOutcome(insp))).count();
+                long failedCorrected = inspections.stream()
+                                .filter(insp -> "FAILED_CORRECTED".equals(deriveLifecycleOutcome(insp))).count();
+                long failedMarkedMissing = inspections.stream()
+                                .filter(insp -> "FAILED_MARKED_MISSING".equals(deriveLifecycleOutcome(insp))).count();
+
+                Map<String, Object> correctedVsUnresolved = new HashMap<>();
+                correctedVsUnresolved.put("corrected", failedCorrected + failedMarkedMissing);
+                correctedVsUnresolved.put("unresolved", failedPendingCorrection);
+
+                Map<String, Object> summary = new HashMap<>();
+                summary.put("failedPendingCorrection", failedPendingCorrection);
+                summary.put("failedCorrected", failedCorrected);
+                summary.put("failedMarkedMissing", failedMarkedMissing);
+                summary.put("correctedVsUnresolved", correctedVsUnresolved);
+                return summary;
+        }
+
+        private String toFailureResolution(BiorepositoryQCInspection inspection) {
+                String lifecycle = deriveLifecycleOutcome(inspection);
+                if ("FAILED_CORRECTED".equals(lifecycle) || "FAILED_MARKED_MISSING".equals(lifecycle)) {
+                        return "RESOLVED";
+                }
+                if ("FAILED_PENDING_CORRECTION".equals(lifecycle)) {
+                        return "UNRESOLVED";
+                }
+                return "NOT_REQUIRED";
+        }
+
+        private List<Map<String, Object>> buildFrequentlyProblematicLocations(List<Map<String, Object>> boxCandidates,
+                        List<Map<String, Object>> rackBreakdown) {
+                List<Map<String, Object>> rows = new ArrayList<>();
+
+                boxCandidates.stream().limit(10).forEach(box -> {
+                        Map<String, Object> row = new HashMap<>();
+                        row.put("locationType", "BOX");
+                        row.put("key", box.get("key"));
+                        row.put("failedInspections", box.get("failedInspections"));
+                        row.put("totalInspections", box.get("totalInspections"));
+                        row.put("failRate", box.get("failRate"));
+                        rows.add(row);
+                });
+
+                if (rows.size() < 10) {
+                        rackBreakdown.stream()
+                                        .filter(row -> ((Number) row.getOrDefault("failedInspections", 0)).longValue() > 0)
+                                        .limit(10 - rows.size()).forEach(rack -> {
+                                                Map<String, Object> row = new HashMap<>();
+                                                row.put("locationType", "RACK");
+                                                row.put("key", rack.get("key"));
+                                                row.put("failedInspections", rack.get("failedInspections"));
+                                                row.put("totalInspections", rack.get("totalInspections"));
+                                                row.put("failRate", rack.get("passRate") != null
+                                                                ? (100.0 - ((Number) rack.get("passRate")).doubleValue())
+                                                                : 0.0);
+                                                rows.add(row);
+                                        });
+                }
+
+                return rows;
+        }
+
+        private Map<String, Object> buildEscalationSignals(List<BiorepositoryQCInspection> inspections,
+                        List<Map<String, Object>> breakdownByFreezer, List<Map<String, Object>> breakdownByRack,
+                        List<Map<String, Object>> underInvestigationBoxes) {
+                Map<String, Object> signals = new HashMap<>();
+
+                long totalInspections = inspections.size();
+                long failedInspections = inspections.stream()
+                                .filter(insp -> BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND
+                                                .equals(insp.getQcResult()))
+                                .count();
+                double batchFailRate = totalInspections > 0 ? (failedInspections * 100.0 / totalInspections) : 0.0;
+                boolean batchFailRateExceeded = totalInspections > 0 && batchFailRate >= 5.0;
+
+                long repeatedRacks = breakdownByRack.stream()
+                                .filter(row -> ((Number) row.getOrDefault("failedInspections", 0)).longValue() >= 2)
+                                .count();
+                boolean repeatedFailureInSameBoxOrRack = !underInvestigationBoxes.isEmpty() || repeatedRacks > 0;
+
+                long criticalMissingSamples = inspections.stream()
+                                .filter(insp -> BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND
+                                                .equals(insp.getQcResult()))
+                                .filter(this::isMissingDiscrepancy)
+                                .count();
+
+                List<Map<String, Object>> flaggedFreezers = breakdownByFreezer.stream().filter(row -> {
+                        long failed = ((Number) row.getOrDefault("failedInspections", 0)).longValue();
+                        double passRate = ((Number) row.getOrDefault("passRate", 0.0)).doubleValue();
+                        double failRate = 100.0 - passRate;
+                        return failed > 0 && failRate >= 5.0;
+                }).map(row -> {
+                        Map<String, Object> freezer = new HashMap<>();
+                        freezer.put("key", row.get("key"));
+                        freezer.put("failedInspections", row.get("failedInspections"));
+                        freezer.put("totalInspections", row.get("totalInspections"));
+                        freezer.put("failRate", 100.0 - ((Number) row.getOrDefault("passRate", 0.0)).doubleValue());
+                        freezer.put("thresholdPercent", 5.0);
+                        return freezer;
+                }).collect(Collectors.toList());
+
+                List<String> triggeredRules = new ArrayList<>();
+                if (batchFailRateExceeded) {
+                        triggeredRules.add("BATCH_FAIL_RATE_OVER_5_PERCENT");
+                }
+                if (repeatedFailureInSameBoxOrRack) {
+                        triggeredRules.add("REPEATED_FAILURE_IN_SAME_BOX_OR_RACK");
+                }
+                if (criticalMissingSamples > 0) {
+                        triggeredRules.add("CRITICAL_SAMPLES_MISSING");
+                }
+
+                List<String> recommendedActions = new ArrayList<>();
+                if (!triggeredRules.isEmpty()) {
+                        recommendedActions.add("Notify supervisor");
+                }
+                if (repeatedFailureInSameBoxOrRack) {
+                        recommendedActions.add("Trigger full box audit or targeted rack review");
+                }
+                if (!flaggedFreezers.isEmpty()) {
+                        recommendedActions.add("Trigger freezer-wide QC review for flagged freezers");
+                }
+
+                signals.put("totalInspections", totalInspections);
+                signals.put("failedInspections", failedInspections);
+                signals.put("batchFailRatePercent", batchFailRate);
+                signals.put("batchFailRateThresholdPercent", 5.0);
+                signals.put("batchFailRateExceeded", batchFailRateExceeded);
+                signals.put("repeatedFailureInSameBoxOrRack", repeatedFailureInSameBoxOrRack);
+                signals.put("repeatedFailureBoxesCount", underInvestigationBoxes.size());
+                signals.put("repeatedFailureRacksCount", repeatedRacks);
+                signals.put("criticalMissingSamples", criticalMissingSamples);
+                signals.put("criticalSamplesMissing", criticalMissingSamples > 0);
+                signals.put("flaggedFreezers", flaggedFreezers);
+                signals.put("triggeredRules", triggeredRules);
+                signals.put("recommendedActions", recommendedActions);
+                signals.put("supervisorNotificationRequired", !triggeredRules.isEmpty());
+                signals.put("supervisorNotificationMessage",
+                                buildSupervisorNotificationMessage(batchFailRate, batchFailRateExceeded,
+                                                repeatedFailureInSameBoxOrRack, criticalMissingSamples, flaggedFreezers));
+
+                return signals;
+        }
+
+        private String buildSupervisorNotificationMessage(double batchFailRate, boolean batchFailRateExceeded,
+                        boolean repeatedFailureInSameBoxOrRack, long criticalMissingSamples,
+                        List<Map<String, Object>> flaggedFreezers) {
+                List<String> reasons = new ArrayList<>();
+                if (batchFailRateExceeded) {
+                        reasons.add(String.format("QC batch fail rate is %.1f%% (threshold 5.0%%)", batchFailRate));
+                }
+                if (repeatedFailureInSameBoxOrRack) {
+                        reasons.add("Repeated failure detected in the same box/rack");
+                }
+                if (criticalMissingSamples > 0) {
+                        reasons.add(String.format("Critical samples missing: %d", criticalMissingSamples));
+                }
+
+                if (reasons.isEmpty()) {
+                        return null;
+                }
+
+                StringBuilder message = new StringBuilder();
+                message.append("Biorepository QC escalation alert: ");
+                message.append(String.join("; ", reasons));
+                if (flaggedFreezers != null && !flaggedFreezers.isEmpty()) {
+                        String freezerList = flaggedFreezers.stream()
+                                        .map(row -> String.valueOf(row.get("key")))
+                                        .filter(value -> value != null && !"null".equalsIgnoreCase(value))
+                                        .collect(Collectors.joining(", "));
+                        if (!freezerList.isEmpty()) {
+                                message.append(". Flagged freezers: ").append(freezerList);
+                        }
+                }
+                message.append(".");
+                return message.toString();
+        }
+
+        private String deriveQcStatus(BiorepositoryQCInspection inspection) {
+                if (inspection == null || inspection.getQcResult() == null) {
+                        return "UNKNOWN";
+                }
+                if (BiorepositoryQCInspection.QCResult.VERIFIED.equals(inspection.getQcResult())) {
+                        return "VALID";
+                }
+                if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+                        if (isMissingDiscrepancy(inspection) && isMarkedMissingAction(inspection)) {
+                                return "MISSING";
+                        }
+                        return "QC_FAILED";
+                }
+                return "UNKNOWN";
+        }
+
+        private String deriveLifecycleOutcome(BiorepositoryQCInspection inspection) {
+                if (inspection == null || inspection.getQcResult() == null) {
+                        return "UNKNOWN";
+                }
+                if (BiorepositoryQCInspection.QCResult.VERIFIED.equals(inspection.getQcResult())) {
+                        return "PASSED";
+                }
+                if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+                        if ("MISSING".equals(deriveQcStatus(inspection))) {
+                                return "FAILED_MARKED_MISSING";
+                        }
+                        if (trimToNull(inspection.getCorrectionActionType()) != null) {
+                                return "FAILED_CORRECTED";
+                        }
+                        return "FAILED_PENDING_CORRECTION";
+                }
+                return "UNKNOWN";
+        }
+
+        private boolean isMissingDiscrepancy(BiorepositoryQCInspection inspection) {
+                if (inspection == null || inspection.getDiscrepancyType() == null) {
+                        return false;
+                }
+                return BiorepositoryQCInspection.DiscrepancyType.SAMPLE_MISSING.equals(inspection.getDiscrepancyType())
+                                || BiorepositoryQCInspection.DiscrepancyType.MISSING_SAMPLE
+                                                .equals(inspection.getDiscrepancyType());
+        }
+
+        private boolean isMarkedMissingAction(BiorepositoryQCInspection inspection) {
+                String correctionActionType = trimToNull(inspection.getCorrectionActionType());
+                return correctionActionType != null && correctionActionType.equalsIgnoreCase("MARK_MISSING");
+        }
+
+        private Map<String, Object> buildQCAuditTrail(BiorepositoryQCInspection inspection) {
+                Map<String, Object> auditTrail = new HashMap<>();
+
+                String oldCoordinate = trimToNull(inspection.getCorrectionOldCoordinate());
+                if (oldCoordinate == null) {
+                        oldCoordinate = composeCoordinate(inspection.getExpectedLocationPath(),
+                                        inspection.getExpectedPositionCoordinate());
+                }
+                String newCoordinate = trimToNull(inspection.getCorrectionNewCoordinate());
+                if (newCoordinate == null) {
+                        newCoordinate = oldCoordinate;
+                }
+
+                boolean hasPersistedNewCoordinate = trimToNull(inspection.getCorrectionNewCoordinate()) != null;
+                if ("MISSING".equals(deriveQcStatus(inspection))) {
+                        newCoordinate = "Missing (not found during QC)";
+                } else if (!hasPersistedNewCoordinate
+                                && BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+                        SampleItem sampleItem = inspection.getBioSample() != null ? inspection.getBioSample().getSampleItem()
+                                        : null;
+                        if (sampleItem != null && sampleItem.getId() != null) {
+                                Map<String, Object> currentLocation = storageService
+                                                .getSampleItemLocation(sampleItem.getId().toString());
+                                String currentCoordinate = composeCoordinate(asString(currentLocation.get("hierarchicalPath")),
+                                                asString(currentLocation.get("positionCoordinate")));
+                                if (trimToNull(currentCoordinate) != null) {
+                                        newCoordinate = currentCoordinate;
+                                }
+                        }
+                }
+
+                auditTrail.put("oldCoordinate", oldCoordinate);
+                auditTrail.put("newCoordinate", newCoordinate);
+                auditTrail.put("fromCoordinates", oldCoordinate);
+                auditTrail.put("toCoordinates", newCoordinate);
+                String auditUser = trimToNull(inspection.getCorrectionByUser()) != null
+                                ? trimToNull(inspection.getCorrectionByUser())
+                                : inspection.getSysUserId();
+                String auditTimestamp = inspection.getCorrectionTimestamp() != null
+                                ? inspection.getCorrectionTimestamp().toString()
+                                : inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : null;
+                auditTrail.put("user", auditUser);
+                auditTrail.put("correctedBy", auditUser);
+                auditTrail.put("timestamp", auditTimestamp);
+                auditTrail.put("correctedAt", auditTimestamp);
+                auditTrail.put("reason", trimToNull(inspection.getCorrectionReason()) != null
+                                ? trimToNull(inspection.getCorrectionReason())
+                                : trimToNull(inspection.getCorrectiveAction()));
+                return auditTrail;
+        }
+
+        private String composeCoordinate(String locationPath, String positionCoordinate) {
+                String path = trimToNull(locationPath);
+                String coordinate = trimToNull(positionCoordinate);
+                if (path == null && coordinate == null) {
+                        return null;
+                }
+                if (path == null) {
+                        return coordinate;
+                }
+                if (coordinate == null) {
+                        return path;
+                }
+                return path + " > " + coordinate;
+        }
+
+        private String asString(Object value) {
+                if (value == null) {
+                        return null;
+                }
+                return String.valueOf(value);
+        }
 }

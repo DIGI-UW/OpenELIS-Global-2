@@ -54,6 +54,14 @@ public interface BiorepositoryQCInspectionDAO extends BaseDAO<BiorepositoryQCIns
     List<BiorepositoryQCInspection> getByInspectorName(String inspectorName);
 
     /**
+     * Find inspections by QC batch ID.
+     *
+     * @param qcBatchId QC batch identifier
+     * @return list of inspections ordered by inspection date ascending
+     */
+    List<BiorepositoryQCInspection> getByQcBatchId(String qcBatchId);
+
+    /**
      * Count inspections by QC result.
      *
      * @param qcResult the QC result
@@ -77,4 +85,10 @@ public interface BiorepositoryQCInspectionDAO extends BaseDAO<BiorepositoryQCIns
      * @return list of inspections ordered by inspection date
      */
     List<BiorepositoryQCInspection> getInspectionsByDateRange(java.sql.Timestamp startDate, java.sql.Timestamp endDate);
+
+    /**
+     * True if the biosample has at least one inspection with inspection date in
+     * {@code [startDate, endDate]} (inclusive).
+     */
+    boolean hasInspectionBetween(Integer bioSampleId, java.sql.Timestamp startDate, java.sql.Timestamp endDate);
 }

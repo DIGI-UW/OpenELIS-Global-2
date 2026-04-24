@@ -19,6 +19,10 @@ import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import * as XLSX from "xlsx";
 import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
+import {
+  translateManifestImportMessage,
+  translateManifestImportMessages,
+} from "./manifestImportErrorMessages";
 
 const MANIFEST_FIELDS = [
   "barcode",
@@ -215,6 +219,11 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
   const conditionalFields = CONDITIONAL_FIELDS;
   const optionalFields = OPTIONAL_FIELDS;
   const expectedHeaders = MANIFEST_FIELDS;
+
+  const formatImportMessage = useCallback(
+    (message) => translateManifestImportMessage(message, intl.formatMessage),
+    [intl],
+  );
 
   /**
    * Generate and download CSV template per spec FR-MAN-002
@@ -745,7 +754,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
       setLoading(false);
 
       if (validationResult?.error) {
-        setError(validationResult.message || validationResult.error);
+        setError(formatImportMessage(validationResult.message || validationResult.error));
         setImportStatus("parsed");
         return;
       }
@@ -772,7 +781,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
             backendErrors.push({
               row: row._rowNumber,
               field: "backend",
-              message: errMsg,
+              message: formatImportMessage(errMsg),
             });
           });
         }
@@ -816,6 +825,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     parsedData,
     validationErrors,
     intl,
+    formatImportMessage,
     transformToBackendFormat,
     validateWithBackend,
   ]);
@@ -875,12 +885,13 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
           );
           setImportStatus("preview");
         } else if (response?.error) {
-          setError(response.message || response.error);
+          setError(formatImportMessage(response.message || response.error));
           setImportStatus("preview");
         } else {
-          const rowErrors = Array.isArray(response?.rowErrors)
-            ? response.rowErrors
-            : [];
+          const rowErrors = translateManifestImportMessages(
+            response?.rowErrors,
+            intl.formatMessage,
+          );
           const registeredCount = Number(
             response?.registeredCount ?? response?.samples?.length ?? 0,
           );
@@ -922,6 +933,7 @@ function ManifestUploadModal({ open, onClose, shipmentId, onImportComplete }) {
     shipmentId,
     onImportComplete,
     intl,
+    formatImportMessage,
     transformToBackendFormat,
   ]);
 

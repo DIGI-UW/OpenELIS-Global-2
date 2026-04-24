@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="qc-core-add-expected-coordinate-snapshot" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+
+        <comment>Add expected coordinate snapshot fields required for QC result traceability</comment>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="expected_location_path" type="TEXT"/>
+        </addColumn>
+
+        <addColumn tableName="biorepository_qc_inspection" schemaName="clinlims">
+            <column name="expected_position_coordinate" type="VARCHAR(50)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="qc-core-update-discrepancy-constraint" author="openelis-biorepository">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="biorepository_qc_inspection" schemaName="clinlims"/>
+        </preConditions>
+
+        <comment>Align discrepancy values with Periodic QC document while retaining legacy values</comment>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            DROP CONSTRAINT IF EXISTS check_discrepancy_type;
+        </sql>
+
+        <sql>
+            ALTER TABLE clinlims.biorepository_qc_inspection
+            ADD CONSTRAINT check_discrepancy_type
+            CHECK (
+                discrepancy_type IS NULL OR discrepancy_type IN (
+                    'SAMPLE_MISSING',
+                    'WRONG_SAMPLE_IN_POSITION',
+                    'MISPLACED_SAMPLE_FOUND',
+                    'EMPTY_POSITION_REGISTERED',
+                    'LABELING_ERROR',
+                    'BOX_RACK_MISPLACEMENT',
+                    'MISSING_SAMPLE',
+                    'DAMAGED_LABEL',
+                    'MISPLACED_ITEM',
+                    'CONTAINER_DAMAGE',
+                    'VOLUME_DISCREPANCY',
+                    'OTHER'
+                )
+            );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

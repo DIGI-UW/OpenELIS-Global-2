@@ -8,6 +8,7 @@ import {
   InlineNotification,
   InlineLoading,
   Search,
+  TextInput,
   Select,
   SelectItem,
   DatePicker,
@@ -44,6 +45,14 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
   const [auditError, setAuditError] = useState(null);
   const [auditSuccess, setAuditSuccess] = useState(false);
 
+  // QC batch export state
+  const [qcBatchId, setQcBatchId] = useState("");
+  const [qcBatchFormat, setQcBatchFormat] = useState("csv");
+  const [qcBatchLoading, setQcBatchLoading] = useState(false);
+  const [qcBatchError, setQcBatchError] = useState(null);
+  const [qcBatchSuccess, setQcBatchSuccess] = useState(false);
+  const [recentQcBatchIds, setRecentQcBatchIds] = useState([]);
+
   // Audit trail filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAction, setSelectedAction] = useState("ALL");
@@ -69,6 +78,36 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
       .then((r) => r.json())
       .then((data) => setActions(data))
       .catch((err) => console.error("Failed to load action types:", err));
+  }, []);
+
+  // Fetch recent QC batch IDs to make export easier.
+  useEffect(() => {
+    fetch(`${config.serverBaseUrl}/rest/biorepository/dashboard/qc-history?limit=300`, {
+      credentials: "include",
+    })
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error("Failed to load QC history");
+        }
+        return r.json();
+      })
+      .then((payload) => {
+        const items = Array.isArray(payload?.items) ? payload.items : [];
+        const seen = new Set();
+        const batchIds = [];
+        items.forEach((item) => {
+          const batchId = (item?.qcBatchId || "").trim();
+          if (!batchId || seen.has(batchId)) {
+            return;
+          }
+          seen.add(batchId);
+          batchIds.push(batchId);
+        });
+        setRecentQcBatchIds(batchIds);
+      })
+      .catch(() => {
+        setRecentQcBatchIds([]);
+      });
   }, []);
 
   // Generic download handler
@@ -176,6 +215,45 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
     setSelectedAction("ALL");
     setStartDate("");
     setEndDate("");
+  };
+
+  const handleQcBatchExport = () => {
+    if (!qcBatchId.trim()) {
+      setQcBatchError("QC batch ID is required.");
+      return;
+    }
+    setQcBatchLoading(true);
+    setQcBatchError(null);
+    setQcBatchSuccess(false);
+    const timestamp = new Date().toISOString().split("T")[0];
+    const endpoint = `/rest/biorepository/qc/export/${qcBatchFormat}?qcBatchId=${encodeURIComponent(
+      qcBatchId.trim(),
+    )}`;
+    fetch(`${config.serverBaseUrl}${endpoint}`, {
+      credentials: "include",
+      method: "GET",
+    })
+      .then((response) => {
+        if (!response.ok)
+          throw new Error(
+            `Export failed: ${response.status} ${response.statusText}`,
+          );
+        return response.blob();
+      })
+      .then((blob) => {
+        downloadFile(
+          blob,
+          `biorepository_qc_batch_${qcBatchId.trim()}_${timestamp}`,
+          qcBatchFormat,
+        );
+        setQcBatchSuccess(true);
+        setQcBatchLoading(false);
+        setTimeout(() => setQcBatchSuccess(false), 5000);
+      })
+      .catch((err) => {
+        setQcBatchError(err.message);
+        setQcBatchLoading(false);
+      });
   };
 
   return (
@@ -297,6 +375,156 @@ function ExportReportsTab({ entryId, notebookId, pageData }) {
                     <FormattedMessage
                       id="biorepository.reporting.export.downloadButton"
                       defaultMessage="Download Dashboard Metrics"
+                    />
+                  </Button>
+                )}
+              </div>
+            </AccordionItem>
+
+            {/* QC Batch Export Section */}
+            <AccordionItem
+              title={intl.formatMessage({
+                id: "biorepository.reporting.export.qcBatch.title",
+                defaultMessage: "QC Batch Export",
+              })}
+            >
+              <div style={{ padding: "1rem" }}>
+                <p
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "#525252",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <FormattedMessage
+                    id="biorepository.reporting.export.qcBatch.subtitle"
+                    defaultMessage="Export a printable QC record set for one generated batch ID."
+                  />
+                </p>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "1rem",
+                    flexWrap: "wrap",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <Select
+                    id="qc-batch-id-recent"
+                    labelText={intl.formatMessage({
+                      id: "biorepository.reporting.export.qcBatch.recent",
+                      defaultMessage: "Recent QC Batch IDs",
+                    })}
+                    value={qcBatchId}
+                    onChange={(e) => setQcBatchId(e.target.value)}
+                    size="md"
+                    style={{ minWidth: "320px" }}
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "biorepository.reporting.export.qcBatch.recentPlaceholder",
+                        defaultMessage: "Select from recent batches...",
+                      })}
+                    />
+                    {recentQcBatchIds.map((batchId) => (
+                      <SelectItem key={batchId} value={batchId} text={batchId} />
+                    ))}
+                  </Select>
+                  <TextInput
+                    id="qc-batch-id"
+                    labelText={intl.formatMessage({
+                      id: "biorepository.reporting.export.qcBatch.id",
+                      defaultMessage: "QC Batch ID",
+                    })}
+                    placeholder={intl.formatMessage({
+                      id: "biorepository.reporting.export.qcBatch.placeholder",
+                      defaultMessage: "QCBATCH-...",
+                    })}
+                    value={qcBatchId}
+                    onChange={(e) => setQcBatchId(e.target.value)}
+                    style={{ minWidth: "320px" }}
+                  />
+                </div>
+                <p style={{ fontSize: "0.75rem", color: "#6f6f6f", marginTop: "-0.5rem", marginBottom: "1rem" }}>
+                  <FormattedMessage
+                    id="biorepository.reporting.export.qcBatch.hint"
+                    defaultMessage="Batch IDs come from generated QC rounds in QC Inspection. Pick one above or paste manually."
+                  />
+                </p>
+
+                <RadioButtonGroup
+                  legendText={intl.formatMessage({
+                    id: "biorepository.reporting.export.formatLabel",
+                    defaultMessage: "Export Format",
+                  })}
+                  name="qc-batch-format"
+                  valueSelected={qcBatchFormat}
+                  onChange={setQcBatchFormat}
+                  style={{ marginBottom: "1rem" }}
+                >
+                  <RadioButton labelText="CSV" value="csv" id="qc-batch-csv" />
+                  <RadioButton
+                    labelText="Excel"
+                    value="excel"
+                    id="qc-batch-excel"
+                  />
+                  <RadioButton
+                    labelText="JSON"
+                    value="json"
+                    id="qc-batch-json"
+                  />
+                  <RadioButton labelText="PDF" value="pdf" id="qc-batch-pdf" />
+                </RadioButtonGroup>
+
+                {qcBatchSuccess && (
+                  <InlineNotification
+                    kind="success"
+                    title={intl.formatMessage({
+                      id: "biorepository.reporting.export.success",
+                      defaultMessage: "Export Successful",
+                    })}
+                    subtitle={intl.formatMessage({
+                      id: "biorepository.reporting.export.successMessage",
+                      defaultMessage: "File downloaded successfully",
+                    })}
+                    lowContrast
+                    hideCloseButton
+                    style={{ marginBottom: "1rem" }}
+                  />
+                )}
+
+                {qcBatchError && (
+                  <InlineNotification
+                    kind="error"
+                    title={intl.formatMessage({
+                      id: "biorepository.reporting.export.error",
+                      defaultMessage: "Export Failed",
+                    })}
+                    subtitle={qcBatchError}
+                    lowContrast
+                    onClose={() => setQcBatchError(null)}
+                    style={{ marginBottom: "1rem" }}
+                  />
+                )}
+
+                {qcBatchLoading ? (
+                  <InlineLoading
+                    description={intl.formatMessage({
+                      id: "biorepository.reporting.export.loading",
+                      defaultMessage: "Generating export...",
+                    })}
+                  />
+                ) : (
+                  <Button
+                    kind="primary"
+                    renderIcon={Download}
+                    onClick={handleQcBatchExport}
+                  >
+                    <FormattedMessage
+                      id="biorepository.reporting.export.qcBatch.downloadButton"
+                      defaultMessage="Download QC Batch Report"
                     />
                   </Button>
                 )}

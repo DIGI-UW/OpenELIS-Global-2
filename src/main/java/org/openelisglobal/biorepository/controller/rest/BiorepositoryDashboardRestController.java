@@ -2,6 +2,7 @@ package org.openelisglobal.biorepository.controller.rest;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.biorepository.service.BiorepositoryDashboardService;
@@ -147,6 +148,26 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
     }
 
     /**
+     * Get completed QC inspection history for dashboard/reporting.
+     *
+     * Returns map with source metadata and most recent completed checks.
+     *
+     * @param limit maximum rows to return (default 50)
+     * @return ResponseEntity with QC history source/list map
+     */
+    @GetMapping(value = "/qc-history", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> getQCHistory(
+            @RequestParam(required = false, defaultValue = "50") Integer limit) {
+        try {
+            Map<String, Object> history = dashboardService.getQCHistory(limit);
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to load QC history: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Get retrieval statistics within date range.
      *
      * Returns: - totalRequests, completedRequests, pendingRequests,
@@ -167,6 +188,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
 
             Map<String, Object> stats = dashboardService.getRetrievalStatistics(start, end);
             return ResponseEntity.ok(stats);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid date format. Expected YYYY-MM-DD"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load retrieval statistics: " + e.getMessage()));
@@ -193,6 +217,9 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
 
             Map<String, Object> stats = dashboardService.getDisposalStatistics(start, end);
             return ResponseEntity.ok(stats);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid date format. Expected YYYY-MM-DD"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load disposal statistics: " + e.getMessage()));
@@ -227,6 +254,8 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(excursions);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
