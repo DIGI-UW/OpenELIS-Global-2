@@ -117,6 +117,8 @@ export default function GenericSampleOrder({
   // Success state
   const [successData, setSuccessData] = useState(null);
 
+  const [isDateInvalid, setIsDateInvalid] = useState(false);
+
   // Default breadcrumbs
   const defaultBreadcrumbs = [
     { label: "home.label", link: "/" },
@@ -251,6 +253,11 @@ export default function GenericSampleOrder({
   const onSubmit = (e) => {
     e.preventDefault();
 
+    const quantity = parseFloat(defaultForm.quantity);
+    if ((defaultForm.quantity && quantity <= 0) || isDateInvalid) {
+      return;
+    }
+
     if (
       labNoRequired &&
       (!defaultForm.labNo || defaultForm.labNo.trim() === "")
@@ -329,6 +336,23 @@ export default function GenericSampleOrder({
 
   // Success screen
   if (successData && showSuccessScreen) {
+    console.log(
+      "KEY LITERAL:",
+      JSON.stringify("genericSample.order.success.message"),
+    );
+    console.log(
+      "KEY FROM MESSAGES:",
+      JSON.stringify(
+        Object.keys(intl.messages).find((k) =>
+          k.includes("genericSample.order.success"),
+        ),
+      ),
+    );
+    console.log(
+      "RESOLVED VALUE:",
+      intl.messages["genericSample.order.success.message"],
+    );
+
     return (
       <>
         {showBreadcrumbs && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
@@ -643,6 +667,16 @@ export default function GenericSampleOrder({
                     onChange={(e) =>
                       updateDefaultField("quantity", e.target.value)
                     }
+                    min="1"
+                    step="1"
+                    invalid={
+                      defaultForm.quantity &&
+                      parseFloat(defaultForm.quantity) <= 0
+                    }
+                    invalidText={intl.formatMessage({
+                      id: "genericSample.order.error.invalidQuantity",
+                      defaultMessage: "Quantity must be greater than 0",
+                    })}
                   />
                 </Column>
               )}
@@ -720,6 +754,8 @@ export default function GenericSampleOrder({
                       />
                     }
                     value={defaultForm.collectionDate}
+                    disallowFutureDate={true}
+                    isInvalidExternal={setIsDateInvalid}
                     onChange={(v) => updateDefaultField("collectionDate", v)}
                   />
                 </Column>
@@ -845,7 +881,7 @@ export default function GenericSampleOrder({
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
               <div style={{ display: "flex", gap: "0.75rem" }}>
-                <Button type="submit">
+                <Button type="submit" disabled={labNoLoading}>
                   <FormattedMessage id="button.save" defaultMessage="Save" />
                 </Button>
                 <Button

@@ -1014,7 +1014,15 @@ nav.cds--side-nav .cds--side-nav__link::before {
   padding-left: calc(7rem - 4px) !important;
 }
 
-/* Training installation badge — WCAG AA compliant contrast */
+.cds--text-input__invalid-icon,
+.cds--date-picker__input--invalid ~ svg {
+  display: none;
+}
+
+.cds--text-input.cds--text-input--invalid {
+  padding-right: 1rem;
+}
+
 .training-installation-badge {
   background-color: #da1e28;
   color: #ffffff;
