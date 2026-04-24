@@ -11,8 +11,39 @@ env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
 
 jobs:
+  # Gate the frontend image build and static checks behind a path filter.
+  # On pull_request, skip both jobs entirely when no frontend-relevant
+  # files changed. On push to develop, workflow_dispatch, and workflow_call
+  # the filter step is skipped and the `|| 'true'` fallback forces a full
+  # build.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend || 'true' }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+      - name: Detect frontend paths
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - 'build.docker-compose.yml'
+              - 'docker-compose.yml'
+              - 'dev.docker-compose.yml'
+              - 'docker-compose.letsencrypt.yml'
+              - '.github/ci/ci.analyzer-harness.yml'
+              - '.github/workflows/frontend.yml'
+
   build-prod-frontend-image:
     name: Image
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -43,6 +74,8 @@ jobs:
 
   static-checks:
     name: Static
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
@@ -95,16 +128,19 @@ jobs:
   frontend-gate:
     name: 02 Checkpoint - Frontend
     if: always()
-    needs: [static-checks, build-prod-frontend-image]
+    needs: [changes, static-checks, build-prod-frontend-image]
     runs-on: ubuntu-latest
     steps:
       - name: Check sub-job results
+        env:
+          STATIC_RESULT: ${{ needs.static-checks.result }}
+          IMAGE_RESULT: ${{ needs.build-prod-frontend-image.result }}
         run: |
-          if [[ "${{ needs.static-checks.result }}" != "success" ]] ||
-             [[ "${{ needs.build-prod-frontend-image.result }}" != "success" ]]; then
+          acceptable() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
+          if ! acceptable "$STATIC_RESULT" || ! acceptable "$IMAGE_RESULT"; then
             echo "One or more sub-jobs failed:"
-            echo "  static-checks: ${{ needs.static-checks.result }}"
-            echo "  build-prod-frontend-image: ${{ needs.build-prod-frontend-image.result }}"
+            echo "  static-checks: $STATIC_RESULT"
+            echo "  build-prod-frontend-image: $IMAGE_RESULT"
             exit 1
           fi
-          echo "All frontend sub-jobs passed."
+          echo "All frontend sub-jobs passed (static=$STATIC_RESULT image=$IMAGE_RESULT)."
