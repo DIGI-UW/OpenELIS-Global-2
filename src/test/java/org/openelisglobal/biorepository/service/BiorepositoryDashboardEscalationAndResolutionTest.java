@@ -117,7 +117,7 @@ public class BiorepositoryDashboardEscalationAndResolutionTest {
     }
 
     @Test
-    public void qcMetrics_BatchFailRateExactlyFivePercent_DoesNotTriggerOverFiveRule() {
+    public void qcMetrics_BatchFailRateExactlyFivePercent_TriggersFivePercentRule() {
         List<BiorepositoryQCInspection> inspections = new ArrayList<>();
         // 20 total, 1 failed => exactly 5.0%
         for (int i = 1; i <= 19; i++) {
@@ -136,15 +136,15 @@ public class BiorepositoryDashboardEscalationAndResolutionTest {
 
         assertNotNull(escalationSignals);
         assertEquals(5.0, ((Number) escalationSignals.get("batchFailRatePercent")).doubleValue(), 0.0001);
-        assertFalse(Boolean.TRUE.equals(escalationSignals.get("batchFailRateExceeded")));
+        assertTrue(Boolean.TRUE.equals(escalationSignals.get("batchFailRateExceeded")));
 
         @SuppressWarnings("unchecked")
         List<String> triggeredRules = (List<String>) escalationSignals.get("triggeredRules");
-        assertFalse(triggeredRules.contains("BATCH_FAIL_RATE_OVER_5_PERCENT"));
+        assertTrue(triggeredRules.contains("BATCH_FAIL_RATE_OVER_5_PERCENT"));
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> flaggedFreezers = (List<Map<String, Object>>) escalationSignals.get("flaggedFreezers");
-        assertTrue("Freezer should not be flagged at exactly 5.0%", flaggedFreezers.isEmpty());
+        assertFalse("Freezer should be flagged at exactly 5.0%", flaggedFreezers.isEmpty());
     }
 
     @Test

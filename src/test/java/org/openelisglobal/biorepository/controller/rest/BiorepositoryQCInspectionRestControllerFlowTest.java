@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -27,6 +28,10 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.valueholder.StorageBox;
+import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.http.ResponseEntity;
 
@@ -81,8 +86,8 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         BiorepositoryQCInspectionRestController.BulkQCInspectionRequest request = buildRequest(null,
                 BiorepositoryQCInspection.DiscrepancyType.MISPLACED_SAMPLE_FOUND.name());
 
-        when(qcInspectionService.createBulkInspections(any(), any(), any(), any(Boolean.class), any(Boolean.class),
-                any(Boolean.class), any(Boolean.class), any(Boolean.class), any(), any(), any(), eq("7")))
+        when(qcInspectionService.createBulkInspections(any(), any(), any(), anyBoolean(), anyBoolean(),
+                anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(), any(), any(), eq("7")))
                         .thenReturn(List.of(inspection));
         when(storageService.getSampleItemLocation("101")).thenReturn(Map.of("hierarchicalPath",
                 "Freezer-A > Shelf-1 > Rack-1 > Box-9", "positionCoordinate", "D2"));
@@ -109,16 +114,26 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         BiorepositoryQCInspectionRestController.BulkQCInspectionRequest request = buildRequest(correctionActionType,
                 discrepancyType.name());
 
-        when(qcInspectionService.createBulkInspections(any(), any(), any(), any(Boolean.class), any(Boolean.class),
-                any(Boolean.class), any(Boolean.class), any(Boolean.class), any(), any(), any(), eq("7")))
+        when(qcInspectionService.createBulkInspections(any(), any(), any(), anyBoolean(), anyBoolean(),
+                anyBoolean(), anyBoolean(), anyBoolean(), any(), any(), any(), any(), any(), eq("7")))
                         .thenReturn(List.of(inspection));
-        when(qcInspectionService.applyCorrectionWorkflow(eq(inspection), eq(correctionActionType), any(), any(), any(),
-                any(), any(), any(), eq("7"))).thenReturn(Map.of(
-                        "actionType", correctionActionType,
-                        "reason", correctionActionType + ": operator correction",
-                        "correctionTimestamp", inspection.getCorrectionTimestamp().toString(),
-                        "updatedLocation", Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-2",
-                                "positionCoordinate", "B5")));
+        if ("MARK_MISSING".equals(correctionActionType)) {
+            java.util.HashMap<String, Object> missingLocation = new java.util.HashMap<>();
+            missingLocation.put("hierarchicalPath", "Missing (not found during QC)");
+            missingLocation.put("positionCoordinate", null);
+            missingLocation.put("status", "MISSING");
+
+            java.util.HashMap<String, Object> missingResult = new java.util.HashMap<>();
+            missingResult.put("movementId", "mv-1");
+            missingResult.put("updatedLocation", missingLocation);
+            when(storageService.markSampleItemMissing(eq("101"), any(), any())).thenReturn(missingResult);
+        } else {
+            when(storageService.moveSampleItemWithLocation(eq("101"), eq("301"), eq("rack"), eq("B5"), any(), any()))
+                    .thenReturn("mv-1");
+            when(storageService.getSampleItemLocation("101")).thenReturn(Map.of(
+                    "hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-2",
+                    "positionCoordinate", "B5"));
+        }
 
         ResponseEntity<?> response = controller.bulkApplyQC(request, requestWithUser);
         assertEquals(200, response.getStatusCode().value());
@@ -213,6 +228,76 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
         verifyZeroInteractions(qcInspectionService);
     }
 
+    @Test
+    public void getQCStorageOverview_ExcludesAlreadyInspectedSamplesByDefault() {
+        BioSample pendingSample = buildStoredBioSample(100, "101");
+        BioSample inspectedSample = buildStoredBioSample(101, "102");
+        java.util.HashMap<Integer, BiorepositoryQCInspection> mostRecentInspections = new java.util.HashMap<>();
+        mostRecentInspections.put(100, null);
+        mostRecentInspections.put(101,
+                buildInspection(BiorepositoryQCInspection.DiscrepancyType.MISPLACED_SAMPLE_FOUND, "UPDATE_LOCATION",
+                        "QC_FAILED"));
+
+        when(bioSampleService.getAll()).thenReturn(List.of(pendingSample, inspectedSample));
+        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
+        when(qcInspectionService.existsByBioSampleId(101)).thenReturn(true);
+        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
+        when(qcInspectionService.hasInspectionBetween(eq(101), any(), any())).thenReturn(true);
+        stubActiveStorageHierarchy();
+        when(storageService.getSampleItemLocation("101"))
+                .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
+                        "A1"));
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, false);
+        assertEquals(200, response.getStatusCode().value());
+
+        Map<String, Object> body = response.getBody();
+        assertNotNull(body);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligibleSamples = (List<Map<String, Object>>) body.get("eligibleSamples");
+        assertEquals(1, eligibleSamples.size());
+        assertEquals(100, eligibleSamples.get(0).get("bioSampleId"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> counts = (Map<String, Object>) body.get("counts");
+        assertEquals(1, counts.get("eligibleSamples"));
+    }
+
+    @Test
+    public void getQCStorageOverview_IncludeInspectedTrue_ReturnsCompletedSamplesInPool() {
+        BioSample pendingSample = buildStoredBioSample(100, "101");
+        BioSample inspectedSample = buildStoredBioSample(101, "102");
+        java.util.HashMap<Integer, BiorepositoryQCInspection> mostRecentInspections = new java.util.HashMap<>();
+        mostRecentInspections.put(100, null);
+        mostRecentInspections.put(101,
+                buildInspection(BiorepositoryQCInspection.DiscrepancyType.MISPLACED_SAMPLE_FOUND, "UPDATE_LOCATION",
+                        "QC_FAILED"));
+
+        when(bioSampleService.getAll()).thenReturn(List.of(pendingSample, inspectedSample));
+        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
+        when(qcInspectionService.existsByBioSampleId(101)).thenReturn(true);
+        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
+        when(qcInspectionService.hasInspectionBetween(eq(101), any(), any())).thenReturn(true);
+        stubActiveStorageHierarchy();
+        when(storageService.getSampleItemLocation("101"))
+                .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
+                        "A1"));
+        when(storageService.getSampleItemLocation("102"))
+                .thenReturn(Map.of("hierarchicalPath", "Freezer-A > Shelf-1 > Rack-1 > Box-1", "positionCoordinate",
+                        "A2"));
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true);
+        assertEquals(200, response.getStatusCode().value());
+
+        Map<String, Object> body = response.getBody();
+        assertNotNull(body);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligibleSamples = (List<Map<String, Object>>) body.get("eligibleSamples");
+        assertEquals(2, eligibleSamples.size());
+        assertTrue(eligibleSamples.stream().anyMatch(sample -> Integer.valueOf(101).equals(sample.get("bioSampleId"))
+                && Boolean.TRUE.equals(sample.get("hasInspectionHistory"))));
+    }
+
     private BiorepositoryQCInspectionRestController.BulkQCInspectionRequest buildRequest(String correctionActionType,
             String discrepancyType) {
         BiorepositoryQCInspectionRestController.BulkQCInspectionRequest request = new BiorepositoryQCInspectionRestController.BulkQCInspectionRequest();
@@ -240,6 +325,48 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
             request.setCorrectionPositionCoordinate(null);
         }
         return request;
+    }
+
+    private BioSample buildStoredBioSample(Integer bioSampleId, String sampleItemId) {
+        SampleItem sampleItem = new SampleItem();
+        sampleItem.setId(sampleItemId);
+
+        BioSample bioSample = new BioSample();
+        bioSample.setId(bioSampleId);
+        bioSample.setWorkflowStatus(BioSample.WorkflowStatus.STORED);
+        bioSample.setSampleItem(sampleItem);
+        return bioSample;
+    }
+
+    private void stubActiveStorageHierarchy() {
+        StorageDevice device = new StorageDevice();
+        device.setId(1);
+        device.setName("Freezer-A");
+        device.setType(StorageDevice.DeviceType.FREEZER.getValue());
+        device.setActive(true);
+
+        StorageShelf shelf = new StorageShelf();
+        shelf.setId(11);
+        shelf.setLabel("Shelf-1");
+        shelf.setActive(true);
+        shelf.setParentDevice(device);
+
+        StorageRack rack = new StorageRack();
+        rack.setId(21);
+        rack.setLabel("Rack-1");
+        rack.setActive(true);
+        rack.setParentShelf(shelf);
+
+        StorageBox box = new StorageBox();
+        box.setId(31);
+        box.setLabel("Box-1");
+        box.setActive(true);
+        box.setParentRack(rack);
+
+        when(storageLocationService.getAllDevices()).thenReturn(List.of(device));
+        when(storageLocationService.getAllShelves()).thenReturn(List.of(shelf));
+        when(storageLocationService.getAllRacks()).thenReturn(List.of(rack));
+        when(storageLocationService.getAllBoxes()).thenReturn(List.of(box));
     }
 
     private BiorepositoryQCInspection buildInspection(BiorepositoryQCInspection.DiscrepancyType discrepancyType,

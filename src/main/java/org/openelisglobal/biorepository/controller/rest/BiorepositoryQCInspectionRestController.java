@@ -2,15 +2,21 @@ package org.openelisglobal.biorepository.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 import org.openelisglobal.biorepository.service.BioSampleService;
-import org.openelisglobal.biorepository.service.BiorepositoryQcOutcomeDerivation;
 import org.openelisglobal.biorepository.service.BiorepositoryQCInspectionService;
 import org.openelisglobal.biorepository.valueholder.BioSample;
 import org.openelisglobal.biorepository.valueholder.BioSample.WorkflowStatus;
@@ -159,11 +165,7 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
                 return ResponseEntity.badRequest().body(
                         Map.of("error", "Correction workflow can only be used when QC result is discrepancy"));
             }
-
-            String correctionValidationError = validateCorrectionWorkflowRequest(request);
-            if (correctionValidationError != null) {
-                return ResponseEntity.badRequest().body(Map.of("error", correctionValidationError));
-            }
+            validateCorrectionWorkflowRequest(request);
 
             // Use current timestamp if not provided
             Timestamp inspectionDate = request.getInspectionDate() != null ? request.getInspectionDate()
@@ -173,17 +175,13 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
                     request.getBioSampleIds(), request.getInspectorName(), inspectionDate, request.isSamplePresent(),
                     request.isLabelIntegrity(), request.isContainerIntegrity(), request.isVolumeAppearanceAcceptable(),
                     request.isCorrectPosition(), request.getDiscrepancyType(), request.getCorrectiveAction(),
-                    request.getRemarks(), sysUserId);
+                    request.getRemarks(), request.getQcBatchId(), request.getExpectedCoordinateSnapshot(), sysUserId);
 
             List<Map<String, Object>> result = new ArrayList<>();
             for (BiorepositoryQCInspection inspection : inspections) {
                 Map<String, Object> correctionDetails = null;
                 if (requiresCorrectionWorkflow(request)) {
-                    correctionDetails = qcInspectionService.applyCorrectionWorkflow(inspection,
-                            request.getCorrectionActionType(), request.getCorrectionLocationId(),
-                            request.getCorrectionLocationType(), request.getCorrectionPositionCoordinate(),
-                            request.getCorrectionReason(), request.getCorrectiveAction(), request.getRemarks(),
-                            sysUserId);
+                    correctionDetails = applyCorrectionWorkflow(inspection, request);
                 }
 
                 Map<String, Object> inspectionMap = mapQCInspection(inspection, correctionDetails);
@@ -252,11 +250,104 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getQCStorageOverview(@RequestParam(required = false) String freezer,
             @RequestParam(required = false) String shelf, @RequestParam(required = false) String rack,
-            @RequestParam(required = false) String box) {
-        String freezerFilter = normalizeFilter(freezer);
-        String shelfFilter = normalizeFilter(shelf);
-        String rackFilter = normalizeFilter(rack);
-        String boxFilter = normalizeFilter(box);
+            @RequestParam(required = false) String box,
+            @RequestParam(required = false, defaultValue = "true") Boolean includeInspected) {
+        return ResponseEntity
+                .ok(buildStorageOverviewMap(normalizeFilter(freezer), normalizeFilter(shelf), normalizeFilter(rack),
+                        normalizeFilter(box), Boolean.TRUE.equals(includeInspected)));
+    }
+
+    private static final int MAX_BOXES_PER_ROUND = 200;
+    private static final int MAX_SAMPLES_PER_BOX = 200;
+
+    /**
+     * Random QC round using the same eligible pool as storage-overview (including quarter rule).
+     */
+    @PostMapping(value = "/generate-round", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> generateQCRound(@RequestBody(required = false) GenerateQCRoundRequest request,
+            HttpServletRequest httpRequest) {
+        if (getSysUserId(httpRequest) == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "User session not found. Please log in again."));
+        }
+        if (request == null) {
+            request = new GenerateQCRoundRequest();
+        }
+        int boxesPerRound = request.getBoxesPerRound() > 0 ? request.getBoxesPerRound() : 10;
+        int samplesPerBox = request.getSamplesPerBox() > 0 ? request.getSamplesPerBox() : 3;
+        if (boxesPerRound > MAX_BOXES_PER_ROUND || samplesPerBox > MAX_SAMPLES_PER_BOX) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Parameters exceed allowed limits for this environment"));
+        }
+        boolean includeAll = request.getIncludeInspected() == null || Boolean.TRUE.equals(request.getIncludeInspected());
+        Map<String, Object> overview = buildStorageOverviewMap(
+                normalizeFilter(request.getFreezer()), normalizeFilter(request.getShelf()), normalizeFilter(request.getRack()),
+                normalizeFilter(request.getBox()), includeAll);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligible = (List<Map<String, Object>>) overview.get("eligibleSamples");
+        if (eligible == null || eligible.isEmpty()) {
+            Map<String, Object> empty = new HashMap<>();
+            empty.put("qcBatchId", null);
+            empty.put("boxesSelected", 0);
+            empty.put("samplesSelected", 0);
+            empty.put("filteredSamplePool", 0);
+            empty.put("includeInspected", includeAll);
+            empty.put("samples", List.of());
+            return ResponseEntity.ok(empty);
+        }
+        String qcBatchId = "QCBATCH-" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8);
+        Random random = request.getSeed() != null ? new Random(request.getSeed()) : new Random();
+        Map<String, List<Map<String, Object>>> candidatesByBox = new HashMap<>();
+        for (Map<String, Object> row : eligible) {
+            String boxKey = asString(row.get("boxKey"));
+            if (boxKey == null) {
+                continue;
+            }
+            candidatesByBox.computeIfAbsent(boxKey, k -> new ArrayList<>()).add(row);
+        }
+        if (candidatesByBox.isEmpty()) {
+            Map<String, Object> empty = new HashMap<>();
+            empty.put("qcBatchId", null);
+            empty.put("boxesSelected", 0);
+            empty.put("samplesSelected", 0);
+            empty.put("filteredSamplePool", eligible.size());
+            empty.put("includeInspected", includeAll);
+            empty.put("samples", List.of());
+            return ResponseEntity.ok(empty);
+        }
+        List<String> selectedBoxKeys = selectDistributedBoxKeys(candidatesByBox, Math.min(boxesPerRound, candidatesByBox.size()), random);
+        List<Map<String, Object>> selectedSamples = new ArrayList<>();
+        for (String boxKey : selectedBoxKeys) {
+            List<Map<String, Object>> inBox = new ArrayList<>(candidatesByBox.getOrDefault(boxKey, List.of()));
+            Collections.shuffle(inBox, random);
+            int limit = Math.min(samplesPerBox, inBox.size());
+            for (int i = 0; i < limit; i++) {
+                Map<String, Object> row = new HashMap<>(inBox.get(i));
+                row.put("qcBatchId", qcBatchId);
+                selectedSamples.add(row);
+            }
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("qcBatchId", qcBatchId);
+        result.put("boxesSelected", selectedBoxKeys.size());
+        result.put("samplesSelected", selectedSamples.size());
+        result.put("boxesPerRound", boxesPerRound);
+        result.put("samplesPerBox", samplesPerBox);
+        result.put("seed", request.getSeed());
+        result.put("includeInspected", includeAll);
+        result.put("filteredSamplePool", eligible.size());
+        result.put("samples", selectedSamples);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * When true: all STORED samples in scope with valid path are in the pool (including
+     * re-QC the same quarter). When false: exclude samples that already have a QC
+     * inspection in the current calendar quarter.
+     */
+    private Map<String, Object> buildStorageOverviewMap(String freezerFilter, String shelfFilter, String rackFilter,
+            String boxFilter, boolean includeAllQcVisits) {
+        CalendarQuarter currentQuarter = resolveCurrentCalendarQuarter(ZoneId.systemDefault());
 
         List<BioSample> storedSamples = bioSampleService.getAll().stream()
                 .filter(bs -> WorkflowStatus.STORED.equals(bs.getWorkflowStatus())).toList();
@@ -402,6 +493,14 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             if (sampleItem == null || sampleItem.getId() == null) {
                 continue;
             }
+
+            boolean anyPriorInspection = qcInspectionService.existsByBioSampleId(bioSample.getId());
+            boolean inspectedThisQuarter = qcInspectionService.hasInspectionBetween(bioSample.getId(), currentQuarter.start,
+                    currentQuarter.end);
+            if (!includeAllQcVisits && inspectedThisQuarter) {
+                continue;
+            }
+
             Map<String, Object> location = storageService.getSampleItemLocation(sampleItem.getId().toString());
             if (location == null || location.isEmpty()) {
                 continue;
@@ -439,6 +538,11 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             sampleSummary.put("positionCoordinate", asString(location.get("positionCoordinate")));
             sampleSummary.put("accessionNumber",
                     sampleItem.getSample() != null ? sampleItem.getSample().getAccessionNumber() : null);
+            sampleSummary.put("anyPriorInspection", anyPriorInspection);
+            sampleSummary.put("hasInspectionHistory", anyPriorInspection);
+            sampleSummary.put("inspectedThisQuarter", inspectedThisQuarter);
+            sampleSummary.put("shelfKey", buildHierarchyKey(parsedFreezer, parsedShelf));
+            sampleSummary.put("boxKey", buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack, parsedBox));
             eligibleSamples.add(sampleSummary);
         }
 
@@ -462,7 +566,82 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         response.put("biorepositoryScope", Map.of(
             "deviceHierarchyBiorepositoryOnly", false,
             "reason", "No explicit device biorepository scope field exists in this branch"));
-        return ResponseEntity.ok(response);
+        response.put("qcExclusionWindow", Map.of("mode", "CALENDAR_QUARTER", "label", currentQuarter.label, "start",
+                currentQuarter.start.toString(), "end", currentQuarter.end.toString(),
+                "poolIncludesRepeatInspectionThisQuarter", includeAllQcVisits,
+                "whenPoolExcludesCompletedThisQuarter", !includeAllQcVisits));
+        return response;
+    }
+
+    private static List<String> selectDistributedBoxKeys(Map<String, List<Map<String, Object>>> candidatesByBox,
+            int boxesToSelect, Random random) {
+        Map<String, List<String>> boxesByShelf = new HashMap<>();
+        for (Map.Entry<String, List<Map<String, Object>>> entry : candidatesByBox.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isEmpty()) {
+                continue;
+            }
+            String shelfKey = asStringHelper(entry.getValue().get(0).get("shelfKey"));
+            String bucket = shelfKey != null ? shelfKey : "Unknown Shelf";
+            boxesByShelf.computeIfAbsent(bucket, key -> new ArrayList<>()).add(entry.getKey());
+        }
+        for (List<String> boxList : boxesByShelf.values()) {
+            Collections.shuffle(boxList, random);
+        }
+        List<String> shelfKeys = new ArrayList<>(boxesByShelf.keySet());
+        Collections.shuffle(shelfKeys, random);
+        List<String> selected = new ArrayList<>();
+        while (selected.size() < boxesToSelect) {
+            boolean addedInCycle = false;
+            for (String shelfKey : shelfKeys) {
+                List<String> boxes = boxesByShelf.get(shelfKey);
+                if (boxes == null || boxes.isEmpty()) {
+                    continue;
+                }
+                selected.add(boxes.remove(0));
+                addedInCycle = true;
+                if (selected.size() >= boxesToSelect) {
+                    break;
+                }
+            }
+            if (!addedInCycle) {
+                break;
+            }
+        }
+        return selected;
+    }
+
+    private static String asStringHelper(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String s = String.valueOf(value);
+        return s.isBlank() ? null : s;
+    }
+
+    private static final class CalendarQuarter {
+        final Timestamp start;
+        final Timestamp end;
+        final String label;
+
+        private CalendarQuarter(Timestamp start, Timestamp end, String label) {
+            this.start = start;
+            this.end = end;
+            this.label = label;
+        }
+    }
+
+    static CalendarQuarter resolveCurrentCalendarQuarter(ZoneId zone) {
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        int year = now.getYear();
+        int month = now.getMonthValue();
+        int quarter = (month - 1) / 3 + 1;
+        int firstMonth = (quarter - 1) * 3 + 1;
+        LocalDate firstDay = LocalDate.of(year, firstMonth, 1);
+        LocalDate lastDay = firstDay.plusMonths(3).minusDays(1);
+        ZonedDateTime start = firstDay.atStartOfDay(zone);
+        ZonedDateTime end = lastDay.atTime(LocalTime.of(23, 59, 59, 999_000_000)).atZone(zone);
+        return new CalendarQuarter(Timestamp.from(start.toInstant()), Timestamp.from(end.toInstant()),
+                year + " Q" + quarter);
     }
 
     // ========== Helper Methods ==========
@@ -590,19 +769,16 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         map.put("technicianId", inspection.getSysUserId());
         map.put("inspectionDate", inspection.getInspectionDate().toString());
         map.put("lastQCDate", inspection.getInspectionDate().toString());
+        map.put("qcBatchId", inspection.getQcBatchId());
         map.put("qcResult", inspection.getQcResult().name());
-        String qcStatus = BiorepositoryQcOutcomeDerivation.deriveQcStatus(inspection);
+        String qcStatus = deriveQcStatus(inspection);
         map.put("qcStatus", qcStatus);
         map.put("sampleFlag", "VALID".equals(qcStatus) ? "QC_VALID" : "QC_FAILED");
         map.put("qcFailed", !"VALID".equals(qcStatus));
-        map.put("lifecycleOutcome", BiorepositoryQcOutcomeDerivation.deriveLifecycleOutcome(inspection));
+        map.put("lifecycleOutcome", deriveLifecycleOutcome(inspection));
         map.put("expectedLocationPath", inspection.getExpectedLocationPath());
         map.put("expectedPositionCoordinate", inspection.getExpectedPositionCoordinate());
-        map.put("correctionActionType", inspection.getCorrectionActionType());
-        map.put("correctionReason", inspection.getCorrectionReason());
-        map.put("correctionByUser", inspection.getCorrectionByUser());
-        map.put("correctionTimestamp",
-                inspection.getCorrectionTimestamp() != null ? inspection.getCorrectionTimestamp().toString() : null);
+        map.put("expectedCoordinateSnapshot", inspection.getExpectedCoordinateSnapshot());
 
         // Checklist items
         map.put("samplePresent", inspection.isSamplePresent());
@@ -622,6 +798,15 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             map.put("remarks", inspection.getRemarks());
             map.put("failureComment", inspection.getRemarks());
         }
+        if (inspection.getCorrectionActionType() != null) {
+            map.put("correctionActionType", inspection.getCorrectionActionType());
+        }
+        if (inspection.getCorrectionByUser() != null) {
+            map.put("correctionByUser", inspection.getCorrectionByUser());
+        }
+        if (inspection.getCorrectionTimestamp() != null) {
+            map.put("correctionTimestamp", inspection.getCorrectionTimestamp().toString());
+        }
 
         map.put("auditTrail", buildAuditTrail(inspection, correctionDetails));
 
@@ -637,72 +822,222 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         return trimToNull(request.getCorrectionActionType()) != null;
     }
 
-    private String validateCorrectionWorkflowRequest(BulkQCInspectionRequest request) {
+    private void validateCorrectionWorkflowRequest(BulkQCInspectionRequest request) {
+        if (!requiresCorrectionWorkflow(request)) {
+            return;
+        }
+
         String correctionActionType = trimToNull(request.getCorrectionActionType());
-        if (correctionActionType == null) {
-            return null;
+        String discrepancyType = trimToNull(request.getDiscrepancyType());
+        String locationId = trimToNull(request.getCorrectionLocationId());
+        String locationType = trimToNull(request.getCorrectionLocationType());
+        String positionCoordinate = trimToNull(request.getCorrectionPositionCoordinate());
+
+        if ("MARK_MISSING".equalsIgnoreCase(correctionActionType)) {
+            boolean isMissingDiscrepancy = BiorepositoryQCInspection.DiscrepancyType.SAMPLE_MISSING.name()
+                    .equals(discrepancyType)
+                    || BiorepositoryQCInspection.DiscrepancyType.MISSING_SAMPLE.name().equals(discrepancyType);
+            if (!isMissingDiscrepancy) {
+                throw new IllegalArgumentException("MARK_MISSING requires discrepancy type SAMPLE_MISSING");
+            }
+            if (locationId != null || locationType != null || positionCoordinate != null) {
+                throw new IllegalArgumentException(
+                        "MARK_MISSING does not allow correction location/position fields");
+            }
+            return;
         }
 
-        String normalizedActionType = correctionActionType.toUpperCase();
-        boolean hasCorrectionLocationId = trimToNull(request.getCorrectionLocationId()) != null;
-        boolean hasCorrectionLocationType = trimToNull(request.getCorrectionLocationType()) != null;
-        boolean hasCorrectionLocation = hasCorrectionLocationId || hasCorrectionLocationType;
-        boolean hasCorrectionPosition = trimToNull(request.getCorrectionPositionCoordinate()) != null;
-
-        if ("MARK_MISSING".equals(normalizedActionType)) {
-            BiorepositoryQCInspection.DiscrepancyType discrepancyType = BiorepositoryQCInspection.DiscrepancyType
-                    .fromString(request.getDiscrepancyType());
-            if (!isSampleMissingDiscrepancy(discrepancyType)) {
-                return "MARK_MISSING requires discrepancy type SAMPLE_MISSING";
+        if ("UPDATE_LOCATION".equalsIgnoreCase(correctionActionType)
+                || "REASSIGN_POSITION".equalsIgnoreCase(correctionActionType)) {
+            if (locationId == null || locationType == null) {
+                throw new IllegalArgumentException(
+                        "UPDATE_LOCATION/REASSIGN_POSITION require correctionLocationId and correctionLocationType");
             }
-            if (hasCorrectionLocation || hasCorrectionPosition) {
-                return "MARK_MISSING does not allow correction location/position fields";
+            if ("REASSIGN_POSITION".equalsIgnoreCase(correctionActionType) && positionCoordinate == null) {
+                throw new IllegalArgumentException("REASSIGN_POSITION requires correctionPositionCoordinate");
             }
-            return null;
+            return;
         }
 
-        if ("UPDATE_LOCATION".equals(normalizedActionType) || "REASSIGN_POSITION".equals(normalizedActionType)) {
-            if (!hasCorrectionLocationId || !hasCorrectionLocationType) {
-                return "UPDATE_LOCATION/REASSIGN_POSITION require correctionLocationId and correctionLocationType";
-            }
-            if ("REASSIGN_POSITION".equals(normalizedActionType) && !hasCorrectionPosition) {
-                return "REASSIGN_POSITION requires correctionPositionCoordinate";
-            }
-            return null;
-        }
-
-        return "Unsupported correction action type: " + correctionActionType;
+        throw new IllegalArgumentException("Unsupported correction action type: " + correctionActionType);
     }
 
-    private boolean isSampleMissingDiscrepancy(BiorepositoryQCInspection.DiscrepancyType discrepancyType) {
-        if (discrepancyType == null) {
+    private Map<String, Object> applyCorrectionWorkflow(BiorepositoryQCInspection inspection, BulkQCInspectionRequest request) {
+        if (inspection.getQcResult() != BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND) {
+            throw new IllegalArgumentException("Correction workflow requires discrepancy QC result");
+        }
+
+        BioSample bioSample = inspection.getBioSample();
+        if (bioSample == null || bioSample.getSampleItem() == null || bioSample.getSampleItem().getId() == null) {
+            throw new IllegalArgumentException("Sample item is required for correction workflow");
+        }
+
+        String correctionActionType = trimToNull(request.getCorrectionActionType());
+        String sampleItemId = bioSample.getSampleItem().getId();
+
+        if ("MARK_MISSING".equalsIgnoreCase(correctionActionType)) {
+            if (!isSampleMissingDiscrepancy(inspection)) {
+                throw new IllegalArgumentException("MARK_MISSING requires discrepancy type SAMPLE_MISSING");
+            }
+
+            String reason = trimToNull(request.getCorrectionReason());
+            if (reason == null) {
+                reason = trimToNull(request.getCorrectiveAction());
+            }
+            if (reason == null) {
+                reason = "Sample marked as missing during QC";
+            }
+
+            String normalizedReason = reason;
+            if (!normalizedReason.toUpperCase().startsWith("MARK_MISSING")) {
+                normalizedReason = "MARK_MISSING: " + normalizedReason;
+            }
+
+            Timestamp correctionTimestamp = new Timestamp(System.currentTimeMillis());
+            Map<String, Object> missingUpdate = storageService.markSampleItemMissing(sampleItemId, normalizedReason,
+                    trimToNull(request.getRemarks()));
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> updatedLocation = missingUpdate.get("updatedLocation") instanceof Map
+                    ? (Map<String, Object>) missingUpdate.get("updatedLocation")
+                    : Map.of("hierarchicalPath", "Missing (not found during QC)", "positionCoordinate", null,
+                            "status", "MISSING");
+
+            Map<String, Object> correction = new HashMap<>();
+            correction.put("actionType", "MARK_MISSING");
+            correction.put("movementId", asString(missingUpdate.get("movementId")));
+            correction.put("reason", normalizedReason);
+            correction.put("updatedLocation", updatedLocation);
+            correction.put("correctionTimestamp", correctionTimestamp.toString());
+            persistCorrectionAuditFields(inspection, "MARK_MISSING", normalizedReason, updatedLocation,
+                    correctionTimestamp);
+            correction.put("auditTrail", buildAuditTrail(inspection, correction));
+            return correction;
+        }
+
+        if (!"UPDATE_LOCATION".equalsIgnoreCase(correctionActionType)
+                && !"REASSIGN_POSITION".equalsIgnoreCase(correctionActionType)) {
+            throw new IllegalArgumentException("Unsupported correction action type: " + correctionActionType);
+        }
+
+        String locationId = trimToNull(request.getCorrectionLocationId());
+        String locationType = trimToNull(request.getCorrectionLocationType());
+        if (locationId == null || locationType == null) {
+            throw new IllegalArgumentException(
+                    "Correction locationId and locationType are required for UPDATE_LOCATION/REASSIGN_POSITION");
+        }
+
+        String reason = trimToNull(request.getCorrectionReason());
+        if (reason == null) {
+            reason = trimToNull(request.getCorrectiveAction());
+        }
+        if (reason == null) {
+            reason = "QC discrepancy correction";
+        }
+
+        String movementId = storageService.moveSampleItemWithLocation(sampleItemId, locationId, locationType,
+                trimToNull(request.getCorrectionPositionCoordinate()), reason, trimToNull(request.getRemarks()));
+
+        String normalizedActionReason = reason;
+        if (!normalizedActionReason.toUpperCase().startsWith(correctionActionType.toUpperCase())) {
+            normalizedActionReason = correctionActionType + ": " + reason;
+        }
+        Map<String, Object> updatedLocation = storageService.getSampleItemLocation(sampleItemId);
+        Timestamp correctionTimestamp = new Timestamp(System.currentTimeMillis());
+        persistCorrectionAuditFields(inspection, correctionActionType, normalizedActionReason, updatedLocation,
+                correctionTimestamp);
+        Map<String, Object> correction = new HashMap<>();
+        correction.put("actionType", correctionActionType);
+        correction.put("movementId", movementId);
+        correction.put("reason", normalizedActionReason);
+        correction.put("updatedLocation", updatedLocation);
+        correction.put("correctionTimestamp", correctionTimestamp.toString());
+        correction.put("auditTrail", buildAuditTrail(inspection, correction));
+        return correction;
+    }
+
+    private void persistCorrectionAuditFields(BiorepositoryQCInspection inspection, String actionType, String reason,
+            Map<String, Object> updatedLocation, Timestamp correctionTimestamp) {
+        String oldCoordinate = composeCoordinate(inspection.getExpectedLocationPath(),
+                inspection.getExpectedPositionCoordinate());
+        String newCoordinate = null;
+        if (updatedLocation != null) {
+            newCoordinate = composeCoordinate(asString(updatedLocation.get("hierarchicalPath")),
+                    asString(updatedLocation.get("positionCoordinate")));
+        }
+        if (newCoordinate == null && "MARK_MISSING".equalsIgnoreCase(actionType)) {
+            newCoordinate = "Missing (not found during QC)";
+        }
+
+        inspection.setCorrectiveAction(reason);
+        if (trimToNull(inspection.getRemarks()) == null && "MARK_MISSING".equalsIgnoreCase(actionType)) {
+            inspection.setRemarks("Marked as missing during QC correction workflow");
+        }
+        inspection.setCorrectionActionType(actionType);
+        inspection.setCorrectionOldCoordinate(oldCoordinate);
+        inspection.setCorrectionNewCoordinate(newCoordinate != null ? newCoordinate : oldCoordinate);
+        inspection.setCorrectionReason(reason);
+        inspection.setCorrectionByUser(inspection.getSysUserId());
+        inspection.setCorrectionTimestamp(correctionTimestamp);
+        qcInspectionService.update(inspection);
+    }
+
+    private String deriveQcStatus(BiorepositoryQCInspection inspection) {
+        if (inspection == null || inspection.getQcResult() == null) {
+            return "UNKNOWN";
+        }
+        if (BiorepositoryQCInspection.QCResult.VERIFIED.equals(inspection.getQcResult())) {
+            return "VALID";
+        }
+        if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+            if (isSampleMissingDiscrepancy(inspection)
+                    && "MARK_MISSING".equalsIgnoreCase(trimToNull(inspection.getCorrectionActionType()))) {
+                return "MISSING";
+            }
+            return "QC_FAILED";
+        }
+        return "UNKNOWN";
+    }
+
+    private String deriveLifecycleOutcome(BiorepositoryQCInspection inspection) {
+        if (inspection == null || inspection.getQcResult() == null) {
+            return "UNKNOWN";
+        }
+        if (BiorepositoryQCInspection.QCResult.VERIFIED.equals(inspection.getQcResult())) {
+            return "PASSED";
+        }
+        if (BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
+            if ("MISSING".equals(deriveQcStatus(inspection))) {
+                return "FAILED_MARKED_MISSING";
+            }
+            if (trimToNull(inspection.getCorrectionActionType()) != null) {
+                return "FAILED_CORRECTED";
+            }
+            return "FAILED_PENDING_CORRECTION";
+        }
+        return "UNKNOWN";
+    }
+
+    private boolean isSampleMissingDiscrepancy(BiorepositoryQCInspection inspection) {
+        if (inspection == null || inspection.getDiscrepancyType() == null) {
             return false;
         }
-        return BiorepositoryQCInspection.DiscrepancyType.SAMPLE_MISSING.equals(discrepancyType)
-                || BiorepositoryQCInspection.DiscrepancyType.MISSING_SAMPLE.equals(discrepancyType);
+        return BiorepositoryQCInspection.DiscrepancyType.SAMPLE_MISSING.equals(inspection.getDiscrepancyType())
+                || BiorepositoryQCInspection.DiscrepancyType.MISSING_SAMPLE.equals(inspection.getDiscrepancyType());
     }
 
     private Map<String, Object> buildAuditTrail(BiorepositoryQCInspection inspection,
             Map<String, Object> correctionDetails) {
         Map<String, Object> auditTrail = new HashMap<>();
 
-        String oldCoordinate = trimToNull(inspection.getCorrectionOldCoordinate());
-        if (oldCoordinate == null) {
-            oldCoordinate = composeCoordinate(inspection.getExpectedLocationPath(), inspection.getExpectedPositionCoordinate());
-        }
-        String newCoordinate = trimToNull(inspection.getCorrectionNewCoordinate());
-        String reason = trimToNull(inspection.getCorrectionReason());
-        if (reason == null) {
-            reason = trimToNull(inspection.getCorrectiveAction());
-        }
-        String auditTimestamp = inspection.getCorrectionTimestamp() != null ? inspection.getCorrectionTimestamp().toString()
-                : (inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : null);
-        String auditUser = trimToNull(inspection.getCorrectionByUser()) != null ? inspection.getCorrectionByUser()
-                : inspection.getSysUserId();
+        String oldCoordinate = composeCoordinate(inspection.getExpectedLocationPath(),
+                inspection.getExpectedPositionCoordinate());
+
+        String newCoordinate = null;
+        String reason = trimToNull(inspection.getCorrectiveAction());
+        String auditTimestamp = inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : null;
         if (correctionDetails != null) {
-            if (reason == null) {
-                reason = trimToNull(asString(correctionDetails.get("reason")));
-            }
+            reason = trimToNull(asString(correctionDetails.get("reason")));
             String correctionTimestamp = trimToNull(asString(correctionDetails.get("correctionTimestamp")));
             if (correctionTimestamp != null) {
                 auditTimestamp = correctionTimestamp;
@@ -717,20 +1052,19 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             }
         }
 
-        if (newCoordinate == null && "MISSING".equals(BiorepositoryQcOutcomeDerivation.deriveQcStatus(inspection))) {
+        if (newCoordinate == null && "MISSING".equals(deriveQcStatus(inspection))) {
             newCoordinate = "Missing (not found during QC)";
         }
 
-        boolean correctionApplied = BiorepositoryQcOutcomeDerivation.hasAppliedCorrectionWorkflow(inspection);
-        if (!correctionApplied
+        if (newCoordinate == null && correctionDetails == null
                 && BiorepositoryQCInspection.QCResult.DISCREPANCY_FOUND.equals(inspection.getQcResult())) {
-            SampleItem sampleItem = inspection.getBioSample() != null ? inspection.getBioSample().getSampleItem() : null;
+            BioSample bioSample = inspection.getBioSample();
+            SampleItem sampleItem = bioSample != null ? bioSample.getSampleItem() : null;
             if (sampleItem != null && sampleItem.getId() != null) {
                 Map<String, Object> currentLocation = storageService.getSampleItemLocation(sampleItem.getId().toString());
-                String currentCoordinate = composeCoordinate(asString(currentLocation.get("hierarchicalPath")),
-                        asString(currentLocation.get("positionCoordinate")));
-                if (trimToNull(currentCoordinate) != null) {
-                    newCoordinate = currentCoordinate;
+                if (currentLocation != null) {
+                    newCoordinate = composeCoordinate(asString(currentLocation.get("hierarchicalPath")),
+                            asString(currentLocation.get("positionCoordinate")));
                 }
             }
         }
@@ -743,8 +1077,8 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
         auditTrail.put("newCoordinate", newCoordinate);
         auditTrail.put("fromCoordinates", oldCoordinate);
         auditTrail.put("toCoordinates", newCoordinate);
-        auditTrail.put("user", auditUser);
-        auditTrail.put("correctedBy", auditUser);
+        auditTrail.put("user", inspection.getSysUserId());
+        auditTrail.put("correctedBy", inspection.getSysUserId());
         auditTrail.put("timestamp", auditTimestamp);
         auditTrail.put("correctedAt", auditTimestamp);
         auditTrail.put("reason", reason);
@@ -778,10 +1112,88 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
 
     // ========== Request DTOs ==========
 
+    public static class GenerateQCRoundRequest {
+        private int boxesPerRound = 10;
+        private int samplesPerBox = 3;
+        private Long seed;
+        private String freezer;
+        private String shelf;
+        private String rack;
+        private String box;
+        /** When true (default), full eligible pool. When false, exclude if inspected this calendar quarter. */
+        private Boolean includeInspected = Boolean.TRUE;
+
+        public int getBoxesPerRound() {
+            return boxesPerRound;
+        }
+
+        public void setBoxesPerRound(int boxesPerRound) {
+            this.boxesPerRound = boxesPerRound;
+        }
+
+        public int getSamplesPerBox() {
+            return samplesPerBox;
+        }
+
+        public void setSamplesPerBox(int samplesPerBox) {
+            this.samplesPerBox = samplesPerBox;
+        }
+
+        public Long getSeed() {
+            return seed;
+        }
+
+        public void setSeed(Long seed) {
+            this.seed = seed;
+        }
+
+        public String getFreezer() {
+            return freezer;
+        }
+
+        public void setFreezer(String freezer) {
+            this.freezer = freezer;
+        }
+
+        public String getShelf() {
+            return shelf;
+        }
+
+        public void setShelf(String shelf) {
+            this.shelf = shelf;
+        }
+
+        public String getRack() {
+            return rack;
+        }
+
+        public void setRack(String rack) {
+            this.rack = rack;
+        }
+
+        public String getBox() {
+            return box;
+        }
+
+        public void setBox(String box) {
+            this.box = box;
+        }
+
+        public Boolean getIncludeInspected() {
+            return includeInspected;
+        }
+
+        public void setIncludeInspected(Boolean includeInspected) {
+            this.includeInspected = includeInspected;
+        }
+    }
+
     public static class BulkQCInspectionRequest {
         private List<Integer> bioSampleIds;
         private String inspectorName;
         private Timestamp inspectionDate;
+        private String qcBatchId;
+        private String expectedCoordinateSnapshot;
         private boolean samplePresent;
         private boolean labelIntegrity;
         private boolean containerIntegrity;
@@ -819,6 +1231,22 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
 
         public void setInspectionDate(Timestamp inspectionDate) {
             this.inspectionDate = inspectionDate;
+        }
+
+        public String getQcBatchId() {
+            return qcBatchId;
+        }
+
+        public void setQcBatchId(String qcBatchId) {
+            this.qcBatchId = qcBatchId;
+        }
+
+        public String getExpectedCoordinateSnapshot() {
+            return expectedCoordinateSnapshot;
+        }
+
+        public void setExpectedCoordinateSnapshot(String expectedCoordinateSnapshot) {
+            this.expectedCoordinateSnapshot = expectedCoordinateSnapshot;
         }
 
         public boolean isSamplePresent() {

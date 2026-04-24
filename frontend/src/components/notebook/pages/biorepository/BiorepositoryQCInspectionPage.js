@@ -27,18 +27,13 @@ import {
   TableBatchAction,
   Loading,
 } from "@carbon/react";
-import { Checkmark, Edit, Renew, WarningAlt } from "@carbon/react/icons";
+import { Checkmark, Catalog, Renew, WarningAlt } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import PropTypes from "prop-types";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../../utils/Utils";
-import {
-  getAllowedCorrectionActions,
-  hasInvalidMarkMissingLocationFields,
-  isMissingDiscrepancyType,
-} from "./qcCorrectionGuardrails";
 
 /**
  * QC Checklist items for Biorepository sample inspection
@@ -107,7 +102,7 @@ const CORRECTION_ACTIONS = [
 
 const ALL_OPTION = "__ALL__";
 
-const buildStorageOverviewQuery = (filters) => {
+const buildStorageOverviewQuery = (filters, includeInspected) => {
   const params = new URLSearchParams();
   ["freezer", "shelf", "rack", "box"].forEach((key) => {
     const value = filters?.[key];
@@ -115,6 +110,8 @@ const buildStorageOverviewQuery = (filters) => {
       params.set(key, value);
     }
   });
+  // Backend defaults to true; always send so unchecking the box applies this-quarter exclusion.
+  params.set("includeInspected", includeInspected ? "true" : "false");
   const query = params.toString();
   return query ? `?${query}` : "";
 };
@@ -165,11 +162,17 @@ function BiorepositoryQCInspectionPage({
     rack: ALL_OPTION,
     box: ALL_OPTION,
   });
+  const [includeInspectedSamples, setIncludeInspectedSamples] = useState(true);
   const [storageOverviewData, setStorageOverviewData] = useState({
     counts: { freezers: 0, shelves: 0, racks: 0, boxes: 0, eligibleSamples: 0 },
     filters: { freezers: [], shelves: [], racks: [], boxes: [] },
     eligibleSamples: [],
+    qcExclusionWindow: null,
   });
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historySampleLabel, setHistorySampleLabel] = useState("");
   const [roundSettings, setRoundSettings] = useState({
     boxesPerRound: "10",
     samplesPerBox: "3",
@@ -181,6 +184,10 @@ function BiorepositoryQCInspectionPage({
   const [bulkApplyModalOpen, setBulkApplyModalOpen] = useState(false);
   const [isBulkApplying, setIsBulkApplying] = useState(false);
   const [selectedForBulkApply, setSelectedForBulkApply] = useState([]); // Capture selection when modal opens
+  const [generatedRoundSampleIds, setGeneratedRoundSampleIds] = useState([]);
+  /** Snapshot of generate-round API `samples` so the checklist and table stay fixed until you exit round mode. */
+  const [generatedRoundResponseSamples, setGeneratedRoundResponseSamples] =
+    useState([]);
 
   // Bulk apply form values
   const [bulkApplyValues, setBulkApplyValues] = useState({
@@ -234,14 +241,31 @@ function BiorepositoryQCInspectionPage({
     );
   }, []);
 
+  const openInspectionHistory = useCallback((sample) => {
+    if (!sample?.id) {
+      return;
+    }
+    setHistorySampleLabel(sample.accessionNumber || String(sample.id));
+    setHistoryModalOpen(true);
+    setHistoryLoading(true);
+    setHistoryRows([]);
+    getFromOpenElisServer(
+      `/rest/biorepository/qc-inspection/history/${sample.id}`,
+      (response) => {
+        setHistoryLoading(false);
+        setHistoryRows(Array.isArray(response) ? response : []);
+      },
+    );
+  }, []);
+
   // Load samples on mount
   useEffect(() => {
     loadStoredSamples();
   }, [loadStoredSamples]);
 
-  const loadStorageOverview = useCallback((filters) => {
+  const loadStorageOverview = useCallback((filters, includeInspected) => {
     setLoadingStorageOverview(true);
-    const query = buildStorageOverviewQuery(filters);
+    const query = buildStorageOverviewQuery(filters, includeInspected);
     getFromOpenElisServer(
       `/rest/biorepository/qc-inspection/storage-overview${query}`,
       (response) => {
@@ -266,14 +290,15 @@ function BiorepositoryQCInspectionPage({
           eligibleSamples: Array.isArray(response.eligibleSamples)
             ? response.eligibleSamples
             : [],
+          qcExclusionWindow: response.qcExclusionWindow || null,
         });
       },
     );
   }, []);
 
   useEffect(() => {
-    loadStorageOverview(storageFilters);
-  }, [storageFilters, loadStorageOverview]);
+    loadStorageOverview(storageFilters, includeInspectedSamples);
+  }, [storageFilters, includeInspectedSamples, loadStorageOverview]);
 
   useEffect(() => {
     setLoadingBoxes(true);
@@ -328,6 +353,55 @@ function BiorepositoryQCInspectionPage({
     [samples, eligibleSampleIdSet],
   );
 
+  const selectedSamplesForBulkApply = useMemo(
+    () =>
+      samples.filter((sample) =>
+        selectedForBulkApply.includes(String(sample.id)),
+      ),
+    [samples, selectedForBulkApply],
+  );
+
+  const generatedRoundSampleSet = useMemo(
+    () => new Set(generatedRoundSampleIds.map((id) => String(id))),
+    [generatedRoundSampleIds],
+  );
+
+  const visibleSamples = useMemo(() => {
+    if (generatedRoundSampleIds.length === 0) {
+      return filteredSamples;
+    }
+    // During an active round, keep the same batch in the table. Do not re-apply
+    // the current eligible pool: after an inspection, "exclude this quarter" can
+    // drop rows from the pool and would make the batch disappear.
+    return samples.filter((sample) =>
+      generatedRoundSampleSet.has(String(sample.id)),
+    );
+  }, [
+    samples,
+    filteredSamples,
+    generatedRoundSampleIds.length,
+    generatedRoundSampleSet,
+  ]);
+
+  const sampleByBioSampleId = useMemo(
+    () => new Map(samples.map((sample) => [String(sample.id), sample])),
+    [samples],
+  );
+
+  const generatedRoundSamples = useMemo(
+    () =>
+      generatedRoundResponseSamples.length > 0
+        ? generatedRoundResponseSamples
+        : (storageOverviewData.eligibleSamples || []).filter((sample) =>
+            generatedRoundSampleSet.has(String(sample.bioSampleId)),
+          ),
+    [
+      generatedRoundResponseSamples,
+      storageOverviewData.eligibleSamples,
+      generatedRoundSampleSet,
+    ],
+  );
+
   const storageOverview = useMemo(
     () => ({
       freezers: storageOverviewData.counts.freezers || 0,
@@ -349,8 +423,7 @@ function BiorepositoryQCInspectionPage({
       1,
     );
 
-    const eligibleSamples = storageOverviewData.eligibleSamples || [];
-    if (eligibleSamples.length === 0) {
+    if ((storageOverviewData.eligibleSamples || []).length === 0) {
       setError(
         intl.formatMessage({
           id: "biorepository.qc.error.noSamplesForFilters",
@@ -363,136 +436,128 @@ function BiorepositoryQCInspectionPage({
 
     setIsGeneratingRound(true);
     setError(null);
-
-    const groupedByBox = new Map();
-    eligibleSamples.forEach((sample) => {
-      const key = [
-        sample.freezer || "Unknown",
-        sample.shelf || "Unknown",
-        sample.rack || "Unknown",
-        sample.box || "Unknown",
-      ].join(" > ");
-      if (!groupedByBox.has(key)) {
-        groupedByBox.set(key, []);
-      }
-      groupedByBox.get(key).push(sample);
-    });
-
-    const shuffle = (arr) => {
-      const copy = [...arr];
-      for (let i = copy.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-      }
-      return copy;
+    const payload = {
+      boxesPerRound,
+      samplesPerBox,
+      freezer:
+        storageFilters.freezer && storageFilters.freezer !== ALL_OPTION
+          ? storageFilters.freezer
+          : null,
+      shelf:
+        storageFilters.shelf && storageFilters.shelf !== ALL_OPTION
+          ? storageFilters.shelf
+          : null,
+      rack:
+        storageFilters.rack && storageFilters.rack !== ALL_OPTION
+          ? storageFilters.rack
+          : null,
+      box:
+        storageFilters.box && storageFilters.box !== ALL_OPTION
+          ? storageFilters.box
+          : null,
+      includeInspected: Boolean(includeInspectedSamples),
     };
 
-    const boxDescriptors = Array.from(groupedByBox.keys()).map((boxKey) => {
-      const [freezer, shelf, rack] = boxKey.split(" > ");
-      return {
-        boxKey,
-        shelfKey: `${freezer || "Unknown"} > ${shelf || "Unknown"}`,
-        rackKey: `${freezer || "Unknown"} > ${shelf || "Unknown"} > ${
-          rack || "Unknown"
-        }`,
-      };
-    });
+    postToOpenElisServerJsonResponse(
+      `/rest/biorepository/qc-inspection/generate-round`,
+      JSON.stringify(payload),
+      (response) => {
+        setIsGeneratingRound(false);
+        if (!response || response.error) {
+          setError(
+            response?.error ||
+              intl.formatMessage({
+                id: "biorepository.qc.error.generateRoundFailed",
+                defaultMessage: "Failed to generate QC round.",
+              }),
+          );
+          return;
+        }
 
-    const targetBoxCount = Math.min(boxesPerRound, boxDescriptors.length);
-    const selectedBoxKeys = [];
-    const selectedSet = new Set();
+        const selectedSamples = Array.isArray(response.samples)
+          ? response.samples
+          : [];
+        if (!selectedSamples.length) {
+          setError(
+            intl.formatMessage({
+              id: "biorepository.qc.error.emptyRound",
+              defaultMessage:
+                "No eligible samples were found to generate a QC round.",
+            }),
+          );
+          return;
+        }
 
-    // Pass 1: maximize shelf distribution.
-    const boxesByShelf = new Map();
-    boxDescriptors.forEach((descriptor) => {
-      if (!boxesByShelf.has(descriptor.shelfKey)) {
-        boxesByShelf.set(descriptor.shelfKey, []);
-      }
-      boxesByShelf.get(descriptor.shelfKey).push(descriptor.boxKey);
-    });
-
-    shuffle(Array.from(boxesByShelf.keys())).forEach((shelfKey) => {
-      if (selectedBoxKeys.length >= targetBoxCount) return;
-      const candidate = shuffle(boxesByShelf.get(shelfKey)).find(
-        (boxKey) => !selectedSet.has(boxKey),
-      );
-      if (candidate) {
-        selectedBoxKeys.push(candidate);
-        selectedSet.add(candidate);
-      }
-    });
-
-    // Pass 2: maximize rack distribution.
-    const boxesByRack = new Map();
-    boxDescriptors.forEach((descriptor) => {
-      if (!boxesByRack.has(descriptor.rackKey)) {
-        boxesByRack.set(descriptor.rackKey, []);
-      }
-      boxesByRack.get(descriptor.rackKey).push(descriptor.boxKey);
-    });
-
-    shuffle(Array.from(boxesByRack.keys())).forEach((rackKey) => {
-      if (selectedBoxKeys.length >= targetBoxCount) return;
-      const candidate = shuffle(boxesByRack.get(rackKey)).find(
-        (boxKey) => !selectedSet.has(boxKey),
-      );
-      if (candidate) {
-        selectedBoxKeys.push(candidate);
-        selectedSet.add(candidate);
-      }
-    });
-
-    // Pass 3: fill remaining slots randomly from any unselected boxes.
-    const remainingBoxes = shuffle(boxDescriptors.map((d) => d.boxKey)).filter(
-      (boxKey) => !selectedSet.has(boxKey),
+        setGeneratedRoundResponseSamples(selectedSamples);
+        setGeneratedRoundSampleIds(
+          selectedSamples.map((sample) => String(sample.bioSampleId)),
+        );
+        setRoundInfo({
+          qcBatchId: response.qcBatchId || null,
+          boxesSelected: response.boxesSelected || 0,
+          samplesSelected: selectedSamples.length,
+          filteredSamplePool:
+            response.filteredSamplePool ||
+            (storageOverviewData.eligibleSamples || []).length,
+        });
+      },
     );
-    remainingBoxes.forEach((boxKey) => {
-      if (selectedBoxKeys.length >= targetBoxCount) return;
-      selectedBoxKeys.push(boxKey);
-      selectedSet.add(boxKey);
-    });
+  }, [
+    intl,
+    roundSettings.boxesPerRound,
+    roundSettings.samplesPerBox,
+    storageFilters.box,
+    storageFilters.freezer,
+    storageFilters.rack,
+    storageFilters.shelf,
+    includeInspectedSamples,
+    storageOverviewData.eligibleSamples,
+  ]);
 
-    const selectedSamples = [];
-    selectedBoxKeys.forEach((boxKey) => {
-      const boxSamples = [...(groupedByBox.get(boxKey) || [])];
-      for (let i = boxSamples.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [boxSamples[i], boxSamples[j]] = [boxSamples[j], boxSamples[i]];
-      }
-      selectedSamples.push(
-        ...boxSamples.slice(0, Math.min(samplesPerBox, boxSamples.length)),
-      );
-    });
+  const generatedRoundRows = useMemo(
+    () =>
+      generatedRoundSamples.map((sample, index) => {
+        const linkedSample = sampleByBioSampleId.get(String(sample.bioSampleId));
+        return {
+          id: `${sample.bioSampleId || "sample"}-${index}`,
+          freezer: sample.freezer || "Unknown",
+          shelf: sample.shelf || "Unknown",
+          rack: sample.rack || "Unknown",
+          box: sample.box || "Unknown",
+          position: sample.positionCoordinate || "-",
+          sampleNumber:
+            linkedSample?.accessionNumber || sample.accessionNumber || "-",
+          sampleId: linkedSample?.externalId || "-",
+        };
+      }),
+    [generatedRoundSamples, sampleByBioSampleId],
+  );
 
-    if (selectedSamples.length === 0) {
-      setIsGeneratingRound(false);
+  const generatedRoundHeaders = [
+    { key: "freezer", header: "Freezer" },
+    { key: "shelf", header: "Shelf" },
+    { key: "rack", header: "Rack" },
+    { key: "box", header: "Box" },
+    { key: "position", header: "Position" },
+    { key: "sampleNumber", header: "Sample Number" },
+    { key: "sampleId", header: "Sample ID" },
+  ];
+
+  const openInspectionModal = useCallback((sampleIds) => {
+    if (!Array.isArray(sampleIds) || sampleIds.length === 0) {
       setError(
         intl.formatMessage({
-          id: "biorepository.qc.error.emptyRound",
-          defaultMessage:
-            "No eligible samples were found to generate a QC round.",
+          id: "biorepository.qc.error.noSelection",
+          defaultMessage: "Please select samples to inspect.",
         }),
       );
       return;
     }
 
-    setSelectedForBulkApply(
-      selectedSamples.map((sample) => String(sample.bioSampleId)),
-    );
-    setRoundInfo({
-      boxesSelected: selectedBoxKeys.length,
-      samplesSelected: selectedSamples.length,
-      filteredSamplePool: eligibleSamples.length,
-    });
+    setSelectedForBulkApply(sampleIds);
     resetBulkApplyValues();
     setBulkApplyModalOpen(true);
-    setIsGeneratingRound(false);
-  }, [
-    intl,
-    roundSettings.boxesPerRound,
-    roundSettings.samplesPerBox,
-    storageOverviewData.eligibleSamples,
-  ]);
+  }, [intl]);
 
   // Reset bulk apply values
   const resetBulkApplyValues = () => {
@@ -668,31 +733,6 @@ function BiorepositoryQCInspectionPage({
       }
 
       if (
-        bulkApplyValues.correctionActionType === "MARK_MISSING" &&
-        !isMissingDiscrepancyType(bulkApplyValues.discrepancyType)
-      ) {
-        setError(
-          intl.formatMessage({
-            id: "biorepository.qc.error.markMissingRequiresMissingDiscrepancy",
-            defaultMessage:
-              "Mark missing is only allowed when discrepancy type is Sample missing.",
-          }),
-        );
-        return;
-      }
-
-      if (hasInvalidMarkMissingLocationFields(bulkApplyValues)) {
-        setError(
-          intl.formatMessage({
-            id: "biorepository.qc.error.markMissingLocationFieldsNotAllowed",
-            defaultMessage:
-              "Location and position inputs are not allowed for Mark missing correction.",
-          }),
-        );
-        return;
-      }
-
-      if (
         ["UPDATE_LOCATION", "REASSIGN_POSITION"].includes(
           bulkApplyValues.correctionActionType,
         ) &&
@@ -723,16 +763,107 @@ function BiorepositoryQCInspectionPage({
       }
     }
 
+    const parsedInspectionDate = bulkApplyValues.inspectionDate
+      ? new Date(bulkApplyValues.inspectionDate)
+      : null;
+    if (!parsedInspectionDate || Number.isNaN(parsedInspectionDate.getTime())) {
+      setError(
+        intl.formatMessage({
+          id: "biorepository.qc.error.invalidInspectionDate",
+          defaultMessage:
+            "Please provide a valid inspection date and time before recording verification.",
+        }),
+      );
+      return;
+    }
+
     setIsBulkApplying(true);
     setError(null);
+
+    const getFriendlyBulkApplyError = (response) => {
+      const rawError = response?.error || response?.message || "";
+      const normalized = String(rawError).toLowerCase();
+
+      if (!rawError) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.apply",
+          defaultMessage: "Failed to apply QC inspection. Please try again.",
+        });
+      }
+
+      if (normalized.includes("supports exactly one sample")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.correctionSingleOnly",
+          defaultMessage:
+            "Correction workflow currently supports one sample at a time. Select a single sample for correction.",
+        });
+      }
+
+      if (normalized.includes("correction workflow can only be used")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.correctionRequiresDiscrepancy",
+          defaultMessage:
+            "Correction workflow actions are only available when QC result is discrepancy.",
+        });
+      }
+
+      if (normalized.includes("discrepancy type is required")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.noDiscrepancyType",
+          defaultMessage: "Please select a discrepancy type.",
+        });
+      }
+
+      if (normalized.includes("corrective action is required")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.noCorrectiveAction",
+          defaultMessage: "Please describe the corrective action taken.",
+        });
+      }
+
+      if (normalized.includes("comment/remarks is required")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.noRemarks",
+          defaultMessage: "Please enter comment/remarks for discrepancy findings.",
+        });
+      }
+
+      if (normalized.includes("unsupported correction action")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.unsupportedCorrection",
+          defaultMessage:
+            "Unsupported correction workflow action selected. Please choose a valid option.",
+        });
+      }
+
+      if (normalized.includes("locationid and locationtype are required")) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.noCorrectionLocation",
+          defaultMessage:
+            "Select a target storage box for update/reassign correction.",
+        });
+      }
+
+      if (response?.status === 401 || response?.status === 403) {
+        return intl.formatMessage({
+          id: "biorepository.qc.error.sessionExpired",
+          defaultMessage:
+            "Your session has expired or you do not have permission. Please log in again and retry.",
+        });
+      }
+
+      return intl.formatMessage({
+        id: "biorepository.qc.error.apply",
+        defaultMessage: "Failed to apply QC inspection. Please try again.",
+      });
+    };
 
     // Prepare request payload
     const payload = {
       bioSampleIds: selectedForBulkApply.map((id) => parseInt(id, 10)),
       inspectorName: bulkApplyValues.inspectorName.trim(),
-      inspectionDate: bulkApplyValues.inspectionDate
-        ? new Date(bulkApplyValues.inspectionDate).toISOString()
-        : null,
+      inspectionDate: parsedInspectionDate.toISOString(),
+      qcBatchId: roundInfo?.qcBatchId || null,
       samplePresent: bulkApplyValues.qcChecklist.samplePresent,
       labelIntegrity: bulkApplyValues.qcChecklist.labelIntegrity,
       containerIntegrity: bulkApplyValues.qcChecklist.containerIntegrity,
@@ -789,7 +920,8 @@ function BiorepositoryQCInspectionPage({
             intl.formatMessage(
               {
                 id: "biorepository.qc.success.applied",
-                defaultMessage: "QC inspection applied to {count} sample(s).",
+                defaultMessage:
+                  "QC record saved for {count} sample(s). Review status in this table and Reporting & Audit.",
               },
               { count },
             ),
@@ -798,18 +930,12 @@ function BiorepositoryQCInspectionPage({
           resetBulkApplyValues();
           setSelectedForBulkApply([]); // Clear captured selection
           loadStoredSamples();
+          loadStorageOverview(storageFilters, includeInspectedSamples);
           if (onProgressUpdate) {
             onProgressUpdate();
           }
         } else {
-          setError(
-            response?.error ||
-              intl.formatMessage({
-                id: "biorepository.qc.error.apply",
-                defaultMessage:
-                  "Failed to apply QC inspection. Please try again.",
-              }),
-          );
+          setError(getFriendlyBulkApplyError(response));
         }
       },
     );
@@ -818,6 +944,9 @@ function BiorepositoryQCInspectionPage({
     bulkApplyValues,
     intl,
     loadStoredSamples,
+    loadStorageOverview,
+    storageFilters,
+    includeInspectedSamples,
     onProgressUpdate,
   ]);
 
@@ -837,29 +966,6 @@ function BiorepositoryQCInspectionPage({
     return Object.values(bulkApplyValues.qcChecklist).filter((v) => v).length;
   }, [bulkApplyValues.qcChecklist]);
 
-  const correctionActionOptions = useMemo(
-    () =>
-      getAllowedCorrectionActions(
-        CORRECTION_ACTIONS,
-        bulkApplyValues.discrepancyType,
-      ),
-    [bulkApplyValues.discrepancyType],
-  );
-
-  useEffect(() => {
-    if (
-      bulkApplyValues.correctionActionType === "MARK_MISSING" &&
-      !isMissingDiscrepancyType(bulkApplyValues.discrepancyType)
-    ) {
-      setBulkApplyValues((prev) => ({
-        ...prev,
-        correctionActionType: "",
-        correctionBoxId: "",
-        correctionPositionCoordinate: "",
-      }));
-    }
-  }, [bulkApplyValues.correctionActionType, bulkApplyValues.discrepancyType]);
-
   // Get QC result tag
   const getQCTag = (qcResult, qcStatus) => {
     if (!qcResult) return <Tag type="gray">Pending</Tag>;
@@ -869,6 +975,46 @@ function BiorepositoryQCInspectionPage({
       return <Tag type="red">Discrepancy</Tag>;
     return <Tag type="gray">{qcResult}</Tag>;
   };
+
+  const getDiscrepancyResolutionLabel = (inspection) => {
+    if (!inspection || inspection.qcResult !== "DISCREPANCY_FOUND") {
+      return "";
+    }
+    if (inspection.lifecycleOutcome === "FAILED_CORRECTED") {
+      return "Correction logged";
+    }
+    if (
+      inspection.lifecycleOutcome === "FAILED_MARKED_MISSING" ||
+      inspection.qcStatus === "MISSING"
+    ) {
+      return "Marked missing";
+    }
+    if (inspection.lifecycleOutcome === "FAILED_PENDING_CORRECTION") {
+      return "Correction required";
+    }
+    if (inspection.correctionActionType) {
+      return "Correction logged";
+    }
+    return "Correction required";
+  };
+
+  const unresolvedDiscrepancyCount = useMemo(
+    () =>
+      samples.filter((sample) => {
+        const inspection = sample.lastQCInspection;
+        if (!inspection || inspection.qcResult !== "DISCREPANCY_FOUND") {
+          return false;
+        }
+        return getDiscrepancyResolutionLabel(inspection) === "Correction required";
+      }).length,
+    [samples],
+  );
+
+  const discrepancyLabelById = useMemo(
+    () =>
+      new Map(DISCREPANCY_TYPES.map((type) => [String(type.id), type.label])),
+    [],
+  );
 
   // Table headers
   const headers = [
@@ -905,6 +1051,20 @@ function BiorepositoryQCInspectionPage({
       header: intl.formatMessage({
         id: "biorepository.qc.lastInspection",
         defaultMessage: "Last QC Inspection",
+      }),
+    },
+    {
+      key: "inspectionHistory",
+      header: intl.formatMessage({
+        id: "biorepository.qc.historyColumn",
+        defaultMessage: "History",
+      }),
+    },
+    {
+      key: "actions",
+      header: intl.formatMessage({
+        id: "biorepository.qc.actions",
+        defaultMessage: "Actions",
       }),
     },
   ];
@@ -988,6 +1148,25 @@ function BiorepositoryQCInspectionPage({
           lowContrast
         />
       )}
+      {unresolvedDiscrepancyCount > 0 && (
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage(
+            {
+              id: "biorepository.qc.unresolvedDiscrepancies",
+              defaultMessage:
+                "{count} discrepancy record(s) still need correction review.",
+            },
+            { count: unresolvedDiscrepancyCount },
+          )}
+          subtitle={intl.formatMessage({
+            id: "biorepository.qc.unresolvedDiscrepancies.message",
+            defaultMessage:
+              "Use Inspect to complete correction, open History for the full per-sample log, and review pending items in Reporting & Audit > Detailed Metrics > QC History.",
+          })}
+          lowContrast
+        />
+      )}
 
       {roundInfo && (
         <InlineNotification
@@ -996,9 +1175,10 @@ function BiorepositoryQCInspectionPage({
             {
               id: "biorepository.qc.round.generated",
               defaultMessage:
-                "QC round generated from filtered storage scope: {boxes} box(es), {samples} sample(s) from {pool} eligible sample(s).",
+                "QC batch {batch} generated from filtered storage scope: {boxes} box(es), {samples} sample(s) from {pool} eligible sample(s). Inspect rows individually or with Bulk Inspect.",
             },
             {
+              batch: roundInfo.qcBatchId || "N/A",
               boxes: roundInfo.boxesSelected,
               samples: roundInfo.samplesSelected,
               pool: roundInfo.filteredSamplePool,
@@ -1127,6 +1307,54 @@ function BiorepositoryQCInspectionPage({
             disabled={loadingStorageOverview}
           />
         </Column>
+        <Column
+          lg={16}
+          md={8}
+          sm={4}
+          style={{ marginTop: "0.75rem", marginBottom: "0.25rem" }}
+        >
+          <Checkbox
+            id="qc-include-inspected"
+            labelText={intl.formatMessage({
+              id: "biorepository.qc.includeInspected.quarterly",
+              defaultMessage:
+                "Include samples already inspected in the current calendar quarter (full pool)",
+            })}
+            checked={includeInspectedSamples}
+            onChange={(_, { checked }) =>
+              setIncludeInspectedSamples(Boolean(checked))
+            }
+            disabled={loadingStorageOverview || isGeneratingRound}
+          />
+          {storageOverviewData.qcExclusionWindow && (
+            <p
+              className="cds--form__helper-text"
+              style={{ marginTop: "0.35rem", maxWidth: "48rem" }}
+            >
+              {includeInspectedSamples
+                ? intl.formatMessage(
+                    {
+                      id: "biorepository.qc.poolHelp.inclusive",
+                      defaultMessage:
+                        "Current calendar quarter: {period}. Eligible pool includes all placed samples in scope (you can re-QC the same aliquot in the same quarter when needed).",
+                    },
+                    {
+                      period: storageOverviewData.qcExclusionWindow.label,
+                    },
+                  )
+                : intl.formatMessage(
+                    {
+                      id: "biorepository.qc.poolHelp.exclusive",
+                      defaultMessage:
+                        "Current calendar quarter: {period}. Excludes samples that already have at least one QC inspection dated in this window (not-yet-this-quarter worklist).",
+                    },
+                    {
+                      period: storageOverviewData.qcExclusionWindow.label,
+                    },
+                  )}
+            </p>
+          )}
+        </Column>
       </Grid>
 
       <Grid fullWidth style={{ marginBottom: "1rem" }}>
@@ -1160,7 +1388,12 @@ function BiorepositoryQCInspectionPage({
           lg={8}
           md={8}
           sm={4}
-          style={{ display: "flex", alignItems: "flex-end" }}
+          style={{
+            display: "flex",
+            alignItems: "flex-end",
+            gap: "0.75rem",
+            flexWrap: "wrap",
+          }}
         >
           <Button
             kind="secondary"
@@ -1174,8 +1407,60 @@ function BiorepositoryQCInspectionPage({
           >
             Generate Random QC Round
           </Button>
+          {generatedRoundSampleIds.length > 0 && (
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() => {
+                setGeneratedRoundSampleIds([]);
+                setGeneratedRoundResponseSamples([]);
+                setRoundInfo(null);
+              }}
+            >
+              Show all eligible samples
+            </Button>
+          )}
         </Column>
       </Grid>
+
+      {generatedRoundRows.length > 0 && (
+        <Grid fullWidth style={{ marginTop: "1rem" }}>
+          <Column lg={16} md={8} sm={4}>
+            <DataTable rows={generatedRoundRows} headers={generatedRoundHeaders}>
+              {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
+                <TableContainer
+                  title="Generated QC Checklist"
+                  description="Technician path guidance: Freezer > Shelf > Rack > Box > Position"
+                >
+                  <Table {...getTableProps()}>
+                    <TableHead>
+                      <TableRow>
+                        {headers.map((header) => (
+                          <TableHeader
+                            key={header.key}
+                            {...getHeaderProps({ header })}
+                          >
+                            {header.header}
+                          </TableHeader>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {rows.map((row) => (
+                        <TableRow key={row.id} {...getRowProps({ row })}>
+                          {row.cells.map((cell) => (
+                            <TableCell key={cell.id}>{cell.value}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </DataTable>
+          </Column>
+        </Grid>
+      )}
 
       {/* Samples Table */}
       <div className="sample-table-section" style={{ marginTop: "1rem" }}>
@@ -1183,7 +1468,7 @@ function BiorepositoryQCInspectionPage({
           <div style={{ padding: "2rem", textAlign: "center" }}>
             <Loading withOverlay={false} />
           </div>
-        ) : filteredSamples.length === 0 ? (
+        ) : visibleSamples.length === 0 ? (
           <InlineNotification
             kind="info"
             title={intl.formatMessage({
@@ -1200,13 +1485,15 @@ function BiorepositoryQCInspectionPage({
           />
         ) : (
           <DataTable
-            rows={filteredSamples.map((sample) => ({
+            rows={visibleSamples.map((sample) => ({
               id: sample.id.toString(),
               accessionNumber: sample.accessionNumber,
               sampleType: sample.sampleType,
               locationPath: sample.locationPath,
               biosafetyLevel: sample.biosafetyLevel,
               lastQCInspection: sample.lastQCInspection,
+              inspectionHistory: sample.id.toString(),
+              actions: sample.id.toString(),
               _raw: sample,
             }))}
             headers={headers}
@@ -1229,21 +1516,20 @@ function BiorepositoryQCInspectionPage({
                   <TableToolbar>
                     <TableBatchActions {...getBatchActionProps()}>
                       <TableBatchAction
-                        renderIcon={Edit}
+                        renderIcon={Renew}
                         iconDescription={intl.formatMessage({
                           id: "biorepository.qc.bulkApply",
-                          defaultMessage: "Bulk Apply QC",
+                          defaultMessage: "Bulk Inspect",
                         })}
                         onClick={() => {
                           // Capture selection when modal opens
                           setSelectedForBulkApply(currentSelectedIds);
-                          resetBulkApplyValues();
-                          setBulkApplyModalOpen(true);
+                          openInspectionModal(currentSelectedIds);
                         }}
                       >
                         <FormattedMessage
                           id="biorepository.qc.bulkApply"
-                          defaultMessage="Bulk Apply QC"
+                          defaultMessage="Bulk Inspect"
                         />
                       </TableBatchAction>
                     </TableBatchActions>
@@ -1278,7 +1564,7 @@ function BiorepositoryQCInspectionPage({
                     </TableHead>
                     <TableBody>
                       {rows.map((row) => {
-                        const sample = filteredSamples.find(
+                        const sample = visibleSamples.find(
                           (s) => s.id.toString() === row.id,
                         );
                         return (
@@ -1309,6 +1595,11 @@ function BiorepositoryQCInspectionPage({
                                   );
                                 }
                                 const qc = sample.lastQCInspection;
+                                const discrepancyLabel = qc?.discrepancyType
+                                  ? discrepancyLabelById.get(
+                                      String(qc.discrepancyType),
+                                    ) || String(qc.discrepancyType)
+                                  : null;
                                 return (
                                   <TableCell key={cell.id}>
                                     <div
@@ -1330,6 +1621,65 @@ function BiorepositoryQCInspectionPage({
                                         ).toLocaleDateString()}
                                       </span>
                                     </div>
+                                    {qc.qcResult === "DISCREPANCY_FOUND" && (
+                                      <div
+                                        style={{
+                                          marginTop: "0.25rem",
+                                          fontSize: "0.75rem",
+                                          color: "#8a3c00",
+                                        }}
+                                      >
+                                        {discrepancyLabel
+                                          ? `Failed: ${discrepancyLabel}. ${getDiscrepancyResolutionLabel(
+                                              qc,
+                                            )}.`
+                                          : `Failed QC. ${getDiscrepancyResolutionLabel(
+                                              qc,
+                                            )}.`}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "inspectionHistory") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      renderIcon={Catalog}
+                                      iconDescription={intl.formatMessage({
+                                        id: "biorepository.qc.openHistory",
+                                        defaultMessage: "Open inspection history",
+                                      })}
+                                      onClick={() =>
+                                        openInspectionHistory(sample)
+                                      }
+                                    >
+                                      <FormattedMessage
+                                        id="biorepository.qc.viewHistory"
+                                        defaultMessage="View history"
+                                      />
+                                    </Button>
+                                  </TableCell>
+                                );
+                              }
+                              if (cell.info.header === "actions") {
+                                return (
+                                  <TableCell key={cell.id}>
+                                    <Button
+                                      kind="ghost"
+                                      size="sm"
+                                      renderIcon={Checkmark}
+                                      onClick={() =>
+                                        openInspectionModal([row.id])
+                                      }
+                                    >
+                                      <FormattedMessage
+                                        id="biorepository.qc.inspect"
+                                        defaultMessage="Inspect"
+                                      />
+                                    </Button>
                                   </TableCell>
                                 );
                               }
@@ -1356,8 +1706,14 @@ function BiorepositoryQCInspectionPage({
         open={bulkApplyModalOpen}
         onRequestClose={() => setBulkApplyModalOpen(false)}
         modalHeading={intl.formatMessage({
-          id: "biorepository.qc.bulkApply.title",
-          defaultMessage: "Bulk QC Inspection",
+          id:
+            selectedForBulkApply.length === 1
+              ? "biorepository.qc.singleInspect.title"
+              : "biorepository.qc.bulkApply.title",
+          defaultMessage:
+            selectedForBulkApply.length === 1
+              ? "Individual QC Inspection"
+              : "Bulk QC Inspection",
         })}
         primaryButtonText={
           isBulkApplying
@@ -1392,11 +1748,25 @@ function BiorepositoryQCInspectionPage({
       >
         <div className="qc-bulk-apply-modal">
           <p className="modal-description">
-            <FormattedMessage
-              id="biorepository.qc.bulkApply.description"
-              defaultMessage="Apply QC inspection to {count} selected sample(s)."
-              values={{ count: selectedForBulkApply.length }}
-            />
+            {selectedForBulkApply.length === 1 &&
+            selectedSamplesForBulkApply[0] ? (
+              <FormattedMessage
+                id="biorepository.qc.singleInspect.description"
+                defaultMessage="Inspect sample {sample} at {location}."
+                values={{
+                  sample:
+                    selectedSamplesForBulkApply[0].accessionNumber || "-",
+                  location:
+                    selectedSamplesForBulkApply[0].locationPath || "Unknown",
+                }}
+              />
+            ) : (
+              <FormattedMessage
+                id="biorepository.qc.bulkApply.description"
+                defaultMessage="Apply QC inspection to {count} selected sample(s)."
+                values={{ count: selectedForBulkApply.length }}
+              />
+            )}
           </p>
 
           {/* Inspector Information */}
@@ -1562,27 +1932,12 @@ function BiorepositoryQCInspectionPage({
                     selectedItem={DISCREPANCY_TYPES.find(
                       (d) => d.id === bulkApplyValues.discrepancyType,
                     )}
-                    onChange={({ selectedItem }) => {
-                      const nextDiscrepancyType = selectedItem?.id || "";
-                      setBulkApplyValues((prev) => {
-                        const shouldClearMarkMissing =
-                          prev.correctionActionType === "MARK_MISSING" &&
-                          !isMissingDiscrepancyType(nextDiscrepancyType);
-                        return {
-                          ...prev,
-                          discrepancyType: nextDiscrepancyType,
-                          correctionActionType: shouldClearMarkMissing
-                            ? ""
-                            : prev.correctionActionType,
-                          correctionBoxId: shouldClearMarkMissing
-                            ? ""
-                            : prev.correctionBoxId,
-                          correctionPositionCoordinate: shouldClearMarkMissing
-                            ? ""
-                            : prev.correctionPositionCoordinate,
-                        };
-                      });
-                    }}
+                    onChange={({ selectedItem }) =>
+                      setBulkApplyValues((prev) => ({
+                        ...prev,
+                        discrepancyType: selectedItem?.id || "",
+                      }))
+                    }
                   />
                 </Column>
                 <Column lg={16} md={8} sm={4}>
@@ -1606,6 +1961,20 @@ function BiorepositoryQCInspectionPage({
                     })}
                     rows={3}
                   />
+                </Column>
+                <Column lg={16} md={8} sm={4}>
+                  <p
+                    style={{
+                      marginTop: "0.5rem",
+                      marginBottom: 0,
+                      color: "#525252",
+                      fontSize: "0.875rem",
+                    }}
+                  >
+                    Recorded discrepancies appear in this table immediately and
+                    in Reporting &amp; Audit &gt; Detailed Metrics &gt; QC
+                    History Snapshot.
+                  </p>
                 </Column>
               </Grid>
 
@@ -1641,9 +2010,9 @@ function BiorepositoryQCInspectionPage({
                       id: "biorepository.qc.correctionAction.placeholder",
                       defaultMessage: "Select correction action",
                     })}
-                    items={correctionActionOptions}
+                    items={CORRECTION_ACTIONS}
                     itemToString={(item) => (item ? item.label : "")}
-                    selectedItem={correctionActionOptions.find(
+                    selectedItem={CORRECTION_ACTIONS.find(
                       (action) => action.id === bulkApplyValues.correctionActionType,
                     )}
                     onChange={({ selectedItem }) =>
@@ -1768,6 +2137,87 @@ function BiorepositoryQCInspectionPage({
             </Grid>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={historyModalOpen}
+        passiveModal
+        onRequestClose={() => setHistoryModalOpen(false)}
+        modalHeading={intl.formatMessage(
+          {
+            id: "biorepository.qc.historyModal.title",
+            defaultMessage: "QC inspection history — {sample}",
+          },
+          { sample: historySampleLabel },
+        )}
+        size="lg"
+      >
+        {historyLoading ? (
+          <div style={{ padding: "2rem" }}>
+            <Loading withOverlay={false} description="Loading" />
+          </div>
+        ) : historyRows.length === 0 ? (
+          <p className="cds--form__helper-text">
+            <FormattedMessage
+              id="biorepository.qc.historyModal.empty"
+              defaultMessage="No inspection records for this sample yet."
+            />
+          </p>
+        ) : (
+          <div style={{ maxHeight: "24rem", overflow: "auto" }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeader>ID</TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.historyModal.col.date"
+                      defaultMessage="Date / time"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.historyModal.col.result"
+                      defaultMessage="Result"
+                    />
+                  </TableHeader>
+                  <TableHeader>
+                    <FormattedMessage
+                      id="biorepository.qc.historyModal.col.inspector"
+                      defaultMessage="Inspector"
+                    />
+                  </TableHeader>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {historyRows.map((h) => (
+                  <TableRow key={h.id || h.inspectionDate}>
+                    <TableCell>{h.id}</TableCell>
+                    <TableCell>
+                      {h.inspectionDate
+                        ? new Date(h.inspectionDate).toLocaleString()
+                        : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {h.qcResult}
+                      {h.qcStatus ? ` (${h.qcStatus})` : ""}
+                    </TableCell>
+                    <TableCell>{h.inspectorName || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <p
+              className="cds--form__helper-text"
+              style={{ marginTop: "0.75rem" }}
+            >
+              <FormattedMessage
+                id="biorepository.qc.historyModal.hint"
+                defaultMessage="Full audit and correction detail for the lab is available under Reporting & Audit."
+              />
+            </p>
+          </div>
+        )}
       </Modal>
     </div>
   );

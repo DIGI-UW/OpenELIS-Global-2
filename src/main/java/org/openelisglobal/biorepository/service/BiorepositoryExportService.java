@@ -98,4 +98,24 @@ public interface BiorepositoryExportService {
      */
     byte[] exportAuditTrailToPDF(String sampleExternalId, CustodyAction action, Integer custodianId,
             java.sql.Timestamp startDate, java.sql.Timestamp endDate) throws IOException;
+
+    /**
+     * Export QC inspection records for a specific QC batch.
+     */
+    byte[] exportQcBatchToCSV(String qcBatchId) throws IOException;
+
+    /**
+     * Export QC inspection records for a specific QC batch.
+     */
+    byte[] exportQcBatchToExcel(String qcBatchId) throws IOException;
+
+    /**
+     * Export QC inspection records for a specific QC batch.
+     */
+    byte[] exportQcBatchToJSON(String qcBatchId) throws IOException;
+
+    /**
+     * Export QC inspection records for a specific QC batch.
+     */
+    byte[] exportQcBatchToPDF(String qcBatchId) throws IOException;
 }
