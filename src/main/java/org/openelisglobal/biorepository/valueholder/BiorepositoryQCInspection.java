@@ -54,7 +54,6 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
         WRONG_SAMPLE_IN_POSITION("Wrong sample in position"),
         MISPLACED_SAMPLE_FOUND("Misplaced sample (found elsewhere)"),
         EMPTY_POSITION_REGISTERED("Empty position but registered as occupied"),
-        EMPTY_POSITION_REGISTERED_OCCUPIED("Empty Position But Registered Occupied"),
         LABELING_ERROR("Labeling error"),
         BOX_RACK_MISPLACEMENT("Box/rack misplacement"),
         // Legacy values retained for backward compatibility with existing records
@@ -171,16 +170,6 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
     private String remarks;
 
     // ========================================
-    // QC Round / Coordinate Snapshot
-    // ========================================
-
-    @Column(name = "qc_batch_id", length = 80)
-    private String qcBatchId;
-
-    @Column(name = "expected_coordinate_snapshot", length = 512)
-    private String expectedCoordinateSnapshot;
-
-    // ========================================
     // Expected coordinate snapshot at inspection time
     // ========================================
 
@@ -191,8 +180,22 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
     private String expectedPositionCoordinate;
 
     // ========================================
-    // Correction workflow audit fields
+    // Inspection Metadata
     // ========================================
+
+    @NotNull(message = "Inspector name is required")
+    @Column(name = "inspector_name", nullable = false, length = 100)
+    private String inspectorName;
+
+    @NotNull(message = "Inspection date is required")
+    @Column(name = "inspection_date", nullable = false)
+    private Timestamp inspectionDate;
+
+    @Column(name = "qc_batch_id", length = 80)
+    private String qcBatchId;
+
+    @Column(name = "expected_coordinate_snapshot", length = 512)
+    private String expectedCoordinateSnapshot;
 
     @Column(name = "correction_action_type", length = 50)
     private String correctionActionType;
@@ -211,18 +214,6 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     @Column(name = "correction_timestamp")
     private Timestamp correctionTimestamp;
-
-    // ========================================
-    // Inspection Metadata
-    // ========================================
-
-    @NotNull(message = "Inspector name is required")
-    @Column(name = "inspector_name", nullable = false, length = 100)
-    private String inspectorName;
-
-    @NotNull(message = "Inspection date is required")
-    @Column(name = "inspection_date", nullable = false)
-    private Timestamp inspectionDate;
 
     @Column(name = "sys_user_id", nullable = false, length = 36)
     private String sysUserId;
@@ -344,22 +335,6 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
         this.remarks = remarks;
     }
 
-    public String getQcBatchId() {
-        return qcBatchId;
-    }
-
-    public void setQcBatchId(String qcBatchId) {
-        this.qcBatchId = qcBatchId;
-    }
-
-    public String getExpectedCoordinateSnapshot() {
-        return expectedCoordinateSnapshot;
-    }
-
-    public void setExpectedCoordinateSnapshot(String expectedCoordinateSnapshot) {
-        this.expectedCoordinateSnapshot = expectedCoordinateSnapshot;
-    }
-
     public String getExpectedLocationPath() {
         return expectedLocationPath;
     }
@@ -374,6 +349,38 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     public void setExpectedPositionCoordinate(String expectedPositionCoordinate) {
         this.expectedPositionCoordinate = expectedPositionCoordinate;
+    }
+
+    public String getInspectorName() {
+        return inspectorName;
+    }
+
+    public void setInspectorName(String inspectorName) {
+        this.inspectorName = inspectorName;
+    }
+
+    public Timestamp getInspectionDate() {
+        return inspectionDate;
+    }
+
+    public void setInspectionDate(Timestamp inspectionDate) {
+        this.inspectionDate = inspectionDate;
+    }
+
+    public String getQcBatchId() {
+        return qcBatchId;
+    }
+
+    public void setQcBatchId(String qcBatchId) {
+        this.qcBatchId = qcBatchId;
+    }
+
+    public String getExpectedCoordinateSnapshot() {
+        return expectedCoordinateSnapshot;
+    }
+
+    public void setExpectedCoordinateSnapshot(String expectedCoordinateSnapshot) {
+        this.expectedCoordinateSnapshot = expectedCoordinateSnapshot;
     }
 
     public String getCorrectionActionType() {
@@ -422,22 +429,6 @@ public class BiorepositoryQCInspection extends BaseObject<Integer> {
 
     public void setCorrectionTimestamp(Timestamp correctionTimestamp) {
         this.correctionTimestamp = correctionTimestamp;
-    }
-
-    public String getInspectorName() {
-        return inspectorName;
-    }
-
-    public void setInspectorName(String inspectorName) {
-        this.inspectorName = inspectorName;
-    }
-
-    public Timestamp getInspectionDate() {
-        return inspectionDate;
-    }
-
-    public void setInspectionDate(Timestamp inspectionDate) {
-        this.inspectionDate = inspectionDate;
     }
 
     /**

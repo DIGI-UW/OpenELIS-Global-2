@@ -22,7 +22,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Reset } from "@carbon/icons-react";
+import { Download, Reset } from "@carbon/icons-react";
 import PropTypes from "prop-types";
 import config from "../../../../../config.json";
 
@@ -45,6 +45,7 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
   const [actions, setActions] = useState([]);
   const [qcAuditData, setQCAuditData] = useState(null);
   const [qcAuditError, setQCAuditError] = useState(null);
+  const [expandedQcBatches, setExpandedQcBatches] = useState({});
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -280,6 +281,40 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
     return `${numeric.toFixed(1)}%`;
   };
 
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const exportQcBatch = (qcBatchId, format = "pdf") => {
+    if (!qcBatchId || qcBatchId === "UNBATCHED") {
+      return;
+    }
+    fetch(
+      `${config.serverBaseUrl}/rest/biorepository/qc/export/${format}?qcBatchId=${encodeURIComponent(qcBatchId)}`,
+      {
+        credentials: "include",
+      },
+    )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to export QC batch ${qcBatchId}`);
+        }
+        return response.blob();
+      })
+      .then((blob) => {
+        const stamp = new Date().toISOString().slice(0, 10);
+        downloadBlob(blob, `qc_batch_${qcBatchId}_${stamp}.${format}`);
+      })
+      .catch((err) => setQCAuditError(err.message));
+  };
+
   const qcMetrics = qcAuditData?.qcMetrics || {};
   const escalationSignals = qcMetrics.escalationSignals || {};
   const qcHistoryItems = Array.isArray(qcAuditData?.qcHistory?.items)
@@ -287,9 +322,32 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
     : [];
   const qcDiscrepancyEntries = Object.entries(qcAuditData?.qcDiscrepancies || {});
 
-  const deriveQcStatus = (item) => item.qcStatus || "UNKNOWN";
+  const deriveQcStatus = (item) => {
+    if (item.qcStatus) return item.qcStatus;
+    if (item.qcResult === "VERIFIED") return "VALID";
+    if (item.qcResult === "DISCREPANCY_FOUND") {
+      return item.discrepancyType === "SAMPLE_MISSING" ? "MISSING" : "QC_FAILED";
+    }
+    return "UNKNOWN";
+  };
 
-  const deriveLifecycleOutcome = (item) => item.lifecycleOutcome || "UNKNOWN";
+  const deriveLifecycleOutcome = (item) => {
+    if (item.lifecycleOutcome) return item.lifecycleOutcome;
+    const status = deriveQcStatus(item);
+    if (item.qcResult === "VERIFIED" || status === "VALID") {
+      return "PASSED";
+    }
+    if (status === "MISSING") {
+      return "FAILED_MARKED_MISSING";
+    }
+    if (item.qcResult === "DISCREPANCY_FOUND" && item.correctiveAction) {
+      return "FAILED_CORRECTED";
+    }
+    if (item.qcResult === "DISCREPANCY_FOUND") {
+      return "FAILED_PENDING_CORRECTION";
+    }
+    return "UNKNOWN";
+  };
 
   const formatLifecycleOutcome = (value) => {
     const labels = {
@@ -309,20 +367,17 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
   };
 
   const lifecycleOutcomes = qcHistoryItems.map(deriveLifecycleOutcome);
-  const correctedOutcomeCount =
-    qcMetrics?.failureResolutionSummary?.correctedVsUnresolved?.corrected ??
-    lifecycleOutcomes.filter(
-      (outcome) =>
-        outcome === "FAILED_CORRECTED" || outcome === "FAILED_MARKED_MISSING",
-    ).length;
-  const pendingCorrectionCount =
-    qcMetrics?.failureResolutionSummary?.correctedVsUnresolved?.unresolved ??
-    lifecycleOutcomes.filter(
-      (outcome) => outcome === "FAILED_PENDING_CORRECTION",
-    ).length;
+  const correctedOutcomeCount = lifecycleOutcomes.filter(
+    (outcome) => outcome === "FAILED_CORRECTED" || outcome === "FAILED_MARKED_MISSING",
+  ).length;
+  const pendingCorrectionCount = lifecycleOutcomes.filter(
+    (outcome) => outcome === "FAILED_PENDING_CORRECTION",
+  ).length;
 
   const qcHistoryRows = qcHistoryItems.map((item, idx) => ({
     id: `qc-audit-${idx}`,
+    qcBatchId: item.qcBatchId || "UNBATCHED",
+    inspectionDateRaw: item.inspectionDate || null,
     inspectionDate: item.inspectionDate
       ? new Date(item.inspectionDate).toLocaleString()
       : "-",
@@ -333,11 +388,7 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
     sampleFlag: item.sampleFlag || "-",
     qcFailed: item.qcFailed ? "Yes" : "No",
     freezer: item.freezer || "Unknown",
-    freezerFlag: item.freezerFlag || "NORMAL",
     rack: item.rack || "Unknown",
-    boxFlag: item.boxFlag || "NORMAL",
-    escalationTriggered: item.escalationTriggered ? "Yes" : "No",
-    failureResolution: item.failureResolution || "N/A",
     discrepancyType: item.discrepancyType || "-",
     failureComment: item.failureComment || item.remarks || "-",
     correctiveAction: item.correctiveAction || "-",
@@ -354,6 +405,50 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
       : "-",
     correctionReason: item.auditTrail?.reason || "-",
   }));
+
+  const qcHistoryBatchRows = (() => {
+    const grouped = new Map();
+    qcHistoryRows.forEach((row) => {
+      const key = row.qcBatchId || "UNBATCHED";
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          id: `qc-batch-${key}`,
+          qcBatchId: key,
+          latestInspectionDate: row.inspectionDate || "-",
+          latestInspectionDateRaw: row.inspectionDateRaw,
+          sampleCount: 0,
+          passCount: 0,
+          failCount: 0,
+          pendingCorrectionCount: 0,
+          details: [],
+        });
+      }
+      const batch = grouped.get(key);
+      batch.details.push(row);
+      batch.sampleCount += 1;
+      if (row.result === "VERIFIED" || row.status === "VALID") {
+        batch.passCount += 1;
+      } else {
+        batch.failCount += 1;
+      }
+      if (row.lifecycleOutcome === "Failed (pending correction)") {
+        batch.pendingCorrectionCount += 1;
+      }
+      if (
+        row.inspectionDateRaw &&
+        (!batch.latestInspectionDateRaw ||
+          new Date(row.inspectionDateRaw) > new Date(batch.latestInspectionDateRaw))
+      ) {
+        batch.latestInspectionDate = row.inspectionDate;
+        batch.latestInspectionDateRaw = row.inspectionDateRaw;
+      }
+    });
+    return Array.from(grouped.values()).sort(
+      (a, b) =>
+        new Date(b.latestInspectionDateRaw || 0).getTime() -
+        new Date(a.latestInspectionDateRaw || 0).getTime(),
+    );
+  })();
 
   const qcCorrectiveActionsLogged = qcHistoryRows.filter(
     (row) => row.correctiveAction && row.correctiveAction !== "-",
@@ -413,6 +508,7 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
 
   const qcHistoryHeaders = [
     { key: "inspectionDate", header: "Inspection Date" },
+    { key: "qcBatchId", header: "QC Batch ID" },
     { key: "result", header: "Result" },
     { key: "lifecycleOutcome", header: "Lifecycle Outcome" },
     { key: "status", header: "QC Status" },
@@ -420,11 +516,7 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
     { key: "sampleFlag", header: "Sample Flag" },
     { key: "qcFailed", header: "QC Failed" },
     { key: "freezer", header: "Freezer" },
-    { key: "freezerFlag", header: "Freezer Flag" },
     { key: "rack", header: "Rack" },
-    { key: "boxFlag", header: "Box Flag" },
-    { key: "escalationTriggered", header: "Escalation Triggered" },
-    { key: "failureResolution", header: "Failure Resolution" },
     { key: "discrepancyType", header: "Discrepancy Type" },
     { key: "failureComment", header: "Failure Comment" },
     { key: "correctiveAction", header: "Corrective Action" },
@@ -433,6 +525,16 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
     { key: "correctedBy", header: "Corrected By" },
     { key: "correctedAt", header: "Corrected At" },
     { key: "correctionReason", header: "Correction Reason" },
+  ];
+
+  const qcBatchHeaders = [
+    { key: "qcBatchId", header: "QC Batch ID" },
+    { key: "latestInspectionDate", header: "Latest Inspection" },
+    { key: "sampleCount", header: "Samples" },
+    { key: "passCount", header: "Pass" },
+    { key: "failCount", header: "Fail" },
+    { key: "pendingCorrectionCount", header: "Pending Correction" },
+    { key: "actions", header: "Actions" },
   ];
 
   const qcDiscrepancyRows = qcDiscrepancyEntries.map(([type, count], idx) => ({
@@ -471,7 +573,9 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
         </Column>
 
         <Column lg={16} md={8} sm={4} style={{ marginBottom: "1.5rem" }}>
-          <h5 style={{ marginBottom: "0.75rem" }}>QC Outcome Audit Visibility</h5>
+          <h5 style={{ marginBottom: "0.75rem" }}>
+            QC Outcome Audit Visibility (Batch Grouped)
+          </h5>
           <p
             style={{
               fontSize: "0.875rem",
@@ -533,7 +637,7 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
               </DataTable>
 
               <div style={{ marginTop: "1rem" }}>
-                <DataTable rows={qcHistoryRows} headers={qcHistoryHeaders}>
+                <DataTable rows={qcHistoryBatchRows} headers={qcBatchHeaders}>
                   {({
                     rows,
                     headers,
@@ -542,8 +646,8 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                     getRowProps,
                   }) => (
                     <TableContainer
-                      title="Recent QC Outcomes and Corrections"
-                      description="Persisted QC lifecycle/audit fields plus per-record escalation and resolution flags"
+                      title="QC History by Batch ID"
+                      description="NEW: one row per QC batch ID. Use Show details to expand records, then Print PDF/CSV for reporting."
                     >
                       <Table {...getTableProps()}>
                         <TableHead>
@@ -559,13 +663,138 @@ function AuditTrailTab({ entryId, notebookId, pageData }) {
                           </TableRow>
                         </TableHead>
                         <TableBody>
-                          {rows.map((row) => (
-                            <TableRow key={row.id} {...getRowProps({ row })}>
-                              {row.cells.map((cell) => (
-                                <TableCell key={cell.id}>{cell.value}</TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
+                          {rows.map((row) => {
+                            const batchId =
+                              row.cells.find(
+                                (cell) => cell.info.header === "qcBatchId",
+                              )?.value || "UNBATCHED";
+                            const detailRows =
+                              qcHistoryBatchRows.find(
+                                (batch) => batch.qcBatchId === batchId,
+                              )?.details || [];
+                            const isExpanded = Boolean(expandedQcBatches[batchId]);
+
+                            return (
+                              <React.Fragment key={row.id}>
+                                <TableRow {...getRowProps({ row })}>
+                                  {row.cells.map((cell) => {
+                                    if (cell.info.header === "actions") {
+                                      return (
+                                        <TableCell key={cell.id}>
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              gap: "0.5rem",
+                                              flexWrap: "wrap",
+                                            }}
+                                          >
+                                            <Button
+                                              kind="ghost"
+                                              size="sm"
+                                              onClick={() =>
+                                                setExpandedQcBatches((prev) => ({
+                                                  ...prev,
+                                                  [batchId]: !prev[batchId],
+                                                }))
+                                              }
+                                            >
+                                              {isExpanded
+                                                ? "Hide details"
+                                                : "Show details"}
+                                            </Button>
+                                            {batchId !== "UNBATCHED" && (
+                                              <>
+                                                <Button
+                                                  kind="ghost"
+                                                  size="sm"
+                                                  renderIcon={Download}
+                                                  onClick={() =>
+                                                    exportQcBatch(batchId, "pdf")
+                                                  }
+                                                >
+                                                  Print PDF
+                                                </Button>
+                                                <Button
+                                                  kind="ghost"
+                                                  size="sm"
+                                                  onClick={() =>
+                                                    exportQcBatch(batchId, "csv")
+                                                  }
+                                                >
+                                                  CSV
+                                                </Button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                      );
+                                    }
+                                    return (
+                                      <TableCell key={cell.id}>
+                                        {cell.value}
+                                      </TableCell>
+                                    );
+                                  })}
+                                </TableRow>
+                                {isExpanded && (
+                                  <TableRow>
+                                    <TableCell
+                                      colSpan={qcBatchHeaders.length}
+                                      style={{ backgroundColor: "#f4f4f4" }}
+                                    >
+                                      <DataTable
+                                        rows={detailRows}
+                                        headers={qcHistoryHeaders}
+                                      >
+                                        {({
+                                          rows: nestedRows,
+                                          headers: nestedHeaders,
+                                          getTableProps: getNestedTableProps,
+                                          getHeaderProps: getNestedHeaderProps,
+                                          getRowProps: getNestedRowProps,
+                                        }) => (
+                                          <TableContainer title="">
+                                            <Table {...getNestedTableProps()}>
+                                              <TableHead>
+                                                <TableRow>
+                                                  {nestedHeaders.map((header) => (
+                                                    <TableHeader
+                                                      key={header.key}
+                                                      {...getNestedHeaderProps({
+                                                        header,
+                                                      })}
+                                                    >
+                                                      {header.header}
+                                                    </TableHeader>
+                                                  ))}
+                                                </TableRow>
+                                              </TableHead>
+                                              <TableBody>
+                                                {nestedRows.map((nestedRow) => (
+                                                  <TableRow
+                                                    key={nestedRow.id}
+                                                    {...getNestedRowProps({
+                                                      row: nestedRow,
+                                                    })}
+                                                  >
+                                                    {nestedRow.cells.map((cell) => (
+                                                      <TableCell key={cell.id}>
+                                                        {cell.value}
+                                                      </TableCell>
+                                                    ))}
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                          </TableContainer>
+                                        )}
+                                      </DataTable>
+                                    </TableCell>
+                                  </TableRow>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </TableContainer>

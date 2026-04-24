@@ -52,7 +52,7 @@ public final class BiorepositoryQcOutcomeDerivation {
 
     public static boolean isMarkMissingCorrectionApplied(BiorepositoryQCInspection inspection) {
         String correctionActionType = trimToNull(inspection != null ? inspection.getCorrectionActionType() : null);
-        return correctionActionType != null && "MARK_MISSING".equalsIgnoreCase(correctionActionType);
+        return correctionActionType != null && correctionActionType.equalsIgnoreCase("MARK_MISSING");
     }
 
     private static String trimToNull(String value) {

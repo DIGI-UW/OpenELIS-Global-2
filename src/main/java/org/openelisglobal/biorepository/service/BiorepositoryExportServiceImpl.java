@@ -30,6 +30,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog;
 import org.openelisglobal.biorepository.valueholder.ChainOfCustodyLog.CustodyAction;
+import org.openelisglobal.biorepository.valueholder.BiorepositoryQCInspection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,6 +48,9 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
 
     @Autowired
     private ChainOfCustodyService custodyService;
+
+    @Autowired
+    private BiorepositoryQCInspectionService qcInspectionService;
 
     private static final String CSV_SEPARATOR = ",";
     private static final String CSV_QUOTE = "\"";
@@ -493,7 +497,196 @@ public class BiorepositoryExportServiceImpl implements BiorepositoryExportServic
         }
     }
 
+    // ==================== QC Batch Exports ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportQcBatchToCSV(String qcBatchId) throws IOException {
+        List<BiorepositoryQCInspection> inspections = qcInspectionService.getByQcBatchId(qcBatchId);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8));
+        writer.println(
+                "QC Batch ID,Inspection ID,Date Time,Technician ID,Inspector Name,BioSample ID,Accession Number,Expected Coordinate,Observed Status,QC Outcome,Comment");
+        for (BiorepositoryQCInspection inspection : inspections) {
+            writer.println(String.join(CSV_SEPARATOR,
+                    escapeCSV(safe(inspection.getQcBatchId())),
+                    escapeCSV(String.valueOf(inspection.getId())),
+                    escapeCSV(inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : ""),
+                    escapeCSV(safe(inspection.getSysUserId())),
+                    escapeCSV(safe(inspection.getInspectorName())),
+                    escapeCSV(inspection.getBioSample() != null ? String.valueOf(inspection.getBioSample().getId()) : ""),
+                    escapeCSV(getAccessionNumber(inspection)),
+                    escapeCSV(buildExpectedCoordinate(inspection)),
+                    escapeCSV(buildObservedStatus(inspection)),
+                    escapeCSV(inspection.getQcResult() != null ? inspection.getQcResult().name() : ""),
+                    escapeCSV(safe(inspection.getRemarks()))));
+        }
+        writer.flush();
+        return baos.toByteArray();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportQcBatchToExcel(String qcBatchId) throws IOException {
+        List<BiorepositoryQCInspection> inspections = qcInspectionService.getByQcBatchId(qcBatchId);
+        Workbook workbook = new XSSFWorkbook();
+        Sheet sheet = workbook.createSheet("QC Batch");
+        CellStyle headerStyle = workbook.createCellStyle();
+        org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+        Row headerRow = sheet.createRow(0);
+        createCell(headerRow, 0, "QC Batch ID", headerStyle);
+        createCell(headerRow, 1, "Inspection ID", headerStyle);
+        createCell(headerRow, 2, "Date Time", headerStyle);
+        createCell(headerRow, 3, "Technician ID", headerStyle);
+        createCell(headerRow, 4, "Inspector Name", headerStyle);
+        createCell(headerRow, 5, "BioSample ID", headerStyle);
+        createCell(headerRow, 6, "Accession Number", headerStyle);
+        createCell(headerRow, 7, "Expected Coordinate", headerStyle);
+        createCell(headerRow, 8, "Observed Status", headerStyle);
+        createCell(headerRow, 9, "QC Outcome", headerStyle);
+        createCell(headerRow, 10, "Comment", headerStyle);
+        int rowNum = 1;
+        for (BiorepositoryQCInspection inspection : inspections) {
+            Row row = sheet.createRow(rowNum++);
+            createCell(row, 0, safe(inspection.getQcBatchId()), null);
+            createCell(row, 1, String.valueOf(inspection.getId()), null);
+            createCell(row, 2, inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : "", null);
+            createCell(row, 3, safe(inspection.getSysUserId()), null);
+            createCell(row, 4, safe(inspection.getInspectorName()), null);
+            createCell(row, 5, inspection.getBioSample() != null ? String.valueOf(inspection.getBioSample().getId()) : "", null);
+            createCell(row, 6, getAccessionNumber(inspection), null);
+            createCell(row, 7, buildExpectedCoordinate(inspection), null);
+            createCell(row, 8, buildObservedStatus(inspection), null);
+            createCell(row, 9, inspection.getQcResult() != null ? inspection.getQcResult().name() : "", null);
+            createCell(row, 10, safe(inspection.getRemarks()), null);
+        }
+        for (int i = 0; i <= 10; i++) {
+            sheet.autoSizeColumn(i);
+        }
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        workbook.write(baos);
+        workbook.close();
+        return baos.toByteArray();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportQcBatchToJSON(String qcBatchId) throws IOException {
+        List<BiorepositoryQCInspection> inspections = qcInspectionService.getByQcBatchId(qcBatchId);
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (BiorepositoryQCInspection inspection : inspections) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("qcBatchId", inspection.getQcBatchId());
+            row.put("inspectionId", inspection.getId());
+            row.put("inspectionDateTime", inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : null);
+            row.put("technicianId", inspection.getSysUserId());
+            row.put("inspectorName", inspection.getInspectorName());
+            row.put("bioSampleId", inspection.getBioSample() != null ? inspection.getBioSample().getId() : null);
+            row.put("accessionNumber", getAccessionNumber(inspection));
+            row.put("expectedCoordinate", buildExpectedCoordinate(inspection));
+            row.put("observedStatus", buildObservedStatus(inspection));
+            row.put("qcOutcome", inspection.getQcResult() != null ? inspection.getQcResult().name() : null);
+            row.put("comment", inspection.getRemarks());
+            rows.add(row);
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("qcBatchId", qcBatchId);
+        payload.put("recordCount", rows.size());
+        payload.put("records", rows);
+        return mapper.writeValueAsBytes(payload);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] exportQcBatchToPDF(String qcBatchId) throws IOException {
+        List<BiorepositoryQCInspection> inspections = qcInspectionService.getByQcBatchId(qcBatchId);
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            Document document = new Document(PageSize.A4.rotate(), 24, 24, 24, 24);
+            PdfWriter.getInstance(document, baos);
+            document.open();
+            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+            Font headerFont = new Font(Font.FontFamily.HELVETICA, 8, Font.BOLD);
+            Font bodyFont = new Font(Font.FontFamily.HELVETICA, 7, Font.NORMAL);
+            Paragraph title = new Paragraph("Biorepository QC Batch Report: " + qcBatchId, titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingAfter(8f);
+            document.add(title);
+            document.add(new Paragraph("Records: " + inspections.size(), bodyFont));
+            document.add(new Paragraph("Generated: " + Timestamp.valueOf(java.time.LocalDateTime.now()), bodyFont));
+            document.add(new Paragraph(" ", bodyFont));
+            PdfPTable table = new PdfPTable(new float[] { 1.3f, 1.8f, 1.8f, 1.1f, 1.2f, 2.4f, 1.6f, 1.6f, 2.0f });
+            table.setWidthPercentage(100f);
+            addHeaderCell(table, "Inspection ID", headerFont);
+            addHeaderCell(table, "Date Time", headerFont);
+            addHeaderCell(table, "Technician", headerFont);
+            addHeaderCell(table, "BioSample", headerFont);
+            addHeaderCell(table, "Accession", headerFont);
+            addHeaderCell(table, "Expected Coordinate", headerFont);
+            addHeaderCell(table, "Observed Status", headerFont);
+            addHeaderCell(table, "QC Outcome", headerFont);
+            addHeaderCell(table, "Comment", headerFont);
+            for (BiorepositoryQCInspection inspection : inspections) {
+                addBodyCell(table, String.valueOf(inspection.getId()), bodyFont);
+                addBodyCell(table, inspection.getInspectionDate() != null ? inspection.getInspectionDate().toString() : "", bodyFont);
+                addBodyCell(table, safe(inspection.getSysUserId()), bodyFont);
+                addBodyCell(table, inspection.getBioSample() != null ? String.valueOf(inspection.getBioSample().getId()) : "", bodyFont);
+                addBodyCell(table, getAccessionNumber(inspection), bodyFont);
+                addBodyCell(table, buildExpectedCoordinate(inspection), bodyFont);
+                addBodyCell(table, buildObservedStatus(inspection), bodyFont);
+                addBodyCell(table, inspection.getQcResult() != null ? inspection.getQcResult().name() : "", bodyFont);
+                addBodyCell(table, safe(inspection.getRemarks()), bodyFont);
+            }
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch (DocumentException e) {
+            throw new IOException("Failed to generate QC batch PDF export", e);
+        }
+    }
+
     // ==================== Helper Methods ====================
+
+    private String safe(String value) {
+        return value != null ? value : "";
+    }
+
+    private String getAccessionNumber(BiorepositoryQCInspection inspection) {
+        if (inspection == null || inspection.getBioSample() == null || inspection.getBioSample().getSampleItem() == null
+                || inspection.getBioSample().getSampleItem().getSample() == null
+                || inspection.getBioSample().getSampleItem().getSample().getAccessionNumber() == null) {
+            return "";
+        }
+        return inspection.getBioSample().getSampleItem().getSample().getAccessionNumber();
+    }
+
+    private String buildExpectedCoordinate(BiorepositoryQCInspection inspection) {
+        if (inspection == null) {
+            return "";
+        }
+        String path = safe(inspection.getExpectedLocationPath());
+        String position = safe(inspection.getExpectedPositionCoordinate());
+        if (!path.isEmpty() && !position.isEmpty()) {
+            return path + " > " + position;
+        }
+        return !path.isEmpty() ? path : position;
+    }
+
+    private String buildObservedStatus(BiorepositoryQCInspection inspection) {
+        if (inspection == null) {
+            return "";
+        }
+        if (inspection.getQcResult() == null) {
+            return "";
+        }
+        if (inspection.getQcResult() == BiorepositoryQCInspection.QCResult.VERIFIED) {
+            return "PASS";
+        }
+        return "FAIL" + (inspection.getDiscrepancyType() != null ? " - " + inspection.getDiscrepancyType().name() : "");
+    }
 
     /**
      * Aggregate dashboard metrics from dashboard service.

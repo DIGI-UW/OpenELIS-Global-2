@@ -45,6 +45,7 @@ public class BiorepositoryQcOutcomeDerivationTest {
     public void markMissingCorrection_IsMissingAndFailedMarkedMissing() {
         BiorepositoryQCInspection inspection = new BiorepositoryQCInspection();
         inspection.setQcResult(QCResult.DISCREPANCY_FOUND);
+        inspection.setDiscrepancyType(BiorepositoryQCInspection.DiscrepancyType.SAMPLE_MISSING);
         inspection.setCorrectiveAction("MARK_MISSING: unable to locate sample");
         inspection.setCorrectionActionType("MARK_MISSING");
 

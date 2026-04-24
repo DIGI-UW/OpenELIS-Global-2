@@ -183,13 +183,14 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getRetrievalStats(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         try {
-            LocalDate start = parseOptionalIsoDate(startDate);
-            LocalDate end = parseOptionalIsoDate(endDate);
+            LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
+            LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
 
             Map<String, Object> stats = dashboardService.getRetrievalStatistics(start, end);
             return ResponseEntity.ok(stats);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid date format. Expected YYYY-MM-DD"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load retrieval statistics: " + e.getMessage()));
@@ -211,13 +212,14 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> getDisposalStats(@RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
         try {
-            LocalDate start = parseOptionalIsoDate(startDate);
-            LocalDate end = parseOptionalIsoDate(endDate);
+            LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
+            LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
 
             Map<String, Object> stats = dashboardService.getDisposalStatistics(start, end);
             return ResponseEntity.ok(stats);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid date format. Expected YYYY-MM-DD"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError()
                     .body(Map.of("error", "Failed to load disposal statistics: " + e.getMessage()));
@@ -241,8 +243,8 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
             @RequestParam(required = false) String startDate, @RequestParam(required = false) String endDate,
             @RequestParam(required = false) String freezerId) {
         try {
-            LocalDate start = parseOptionalIsoDate(startDate);
-            LocalDate end = parseOptionalIsoDate(endDate);
+            LocalDate start = startDate != null ? LocalDate.parse(startDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
+            LocalDate end = endDate != null ? LocalDate.parse(endDate, DateTimeFormatter.ISO_LOCAL_DATE) : null;
 
             List<Map<String, Object>> excursions = dashboardService.getTemperatureExcursions(start, end);
 
@@ -252,21 +254,10 @@ public class BiorepositoryDashboardRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(excursions);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(List.of(Map.of("error", e.getMessage())));
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    private LocalDate parseOptionalIsoDate(String value) {
-        if (value == null || value.trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("Invalid date format '" + value + "'. Expected YYYY-MM-DD");
         }
     }
 
