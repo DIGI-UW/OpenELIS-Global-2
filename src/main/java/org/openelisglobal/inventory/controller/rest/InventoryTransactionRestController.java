@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryTransactionService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -82,7 +83,7 @@ public class InventoryTransactionRestController extends BaseRestController {
 
     @GetMapping(value = "/reference", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<InventoryTransaction>> getByReference(@RequestParam String referenceId,
-            @RequestParam String referenceType) {
+            @RequestParam ReferenceType referenceType) {
         try {
             List<InventoryTransaction> transactions = transactionService.getByReference(Long.valueOf(referenceId),
                     referenceType);

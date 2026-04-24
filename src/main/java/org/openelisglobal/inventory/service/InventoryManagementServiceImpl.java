@@ -84,11 +84,10 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             inventoryLotService.update(lot);
 
             // Record transaction
-            String referenceTypeStr = testResultId != null ? ReferenceType.TEST_RESULT.name()
-                    : ReferenceType.MANUAL.name();
+            ReferenceType referenceType = testResultId != null ? ReferenceType.TEST_RESULT : ReferenceType.MANUAL;
             String notes = testResultId != null ? "Consumed for test result" : "Manual consumption";
             transactionService.recordTransaction(lot.getId(), TransactionType.CONSUMPTION, -quantityFromThisLot,
-                    newQuantity, testResultId, referenceTypeStr, notes, sysUserId);
+                    newQuantity, testResultId, referenceType, notes, sysUserId);
 
             // Record usage (always, even if no test result)
             usageService.recordUsage(lot.getId(), itemId, quantityFromThisLot, testResultId, analysisId, sysUserId);
@@ -150,7 +149,7 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
 
         // Record receipt transaction
         transactionService.recordTransaction(savedLot.getId(), TransactionType.RECEIPT, savedLot.getCurrentQuantity(),
-                savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT.name(), "New inventory received", sysUserId);
+                savedLot.getCurrentQuantity(), null, ReferenceType.RECEIPT, "New inventory received", sysUserId);
 
         return savedLot;
     }

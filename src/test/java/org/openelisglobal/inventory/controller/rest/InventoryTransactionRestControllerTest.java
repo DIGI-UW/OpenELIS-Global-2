@@ -70,9 +70,8 @@ public class InventoryTransactionRestControllerTest extends BaseWebContextSensit
     public void testGetByReference_ShouldReturnList() throws Exception {
         // Since we don't have reference data in the basic test set, we just expect 200
         // and an array
-        mockMvc.perform(
-                get("/rest/inventory/transactions/reference").param("referenceId", "1").param("referenceType", "USER"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+        mockMvc.perform(get("/rest/inventory/transactions/reference").param("referenceId", "1").param("referenceType",
+                "MANUAL")).andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
     }
 
     @Test
