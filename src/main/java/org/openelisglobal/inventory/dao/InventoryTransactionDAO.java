@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ReferenceType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 
@@ -27,5 +28,5 @@ public interface InventoryTransactionDAO extends BaseDAO<InventoryTransaction, L
     /**
      * Get transactions by reference (e.g., test result ID)
      */
-    List<InventoryTransaction> getByReference(Long referenceId, String referenceType) throws LIMSRuntimeException;
+    List<InventoryTransaction> getByReference(Long referenceId, ReferenceType referenceType) throws LIMSRuntimeException;
 }
