@@ -67,6 +67,12 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
         },
       ).then((r) => r.json()),
       fetch(
+        `${config.serverBaseUrl}/rest/biorepository/dashboard/storage-utilization`,
+        {
+          credentials: "include",
+        },
+      ).then((r) => r.json()),
+      fetch(
         `${config.serverBaseUrl}/rest/biorepository/dashboard/sample-aging`,
         {
           credentials: "include",
@@ -103,6 +109,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
       .then(
         ([
           capacity,
+          storageUtilization,
           aging,
           qc,
           discrepancies,
@@ -112,6 +119,7 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
         ]) => {
         setMetricsData({
           capacity,
+          storageUtilization,
           aging,
           qc,
           discrepancies,
@@ -189,7 +197,16 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     );
   }
 
-  const { capacity, aging, qc, discrepancies, qcHistory, retrieval, disposal } =
+  const {
+    capacity,
+    storageUtilization,
+    aging,
+    qc,
+    discrepancies,
+    qcHistory,
+    retrieval,
+    disposal,
+  } =
     metricsData;
 
   const formatPercent = (value) => {
@@ -254,6 +271,25 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
     { key: "status", header: "Status" },
     { key: "count", header: "Sample Count" },
     { key: "percentage", header: "Percentage" },
+  ];
+
+  const storageUtilizationRows = (storageUtilization?.devices || []).map(
+    (device, idx) => ({
+      id: `storage-device-${idx}`,
+      deviceName: device.deviceName || "-",
+      currentUsage: device.currentUsage ?? 0,
+      totalCapacity: device.totalCapacity ?? 0,
+      utilizationPercent: formatPercent(device.utilizationPercent),
+      capacitySource: device.capacitySource || "UNDEFINED",
+    }),
+  );
+
+  const storageUtilizationHeaders = [
+    { key: "deviceName", header: "Device" },
+    { key: "currentUsage", header: "Current Usage" },
+    { key: "totalCapacity", header: "Total Capacity" },
+    { key: "utilizationPercent", header: "Utilization" },
+    { key: "capacitySource", header: "Capacity Source" },
   ];
 
   // Sample aging rows
@@ -864,6 +900,50 @@ function DetailedMetricsTab({ entryId, notebookId, pageData }) {
                   </TableContainer>
                 )}
               </DataTable>
+
+              <div style={{ marginTop: "1rem" }}>
+                <DataTable
+                  rows={storageUtilizationRows}
+                  headers={storageUtilizationHeaders}
+                >
+                  {({
+                    rows,
+                    headers,
+                    getTableProps,
+                    getHeaderProps,
+                    getRowProps,
+                  }) => (
+                    <TableContainer
+                      title="Storage Utilization by Device"
+                      description="Configured and derived capacity confidence for each active device."
+                    >
+                      <Table {...getTableProps()}>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((header) => (
+                              <TableHeader
+                                key={header.key}
+                                {...getHeaderProps({ header })}
+                              >
+                                {header.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {rows.map((row) => (
+                            <TableRow key={row.id} {...getRowProps({ row })}>
+                              {row.cells.map((cell) => (
+                                <TableCell key={cell.id}>{cell.value}</TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  )}
+                </DataTable>
+              </div>
             </AccordionItem>
 
             {/* Sample Aging Breakdown */}

@@ -19,6 +19,11 @@ import org.openelisglobal.notebook.valueholder.NotebookEntryRoomEnvironmentLog;
 import org.openelisglobal.notebook.valueholder.NotebookEntryTemperatureLog;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.storage.service.SampleStorageService;
+import org.openelisglobal.storage.service.StorageLocationService;
+import org.openelisglobal.storage.valueholder.StorageBox;
+import org.openelisglobal.storage.valueholder.StorageDevice;
+import org.openelisglobal.storage.valueholder.StorageRack;
+import org.openelisglobal.storage.valueholder.StorageShelf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +57,9 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         @Autowired
         private SampleStorageService storageService;
 
+    @Autowired
+    private StorageLocationService storageLocationService;
+
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getStorageCapacityMetrics() {
@@ -70,10 +78,24 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         metrics.put("totalSamplesStored", totalStored);
         metrics.put("pendingStorage", pendingStorage);
 
-        // Note: Device-level utilization requires SampleStorageAssignment integration
-        // For MVP, provide basic counts
-        metrics.put("totalDevices", 0L); // Placeholder for Phase 2
-        metrics.put("averageUtilization", 0.0); // Placeholder for Phase 2
+        List<Map<String, Object>> deviceRows = buildStorageDeviceRows();
+        long totalConfiguredCapacity = deviceRows.stream()
+                .mapToLong(row -> ((Number) row.getOrDefault("totalCapacity", 0)).longValue())
+                .sum();
+        long totalCurrentUsage = deviceRows.stream()
+                .mapToLong(row -> ((Number) row.getOrDefault("currentUsage", 0)).longValue())
+                .sum();
+        long capacityDefinedDevices = deviceRows.stream()
+                .filter(row -> ((Number) row.getOrDefault("totalCapacity", 0)).longValue() > 0)
+                .count();
+
+        metrics.put("totalDevices", deviceRows.size());
+        metrics.put("capacityDefinedDevices", capacityDefinedDevices);
+        metrics.put("capacityUndefinedDevices", Math.max(0, deviceRows.size() - capacityDefinedDevices));
+        metrics.put("totalConfiguredCapacity", totalConfiguredCapacity);
+        metrics.put("totalCurrentUsage", totalCurrentUsage);
+        metrics.put("averageUtilization",
+                totalConfiguredCapacity > 0 ? (totalCurrentUsage * 100.0 / totalConfiguredCapacity) : 0.0);
 
         return metrics;
     }
@@ -82,11 +104,7 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
     @Transactional(readOnly = true)
     public Map<String, Object> getStorageUtilizationByDevice() {
         Map<String, Object> utilization = new HashMap<>();
-
-        // Note: Full implementation requires SampleStorageAssignment service
-        // integration
-        // Placeholder for MVP
-        utilization.put("devices", new ArrayList<>());
+        utilization.put("devices", buildStorageDeviceRows());
 
         return utilization;
     }
@@ -126,8 +144,12 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
                     return daysUntil > 60 && daysUntil <= 90;
                 }).count();
 
-        // Calculate average age (placeholder - would need collection dates)
-        double averageAgeYears = 0.0; // Placeholder for more complex calculation
+        double averageAgeYears = activeSamples.stream()
+                .map(this::resolveSampleAgeInDays)
+                .filter(days -> days >= 0)
+                .mapToLong(Long::longValue)
+                .average()
+                .orElse(0.0) / 365.0;
 
         metrics.put("expired", expired);
         metrics.put("expiring30Days", expiring30Days);
@@ -137,6 +159,94 @@ public class BiorepositoryDashboardServiceImpl implements BiorepositoryDashboard
         metrics.put("averageAgeYears", averageAgeYears);
 
         return metrics;
+    }
+
+    private List<Map<String, Object>> buildStorageDeviceRows() {
+        List<StorageDevice> activeDevices = storageLocationService.getAllDevices().stream()
+                .filter(device -> Boolean.TRUE.equals(device.getActive()))
+                .sorted(Comparator.comparing(device -> device.getName() != null ? device.getName() : ""))
+                .collect(Collectors.toList());
+
+        Map<Integer, List<StorageBox>> boxesByDeviceId = groupActiveBoxesByDeviceId();
+
+        return activeDevices.stream().map(device -> {
+            long derivedCapacity = boxesByDeviceId.getOrDefault(device.getId(), List.of()).stream()
+                    .map(StorageBox::getCapacity)
+                    .filter(capacity -> capacity != null && capacity > 0)
+                    .mapToLong(Integer::longValue)
+                    .sum();
+
+            Integer configuredCapacity = device.getCapacityLimit();
+            long totalCapacity = configuredCapacity != null && configuredCapacity > 0 ? configuredCapacity : derivedCapacity;
+            String capacitySource = configuredCapacity != null && configuredCapacity > 0
+                    ? "DEVICE_CAPACITY_LIMIT"
+                    : (derivedCapacity > 0 ? "BOX_GRID_SUM" : "UNDEFINED");
+            long currentUsage = device.getId() != null ? storageLocationService.countOccupiedInDevice(device.getId()) : 0;
+
+            Map<String, Object> row = new HashMap<>();
+            row.put("deviceId", device.getId());
+            row.put("deviceName", device.getName());
+            row.put("deviceCode", device.getCode());
+            row.put("totalCapacity", totalCapacity);
+            row.put("currentUsage", currentUsage);
+            row.put("availableCapacity", Math.max(0L, totalCapacity - currentUsage));
+            row.put("utilizationPercent", totalCapacity > 0 ? (currentUsage * 100.0 / totalCapacity) : 0.0);
+            row.put("capacitySource", capacitySource);
+            return row;
+        }).collect(Collectors.toList());
+    }
+
+    private Map<Integer, List<StorageBox>> groupActiveBoxesByDeviceId() {
+        Map<Integer, StorageShelf> activeShelves = storageLocationService.getAllShelves().stream()
+                .filter(shelf -> Boolean.TRUE.equals(shelf.getActive()) && shelf.getId() != null)
+                .collect(Collectors.toMap(StorageShelf::getId, Function.identity(), (left, right) -> left));
+        Map<Integer, StorageRack> activeRacks = storageLocationService.getAllRacks().stream()
+                .filter(rack -> Boolean.TRUE.equals(rack.getActive()) && rack.getId() != null)
+                .collect(Collectors.toMap(StorageRack::getId, Function.identity(), (left, right) -> left));
+
+        Map<Integer, List<StorageBox>> boxesByDeviceId = new HashMap<>();
+        for (StorageBox box : storageLocationService.getAllBoxes()) {
+            if (!Boolean.TRUE.equals(box.getActive()) || box.getParentRack() == null || box.getParentRack().getId() == null) {
+                continue;
+            }
+
+            StorageRack rack = activeRacks.get(box.getParentRack().getId());
+            if (rack == null || rack.getParentShelf() == null || rack.getParentShelf().getId() == null) {
+                continue;
+            }
+
+            StorageShelf shelf = activeShelves.get(rack.getParentShelf().getId());
+            if (shelf == null || shelf.getParentDevice() == null || shelf.getParentDevice().getId() == null) {
+                continue;
+            }
+
+            boxesByDeviceId.computeIfAbsent(shelf.getParentDevice().getId(), ignored -> new ArrayList<>()).add(box);
+        }
+
+        return boxesByDeviceId;
+    }
+
+    private long resolveSampleAgeInDays(BioSample bioSample) {
+        if (bioSample == null) {
+            return -1;
+        }
+
+        SampleItem sampleItem = bioSample.getSampleItem();
+        if (sampleItem == null) {
+            return -1;
+        }
+
+        LocalDate referenceDate = sampleItem.getCollectionDate() != null
+                ? sampleItem.getCollectionDate().toLocalDateTime().toLocalDate()
+                : (sampleItem.getSample() != null && sampleItem.getSample().getReceivedTimestamp() != null
+                        ? sampleItem.getSample().getReceivedTimestamp().toLocalDateTime().toLocalDate()
+                        : null);
+
+        if (referenceDate == null) {
+            return -1;
+        }
+
+        return Math.max(0L, ChronoUnit.DAYS.between(referenceDate, LocalDate.now()));
     }
 
     @Override
