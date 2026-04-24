@@ -4418,7 +4418,6 @@
   "uom.notification.duplicate": "Unit of Measure already exists",
   "uom.notification.save": "New Unit Of Measure has been saved.",
   "uom.uomName": "Unit Of Measure Name",
-  "training.installation.message": "Training Installation",
   "translation.edit.title": "Edit Translations",
   "translation.export": "Export CSV",
   "translation.export.success": "Translations exported successfully",

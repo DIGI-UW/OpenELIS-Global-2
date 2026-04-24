@@ -4418,7 +4418,6 @@
   "uom.notification.duplicate": "L’unité de mesure existe déjà",
   "uom.notification.save": "La nouvelle unité de mesure a été enregistrée.",
   "uom.uomName": "Nom de l'unité de mesure",
-  "training.installation.message": "Environnement de formation ",
   "translation.edit.title": "Edit Translations",
   "translation.export": "Export CSV",
   "translation.export.success": "Translations exported successfully",

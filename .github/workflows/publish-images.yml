@@ -114,7 +114,7 @@ jobs:
             dockerhub_suffix: proxy
           - compose_image: external-fhir-api.build
             dockerhub_suffix: fhir
-          - compose_image: openelisglobal-databse.build
+          - compose_image: openelisglobal-database.build
             dockerhub_suffix: database
     steps:
       - name: Download image map from triggering build workflow
