@@ -550,6 +550,13 @@ function OverviewDashboardTab({ entryId, notebookId, pageData }) {
                     />
                   </li>
                 </ul>
+                <p style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
+                  {`Storage utilization (weighted): ${
+                    Number.isFinite(Number(capacity?.averageUtilization))
+                      ? Number(capacity.averageUtilization).toFixed(1)
+                      : "0.0"
+                  }% across ${capacity?.totalDevices || 0} active devices`}
+                </p>
               </Column>
               <Column lg={8} md={4} sm={4}>
                 <p style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
