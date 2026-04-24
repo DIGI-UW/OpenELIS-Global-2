@@ -15,6 +15,9 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       backend: ${{ steps.filter.outputs.backend || 'true' }}
     steps:
@@ -112,10 +115,15 @@ jobs:
     steps:
       - name: Check backend result
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
         run: |
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "Change detection failed: $CHANGES_RESULT"
+            exit 1
+          fi
           if [[ "$BACKEND_RESULT" != "success" && "$BACKEND_RESULT" != "skipped" ]]; then
             echo "Backend verification failed: $BACKEND_RESULT"
             exit 1
           fi
-          echo "Backend checkpoint passed (result=$BACKEND_RESULT)."
+          echo "Backend checkpoint passed (changes=$CHANGES_RESULT, verify=$BACKEND_RESULT)."

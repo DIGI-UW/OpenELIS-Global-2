@@ -19,6 +19,9 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       frontend: ${{ steps.filter.outputs.frontend || 'true' }}
     steps:
@@ -133,9 +136,14 @@ jobs:
     steps:
       - name: Check sub-job results
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
           STATIC_RESULT: ${{ needs.static-checks.result }}
           IMAGE_RESULT: ${{ needs.build-prod-frontend-image.result }}
         run: |
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "Change detection failed: $CHANGES_RESULT"
+            exit 1
+          fi
           acceptable() { [[ "$1" == "success" || "$1" == "skipped" ]]; }
           if ! acceptable "$STATIC_RESULT" || ! acceptable "$IMAGE_RESULT"; then
             echo "One or more sub-jobs failed:"
@@ -143,4 +151,4 @@ jobs:
             echo "  build-prod-frontend-image: $IMAGE_RESULT"
             exit 1
           fi
-          echo "All frontend sub-jobs passed (static=$STATIC_RESULT image=$IMAGE_RESULT)."
+          echo "All frontend sub-jobs passed (changes=$CHANGES_RESULT, static=$STATIC_RESULT, image=$IMAGE_RESULT)."
