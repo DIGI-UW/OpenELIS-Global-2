@@ -21,6 +21,7 @@
   <include file="liquibase/3.5.x.x/base.xml" />
   <!-- Analyzer QC Rule Migrations -->
   <include file="liquibase/analyzer/base.xml" />
+  <include file="liquibase/analyzer/004-014-create-analyzer-qc-run.xml" relativeToChangelogFile="false"/>
   <!-- QC (Quality Control) Westgard Rules Feature -->
   <include file="liquibase/qc/001-create-qc-tables.xml" />
   <include file="liquibase/qc/002-create-westgard-rule-config.xml" />
