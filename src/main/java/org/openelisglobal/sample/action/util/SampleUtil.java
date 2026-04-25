@@ -1,15 +1,9 @@
 package org.openelisglobal.sample.action.util;
 
-import jakarta.servlet.http.HttpServletRequest;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
-import org.openelisglobal.common.validator.BaseErrors;
-import org.openelisglobal.patient.action.IPatientUpdate;
-import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
-import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -24,20 +18,6 @@ import org.springframework.validation.Errors;
 public class SampleUtil {
     @Autowired
     private SampleService sampleService;
-
-    public static void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,
-            IPatientUpdate patientUpdate, SamplePatientUpdateData updateData)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-        patientUpdate.setPatientUpdateStatus(patientInfo);
-        updateData.setSavePatient(patientUpdate.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION);
-
-        if (updateData.isSavePatient()) {
-            updateData.setPatientErrors(patientUpdate.preparePatientData(request, patientInfo));
-        } else {
-            updateData.setPatientErrors(new BaseErrors());
-        }
-    }
 
     public boolean accessionNumberChanged(SampleEditForm form) {
         String newAccessionNumber = form.getNewAccessionNumber();
