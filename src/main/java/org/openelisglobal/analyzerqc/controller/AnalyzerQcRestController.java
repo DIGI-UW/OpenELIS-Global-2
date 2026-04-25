@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  * Session user extraction follows AnalyzerQcRuleRestController pattern.
  */
 @RestController
-@RequestMapping("/rest/analyzers")
+@RequestMapping("/rest/analyzer")
 public class AnalyzerQcRestController {
 
     @Autowired
@@ -46,15 +46,15 @@ public class AnalyzerQcRestController {
      * status (PASS/OVERDUE/FAILED/NOT_RUN), last run details, next-due time.
      */
     @GetMapping(
-        value = "/{id}/qc-status",
-        produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('ROLE_ANALYZER_VIEW')")
+            value = "/{id}/qc-status",
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ANALYZER_VIEW')")
     public ResponseEntity<AnalyzerQcStatus> getQcStatus(@PathVariable String id) {
         try {
             return ResponseEntity.ok(analyzerQcService.getQcStatus(id));
         } catch (org.openelisglobal.common.exception.LIMSRuntimeException e) {
             LogEvent.logWarn(getClass().getName(), "getQcStatus",
-                "Analyzer not found: " + id);
+                    "Analyzer not found: " + id);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             LogEvent.logError(getClass().getName(), "getQcStatus", e.getMessage());
@@ -71,10 +71,10 @@ public class AnalyzerQcRestController {
      * Returns the updated QC status after recording (one round-trip).
      */
     @PostMapping(
-        value = "/{id}/qc-runs",
-        consumes = MediaType.APPLICATION_JSON_VALUE,
-        produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('ROLE_QC_RESULT_ENTER')")
+            value = "/{id}/qc-runs",
+            consumes = MediaType.APPLICATION_JSON_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('QC_RESULT_ENTER')")
     public ResponseEntity<AnalyzerQcStatus> recordQcRun(
             @PathVariable String id,
             @RequestBody QcRunForm form,
@@ -83,8 +83,8 @@ public class AnalyzerQcRestController {
             analyzerQcService.recordQcRun(id, form, getSysUserId(request));
             // Return fresh status so the UI status panel updates in one call
             return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(analyzerQcService.getQcStatus(id));
+                    .status(HttpStatus.CREATED)
+                    .body(analyzerQcService.getQcStatus(id));
         } catch (IllegalArgumentException e) {
             // Validation error (e.g. future run date)
             LogEvent.logWarn(getClass().getName(), "recordQcRun", e.getMessage());
@@ -101,9 +101,9 @@ public class AnalyzerQcRestController {
      * Returns the full QC run history for an analyzer, newest first.
      */
     @GetMapping(
-        value = "/{id}/qc-runs",
-        produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('ROLE_QC_HISTORY_VIEW')")
+            value = "/{id}/qc-runs",
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('QC_HISTORY_VIEW')")
     public ResponseEntity<List<AnalyzerQcRun>> getQcHistory(@PathVariable String id) {
         try {
             return ResponseEntity.ok(analyzerQcService.getQcHistory(id));
@@ -118,9 +118,9 @@ public class AnalyzerQcRestController {
     /** Extracts the authenticated system user ID from the session. */
     private String getSysUserId(HttpServletRequest request) {
         UserSessionData sessionData = (UserSessionData)
-            request.getSession().getAttribute("userSessionData");
+                request.getSession().getAttribute("userSessionData");
         return sessionData != null
-            ? String.valueOf(sessionData.getSystemUserId())
-            : null;
+                ? String.valueOf(sessionData.getSystemUserId())
+                : null;
     }
 }

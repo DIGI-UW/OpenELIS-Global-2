@@ -64,6 +64,9 @@ public class AnalyzerQcRun extends BaseObject<String> {
     @Column(name = "source", length = 50, nullable = false)
     private String source;
 
+    @Column(name = "sys_user_id", nullable = false, length = 20)
+    private String sysUserId;
+
     /** Called by Hibernate before first persist — generates UUID if not set. */
     @PrePersist
     protected void prePersist() {
@@ -95,4 +98,7 @@ public class AnalyzerQcRun extends BaseObject<String> {
 
     public String getSource() { return source; }
     public void setSource(String source) { this.source = source; }
+
+    public String getSysUserId() { return sysUserId; }
+    public void setSysUserId(String sysUserId) { this.sysUserId = sysUserId; }
 }

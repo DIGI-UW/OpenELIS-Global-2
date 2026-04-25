@@ -98,13 +98,12 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
                 ? form.getPerformedByUserId()
                 : currentUserId;
         run.setSysUserId(userId);
-
-        analyzerQcRunDAO.save(run);
+        analyzerQcRunDAO.insert(run);
 
         LogEvent.logInfo(getClass().getName(), "recordQcRun",
-            "QC run recorded for analyzer=" + analyzerId
-            + " result=" + form.getResult()
-            + " source=" + form.getSource());
+                "QC run recorded for analyzer=" + analyzerId
+                        + " result=" + form.getResult()
+                        + " source=" + form.getSource());
     }
 
     // ── getQcHistory ─────────────────────────────────────────────────────────
@@ -147,24 +146,27 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
         return switch (analyzer.getQcFrequencyType()) {
             case DAILY -> {
                 LocalDate lastPassDay = lastPassTime
-                    .atZone(ZoneId.systemDefault()).toLocalDate();
+                        .atZone(ZoneId.systemDefault()).toLocalDate();
                 yield lastPassDay.equals(LocalDate.now(ZoneId.systemDefault()))
-                    ? QcStatus.PASS : QcStatus.OVERDUE;
+                        ? QcStatus.PASS : QcStatus.OVERDUE;
             }
             case PER_SHIFT -> {
                 // Default shift = 8 h; overrideable via qcFrequencyHours
                 int shiftHours = (analyzer.getQcFrequencyHours() != null)
-                    ? analyzer.getQcFrequencyHours() : 8;
-                long elapsed = Duration.between(lastPassTime, Instant.now()).toHours();
-                yield elapsed <= shiftHours ? QcStatus.PASS : QcStatus.OVERDUE;
+                        ? analyzer.getQcFrequencyHours() : 8;
+
+                Duration elapsed = Duration.between(lastPassTime, Instant.now());
+                yield elapsed.compareTo(Duration.ofHours(shiftHours)) <= 0
+                        ? QcStatus.PASS : QcStatus.OVERDUE;
             }
             case CUSTOM_HOURS -> {
                 if (analyzer.getQcFrequencyHours() == null) {
                     yield QcStatus.NOT_RUN;
                 }
-                long elapsed = Duration.between(lastPassTime, Instant.now()).toHours();
-                yield elapsed <= analyzer.getQcFrequencyHours()
-                    ? QcStatus.PASS : QcStatus.OVERDUE;
+
+                Duration elapsed = Duration.between(lastPassTime, Instant.now());
+                yield elapsed.compareTo(Duration.ofHours(analyzer.getQcFrequencyHours())) <= 0
+                        ? QcStatus.PASS : QcStatus.OVERDUE;
             }
         };
     }
@@ -180,15 +182,15 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
         Instant base = lastPass.get().getRunDate().toInstant();
         Instant next = switch (analyzer.getQcFrequencyType()) {
             case DAILY -> base.atZone(ZoneId.systemDefault())
-                .toLocalDate().plusDays(1)
-                .atStartOfDay(ZoneId.systemDefault()).toInstant();
+                    .toLocalDate().plusDays(1)
+                    .atStartOfDay(ZoneId.systemDefault()).toInstant();
             case PER_SHIFT -> {
                 int hours = (analyzer.getQcFrequencyHours() != null)
-                    ? analyzer.getQcFrequencyHours() : 8;
+                        ? analyzer.getQcFrequencyHours() : 8;
                 yield base.plus(hours, ChronoUnit.HOURS);
             }
             case CUSTOM_HOURS -> base.plus(
-                analyzer.getQcFrequencyHours(), ChronoUnit.HOURS);
+                    analyzer.getQcFrequencyHours(), ChronoUnit.HOURS);
         };
         return Timestamp.from(next);
     }
