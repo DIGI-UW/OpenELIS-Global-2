@@ -77,7 +77,6 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
@@ -124,7 +123,6 @@ import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
-import org.openelisglobal.sample.action.util.SampleUtil;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
@@ -1007,93 +1005,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             serviceRequestsForSampleItem.add(this.transformToServiceRequest(analysis.getId()));
         }
         return serviceRequestsForSampleItem;
-    }
-
-    @Override
-    public SamplePatientUpdateData createOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysuserId) {
-        SamplePatientUpdateData updateData = new SamplePatientUpdateData(sysuserId);
-        List<SampleAddService.SampleTestCollection> sampleItemsTests = new ArrayList<>();
-
-        if (serviceRequest.hasLocationReference()) {
-            Reference locationRef = serviceRequest.getLocationReferenceFirstRep();
-            if (locationRef.hasReference()) {
-                String locationUUID = locationRef.getReferenceElement().getIdPart();
-                Organization organization = getItemByFhirId(locationUUID, organizationService);
-                if (organization != null) {
-                    updateData.setCurrentOrganization(organization);
-                }
-            }
-        }
-
-        if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
-            for (Reference reference : serviceRequest.getSpecimen()) {
-                String specimenUUID = reference.getReferenceElement().getIdPart();
-
-                SampleItem sampleItem = getItemByFhirId(specimenUUID, sampleItemService);
-                if (sampleItem != null) {
-                    Sample sample = sampleItem.getSample();
-                    updateData.setSample(sample);
-                    updateData.setAccessionNumber(sample.getAccessionNumber());
-
-                    if (serviceRequest.hasCode()) {
-                        List<Test> testsToOrder = new ArrayList<>();
-
-                        List<Test> resolved = resolveTestsFromServiceRequest(serviceRequest);
-                        if (resolved != null && !resolved.isEmpty()) {
-                            testsToOrder.addAll(resolved);
-                        }
-
-                        if (!testsToOrder.isEmpty()) {
-                            String xml = SampleUtil.buildSampleXml(testsToOrder, sampleItem, sampleItem.getId());
-
-                            SampleAddService sampleAddService = new SampleAddService(xml, sysuserId, sample,
-                                    DateUtil.getCurrentDateAsText());
-
-                            List<SampleAddService.SampleTestCollection> collections = sampleAddService
-                                    .createSampleTestCollection();
-
-                            sampleItemsTests.addAll(collections);
-                            updateData.setSampleAddService(sampleAddService);
-                        }
-
-                    }
-                }
-            }
-        }
-
-        updateData.setSampleItemsTests(sampleItemsTests);
-
-        if (serviceRequest.hasSubject() && serviceRequest.getSubject().hasReference()) {
-            String patientUUID = serviceRequest.getSubject().getReferenceElement().getIdPart();
-            org.openelisglobal.patient.valueholder.Patient patient = getItemByFhirId(patientUUID, patientService);
-            if (patient != null) {
-                updateData.setPatientId(patient.getId());
-            }
-        }
-
-        if (serviceRequest.hasRequester() && serviceRequest.getRequester().hasReference()) {
-            String requesterUUID = serviceRequest.getRequester().getReferenceElement().getIdPart();
-            org.openelisglobal.provider.valueholder.Provider provider = getItemByFhirId(requesterUUID, providerService);
-            if (provider != null) {
-                updateData.setProvider(provider);
-                provider.getPerson().setSysUserId(sysuserId);
-                updateData.setProviderPerson(provider.getPerson());
-            }
-        }
-
-        if (serviceRequest.hasPriority()) {
-            ServiceRequest.ServiceRequestPriority fhirPriority = serviceRequest.getPriority();
-            if (ServiceRequest.ServiceRequestPriority.STAT.equals(fhirPriority)) {
-                updateData.setPriority(OrderPriority.STAT);
-            } else if (ServiceRequest.ServiceRequestPriority.URGENT.equals(fhirPriority)
-                    || ServiceRequest.ServiceRequestPriority.ASAP.equals(fhirPriority)) {
-                updateData.setPriority(OrderPriority.TIMED);
-            } else {
-                updateData.setPriority(OrderPriority.ROUTINE);
-            }
-        }
-
-        return updateData;
     }
 
     @Override
@@ -2316,7 +2227,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
 
     @Override
     public List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(ServiceRequest serviceRequest,
-            String sysUserId) {
+            String sysUserId) throws Exception {
 
         List<SampleEditItem> items = new ArrayList<>();
 
@@ -2324,7 +2235,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             return items;
         }
 
-        // Get existing analysis from ServiceRequest ID
         Analysis existingAnalysis = null;
         if (serviceRequest.hasId() && serviceRequest.getIdElement() != null) {
             String analysisUuid = serviceRequest.getIdElement().getIdPart();
@@ -2338,7 +2248,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             }
         }
 
-        // Get sample item from ServiceRequest specimen
         SampleItem sampleItem = null;
         if (serviceRequest.hasSpecimen() && serviceRequest.getSpecimenFirstRep().hasReference()) {
             for (Reference reference : serviceRequest.getSpecimen()) {
@@ -2349,7 +2258,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                         break;
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    throw new Exception("Error retrieving sample item for specimen reference: " + specimenUUID, e);
                 }
             }
         }
@@ -2364,14 +2273,12 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         if (existingAnalysis != null && existingAnalysis.getTest() != null) {
             SampleEditItem existingItem = new SampleEditItem();
 
-            // Set from analysis
             existingItem.setAnalysisId(existingAnalysis.getId());
             existingItem.setTestId(existingAnalysis.getTest().getId());
             existingItem.setTestName(existingAnalysis.getTest().getLocalizedName());
             existingItem.setId(existingAnalysis.getTest().getId());
             existingItem.setSortOrder(existingAnalysis.getTest().getSortOrder());
 
-            // Set from sample item
             if (sampleItem != null) {
                 existingItem.setSampleItemId(sampleItem.getId());
                 if (sampleItem.getTypeOfSample() != null) {
@@ -2390,7 +2297,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 }
             }
 
-            // Set status
             IStatusService statusService = SpringContext.getBean(IStatusService.class);
             if (existingAnalysis.getStatusId() != null) {
                 existingItem.setStatus(statusService.getStatusNameFromId(existingAnalysis.getStatusId()));
@@ -2402,7 +2308,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 existingItem.setCanCancel(canCancel);
             }
 
-            // Check if test matches requested test
             if (requestedTest != null && !existingAnalysis.getTest().getId().equals(requestedTest.getId())) {
                 existingItem.setCanceled(true);
                 existingItem.setAdd(false);
@@ -2417,7 +2322,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             items.add(existingItem);
         }
 
-        // Add new test if different from existing
         if (requestedTest != null
                 && (existingAnalysis == null || !existingAnalysis.getTest().getId().equals(requestedTest.getId()))) {
 
@@ -2429,7 +2333,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
             newItem.setCanceled(false);
             newItem.setSortOrder(requestedTest.getSortOrder());
 
-            // Set sample item ID if available
             if (sampleItem != null) {
                 newItem.setSampleItemId(sampleItem.getId());
                 if (sampleItem.getTypeOfSample() != null) {
@@ -2440,7 +2343,6 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 }
             }
 
-            // Set default status for new test
             IStatusService statusService = SpringContext.getBean(IStatusService.class);
             newItem.setStatus(statusService.getStatusNameFromId(statusService.getStatusID(AnalysisStatus.NotStarted)));
             newItem.setHasResults(false);
@@ -2455,7 +2357,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
-    public SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId) {
+    public SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
+            throws Exception {
 
         SampleOrderItem orderItem = new SampleOrderItem();
 
@@ -2489,7 +2392,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                         break;
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    throw new Exception("Error retrieving sample item for specimen reference: " + specimenUUID, e);
                 }
             }
         }
@@ -2558,7 +2461,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                     }
                 }
             } catch (IllegalArgumentException e) {
-                e.printStackTrace();
+                throw new IllegalArgumentException(e);
             }
         } else if (analysis != null && analysis.getSampleItem() != null) {
             SampleHuman curentSampleHuman = new SampleHuman();
@@ -2605,6 +2508,7 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         return orderItem;
     }
 
+    @Override
     public List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest) {
         List<Test> resolvedTests = new ArrayList<>();
 

@@ -33,6 +33,7 @@ import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.test.valueholder.Test;
 
 public interface FhirTransformService {
 
@@ -103,10 +104,12 @@ public interface FhirTransformService {
 
     ServiceRequest transformToServiceRequest(String anlaysisId);
 
-    SamplePatientUpdateData createOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysuserId);
+    SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
+            throws Exception;
 
-    SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId);
+    List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
+            throws Exception;
 
-    List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(ServiceRequest serviceRequest, String sysUserId);
+    List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest);
 
 }

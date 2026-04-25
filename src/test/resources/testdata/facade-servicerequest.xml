@@ -308,7 +308,7 @@
         requester_id="3" requester_type_id="1"
         lastupdated="2023-11-01 12:00:00" />
 
-    <sample_requester id="4" sample_id="1"
+    <sample_requester id="10" sample_id="1"
         requester_id="3" requester_type_id="2"
         lastupdated="2023-11-01 12:00:00" />
 

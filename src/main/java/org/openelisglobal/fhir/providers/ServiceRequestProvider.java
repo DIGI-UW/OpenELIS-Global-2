@@ -41,14 +41,16 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
-import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
+import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -115,6 +117,9 @@ public class ServiceRequestProvider implements IResourceProvider {
     @Autowired
     private SampleItemService sampleItemService;
 
+    @Autowired
+    private PatientService patientService;
+
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return ServiceRequest.class;
@@ -165,123 +170,142 @@ public class ServiceRequestProvider implements IResourceProvider {
         final String method = "createServiceRequest";
 
         try {
-            if (request == null) {
-                throw new InvalidRequestException("HttpServletRequest cannot be null");
-            }
+            requireNonNull(request, "HttpServletRequest cannot be null");
 
-            String sysuserId = FhirProviderUtils.getSysUserId(request);
-            if (sysuserId == null || sysuserId.trim().isEmpty()) {
-                throw new InvalidRequestException("Missing or invalid system user ID");
-            }
+            final String sysuserId = requireNonBlank(FhirProviderUtils.getSysUserId(request),
+                    "Missing or invalid system user ID");
 
-            if (serviceRequest == null) {
-                throw new InvalidRequestException("ServiceRequest resource cannot be null");
-            }
+            requireNonNull(serviceRequest, "ServiceRequest resource cannot be null");
+            requireTrue(serviceRequest.hasSubject(), "ServiceRequest.subject is required");
+            requireTrue(serviceRequest.hasCode(), "ServiceRequest.code is required");
 
-            if (!serviceRequest.hasSubject()) {
-                throw new InvalidRequestException("ServiceRequest.subject is required");
-            }
+            final String patientRefId = requireNonBlank(serviceRequest.getSubject().getReferenceElement().getIdPart(),
+                    "ServiceRequest.subject reference is invalid");
 
-            if (!serviceRequest.hasCode()) {
-                throw new InvalidRequestException("ServiceRequest.code is required");
-            }
+            final org.openelisglobal.patient.valueholder.Patient existingPatient = requireNonNull(
+                    fhirTransformService.getItemByFhirId(patientRefId, patientService),
+                    "Patient not found for given subject reference");
 
-            SamplePatientUpdateData updateData = fhirTransformService.createOrderItemFromServiceRequest(serviceRequest,
-                    sysuserId);
+            final String patientId = requireNonBlank(existingPatient.getId(), "Resolved patient has no ID");
 
-            if (updateData == null) {
-                throw new InternalErrorException("Failed to transform ServiceRequest into updateData");
-            }
+            final boolean trackPayments = ConfigurationProperties.getInstance()
+                    .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
 
-            if (updateData.getPatientId() == null) {
-                throw new InvalidRequestException("Derived patientId is null after transformation");
-            }
+            final SampleOrderItem sampleOrder = requireNonNull(
+                    fhirTransformService.buildSampleOrderItemFromServiceRequest(serviceRequest, sysuserId),
+                    "Failed to build SampleOrderItem from ServiceRequest");
 
-            if (updateData.getSampleItemsTests() == null || updateData.getSampleItemsTests().isEmpty()) {
-                throw new InvalidRequestException("No sample items/tests found in ServiceRequest");
-            }
+            final String labNo = requireNonBlank(sampleOrder.getLabNo(), "Generated lab number is invalid");
 
-            SamplePatientEntryForm form = new SamplePatientEntryForm();
-            PatientManagementInfo patientInfo;
+            String receivedDateForDisplay = requireNonBlank(sampleOrder.getReceivedDateForDisplay(),
+                    "Received date is required");
 
-            Patient fhirPatient = fhirTransformService.transformToFhirPatient(updateData.getPatientId());
+            receivedDateForDisplay += GenericValidator.isBlankOrNull(sampleOrder.getReceivedTime()) ? " 00:00"
+                    : " " + sampleOrder.getReceivedTime();
 
-            if (fhirPatient == null) {
-                throw new ResourceNotFoundException("Patient not found for ID: " + updateData.getPatientId());
-            }
+            final List<Test> tests = requireNonEmpty(
+                    fhirTransformService.resolveTestsFromServiceRequest(serviceRequest),
+                    "No tests resolved from ServiceRequest");
 
-            patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
-            Errors errors = new BindException(patientInfo, "patientInfo");
-            ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
+            final List<SampleEditItem> editItems = requireNonEmpty(
+                    fhirTransformService.buildSampleEditItemsListFromServiceRequest(serviceRequest, sysuserId),
+                    "No sample edit items derived from ServiceRequest");
 
-            org.openelisglobal.patient.valueholder.Patient patient = new org.openelisglobal.patient.valueholder.Patient();
-            PatientUtil.preparePatientData(errors, request, patientInfo, patient);
+            final SampleEditItem firstItem = editItems.stream().filter(i -> i != null && i.isAdd()).findFirst()
+                    .orElse(editItems.get(0));
 
-            if (patientInfo == null) {
-                throw new InternalErrorException("Failed to create PatientManagementInfo");
-            }
+            final String sampleItemId = requireNonNull(firstItem.getSampleItemId(), "SampleItemId is missing");
+
+            final SampleItem sampleItem = requireNonNull(sampleItemService.get(sampleItemId),
+                    "SampleItem not found for ID: " + sampleItemId);
+
+            final String sampleXml = requireNonBlank(SampleUtil.buildSampleXml(tests, sampleItem, sampleItemId),
+                    "Failed to build sample XML");
+
+            final SamplePatientEntryForm form = new SamplePatientEntryForm();
+            form.setSampleOrderItems(sampleOrder);
+            form.setSampleXML(sampleXml);
+
+            final SamplePatientUpdateData updateData = new SamplePatientUpdateData(sysuserId);
+            updateData.setAccessionNumber(labNo);
+            updateData.setPatientId(patientId);
+            updateData.initSampleData(sampleXml, receivedDateForDisplay, trackPayments, sampleOrder);
+            updateData.setCollectionDateFromRecieveDateIfNeeded(receivedDateForDisplay);
+            updateData.initializeRequester(sampleOrder);
+            updateData.setPriority(sampleOrder.getPriority());
+            updateData.initProvider(sampleOrder);
+
+            final Errors result = new BindException(form, "form");
+
+            final Patient fhirPatient = requireNonNull(fhirTransformService.transformToFhirPatient(patientId),
+                    "Patient not found for ID: " + patientId);
+
+            final PatientManagementInfo patientInfo = requireNonNull(
+                    fhirTransformService.createOePatientManagementInfo(fhirPatient),
+                    "Failed to create PatientManagementInfo");
+
+            final Errors patientErrors = new BindException(patientInfo, "patientInfo");
+            ValidatePatientInfo.validatePatientInfo(patientErrors, patientInfo);
+
+            updateData.setPatientErrors(patientErrors);
+
+            // --- Prepare patient domain object ---
+            final org.openelisglobal.patient.valueholder.Patient patient = new org.openelisglobal.patient.valueholder.Patient();
+
+            PatientUtil.preparePatientData(patientErrors, request, patientInfo, patient);
+
+            final PatientManagementUpdate patientUpdate = requireNonNull(
+                    SpringContext.getBean(PatientManagementUpdate.class), "PatientManagementUpdate bean not found");
 
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
-            PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
-
-            if (patientUpdate == null) {
-                throw new InternalErrorException("PatientManagementUpdate bean not found");
-            }
+            form.setPatientProperties(patientInfo);
 
             patientUpdate.setSysUserIdFromRequest(request);
             patientUpdate.setPatientUpdateStatus(patientInfo);
 
-            String originalPatientId = updateData.getPatientId();
+            updateData.validateSample(result, !form.isOrderEntryOnly());
+
+            if (result.hasErrors()) {
+                throw new InvalidRequestException(formatErrors(result));
+            }
+
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
 
-            SampleHuman lookupSampleHuman = new SampleHuman();
-            lookupSampleHuman.setSampleId(updateData.getSample().getId());
-            SampleHuman existingSampleHuman = sampleHumanService.getDataBySample(lookupSampleHuman);
+            requireNonNull(updateData.getSample(), "Persisted sample is invalid");
+            requireNonNull(updateData.getSample().getId(), "Persisted sample ID is invalid");
 
-            if (existingSampleHuman != null) {
-                if (existingSampleHuman.getPatientId() == null
-                        || !originalPatientId.equals(existingSampleHuman.getPatientId())) {
-                    LogEvent.logInfo(this.getClass().getSimpleName(), method,
-                            "Setting SampleHuman patientId to: " + originalPatientId);
-                    existingSampleHuman.setPatientId(originalPatientId);
-                    existingSampleHuman.setSysUserId(sysuserId);
-                    sampleHumanService.update(existingSampleHuman);
-                }
+            final SampleHuman lookup = new SampleHuman();
+            lookup.setSampleId(updateData.getSample().getId());
+
+            final SampleHuman existing = sampleHumanService.getDataBySample(lookup);
+
+            if (existing != null && (existing.getPatientId() == null || !patientId.equals(existing.getPatientId()))) {
+                existing.setPatientId(patientId);
+                existing.setSysUserId(sysuserId);
+                sampleHumanService.update(existing);
             }
 
             fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
 
-            // Get the created ServiceRequest to return
-            ServiceRequest createdServiceRequest = null;
-            if (updateData.getSampleItemsTests() != null && !updateData.getSampleItemsTests().isEmpty()) {
-                SampleTestCollection firstCollection = updateData.getSampleItemsTests().get(0);
-                if (firstCollection.analysises != null && !firstCollection.analysises.isEmpty()) {
-                    Analysis createdAnalysis = firstCollection.analysises.get(0);
-                    createdServiceRequest = fhirTransformService.transformToServiceRequest(createdAnalysis.getId());
-                }
-            }
-
-            if (createdServiceRequest == null) {
-                throw new InternalErrorException("Failed to transform created Analysis to ServiceRequest");
-            }
+            final ServiceRequest created = requireNonNull(extractCreatedServiceRequest(updateData),
+                    "Failed to transform created Analysis to ServiceRequest");
 
             MethodOutcome outcome = new MethodOutcome();
             outcome.setCreated(true);
-            outcome.setResource(createdServiceRequest);
+            outcome.setResource(created);
             return outcome;
 
         } catch (InvalidRequestException | ResourceNotFoundException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "Client error: " + safeMessage(e));
+            LogEvent.logError(this.getClass().getSimpleName(), method, safeMessage(e));
             throw e;
 
         } catch (InternalErrorException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "Internal error: " + safeMessage(e));
+            LogEvent.logError(this.getClass().getSimpleName(), method, safeMessage(e));
             throw e;
 
         } catch (Exception e) {
-            e.printStackTrace();
-            LogEvent.logError(this.getClass().getSimpleName(), method, "Unhandled exception: " + safeMessage(e));
-            throw new InternalErrorException("Unexpected server error while creating ServiceRequest: " + e.getMessage(),
+            LogEvent.logError(this.getClass().getSimpleName(), method, safeMessage(e));
+            throw new InternalErrorException("Unexpected server error while creating ServiceRequest: " + safeMessage(e),
                     e);
         }
     }
@@ -293,103 +317,104 @@ public class ServiceRequestProvider implements IResourceProvider {
         final String method = "updateServiceRequest";
 
         try {
-            if (theId == null || theId.getIdPart() == null) {
-                throw new InvalidRequestException("Missing ServiceRequest ID in URL");
-            }
+            final String analysisUuid = requireNonBlank(theId != null ? theId.getIdPart() : null,
+                    "Missing ServiceRequest ID in URL");
 
-            if (request == null) {
-                throw new InvalidRequestException("HttpServletRequest cannot be null");
-            }
+            requireNonNull(request, "HttpServletRequest cannot be null");
 
-            if (!serviceRequest.hasCode() || !serviceRequest.getCode().hasCoding()) {
-                throw new InvalidRequestException("ServiceRequest.code.coding is required");
-            }
+            requireNonNull(serviceRequest, "ServiceRequest resource cannot be null");
+            requireTrue(serviceRequest.hasCode() && serviceRequest.getCode().hasCoding(),
+                    "ServiceRequest.code.coding is required");
 
-            String sysUserId = FhirProviderUtils.getSysUserId(request);
-            String analysisUuid = theId.getIdPart();
+            final String sysUserId = requireNonBlank(FhirProviderUtils.getSysUserId(request),
+                    "Missing or invalid system user ID");
 
-            List<Analysis> existingAnalyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
+            final List<Analysis> existingAnalyses = requireNonEmpty(
+                    analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid)),
+                    "Analysis not found with UUID: " + analysisUuid);
 
-            if (existingAnalyses.isEmpty()) {
-                throw new ResourceNotFoundException("Analysis not found with UUID: " + analysisUuid);
-            }
+            final Analysis existingAnalysis = requireNonNull(existingAnalyses.get(0), "Analysis is invalid");
 
-            Analysis existingAnalysis = existingAnalyses.get(0);
-            Sample existingSample = existingAnalysis.getSampleItem().getSample();
+            final SampleItem sampleItem = requireNonNull(existingAnalysis.getSampleItem(), "SampleItem is missing");
 
-            SampleEditForm form = new SampleEditForm();
+            final Sample existingSample = requireNonNull(sampleItem.getSample(), "Sample is missing");
 
-            form.setAccessionNumber(existingSample.getAccessionNumber());
+            final SampleEditForm form = new SampleEditForm();
+            form.setAccessionNumber(
+                    requireNonBlank(existingSample.getAccessionNumber(), "Accession number is missing"));
             form.setCurrentDate(DateUtil.getCurrentDateAsText());
             form.setIsEditable(true);
             form.setSearchFinished(true);
             form.setNoSampleFound(false);
 
-            SampleOrderItem orderItem = fhirTransformService.buildSampleOrderItemFromServiceRequest(serviceRequest,
-                    sysUserId);
+            final SampleOrderItem orderItem = requireNonNull(
+                    fhirTransformService.buildSampleOrderItemFromServiceRequest(serviceRequest, sysUserId),
+                    "Failed to build SampleOrderItem");
             form.setSampleOrderItems(orderItem);
 
-            List<SampleEditItem> editItems = fhirTransformService
-                    .buildSampleEditItemsListFromServiceRequest(serviceRequest, sysUserId);
+            final List<SampleEditItem> editItems = requireNonEmpty(
+                    fhirTransformService.buildSampleEditItemsListFromServiceRequest(serviceRequest, sysUserId),
+                    "No sample edit items derived");
 
-            List<SampleEditItem> existingTests = editItems.stream().filter(item -> !item.isAdd() && !item.isCanceled())
-                    .collect(Collectors.toList());
+            final List<SampleEditItem> existingTests = editItems.stream()
+                    .filter(i -> i != null && !i.isAdd() && !i.isCanceled()).collect(Collectors.toList());
 
-            List<SampleEditItem> possibleTests = editItems.stream().filter(item -> item.isAdd())
+            final List<SampleEditItem> possibleTests = editItems.stream().filter(i -> i != null && i.isAdd())
                     .collect(Collectors.toList());
 
             form.setExistingTests(existingTests);
             form.setPossibleTests(possibleTests);
 
             if (!possibleTests.isEmpty()) {
-                List<Test> allTests = new ArrayList<>();
-                for (Analysis analysis : existingAnalyses) {
-                    if (analysis.getTest() != null
-                            && !statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
-                        allTests.add(analysis.getTest());
-                    }
-                }
-                for (SampleEditItem newItem : possibleTests) {
-                    Test test = testService.get(newItem.getTestId());
-                    if (test != null) {
-                        allTests.add(test);
-                    }
-                }
+                final List<Test> allTests = new ArrayList<>();
 
-                SampleItem sampleItem = existingAnalysis.getSampleItem();
-                String sampleXml = SampleUtil.buildSampleXml(allTests, sampleItem, sampleItem.getId());
+                existingAnalyses.stream()
+                        .filter(a -> a != null && a.getTest() != null
+                                && !statusService.matches(a.getStatusId(), AnalysisStatus.Canceled))
+                        .map(Analysis::getTest).forEach(allTests::add);
+
+                possibleTests.stream().map(SampleEditItem::getTestId).filter(Objects::nonNull).map(testService::get)
+                        .filter(Objects::nonNull).forEach(allTests::add);
+
+                final String sampleXml = requireNonBlank(
+                        SampleUtil.buildSampleXml(allTests, sampleItem, sampleItem.getId()),
+                        "Failed to build sample XML");
+
                 form.setSampleXML(sampleXml);
             }
 
-            List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(existingSample.getId());
+            final List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(existingSample.getId());
+
+            int maxSortOrder = 0;
             if (sampleItems != null && !sampleItems.isEmpty()) {
-                // Get the highest sort order
-                int maxSortOrder = sampleItems.stream().mapToInt(item -> {
-                    try {
-                        return Integer.parseInt(item.getSortOrder());
-                    } catch (NumberFormatException e) {
-                        return 0;
-                    }
-                }).max().orElse(0);
-                form.setMaxAccessionNumber(existingSample.getAccessionNumber() + "-" + maxSortOrder);
-            } else {
-                form.setMaxAccessionNumber(existingSample.getAccessionNumber() + "-0");
+                maxSortOrder = sampleItems.stream().filter(Objects::nonNull).map(SampleItem::getSortOrder)
+                        .filter(Objects::nonNull).mapToInt(v -> {
+                            try {
+                                return Integer.parseInt(v);
+                            } catch (NumberFormatException e) {
+                                return 0;
+                            }
+                        }).max().orElse(0);
             }
-            List<IdValuePair> sampleTypes = userService.getUserSampleTypes(sysUserId, Constants.ROLE_RECEPTION);
-            form.setSampleTypes(sampleTypes);
+
+            form.setMaxAccessionNumber(existingSample.getAccessionNumber() + "-" + maxSortOrder);
+
+            form.setSampleTypes(requireNonNull(userService.getUserSampleTypes(sysUserId, Constants.ROLE_RECEPTION),
+                    "Sample types not found"));
 
             form.setTestSectionList(DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
 
             form.setRejectReasonList(DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
 
-            Errors result = new BindException(form, "form");
+            final Errors result = new BindException(form, "form");
             formValidator.validate(form, result);
 
             if (result.hasErrors()) {
                 throw new InvalidRequestException(formatErrors(result));
             }
 
-            boolean sampleChanged = sampleUtil.accessionNumberChanged(form);
+            final boolean sampleChanged = sampleUtil.accessionNumberChanged(form);
+
             Sample updatedSample = null;
 
             if (sampleChanged) {
@@ -399,7 +424,7 @@ public class ServiceRequestProvider implements IResourceProvider {
                     throw new InvalidRequestException(formatErrors(result));
                 }
 
-                updatedSample = sampleUtil.updateAccessionNumberInSample(form, FhirProviderUtils.getSysUserId(request));
+                updatedSample = sampleUtil.updateAccessionNumberInSample(form, sysUserId);
             }
 
             try {
@@ -410,38 +435,34 @@ public class ServiceRequestProvider implements IResourceProvider {
                     throw new InvalidRequestException(
                             "Optimistic locking failed - resource was modified by another user");
                 }
-
                 LogEvent.logDebug(e);
-                throw new InternalErrorException("Error updating sample: " + e.getMessage(), e);
+                throw new InternalErrorException("Error updating sample: " + safeMessage(e), e);
             }
+
             try {
                 fhirTransformService.transformAnalysisByIds(sampleEditService.getUpdatedAnalysisList());
             } catch (Exception e) {
                 LogEvent.logError(e);
             }
 
-            ServiceRequest updatedServiceRequest = fhirTransformService
-                    .transformToServiceRequest(existingAnalysis.getId());
+            final ServiceRequest updatedServiceRequest = requireNonNull(
+                    fhirTransformService.transformToServiceRequest(existingAnalysis.getId()),
+                    "Failed to transform updated Analysis to ServiceRequest");
 
-            if (updatedServiceRequest == null) {
-                throw new InternalErrorException("Failed to transform updated Analysis to ServiceRequest");
-            }
-
-            MethodOutcome outcome = new MethodOutcome();
+            final MethodOutcome outcome = new MethodOutcome();
             outcome.setCreated(false);
-            outcome.setId(new IdType("ServiceRequest", theId.getIdPart()));
+            outcome.setId(new IdType("ServiceRequest", analysisUuid));
             outcome.setResource(updatedServiceRequest);
 
             return outcome;
 
         } catch (InvalidRequestException | ResourceNotFoundException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), method, "Client error: " + safeMessage(e));
+            LogEvent.logError(this.getClass().getSimpleName(), method, safeMessage(e));
             throw e;
 
         } catch (Exception e) {
-            e.printStackTrace();
-            LogEvent.logError(this.getClass().getSimpleName(), method, "Unhandled exception: " + safeMessage(e));
-            throw new InternalErrorException("Unexpected server error while updating ServiceRequest: " + e.getMessage(),
+            LogEvent.logError(this.getClass().getSimpleName(), method, safeMessage(e));
+            throw new InternalErrorException("Unexpected server error while updating ServiceRequest: " + safeMessage(e),
                     e);
         }
     }
@@ -562,8 +583,6 @@ public class ServiceRequestProvider implements IResourceProvider {
         if (!errors.hasErrors()) {
             return "";
         }
-
-        // Log full details with stacktrace
         StringBuilder logMessage = new StringBuilder();
         logMessage.append("Validation failed with ").append(errors.getErrorCount()).append(" error(s)\n");
 
@@ -578,7 +597,6 @@ public class ServiceRequestProvider implements IResourceProvider {
             }
         }
 
-        // Log with stacktrace
         LogEvent.logError(this.getClass().getSimpleName(), "formatErrors", logMessage.toString());
 
         // Return formatted message for exception
@@ -589,6 +607,41 @@ public class ServiceRequestProvider implements IResourceProvider {
             }
             return e.getDefaultMessage();
         }).filter(Objects::nonNull).collect(Collectors.joining("; "));
+    }
+
+    private <T> T requireNonNull(T obj, String message) {
+        if (obj == null)
+            throw new InternalErrorException(message);
+        return obj;
+    }
+
+    private String requireNonBlank(String val, String message) {
+        if (val == null || val.trim().isEmpty()) {
+            throw new InvalidRequestException(message);
+        }
+        return val;
+    }
+
+    private void requireTrue(boolean condition, String message) {
+        if (!condition)
+            throw new InvalidRequestException(message);
+    }
+
+    private <T> List<T> requireNonEmpty(List<T> list, String message) {
+        if (list == null || list.isEmpty()) {
+            throw new InvalidRequestException(message);
+        }
+        return list;
+    }
+
+    private ServiceRequest extractCreatedServiceRequest(SamplePatientUpdateData updateData) {
+        if (updateData.getSampleItemsTests() == null)
+            return null;
+
+        return updateData.getSampleItemsTests().stream()
+                .filter(c -> c != null && c.analysises != null && !c.analysises.isEmpty()).map(c -> c.analysises.get(0))
+                .filter(a -> a != null && a.getId() != null).findFirst()
+                .map(a -> fhirTransformService.transformToServiceRequest(a.getId())).orElse(null);
     }
 
 }
