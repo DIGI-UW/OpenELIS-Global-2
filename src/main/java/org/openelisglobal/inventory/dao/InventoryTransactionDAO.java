@@ -28,5 +28,6 @@ public interface InventoryTransactionDAO extends BaseDAO<InventoryTransaction, L
     /**
      * Get transactions by reference (e.g., test result ID)
      */
-    List<InventoryTransaction> getByReference(Long referenceId, ReferenceType referenceType) throws LIMSRuntimeException;
+    List<InventoryTransaction> getByReference(Long referenceId, ReferenceType referenceType)
+            throws LIMSRuntimeException;
 }
