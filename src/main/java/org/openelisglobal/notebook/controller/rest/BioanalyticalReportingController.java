@@ -3,12 +3,16 @@ package org.openelisglobal.notebook.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.notebook.service.NotebookBulkOperationService;
 import org.openelisglobal.notebook.service.NotebookEntryService;
@@ -386,7 +390,8 @@ public class BioanalyticalReportingController extends BaseRestController {
     public void exportToREDCap(@PathVariable("pageId") Integer pageId,
             @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
 
-        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        List<Integer> sampleIds = resolveBioanalyticalExportSampleIds(request);
+        if (pageId == null || request == null || sampleIds.isEmpty()) {
             try {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
@@ -397,7 +402,7 @@ public class BioanalyticalReportingController extends BaseRestController {
         }
 
         try {
-            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, sampleIds,
                     request.getRecordIdField(), request.getEventName());
 
             if (csvContent == null || csvContent.length == 0) {
@@ -701,6 +706,75 @@ public class BioanalyticalReportingController extends BaseRestController {
     }
 
     /**
+     * Resolves sample IDs for Stage 4 exports: prefers {@code sampleIds}, then
+     * {@code groupedResults[*].sampleIds}, then {@code individualResults[*].sampleId}.
+     */
+    private List<Integer> resolveBioanalyticalExportSampleIds(BioanalyticalREDCapExportRequest request) {
+        if (request == null) {
+            return List.of();
+        }
+        Set<Integer> ids = new LinkedHashSet<>();
+        if (request.getSampleIds() != null) {
+            for (Integer id : request.getSampleIds()) {
+                if (id != null && id > 0) {
+                    ids.add(id);
+                }
+            }
+        }
+        if (request.getGroupedResults() != null) {
+            for (Map<String, Object> row : request.getGroupedResults()) {
+                if (row == null) {
+                    continue;
+                }
+                Object sampleIdsObj = row.get("sampleIds");
+                if (sampleIdsObj instanceof List) {
+                    for (Object o : (List<?>) sampleIdsObj) {
+                        Integer parsed = coerceSampleIdToInteger(o);
+                        if (parsed != null) {
+                            ids.add(parsed);
+                        }
+                    }
+                }
+            }
+        }
+        if (request.getIndividualResults() != null) {
+            for (Map<String, Object> row : request.getIndividualResults()) {
+                if (row == null) {
+                    continue;
+                }
+                Integer parsed = coerceSampleIdToInteger(row.get("sampleId"));
+                if (parsed != null) {
+                    ids.add(parsed);
+                }
+            }
+        }
+        return new ArrayList<>(ids);
+    }
+
+    private Integer coerceSampleIdToInteger(Object o) {
+        if (o == null) {
+            return null;
+        }
+        if (o instanceof Integer) {
+            int i = (Integer) o;
+            return i > 0 ? i : null;
+        }
+        if (o instanceof Number) {
+            int i = ((Number) o).intValue();
+            return i > 0 ? i : null;
+        }
+        if (o instanceof String) {
+            try {
+                int i = Integer.parseInt(((String) o).trim());
+                return i > 0 ? i : null;
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
      * Request DTO for bioanalytical REDCap export. Contains sample selection and
      * configuration parameters for CSV export with bioanalytical-specific fields.
      */
@@ -711,6 +785,8 @@ public class BioanalyticalReportingController extends BaseRestController {
         private String projectId;
         private String recordIdField;
         private String eventName;
+        private List<Map<String, Object>> groupedResults;
+        private List<Map<String, Object>> individualResults;
 
         public BioanalyticalREDCapExportRequest() {
         }
@@ -769,7 +845,8 @@ public class BioanalyticalReportingController extends BaseRestController {
     public void exportToCSV(@PathVariable("pageId") Integer pageId,
             @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
 
-        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        List<Integer> sampleIds = resolveBioanalyticalExportSampleIds(request);
+        if (pageId == null || request == null || sampleIds.isEmpty()) {
             try {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
@@ -780,7 +857,13 @@ public class BioanalyticalReportingController extends BaseRestController {
         }
 
         try {
-            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+            LogEvent.logInfo(this.getClass().getSimpleName(), "exportToCSV",
+                    "Bioanalytical CSV export request: pageId=" + pageId + ", sampleIds="
+                            + sampleIds.size() + ", groupedResults="
+                            + (request.getGroupedResults() == null ? 0 : request.getGroupedResults().size())
+                            + ", individualResults="
+                            + (request.getIndividualResults() == null ? 0 : request.getIndividualResults().size()));
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, sampleIds,
                     request.getRecordIdField(), request.getEventName());
 
             if (csvContent == null || csvContent.length == 0) {
@@ -819,7 +902,8 @@ public class BioanalyticalReportingController extends BaseRestController {
     public void exportToLMIS(@PathVariable("pageId") Integer pageId,
             @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
 
-        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        List<Integer> sampleIds = resolveBioanalyticalExportSampleIds(request);
+        if (pageId == null || request == null || sampleIds.isEmpty()) {
             try {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
@@ -830,8 +914,14 @@ public class BioanalyticalReportingController extends BaseRestController {
         }
 
         try {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "exportToLMIS",
+                    "Bioanalytical LMIS export request: pageId=" + pageId + ", sampleIds="
+                            + sampleIds.size() + ", groupedResults="
+                            + (request.getGroupedResults() == null ? 0 : request.getGroupedResults().size())
+                            + ", individualResults="
+                            + (request.getIndividualResults() == null ? 0 : request.getIndividualResults().size()));
             // For now, leverage REDCap export with LMIS-specific naming
-            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, sampleIds,
                     request.getRecordIdField(), request.getEventName());
 
             if (csvContent == null || csvContent.length == 0) {
@@ -869,7 +959,8 @@ public class BioanalyticalReportingController extends BaseRestController {
     public void exportToSDTM(@PathVariable("pageId") Integer pageId,
             @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
 
-        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        List<Integer> sampleIds = resolveBioanalyticalExportSampleIds(request);
+        if (pageId == null || request == null || sampleIds.isEmpty()) {
             try {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
@@ -880,9 +971,15 @@ public class BioanalyticalReportingController extends BaseRestController {
         }
 
         try {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "exportToSDTM",
+                    "Bioanalytical SDTM export request: pageId=" + pageId + ", sampleIds="
+                            + sampleIds.size() + ", groupedResults="
+                            + (request.getGroupedResults() == null ? 0 : request.getGroupedResults().size())
+                            + ", individualResults="
+                            + (request.getIndividualResults() == null ? 0 : request.getIndividualResults().size()));
             // For now, leverage REDCap export with SDTM-specific naming
             // Future enhancement: Add proper SDTM mapping
-            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, sampleIds,
                     request.getRecordIdField(), request.getEventName());
 
             if (csvContent == null || csvContent.length == 0) {
@@ -921,7 +1018,8 @@ public class BioanalyticalReportingController extends BaseRestController {
     public void exportToPDF(@PathVariable("pageId") Integer pageId,
             @RequestBody BioanalyticalREDCapExportRequest request, HttpServletResponse response) {
 
-        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+        List<Integer> sampleIds = resolveBioanalyticalExportSampleIds(request);
+        if (pageId == null || request == null || sampleIds.isEmpty()) {
             try {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 response.getWriter().write("{\"error\": \"pageId and sampleIds are required\"}");
@@ -932,9 +1030,15 @@ public class BioanalyticalReportingController extends BaseRestController {
         }
 
         try {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "exportToPDF",
+                    "Bioanalytical PDF export request: pageId=" + pageId + ", sampleIds="
+                            + sampleIds.size() + ", groupedResults="
+                            + (request.getGroupedResults() == null ? 0 : request.getGroupedResults().size())
+                            + ", individualResults="
+                            + (request.getIndividualResults() == null ? 0 : request.getIndividualResults().size()));
             // For now, return CSV as PDF content
             // Future enhancement: Implement proper PDF generation using JasperReports
-            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+            byte[] csvContent = bulkOperationService.generateBioanalyticalREDCapExport(pageId, sampleIds,
                     request.getRecordIdField(), request.getEventName());
 
             if (csvContent == null || csvContent.length == 0) {

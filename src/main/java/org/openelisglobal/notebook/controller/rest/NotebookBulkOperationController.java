@@ -13,7 +13,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -639,6 +641,55 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     /**
+     * Export bioanalytical page results to PDF (route used by Stage 4 frontend).
+     * POST /notebook/bulk/page/{pageId}/export/pdf
+     */
+    @PostMapping(value = "/page/{pageId}/export/pdf")
+    public void exportBioanalyticalPageToPdf(@PathVariable("pageId") Integer pageId,
+            @RequestBody BioanalyticalBulkExportRequest request, HttpServletResponse response) {
+        if (pageId == null || request == null || request.getSampleIds() == null || request.getSampleIds().isEmpty()) {
+            try {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.getWriter().write("{\"error\":\"pageId and sampleIds are required\"}");
+            } catch (IOException ignored) {
+            }
+            return;
+        }
+
+        int groupedCount = request.getGroupedResults() == null ? 0 : request.getGroupedResults().size();
+        int individualCount = request.getIndividualResults() == null ? 0 : request.getIndividualResults().size();
+        LogEvent.logInfo(this.getClass().getSimpleName(), "exportBioanalyticalPageToPdf",
+                "Stage4 export payload: pageId=" + pageId + ", sampleIds=" + request.getSampleIds().size()
+                        + ", groupedResults=" + groupedCount + ", individualResults=" + individualCount);
+
+        try {
+            // Current implementation reuses existing export generator as placeholder content.
+            byte[] content = bulkOperationService.generateBioanalyticalREDCapExport(pageId, request.getSampleIds(),
+                    request.getRecordIdField(), request.getEventName());
+
+            if (content == null || content.length == 0) {
+                response.setStatus(HttpServletResponse.SC_NO_CONTENT);
+                return;
+            }
+
+            String filename = "bioanalytical_page_" + pageId + ".pdf";
+            response.setContentType("application/pdf; charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+            response.setContentLength(content.length);
+            response.getOutputStream().write(content);
+            response.getOutputStream().flush();
+        } catch (Exception e) {
+            try {
+                LogEvent.logError(this.getClass().getSimpleName(), "exportBioanalyticalPageToPdf",
+                        "Export failed for page " + pageId + ": " + e.getMessage());
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.getWriter().write("{\"error\":\"" + e.getMessage() + "\"}");
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    /**
      * Generate Certificate of Analysis (COA) PDF for selected samples. POST
      * /notebook/bulk/page/{pageId}/coa/generate
      *
@@ -1018,6 +1069,25 @@ public class NotebookBulkOperationController extends BaseRestController {
         if (request.getRecipientName() == null || request.getRecipientName().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Recipient name is required"));
         }
+
+        Map<String, Object> submissionData = request.getSubmissionData();
+        int groupedCount = 0;
+        int individualCount = 0;
+        if (submissionData != null) {
+            Object groupedObj = submissionData.get("groupedResults");
+            Object individualObj = submissionData.get("individualResults");
+            if (groupedObj instanceof List<?>) {
+                groupedCount = ((List<?>) groupedObj).size();
+            }
+            if (individualObj instanceof List<?>) {
+                individualCount = ((List<?>) individualObj).size();
+            }
+        }
+        LogEvent.logInfo(this.getClass().getSimpleName(), "recordDelivery",
+                "Delivery request payload: notebookId=" + notebookId + ", targetCode="
+                        + request.getTargetCode() + ", exportFormat=" + request.getExportFormat()
+                        + ", deliveryType=" + request.getDeliveryType() + ", groupedResults="
+                        + groupedCount + ", individualResults=" + individualCount);
 
         Integer deliveryId = resultCompilationService.recordDelivery(notebookId, request.getRecipientName(),
                 request.getRecipientEmail(), request.getFileId(), request.getDeliveryType(),
@@ -1763,6 +1833,9 @@ public class NotebookBulkOperationController extends BaseRestController {
         private String deliveryType;
         private String regulatoryBody;
         private String notes;
+        private String targetCode;
+        private String exportFormat;
+        private Map<String, Object> submissionData;
 
         public String getRecipientName() {
             return recipientName;
@@ -1810,6 +1883,79 @@ public class NotebookBulkOperationController extends BaseRestController {
 
         public void setNotes(String notes) {
             this.notes = notes;
+        }
+
+        public String getTargetCode() {
+            return targetCode;
+        }
+
+        public void setTargetCode(String targetCode) {
+            this.targetCode = targetCode;
+        }
+
+        public String getExportFormat() {
+            return exportFormat;
+        }
+
+        public void setExportFormat(String exportFormat) {
+            this.exportFormat = exportFormat;
+        }
+
+        public Map<String, Object> getSubmissionData() {
+            return submissionData;
+        }
+
+        public void setSubmissionData(Map<String, Object> submissionData) {
+            this.submissionData = submissionData;
+        }
+    }
+
+    /** Request body for Stage 4 bioanalytical page export operations. */
+    public static class BioanalyticalBulkExportRequest {
+        private List<Integer> sampleIds;
+        private String recordIdField;
+        private String eventName;
+        private List<Map<String, Object>> groupedResults;
+        private List<Map<String, Object>> individualResults;
+
+        public List<Integer> getSampleIds() {
+            return sampleIds;
+        }
+
+        public void setSampleIds(List<Integer> sampleIds) {
+            this.sampleIds = sampleIds;
+        }
+
+        public String getRecordIdField() {
+            return recordIdField;
+        }
+
+        public void setRecordIdField(String recordIdField) {
+            this.recordIdField = recordIdField;
+        }
+
+        public String getEventName() {
+            return eventName;
+        }
+
+        public void setEventName(String eventName) {
+            this.eventName = eventName;
+        }
+
+        public List<Map<String, Object>> getGroupedResults() {
+            return groupedResults;
+        }
+
+        public void setGroupedResults(List<Map<String, Object>> groupedResults) {
+            this.groupedResults = groupedResults;
+        }
+
+        public List<Map<String, Object>> getIndividualResults() {
+            return individualResults;
+        }
+
+        public void setIndividualResults(List<Map<String, Object>> individualResults) {
+            this.individualResults = individualResults;
         }
     }
 
@@ -3119,21 +3265,18 @@ public class NotebookBulkOperationController extends BaseRestController {
             }
         }
 
-        // Map quantification results to lab samples from Stage 2
+        // Map quantification rows to samples using stable keys, then fallback to position.
         if (!quantification.isEmpty() && !samples.isEmpty()) {
-            for (int i = 0; i < Math.min(quantification.size(), samples.size()); i++) {
+            for (int i = 0; i < quantification.size(); i++) {
                 Map<String, Object> quantResult = quantification.get(i);
-                Map<String, Object> labSample = samples.get(i);
-
-                // Get lab sample ID
-                String labSampleId = (String) labSample.get("accessionNumber");
+                Map<String, Object> matchedSample = resolveSampleForInstrumentResult(quantResult, samples, i);
+                String labSampleId = extractSampleIdentifier(matchedSample);
                 if (labSampleId == null) {
-                    labSampleId = (String) labSample.get("id");
+                    continue;
                 }
 
                 quantResult.put("sampleId", labSampleId);
 
-                // Add to analyzer results
                 Map<String, Object> analyzerResult = new HashMap<>();
                 analyzerResult.put("id", labSampleId);
                 analyzerResult.put("sampleId", labSampleId);
@@ -3407,14 +3550,13 @@ public class NotebookBulkOperationController extends BaseRestController {
             }
         }
 
-        // Map instrument results to lab samples
+        // Map instrument results to lab samples by identifiers first, then fallback by index
         for (int i = 0; i < instrumentSampleResults.size() && i < samples.size(); i++) {
             Map<String, Object> instrumentResult = instrumentSampleResults.get(i);
-            Map<String, Object> labSample = samples.get(i);
-
-            String labSampleId = (String) labSample.get("accessionNumber");
+            Map<String, Object> labSample = resolveSampleForInstrumentResult(instrumentResult, samples, i);
+            String labSampleId = extractSampleIdentifier(labSample);
             if (labSampleId == null) {
-                labSampleId = (String) labSample.get("id");
+                continue;
             }
 
             Map<String, Object> sampleResult = new HashMap<>();
@@ -3500,6 +3642,49 @@ public class NotebookBulkOperationController extends BaseRestController {
     }
 
     // Helper methods
+    private Map<String, Object> resolveSampleForInstrumentResult(Map<String, Object> instrumentRow,
+            List<Map<String, Object>> samples, int fallbackIndex) {
+        if (samples == null || samples.isEmpty()) {
+            return null;
+        }
+
+        String byAccession = normalizeKey(instrumentRow.get("accessionNumber"));
+        String byInstrumentSampleId = normalizeKey(instrumentRow.get("instrumentSampleId"));
+        String bySampleName = normalizeKey(instrumentRow.get("sampleName"));
+
+        for (Map<String, Object> sample : samples) {
+            String sampleAccession = normalizeKey(sample.get("accessionNumber"));
+            String sampleId = normalizeKey(sample.get("id"));
+            if (Objects.equals(byAccession, sampleAccession) || Objects.equals(byInstrumentSampleId, sampleAccession)
+                    || Objects.equals(byInstrumentSampleId, sampleId) || Objects.equals(bySampleName, sampleAccession)
+                    || Objects.equals(bySampleName, sampleId)) {
+                return sample;
+            }
+        }
+
+        return fallbackIndex >= 0 && fallbackIndex < samples.size() ? samples.get(fallbackIndex) : null;
+    }
+
+    private String extractSampleIdentifier(Map<String, Object> sample) {
+        if (sample == null) {
+            return null;
+        }
+        Object accession = sample.get("accessionNumber");
+        if (accession != null && !accession.toString().isBlank()) {
+            return accession.toString();
+        }
+        Object id = sample.get("id");
+        return id == null ? null : id.toString();
+    }
+
+    private String normalizeKey(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.toString().trim().toUpperCase(Locale.ROOT);
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     private String extractQcLevel(String sampleId) {
         if (sampleId.contains("LOW"))
             return "LOW";
