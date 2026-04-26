@@ -22,15 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * REST endpoints for Analyzer Manual QC Recording (Issue #3490).
- *
- * GET  /rest/analyzers/{id}/qc-status  — current status + last run
- * POST /rest/analyzers/{id}/qc-runs    — record a new QC run
- * GET  /rest/analyzers/{id}/qc-runs    — full history
- *
- * All endpoints enforce Spring Security. HTTP 403 is returned automatically
- * on permission failure (no extra try/catch needed for that case).
- *
- * Session user extraction follows AnalyzerQcRuleRestController pattern.
  */
 @RestController
 @RequestMapping("/rest/analyzer")
@@ -39,12 +30,6 @@ public class AnalyzerQcRestController {
     @Autowired
     private AnalyzerQcService analyzerQcService;
 
-    // ── GET /rest/analyzers/{id}/qc-status ──────────────────────────────────
-
-    /**
-     * Returns current QC validity status for an analyzer:
-     * status (PASS/OVERDUE/FAILED/NOT_RUN), last run details, next-due time.
-     */
     @GetMapping(
             value = "/{id}/qc-status",
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -62,14 +47,6 @@ public class AnalyzerQcRestController {
         }
     }
 
-    // ── POST /rest/analyzers/{id}/qc-runs ───────────────────────────────────
-
-    /**
-     * Records a new manual QC run for this analyzer.
-     *
-     * Request body: { result, value?, runDate?, performedByUserId?, source }
-     * Returns the updated QC status after recording (one round-trip).
-     */
     @PostMapping(
             value = "/{id}/qc-runs",
             consumes = MediaType.APPLICATION_JSON_VALUE,
@@ -81,12 +58,10 @@ public class AnalyzerQcRestController {
             HttpServletRequest request) {
         try {
             analyzerQcService.recordQcRun(id, form, getSysUserId(request));
-            // Return fresh status so the UI status panel updates in one call
             return ResponseEntity
                     .status(HttpStatus.CREATED)
                     .body(analyzerQcService.getQcStatus(id));
         } catch (IllegalArgumentException e) {
-            // Validation error (e.g. future run date)
             LogEvent.logWarn(getClass().getName(), "recordQcRun", e.getMessage());
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
@@ -95,11 +70,6 @@ public class AnalyzerQcRestController {
         }
     }
 
-    // ── GET /rest/analyzers/{id}/qc-runs ────────────────────────────────────
-
-    /**
-     * Returns the full QC run history for an analyzer, newest first.
-     */
     @GetMapping(
             value = "/{id}/qc-runs",
             produces = MediaType.APPLICATION_JSON_VALUE)
@@ -113,9 +83,6 @@ public class AnalyzerQcRestController {
         }
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────
-
-    /** Extracts the authenticated system user ID from the session. */
     private String getSysUserId(HttpServletRequest request) {
         UserSessionData sessionData = (UserSessionData)
                 request.getSession().getAttribute("userSessionData");
