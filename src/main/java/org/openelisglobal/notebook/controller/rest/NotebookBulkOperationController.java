@@ -3265,11 +3265,13 @@ public class NotebookBulkOperationController extends BaseRestController {
             }
         }
 
-        // Map quantification rows to samples using stable keys, then fallback to position.
+        // Map quantification rows to samples using stable keys only. If a row cannot
+        // be matched deterministically, skip it rather than risking cross-sample data
+        // contamination.
         if (!quantification.isEmpty() && !samples.isEmpty()) {
             for (int i = 0; i < quantification.size(); i++) {
                 Map<String, Object> quantResult = quantification.get(i);
-                Map<String, Object> matchedSample = resolveSampleForInstrumentResult(quantResult, samples, i);
+                Map<String, Object> matchedSample = resolveSampleForInstrumentResult(quantResult, samples);
                 String labSampleId = extractSampleIdentifier(matchedSample);
                 if (labSampleId == null) {
                     continue;
@@ -3550,10 +3552,11 @@ public class NotebookBulkOperationController extends BaseRestController {
             }
         }
 
-        // Map instrument results to lab samples by identifiers first, then fallback by index
+        // Map instrument results to lab samples by identifiers only. Do not fall
+        // back to row order for bioanalytical result loading.
         for (int i = 0; i < instrumentSampleResults.size() && i < samples.size(); i++) {
             Map<String, Object> instrumentResult = instrumentSampleResults.get(i);
-            Map<String, Object> labSample = resolveSampleForInstrumentResult(instrumentResult, samples, i);
+            Map<String, Object> labSample = resolveSampleForInstrumentResult(instrumentResult, samples);
             String labSampleId = extractSampleIdentifier(labSample);
             if (labSampleId == null) {
                 continue;
@@ -3643,7 +3646,7 @@ public class NotebookBulkOperationController extends BaseRestController {
 
     // Helper methods
     private Map<String, Object> resolveSampleForInstrumentResult(Map<String, Object> instrumentRow,
-            List<Map<String, Object>> samples, int fallbackIndex) {
+            List<Map<String, Object>> samples) {
         if (samples == null || samples.isEmpty()) {
             return null;
         }
@@ -3662,7 +3665,7 @@ public class NotebookBulkOperationController extends BaseRestController {
             }
         }
 
-        return fallbackIndex >= 0 && fallbackIndex < samples.size() ? samples.get(fallbackIndex) : null;
+        return null;
     }
 
     private String extractSampleIdentifier(Map<String, Object> sample) {

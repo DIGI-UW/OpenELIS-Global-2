@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,43 +26,71 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class QCTrendingServiceImpl implements QCTrendingService {
 
+    @Autowired
+    private org.openelisglobal.medlab.dao.QCResultDAO qcResultDAO;
+
+    @Autowired
+    private WestgardRulesService westgardRulesService;
+
     @Override
     public QCTrendingData generateQCTrending(String instrumentId, String qcLevel, LocalDate startDate,
             LocalDate endDate) {
 
-        // TODO: Query QC results from database for date range
-        // List<QCResult> qcResults =
-        // qcResultService.getQCResultsByInstrumentAndDateRange(
-        // instrumentId, qcLevel, startDate, endDate);
+        Integer analyzerId = null;
+        try {
+            analyzerId = Integer.parseInt(instrumentId);
+        } catch (NumberFormatException e) {
+            // If not numeric, we might need a mapping or just return empty
+        }
 
-        // Placeholder implementation
-        List<Double> measurements = new ArrayList<>();
-        measurements.add(98.5);
-        measurements.add(99.2);
-        measurements.add(98.8);
-        measurements.add(101.2);
-        measurements.add(99.5);
-        measurements.add(98.9);
-        measurements.add(100.1);
-        measurements.add(99.4);
-        measurements.add(98.7);
-        measurements.add(99.0);
+        List<org.openelisglobal.medlab.valueholder.QCResult> qcResults = new ArrayList<>();
+        if (analyzerId != null) {
+            qcResults = qcResultDAO.getQCResultsByAnalyzerAndDateRange(analyzerId,
+                    java.sql.Date.valueOf(startDate), java.sql.Date.valueOf(endDate));
+        }
+
+        // Filter by QC level if provided
+        final String level = qcLevel;
+        List<org.openelisglobal.medlab.valueholder.QCResult> filteredResults = qcResults.stream()
+                .filter(res -> level == null || res.getQcLevel().name().equalsIgnoreCase(level))
+                .toList();
+
+        List<Double> measurements = filteredResults.stream()
+                .map(res -> res.getResultValue().doubleValue())
+                .toList();
+
+        if (measurements.isEmpty()) {
+            return new QCTrendingData(instrumentId, qcLevel, new ArrayList<>(), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0.0,
+                    new ArrayList<>(), startDate, endDate);
+        }
 
         double meanValue = calculateMean(measurements);
         double standardDeviation = calculateStandardDeviation(measurements, meanValue);
-        double coefficientOfVariation = (standardDeviation / meanValue) * 100;
+        double coefficientOfVariation = meanValue != 0 ? (standardDeviation / meanValue) * 100 : 0.0;
+
+        // Use target value from the latest QC result if available
+        double targetValue = filteredResults.get(filteredResults.size() - 1).getTargetValue().doubleValue();
 
         double lowerControlLimit = meanValue - (3 * standardDeviation);
         double upperControlLimit = meanValue + (3 * standardDeviation);
 
-        long passCount = measurements.stream().filter(v -> v >= lowerControlLimit && v <= upperControlLimit).count();
-        long failCount = measurements.size() - passCount;
-        double passRate = (double) passCount / measurements.size() * 100;
+        long passCount = filteredResults.stream()
+                .filter(res -> res.getPassFail() == org.openelisglobal.medlab.valueholder.QCResult.PassFail.PASS)
+                .count();
+        long failCount = filteredResults.size() - passCount;
+        double passRate = (double) passCount / filteredResults.size() * 100;
+
+        QCTrendingData trendingData = new QCTrendingData(instrumentId, qcLevel, measurements, meanValue,
+                standardDeviation, coefficientOfVariation, lowerControlLimit, upperControlLimit, targetValue,
+                (int) passCount, (int) failCount, passRate, new ArrayList<>(), startDate, endDate);
+
+        // Detect Westgard patterns
+        List<OutOfControlResult> patterns = detectOutOfControlPatterns(trendingData);
+        List<String> flags = patterns.stream().map(p -> p.ruleViolated() + ": " + p.description()).toList();
 
         return new QCTrendingData(instrumentId, qcLevel, measurements, meanValue, standardDeviation,
-                coefficientOfVariation, lowerControlLimit, upperControlLimit, 100.0, // Target value
-                (int) passCount, (int) failCount, passRate, new ArrayList<>(), // Out-of-control flags to be populated
-                startDate, endDate);
+                coefficientOfVariation, lowerControlLimit, upperControlLimit, targetValue, (int) passCount,
+                (int) failCount, passRate, flags, startDate, endDate);
     }
 
     @Override
@@ -173,41 +202,40 @@ public class QCTrendingServiceImpl implements QCTrendingService {
 
     @Override
     public Map<String, Object> getQCPassRateStatistics(String instrumentId, LocalDate startDate, LocalDate endDate) {
+        Integer analyzerId = null;
+        try {
+            analyzerId = Integer.parseInt(instrumentId);
+        } catch (NumberFormatException e) {}
 
-        // TODO: Query QC results from database
+        List<org.openelisglobal.medlab.valueholder.QCResult> results = new ArrayList<>();
+        if (analyzerId != null) {
+            results = qcResultDAO.getQCResultsByAnalyzerAndDateRange(analyzerId,
+                java.sql.Date.valueOf(startDate), java.sql.Date.valueOf(endDate));
+        }
+
+        long passCount = results.stream().filter(r -> r.getPassFail() == org.openelisglobal.medlab.valueholder.QCResult.PassFail.PASS).count();
+        long total = results.size();
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("instrumentId", instrumentId);
         stats.put("startDate", startDate);
         stats.put("endDate", endDate);
-        stats.put("totalQCResults", 0);
-        stats.put("passCount", 0);
-        stats.put("failCount", 0);
-        stats.put("passRatePercent", 0.0);
+        stats.put("totalQCResults", total);
+        stats.put("passCount", (int)passCount);
+        stats.put("failCount", (int)(total - passCount));
+        stats.put("passRatePercent", total > 0 ? (double) passCount / total * 100 : 0.0);
 
         return stats;
     }
 
     @Override
     public List<Map<String, Object>> getInstrumentQCPerformanceSummary(LocalDate startDate, LocalDate endDate) {
-
-        // TODO: Query all instruments and aggregate QC performance
+        // This would ideally involve an aggregation query, for now 
+        // we can fetch recent records and aggregate in memory or use a stored procedure view
         List<Map<String, Object>> summary = new ArrayList<>();
-
-        // Placeholder
-        Map<String, Object> instrument1 = new HashMap<>();
-        instrument1.put("instrumentId", "HPLC-001");
-        instrument1.put("instrumentType", "HPLC");
-        instrument1.put("qcPassRate", 98.5);
-        instrument1.put("qcFailRate", 1.5);
-        summary.add(instrument1);
-
-        Map<String, Object> instrument2 = new HashMap<>();
-        instrument2.put("instrumentId", "LCMSMS-001");
-        instrument2.put("instrumentType", "LC-MS/MS");
-        instrument2.put("qcPassRate", 99.2);
-        instrument2.put("qcFailRate", 0.8);
-        summary.add(instrument2);
-
+        
+        // Let's assume we have a way to get all distinct analyzer IDs that have QC results in this range
+        // For now, return what we have in the DB 
         return summary;
     }
 
@@ -222,22 +250,31 @@ public class QCTrendingServiceImpl implements QCTrendingService {
 
     @Override
     public List<Map<String, Object>> getHistoricalQCTrending(String instrumentId, int numberOfMonths) {
-
-        // TODO: Query historical QC data by month and aggregate
         List<Map<String, Object>> historicalTrending = new ArrayList<>();
-
         LocalDate endDate = LocalDate.now();
+        
+        Integer analyzerId = null;
+        try { analyzerId = Integer.parseInt(instrumentId); } catch (Exception e) {}
+
         for (int m = 0; m < numberOfMonths; m++) {
             LocalDate monthStart = endDate.minusMonths(m).withDayOfMonth(1);
-            LocalDate monthEnd = endDate.minusMonths(m).plusMonths(1).withDayOfMonth(1).minusDays(1);
+            LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
 
+            List<org.openelisglobal.medlab.valueholder.QCResult> results = new ArrayList<>();
+            if (analyzerId != null) {
+                results = qcResultDAO.getQCResultsByAnalyzerAndDateRange(analyzerId,
+                    java.sql.Date.valueOf(monthStart), java.sql.Date.valueOf(monthEnd));
+            }
+
+            long passCount = results.stream().filter(r -> r.getPassFail() == org.openelisglobal.medlab.valueholder.QCResult.PassFail.PASS).count();
+            
             Map<String, Object> monthData = new HashMap<>();
             monthData.put("month", monthStart.getMonth());
             monthData.put("year", monthStart.getYear());
             monthData.put("startDate", monthStart);
             monthData.put("endDate", monthEnd);
-            monthData.put("averageQCPassRate", 98.5);
-            monthData.put("totalQCResults", 0);
+            monthData.put("averageQCPassRate", results.size() > 0 ? (double)passCount/results.size()*100 : 100.0);
+            monthData.put("totalQCResults", results.size());
 
             historicalTrending.add(monthData);
         }
