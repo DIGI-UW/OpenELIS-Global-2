@@ -284,9 +284,12 @@ public class ServiceRequestProvider implements IResourceProvider {
                 existing.setSysUserId(sysuserId);
                 sampleHumanService.update(existing);
             }
-
-            fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
-
+            try {
+                fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
+            } catch (Exception fhirEx) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), method,
+                        "FHIR sync failed during delete (non-blocking): " + safeMessage(fhirEx));
+            }
             final ServiceRequest created = requireNonNull(extractCreatedServiceRequest(updateData),
                     "Failed to transform created Analysis to ServiceRequest");
 
@@ -441,8 +444,9 @@ public class ServiceRequestProvider implements IResourceProvider {
 
             try {
                 fhirTransformService.transformAnalysisByIds(sampleEditService.getUpdatedAnalysisList());
-            } catch (Exception e) {
-                LogEvent.logError(e);
+            } catch (Exception fhirEx) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), method,
+                        "FHIR sync failed during delete (non-blocking): " + safeMessage(fhirEx));
             }
 
             final ServiceRequest updatedServiceRequest = requireNonNull(
@@ -494,8 +498,12 @@ public class ServiceRequestProvider implements IResourceProvider {
 
             Analysis updatedAnalysis = analysisService.update(analysis);
 
-            // Notify FHIR store about the change
-            fhirTransformService.transformAnalysisByIds(List.of(updatedAnalysis.getId()));
+            try {
+                fhirTransformService.transformAnalysisByIds(List.of(updatedAnalysis.getId()));
+            } catch (Exception fhirEx) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), method,
+                        "FHIR sync failed during delete (non-blocking): " + safeMessage(fhirEx));
+            }
 
             MethodOutcome outcome = new MethodOutcome();
             outcome.setResponseStatusCode(204);

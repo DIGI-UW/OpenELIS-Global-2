@@ -140,57 +140,23 @@ public class FhirPersistanceServiceImpl implements FhirPersistanceService {
     @Override
     public Bundle createUpdateFhirResourcesInFhirStore(List<FhirOperations> fhirOperationsList)
             throws FhirLocalPersistingException {
-
         Bundle transactionBundle = new Bundle();
         transactionBundle.setType(BundleType.TRANSACTION);
-
         for (FhirOperations fhirOperations : fhirOperationsList) {
             addCreateToTransactionBundle(fhirOperations.createResources, transactionBundle);
             addUpdatesToTransactionBundle(fhirOperations.updateResources, transactionBundle);
         }
-
         Bundle transactionResponseBundle = new Bundle();
-
-        String transactionBundleString = null;
         try {
-            if (fhirContext != null) {
-                transactionBundleString = fhirContext.newJsonParser().encodeResourceToString(transactionBundle);
-            } else {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "",
-                        "FhirContext is null — cannot serialize transaction bundle");
-            }
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "",
-                    "Failed to serialize transaction bundle: " + e.getMessage());
-        }
-
-        try {
-            LogEvent.logTrace(this.getClass().getSimpleName(), "", "creating resources: " + transactionBundleString);
-            if (localFhirClient == null) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "",
-                        "Local FHIR client is null — skipping transaction");
-                return transactionResponseBundle;
-            }
-
+            LogEvent.logTrace(this.getClass().getSimpleName(), "",
+                    "creating resources: " + fhirContext.newJsonParser().encodeResourceToString(transactionBundle));
             transactionResponseBundle = localFhirClient.transaction().withBundle(transactionBundle).execute();
-
-            String responseString = null;
-            try {
-                if (fhirContext != null) {
-                    responseString = fhirContext.newJsonParser().encodeResourceToString(transactionResponseBundle);
-                }
-            } catch (Exception e) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "",
-                        "Failed to serialize response bundle: " + e.getMessage());
-            }
-
-            LogEvent.logTrace(this.getClass().getSimpleName(), "", "created resources: " + responseString);
-
+            LogEvent.logTrace(this.getClass().getSimpleName(), "", "created resources: "
+                    + fhirContext.newJsonParser().encodeResourceToString(transactionResponseBundle));
         } catch (Exception e) {
             LogEvent.logError(e);
             throw new FhirLocalPersistingException(e);
         }
-
         return transactionResponseBundle;
     }
 
