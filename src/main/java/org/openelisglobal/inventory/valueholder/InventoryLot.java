@@ -107,6 +107,13 @@ public class InventoryLot extends BaseObject<Long> {
     @Column(name = "unit_size", length = 100)
     private String unitSize;
 
+    /**
+     * Project/notebook ID this lot is associated with. Links to the notebook system
+     * for project-specific inventory tracking.
+     */
+    @Column(name = "project_id")
+    private Long projectId;
+
     // Lot-specific fields for reagents and equipment
     @Column(name = "received_by", length = 255)
     private String receivedBy;

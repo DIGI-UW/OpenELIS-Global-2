@@ -148,4 +148,7 @@
     <!-- Pathology Specimen Types: Tissue, Cytology, Body Fluid, Blood, Bone Marrow -->
     <include file="liquibase/3.4.x.x/072-pathology-specimen-types.xml"/>
 
+    <!-- Add project_id to inventory_lot for project-specific lot tracking -->
+    <include file="liquibase/3.4.x.x/080-add-project-id-to-inventory-lot.xml"/>
+
 </databaseChangeLog>

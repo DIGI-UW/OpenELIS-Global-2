@@ -437,6 +437,21 @@ export const NotebookDataAPI = {
     });
   },
 
+  getNotebookInstances: (parentId) => {
+    return new Promise((resolve, reject) => {
+      getFromOpenElisServer(
+        `/rest/notebook/${parentId}/instances`,
+        (response) => {
+          if (response && response.error) {
+            reject(new Error(response.message || response.error));
+          } else {
+            resolve(response || []);
+          }
+        },
+      );
+    });
+  },
+
   getOrganizations: () => {
     return new Promise((resolve, reject) => {
       getFromOpenElisServer("/rest/notebook/organizations", (response) => {

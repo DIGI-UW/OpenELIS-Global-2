@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Add project_id to inventory_lot to associate a lot with a specific project/notebook -->
+    <changeSet id="080-add-project-id-to-inventory-lot" author="kiro">
+        <addColumn tableName="inventory_lot">
+            <column name="project_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="inventory_lot" columnName="project_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

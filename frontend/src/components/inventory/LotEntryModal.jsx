@@ -14,6 +14,7 @@ import {
   InventoryItemAPI,
   InventoryLotAPI,
   InventoryManagementAPI,
+  NotebookDataAPI,
 } from "./InventoryService";
 import StorageHierarchySelector from "../notebook/workflow/StorageHierarchySelector";
 
@@ -35,6 +36,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     receivedBy: "",
     storageLocation: "",
     storageBoxNumber: "",
+    projectId: null,
   });
 
   // Unified storage hierarchy selection state
@@ -47,6 +49,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   });
 
   const [items, setItems] = useState([]);
+  const [notebookTemplates, setNotebookTemplates] = useState([]); // all templates, for lookup
+  const [projects, setProjects] = useState([]); // instances under the selected catalog's template
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -66,6 +70,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
 
   useEffect(() => {
     fetchItems();
+    fetchNotebookTemplates();
   }, []);
 
   useEffect(() => {
@@ -86,6 +91,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         receivedBy: lot.receivedBy || "",
         storageLocation: lot.specificStorageLocation || "",
         storageBoxNumber: lot.storageBoxNumber || "",
+        projectId: lot.projectId || null,
       });
       // Note: For editing, we would need to load the storage hierarchy
       // based on lot.locationId and lot.locationType if available
@@ -120,6 +126,52 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       setItems([]);
     }
   };
+
+  const fetchNotebookTemplates = async () => {
+    try {
+      const notebooks = await NotebookDataAPI.getNotebooks();
+      setNotebookTemplates(notebooks || []);
+    } catch (err) {
+      console.error("Error fetching notebook templates:", err);
+    }
+  };
+
+  // When the selected catalog item changes, load the projects (instances) under its template
+  useEffect(() => {
+    const loadProjectsForItem = async () => {
+      if (!formData.inventoryItem?.projectName) {
+        setProjects([]);
+        return;
+      }
+      // Find the template whose title matches the catalog item's projectName
+      const template = notebookTemplates.find(
+        (nb) => nb.title === formData.inventoryItem.projectName,
+      );
+      console.debug("[LotEntry] catalog projectName:", formData.inventoryItem.projectName);
+      console.debug("[LotEntry] available templates:", notebookTemplates.map((nb) => nb.title));
+      console.debug("[LotEntry] matched template:", template);
+      if (!template) {
+        setProjects([]);
+        return;
+      }
+      try {
+        const instances = await NotebookDataAPI.getNotebookInstances(
+          template.id,
+        );
+        console.debug("[LotEntry] instances for template", template.id, ":", instances);
+        setProjects(
+          (instances || []).map((nb) => ({
+            id: nb.id,
+            text: nb.title || `Project #${nb.id}`,
+          })),
+        );
+      } catch (err) {
+        console.error("Error fetching project instances:", err);
+        setProjects([]);
+      }
+    };
+    loadProjectsForItem();
+  }, [formData.inventoryItem, notebookTemplates]);
 
   // Handle storage hierarchy selection change
   const handleStorageSelectionChange = useCallback((selection) => {
@@ -277,6 +329,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           receivedBy: formData.receivedBy || null,
           specificStorageLocation: formData.storageLocation || null,
           storageBoxNumber: formData.storageBoxNumber || null,
+          projectId: formData.projectId || null,
         });
       } else {
         // Create new lot with unified storage location
@@ -301,6 +354,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           receivedBy: formData.receivedBy || null,
           specificStorageLocation: formData.storageLocation || null,
           storageBoxNumber: formData.storageBoxNumber || null,
+          projectId: formData.projectId || null,
         });
       }
       onSave();
@@ -353,9 +407,10 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
               ? items.find((i) => i.id === formData.inventoryItem.id)
               : null
           }
-          onChange={({ selectedItem }) =>
-            handleChange("inventoryItem", selectedItem.item)
-          }
+          onChange={({ selectedItem }) => {
+            handleChange("inventoryItem", selectedItem.item);
+            handleChange("projectId", null); // reset project when catalog changes
+          }}
           required
           disabled={isEdit}
         />
@@ -539,6 +594,27 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
           value={formData.barcode}
           onChange={(e) => handleChange("barcode", e.target.value)}
           placeholder="Optional"
+        />
+
+        <Dropdown
+          id="projectId"
+          titleText={
+            <FormattedMessage id="lot.project" defaultMessage="Project" />
+          }
+          label={
+            !formData.inventoryItem
+              ? "Select a catalog item first"
+              : projects.length === 0
+                ? "No projects available for this department"
+                : "Select a project (optional)"
+          }
+          items={projects}
+          itemToString={(item) => (item ? item.text : "")}
+          selectedItem={projects.find((p) => p.id === formData.projectId) || null}
+          onChange={({ selectedItem }) =>
+            handleChange("projectId", selectedItem ? selectedItem.id : null)
+          }
+          disabled={!formData.inventoryItem || projects.length === 0}
         />
       </Stack>
     </Modal>

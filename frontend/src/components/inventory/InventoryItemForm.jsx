@@ -586,8 +586,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
 
           <Dropdown
             id="projectName"
-            titleText="Project Name"
-            label="Select a project"
+            titleText="Department Name"
+            label="Select a department"
             items={projects}
             itemToString={(item) => (item ? item.text : "")}
             selectedItem={projects.find((p) => p.text === formData.projectName)}
