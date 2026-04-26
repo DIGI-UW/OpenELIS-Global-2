@@ -16,9 +16,6 @@ import org.openelisglobal.common.valueholder.BaseObject;
 /**
  * A single manual QC run recorded against an analyzer.
  *
- * ID strategy: UUID assigned in @PrePersist — matches AnalyzerQcRule pattern.
- * No schema prefix: the QC rule table has no schema prefix either.
- *
  * Issue #3490 — Analyzer Manual QC Recording
  */
 @Entity
@@ -31,43 +28,25 @@ public class AnalyzerQcRun extends BaseObject<String> {
     @Column(name = "id", nullable = false, length = 36)
     private String id;
 
-    /**
-     * The analyzer this QC run belongs to.
-     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "analyzer_id", nullable = false)
     private Analyzer analyzer;
 
-    /**
-     * Pass/Fail outcome. Stored as VARCHAR: "PASS" or "FAIL".
-     */
     @Column(name = "result", length = 10, nullable = false)
     private String result;
 
-    /**
-     * Optional numeric or freetext measurement recorded with the run.
-     */
     @Column(name = "value", length = 500)
     private String value;
 
-    /**
-     * When the QC was actually performed (not when it was entered).
-     * Defaults to now() if the caller does not supply a value.
-     */
     @Column(name = "run_date", nullable = false)
     private Timestamp runDate;
 
-    /**
-     * Which entry point triggered this recording.
-     * One of: ANALYZER_IMPORT, ANALYZER_LIST, WORKPLAN, QC_MODULE
-     */
     @Column(name = "source", length = 50, nullable = false)
     private String source;
 
     @Column(name = "sys_user_id", nullable = false, length = 20)
     private String sysUserId;
 
-    /** Called by Hibernate before first persist — generates UUID if not set. */
     @PrePersist
     protected void prePersist() {
         if (id == null || id.trim().isEmpty()) {
