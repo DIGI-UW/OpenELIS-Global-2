@@ -1,5 +1,7 @@
 package org.openelisglobal.sample.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +67,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class SampleEditServiceImpl implements SampleEditService {
 
     private static final Logger logger = LoggerFactory.getLogger(SampleEditServiceImpl.class);
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
     private static final String CANCELED_TEST_STATUS_ID;
@@ -497,6 +502,9 @@ public class SampleEditServiceImpl implements SampleEditService {
 
     private Analysis getCancelableAnalysis(SampleEditItem sampleEditItem, String sysUserId) {
         Analysis analysis = analysisService.get(sampleEditItem.getAnalysisId());
+        // Detach from Hibernate session so AuditableBaseObjectServiceImpl.update()
+        // can load a clean "old" copy for audit trail comparison
+        entityManager.detach(analysis);
         analysis.setSysUserId(sysUserId);
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
         return analysis;

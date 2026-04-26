@@ -8,8 +8,8 @@ import PendingCodesPanel from "./PendingCodesPanel";
 import messages from "../../../languages/en.json";
 import * as analyzerService from "../../../services/analyzerService";
 
-jest.mock("../../../services/analyzerService", () => ({
-  updatePendingCodeStatus: jest.fn(),
+vi.mock("../../../services/analyzerService", () => ({
+  updatePendingCodeStatus: vi.fn(),
 }));
 
 const renderWithIntl = (component) =>
@@ -21,7 +21,7 @@ const renderWithIntl = (component) =>
 
 describe("PendingCodesPanel", () => {
   test("updates pending code status to MAPPED", async () => {
-    const onUpdated = jest.fn();
+    const onUpdated = vi.fn();
     analyzerService.updatePendingCodeStatus.mockImplementation(
       (analyzerId, pendingCodeId, status, callback) => {
         callback({ ok: true, status });

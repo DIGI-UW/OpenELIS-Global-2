@@ -89,7 +89,7 @@ public class ElectronicSignatureDAOImpl extends BaseDAOImpl<ElectronicSignature,
             return entityManager.unwrap(Session.class)
                     .createQuery("FROM ElectronicSignature e WHERE e.signatureMeaning = :meaning "
                             + "ORDER BY e.signedAt DESC", ElectronicSignature.class)
-                    .setParameter("meaning", meaning.name()).list();
+                    .setParameter("meaning", meaning).list();
         } catch (HibernateException e) {
             LogEvent.logError(e);
             throw new LIMSRuntimeException("Error in getSignaturesByMeaning()", e);

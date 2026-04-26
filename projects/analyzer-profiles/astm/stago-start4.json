@@ -46,6 +46,16 @@
       "unit": "mg/L FEU"
     }
   ],
-  "configDefaults": {},
+  "configDefaults": {
+    "qcRules": [
+      {
+        "ruleType": "FIELD_EQUALS",
+        "targetField": "O.12",
+        "operand": "Q",
+        "isActive": true,
+        "sortOrder": 1
+      }
+    ]
+  },
   "notes": "Older semi-automatic analyzer. Protocol details unclear from public sources. Per vendor spec, supports both ASTM and HL7, but RS232/ASTM mode prioritized. 5 coagulation fields. VERIFY protocol capabilities with deployment team."
 }
