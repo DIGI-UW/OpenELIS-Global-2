@@ -24,34 +24,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Core QC status evaluation and run recording.
- *
- * QC status rules (BR-AQC-001 / BR-AQC-002):
- *   qcRequired = false  → always PASS (informational, BR-AQC-004)
- *   No runs on record   → NOT_RUN
- *   DAILY               → last PASS must be from today (same calendar day)
- *   PER_SHIFT           → last PASS within qcFrequencyHours (default 8 h)
- *   CUSTOM_HOURS        → last PASS within qcFrequencyHours
  */
 @Service
 @Transactional
 public class AnalyzerQcServiceImpl implements AnalyzerQcService {
 
-    // Use AnalyzerService (not AnalyzerDAO) — project convention:
-    // services inject other services, same as AnalyzerQueryServiceImpl.
     @Autowired
     private AnalyzerService analyzerService;
 
     @Autowired
     private AnalyzerQcRunDAO analyzerQcRunDAO;
 
-    // ── getQcStatus ──────────────────────────────────────────────────────────
-
     @Override
     public AnalyzerQcStatus getQcStatus(String analyzerId) {
         Analyzer analyzer = requireAnalyzer(analyzerId);
 
         Optional<AnalyzerQcRun> lastPass = analyzerQcRunDAO.getLastPassForAnalyzer(analyzerId);
-        Optional<AnalyzerQcRun> lastRun  = analyzerQcRunDAO.getLastRunForAnalyzer(analyzerId);
+        Optional<AnalyzerQcRun> lastRun = analyzerQcRunDAO.getLastRunForAnalyzer(analyzerId);
 
         AnalyzerQcStatus status = new AnalyzerQcStatus();
         status.setAnalyzerId(analyzerId);
@@ -69,13 +58,10 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
         return status;
     }
 
-    // ── recordQcRun ──────────────────────────────────────────────────────────
-
     @Override
     public void recordQcRun(String analyzerId, QcRunForm form, String currentUserId) {
         Analyzer analyzer = requireAnalyzer(analyzerId);
 
-        // Resolve run date — default to now if not supplied
         Timestamp runDate = (form.getRunDate() != null)
                 ? form.getRunDate()
                 : new Timestamp(System.currentTimeMillis());
@@ -92,11 +78,11 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
         run.setRunDate(runDate);
         run.setSource(form.getSource());
 
-        // Use caller-specified user or fall back to the authenticated session user
         String userId = (form.getPerformedByUserId() != null
                 && !form.getPerformedByUserId().isBlank())
                 ? form.getPerformedByUserId()
                 : currentUserId;
+
         run.setSysUserId(userId);
         analyzerQcRunDAO.insert(run);
 
@@ -106,15 +92,11 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
                         + " source=" + form.getSource());
     }
 
-    // ── getQcHistory ─────────────────────────────────────────────────────────
-
     @Override
     public List<AnalyzerQcRun> getQcHistory(String analyzerId) {
         requireAnalyzer(analyzerId);
         return analyzerQcRunDAO.getAllRunsForAnalyzer(analyzerId);
     }
-
-    // ── Private helpers ──────────────────────────────────────────────────────
 
     private Analyzer requireAnalyzer(String analyzerId) {
         Analyzer analyzer = analyzerService.get(analyzerId);
@@ -124,10 +106,6 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
         return analyzer;
     }
 
-    /**
-     * Derives current QC validity status from the analyzer's frequency rule
-     * and the timestamp of the most recent PASS run.
-     */
     private QcStatus evaluateStatus(Analyzer analyzer, Optional<AnalyzerQcRun> lastPass) {
         // BR-AQC-004: informational mode — QC is tracked but never blocks
         if (!analyzer.isQcRequired()) {
@@ -137,7 +115,6 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
             return QcStatus.NOT_RUN;
         }
         if (analyzer.getQcFrequencyType() == null) {
-            // Frequency rule not yet configured — treat as not run
             return QcStatus.NOT_RUN;
         }
 
@@ -151,7 +128,6 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
                         ? QcStatus.PASS : QcStatus.OVERDUE;
             }
             case PER_SHIFT -> {
-                // Default shift = 8 h; overrideable via qcFrequencyHours
                 int shiftHours = (analyzer.getQcFrequencyHours() != null)
                         ? analyzer.getQcFrequencyHours() : 8;
 
@@ -171,14 +147,11 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
         };
     }
 
-    /**
-     * Calculates when the next QC run is due based on the frequency rule.
-     * Returns null if frequency is not configured or no PASS run on record.
-     */
     private Timestamp calculateNextDue(Analyzer analyzer, Optional<AnalyzerQcRun> lastPass) {
         if (lastPass.isEmpty() || analyzer.getQcFrequencyType() == null) {
             return null;
         }
+
         Instant base = lastPass.get().getRunDate().toInstant();
         Instant next = switch (analyzer.getQcFrequencyType()) {
             case DAILY -> base.atZone(ZoneId.systemDefault())
@@ -192,6 +165,7 @@ public class AnalyzerQcServiceImpl implements AnalyzerQcService {
             case CUSTOM_HOURS -> base.plus(
                     analyzer.getQcFrequencyHours(), ChronoUnit.HOURS);
         };
+
         return Timestamp.from(next);
     }
 }
