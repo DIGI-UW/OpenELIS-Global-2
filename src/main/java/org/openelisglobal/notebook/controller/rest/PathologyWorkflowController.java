@@ -1574,8 +1574,10 @@ public class PathologyWorkflowController extends BaseRestController {
                         : new HashMap<>();
                 data.putAll(processingData);
                 pageSample.setData(data);
-                pageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                pageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                if (pageSample.getStatus() != NotebookPageSample.Status.COMPLETED) {
+                    pageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
+                    pageSample.setCompletedAt(null);
+                }
                 pageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.update(pageSample);
             } else {
@@ -1591,8 +1593,7 @@ public class PathologyWorkflowController extends BaseRestController {
                 newPageSample.setNotebookPage(page);
                 newPageSample.setSampleItemId(sampleId);
                 newPageSample.setData(processingData);
-                newPageSample.setStatus(NotebookPageSample.Status.COMPLETED);
-                newPageSample.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                newPageSample.setStatus(NotebookPageSample.Status.IN_PROGRESS);
                 newPageSample.setSysUserId(sysUserId);
                 notebookPageSampleService.insert(newPageSample);
             }
