@@ -25,6 +25,7 @@
 	</parameter>
 	<parameter name="leftHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="rightHeaderImage" class="java.io.InputStream" isForPrompting="false"/>
+	<parameter name="institutionalLogo" class="java.io.InputStream" isForPrompting="false"/>
 	<parameter name="imagesPath" class="java.lang.String"/>
 	<queryString>
 		<![CDATA[]]>
@@ -81,6 +82,12 @@
 				<image isUsingCache="true">
 					<reportElement x="1" y="1" width="100" height="88" uuid="c464fbb9-16cb-4bfc-9830-59182621aad1"/>
 					<imageExpression><![CDATA[$P{leftHeaderImage}]]></imageExpression>
+				</image>
+				<image hAlign="Center" isUsingCache="true" onErrorType="Blank">
+					<reportElement x="236" y="1" width="100" height="40" uuid="a3f2e1d0-9b8c-4e7f-b6a5-1234567890ab">
+						<printWhenExpression><![CDATA[$P{institutionalLogo} != null]]></printWhenExpression>
+					</reportElement>
+					<imageExpression><![CDATA[$P{institutionalLogo}]]></imageExpression>
 				</image>
 			</elementGroup>
 		</band>

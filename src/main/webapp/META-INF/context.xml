@@ -13,4 +13,5 @@
         <CookieProcessor
             className="org.apache.tomcat.util.http.Rfc6265CookieProcessor"
             sameSiteCookies="strict" />
+    <SessionCookie path="/api" />
 </Context>

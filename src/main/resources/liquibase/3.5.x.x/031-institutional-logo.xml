@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="openelis" id="031-institutional-logo-1">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'institutionalLogo'</sqlCheck>
+        </preConditions>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="institutionalLogo" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Institutional branding logo for printed reports" />
+            <column name="value" value=" " />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'printedReportsConfig')" />
+            <column name="value_type" value="logoUpload" />
+            <column name="instruction_key" value="siteInfo.instruction.institutionalLogo.i" />
+            <column name="group" value="0" />
+            <column name="description_key" value="siteInfo.instruction.institutionalLogo.d" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name='institutionalLogo'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -88,4 +88,7 @@
     <include file="liquibase/3.5.x.x/029-electronic-signature.xml"/>
     <include file="liquibase/3.5.x.x/030-fix-biorepository-approved-sample-type-lastupdated.xml"/>
 
+    <!-- Institutional branding logo for printed reports -->
+    <include file="liquibase/3.5.x.x/031-institutional-logo.xml"/>
+
 </databaseChangeLog>

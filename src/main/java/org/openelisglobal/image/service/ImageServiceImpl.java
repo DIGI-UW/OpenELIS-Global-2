@@ -54,6 +54,8 @@ public class ImageServiceImpl extends AuditableBaseObjectServiceImpl<Image, Stri
             return "leftLabLogo.jpg";
         case "labDirectorSignature":
             return "labDirectorSignature.jpg";
+        case "institutionalLogo":
+            return "institutionalLogo.jpg";
         default:
             return "rightLabLogo.jpg";
         }
