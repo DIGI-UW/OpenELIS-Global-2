@@ -4446,7 +4446,7 @@
   "testnotification.patient.email": "Patient Email",
   "testnotification.patient.sms": "Patient SMS",
   "testnotification.patiententry.header": "Result Reporting",
-  "testnotification.patiententry.info": "If OpenELIS is not able to connect to the recipient of the transmitted results it will queue them up. A large and growing queue is a sign that troubling shootingshould be done including contacting the receiving party.",
+  "testnotification.patiententry.info": "If OpenELIS is not able to connect to the recipient of the transmitted results it will queue them up. A large and growing queue is a sign that troubleshooting should be done including contacting the receiving party.",
   "testnotification.provider.email": "Provider Email",
   "testnotification.provider.sms": "Provider SMS",
   "testnotification.subjecttemplate": "Subject",
