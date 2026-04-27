@@ -9,15 +9,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.util.ControllerUtills;
+import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
 import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/eqa/orders")
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS')")
 public class EQAOrdersRestController extends ControllerUtills {
 
     @Autowired
@@ -34,7 +36,7 @@ public class EQAOrdersRestController extends ControllerUtills {
     private SampleService sampleService;
 
     @Autowired
-    private OrganizationService organizationService;
+    private EQALabProgramEnrollmentService enrollmentService;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, Object>>> listOrders(@RequestParam(required = false) String status,
@@ -45,8 +47,7 @@ public class EQAOrdersRestController extends ControllerUtills {
         List<SampleEQA> samples = sampleEQAService.findEqaSamples();
 
         if (programId != null) {
-            samples = samples.stream()
-                    .filter(s -> s.getEqaProgram() != null && programId.equals(s.getEqaProgram().getId()))
+            samples = samples.stream().filter(s -> programId.equals(s.getEqaEnrollmentId()))
                     .collect(Collectors.toList());
         }
 
@@ -74,9 +75,7 @@ public class EQAOrdersRestController extends ControllerUtills {
             String searchLower = search.toLowerCase();
             samples = samples.stream()
                     .filter(s -> (s.getEqaProviderSampleId() != null
-                            && s.getEqaProviderSampleId().toLowerCase().contains(searchLower))
-                            || (s.getEqaProgram() != null && s.getEqaProgram().getName() != null
-                                    && s.getEqaProgram().getName().toLowerCase().contains(searchLower)))
+                            && s.getEqaProviderSampleId().toLowerCase().contains(searchLower)))
                     .collect(Collectors.toList());
         }
 
@@ -129,10 +128,12 @@ public class EQAOrdersRestController extends ControllerUtills {
             dto.put("labNumber", order != null ? order.getAccessionNumber() : null);
         }
 
-        dto.put("programName", sample.getEqaProgram() != null ? sample.getEqaProgram().getName() : null);
-        if (sample.getEqaProviderOrganizationId() != null) {
-            Organization provider = organizationService.get(String.valueOf(sample.getEqaProviderOrganizationId()));
-            dto.put("providerName", provider != null ? provider.getOrganizationName() : null);
+        if (sample.getEqaEnrollmentId() != null) {
+            EQALabProgramEnrollment enrollment = enrollmentService.get(sample.getEqaEnrollmentId());
+            if (enrollment != null) {
+                dto.put("programName", enrollment.getProgramName());
+                dto.put("providerName", enrollment.getProvider());
+            }
         }
         dto.put("status", deriveStatus(sample));
         dto.put("deadline", sample.getEqaDeadline());

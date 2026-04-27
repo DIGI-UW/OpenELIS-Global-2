@@ -2,10 +2,17 @@ import React, { useEffect, useState } from "react";
 import { NumberInput, Stack } from "@carbon/react";
 
 const normalizeQuantity = (quantity) => {
-  if (quantity === null || quantity === undefined || Number(quantity) < 0) {
+  const num = Number(quantity);
+  if (
+    quantity === null ||
+    quantity === undefined ||
+    quantity === "" ||
+    isNaN(num) ||
+    num < 0
+  ) {
     return 0;
   }
-  return Number(quantity);
+  return Math.floor(num);
 };
 
 const createOrderRow = (orderQuantity) => {
@@ -68,7 +75,7 @@ const LabelsSection = ({
 
   useEffect(() => {
     setModel(buildLabelRowsModel(orderQuantity, specimenQuantities));
-  }, [orderQuantity, specimenQuantities]);
+  }, [orderQuantity, JSON.stringify(specimenQuantities)]);
 
   const updateModel = (nextModel) => {
     setModel(nextModel);
@@ -124,7 +131,16 @@ const LabelsSection = ({
           label={orderLabelText}
           min={0}
           value={model.orderRow.quantities.order}
-          onChange={(event, { value }) => updateOrderQuantity(value)}
+          onChange={(event, { value, direction }) => {
+            const current = model.orderRow.quantities.order;
+            const next =
+              direction === "up"
+                ? current + 1
+                : direction === "down"
+                  ? Math.max(0, current - 1)
+                  : normalizeQuantity(value);
+            updateOrderQuantity(next);
+          }}
         />
         {model.sampleRows.map((sampleRow, index) => (
           <NumberInput
@@ -133,9 +149,16 @@ const LabelsSection = ({
             label={specimenLabelFormatter(index + 1)}
             min={0}
             value={sampleRow.quantities.specimen}
-            onChange={(event, { value }) =>
-              updateSpecimenQuantity(index, value)
-            }
+            onChange={(event, { value, direction }) => {
+              const current = sampleRow.quantities.specimen;
+              const next =
+                direction === "up"
+                  ? current + 1
+                  : direction === "down"
+                    ? Math.max(0, current - 1)
+                    : normalizeQuantity(value);
+              updateSpecimenQuantity(index, next);
+            }}
           />
         ))}
         <p>{`${runningTotalLabel}: ${model.runningTotal}`}</p>

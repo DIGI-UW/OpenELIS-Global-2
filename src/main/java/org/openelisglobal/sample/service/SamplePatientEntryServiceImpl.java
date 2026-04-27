@@ -27,10 +27,8 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
-import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
-import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -125,8 +123,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ProgramSampleService programSampleService;
     @Autowired
     private SampleEQAService sampleEQAService;
-    @Autowired
-    private EQAProgramService eqaProgramService;
     @Autowired
     private BarcodeInfoService barcodeInfoService;
 
@@ -453,14 +449,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         sampleEQA.setSysUserId(updateData.getCurrentUserId());
 
         if (!GenericValidator.isBlankOrNull(updateData.getEqaProgramId())) {
-            EQAProgram eqaProgram = eqaProgramService.get(Long.parseLong(updateData.getEqaProgramId()));
-            sampleEQA.setEqaProgram(eqaProgram);
-        }
-        if (!GenericValidator.isBlankOrNull(updateData.getEqaProviderOrganizationId())) {
-            sampleEQA.setEqaProviderOrganizationId(Long.parseLong(updateData.getEqaProviderOrganizationId()));
+            sampleEQA.setEqaEnrollmentId(Long.parseLong(updateData.getEqaProgramId()));
         }
         sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
-        sampleEQA.setEqaParticipantId(updateData.getEqaParticipantId());
 
         if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
             java.sql.Date deadlineDate = DateUtil.convertStringDateToSqlDate(updateData.getEqaDeadline());

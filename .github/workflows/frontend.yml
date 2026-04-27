@@ -38,7 +38,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./frontend/Dockerfile.prod
+          file: ./frontend/Dockerfile
           push: false
 
   static-checks:
@@ -56,19 +56,38 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
         working-directory: frontend
 
       - name: Check Format
         run: npx prettier ./ --check
         working-directory: frontend
 
-      - name: Enforce Playwright guards
+      - name: Run ESLint (Playwright — blocking)
+        # Covers former pw-no-timeout-guard, pw-assertion-guard,
+        # pw-demo-ui-only-guard, and pw-retry-assertion-guard — all
+        # migrated to AST-based ESLint rules (upstream eslint-plugin-
+        # playwright + local rules in frontend/eslint-local-rules/).
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Run ESLint on src/ (advisory — non-blocking)
+        # Surfaces latent src/ lint debt without blocking the frontend
+        # gate. Tracked separately for wholesale cleanup; see the
+        # Frontend Modernization epic (#3449).
+        run: npm run lint:all
+        working-directory: frontend
+        continue-on-error: true
+
+      - name: Enforce Playwright bucket coherence
+        # Cross-file config check — every spec must match exactly one
+        # testMatch bucket in playwright.config.ts. Not a per-file lint
+        # task (cross-file state), so it remains a standalone script.
         run: npm run pw:guard
         working-directory: frontend
 
-      - name: Run Frontend Unit Tests (Jest)
-        run: npm test -- --watchAll=false --coverage=false
+      - name: Run Frontend Unit Tests (Vitest)
+        run: npm test
         working-directory: frontend
         env:
           CI: true

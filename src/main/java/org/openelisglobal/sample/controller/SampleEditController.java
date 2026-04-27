@@ -94,17 +94,16 @@ public class SampleEditController extends BaseController {
 
     // private ObservationHistory paymentObservation = null;
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
-    private static final Set<Integer> excludedAnalysisStatusList;
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static final Set<String> excludedAnalysisStatusList;
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
     private static final Collection<String> ABLE_TO_CANCEL_ROLE_NAMES = new ArrayList<>();
 
     static {
         excludedAnalysisStatusList = new HashSet<>();
-        excludedAnalysisStatusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+        excludedAnalysisStatusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
-        ENTERED_STATUS_SAMPLE_LIST
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered)));
+        ENTERED_STATUS_SAMPLE_LIST.add(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
         ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
         ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
         ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");

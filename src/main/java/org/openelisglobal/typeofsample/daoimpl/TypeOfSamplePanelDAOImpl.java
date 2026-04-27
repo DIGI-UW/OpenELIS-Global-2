@@ -134,7 +134,7 @@ public class TypeOfSamplePanelDAOImpl extends BaseDAOImpl<TypeOfSamplePanel, Str
             }
             Query<TypeOfSamplePanel> query = entityManager.unwrap(Session.class).createQuery(sql,
                     TypeOfSamplePanel.class);
-            query.setParameter("sampleId", Integer.parseInt(sampleType));
+            query.setParameter("sampleId", sampleType);
             list = query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
@@ -153,7 +153,7 @@ public class TypeOfSamplePanelDAOImpl extends BaseDAOImpl<TypeOfSamplePanel, Str
         try {
             Query<TypeOfSamplePanel> query = entityManager.unwrap(Session.class).createQuery(sql,
                     TypeOfSamplePanel.class);
-            query.setParameter("panelId", Integer.parseInt(panelId));
+            query.setParameter("panelId", panelId);
             List<TypeOfSamplePanel> typeOfSamplePanels = query.list();
             return typeOfSamplePanels;
         } catch (HibernateException e) {
