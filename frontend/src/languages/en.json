@@ -1234,7 +1234,7 @@
   "configuration.testUnit.order.explain": "Sort lab units by clicking a unit and dragging it into the proper order.",
   "configuration.testUnit.order.explain.limits": "Only test sections with tests assigned may be ordered.  For new sections please assign tests before ordering.",
   "configuration.type.rename": "Rename Existing Sample Types",
-  "configuration.type.rename.explain": "Use to correct the name of existing panels.",
+  "configuration.type.rename.explain": "Use to correct the name of existing sample types.",
   "configuration.uom.create": "Create New Units of Measure",
   "configuration.uom.manage": "Manage Units of Measure",
   "configuration.uom.manage.explain": "Use to create Units of Measure",
