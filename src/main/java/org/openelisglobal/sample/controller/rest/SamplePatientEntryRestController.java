@@ -46,6 +46,8 @@ import org.openelisglobal.patient.action.IPatientUpdate;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -68,7 +70,9 @@ import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -139,7 +143,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             "sampleOrderItems.paymentOptionSelection", "sampleOrderItems.billingReferenceNumber",
             "sampleOrderItems.testLocationCode", "sampleOrderItems.otherLocationCode",
             "sampleOrderItems.contactTracingIndexName", "sampleOrderItems.contactTracingIndexRecordNumber",
-            "sampleOrderItems.priority",
+            "sampleOrderItems.consentGiven", "sampleOrderItems.consentFormReference", "sampleOrderItems.priority",
             //
             "currentDate", "sampleOrderItems.newRequesterName", "sampleOrderItems.externalOrderNumber",
             // referral
@@ -164,6 +168,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
     @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private PatientService patientService;
 
     @Autowired
     private ElectronicOrderService electronicOrderService;
@@ -234,9 +241,31 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         form.setReferralReasons(DisplayListService.getInstance().getList(ListType.REFERRAL_REASONS));
     }
 
+    /**
+     * Save a sample + patient order.
+     *
+     * <p>
+     * OGC-584: This method historically returned HTTP 200 with the form body
+     * regardless of success/failure (Struts 1 form-post pattern — validation errors
+     * were stashed in a {@code BindingResult} and rendered inline by the
+     * server-side page). In a JSON/AJAX context that's silent-failure: callers
+     * can't distinguish "saved" from "dropped on the floor with errors in flash
+     * scope." Converted to {@link ResponseEntity} so status codes are meaningful:
+     * <ul>
+     * <li>{@code 400 Bad Request} — validation failed (formValidator or
+     * {@code updateData.validateSample})</li>
+     * <li>{@code 500 Internal Server Error} — persistence exception caught from
+     * {@code samplePatientService.persistData()}, or (belt-and- suspenders) the
+     * response claims success but no row is found in {@code clinlims.sample}</li>
+     * <li>{@code 200 OK} — verified success, row confirmed in DB</li>
+     * </ul>
+     * The response body is unchanged in every case — still the full form echo back
+     * — so existing consumers (OrderContext.js, any integration that reads form
+     * fields) keep working unchanged. Only the status code is new.
+     */
     @PostMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SamplePatientEntryForm samplePatientEntrySave(HttpServletRequest request,
+    public ResponseEntity<SamplePatientEntryForm> samplePatientEntrySave(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody SamplePatientEntryForm form,
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -262,7 +291,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
             if (hasNonPatientErrors) {
                 saveErrors(result);
-                return form;
+                logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
+                return ResponseEntity.badRequest().body(form);
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
@@ -285,6 +315,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
+
+        if (sampleOrder.getIsEQASample()) {
+            Patient existingEqaPatient = patientService.getPatientByNationalId("NULL");
+            if (existingEqaPatient != null) {
+                patientInfo.setPatientPK(existingEqaPatient.getId());
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+            }
+        }
 
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 
@@ -318,9 +356,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (sampleOrder.getIsEQASample()) {
             updateData.setEqaSample(true);
             updateData.setEqaProgramId(sampleOrder.getEqaProgramId());
-            updateData.setEqaProviderOrganizationId(sampleOrder.getEqaProviderOrganizationId());
             updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
-            updateData.setEqaParticipantId(sampleOrder.getEqaParticipantId());
             updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
             updateData.setEqaPriority(sampleOrder.getEqaPriority());
         }
@@ -346,8 +382,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         if (hasNonPatientErrors) {
             saveErrors(result);
-            return form;
+            logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
+            return ResponseEntity.badRequest().body(form);
         }
+
+        // OGC-584: track persistence failure so we can return a proper HTTP
+        // status after the catch blocks. `result.hasErrors()` alone isn't
+        // reliable because the environmental-workflow path above intentionally
+        // skips patient-field errors while leaving them in the BindingResult.
+        boolean persistFailed = false;
 
         try {
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
@@ -399,16 +442,16 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
             logger.error("SamplePatientEntry errors: {}", result.toString());
+            persistFailed = true;
         } catch (Exception e) {
             logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
             result.reject("errors.UpdateException", "errors.UpdateException");
 
-            // errors.add(ActionMessages.GLOBAL_MESSAGE, error);
-            saveErrors(result); // TODO theses errors are not communicated to the frontend return an error code
-            // if svae is not successful
+            saveErrors(result);
 
             setupForm(form, request, "");
             request.setAttribute(ALLOW_EDITS_KEY, "false");
+            persistFailed = true;
         }
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         if (form.getRememberSiteAndRequester()) {
@@ -440,7 +483,26 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     form.getSampleOrderItems().getReferringSiteDepartmentName());
         }
 
-        return (form);
+        // OGC-584: return a non-2xx status if persistence threw an exception that
+        // the catch blocks above swallowed (previously this method still returned
+        // HTTP 200 in that case — the silent-200-no-persist bug).
+        if (persistFailed) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(form);
+        }
+
+        // Belt-and-suspenders: verify the row actually made it to the DB. Guards
+        // against any future silent-failure path that forgets to set
+        // persistFailed. @Transactional on persistData guarantees all-or-nothing,
+        // so if the accession isn't found we know the write rolled back.
+        String labNoForVerify = sampleOrder != null ? sampleOrder.getLabNo() : null;
+        Sample persistedSample = !GenericValidator.isBlankOrNull(labNoForVerify)
+                ? sampleService.getSampleByAccessionNumber(labNoForVerify)
+                : null;
+        if (persistedSample == null || persistedSample.getId() == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(form);
+        }
+
+        return ResponseEntity.ok(form);
     }
 
     void populateWorkflowPrintModels(SamplePatientEntryForm form, String accessionNumber) {
