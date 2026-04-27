@@ -1,3 +1,4 @@
+import TATDetailListTab from "../TATDetailListTab";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
@@ -5,15 +6,15 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 
-jest.mock("../../../utils/Utils", () => ({
-  getFromOpenElisServer: jest.fn(),
+vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
 }));
 
-const { getFromOpenElisServer } = require("../../../utils/Utils");
+// Replaced inline utils require
 
 // Must import AFTER mock setup
-const TATDetailListTab =
-  require("../TATDetailListTab").default;
+import { getFromOpenElisServer } from "../../../utils/Utils";
+
 
 const renderWithIntl = (component) => {
   return render(
@@ -30,7 +31,7 @@ const mockFilters = {
   calculationMode: "CALENDAR",
 };
 
-const mockBuildQueryString = jest.fn(
+const mockBuildQueryString = vi.fn(
   (filters, extra) => `fromDate=${filters.fromDate}&toDate=${filters.toDate}${extra || ""}`,
 );
 
@@ -87,7 +88,11 @@ const mockData = {
 
 describe("TATDetailListTab", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    await new Promise((r) => setTimeout(r, 0));
   });
 
   test("shows no results when filters not applied", () => {
@@ -179,7 +184,8 @@ describe("TATDetailListTab", () => {
         r.textContent.includes("LAB-002"),
       );
       expect(statRow).toBeTruthy();
-      expect(statRow.style.borderLeft).toBe("3px solid #da1e28");
+      // jsdom normalizes hex colors to rgb() format
+      expect(statRow.style.borderLeft).toBe("3px solid rgb(218, 30, 40)");
     });
   });
 

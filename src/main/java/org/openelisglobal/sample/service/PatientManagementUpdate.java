@@ -20,8 +20,10 @@ import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.patient.action.IPatientUpdate;
+import org.openelisglobal.patient.action.bean.PatientIdDocumentInfo;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientContactService;
+import org.openelisglobal.patient.service.PatientIdDocumentService;
 import org.openelisglobal.patient.service.PatientPhotoService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
@@ -66,6 +68,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
     private PatientContactService patientContactService;
     @Autowired
     private PatientPhotoService patientPhotoService;
+    @Autowired
+    private PatientIdDocumentService patientIdDocumentService;
     protected PatientUpdateStatus patientUpdateStatus = PatientUpdateStatus.NO_ACTION;
 
     private String ADDRESS_PART_VILLAGE_ID;
@@ -412,6 +416,14 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         patientInfo.setPatientPK(patientID);
         patientPhotoService.savePhoto(patient.getId(), patientInfo.getPhoto());
 
+        if (patientInfo.getIdDocuments() != null) {
+            for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
+                if (docInfo.getId() == null && docInfo.getData() != null) {
+                    patientIdDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
+                            docInfo.getDescription());
+                }
+            }
+        }
     }
 
     @Override

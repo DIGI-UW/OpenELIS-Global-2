@@ -41,32 +41,30 @@ public class WHONetReportServiceImpl implements WHONetReportService {
     @Autowired
     private IStatusService statusService;
 
-    private List<Integer> ANALYSIS_STATUS_IDS;
-    private List<Integer> SAMPLE_STATUS_IDS;
+    private List<String> ANALYSIS_STATUS_IDS;
+    private List<String> SAMPLE_STATUS_IDS;
 
     @PostConstruct
     private void initialize() {
-        ANALYSIS_STATUS_IDS = Arrays
-                .asList(statusService.getStatusID(AnalysisStatus.SampleRejected),
-                        statusService.getStatusID(AnalysisStatus.NotStarted),
-                        statusService.getStatusID(AnalysisStatus.Canceled),
-                        statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
-                        statusService.getStatusID(AnalysisStatus.TechnicalRejected),
-                        statusService.getStatusID(AnalysisStatus.BiologistRejected),
-                        statusService.getStatusID(AnalysisStatus.NonConforming_depricated),
-                        statusService.getStatusID(AnalysisStatus.Finalized))
-                .stream().map(val -> Integer.parseInt(val)).collect(Collectors.toList());
+        ANALYSIS_STATUS_IDS = Arrays.asList(statusService.getStatusID(AnalysisStatus.SampleRejected),
+                statusService.getStatusID(AnalysisStatus.NotStarted),
+                statusService.getStatusID(AnalysisStatus.Canceled),
+                statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                statusService.getStatusID(AnalysisStatus.TechnicalRejected),
+                statusService.getStatusID(AnalysisStatus.BiologistRejected),
+                statusService.getStatusID(AnalysisStatus.NonConforming_depricated),
+                statusService.getStatusID(AnalysisStatus.Finalized)).stream().collect(Collectors.toList());
         SAMPLE_STATUS_IDS = Arrays
                 .asList(statusService.getStatusID(OrderStatus.Entered), statusService.getStatusID(OrderStatus.Started),
                         statusService.getStatusID(OrderStatus.Finished),
                         statusService.getStatusID(OrderStatus.NonConforming_depricated))
-                .stream().map(val -> Integer.parseInt(val)).collect(Collectors.toList());
+                .stream().collect(Collectors.toList());
     }
 
     @Override
     public List<SampleItem> getAntimicrobialEntries(Date lowDate, Date highDate) {
         List<Test> tests = testService.getAllMatching("antimicrobialResistance", Boolean.TRUE);
-        List<Integer> testIds = tests.stream().map(e -> Integer.parseInt(e.getId())).collect(Collectors.toList());
+        List<String> testIds = tests.stream().map(e -> e.getId()).collect(Collectors.toList());
 
         Map<String, SampleItem> sampleItems = new HashMap<>();
         List<Analysis> analysises = analysisService.getAllAnalysisByTestsAndStatusAndCompletedDateRange(testIds,

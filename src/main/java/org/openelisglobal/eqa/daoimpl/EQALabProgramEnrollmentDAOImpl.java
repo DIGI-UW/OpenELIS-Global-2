@@ -27,7 +27,7 @@ public class EQALabProgramEnrollmentDAOImpl extends BaseDAOImpl<EQALabProgramEnr
     @Transactional(readOnly = true)
     public List<EQALabProgramEnrollment> findAll() {
         try {
-            String hql = "FROM EQALabProgramEnrollment e ORDER BY e.eqaProgram.name";
+            String hql = "FROM EQALabProgramEnrollment e ORDER BY e.programName";
             Query<EQALabProgramEnrollment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     EQALabProgramEnrollment.class);
             return query.list();
@@ -41,7 +41,7 @@ public class EQALabProgramEnrollmentDAOImpl extends BaseDAOImpl<EQALabProgramEnr
     @Transactional(readOnly = true)
     public List<EQALabProgramEnrollment> findByIsActive(Boolean isActive) {
         try {
-            String hql = "FROM EQALabProgramEnrollment e WHERE e.isActive = :isActive ORDER BY e.eqaProgram.name";
+            String hql = "FROM EQALabProgramEnrollment e WHERE e.isActive = :isActive ORDER BY e.programName";
             Query<EQALabProgramEnrollment> query = entityManager.unwrap(Session.class).createQuery(hql,
                     EQALabProgramEnrollment.class);
             query.setParameter("isActive", isActive);

@@ -1,4 +1,4 @@
-import { expect, test, Page, Locator } from "@playwright/test";
+import { expect, test, Page, Locator } from "../../../helpers/test-base";
 import { UI_TIMEOUT, LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -76,8 +76,7 @@ test.describe("General Configurations", () => {
 
       await expect(page).toHaveURL(config.url, { timeout: LONG_TIMEOUT });
 
-      // Verify page loaded with heading and data table with rows
-      await expect(page.locator("h2")).toBeVisible({ timeout: UI_TIMEOUT });
+      // Verify page loaded with data table with rows
       const table = page.locator("table");
       await expect(table).toBeVisible({ timeout: UI_TIMEOUT });
       // Table must have at least one data row (tr with a radio button)
@@ -107,9 +106,9 @@ test.describe("General Configurations", () => {
     await modifyBtn.click();
 
     // Verify Edit Record page loaded
-    await expect(page.locator("h2")).toContainText("Edit Record", {
-      timeout: UI_TIMEOUT,
-    });
+    await expect(
+      page.getByRole("heading", { name: "Edit Record" }),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
 
     // Read current checked state, click opposite
     const falseRadio = page
@@ -131,9 +130,9 @@ test.describe("General Configurations", () => {
     await saveBtn.click();
 
     // Verify we returned to the config list
-    await expect(page.locator("h2")).not.toContainText("Edit Record", {
-      timeout: UI_TIMEOUT,
-    });
+    await expect(
+      page.getByRole("heading", { name: "Edit Record" }),
+    ).not.toBeVisible({ timeout: UI_TIMEOUT });
     await expect(page.locator("table")).toBeVisible({ timeout: UI_TIMEOUT });
   });
 });

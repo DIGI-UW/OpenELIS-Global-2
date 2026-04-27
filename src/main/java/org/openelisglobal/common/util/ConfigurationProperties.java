@@ -178,7 +178,8 @@ public abstract class ConfigurationProperties {
         BANNER_TEXT("bannerHeading", "localization"), // Text on Banner
         CLOCK_24("24 hour clock", "text"), // True for 24 hour clock, false for 12 hour clock
         PATIENT_NATIONALITY("supportPatientNationality", "text"), // True if patient nationality should be collected
-                                                                  // with
+        DEFAULT_NATIONALITY("default nationality", "text"), // Default nationality value for new patients
+                                                            // with
         // patient information
         PATIENT_ID_REQUIRED("Patient ID required", "text"), // True if patient id is required for new patient
         PATIENT_SUBJECT_NUMBER_REQUIRED("Subject number required", "text"), // True if patient subject number is

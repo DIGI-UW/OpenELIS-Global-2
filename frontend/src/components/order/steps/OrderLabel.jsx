@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -27,7 +27,12 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
-import StorageLocationSelector from "../../storage/StorageLocationSelector/StorageLocationSelector";
+import LocationPickerInline from "../../storage/LocationPicker/LocationPickerInline";
+import {
+  getDeepestLocationSelection,
+  positionToCoordinate,
+  selectionToHierarchicalPath,
+} from "../../storage/LocationPicker/locationSelectionMapper";
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
@@ -48,6 +53,7 @@ import {
 const OrderLabel = () => {
   const intl = useIntl();
   const history = useHistory();
+  const location = useLocation();
   const {
     orderData,
     samples,
@@ -60,6 +66,8 @@ const OrderLabel = () => {
     orderId,
     storageSkipped,
     setStorageSkipped,
+    loadOrder,
+    isLoading,
   } = useOrderContext();
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -68,12 +76,22 @@ const OrderLabel = () => {
   const labNumber =
     contextLabNumber || orderData?.sampleOrderItems?.labNo || null;
 
-  // Redirect to enter step if no order is loaded
+  // Deep-link support: if the URL carries ?labNumber and no order is loaded,
+  // fetch it before falling back to the Step 1 redirect. Lets external links
+  // (dashboard widgets, tests) land directly on Step 3 without walking the
+  // wizard.
+  const urlLabNumber = new URLSearchParams(location.search).get("labNumber");
+
   useEffect(() => {
-    if (!orderId && !labNumber) {
-      history.replace("/order/enter");
+    if (orderId || labNumber || isLoading) return;
+    if (urlLabNumber) {
+      loadOrder(urlLabNumber).catch(() => {
+        history.replace("/order/enter");
+      });
+      return;
     }
-  }, [orderId, labNumber, history]);
+    history.replace("/order/enter");
+  }, [orderId, labNumber, isLoading, urlLabNumber, loadOrder, history]);
 
   // Label printing state - order label + one entry per sample
   const [labelQuantities, setLabelQuantities] = useState(() => {
@@ -249,8 +267,10 @@ const OrderLabel = () => {
   };
 
   /**
-   * Handle location change from StorageLocationSelector
-   * Stores selection locally - actual API call happens on Save
+   * Handle location change from the LocationPicker.
+   * Stores selection locally; the actual /assign or /move API call
+   * happens later in savePendingStorageAssignments() when the user
+   * submits the order form.
    */
   const handleLocationChange = (location) => {
     if (location) {
@@ -785,12 +805,23 @@ const OrderLabel = () => {
           </div>
         )}
 
-        {/* Storage Location Selector - inline mode (dropdown/autocomplete) */}
-        <StorageLocationSelector
-          mode="autocomplete"
-          onLocationChange={handleLocationChange}
-          enableInlineCreation={false}
-          optional={true}
+        {/* Storage location. Selection is held locally in
+            assignedStorage (keyed by sample index); the actual
+            /assign or /move POST fires when the user saves the order
+            form — see savePendingStorageAssignments. */}
+        <LocationPickerInline
+          onChange={(state) => {
+            const deepest = getDeepestLocationSelection(state.selection, {
+              requireAssignable: true,
+            });
+            if (!deepest) return;
+            handleLocationChange({
+              id: deepest.value.id,
+              type: deepest.type,
+              hierarchicalPath: selectionToHierarchicalPath(state.selection),
+              positionCoordinate: positionToCoordinate(state.position),
+            });
+          }}
         />
 
         {/* Condition Notes */}

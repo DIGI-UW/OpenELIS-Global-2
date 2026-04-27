@@ -60,7 +60,7 @@ public class ReferralResultDAOImpl extends BaseDAOImpl<ReferralResult, String> i
             try {
                 Query<ReferralResult> query = entityManager.unwrap(Session.class).createQuery(sql,
                         ReferralResult.class);
-                query.setParameter("referralId", Integer.parseInt(referralId));
+                query.setParameter("referralId", referralId);
                 List<ReferralResult> resultList = query.list();
                 return resultList;
 
@@ -79,7 +79,7 @@ public class ReferralResultDAOImpl extends BaseDAOImpl<ReferralResult, String> i
 
         try {
             Query<ReferralResult> query = entityManager.unwrap(Session.class).createQuery(sql, ReferralResult.class);
-            query.setParameter("resultId", Integer.parseInt(resultId));
+            query.setParameter("resultId", resultId);
             List<ReferralResult> referralResults = query.list();
             return referralResults;
         } catch (HibernateException e) {
