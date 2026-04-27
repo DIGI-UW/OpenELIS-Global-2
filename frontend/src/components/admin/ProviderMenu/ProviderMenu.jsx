@@ -81,6 +81,10 @@ function ProviderMenu() {
     body: "",
     status: true,
   });
+  const [emailValidation, setEmailValidation] = useState({
+    body: "",
+    status: true,
+  });
 
   const yesOrNo = [
     { id: "yes", value: "Yes" },
@@ -325,6 +329,19 @@ function ProviderMenu() {
     );
   };
 
+  const handleEmailValidation = (e) => {
+    const value = e.target.value;
+    if (!value) {
+      setEmailValidation({ body: "", status: true });
+      return;
+    }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    setEmailValidation({
+      body: valid ? "" : intl.formatMessage({ id: "error.invalid.email" }),
+      status: valid,
+    });
+  };
+
   const handleFaxChange = (event) => {
     const value = event.target.value;
     if (value === "" || (/^\d+$/.test(value) && value.length <= 10)) {
@@ -444,12 +461,9 @@ function ProviderMenu() {
             labelText={intl.formatMessage({ id: "provider.email" })}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextInput
-            id="email"
-            labelText={intl.formatMessage({ id: "provider.email" })}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onBlur={(e) => handleEmailValidation(e)}
+            invalid={!emailValidation.status}
+            invalidText={emailValidation.status ? "" : emailValidation.body}
           />
 
           <Dropdown
@@ -518,12 +532,9 @@ function ProviderMenu() {
             labelText={intl.formatMessage({ id: "provider.email" })}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-          />
-          <TextInput
-            id="updateEmail"
-            labelText={intl.formatMessage({ id: "provider.email" })}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onBlur={(e) => handleEmailValidation(e)}
+            invalid={!emailValidation.status}
+            invalidText={emailValidation.status ? "" : emailValidation.body}
           />
           <Dropdown
             id="isActive"

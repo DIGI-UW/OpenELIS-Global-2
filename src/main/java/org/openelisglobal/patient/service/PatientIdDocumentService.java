@@ -16,4 +16,7 @@ public interface PatientIdDocumentService extends BaseObjectService<PatientIdDoc
 
     PatientIdDocument updateDocumentCategory(Integer documentId, String documentCategory, String description)
             throws LIMSRuntimeException;
+
+    PatientIdDocument updateDocument(Integer documentId, String documentBase64, String documentCategory,
+            String description) throws LIMSRuntimeException;
 }

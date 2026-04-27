@@ -602,6 +602,7 @@ export function SearchResultForm(props) {
                               form.setFieldValue(field.name, date)
                             }
                             name={field.name}
+                            disallowFutureDate={true}
                           />
                         )}
                       </Field>
@@ -619,6 +620,7 @@ export function SearchResultForm(props) {
                               form.setFieldValue(field.name, date)
                             }
                             name={field.name}
+                            disallowFutureDate={true}
                           />
                         )}
                       </Field>
