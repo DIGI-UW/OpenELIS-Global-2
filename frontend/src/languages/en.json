@@ -4423,6 +4423,7 @@
   "workplan.panel.selection.error.msg": "This is an invalid error message.",
   "workplan.panel.title": "Workplan By Panel",
   "workplan.panel.types": "Panel Type",
+  "workplan.filter.mode.ariaLabel": "Workplan filter mode",
   "workplan.print": "Print Workplan",
   "workplan.priority.list": "Priority",
   "workplan.priority.title": "Workplan By Priority",

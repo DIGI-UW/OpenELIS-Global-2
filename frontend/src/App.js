@@ -56,7 +56,7 @@ import PatientManagement from "./components/patient/PatientManagement";
 import PatientHistory from "./components/patient/PatientHistory";
 import PatientMerge from "./components/patient/PatientMerge";
 import Aliquot from "./components/sample/Aliquot";
-import Workplan from "./components/workplan/Workplan";
+import UnifiedWorkplan from "./components/workplan/UnifiedWorkplan";
 import AddOrder from "./components/addOrder/Index";
 import FindOrder from "./components/modifyOrder/Index";
 import ModifyOrder from "./components/modifyOrder/ModifyOrder";
@@ -898,27 +898,33 @@ export default function App() {
                 />
 
                 <SecureRoute
+                  path="/Workplan"
+                  exact
+                  component={() => <UnifiedWorkplan />}
+                  role={Roles.RESULTS}
+                />
+                <SecureRoute
                   path="/WorkPlanByTestSection"
                   exact
-                  component={() => <Workplan type="unit" />}
+                  component={() => <UnifiedWorkplan initialType="unit" />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/WorkplanByTest"
                   exact
-                  component={() => <Workplan type="test" />}
+                  component={() => <UnifiedWorkplan initialType="test" />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/WorkplanByPanel"
                   exact
-                  component={() => <Workplan type="panel" />}
+                  component={() => <UnifiedWorkplan initialType="panel" />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
                   path="/WorkplanByPriority"
                   exact
-                  component={() => <Workplan type="priority" />}
+                  component={() => <UnifiedWorkplan initialType="priority" />}
                   role={Roles.RESULTS}
                 />
                 <SecureRoute
