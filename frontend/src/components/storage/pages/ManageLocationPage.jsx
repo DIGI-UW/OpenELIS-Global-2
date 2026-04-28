@@ -134,7 +134,7 @@ export default function ManageLocationPage() {
   ];
 
   return (
-    <>
+    <div className="pageContent">
       {error && (
         <div role="alert" style={{ padding: "1rem", background: "#fce5e5" }}>
           {error}
@@ -152,6 +152,6 @@ export default function ManageLocationPage() {
         onSave={handleSave}
         onCancel={navigateBack}
       />
-    </>
+    </div>
   );
 }

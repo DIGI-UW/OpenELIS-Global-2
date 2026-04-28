@@ -139,10 +139,24 @@ const SampleType = (props) => {
   );
 
   function handleStorageLocationChange(location, positionCoordinate) {
+    // Derive the deepest assignable level so OrderContext.buildSampleXML can
+    // populate flat storageLocationId / storageLocationType attributes on the
+    // sample XML element. The backend (SampleStorageAssignmentListener) reads
+    // those flat attributes — without them the assignment is silently skipped.
+    let deepestId = null;
+    let deepestType = null;
+    LEVEL_ORDER.forEach((level) => {
+      if (location?.[level]?.id) {
+        deepestId = String(location[level].id);
+        deepestType = level;
+      }
+    });
     setSampleXml({
       ...sampleXml,
       storageLocation: {
         ...location,
+        id: deepestId,
+        type: deepestType,
         positionCoordinate: positionCoordinate || "",
       },
       storagePositionId: location?.position?.id || null,
