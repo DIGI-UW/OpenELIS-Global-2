@@ -44,7 +44,7 @@ const PrePrint = () => {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/site-names", getSiteList);
+    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", getSiteList);
     return () => {
       componentMounted.current = false;
     };

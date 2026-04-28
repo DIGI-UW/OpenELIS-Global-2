@@ -576,15 +576,24 @@ function CreatePatientForm(props) {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/health-regions", fetchHeathRegions);
-    getFromOpenElisServer("/rest/education-list", fetchEducationList);
-    getFromOpenElisServer("/rest/marital-statuses", fetchMaritalStatuses);
-    getFromOpenElisServer("/rest/disease-programmes", (list) => {
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_HEALTH_REGIONS",
+      fetchHeathRegions,
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_EDUCATION",
+      fetchEducationList,
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_MARITAL_STATUS",
+      fetchMaritalStatuses,
+    );
+    getFromOpenElisServer("/rest/displayList/PATIENT_DISEASE_PROGRAMME", (list) => {
       if (componentMounted.current) {
         setDiseaseProgrammes(list || []);
       }
     });
-    // getFromOpenElisServer("/rest/nationalities", fetchNationalities);
+    // getFromOpenElisServer("/rest/displayList/PATIENT_NATIONALITY", fetchNationalities);
     repopulatePatientInfo();
     return () => {
       componentMounted.current = false;

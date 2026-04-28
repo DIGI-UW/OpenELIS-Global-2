@@ -28,7 +28,7 @@ function PanelSelectForm(props) {
       "priority",
     );
     priorityId = priorityId ? priorityId : "";
-    getFromOpenElisServer("/rest/priorities", (fetchedPriorities) => {
+    getFromOpenElisServer("/rest/displayList/ORDER_PRIORITY", (fetchedPriorities) => {
       let priority = fetchedPriorities.find(
         (priority) => priority.id === priorityId,
       );
