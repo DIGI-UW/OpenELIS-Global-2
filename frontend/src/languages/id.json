@@ -72,7 +72,7 @@
   "alerts.table.message": "Message",
   "alerts.table.severity": "Severity",
   "alerts.table.status": "Status",
-  "alerts.table.type": "Type",
+  "alerts.table.type": "Jenis",
   "alerts.type.critical_unacknowledged": "Unacknowledged Critical",
   "alerts.type.eqa_deadline": "EQA Deadline",
   "alerts.type.sample_expiration": "Sample Expiration",

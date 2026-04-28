@@ -29,8 +29,11 @@ import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.bean.SampleEditItem;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.test.beanItems.TestResultItem;
+import org.openelisglobal.test.valueholder.Test;
 
 public interface FhirTransformService {
 
@@ -100,5 +103,13 @@ public interface FhirTransformService {
     <T extends BaseObject<?>> T getItemByFhirId(String fhirUuid, BaseObjectService<T, ?> service);
 
     ServiceRequest transformToServiceRequest(String anlaysisId);
+
+    SampleOrderItem buildSampleOrderItemFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
+            throws Exception;
+
+    List<SampleEditItem> buildSampleEditItemsListFromServiceRequest(ServiceRequest serviceRequest, String sysUserId)
+            throws Exception;
+
+    List<Test> resolveTestsFromServiceRequest(ServiceRequest serviceRequest);
 
 }

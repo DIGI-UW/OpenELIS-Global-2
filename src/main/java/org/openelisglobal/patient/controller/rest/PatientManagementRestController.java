@@ -154,8 +154,8 @@ public class PatientManagementRestController extends BaseRestController {
     @ResponseBody
     public ResponseEntity<Map<String, String>> updateIdDocument(@PathVariable Integer documentId,
             @RequestBody PatientIdDocumentInfo docInfo) throws LIMSRuntimeException {
-        PatientIdDocument updated = idDocumentService.updateDocumentCategory(documentId, docInfo.getCategory(),
-                docInfo.getDescription());
+        PatientIdDocument updated = idDocumentService.updateDocument(documentId, docInfo.getData(),
+                docInfo.getCategory(), docInfo.getDescription());
         if (updated != null) {
             return ResponseEntity.ok(Map.of("status", "success"));
         }

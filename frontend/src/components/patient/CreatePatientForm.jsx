@@ -737,6 +737,10 @@ function CreatePatientForm(props) {
           months: "",
           days: "",
         });
+        // Drop the selectedPatient context in the parent so the form's
+        // `key` flips to "new" and child components (notably
+        // IdentificationDocuments) remount with empty state.
+        props.onClear?.();
       },
     );
   };
@@ -1626,6 +1630,7 @@ function CreatePatientForm(props) {
                             months: "",
                             days: "",
                           });
+                          props.onClear?.();
                         }}
                       >
                         <FormattedMessage id="label.button.clear" />

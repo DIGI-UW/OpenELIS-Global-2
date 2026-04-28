@@ -31,6 +31,17 @@ const ImagePreviewModal = ({
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
+  // Sync previewUrl with the current photo whenever the modal opens.
+  // useState(currentImage) only reads the prop on first mount; the modal is
+  // mounted once by PatientImageSelector while the patient is still loading,
+  // so without this effect previewUrl stays null and the existing photo
+  // never shows as a thumbnail when the user clicks to edit.
+  React.useEffect(() => {
+    if (open) {
+      setPreviewUrl(currentImage);
+    }
+  }, [open, currentImage]);
+
   React.useEffect(() => {
     if (videoRef.current && streamRef.current && isCameraActive) {
       videoRef.current.srcObject = streamRef.current;
