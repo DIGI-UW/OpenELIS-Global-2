@@ -321,6 +321,15 @@ public class StorageLocationRestController extends BaseRestController {
 
     // ========== Device Endpoints ==========
 
+    @GetMapping("/devices/types")
+    public ResponseEntity<List<String>> getDeviceTypes() {
+        List<String> types = new ArrayList<>();
+        for (StorageDevice.DeviceType type : StorageDevice.DeviceType.values()) {
+            types.add(type.getValue());
+        }
+        return ResponseEntity.ok(types);
+    }
+
     @PostMapping("/devices")
     public ResponseEntity<?> createDevice(@Valid @RequestBody StorageDeviceForm form, HttpServletRequest request) {
         try {

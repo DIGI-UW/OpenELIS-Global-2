@@ -4,6 +4,7 @@ import {
   Button,
   Modal,
   TextInput,
+  NumberInput,
   InlineNotification,
 } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
@@ -101,12 +102,32 @@ export default function CreateForm({ selection, onLevelChange }) {
     rack: [],
     box: [],
   });
-  const [inlineCreate, setInlineCreate] = useState(null); // { level, name } | null
+  const [inlineCreate, setInlineCreate] = useState(null); // { level, name, type? } | null
   const [createError, setCreateError] = useState(null);
+  // Device types are pulled from the backend (StorageDevice.DeviceType enum)
+  // so adding/removing a value only touches the Java enum.
+  const [deviceTypes, setDeviceTypes] = useState([]);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/storage/devices/types", (response) => {
+      if (Array.isArray(response)) {
+        setDeviceTypes(response);
+      }
+    });
+  }, []);
 
   const openInlineCreate = (level) => {
     setCreateError(null);
-    setInlineCreate({ level, name: "" });
+    setInlineCreate({
+      level,
+      name: "",
+      type: level === "device" ? "" : null,
+      // Box requires a code (10 chars max) and grid dimensions (rows/cols, min 1)
+      // per StorageBoxForm validation. Picker collects them inline.
+      ...(level === "box"
+        ? { code: "", rows: "", columns: "" }
+        : { code: null, rows: null, columns: null }),
+    });
   };
 
   const closeInlineCreate = () => {
@@ -194,11 +215,43 @@ export default function CreateForm({ selection, onLevelChange }) {
 
   const handleCreate = async () => {
     if (!inlineCreate || !inlineCreate.name.trim()) return;
-    const { level, name } = inlineCreate;
+    const { level, name, type, code, rows, columns } = inlineCreate;
+    // Device requires a type per StorageDeviceForm validation; refuse to
+    // submit without one (the Create button is also disabled in that state).
+    if (level === "device" && !type) return;
+    // Box requires a non-blank code and grid dimensions ≥ 1 per StorageBoxForm.
+    if (
+      level === "box" &&
+      (!code?.trim() ||
+        !Number.isInteger(Number(rows)) ||
+        Number(rows) < 1 ||
+        !Number.isInteger(Number(columns)) ||
+        Number(columns) < 1)
+    ) {
+      return;
+    }
     const meta = LEVELS.find((l) => l.key === level);
     // Map to the right backend field — Room/Device use `name`,
     // Shelf/Rack/Box use `label` (see LEVELS.createField).
     const body = { [meta.createField]: name.trim(), active: true };
+    if (level === "device") {
+      body.type = type;
+    }
+    if (level === "box") {
+      body.code = code.trim();
+      body.rows = Number(rows);
+      body.columns = Number(columns);
+    }
+    if (level === "rack") {
+      // storage_rack.code is NOT NULL on the DB. Derive a code from the
+      // label here on the frontend (uppercase, alnum only, max 10 chars)
+      // so the picker doesn't fail with a constraint error.
+      body.code = name
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
+    }
     // Devices/shelves/racks/boxes need their parent id; the picker
     // disables the "Add new" button until the parent is selected so we
     // can rely on it being present here. Backend uses `parent{Parent}Id`
@@ -305,6 +358,14 @@ export default function CreateForm({ selection, onLevelChange }) {
             id: "label.button.create",
             defaultMessage: "Create",
           })}
+          primaryButtonDisabled={
+            !inlineCreate.name.trim() ||
+            (inlineCreate.level === "device" && !inlineCreate.type) ||
+            (inlineCreate.level === "box" &&
+              (!inlineCreate.code?.trim() ||
+                !(Number(inlineCreate.rows) >= 1) ||
+                !(Number(inlineCreate.columns) >= 1)))
+          }
           secondaryButtonText={intl.formatMessage({
             id: "label.button.cancel",
             defaultMessage: "Cancel",
@@ -337,6 +398,78 @@ export default function CreateForm({ selection, onLevelChange }) {
               setInlineCreate({ ...inlineCreate, name: e.target.value })
             }
           />
+          {inlineCreate.level === "device" && (
+            <Dropdown
+              id="location-picker-inline-create-device-type"
+              titleText={intl.formatMessage({
+                id: "storage.device.type",
+                defaultMessage: "Device type",
+              })}
+              label={intl.formatMessage({
+                id: "storage.picker.select",
+                defaultMessage: "Select device type",
+              })}
+              items={deviceTypes}
+              itemToString={(item) => item || ""}
+              selectedItem={inlineCreate.type || null}
+              onChange={({ selectedItem }) =>
+                setInlineCreate({
+                  ...inlineCreate,
+                  type: selectedItem || "",
+                })
+              }
+            />
+          )}
+          {inlineCreate.level === "box" && (
+            <>
+              <TextInput
+                id="location-picker-inline-create-box-code"
+                labelText={intl.formatMessage({
+                  id: "label.code",
+                  defaultMessage: "Code",
+                })}
+                helperText={intl.formatMessage({
+                  id: "storage.box.code.helper",
+                  defaultMessage: "Up to 10 characters",
+                })}
+                maxLength={10}
+                value={inlineCreate.code || ""}
+                onChange={(e) =>
+                  setInlineCreate({ ...inlineCreate, code: e.target.value })
+                }
+              />
+              <NumberInput
+                id="location-picker-inline-create-box-rows"
+                label={intl.formatMessage({
+                  id: "storage.box.rows",
+                  defaultMessage: "Rows",
+                })}
+                min={1}
+                value={
+                  inlineCreate.rows === "" ? "" : Number(inlineCreate.rows)
+                }
+                onChange={(_e, { value }) =>
+                  setInlineCreate({ ...inlineCreate, rows: value })
+                }
+              />
+              <NumberInput
+                id="location-picker-inline-create-box-columns"
+                label={intl.formatMessage({
+                  id: "storage.box.columns",
+                  defaultMessage: "Columns",
+                })}
+                min={1}
+                value={
+                  inlineCreate.columns === ""
+                    ? ""
+                    : Number(inlineCreate.columns)
+                }
+                onChange={(_e, { value }) =>
+                  setInlineCreate({ ...inlineCreate, columns: value })
+                }
+              />
+            </>
+          )}
         </Modal>
       )}
     </div>
