@@ -2,13 +2,13 @@
 <databaseChangeLog
   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-  <!-- Generic Localization System - Enables unlimited language support -->
   <include relativeToChangelogFile="true" file="001-generic-localization-system.xml"/>
-
-  <!-- EQA Enabled configuration for Order Entry -->
   <include relativeToChangelogFile="true" file="002-eqa-enabled-config.xml"/>
+  <!-- Patient VIEW role for photo endpoint security fix -->
+  <include relativeToChangelogFile="true" file="add_patient_view_role.xml"/>
 
   <!-- NCE Enhancement - Phase 1: Foundation -->
   <include relativeToChangelogFile="true" file="002-nce-enhancement.xml"/>

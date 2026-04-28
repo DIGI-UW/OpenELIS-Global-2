@@ -28,6 +28,7 @@ import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
@@ -44,6 +45,14 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 @RequestMapping(value = "/rest/")
 public class PatientManagementRestController extends BaseRestController {
+<<<<<<< security-issue--patient-controller
+
+    @Autowired SearchResultsService searchService;
+    @Autowired PatientIdentityService patientIdentityService;
+    @Autowired PatientService patientService;
+    @Autowired FhirTransformService fhirTransformService;
+    @Autowired PatientPhotoService photoService;
+=======
     @Autowired
     SearchResultsService searchService;
     @Autowired
@@ -56,11 +65,14 @@ public class PatientManagementRestController extends BaseRestController {
     PatientPhotoService photoService;
     @Autowired
     PatientIdDocumentService idDocumentService;
+>>>>>>> develop
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public void savepatient(HttpServletRequest request,
-            @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody PatientManagementInfo patientInfo,
+    public ResponseEntity<Map<String, String>> savepatient(
+            HttpServletRequest request,
+            @Validated(SamplePatientEntryForm.SamplePatientEntry.class)
+            @RequestBody PatientManagementInfo patientInfo,
             BindingResult bindingResult) throws Exception {
 
         if (StringUtils.isNotBlank(patientInfo.getPatientPK())) {
@@ -68,22 +80,26 @@ public class PatientManagementRestController extends BaseRestController {
         } else {
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
         }
+
         Patient patient = new Patient();
 
         if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION) {
-
             PatientUtil.preparePatientData(bindingResult, request, patientInfo, patient);
+
             if (bindingResult.hasErrors()) {
                 try {
                     throw new BindException(bindingResult);
                 } catch (BindException e) {
                     LogEvent.logError(e);
+                    return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Validation failed"));
                 }
             }
+
             try {
                 patientService.persistPatientData(patientInfo, patient, getSysUserId(request));
                 fhirTransformService.transformPersistPatient(patientInfo,
-                        (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
+                        patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD);
                 photoService.savePhoto(patient.getId(), patientInfo.getPhoto());
                 if (patientInfo.getIdDocuments() != null) {
                     for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
@@ -94,29 +110,44 @@ public class PatientManagementRestController extends BaseRestController {
                     }
                 }
             } catch (LIMSRuntimeException e) {
-
                 if (e.getCause() instanceof StaleObjectStateException) {
-
+                    LogEvent.logError(e);
                 } else {
                     LogEvent.logDebug(e);
                 }
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
-
+                return ResponseEntity.status(409)
+                    .body(Map.of("error", "Conflict: record modified by another user"));
             } catch (FhirTransformationException | FhirPersistanceException e) {
                 LogEvent.logError(e);
+                return ResponseEntity.status(500)
+                    .body(Map.of("error", "FHIR processing failed"));
             }
         }
+
+        return ResponseEntity.ok(Map.of("status", "success"));
     }
 
+    @PreAuthorize("hasRole('PATIENT_VIEW')")
     @GetMapping("patient-photos/{id}/{isThumbnail}")
-    public ResponseEntity<Map<String, String>> getPhoto(@PathVariable String id, @PathVariable boolean isThumbnail)
-            throws LIMSRuntimeException {
-        String photo = photoService.getPhotoByPatientId(id, isThumbnail);
-        if (photo == null) {
-            return ResponseEntity.ok(Map.of("data", ""));
+    public ResponseEntity<Map<String, String>> getPhoto(
+            @PathVariable String id, 
+            @PathVariable boolean isThumbnail) {
+
+        if (!StringUtils.isNumeric(id)) {
+            return ResponseEntity.badRequest().build();
         }
+
+        String photo = photoService.getPhotoByPatientId(id, isThumbnail);
+
+        if (photo == null) {
+            return ResponseEntity.notFound().build();
+        }
+
         return ResponseEntity.ok(Map.of("data", photo));
     }
+<<<<<<< security-issue--patient-controller
+=======
 
     @GetMapping("patient-id-documents/{patientId}")
     @ResponseBody
@@ -170,4 +201,5 @@ public class PatientManagementRestController extends BaseRestController {
         return ResponseEntity.ok(Map.of("status", "success"));
     }
 
+>>>>>>> develop
 }
