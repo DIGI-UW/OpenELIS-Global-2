@@ -595,6 +595,8 @@
   "banner.menu.help.formDBS": "DBS Form",
   "banner.menu.help.formVL": "VL Form",
   "banner.menu.help.usermanual": "User Manual",
+  "help.error.unavailable": "Help configuration is currently unavailable",
+  "banner.menu.help.title": "Help",
   "banner.menu.home": "Home",
   "banner.menu.inventory": "Inventory",
   "banner.menu.inventory.catalog": "Manage Catalog",

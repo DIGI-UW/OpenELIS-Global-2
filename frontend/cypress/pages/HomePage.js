@@ -314,8 +314,17 @@ class HomePage {
   }
 
   goToHelp() {
+    // Note: This method uses side menu - may be legacy implementation
+    // Consider using goToHelpNew() for current SlideOverHelp implementation
     this.openNavigationMenu();
     cy.get(this.selectors.helpMenu).click();
+    return new HelpPage();
+  }
+
+  // Alternative method using new help icon in header (SlideOverHelp implementation)
+  goToHelpNew() {
+    // Uses help icon in header instead of side menu
+    cy.get("#help-Icon").click();
     return new HelpPage();
   }
 

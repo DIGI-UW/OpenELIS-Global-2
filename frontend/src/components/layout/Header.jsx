@@ -8,9 +8,9 @@ import {
   LocationFilled,
   Menu,
   Pin,
+  Help,
 } from "@carbon/icons-react";
 import { Select, SelectItem } from "@carbon/react";
-import HelpMenu from "./HelpMenu";
 import React, {
   createRef,
   useContext,
@@ -26,6 +26,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import "../Style.css";
 import { ConfigurationContext } from "../layout/Layout";
 import SlideOver from "../notifications/SlideOver";
+import SlideOverHelp from "./SlideOverHelp";
 import { languages as defaultLanguages } from "../../languages";
 
 import {
@@ -732,10 +733,13 @@ function OEHeader({
               >
                 {panelSwitchIcon()}
               </HeaderGlobalAction>
-              <HelpMenu
-                helpOpen={helpOpen}
-                handlePanelToggle={handlePanelToggle}
-              />
+              <HeaderGlobalAction
+                id="help-Icon"
+                aria-label="Help"
+                onClick={() => handlePanelToggle(helpOpen ? "" : "help")}
+              >
+                {!helpOpen ? <Help size={20} /> : <Close size={20} />}
+              </HeaderGlobalAction>
             </HeaderGlobalBar>
             <HeaderPanel
               aria-label="Header Panel"
@@ -886,6 +890,14 @@ function OEHeader({
                 setShowRead={setShowRead}
                 markAllNotificationsAsRead={markAllNotificationsAsRead}
               />
+            </SlideOver>
+            <SlideOver
+              open={helpOpen}
+              setOpen={setHelpOpen}
+              slideFrom="right"
+              title={intl.formatMessage({ id: "banner.menu.help.title" })}
+            >
+              <SlideOverHelp />
             </SlideOver>
           </div>
         </div>
