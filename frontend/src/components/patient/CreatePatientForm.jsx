@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import "../Style.css";
-import { getFromOpenElisServer, postToOpenElisServer } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+  resolveApiErrorMessage,
+} from "../utils/Utils";
 import { nationalityList } from "../data/countries";
 import format from "date-fns/format";
 import {
@@ -17,6 +21,7 @@ import {
   Form,
   FormLabel,
   TextInput,
+  TextArea,
   Button,
   RadioButton,
   RadioButtonGroup,
@@ -72,6 +77,7 @@ function CreatePatientForm(props) {
     useState(null); // Track which patient's hierarchy is initialized
   const [educationList, setEducationList] = useState([]);
   const [maritalStatuses, setMaritalStatuses] = useState([]);
+  const [diseaseProgrammes, setDiseaseProgrammes] = useState([]);
   const [prevfirstName, setPrevfirstName] = useState("");
   const [prevlastName, setPrevlastName] = useState("");
   const [prevfirstContactName, setPrevfirstContactName] = useState("");
@@ -574,10 +580,27 @@ function CreatePatientForm(props) {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/health-regions", fetchHeathRegions);
-    getFromOpenElisServer("/rest/education-list", fetchEducationList);
-    getFromOpenElisServer("/rest/marital-statuses", fetchMaritalStatuses);
-    // getFromOpenElisServer("/rest/nationalities", fetchNationalities);
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_HEALTH_REGIONS",
+      fetchHeathRegions,
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_EDUCATION",
+      fetchEducationList,
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_MARITAL_STATUS",
+      fetchMaritalStatuses,
+    );
+    getFromOpenElisServer(
+      "/rest/displayList/PATIENT_DISEASE_PROGRAMME",
+      (list) => {
+        if (componentMounted.current) {
+          setDiseaseProgrammes(list || []);
+        }
+      },
+    );
+    // getFromOpenElisServer("/rest/displayList/PATIENT_NATIONALITY", fetchNationalities);
     repopulatePatientInfo();
     return () => {
       componentMounted.current = false;
@@ -729,11 +752,39 @@ function CreatePatientForm(props) {
     if ("days" in values) {
       delete values.days;
     }
-    postToOpenElisServer(
+    postToOpenElisServerJsonResponse(
       "/rest/PatientManagement",
       JSON.stringify(values),
-      (status) => {
-        handlePost(status);
+      (response) => {
+        handlePost(response);
+        // postToOpenElisServerJsonResponse only injects `statusCode` /
+        // `status` on error responses. The backend's success body itself
+        // contains `{status: "success"}` — checking that string against a
+        // numeric range silently misclassifies success as error. So detect
+        // failures via the `error` field or a 4xx/5xx statusCode (same
+        // pattern as AnalyzerForm.jsx).
+        const isSuccess = !response?.error && !(response?.statusCode >= 400);
+        const editedPatientId = props.selectedPatient?.patientPK;
+        if (isSuccess && editedPatientId) {
+          // Existing patient was edited — navigate back to the same form
+          // with `?patientId=` so SearchPatientForm's useEffect refetches
+          // the freshly-saved record on mount. Short delay lets the
+          // success toast render before the page reloads.
+          setTimeout(() => {
+            window.location.href =
+              "/PatientManagement?patientId=" + editedPatientId;
+          }, 100);
+          return;
+        }
+        if (!isSuccess) {
+          // Keep the user's edits in the form so they can fix the issue —
+          // resetForm would discard them.
+          return;
+        }
+        // New-patient ADD path: reset the form for the next entry and
+        // drop the selectedPatient context in the parent so the form's
+        // `key` flips to "new" and child components (notably
+        // IdentificationDocuments) remount with empty state.
         resetForm({
           values: defaultNationality
             ? {
@@ -747,30 +798,36 @@ function CreatePatientForm(props) {
           months: "",
           days: "",
         });
-        // Drop the selectedPatient context in the parent so the form's
-        // `key` flips to "new" and child components (notably
-        // IdentificationDocuments) remount with empty state.
         props.onClear?.();
       },
     );
   };
 
-  const handlePost = (status) => {
+  const handlePost = (response) => {
     setNotificationVisible(true);
     setIsSubmitting(false);
-    if (status === 200) {
+    const isSuccess = !response?.error && !(response?.statusCode >= 400);
+    if (isSuccess) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "success.save.patient" }),
         kind: NotificationKinds.success,
       });
-    } else {
-      addNotification({
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.patient" }),
-        kind: NotificationKinds.error,
-      });
+      return;
     }
+    // Surface the backend's actual error message rather than a generic
+    // "save failed" — recognises messageKey/errorKey for i18n, plain
+    // message/error strings, and Spring fieldErrors arrays.
+    const message = resolveApiErrorMessage(
+      intl,
+      response,
+      "error.save.patient",
+    );
+    addNotification({
+      title: intl.formatMessage({ id: "notification.title" }),
+      message,
+      kind: NotificationKinds.error,
+    });
   };
 
   return (
@@ -1645,6 +1702,65 @@ function CreatePatientForm(props) {
                                   placeholder={intl.formatMessage({
                                     id: "patient.emergency.additional.othernationality",
                                   })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="occupation">
+                              {({ field }) => (
+                                <TextInput
+                                  value={values.occupation || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.label.occupation",
+                                  })}
+                                  id={field.name}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="targetDiseaseProgramme">
+                              {({ field }) => (
+                                <Select
+                                  id="targetDiseaseProgramme"
+                                  value={values.targetDiseaseProgramme || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.label.diseaseProgramme",
+                                  })}
+                                  onChange={() => {}}
+                                >
+                                  <SelectItem text="" value="" />
+                                  {diseaseProgrammes.map((item, index) => (
+                                    <SelectItem
+                                      text={item.value}
+                                      value={item.value}
+                                      key={index}
+                                    />
+                                  ))}
+                                </Select>
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={16} md={8} sm={4}>
+                            <Field name="customNotes">
+                              {({ field }) => (
+                                <TextArea
+                                  value={values.customNotes || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.label.customNotes",
+                                  })}
+                                  id={field.name}
+                                  rows={3}
+                                  maxCount={255}
+                                  enableCounter
                                 />
                               )}
                             </Field>

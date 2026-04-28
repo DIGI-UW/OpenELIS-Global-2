@@ -504,11 +504,11 @@ const SampleType = (props) => {
   useEffect(() => {
     componentMounted.current = true;
     getFromOpenElisServer(
-      "/rest/referral-reasons",
+      "/rest/displayList/REFERRAL_REASONS",
       displayReferralReasonsOptions,
     );
     getFromOpenElisServer(
-      "/rest/referral-organizations",
+      "/rest/displayList/REFERRAL_ORGANIZATIONS",
       displayReferralOrgOptions,
     );
     repopulateUI();

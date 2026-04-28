@@ -125,6 +125,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private SampleEQAService sampleEQAService;
     @Autowired
     private BarcodeInfoService barcodeInfoService;
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @Override
@@ -165,6 +167,16 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
+
+        // Publish post-persist event INSIDE this @Transactional method so any
+        // listener (e.g. SampleStorageAssignmentListener) runs while this tx
+        // is still open. If a listener throws, Spring stamps the tx as
+        // rollback-only and the entire persist (sample, patient, etc.) gets
+        // rolled back — same mechanism Edit Order uses. Previously this was
+        // published from the controller after persistData returned, so the
+        // tx had already committed by the time listeners ran.
+        eventPublisher.publishEvent(new org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent(this,
+                updateData, patientInfo, form));
     }
 
     private void persistObservations(SamplePatientUpdateData updateData) {
