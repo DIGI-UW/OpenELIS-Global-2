@@ -18,6 +18,7 @@ import org.mockito.Mockito;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
+import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.PluginAnalyzerService;
 import org.openelisglobal.common.services.RequesterService;
@@ -133,6 +134,12 @@ public class AppTestConfig implements WebMvcConfigurer {
         when(encryptor.encrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(encryptor.decrypt(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         return encryptor;
+    }
+
+    @Bean
+    @Profile("test")
+    public AccessionNumberValidatorFactory accessionNumberValidatorFactory() {
+        return mock(AccessionNumberValidatorFactory.class);
     }
 
     @Bean
