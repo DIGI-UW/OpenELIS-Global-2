@@ -103,13 +103,13 @@ public class SampleEditForm extends BaseForm {
     private String accessionFormat = ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat);
 
     // in validator
-    private int editableAccession = AccessionNumberUtil.getChangeableLength();
+    private int editableAccession;
 
     // in validator
-    private int nonEditableAccession = AccessionNumberUtil.getInvarientLength();
+    private int nonEditableAccession;
 
     // in validator
-    private int maxAccessionLength = editableAccession + nonEditableAccession;
+    private int maxAccessionLength;
 
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
@@ -314,7 +314,7 @@ public class SampleEditForm extends BaseForm {
     }
 
     public int getEditableAccession() {
-        return editableAccession;
+        return AccessionNumberUtil.getChangeableLength();
     }
 
     public void setEditableAccession(int editableAccession) {
@@ -322,7 +322,7 @@ public class SampleEditForm extends BaseForm {
     }
 
     public int getNonEditableAccession() {
-        return nonEditableAccession;
+        return AccessionNumberUtil.getInvarientLength();
     }
 
     public void setNonEditableAccession(int nonEditableAccession) {
@@ -330,7 +330,7 @@ public class SampleEditForm extends BaseForm {
     }
 
     public int getMaxAccessionLength() {
-        return maxAccessionLength;
+        return getEditableAccession() + getNonEditableAccession();
     }
 
     public void setMaxAccessionLength(int maxAccessionLength) {
