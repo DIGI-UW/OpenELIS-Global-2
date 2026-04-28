@@ -253,8 +253,13 @@ function CreatePatientForm(props) {
     }
     setAddressHierarchyValues(clearedValues);
 
-    // Fetch children for the selected value
-    if (selectedId && levelIndex < addressHierarchyLevels.length - 1) {
+    // Free text levels have no children to cascade to
+    const currentLevel = addressHierarchyLevels[levelIndex];
+    if (
+      selectedId &&
+      levelIndex < addressHierarchyLevels.length - 1 &&
+      !currentLevel?.allowFreeText
+    ) {
       getFromOpenElisServer(
         `/rest/address-hierarchy/children?parentId=${selectedId}`,
         (children) => {
@@ -610,9 +615,15 @@ function CreatePatientForm(props) {
       // Mark as initialized for this patient to prevent re-running
       setAddressHierarchyInitialized(patientPK);
 
-      // For each saved level, fetch the children to populate the next dropdown
+      // For each saved level, fetch the children to populate the next dropdown.
+      // Free text levels have no children to fetch.
       const fetchChildrenForLevel = (levelIndex) => {
         if (levelIndex >= addressHierarchyLevels.length - 1) {
+          return;
+        }
+        const currentLevel = addressHierarchyLevels[levelIndex];
+        if (currentLevel?.allowFreeText) {
+          fetchChildrenForLevel(levelIndex + 1);
           return;
         }
         const value = addressHierarchy[`addressHierarchy_${levelIndex}`];
@@ -1350,55 +1361,80 @@ function CreatePatientForm(props) {
                           addressHierarchyLevels.length > 0 &&
                           addressHierarchyLevels.map((level, levelIndex) => (
                             <Column lg={8} md={4} sm={4} key={level.level}>
-                              <Field name={`addressHierarchy_${levelIndex}`}>
-                                {({ field }) => (
-                                  <Select
-                                    id={`address_hierarchy_${levelIndex}`}
-                                    value={
-                                      values[
-                                        `addressHierarchy_${levelIndex}`
-                                      ] || ""
-                                    }
-                                    name={field.name}
-                                    labelText={level.typeName}
-                                    onChange={(e) => {
-                                      setFieldValue(
-                                        `addressHierarchy_${levelIndex}`,
-                                        e.target.value,
-                                      );
-                                      handleAddressHierarchySelection(
-                                        levelIndex,
-                                        e.target.value,
-                                        setFieldValue,
-                                      );
-                                      // For backward compatibility, also set healthRegion/healthDistrict
-                                      if (levelIndex === 0) {
-                                        setFieldValue(
-                                          "healthRegion",
-                                          e.target.value,
-                                        );
-                                        handleRegionSelection(e, values);
-                                      } else if (levelIndex === 1) {
-                                        setFieldValue(
-                                          "healthDistrict",
-                                          e.target.value,
-                                        );
+                              {level.allowFreeText ? (
+                                <Field
+                                  name={`addressHierarchy_${levelIndex}_text`}
+                                >
+                                  {({ field }) => (
+                                    <TextInput
+                                      id={`address_hierarchy_${levelIndex}_text`}
+                                      value={
+                                        values[
+                                          `addressHierarchy_${levelIndex}_text`
+                                        ] || ""
                                       }
-                                    }}
-                                  >
-                                    <SelectItem text="" value="" />
-                                    {(
-                                      addressHierarchyValues[levelIndex] || []
-                                    ).map((item, index) => (
-                                      <SelectItem
-                                        text={item.value}
-                                        value={item.id}
-                                        key={index}
-                                      />
-                                    ))}
-                                  </Select>
-                                )}
-                              </Field>
+                                      name={field.name}
+                                      labelText={level.typeName}
+                                      onChange={(e) => {
+                                        setFieldValue(
+                                          `addressHierarchy_${levelIndex}_text`,
+                                          e.target.value,
+                                        );
+                                      }}
+                                    />
+                                  )}
+                                </Field>
+                              ) : (
+                                <Field name={`addressHierarchy_${levelIndex}`}>
+                                  {({ field }) => (
+                                    <Select
+                                      id={`address_hierarchy_${levelIndex}`}
+                                      value={
+                                        values[
+                                          `addressHierarchy_${levelIndex}`
+                                        ] || ""
+                                      }
+                                      name={field.name}
+                                      labelText={level.typeName}
+                                      onChange={(e) => {
+                                        setFieldValue(
+                                          `addressHierarchy_${levelIndex}`,
+                                          e.target.value,
+                                        );
+                                        handleAddressHierarchySelection(
+                                          levelIndex,
+                                          e.target.value,
+                                          setFieldValue,
+                                        );
+                                        // For backward compatibility, also set healthRegion/healthDistrict
+                                        if (levelIndex === 0) {
+                                          setFieldValue(
+                                            "healthRegion",
+                                            e.target.value,
+                                          );
+                                          handleRegionSelection(e, values);
+                                        } else if (levelIndex === 1) {
+                                          setFieldValue(
+                                            "healthDistrict",
+                                            e.target.value,
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <SelectItem text="" value="" />
+                                      {(
+                                        addressHierarchyValues[levelIndex] || []
+                                      ).map((item, index) => (
+                                        <SelectItem
+                                          text={item.value}
+                                          value={item.id}
+                                          key={index}
+                                        />
+                                      ))}
+                                    </Select>
+                                  )}
+                                </Field>
+                              )}
                             </Column>
                           ))}
                         {/* Legacy Health Region/District - Show ONLY if new hierarchy is explicitly disabled */}

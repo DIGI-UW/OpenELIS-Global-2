@@ -55,8 +55,9 @@ public class AddressHierarchyRestController {
             if (level > 0) {
                 String defaultValue = getDefaultValueForLevel(level);
                 String defaultId = resolveDefaultValueToId(defaultValue, orgType.getName());
-                levels.add(
-                        new AddressHierarchyLevel(level, orgType.getId(), orgType.getName(), defaultValue, defaultId));
+                boolean allowFreeText = Boolean.TRUE.equals(orgType.getAllowFreeText());
+                levels.add(new AddressHierarchyLevel(level, orgType.getId(), orgType.getName(), defaultValue, defaultId,
+                        allowFreeText));
             }
         }
 
@@ -73,13 +74,13 @@ public class AddressHierarchyRestController {
                 String defaultValue = getDefaultValueForLevel(1);
                 String defaultId = resolveDefaultValueToId(defaultValue, healthRegion.getName());
                 levels.add(new AddressHierarchyLevel(1, healthRegion.getId(), healthRegion.getName(), defaultValue,
-                        defaultId));
+                        defaultId, false));
             }
             if (healthDistrict != null) {
                 String defaultValue = getDefaultValueForLevel(2);
                 String defaultId = resolveDefaultValueToId(defaultValue, healthDistrict.getName());
                 levels.add(new AddressHierarchyLevel(2, healthDistrict.getId(), healthDistrict.getName(), defaultValue,
-                        defaultId));
+                        defaultId, false));
             }
         }
 
@@ -351,17 +352,28 @@ public class AddressHierarchyRestController {
         private String typeName;
         private String defaultValue;
         private String defaultId;
+        private boolean allowFreeText;
 
         public AddressHierarchyLevel(int level, String typeId, String typeName) {
-            this(level, typeId, typeName, null, null);
+            this(level, typeId, typeName, null, null, false);
         }
 
-        public AddressHierarchyLevel(int level, String typeId, String typeName, String defaultValue, String defaultId) {
+        public AddressHierarchyLevel(int level, String typeId, String typeName, String defaultValue, String defaultId,
+                boolean allowFreeText) {
             this.level = level;
             this.typeId = typeId;
             this.typeName = typeName;
             this.defaultValue = defaultValue;
             this.defaultId = defaultId;
+            this.allowFreeText = allowFreeText;
+        }
+
+        public boolean isAllowFreeText() {
+            return allowFreeText;
+        }
+
+        public void setAllowFreeText(boolean allowFreeText) {
+            this.allowFreeText = allowFreeText;
         }
 
         public int getLevel() {

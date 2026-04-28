@@ -98,7 +98,8 @@
         <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
+        <mapping
+            class="org.openelisglobal.organization.valueholder.OrganizationType" />
         <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
         <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
         <mapping resource="hibernate/hbm/SiteInformation.hbm.xml" />

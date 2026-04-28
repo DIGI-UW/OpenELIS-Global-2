@@ -142,12 +142,18 @@ public class PatientSearchPopulateRestController {
         patientInfo.setGuid(identityMap.getIdentityValue(identityList, "GUID"));
 
         // Retrieve dynamic address hierarchy values (ADDRESS_HIERARCHY_0,
-        // ADDRESS_HIERARCHY_1, etc.)
+        // ADDRESS_HIERARCHY_1, etc.) and free text variants (ADDRESS_HIERARCHY_0_TEXT).
+        // Identity types are registered at configuration load time;
+        // getIdentityValueSafe
+        // never auto-creates missing types.
         for (int i = 0; i < 10; i++) {
-            String identityTypeName = "ADDRESS_HIERARCHY_" + i;
-            String value = getIdentityValueSafe(identityList, identityTypeName);
+            String value = getIdentityValueSafe(identityList, "ADDRESS_HIERARCHY_" + i);
             if (value != null && !value.isEmpty()) {
                 patientInfo.getAddressHierarchy().put("addressHierarchy_" + i, value);
+            }
+            String textValue = getIdentityValueSafe(identityList, "ADDRESS_HIERARCHY_" + i + "_TEXT");
+            if (textValue != null && !textValue.isEmpty()) {
+                patientInfo.getAddressHierarchy().put("addressHierarchy_" + i + "_text", textValue);
             }
         }
 

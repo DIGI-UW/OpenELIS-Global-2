@@ -678,12 +678,19 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
         persistIdentityType(patientInfo.getGuid(), "GUID", patientInfo, patient, sysUserId);
 
         // Persist dynamic address hierarchy values (addressHierarchy_0,
-        // addressHierarchy_1, etc.)
+        // addressHierarchy_1, addressHierarchy_0_text, etc.)
+        // Identity types must already exist in patient_identity_type — registered at
+        // configuration load time. If the type is not found we skip rather than
+        // auto-creating, so rogue field names never pollute the identity type table.
         if (patientInfo.getAddressHierarchy() != null && !patientInfo.getAddressHierarchy().isEmpty()) {
             for (Map.Entry<String, String> entry : patientInfo.getAddressHierarchy().entrySet()) {
                 if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
-                    // Convert key like "addressHierarchy_0" to identity type "ADDRESS_HIERARCHY_0"
+                    // "addressHierarchy_0" → "ADDRESS_HIERARCHY_0"
+                    // "addressHierarchy_0_text" → "ADDRESS_HIERARCHY_0_TEXT"
                     String identityType = entry.getKey().toUpperCase().replace("ADDRESSHIERARCHY", "ADDRESS_HIERARCHY");
+                    if (!identityType.matches("ADDRESS_HIERARCHY_\\d+(_TEXT)?")) {
+                        continue;
+                    }
                     persistIdentityType(entry.getValue(), identityType, patientInfo, patient, sysUserId);
                 }
             }
