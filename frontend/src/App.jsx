@@ -107,6 +107,7 @@ import {
   RuleConfigPanel,
 } from "./components/qc";
 import ResultSearch from "./components/resultPage/ResultSearch";
+import AccessionResultsPage from "./components/resultPage/AccessionResultsPage";
 import { getFromOpenElisServer } from "./components/utils/Utils";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { languages, languageMessages } from "./languages";
@@ -1225,7 +1226,7 @@ export default function App() {
                   exact
                   component={() => (
                     <RouteErrorBoundary {...routeErrorResultsSearch}>
-                      <ResultSearch />
+                      <AccessionResultsPage />
                     </RouteErrorBoundary>
                   )}
                   role={Roles.RESULTS}

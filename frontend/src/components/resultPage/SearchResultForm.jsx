@@ -439,6 +439,7 @@ export function SearchResultForm(props) {
       );
     } else if (accessionNumber || upperAccessionNumber) {
       // Range lookup or fallback: use LogbookResults
+
       let searchValues = {
         ...searchFormValues,
         accessionNumber: accessionNumber,

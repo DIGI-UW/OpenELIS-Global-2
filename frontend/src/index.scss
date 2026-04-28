@@ -1,8 +1,6 @@
 @use "@carbon/react/scss/themes";
-@use "@carbon/react/scss/theme" with (
-  $fallback: themes.$g100,
-  $theme: (
-    background: #295785,
+@use "@carbon/react/scss/theme" with ($fallback: themes.$g100,
+  $theme: (background: #295785,
     text-primary: #ffffff,
     text-secondary: #ffffff,
     icon-primary: #ffffff,
@@ -10,8 +8,7 @@
     background-hover: #072655,
     layer-01: #295785,
     layer-hover-01: #072655,
-  )
-);
+  ));
 
 @use "@carbon/react";
 
@@ -19,6 +16,32 @@
   margin-top: 3rem;
   padding: 0;
   background-color: #f5f6f8;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ── Mobile: ensure inputs never overflow their containers ── */
+@media screen and (max-width: 672px) {
+  .cds--content {
+    padding: 0 0.5rem;
+  }
+
+  /* Fix Collection Time / TimePicker overflow on mobile */
+  .cds--time-picker,
+  .cds--time-picker__input-field,
+  .cds--date-picker,
+  .cds--date-picker-container,
+  .cds--date-picker__input {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure the orderLegendBody (form container) fills width */
+  .orderLegendBody {
+    margin: 0 !important;
+    padding: 1rem !important;
+    width: 100% !important;
+  }
 }
 
 .loginPageContent,

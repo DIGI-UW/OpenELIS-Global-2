@@ -33,6 +33,7 @@
 .emptyFilterTests span {
   color: #d4373a;
 }
+
 .orderWorkFlowDiv {
   //border: 0.5px solid #295785;
   border-radius: 5px;
@@ -60,6 +61,7 @@
   width: 50%;
   padding: 10px;
 }
+
 @media (max-width: 600px) {
   .ProgressIndicator {
     width: 100%;
@@ -125,11 +127,13 @@
 }
 
 .cds--date-picker__input {
-  width: 33rem !important;
+  width: 100% !important;
+  max-width: 33rem;
 }
 
 .cds--time-picker__input-field {
-  width: 31.875rem !important;
+  width: 100% !important;
+  max-width: 31.875rem;
 }
 
 .requestTestReferral {
@@ -140,6 +144,7 @@
 .requestTestReferral .cds--checkbox-label-text {
   color: red !important;
 }
+
 .orderEntrySuccessMsg {
   width: 240px;
   top: 0;
@@ -148,10 +153,12 @@
   right: 0;
   margin: auto;
 }
+
 .printBarCodeBtn {
   width: 220px;
   text-align: center;
 }
+
 .confirmPrintCodeBtn {
   height: 30px;
   width: 70px;
@@ -159,26 +166,53 @@
   margin-top: 26px;
   margin-left: 10px;
 }
+
 .placeAnotherOrderBtn {
   width: 220px;
   text-align: center;
   margin-top: 10px;
 }
+
 .orderReferralSentDate input {
-  width: 13rem !important;
+  width: 100% !important;
+  max-width: 13rem;
 }
+
 #order_requestDate {
-  width: 438px !important;
+  width: 100% !important;
+  max-width: 438px;
   margin-right: 10px;
 }
+
 #order_receivedDate {
-  width: 438px !important;
+  width: 100% !important;
+  max-width: 438px;
   margin-right: 10px;
 }
+
 #order_receivedTime {
-  width: 433px !important;
+  width: 100% !important;
+  max-width: 433px;
   margin-right: 5px;
 }
+
 #order_nextVisitDate {
-  width: 438px !important;
+  width: 100% !important;
+  max-width: 438px;
+}
+
+/* ── Mobile: all order inputs go full-width ── */
+@media screen and (max-width: 672px) {
+
+  .cds--date-picker__input,
+  .cds--time-picker__input-field,
+  .cds--date-picker,
+  .cds--time-picker,
+  #order_requestDate,
+  #order_receivedDate,
+  #order_receivedTime,
+  #order_nextVisitDate {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
