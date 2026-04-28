@@ -22,8 +22,37 @@ import {
   Tag,
 } from "@carbon/react";
 import "./Dashboard.css";
-import { Minimize, Maximize, ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import {
+  Minimize,
+  Maximize,
+  ArrowLeft,
+  ArrowRight,
+  InProgress,
+  TaskView,
+  CheckmarkFilled,
+  IncompleteCancel,
+  DocumentAdd,
+  CloseOutline,
+  Printer,
+  EmailNew,
+  Time,
+  WarningSquareFilled,
+} from "@carbon/react/icons";
 import { Copy } from "@carbon/icons-react";
+
+// Map each metric type to a representative icon shown in the top-left of its card.
+const TILE_ICONS: Record<string, any> = {
+  ORDERS_IN_PROGRESS: InProgress,
+  ORDERS_READY_FOR_VALIDATION: TaskView,
+  ORDERS_COMPLETED_TODAY: CheckmarkFilled,
+  ORDERS_PATIALLY_COMPLETED_TODAY: IncompleteCancel,
+  ORDERS_ENTERED_BY_USER_TODAY: DocumentAdd,
+  ORDERS_REJECTED_TODAY: CloseOutline,
+  UN_PRINTED_RESULTS: Printer,
+  INCOMING_ORDERS: EmailNew,
+  AVERAGE_TURN_AROUND_TIME: Time,
+  DELAYED_TURN_AROUND: WarningSquareFilled,
+};
 import { useState, useEffect, useRef, useContext } from "react";
 import {
   getFromOpenElisServer,
@@ -502,30 +531,38 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       {notificationVisible === true ? <AlertDialog /> : ""}
       {selectedTile == null ? (
         <div className="home-dashboard-container">
-          {tileList.map((tile, index) => (
-            <ClickableTile
-              key={index}
-              className="dashboard-tile"
-              onClick={() => handleMaximizeClick(tile)}
-            >
-              <h3 className="tile-title">{tile.title}</h3>
-              <p className="tile-subtitle">{tile.subTitle}</p>
-              <p className="tile-value">{tile.value}</p>
+          {tileList.map((tile, index) => {
+            const TileIcon = TILE_ICONS[tile.type];
+            return (
+              <ClickableTile
+                key={index}
+                className="dashboard-tile"
+                onClick={() => handleMaximizeClick(tile)}
+              >
+                {TileIcon && (
+                  <div className="tile-leading-icon">
+                    <TileIcon size={28} />
+                  </div>
+                )}
+                <h3 className="tile-title">{tile.title}</h3>
+                <p className="tile-subtitle">{tile.subTitle}</p>
+                <p className="tile-value">{tile.value}</p>
 
-              <div className="tile-icon">
-                <div
-                  onClick={() => handleMaximizeClick(tile)}
-                  className="icon-wrapper"
-                >
-                  <Maximize
-                    id="maximizeIcon"
-                    size={20}
-                    className="clickable-icon"
-                  />
+                <div className="tile-icon">
+                  <div
+                    onClick={() => handleMaximizeClick(tile)}
+                    className="icon-wrapper"
+                  >
+                    <Maximize
+                      id="maximizeIcon"
+                      size={20}
+                      className="clickable-icon"
+                    />
+                  </div>
                 </div>
-              </div>
-            </ClickableTile>
-          ))}
+              </ClickableTile>
+            );
+          })}
         </div>
       ) : (
         <div className="dashboard-view">

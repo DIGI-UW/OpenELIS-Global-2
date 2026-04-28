@@ -319,6 +319,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                     case "device":
                         locationEntity = storageLocationService.get(previousLocationId, StorageDevice.class);
                         break;
+                    case "room":
+                        locationEntity = storageLocationService.get(previousLocationId, StorageRoom.class);
+                        break;
                     }
                     if (locationEntity != null) {
                         previousLocation = buildHierarchicalPathForEntity(locationEntity, previousLocationType,
@@ -403,6 +406,12 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageRack rack = null;
 
         switch (assignment.getLocationType()) {
+        case "room":
+            room = (StorageRoom) storageLocationService.get(assignment.getLocationId(), StorageRoom.class);
+            if (room != null) {
+                hierarchicalPath = room.getName();
+            }
+            break;
         case "device":
             device = (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
             if (device != null) {
@@ -452,6 +461,29 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 }
             }
             break;
+        case "box":
+            StorageBox box = (StorageBox) storageLocationService.get(assignment.getLocationId(), StorageBox.class);
+            if (box != null) {
+                rack = box.getParentRack();
+                if (rack != null) {
+                    shelf = rack.getParentShelf();
+                    if (shelf != null) {
+                        device = shelf.getParentDevice();
+                        if (device != null) {
+                            room = device.getParentRoom();
+                        }
+                    }
+                }
+                if (room != null && device != null && shelf != null && rack != null) {
+                    hierarchicalPath = room.getName() + " > " + device.getName() + " > " + shelf.getLabel() + " > "
+                            + rack.getLabel() + " > " + box.getLabel();
+                    if (assignment.getPositionCoordinate() != null
+                            && !assignment.getPositionCoordinate().trim().isEmpty()) {
+                        hierarchicalPath += " at position " + assignment.getPositionCoordinate();
+                    }
+                }
+            }
+            break;
         }
 
         return hierarchicalPath;
@@ -489,10 +521,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Validate locationType is valid enum
-            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
-                    && !locationType.equals("box")) {
+            if (!locationType.equals("room") && !locationType.equals("device") && !locationType.equals("shelf")
+                    && !locationType.equals("rack") && !locationType.equals("box")) {
                 throw new LIMSRuntimeException("Invalid location type: " + locationType
-                        + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
+                        + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box'");
             }
 
             // Resolve SampleItem: accept either SampleItem ID or accession number
@@ -519,6 +551,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                         break;
                     case "device":
                         existingLocation = storageLocationService.get(existingLocId, StorageDevice.class);
+                        break;
+                    case "room":
+                        existingLocation = storageLocationService.get(existingLocId, StorageRoom.class);
                         break;
                     default:
                         break;
@@ -548,12 +583,20 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Load location entity based on locationType
             Integer locationIdInt = Integer.parseInt(locationId);
             Object locationEntity = null;
+            StorageRoom roomEntity = null;
             StorageDevice device = null;
             StorageShelf shelf = null;
             StorageRack rack = null;
             StorageBox box = null;
 
             switch (locationType) {
+            case "room":
+                roomEntity = (StorageRoom) storageLocationService.get(locationIdInt, StorageRoom.class);
+                if (roomEntity == null) {
+                    throw new LIMSRuntimeException("Room not found: " + locationId);
+                }
+                locationEntity = roomEntity;
+                break;
             case "device":
                 device = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
                 if (device == null) {
@@ -585,7 +628,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 break;
             }
 
-            // Validate location has minimum 2 levels (room + device per FR-033a)
+            // Validate location has minimum 2 levels (room + device per FR-033a),
+            // except for room-level assignments which are valid as a single level.
             if (device != null) {
                 if (device.getParentRoom() == null) {
                     throw new LIMSRuntimeException("Device must have a parent room (minimum 2 levels: room + device)");
@@ -737,10 +781,10 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             }
 
             // Validate locationType is valid enum
-            if (!locationType.equals("device") && !locationType.equals("shelf") && !locationType.equals("rack")
-                    && !locationType.equals("box")) {
+            if (!locationType.equals("room") && !locationType.equals("device") && !locationType.equals("shelf")
+                    && !locationType.equals("rack") && !locationType.equals("box")) {
                 throw new LIMSRuntimeException("Invalid location type: " + locationType
-                        + ". Must be one of: 'device', 'shelf', 'rack', 'box'");
+                        + ". Must be one of: 'room', 'device', 'shelf', 'rack', 'box'");
             }
 
             // Resolve SampleItem: accept either accession number or external ID
@@ -751,12 +795,20 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             // Load target location entity based on locationType
             Integer locationIdInt = Integer.parseInt(locationId);
             Object targetLocationEntity = null;
+            StorageRoom targetRoom = null;
             StorageDevice targetDevice = null;
             StorageShelf targetShelf = null;
             StorageRack targetRack = null;
             StorageBox targetBox = null;
 
             switch (locationType) {
+            case "room":
+                targetRoom = (StorageRoom) storageLocationService.get(locationIdInt, StorageRoom.class);
+                if (targetRoom == null) {
+                    throw new LIMSRuntimeException("Target room not found: " + locationId);
+                }
+                targetLocationEntity = targetRoom;
+                break;
             case "device":
                 targetDevice = (StorageDevice) storageLocationService.get(locationIdInt, StorageDevice.class);
                 if (targetDevice == null) {
@@ -976,6 +1028,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageRack rack = null;
 
         switch (locationType) {
+        case "room":
+            room = (StorageRoom) locationEntity;
+            break;
         case "device":
             device = (StorageDevice) locationEntity;
             room = device.getParentRoom();
@@ -1014,7 +1069,13 @@ public class SampleStorageServiceImpl implements SampleStorageService {
             break;
         }
 
-        // Validate minimum 2 levels (room + device)
+        // For room-level assignments, only the room itself needs to exist and be
+        // active.
+        if ("room".equals(locationType)) {
+            return room != null && room.getActive() != null && room.getActive();
+        }
+
+        // For deeper levels: validate minimum 2 levels (room + device).
         if (room == null || device == null) {
             return false;
         }
@@ -1039,7 +1100,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
     }
 
     /**
-     * Build hierarchical path for a location entity (device, shelf, rack, or box)
+     * Build hierarchical path for a location entity (room, device, shelf, rack, or
+     * box)
      */
     private String buildHierarchicalPathForEntity(Object locationEntity, String locationType,
             String positionCoordinate) {
@@ -1053,6 +1115,9 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         StorageRack rack = null;
 
         switch (locationType) {
+        case "room":
+            room = (StorageRoom) locationEntity;
+            return room.getName();
         case "device":
             device = (StorageDevice) locationEntity;
             room = device.getParentRoom();

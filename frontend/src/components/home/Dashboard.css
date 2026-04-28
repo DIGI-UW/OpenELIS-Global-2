@@ -10,10 +10,50 @@
   padding: 50px;
 }
 .dashboard-tile {
+  position: relative;
   padding: 20px;
   border-radius: 3px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   background-color: #f4f4f4;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+  /* Carbon's ClickableTile clips its content with overflow: hidden, which
+   * eats absolutely-positioned pseudo-elements. Allow them to render. */
+  overflow: visible;
+}
+
+/* Left-edge stripe painted as a pseudo-element (rather than border-left or
+ * inset box-shadow) so Carbon's own tile shadow rules can't override it.
+ * Light green by default, Carbon blue on hover. */
+.dashboard-tile::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #6fdc8c;
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  transition: background-color 0.15s ease;
+}
+
+.dashboard-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.dashboard-tile:hover::before {
+  background-color: #0f62fe;
+}
+
+.tile-leading-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  color: #0f62fe;
 }
 
 .tile-title {
