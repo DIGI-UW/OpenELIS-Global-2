@@ -86,6 +86,10 @@
         <!-- Patient Merge Backend entities (008-patient-merge-backend) -->
         <class>org.openelisglobal.patient.merge.valueholder.PatientMergeAudit</class>
 
+        <!-- AHRI RBAC entities (TR-01, TR-06) -->
+        <class>org.openelisglobal.rbac.valueholder.RbacAuditLog</class>
+        <class>org.openelisglobal.userrole.valueholder.UserProjectRole</class>
+
         <properties>
             <property name="hibernate.cfg_xml_file"
                 value="classpath:hibernate/hibernate.cfg.xml" />

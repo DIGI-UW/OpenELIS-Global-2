@@ -20,6 +20,9 @@ import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.rbac.context.RbacContext;
+import org.openelisglobal.rbac.service.RbacAuditService;
+import org.openelisglobal.rbac.service.RbacPermissionService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
@@ -48,6 +51,32 @@ public class EquipmentUsageRestController extends BaseRestController {
 
     @Autowired
     private InventoryUsageService usageService;
+
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
+    @Autowired
+    private RbacAuditService rbacAuditService;
+
+    private boolean checkEquipmentPermission(HttpServletRequest request, String action, String departmentId) {
+        try {
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) return false;
+            boolean hasPermission = departmentId != null
+                    ? rbacPermissionService.hasPermission(sysUserId, "EQUIPMENT", action, departmentId)
+                    : rbacPermissionService.hasPermission(sysUserId, "EQUIPMENT", action);
+            if (!hasPermission) {
+                RbacContext ctx = RbacContext.get();
+                rbacAuditService.logDenied(sysUserId,
+                        ctx != null ? ctx.getUsername() : "unknown",
+                        "EQUIPMENT", action, null, null, departmentId, null,
+                        request.getRemoteAddr(), "Access denied");
+            }
+            return hasPermission;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @Autowired
     private InventoryItemService inventoryItemService;

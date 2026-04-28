@@ -301,8 +301,15 @@ function UserAddModify() {
         if (ID !== "0") {
           setSelectedTestSectionLabUnits(userData.selectedTestSectionLabUnits);
         } else {
-          setSelectedTestSectionLabUnits({});
-          setSelectedTestSectionList([]);
+          // For new users: auto-add first department row so it's immediately visible
+          if (userData.testSections && userData.testSections.length > 0) {
+            const firstSection = userData.testSections[0];
+            setSelectedTestSectionLabUnits({ [firstSection.id]: [] });
+            setSelectedTestSectionList([firstSection.id]);
+          } else {
+            setSelectedTestSectionLabUnits({});
+            setSelectedTestSectionList([]);
+          }
         }
       }
     }
@@ -1342,9 +1349,17 @@ function UserAddModify() {
                     <Grid
                       fullWidth={true}
                       key={key}
-                      style={{ paddingBottom: "10px" }}
+                      style={{
+                        paddingBottom: "16px",
+                        border: "1px solid #e0e0e0",
+                        marginBottom: "12px",
+                        padding: "12px",
+                      }}
                     >
-                      <Column lg={4} md={4} sm={4}>
+                      <Column lg={5} md={4} sm={4}>
+                        <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
+                          <FormattedMessage id="systemuserrole.department" defaultMessage="Department" />
+                        </p>
                         <Select
                           id={`select-${key}`}
                           noLabel={true}
@@ -1386,7 +1401,11 @@ function UserAddModify() {
                             />
                           )}
                         </Select>
-                        <br />
+                      </Column>
+                      <Column lg={9} md={4} sm={4}>
+                        <p style={{ fontWeight: "bold", marginBottom: "8px" }}>
+                          <FormattedMessage id="systemuserrole.roles" defaultMessage="Roles for this Department" />
+                        </p>
                         <Checkbox
                           id={`all-permissions-${key}`}
                           labelText={"All Permissions"}
@@ -1486,7 +1505,7 @@ function UserAddModify() {
                           )}
                         </FormGroup>
                       </Column>
-                      <Column lg={4} md={4} sm={4}>
+                      <Column lg={2} md={4} sm={4}>
                         <Button
                           data-cy="removePermission"
                           onClick={() => removeSection(key)}

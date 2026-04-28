@@ -172,7 +172,10 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "version", nullable = false)
     private Integer version = 0;
 
-    // Business logic helper methods
+    /** TR-01/TR-04: Department this inventory item belongs to */
+    @Column(name = "department_id", length = 255)
+    private String departmentId;
+
     @JsonIgnore
     public boolean isReagent() {
         return itemType == ItemType.REAGENT;

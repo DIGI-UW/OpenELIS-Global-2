@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="033-deactivate-non-ahri-departments" author="ahri-rbac">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="test_section" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Deactivate all test sections not in the 13 AHRI departments</comment>
+        <sql>
+            UPDATE clinlims.test_section SET is_active = 'N'
+            WHERE id NOT IN (168, 174, 175, 182, 172, 59, 177, 181, 176, 178, 173, 180, 179);
+        </sql>
+        <rollback>
+            <sql>UPDATE clinlims.test_section SET is_active = 'Y';</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

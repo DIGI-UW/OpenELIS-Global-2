@@ -4,25 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.department.service.DepartmentIsolationService;
 import org.openelisglobal.login.dao.UserModuleService;
-import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.notebook.service.NoteBookService;
-import org.openelisglobal.notebook.service.NotebookSecurityService;
-import org.openelisglobal.notebook.bean.NoteBookDisplayBean;
-import org.openelisglobal.notebook.valueholder.NoteBook;
 import org.openelisglobal.storage.dao.*;
 import org.openelisglobal.storage.form.*;
 import org.openelisglobal.storage.form.response.StorageBoxResponse;
@@ -35,14 +25,14 @@ import org.openelisglobal.storage.service.StorageDashboardService;
 import org.openelisglobal.storage.service.StorageLocationService;
 import org.openelisglobal.storage.service.StorageSearchService;
 import org.openelisglobal.storage.valueholder.*;
-import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
+import org.openelisglobal.rbac.context.RbacContext;
+import org.openelisglobal.rbac.service.RbacAuditService;
+import org.openelisglobal.rbac.service.RbacPermissionService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -80,20 +70,14 @@ public class StorageLocationRestController extends BaseRestController {
     @Autowired
     private UserRoleService userRoleService;
 
+    @Autowired
+    private RbacPermissionService rbacPermissionService;
+
+    @Autowired
+    private RbacAuditService rbacAuditService;
+
     @Autowired(required = false)
     private FreezerService freezerService;
-
-    @Autowired
-    private DepartmentIsolationService departmentIsolationService;
-
-    @Autowired
-    private TestSectionService testSectionService;
-
-    @Autowired
-    private NoteBookService noteBookService;
-
-    @Autowired
-    private NotebookSecurityService notebookSecurityService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -118,184 +102,45 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     /**
-     * Test sections (lab units) the current user may own new storage rooms with —
-     * same IDs as department isolation. Empty list for unrestricted users (UI omits
-     * selector).
+     * TR-05: Check if user has permission for storage module action.
+     * Logs denied access attempts via TR-06 audit service.
      */
-    @GetMapping(value = "/room-assignable-departments", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<Map<String, String>>> getRoomAssignableDepartments(HttpServletRequest request) {
+    private boolean checkStoragePermission(HttpServletRequest request, String action, String departmentId) {
         try {
-            return ResponseEntity.ok(departmentIsolationService.getAssignableWorkflowDepartments(request));
+            String sysUserId = getSysUserId(request);
+            if (sysUserId == null) return false;
+            
+            boolean hasPermission = departmentId != null
+                    ? rbacPermissionService.hasPermission(sysUserId, "STORAGE", action, departmentId)
+                    : rbacPermissionService.hasPermission(sysUserId, "STORAGE", action);
+            
+            if (!hasPermission) {
+                RbacContext ctx = RbacContext.get();
+                rbacAuditService.logDenied(sysUserId,
+                        ctx != null ? ctx.getUsername() : "unknown",
+                        "STORAGE", action, null, null, departmentId, null,
+                        request.getRemoteAddr(), "Access denied");
+            }
+            return hasPermission;
         } catch (Exception e) {
-            logger.error("Error listing assignable departments for storage", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    private Map<Integer, String> getNotebookWorkflowDepartments(HttpServletRequest request) {
-        Map<Integer, String> departments = new HashMap<>();
-        String sysUserId = getSysUserId(request);
-        String loginLabUnit = getLoginLabUnit(request);
-        List<NoteBook> templates = noteBookService.getAllTemplateNoteBooks();
-        for (NoteBook template : templates) {
-            if (template == null || template.getId() == null
-                    || !notebookSecurityService.canViewTemplate(template.getId(), sysUserId, loginLabUnit)) {
-                continue;
-            }
-            NoteBookDisplayBean display = noteBookService.convertToDisplayBean(template.getId());
-            String title = display != null ? display.getTitle() : template.getTitle();
-            TestSection linkedDepartment = selectPrimaryLinkedDepartment(template, title);
-            Integer linkedDepartmentId = parseDepartmentId(linkedDepartment);
-            if (linkedDepartmentId != null) {
-                departments.putIfAbsent(linkedDepartmentId, title != null && !title.isBlank()
-                        ? title.trim()
-                        : resolveTestSectionLabel(linkedDepartment));
-                continue;
-            }
-            TestSection exactMatch = resolveTestSectionByTemplateTitle(title);
-            Integer exactMatchId = parseDepartmentId(exactMatch);
-            if (exactMatchId != null && title != null && !title.isBlank()) {
-                departments.putIfAbsent(exactMatchId, title.trim());
-            }
-        }
-        return departments;
-    }
-
-    private TestSection selectPrimaryLinkedDepartment(NoteBook template, String notebookTitle) {
-        if (template == null || template.getDepartments() == null || template.getDepartments().isEmpty()) {
-            return null;
-        }
-        List<TestSection> linkedDepartments = template.getDepartments().stream().filter(Objects::nonNull)
-                .sorted((left, right) -> resolveTestSectionLabel(left).compareToIgnoreCase(resolveTestSectionLabel(right)))
-                .toList();
-        for (TestSection department : linkedDepartments) {
-            if (templateTitleMatchesDepartment(notebookTitle, department)) {
-                return department;
-            }
-        }
-        return linkedDepartments.get(0);
-    }
-
-    private TestSection resolveTestSectionByTemplateTitle(String notebookTitle) {
-        if (notebookTitle == null || notebookTitle.isBlank()) {
-            return null;
-        }
-        TestSection byName = testSectionService.getTestSectionByName(notebookTitle.trim());
-        if (byName != null) {
-            return byName;
-        }
-
-        List<TestSection> activeSections = testSectionService.getAllActiveTestSections();
-        if (activeSections == null || activeSections.isEmpty()) {
-            return null;
-        }
-        return activeSections.stream().filter(section -> templateTitleMatchesDepartment(notebookTitle, section)).findFirst()
-                .orElse(null);
-    }
-
-    private Integer parseDepartmentId(TestSection department) {
-        if (department == null || department.getId() == null) {
-            return null;
-        }
-        try {
-            return Integer.valueOf(department.getId());
-        } catch (NumberFormatException e) {
-            logger.warn("Skipping non-numeric department id {} for storage workflow department filtering",
-                    department.getId());
-            return null;
-        }
-    }
-
-    private boolean templateTitleMatchesDepartment(String notebookTitle, TestSection department) {
-        if (notebookTitle == null || department == null) {
+            logger.error("Error checking storage permission", e);
             return false;
         }
-        String normalizedTitle = notebookTitle.trim();
-        if (department.getTestSectionName() != null && normalizedTitle.equalsIgnoreCase(department.getTestSectionName().trim())) {
-            return true;
-        }
-        return department.getLocalizedName() != null
-                && normalizedTitle.equalsIgnoreCase(department.getLocalizedName().trim());
-    }
-
-    private List<TestSection> loadTestSections(Set<Integer> ids) {
-        List<TestSection> sections = new ArrayList<>();
-        if (ids == null || ids.isEmpty()) {
-            return sections;
-        }
-        for (Integer id : ids) {
-            TestSection ts = testSectionService.getTestSectionById(String.valueOf(id));
-            if (ts != null) {
-                sections.add(ts);
-            }
-        }
-        return sections;
-    }
-
-    private List<Map<String, String>> buildDepartmentRows(List<TestSection> sections, Map<Integer, String> workflowDepartments) {
-        if (sections == null || sections.isEmpty()) {
-            return List.of();
-        }
-        sections.sort((left, right) -> String.valueOf(resolveDepartmentLabel(left, workflowDepartments))
-                .compareToIgnoreCase(String.valueOf(resolveDepartmentLabel(right, workflowDepartments))));
-        List<Map<String, String>> rows = new ArrayList<>();
-        for (TestSection ts : sections) {
-            if (ts == null || ts.getId() == null) {
-                continue;
-            }
-            Map<String, String> row = new HashMap<>();
-            row.put("id", String.valueOf(ts.getId()));
-            row.put("value", resolveDepartmentLabel(ts, workflowDepartments));
-            rows.add(row);
-        }
-        return rows;
-    }
-
-    private String resolveDepartmentLabel(TestSection ts, Map<Integer, String> workflowDepartments) {
-        Integer id = parseDepartmentId(ts);
-        if (id != null && workflowDepartments != null) {
-            String notebookTitle = workflowDepartments.get(id);
-            if (notebookTitle != null && !notebookTitle.isBlank()) {
-                return notebookTitle;
-            }
-        }
-        return resolveTestSectionLabel(ts);
-    }
-
-    private String resolveTestSectionLabel(TestSection ts) {
-        if (ts == null) {
-            return "";
-        }
-        if (ts.getLocalizedName() != null && !ts.getLocalizedName().isBlank()) {
-            return ts.getLocalizedName();
-        }
-        if (ts.getTestSectionName() != null && !ts.getTestSectionName().isBlank()) {
-            return ts.getTestSectionName();
-        }
-        return ts.getId() != null ? String.valueOf(ts.getId()) : "";
-    }
-
-    private String getLoginLabUnit(HttpServletRequest request) {
-        UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
-        if (usd == null) {
-            return null;
-        }
-        int loginLabUnitId = usd.getLoginLabUnit();
-        if (loginLabUnitId == 0) {
-            return null;
-        }
-        TestSection testSection = testSectionService.getTestSectionById(String.valueOf(loginLabUnitId));
-        if (testSection != null) {
-            return testSection.getLocalizedName();
-        }
-        return null;
     }
 
     // ========== Room Endpoints ==========
 
     @PostMapping("/rooms")
-    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createRoom(@Valid @RequestBody StorageRoomForm form,
+            HttpServletRequest request) {
         try {
+            // TR-05: Only check permission for write operations
+            String sysUserId = getSysUserId(request);
+            if (sysUserId != null && !checkStoragePermission(request, "CREATE", form.getDepartmentId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "Access denied: insufficient permissions for storage CREATE"));
+            }
+
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", null)) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Room name must be unique");
@@ -315,26 +160,7 @@ public class StorageLocationRestController extends BaseRestController {
             room.setFhirUuid(UUID.randomUUID());
             room.setSysUserId("1"); // Default system user for REST API (should come from security context in
                                     // production)
-
-            if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                Integer departmentId = departmentIsolationService.resolveDepartmentForScopedCreate(request,
-                        form.getDepartmentTestSectionId());
-                if (departmentId == null) {
-                    Set<Integer> selectable = departmentIsolationService.getSelectableUserTestSectionIds(request);
-                    if (selectable.isEmpty()) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                .body(Map.of("error", "select department first"));
-                    }
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("error", "select department first"));
-                }
-                room.setDepartmentTestSectionId(departmentId);
-            } else if (form.getDepartmentTestSectionId() == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("error", "Department is required"));
-            } else {
-                room.setDepartmentTestSectionId(form.getDepartmentTestSectionId());
-            }
+            room.setDepartmentId(form.getDepartmentId());
 
             StorageRoom createdRoom = storageLocationService.createRoom(room);
 
@@ -357,9 +183,7 @@ public class StorageLocationRestController extends BaseRestController {
      * Get rooms with optional status filter (FR-065: Rooms tab - filter by status)
      */
     @GetMapping("/rooms")
-    public ResponseEntity<List<Map<String, Object>>> getRooms(@RequestParam(required = false) String status,
-            @RequestParam(required = false) Boolean biorepositoryOnly,
-            @RequestParam(required = false) Integer notebookId, HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> getRooms(@RequestParam(required = false) String status) {
         try {
             List<Map<String, Object>> response;
             if (status != null && !status.isEmpty()) {
@@ -371,11 +195,6 @@ public class StorageLocationRestController extends BaseRestController {
                 // No filter - return all rooms
                 response = storageLocationService.getRoomsForAPI();
             }
-            filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(room -> !Boolean.TRUE.equals(room.get("hasBiorepositoryDevices")));
-            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting rooms", e);
@@ -384,15 +203,12 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @GetMapping("/rooms/{id}")
-    public ResponseEntity<StorageRoomResponse> getRoomById(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<StorageRoomResponse> getRoomById(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
             if (room == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService.canAccessStorageRoom(room, request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(toRoomResponse(room));
         } catch (Exception e) {
@@ -402,17 +218,8 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PutMapping("/rooms/{id}")
-    public ResponseEntity<?> updateRoom(@PathVariable String id, @Valid @RequestBody StorageRoomForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<?> updateRoom(@PathVariable String id, @Valid @RequestBody StorageRoomForm form) {
         try {
-            Integer idIntEarly = Integer.parseInt(id);
-            StorageRoom existingForAuth = storageLocationService.getRoom(idIntEarly);
-            if (existingForAuth == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService.canAccessStorageRoom(existingForAuth, request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
             // Explicit validation guard: name is required (test expects 400 before
             // persisting)
             if (form.getName() == null || form.getName().trim().isEmpty()) {
@@ -421,7 +228,7 @@ public class StorageLocationRestController extends BaseRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
             }
 
-            Integer idInt = idIntEarly;
+            Integer idInt = Integer.parseInt(id);
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), null, "room", idInt)) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Room name must be unique");
@@ -474,9 +281,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (room == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (!departmentIsolationService.canAccessStorageRoom(room, request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             boolean isAdmin = checkAdminStatus(request);
 
@@ -505,16 +309,12 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Get cascade delete summary for a room (admin only)
      */
     @GetMapping("/rooms/{id}/cascade-delete-summary")
-    public ResponseEntity<Map<String, Object>> getRoomCascadeDeleteSummary(@PathVariable String id,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getRoomCascadeDeleteSummary(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRoom room = storageLocationService.getRoom(idInt);
             if (room == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService.canAccessStorageRoom(room, request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(room);
@@ -532,9 +332,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRoom room = storageLocationService.getRoom(idInt);
             if (room == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService.canAccessStorageRoom(room, request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             boolean isAdmin = checkAdminStatus(request);
@@ -576,9 +373,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (parentRoom == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent room not found"));
             }
-            if (!departmentIsolationService.canAccessStorageRoom(parentRoom, request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
             if (!storageLocationService.isNameUniqueWithinParent(form.getName(), parentRoomId, "device", null)) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("error", "Device name must be unique within the room");
@@ -603,8 +397,6 @@ public class StorageLocationRestController extends BaseRestController {
             device.setIpAddress(form.getIpAddress());
             device.setPort(form.getPort());
             device.setCommunicationProtocol(form.getCommunicationProtocol());
-            device.setBiorepositoryStorage(
-                    form.getBiorepositoryStorage() != null ? form.getBiorepositoryStorage() : Boolean.FALSE);
             device.setFhirUuid(UUID.randomUUID());
             device.setSysUserId("1"); // Default system user for REST API
             device.setParentRoom(parentRoom);
@@ -652,9 +444,7 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/devices")
     public ResponseEntity<List<Map<String, Object>>> getDevices(@RequestParam(required = false) String roomId,
             @RequestParam(required = false) String type, @RequestParam(required = false) String status,
-            @RequestParam(required = false) String temperatureSetting,
-            @RequestParam(required = false) Boolean biorepositoryOnly,
-            @RequestParam(required = false) Integer notebookId, HttpServletRequest request) {
+            @RequestParam(required = false) String temperatureSetting) {
         try {
             List<Map<String, Object>> response;
             if (type != null || roomId != null || status != null || temperatureSetting != null) {
@@ -673,11 +463,6 @@ public class StorageLocationRestController extends BaseRestController {
                 Integer roomIdInt = roomId != null ? Integer.parseInt(roomId) : null;
                 response = storageLocationService.getDevicesForAPI(roomIdInt);
             }
-            filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(device -> !Boolean.TRUE.equals(device.get("biorepositoryStorage")));
-            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting devices", e);
@@ -686,16 +471,12 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @GetMapping("/devices/{id}")
-    public ResponseEntity<StorageDeviceResponse> getDeviceById(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<StorageDeviceResponse> getDeviceById(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
             if (device == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (device.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(device.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(toDeviceResponse(device));
         } catch (Exception e) {
@@ -705,8 +486,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PutMapping("/devices/{id}")
-    public ResponseEntity<?> updateDevice(@PathVariable String id, @Valid @RequestBody StorageDeviceForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<?> updateDevice(@PathVariable String id, @Valid @RequestBody StorageDeviceForm form) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice deviceToUpdate = new StorageDevice();
@@ -718,20 +498,11 @@ public class StorageLocationRestController extends BaseRestController {
             deviceToUpdate.setCapacityLimit(form.getCapacityLimit());
             deviceToUpdate.setActive(form.getActive());
             deviceToUpdate.setCode(form.getCode());
-            deviceToUpdate.setBiorepositoryStorage(form.getBiorepositoryStorage());
 
             // Get existing device to preserve ID
             StorageDevice existingDevice = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
             if (existingDevice == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (existingDevice.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(existingDevice.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
-            if (deviceToUpdate.getBiorepositoryStorage() == null) {
-                deviceToUpdate.setBiorepositoryStorage(existingDevice.getBiorepositoryStorage());
             }
 
             // Handle parent room change if provided
@@ -746,9 +517,6 @@ public class StorageLocationRestController extends BaseRestController {
                         Map<String, Object> error = new HashMap<>();
                         error.put("error", "New parent room not found");
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-                    }
-                    if (!departmentIsolationService.canAccessStorageRoom(newParentRoom, request)) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                     }
                     deviceToUpdate.setParentRoom(newParentRoom);
                     parentRoomId = newParentRoomId; // Use new parent for validation
@@ -810,10 +578,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (device == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (device.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(device.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             boolean isAdmin = checkAdminStatus(request);
             Map<String, Object> response = new HashMap<>();
@@ -839,17 +603,12 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Get cascade delete summary for a device (admin only)
      */
     @GetMapping("/devices/{id}/cascade-delete-summary")
-    public ResponseEntity<Map<String, Object>> getDeviceCascadeDeleteSummary(@PathVariable String id,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getDeviceCascadeDeleteSummary(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
             if (device == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (device.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(device.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(device);
@@ -866,25 +625,15 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/devices/{id}/can-move")
     public ResponseEntity<Map<String, Object>> canMoveDevice(@PathVariable String id,
-            @RequestParam(required = false) String newParentRoomId, HttpServletRequest request) {
+            @RequestParam(required = false) String newParentRoomId) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
             if (device == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (device.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(device.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             Integer newParentId = newParentRoomId != null ? Integer.parseInt(newParentRoomId) : null;
-            if (newParentId != null) {
-                StorageRoom targetRoom = storageLocationService.getRoom(newParentId);
-                if (targetRoom != null && !departmentIsolationService.canAccessStorageRoom(targetRoom, request)) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                }
-            }
             Map<String, Object> result = storageLocationService.canMoveLocation(device, newParentId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -900,10 +649,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageDevice device = (StorageDevice) storageLocationService.get(idInt, StorageDevice.class);
             if (device == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (device.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(device.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             boolean isAdmin = checkAdminStatus(request);
@@ -935,7 +680,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Shelf Endpoints ==========
 
     @PostMapping("/shelves")
-    public ResponseEntity<?> createShelf(@Valid @RequestBody StorageShelfForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createShelf(@Valid @RequestBody StorageShelfForm form) {
         try {
             StorageShelf shelf = new StorageShelf();
             shelf.setLabel(form.getLabel());
@@ -950,10 +695,6 @@ public class StorageLocationRestController extends BaseRestController {
                     StorageDevice.class);
             if (parentDevice == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent device not found"));
-            }
-            if (parentDevice.getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(parentDevice.getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentDeviceId, "shelf", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -978,9 +719,7 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/shelves")
     public ResponseEntity<List<Map<String, Object>>> getShelves(@RequestParam(required = false) String deviceId,
-            @RequestParam(required = false) String roomId, @RequestParam(required = false) String status,
-            @RequestParam(required = false) Boolean biorepositoryOnly,
-            @RequestParam(required = false) Integer notebookId, HttpServletRequest request) {
+            @RequestParam(required = false) String roomId, @RequestParam(required = false) String status) {
         try {
             List<Map<String, Object>> response;
             if (deviceId != null || roomId != null || status != null) {
@@ -996,11 +735,6 @@ public class StorageLocationRestController extends BaseRestController {
                 Integer deviceIdInt = deviceId != null ? Integer.parseInt(deviceId) : null;
                 response = storageLocationService.getShelvesForAPI(deviceIdInt);
             }
-            filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(shelf -> !Boolean.TRUE.equals(shelf.get("biorepositoryStorage")));
-            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting shelves", e);
@@ -1009,17 +743,12 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @GetMapping("/shelves/{id}")
-    public ResponseEntity<StorageShelfResponse> getShelfById(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<StorageShelfResponse> getShelfById(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             if (shelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(shelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(toShelfResponse(shelf));
         } catch (Exception e) {
@@ -1034,27 +763,15 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/shelves/{id}/can-move")
     public ResponseEntity<Map<String, Object>> canMoveShelf(@PathVariable String id,
-            @RequestParam(required = false) String newParentDeviceId, HttpServletRequest request) {
+            @RequestParam(required = false) String newParentDeviceId) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             if (shelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(shelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             Integer newParentId = newParentDeviceId != null ? Integer.parseInt(newParentDeviceId) : null;
-            if (newParentId != null) {
-                StorageDevice targetDev = (StorageDevice) storageLocationService.get(newParentId, StorageDevice.class);
-                if (targetDev != null && targetDev.getParentRoom() != null
-                        && !departmentIsolationService.canAccessStorageRoom(targetDev.getParentRoom(), request)) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                }
-            }
             Map<String, Object> result = storageLocationService.canMoveLocation(shelf, newParentId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -1064,8 +781,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PutMapping("/shelves/{id}")
-    public ResponseEntity<?> updateShelf(@PathVariable String id, @Valid @RequestBody StorageShelfForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<?> updateShelf(@PathVariable String id, @Valid @RequestBody StorageShelfForm form) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelfToUpdate = new StorageShelf();
@@ -1078,11 +794,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf existingShelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             if (existingShelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (existingShelf.getParentDevice() != null && existingShelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(existingShelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             // Handle parent device change if provided
@@ -1098,10 +809,6 @@ public class StorageLocationRestController extends BaseRestController {
                         Map<String, Object> error = new HashMap<>();
                         error.put("error", "New parent device not found");
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-                    }
-                    if (newParentDevice.getParentRoom() != null && !departmentIsolationService
-                            .canAccessStorageRoom(newParentDevice.getParentRoom(), request)) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                     }
                     shelfToUpdate.setParentDevice(newParentDevice);
                     parentDeviceId = newParentDeviceId; // Use new parent for validation
@@ -1157,11 +864,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (shelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(shelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             boolean isAdmin = checkAdminStatus(request);
             Map<String, Object> response = new HashMap<>();
@@ -1187,18 +889,12 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Get cascade delete summary for a shelf (admin only)
      */
     @GetMapping("/shelves/{id}/cascade-delete-summary")
-    public ResponseEntity<Map<String, Object>> getShelfCascadeDeleteSummary(@PathVariable String id,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getShelfCascadeDeleteSummary(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             if (shelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(shelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(shelf);
@@ -1216,11 +912,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf shelf = (StorageShelf) storageLocationService.get(idInt, StorageShelf.class);
             if (shelf == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (shelf.getParentDevice() != null && shelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(shelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             boolean isAdmin = checkAdminStatus(request);
@@ -1252,7 +943,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Rack Endpoints ==========
 
     @PostMapping("/racks")
-    public ResponseEntity<?> createRack(@Valid @RequestBody StorageRackForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createRack(@Valid @RequestBody StorageRackForm form) {
         try {
             StorageRack rack = new StorageRack();
             rack.setLabel(form.getLabel());
@@ -1265,11 +956,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageShelf parentShelf = (StorageShelf) storageLocationService.get(parentShelfId, StorageShelf.class);
             if (parentShelf == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent shelf not found"));
-            }
-            if (parentShelf.getParentDevice() != null && parentShelf.getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(parentShelf.getParentDevice().getParentRoom(),
-                            request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             if (!storageLocationService.isNameUniqueWithinParent(form.getLabel(), parentShelfId, "rack", null)) {
                 Map<String, Object> error = new HashMap<>();
@@ -1295,9 +981,7 @@ public class StorageLocationRestController extends BaseRestController {
     @GetMapping("/racks")
     public ResponseEntity<List<Map<String, Object>>> getRacks(@RequestParam(required = false) String shelfId,
             @RequestParam(required = false) String deviceId, @RequestParam(required = false) String roomId,
-            @RequestParam(required = false) String status, @RequestParam(required = false) Boolean biorepositoryOnly,
-            @RequestParam(required = false) Integer notebookId,
-            HttpServletRequest request) {
+            @RequestParam(required = false) String status) {
         try {
             List<Map<String, Object>> response;
             if (shelfId != null || deviceId != null || roomId != null || status != null) {
@@ -1314,11 +998,6 @@ public class StorageLocationRestController extends BaseRestController {
                 Integer shelfIdInt = shelfId != null ? Integer.parseInt(shelfId) : null;
                 response = storageLocationService.getRacksForAPI(shelfIdInt);
             }
-            filterLocationMapsByDepartment(response, request);
-            filterLocationMapsByNotebookDepartment(response, notebookId);
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                response.removeIf(rack -> !Boolean.TRUE.equals(rack.get("biorepositoryStorage")));
-            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error getting racks", e);
@@ -1327,17 +1006,12 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @GetMapping("/racks/{id}")
-    public ResponseEntity<StorageRackResponse> getRackById(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<StorageRackResponse> getRackById(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             if (rack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                    && rack.getParentShelf().getParentDevice().getParentRoom() != null && !departmentIsolationService
-                            .canAccessStorageRoom(rack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             return ResponseEntity.ok(toRackResponse(rack));
         } catch (Exception e) {
@@ -1352,28 +1026,15 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @GetMapping("/racks/{id}/can-move")
     public ResponseEntity<Map<String, Object>> canMoveRack(@PathVariable String id,
-            @RequestParam(required = false) String newParentShelfId, HttpServletRequest request) {
+            @RequestParam(required = false) String newParentShelfId) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             if (rack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                    && rack.getParentShelf().getParentDevice().getParentRoom() != null && !departmentIsolationService
-                            .canAccessStorageRoom(rack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             Integer newParentId = newParentShelfId != null ? Integer.parseInt(newParentShelfId) : null;
-            if (newParentId != null) {
-                StorageShelf targetShelf = (StorageShelf) storageLocationService.get(newParentId, StorageShelf.class);
-                if (targetShelf != null && targetShelf.getParentDevice() != null
-                        && targetShelf.getParentDevice().getParentRoom() != null && !departmentIsolationService
-                                .canAccessStorageRoom(targetShelf.getParentDevice().getParentRoom(), request)) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                }
-            }
             Map<String, Object> result = storageLocationService.canMoveLocation(rack, newParentId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -1383,8 +1044,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PutMapping("/racks/{id}")
-    public ResponseEntity<?> updateRack(@PathVariable String id, @Valid @RequestBody StorageRackForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<?> updateRack(@PathVariable String id, @Valid @RequestBody StorageRackForm form) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rackToUpdate = new StorageRack();
@@ -1396,12 +1056,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack existingRack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             if (existingRack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (existingRack.getParentShelf() != null && existingRack.getParentShelf().getParentDevice() != null
-                    && existingRack.getParentShelf().getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(
-                            existingRack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             // Handle parent shelf change if provided
@@ -1417,11 +1071,6 @@ public class StorageLocationRestController extends BaseRestController {
                         Map<String, Object> error = new HashMap<>();
                         error.put("error", "New parent shelf not found");
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-                    }
-                    if (newParentShelf.getParentDevice() != null
-                            && newParentShelf.getParentDevice().getParentRoom() != null && !departmentIsolationService
-                                    .canAccessStorageRoom(newParentShelf.getParentDevice().getParentRoom(), request)) {
-                        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
                     }
                     rackToUpdate.setParentShelf(newParentShelf);
                     parentShelfId = newParentShelfId; // Use new parent for validation
@@ -1481,11 +1130,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (rack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                    && rack.getParentShelf().getParentDevice().getParentRoom() != null && !departmentIsolationService
-                            .canAccessStorageRoom(rack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             boolean isAdmin = checkAdminStatus(request);
 
@@ -1512,18 +1156,12 @@ public class StorageLocationRestController extends BaseRestController {
      * OGC-75: Get cascade delete summary for a rack (admin only)
      */
     @GetMapping("/racks/{id}/cascade-delete-summary")
-    public ResponseEntity<Map<String, Object>> getRackCascadeDeleteSummary(@PathVariable String id,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getRackCascadeDeleteSummary(@PathVariable String id) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             if (rack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                    && rack.getParentShelf().getParentDevice().getParentRoom() != null && !departmentIsolationService
-                            .canAccessStorageRoom(rack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             Map<String, Object> summary = storageLocationService.getCascadeDeleteSummary(rack);
@@ -1541,11 +1179,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack rack = (StorageRack) storageLocationService.get(idInt, StorageRack.class);
             if (rack == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (rack.getParentShelf() != null && rack.getParentShelf().getParentDevice() != null
-                    && rack.getParentShelf().getParentDevice().getParentRoom() != null && !departmentIsolationService
-                            .canAccessStorageRoom(rack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             boolean isAdmin = checkAdminStatus(request);
@@ -1577,7 +1210,7 @@ public class StorageLocationRestController extends BaseRestController {
     // ========== Box Endpoints ==========
 
     @PostMapping("/boxes")
-    public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form, HttpServletRequest request) {
+    public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form) {
         try {
             StorageBox box = new StorageBox();
             box.setLabel(form.getLabel());
@@ -1594,12 +1227,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageRack parentRack = (StorageRack) storageLocationService.get(parentRackId, StorageRack.class);
             if (parentRack == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Parent rack not found"));
-            }
-            if (parentRack.getParentShelf() != null && parentRack.getParentShelf().getParentDevice() != null
-                    && parentRack.getParentShelf().getParentDevice().getParentRoom() != null
-                    && !departmentIsolationService.canAccessStorageRoom(
-                            parentRack.getParentShelf().getParentDevice().getParentRoom(), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             box.setParentRack(parentRack);
 
@@ -1626,10 +1253,7 @@ public class StorageLocationRestController extends BaseRestController {
 
     @GetMapping("/boxes")
     public ResponseEntity<List<StorageBoxResponse>> getBoxes(@RequestParam(required = false) String rackId,
-            @RequestParam(required = false) Integer shelfId, @RequestParam(required = false) Boolean active,
-            @RequestParam(required = false) Boolean occupied, @RequestParam(required = false) Boolean biorepositoryOnly,
-            @RequestParam(required = false) Integer notebookId,
-            HttpServletRequest request) {
+            @RequestParam(required = false) Boolean active, @RequestParam(required = false) Boolean occupied) {
         try {
             List<StorageBox> boxes;
             if (rackId != null) {
@@ -1639,19 +1263,6 @@ public class StorageLocationRestController extends BaseRestController {
                 boxes = storageLocationService.getAllBoxes();
             }
 
-            if (shelfId != null) {
-                boxes.removeIf(box -> box.getParentRack() == null || box.getParentRack().getParentShelf() == null
-                        || !shelfId.equals(box.getParentRack().getParentShelf().getId()));
-            }
-
-            if (Boolean.TRUE.equals(biorepositoryOnly)) {
-                boxes.removeIf(box -> {
-                    StorageRack parentRack = box.getParentRack();
-                    StorageShelf parentShelf = parentRack != null ? parentRack.getParentShelf() : null;
-                    StorageDevice parentDevice = parentShelf != null ? parentShelf.getParentDevice() : null;
-                    return parentDevice == null || !Boolean.TRUE.equals(parentDevice.getBiorepositoryStorage());
-                });
-            }
             // Filter by active status if specified
             if (active != null) {
                 boxes.removeIf(b -> !active.equals(b.getActive()));
@@ -1661,12 +1272,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (occupied != null) {
                 boxes.removeIf(b -> sampleStorageAssignmentDAO.isBoxOccupied(b) != occupied);
             }
-
-            if (!departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                boxes.removeIf(b -> !departmentIsolationService
-                        .canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(b), request));
-            }
-            filterBoxesByNotebookDepartment(boxes, notebookId);
 
             List<StorageBoxResponse> response = new ArrayList<>();
             for (StorageBox box : boxes) {
@@ -1680,8 +1285,7 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     @PutMapping("/boxes/{id}")
-    public ResponseEntity<?> updateBox(@PathVariable String id, @Valid @RequestBody StorageBoxForm form,
-            HttpServletRequest request) {
+    public ResponseEntity<?> updateBox(@PathVariable String id, @Valid @RequestBody StorageBoxForm form) {
         try {
             Integer idInt = Integer.parseInt(id);
             StorageBox boxToUpdate = new StorageBox();
@@ -1697,10 +1301,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageBox existingBox = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
             if (existingBox == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService
-                    .canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(existingBox), request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             Integer parentRackId = existingBox.getParentRack() != null ? existingBox.getParentRack().getId() : null;
 
@@ -1752,10 +1352,6 @@ public class StorageLocationRestController extends BaseRestController {
             if (box == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
             }
-            if (!departmentIsolationService.canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(box),
-                    request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
 
             boolean isAdmin = checkAdminStatus(request);
 
@@ -1785,10 +1381,6 @@ public class StorageLocationRestController extends BaseRestController {
             StorageBox box = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
             if (box == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService.canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(box),
-                    request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             boolean isAdmin = checkAdminStatus(request);
@@ -1823,16 +1415,12 @@ public class StorageLocationRestController extends BaseRestController {
      *         availableCount
      */
     @GetMapping("/boxes/{id}/occupancy")
-    public ResponseEntity<Map<String, Object>> getBoxOccupancy(@PathVariable String id, HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getBoxOccupancy(@PathVariable String id) {
         try {
             Integer boxId = Integer.parseInt(id);
             StorageBox box = (StorageBox) storageLocationService.get(boxId, StorageBox.class);
             if (box == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-            if (!departmentIsolationService.canAccessDepartmentScopedLocation(resolveDepartmentTestSectionIdForBox(box),
-                    request)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             Map<String, Map<String, String>> occupiedCoordinates = sampleStorageAssignmentDAO
@@ -1864,120 +1452,6 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     // ========== Helper Methods ==========
-
-    private void filterLocationMapsByDepartment(List<Map<String, Object>> maps, HttpServletRequest request) {
-        if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-            return;
-        }
-        maps.removeIf(m -> !departmentIsolationService
-                .canAccessDepartmentScopedLocation((Integer) m.get("departmentTestSectionId"), request));
-    }
-
-    private void filterLocationMapsByNotebookDepartment(List<Map<String, Object>> maps, Integer notebookId) {
-        if (notebookId == null || maps == null || maps.isEmpty()) {
-            return;
-        }
-        Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebookId);
-        if (notebookDepartmentIds.isEmpty()) {
-            maps.clear();
-            return;
-        }
-        maps.removeIf(m -> !notebookDepartmentIds.contains((Integer) m.get("departmentTestSectionId")));
-    }
-
-    private void filterBoxesByNotebookDepartment(List<StorageBox> boxes, Integer notebookId) {
-        if (notebookId == null || boxes == null || boxes.isEmpty()) {
-            return;
-        }
-        Set<Integer> notebookDepartmentIds = resolveNotebookDepartmentIds(notebookId);
-        if (notebookDepartmentIds.isEmpty()) {
-            boxes.clear();
-            return;
-        }
-        boxes.removeIf(box -> !notebookDepartmentIds.contains(resolveDepartmentTestSectionIdForBox(box)));
-    }
-
-    private Set<Integer> resolveNotebookDepartmentIds(Integer notebookId) {
-        Set<Integer> ids = new HashSet<>();
-        Set<TestSection> departments = noteBookService.getNoteBookDepartments(notebookId);
-        if (departments != null) {
-            for (TestSection department : departments) {
-                Integer id = parseDepartmentId(department);
-                if (id != null) {
-                    ids.add(id);
-                }
-            }
-        }
-        if (!ids.isEmpty()) {
-            return ids;
-        }
-
-        NoteBook notebook = noteBookService.get(notebookId);
-        String title = notebook != null ? notebook.getTitle() : null;
-        TestSection resolvedFromTitle = resolveTestSectionByTemplateTitle(normalizeNotebookDepartmentTitle(title));
-        Integer resolvedId = parseDepartmentId(resolvedFromTitle);
-        if (resolvedId != null) {
-            ids.add(resolvedId);
-        }
-        return ids;
-    }
-
-    private String normalizeNotebookDepartmentTitle(String title) {
-        if (title == null) {
-            return null;
-        }
-        return title.trim().replaceFirst("\\s+-\\s+Lab\\s+\\d+.*$", "").replaceFirst("\\s+-\\s+Entry\\s+#?\\d+.*$", "");
-    }
-
-    private void filterSampleSearchMapsByDepartment(List<Map<String, Object>> maps, HttpServletRequest request) {
-        if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-            return;
-        }
-        maps.removeIf(m -> {
-            Object idObj = m.get("id");
-            if (idObj == null) {
-                idObj = m.get("sampleItemId");
-            }
-            if (idObj == null) {
-                return true;
-            }
-            return !departmentIsolationService.canAccessSampleItemIdentifier(String.valueOf(idObj), request);
-        });
-    }
-
-    private Integer resolveDepartmentTestSectionIdForBox(StorageBox box) {
-        if (box == null || box.getParentRack() == null) {
-            return null;
-        }
-        StorageShelf shelf = box.getParentRack().getParentShelf();
-        if (shelf == null) {
-            return null;
-        }
-        StorageDevice device = shelf.getParentDevice();
-        if (device == null) {
-            return null;
-        }
-        StorageRoom room = device.getParentRoom();
-        return room != null ? room.getDepartmentTestSectionId() : null;
-    }
-
-    private Map<String, Integer> buildDepartmentScopedLocationCounts(HttpServletRequest request) {
-        List<Map<String, Object>> rooms = storageLocationService.getRoomsForAPI();
-        filterLocationMapsByDepartment(rooms, request);
-        List<Map<String, Object>> devices = storageLocationService.getDevicesForAPI(null);
-        filterLocationMapsByDepartment(devices, request);
-        List<Map<String, Object>> shelves = storageLocationService.getShelvesForAPI(null);
-        filterLocationMapsByDepartment(shelves, request);
-        List<Map<String, Object>> racks = storageLocationService.getRacksForAPI(null);
-        filterLocationMapsByDepartment(racks, request);
-
-        Map<String, Integer> counts = new HashMap<>();
-        counts.put("rooms", (int) rooms.stream().filter(r -> Boolean.TRUE.equals(r.get("active"))).count());
-        counts.put("devices", (int) devices.stream().filter(d -> Boolean.TRUE.equals(d.get("active"))).count());
-        counts.put("shelves", (int) shelves.stream().filter(s -> Boolean.TRUE.equals(s.get("active"))).count());
-        counts.put("racks", (int) racks.stream().filter(r -> Boolean.TRUE.equals(r.get("active"))).count());
-        return counts;
-    }
 
     /**
      * Generate a unique room code from the room name. If the base code already
@@ -2126,7 +1600,6 @@ public class StorageLocationRestController extends BaseRestController {
         response.setDescription(room.getDescription());
         response.setActive(room.getActive());
         response.setFhirUuid(room.getFhirUuidAsString());
-        response.setDepartmentTestSectionId(room.getDepartmentTestSectionId());
         return response;
     }
 
@@ -2139,7 +1612,6 @@ public class StorageLocationRestController extends BaseRestController {
         response.setTemperatureSetting(device.getTemperatureSetting());
         response.setCapacityLimit(device.getCapacityLimit());
         response.setActive(device.getActive());
-        response.setBiorepositoryStorage(device.getBiorepositoryStorage());
         response.setFhirUuid(device.getFhirUuidAsString());
         response.setIpAddress(device.getIpAddress());
         response.setPort(device.getPort());
@@ -2323,11 +1795,9 @@ public class StorageLocationRestController extends BaseRestController {
      * compatibility.
      */
     @GetMapping("/sample-items/search")
-    public ResponseEntity<List<Map<String, Object>>> searchSampleItems(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> searchSampleItems(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> results = storageSearchService.searchSamples(q);
-            filterSampleSearchMapsByDepartment(results, request);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching sample items with query: " + q, e);
@@ -2344,9 +1814,8 @@ public class StorageLocationRestController extends BaseRestController {
      */
     @Deprecated
     @GetMapping("/samples/search")
-    public ResponseEntity<List<Map<String, Object>>> searchSamples(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
-        return searchSampleItems(q, request);
+    public ResponseEntity<List<Map<String, Object>>> searchSamples(@RequestParam(required = false) String q) {
+        return searchSampleItems(q);
     }
 
     /**
@@ -2354,11 +1823,9 @@ public class StorageLocationRestController extends BaseRestController {
      * /rest/storage/rooms/search?q={searchTerm}
      */
     @GetMapping("/rooms/search")
-    public ResponseEntity<List<Map<String, Object>>> searchRooms(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> searchRooms(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> response = storageSearchService.searchRooms(q);
-            filterLocationMapsByDepartment(response, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error searching rooms", e);
@@ -2371,11 +1838,9 @@ public class StorageLocationRestController extends BaseRestController {
      * logic). GET /rest/storage/devices/search?q={searchTerm}
      */
     @GetMapping("/devices/search")
-    public ResponseEntity<List<Map<String, Object>>> searchDevices(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> searchDevices(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> response = storageSearchService.searchDevices(q);
-            filterLocationMapsByDepartment(response, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error searching devices", e);
@@ -2388,11 +1853,9 @@ public class StorageLocationRestController extends BaseRestController {
      * /rest/storage/shelves/search?q={searchTerm}
      */
     @GetMapping("/shelves/search")
-    public ResponseEntity<List<Map<String, Object>>> searchShelves(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> searchShelves(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> response = storageSearchService.searchShelves(q);
-            filterLocationMapsByDepartment(response, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error searching shelves", e);
@@ -2404,11 +1867,9 @@ public class StorageLocationRestController extends BaseRestController {
      * Search racks by label (name). GET /rest/storage/racks/search?q={searchTerm}
      */
     @GetMapping("/racks/search")
-    public ResponseEntity<List<Map<String, Object>>> searchRacks(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> searchRacks(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> response = storageSearchService.searchRacks(q);
-            filterLocationMapsByDepartment(response, request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error searching racks", e);
@@ -2428,14 +1889,9 @@ public class StorageLocationRestController extends BaseRestController {
      *         integer count values
      */
     @GetMapping("/dashboard/location-counts")
-    public ResponseEntity<Map<String, Integer>> getLocationCounts(HttpServletRequest request) {
+    public ResponseEntity<Map<String, Integer>> getLocationCounts() {
         try {
-            Map<String, Integer> counts;
-            if (departmentIsolationService.hasUnrestrictedDepartmentAccess(request)) {
-                counts = storageDashboardService.getLocationCountsByType();
-            } else {
-                counts = buildDepartmentScopedLocationCounts(request);
-            }
+            Map<String, Integer> counts = storageDashboardService.getLocationCountsByType();
             return ResponseEntity.ok(counts);
         } catch (Exception e) {
             logger.error("Error getting location counts", e);
@@ -2458,11 +1914,9 @@ public class StorageLocationRestController extends BaseRestController {
      * @return List of matching locations with hierarchicalPath field
      */
     @GetMapping("/locations/search")
-    public ResponseEntity<List<Map<String, Object>>> searchLocations(@RequestParam(required = false) String q,
-            HttpServletRequest request) {
+    public ResponseEntity<List<Map<String, Object>>> searchLocations(@RequestParam(required = false) String q) {
         try {
             List<Map<String, Object>> results = storageLocationService.searchLocations(q);
-            filterLocationMapsByDepartment(results, request);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
             logger.error("Error searching locations", e);

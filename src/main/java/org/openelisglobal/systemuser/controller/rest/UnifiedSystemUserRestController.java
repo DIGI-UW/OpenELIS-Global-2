@@ -21,9 +21,6 @@ import org.apache.commons.validator.GenericValidator;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.openelisglobal.common.constants.Constants;
-import org.openelisglobal.common.constants.rbac.AHRIRoleCatalog;
-import org.openelisglobal.common.constants.rbac.AHRITestSectionCatalog;
-import org.openelisglobal.common.constants.rbac.ProjectRole;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -48,7 +45,6 @@ import org.openelisglobal.systemuser.validator.UnifiedSystemUserFormValidator;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.systemuser.valueholder.UnifiedSystemUser;
 import org.openelisglobal.test.service.TestSectionService;
-import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.LabUnitRoleMap;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
@@ -173,8 +169,7 @@ public class UnifiedSystemUserRestController extends BaseController {
         setupRoles(form, request, doFiltering);
 
         // load testSections for drop down
-        List<IdValuePair> testSections = filterToAHRITestSections(
-            DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE));
+        List<IdValuePair> testSections = DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
         form.setTestSections(testSections);
         form.setSystemUsers(getDisplaySystemUsersJsonArray());
         addFlashMsgsToRequest(request);
@@ -194,42 +189,17 @@ public class UnifiedSystemUserRestController extends BaseController {
         displayRoles = sortAndGroupRoles(displayRoles);
         String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
         String labUnitRoleId = roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId();
-        Role projectRoleGroup = roleService.getRoleByName(Constants.PROJECT_ROLES_GROUP);
-
-        Set<String> ahriGlobalRoleIds = roles.stream().filter(role -> AHRIRoleCatalog.isGlobalRoleName(role.getName()))
-                .map(Role::getId).collect(Collectors.toSet());
-        Set<String> ahriDepartmentRoleIds = roles.stream()
-                .filter(role -> AHRIRoleCatalog.isDepartmentRoleName(role.getName())).map(Role::getId)
-                .collect(Collectors.toSet());
-        Set<String> ahriProjectRoleIds = roles.stream().filter(role -> AHRIRoleCatalog.isProjectRoleName(role.getName()))
-                .map(Role::getId).collect(Collectors.toSet());
 
         List<DisplayRole> globalRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
-                .filter(role -> role.getParentRole().equals(globalParentRoleId)).collect(Collectors.toList());
+                .filter(role -> role.getParentRole().equals(globalParentRoleId))
+                .filter(role -> !role.isGroupingRole())
+                .collect(Collectors.toList());
         List<DisplayRole> labUnitRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
-                .filter(role -> role.getParentRole().equals(labUnitRoleId)).collect(Collectors.toList());
-        List<DisplayRole> projectRoles;
-        if (projectRoleGroup != null) {
-            String projectRoleGroupId = projectRoleGroup.getId();
-            projectRoles = displayRoles.stream().filter(role -> role.getParentRole() != null)
-                    .filter(role -> role.getParentRole().equals(projectRoleGroupId)).collect(Collectors.toList());
-        } else {
-            projectRoles = displayRoles.stream().filter(role -> ahriProjectRoleIds.contains(role.getRoleId()))
-                    .collect(Collectors.toList());
-        }
-
-        globalRoles = globalRoles.stream().filter(role -> ahriGlobalRoleIds.contains(role.getRoleId()))
+                .filter(role -> role.getParentRole().equals(labUnitRoleId))
+                .filter(role -> !role.isGroupingRole())
                 .collect(Collectors.toList());
-        labUnitRoles = labUnitRoles.stream()
-                .filter(role -> ahriDepartmentRoleIds.contains(role.getRoleId()))
-                .collect(Collectors.toList());
-        projectRoles = projectRoles.stream()
-                .filter(role -> ahriProjectRoleIds.contains(role.getRoleId()))
-                .collect(Collectors.toList());
-
         form.setGlobalRoles(globalRoles);
         form.setLabUnitRoles(labUnitRoles);
-        form.setProjectRoles(projectRoles);
     }
 
     private List<DisplayRole> convertToDisplayRoles(List<Role> roles) {
@@ -269,9 +239,11 @@ public class UnifiedSystemUserRestController extends BaseController {
          * parents
          */
 
-        Collections.sort(roles, new Comparator<DisplayRole>() {
+        Collections.sort(roles, new Comparator() {
             @Override
-            public int compare(DisplayRole role1, DisplayRole role2) {
+            public int compare(Object obj1, Object obj2) {
+                DisplayRole role1 = (DisplayRole) obj1;
+                DisplayRole role2 = (DisplayRole) obj2;
                 return role1.getRoleName().toUpperCase().compareTo(role2.getRoleName().toUpperCase());
             }
         });
@@ -424,9 +396,11 @@ public class UnifiedSystemUserRestController extends BaseController {
                 }
             }
 
-            Set<String> scopedRoleIds = new HashSet<>(getGlobalRoleIds());
-            scopedRoleIds.addAll(getProjectRoleIds());
-            List<String> globalSelectedRoleIds = expandedRoleIds.stream().filter(scopedRoleIds::contains)
+            String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
+            List<String> globalRoleIds = getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
+                    .filter(role -> role.getGroupingParent().equals(globalParentRoleId)).map(role -> role.getId())
+                    .collect(Collectors.toList());
+            List<String> globalSelectedRoleIds = expandedRoleIds.stream().filter(role -> globalRoleIds.contains(role))
                     .collect(Collectors.toList());
             setLabunitRolesForExistingUser(form);
             form.setSelectedRoles(globalSelectedRoleIds);
@@ -476,48 +450,6 @@ public class UnifiedSystemUserRestController extends BaseController {
 
     private List<Role> getAllRoles() {
         return roleService.getAllActiveRoles();
-    }
-
-    private List<IdValuePair> filterToAHRITestSections(List<IdValuePair> testSections) {
-        if (testSections == null || testSections.isEmpty()) {
-            return testSections;
-        }
-
-        List<IdValuePair> filteredSections = testSections.stream().filter(section -> section != null)
-                .filter(section -> !GenericValidator.isBlankOrNull(section.getId())).filter(section -> {
-                    TestSection testSection = testSectionService.get(section.getId());
-                    return testSection != null && AHRITestSectionCatalog.contains(testSection.getTestSectionName());
-                }).collect(Collectors.toList());
-
-        if (filteredSections.isEmpty()) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "filterToAHRITestSections",
-                    "AHRI test-section filter produced no entries; using active test sections list");
-            return testSections;
-        }
-
-        return filteredSections;
-    }
-
-    private List<String> getGlobalRoleIds() {
-        String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
-        return getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
-                .filter(role -> role.getGroupingParent().equals(globalParentRoleId)).map(Role::getId)
-                .collect(Collectors.toList());
-    }
-
-    private List<String> getProjectRoleIds() {
-        Role projectRoleGroup = roleService.getRoleByName(Constants.PROJECT_ROLES_GROUP);
-        if (projectRoleGroup != null) {
-            String projectGroupRoleId = projectRoleGroup.getId();
-            return getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
-                    .filter(role -> role.getGroupingParent().equals(projectGroupRoleId)).map(Role::getId)
-                    .collect(Collectors.toList());
-        }
-
-        Set<String> projectRoleNames = ProjectRole.roleNames();
-        return getAllRoles().stream()
-            .filter(role -> projectRoleNames.contains(AHRIRoleCatalog.normalizeRoleName(role.getName())))
-            .map(Role::getId).collect(Collectors.toList());
     }
 
     @PostMapping(value = "/UnifiedSystemUser")
@@ -595,8 +527,10 @@ public class UnifiedSystemUserRestController extends BaseController {
                 saveUserLabUnitRoles(systemUser, form, loggedOnUserId);
             } else if (form.getAllowCopyUserRoles().equals(YES)) {
                 if (StringUtils.isNotBlank(form.getSystemUserIdToCopy().trim())) {
-                    Set<String> globaRolesIds = new HashSet<>(getGlobalRoleIds());
-                    globaRolesIds.addAll(getProjectRoleIds());
+                    String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
+                    List<String> globaRolesIds = getAllRoles().stream().filter(role -> role.getGroupingParent() != null)
+                            .filter(role -> role.getGroupingParent().equals(globalParentRoleId))
+                            .map(role -> role.getId()).collect(Collectors.toList());
                     List<String> copiedRoleIds = userRoleService.getRoleIdsForUser(form.getSystemUserIdToCopy().trim());
                     List<String> globalCopiedRoleIds = copiedRoleIds.stream()
                             .filter(role -> globaRolesIds.contains(role)).collect(Collectors.toList());
