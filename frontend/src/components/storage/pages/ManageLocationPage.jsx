@@ -77,7 +77,7 @@ export default function ManageLocationPage() {
       setError(
         intl.formatMessage({
           id: "storage.manageLocation.error.selectTarget",
-          defaultMessage: "Select a device, shelf, rack, or box before saving",
+          defaultMessage: "Select a storage location before saving",
         }),
       );
       return;
