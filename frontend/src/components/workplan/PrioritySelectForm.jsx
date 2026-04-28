@@ -28,18 +28,21 @@ function PanelSelectForm(props) {
       "priority",
     );
     priorityId = priorityId ? priorityId : "";
-    getFromOpenElisServer("/rest/displayList/ORDER_PRIORITY", (fetchedPriorities) => {
-      let priority = fetchedPriorities.find(
-        (priority) => priority.id === priorityId,
-      );
-      let priorityLabel = priority
-        ? priority.value
-        : intl.formatMessage({ id: "input.placeholder.selectPriority" });
-      setDefaultPriorityId(priorityId);
-      setDefaultPriorityLabel(priorityLabel);
-      props.value(priorityId, priorityLabel);
-      getTests(fetchedPriorities);
-    });
+    getFromOpenElisServer(
+      "/rest/displayList/ORDER_PRIORITY",
+      (fetchedPriorities) => {
+        let priority = fetchedPriorities.find(
+          (priority) => priority.id === priorityId,
+        );
+        let priorityLabel = priority
+          ? priority.value
+          : intl.formatMessage({ id: "input.placeholder.selectPriority" });
+        setDefaultPriorityId(priorityId);
+        setDefaultPriorityLabel(priorityLabel);
+        props.value(priorityId, priorityLabel);
+        getTests(fetchedPriorities);
+      },
+    );
     return () => {
       mounted.current = false;
     };

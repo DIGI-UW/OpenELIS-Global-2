@@ -1790,6 +1790,7 @@
   "error.required.destination": "Destination facility is required",
   "error.save.failed": "Failed to save",
   "error.save.msg": "Error While saving",
+  "error.save.order": "Error while saving order",
   "error.save.patient": "Error While Saving Patient",
   "error.title": "Error",
   "errorBoundary.reload": "Reload",

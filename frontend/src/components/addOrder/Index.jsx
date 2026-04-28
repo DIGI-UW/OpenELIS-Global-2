@@ -10,6 +10,7 @@ import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
+  resolveApiErrorMessage,
 } from "../utils/Utils";
 import OrderEntryAdditionalQuestions from "./OrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "./OrderSuccessMessage";
@@ -569,8 +570,10 @@ const Index = () => {
       );
       setPage(page + 1);
     } else {
+      // Surface the backend's actual error/fieldErrors instead of the generic
+      // "Oops, Server error..." fallback.
       showAlertMessage(
-        <FormattedMessage id="server.error.msg" />,
+        resolveApiErrorMessage(intl, response, "server.error.msg"),
         NotificationKinds.error,
       );
     }

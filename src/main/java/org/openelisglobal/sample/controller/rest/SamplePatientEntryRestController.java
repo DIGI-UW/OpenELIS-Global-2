@@ -53,7 +53,6 @@ import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
-import org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
@@ -69,7 +68,6 @@ import org.openelisglobal.systemuser.service.UserService;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -191,9 +189,6 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     @Autowired
     private BarcodeWorkflowPrintService barcodeWorkflowPrintService;
 
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
-
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.setAllowedFields(ALLOWED_FIELDS);
@@ -265,7 +260,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
      */
     @PostMapping(value = "SamplePatientEntry", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResponseEntity<SamplePatientEntryForm> samplePatientEntrySave(HttpServletRequest request,
+    public ResponseEntity<?> samplePatientEntrySave(HttpServletRequest request,
             @Validated(SamplePatientEntryForm.SamplePatientEntry.class) @RequestBody SamplePatientEntryForm form,
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -292,7 +287,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             if (hasNonPatientErrors) {
                 saveErrors(result);
                 logger.warn("SamplePatientEntry 400 (formValidator): {}", result.getAllErrors());
-                return ResponseEntity.badRequest().body(form);
+                return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
             }
         }
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
@@ -383,7 +378,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         if (hasNonPatientErrors) {
             saveErrors(result);
             logger.warn("SamplePatientEntry 400 (validateSample): {}", result.getAllErrors());
-            return ResponseEntity.badRequest().body(form);
+            return ResponseEntity.badRequest().body(buildErrorBody(result, "Validation failed"));
         }
 
         // OGC-584: track persistence failure so we can return a proper HTTP
@@ -391,17 +386,19 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // reliable because the environmental-workflow path above intentionally
         // skips patient-field errors while leaving them in the BindingResult.
         boolean persistFailed = false;
+        // Captures the actual failure message (e.g. storage-position-occupied)
+        // when persistData rolls back, so we can return it instead of a
+        // generic "Failed to save order" / "Transaction silently rolled
+        // back...". Spring may wrap the original exception, so we walk the
+        // cause chain.
+        String persistErrorMessage = null;
 
         try {
+            // Note: persistData now publishes SamplePatientUpdateDataCreatedEvent
+            // internally (inside its @Transactional boundary) so listener
+            // failures roll back the whole save. Don't republish here.
             samplePatientService.persistData(updateData, patientUpdate, patientInfo, form, request);
             populateWorkflowPrintModels(form, sampleOrder.getLabNo());
-            try {
-                SamplePatientUpdateDataCreatedEvent event = new SamplePatientUpdateDataCreatedEvent(this, updateData,
-                        patientInfo, form);
-                eventPublisher.publishEvent(event);
-            } catch (Exception e) {
-                LogEvent.logError(e);
-            }
 
             if (sampleOrder.getPriority() != null && sampleOrder.getPriority().equals(OrderPriority.STAT)) {
                 List<String> systemUserIds = userRoleService.getUserIdsForRole(Constants.ROLE_RESULTS);
@@ -442,9 +439,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 result.reject("errors.UpdateException", "errors.UpdateException");
             }
             logger.error("SamplePatientEntry errors: {}", result.toString());
+            persistErrorMessage = rootCauseMessage(e);
             persistFailed = true;
         } catch (Exception e) {
             logger.error("Unexpected error saving order for labNo={}", sampleOrder.getLabNo(), e);
+            persistErrorMessage = rootCauseMessage(e);
             result.reject("errors.UpdateException", "errors.UpdateException");
 
             saveErrors(result);
@@ -486,8 +485,16 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // OGC-584: return a non-2xx status if persistence threw an exception that
         // the catch blocks above swallowed (previously this method still returned
         // HTTP 200 in that case — the silent-200-no-persist bug).
+        // Prefer the captured root-cause message (e.g. "Position Box A is
+        // already occupied...") over the generic BindingResult fallback.
         if (persistFailed) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(form);
+            if (StringUtils.isNotBlank(persistErrorMessage)
+                    && !persistErrorMessage.startsWith("Transaction silently rolled back")) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", persistErrorMessage));
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(buildErrorBody(result, "Failed to save order"));
         }
 
         // Belt-and-suspenders: verify the row actually made it to the DB. Guards
@@ -499,7 +506,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 ? sampleService.getSampleByAccessionNumber(labNoForVerify)
                 : null;
         if (persistedSample == null || persistedSample.getId() == null) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(form);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Order save did not persist (verification check failed). See server logs."));
         }
 
         return ResponseEntity.ok(form);
@@ -664,5 +672,55 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         } else {
             return "PageNotFound";
         }
+    }
+
+    /**
+     * Walk the exception cause chain to find the deepest non-blank message. When a
+     * service throws inside a transactional event listener, Spring may wrap the
+     * original LIMSRuntimeException in an UnexpectedRollbackException whose message
+     * is the unhelpful "Transaction silently rolled back...". The actual message
+     * ("Position Box A is already occupied...") sits on the root cause.
+     */
+    private static String rootCauseMessage(Throwable t) {
+        Throwable cur = t;
+        Throwable best = t;
+        while (cur != null) {
+            if (StringUtils.isNotBlank(cur.getMessage())) {
+                best = cur;
+            }
+            if (cur.getCause() == null || cur.getCause() == cur) {
+                break;
+            }
+            cur = cur.getCause();
+        }
+        return best != null ? best.getMessage() : null;
+    }
+
+    /**
+     * Build a structured error response body from a failed BindingResult so the
+     * frontend can surface a meaningful message. Returns a Map with a top-level
+     * human-readable `error` plus the per-field list — kept separate from the form
+     * (success path) to avoid mixing concerns.
+     */
+    private static Map<String, Object> buildErrorBody(BindingResult result, String fallbackMessage) {
+        org.springframework.validation.FieldError firstFe = result.getFieldError();
+        String message;
+        if (firstFe != null) {
+            message = firstFe.getField() + ": "
+                    + (firstFe.getDefaultMessage() != null ? firstFe.getDefaultMessage() : "invalid value");
+        } else if (!result.getAllErrors().isEmpty() && result.getAllErrors().get(0).getDefaultMessage() != null) {
+            message = result.getAllErrors().get(0).getDefaultMessage();
+        } else {
+            message = fallbackMessage;
+        }
+        Map<String, Object> body = new java.util.HashMap<>();
+        body.put("error", message);
+        body.put("fieldErrors", result.getFieldErrors().stream().map(fe -> {
+            Map<String, String> entry = new java.util.HashMap<>();
+            entry.put("field", fe.getField());
+            entry.put("defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "");
+            return entry;
+        }).collect(Collectors.toList()));
+        return body;
     }
 }
