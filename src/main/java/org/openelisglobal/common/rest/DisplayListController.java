@@ -297,6 +297,12 @@ public class DisplayListController extends BaseRestController {
         return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
     }
 
+    @GetMapping(value = "disease-programmes", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public List<IdValuePair> getDiseaseProgrammeList() {
+        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_DISEASE_PROGRAMME);
+    }
+
     @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getMaritialList() {

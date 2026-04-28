@@ -157,6 +157,14 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String occupation;
 
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String customNotes;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class })
+    private String targetDiseaseProgramme;
+
     @Pattern(regexp = ValidationHelper.PHONE_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String primaryPhone;
@@ -374,6 +382,22 @@ public class PatientManagementInfo implements Serializable {
 
     public void setOccupation(String occupation) {
         this.occupation = occupation;
+    }
+
+    public String getCustomNotes() {
+        return customNotes;
+    }
+
+    public void setCustomNotes(String customNotes) {
+        this.customNotes = customNotes;
+    }
+
+    public String getTargetDiseaseProgramme() {
+        return targetDiseaseProgramme;
+    }
+
+    public void setTargetDiseaseProgramme(String targetDiseaseProgramme) {
+        this.targetDiseaseProgramme = targetDiseaseProgramme;
     }
 
     public List<IdValuePair> getGenders() {

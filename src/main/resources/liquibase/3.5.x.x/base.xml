@@ -68,4 +68,7 @@
   <!-- Default nationality configuration for patient entry -->
   <include relativeToChangelogFile="true" file="default-nationality-config.xml"/>
 
+  <!-- Custom Notes + Target Disease Programme patient form fields -->
+  <include relativeToChangelogFile="true" file="018-add-patient-extra-fields.xml"/>
+
 </databaseChangeLog>

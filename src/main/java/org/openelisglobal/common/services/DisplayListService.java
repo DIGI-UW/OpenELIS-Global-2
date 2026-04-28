@@ -89,7 +89,7 @@ public class DisplayListService implements LocaleChangeListener {
     public enum ListType {
         HOURS, MINS, SAMPLE_TYPE_ACTIVE, SAMPLE_TYPE_INACTIVE, SAMPLE_TYPE, INITIAL_SAMPLE_CONDITION,
         SAMPLE_PATIENT_PAYMENT_OPTIONS, PATIENT_HEALTH_REGIONS, PATIENT_MARITAL_STATUS, PATIENT_NATIONALITY,
-        PATIENT_EDUCATION, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC, SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS,
+        PATIENT_EDUCATION, PATIENT_DISEASE_PROGRAMME, GENDERS, SAMPLE_PATIENT_REFERRING_CLINIC, SAMPLE_PATIENT_CLINIC_DEPARTMENT, QA_EVENTS,
         TEST_SECTION_ACTIVE, TEST_SECTION_INACTIVE, TEST_SECTION_BY_NAME, HAITI_DEPARTMENTS, PATIENT_SEARCH_CRITERIA,
         PANELS, PANELS_ACTIVE, PANELS_INACTIVE, ORDERABLE_TESTS, ALL_TESTS, REJECTION_REASONS, REFERRAL_REASONS,
         REFERRAL_ORGANIZATIONS, TEST_LOCATION_CODE, DICTIONARY_PROGRAM, RESULT_TYPE_LOCALIZED, RESULT_TYPE_RAW,
@@ -197,6 +197,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
         typeToListMap.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
         typeToListMap.put(ListType.GENDERS, createGenderList());
         typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
         typeToListMap.put(ListType.TEST_SECTION_ACTIVE, createTestSectionActiveList());
@@ -485,6 +487,8 @@ public class DisplayListService implements LocaleChangeListener {
                 createFromDictionaryCategoryLocalizedSort("Nationality Demographic Information"));
         typeToListMap.put(ListType.PATIENT_EDUCATION,
                 createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+        typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
         typeToListMap.put(ListType.GENDERS, createGenderList());
         typeToListMap.put(ListType.SAMPLE_PATIENT_REFERRING_CLINIC, createReferringClinicList());
         typeToListMap.put(ListType.QA_EVENTS, createSortedQAEvents());
@@ -652,6 +656,11 @@ public class DisplayListService implements LocaleChangeListener {
         case PATIENT_EDUCATION: {
             typeToListMap.put(ListType.PATIENT_EDUCATION,
                     createFromDictionaryCategoryLocalizedSort("Education Level Demographic Information"));
+            break;
+        }
+        case PATIENT_DISEASE_PROGRAMME: {
+            typeToListMap.put(ListType.PATIENT_DISEASE_PROGRAMME,
+                    createFromDictionaryCategoryLocalizedSort("Patient Disease Programme"));
             break;
         }
         case PATIENT_MARITAL_STATUS: {

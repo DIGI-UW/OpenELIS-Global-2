@@ -17,6 +17,7 @@ import {
   Form,
   FormLabel,
   TextInput,
+  TextArea,
   Button,
   RadioButton,
   RadioButtonGroup,
@@ -72,6 +73,7 @@ function CreatePatientForm(props) {
     useState(null); // Track which patient's hierarchy is initialized
   const [educationList, setEducationList] = useState([]);
   const [maritalStatuses, setMaritalStatuses] = useState([]);
+  const [diseaseProgrammes, setDiseaseProgrammes] = useState([]);
   const [prevfirstName, setPrevfirstName] = useState("");
   const [prevlastName, setPrevlastName] = useState("");
   const [prevfirstContactName, setPrevfirstContactName] = useState("");
@@ -577,6 +579,11 @@ function CreatePatientForm(props) {
     getFromOpenElisServer("/rest/health-regions", fetchHeathRegions);
     getFromOpenElisServer("/rest/education-list", fetchEducationList);
     getFromOpenElisServer("/rest/marital-statuses", fetchMaritalStatuses);
+    getFromOpenElisServer("/rest/disease-programmes", (list) => {
+      if (componentMounted.current) {
+        setDiseaseProgrammes(list || []);
+      }
+    });
     // getFromOpenElisServer("/rest/nationalities", fetchNationalities);
     repopulatePatientInfo();
     return () => {
@@ -1645,6 +1652,65 @@ function CreatePatientForm(props) {
                                   placeholder={intl.formatMessage({
                                     id: "patient.emergency.additional.othernationality",
                                   })}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={16} md={8} sm={4}>
+                            {" "}
+                            <br></br>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="occupation">
+                              {({ field }) => (
+                                <TextInput
+                                  value={values.occupation || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.label.occupation",
+                                  })}
+                                  id={field.name}
+                                />
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={8} md={4} sm={4}>
+                            <Field name="targetDiseaseProgramme">
+                              {({ field }) => (
+                                <Select
+                                  id="targetDiseaseProgramme"
+                                  value={values.targetDiseaseProgramme || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.label.diseaseProgramme",
+                                  })}
+                                  onChange={() => {}}
+                                >
+                                  <SelectItem text="" value="" />
+                                  {diseaseProgrammes.map((item, index) => (
+                                    <SelectItem
+                                      text={item.value}
+                                      value={item.value}
+                                      key={index}
+                                    />
+                                  ))}
+                                </Select>
+                              )}
+                            </Field>
+                          </Column>
+                          <Column lg={16} md={8} sm={4}>
+                            <Field name="customNotes">
+                              {({ field }) => (
+                                <TextArea
+                                  value={values.customNotes || ""}
+                                  name={field.name}
+                                  labelText={intl.formatMessage({
+                                    id: "patient.label.customNotes",
+                                  })}
+                                  id={field.name}
+                                  rows={3}
+                                  maxCount={255}
+                                  enableCounter
                                 />
                               )}
                             </Field>
