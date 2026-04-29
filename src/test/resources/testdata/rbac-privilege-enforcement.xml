@@ -26,15 +26,13 @@
 
     <system_role id="901" name="RBAC_TEST_VIEWER"
         description="Has patient:view" is_grouping_role="false"
-        display_key="rbacTestKey" active="true"
-        editable="true" />
+        display_key="rbacTestKey" active="true" editable="true" />
     <system_role id="902" name="RBAC_TEST_EMPTY"
         description="No privileges" is_grouping_role="false"
-        display_key="rbacEmptyKey" active="true"
-        editable="true" />
+        display_key="rbacEmptyKey" active="true" editable="true" />
 
-    <system_role_privilege id="901" system_role_id="901"
-        privilege_id="901" />
+    <system_role_privilege id="901"
+        system_role_id="901" privilege_id="901" />
 
     <system_user_role system_user_id="901" role_id="901" />
     <system_user_role system_user_id="902" role_id="902" />

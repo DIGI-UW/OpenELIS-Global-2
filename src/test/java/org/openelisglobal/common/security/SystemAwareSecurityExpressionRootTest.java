@@ -45,10 +45,9 @@ public class SystemAwareSecurityExpressionRootTest {
 
     @Test
     public void hasPrivilege_delegatesToAuthority_whenAuthPresent() {
-        org.springframework.security.core.Authentication auth =
-                mock(org.springframework.security.core.Authentication.class);
-        org.springframework.security.core.context.SecurityContextHolder
-                .getContext().setAuthentication(auth);
+        org.springframework.security.core.Authentication auth = mock(
+                org.springframework.security.core.Authentication.class);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
 
         when(delegate.hasAuthority("PATIENT_VIEW")).thenReturn(true);
         assertTrue(root.hasPrivilege("PATIENT_VIEW"));
@@ -57,10 +56,9 @@ public class SystemAwareSecurityExpressionRootTest {
 
     @Test
     public void hasPrivilege_returnsFalse_whenAuthPresentAndNotGranted() {
-        org.springframework.security.core.Authentication auth =
-                mock(org.springframework.security.core.Authentication.class);
-        org.springframework.security.core.context.SecurityContextHolder
-                .getContext().setAuthentication(auth);
+        org.springframework.security.core.Authentication auth = mock(
+                org.springframework.security.core.Authentication.class);
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
 
         when(delegate.hasAuthority("PATIENT_VIEW")).thenReturn(false);
         assertFalse(root.hasPrivilege("PATIENT_VIEW"));
