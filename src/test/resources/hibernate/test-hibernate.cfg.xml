@@ -84,8 +84,6 @@
         <mapping resource="hibernate/hbm/TypeOfSample.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfTestResult.hbm.xml" />
         <mapping resource="hibernate/hbm/UnitOfMeasure.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemModule.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemUserModule.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemUserSection.hbm.xml" />
         <mapping resource="hibernate/hbm/SamplePdf.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleNewborn.hbm.xml" />
@@ -95,9 +93,7 @@
         <mapping resource="hibernate/hbm/PatientPatientType.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSamplePanel.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfSampleTest.hbm.xml" />
-        <mapping resource="hibernate/hbm/Role.hbm.xml" />
         <mapping resource="hibernate/hbm/UserRole.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemRoleModule.hbm.xml" />
         <mapping resource="hibernate/hbm/OrganizationType.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleRequester.hbm.xml" />
         <mapping resource="hibernate/hbm/DatabaseChangeLog.hbm.xml" />
@@ -139,8 +135,6 @@
         <mapping resource="hibernate/hbm/DataResource.hbm.xml" />
         <mapping resource="hibernate/hbm/DataValue.hbm.xml" />
         <mapping resource="hibernate/hbm/TypeOfDataIndicator.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemModuleUrl.hbm.xml" />
-        <mapping resource="hibernate/hbm/SystemModuleParam.hbm.xml" />
         <mapping
             class="org.openelisglobal.qaevent.valueholder.NceCategory" />
         <mapping

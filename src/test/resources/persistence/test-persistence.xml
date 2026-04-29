@@ -150,7 +150,10 @@
         <!-- Generic Reporting Framework entities (reporting-framework) -->
         <class>org.openelisglobal.reportdefinition.valueholder.ReportDefinition</class>
 
-        <!-- User Role entities (Required for real UserService filtering) -->
+        <!-- User Role and Privilege entities (Required for RBAC) -->
+        <class>org.openelisglobal.privilege.valueholder.Privilege</class>
+        <class>org.openelisglobal.privilege.valueholder.RolePrivilege</class>
+        <class>org.openelisglobal.role.valueholder.Role</class>
         <class>org.openelisglobal.userrole.valueholder.UserLabUnitRoles</class>
         <class>org.openelisglobal.userrole.valueholder.LabUnitRoleMap</class>
 

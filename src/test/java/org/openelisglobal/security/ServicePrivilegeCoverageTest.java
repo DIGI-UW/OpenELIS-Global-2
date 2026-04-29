@@ -41,7 +41,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
  * Uses ASM ({@code org.springframework.asm}) to inspect bytecode directly — no
  * class loading, no static initializers triggered.
  */
-public class EndpointPrivilegeCoverageTest {
+public class ServicePrivilegeCoverageTest {
 
     private static final String BASE_PACKAGE_PATH = "org/openelisglobal";
     private static final String PRE_AUTHORIZE_DESC = "Lorg/springframework/security/access/prepost/PreAuthorize;";
