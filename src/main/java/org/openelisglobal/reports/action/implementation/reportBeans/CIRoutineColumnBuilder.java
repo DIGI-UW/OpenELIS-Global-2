@@ -122,22 +122,21 @@ public abstract class CIRoutineColumnBuilder extends CSVRoutineColumnBuilder {
     }
 
     protected void defineBasicColumns() {
-        add("accession_number", "LABNO", NONE);
-        add("lab_unit", "LAB_UNIT", NONE);
-        add("national_id", "IDENTIFIER", NONE);
-        add("gender", "SEX", NONE);
-        add("birth_date", "BIRTHDATE", DATE);
-        add("entered_date", "AGEYEARS", AGE_YEARS);
-        add("entered_date", "AGEMONTHS", AGE_MONTHS);
-        add("entered_date", "AGEWEEKS", AGE_WEEKS);
-        add("received_date", "DATERECPT", DATE_TIME); // reception date
-        add("entered_date", "DATEENTERED", DATE_TIME); // interview date
-        add("collection_date", "DATECOLLECT", DATE_TIME); // collection date
-        // add("released_date", "DATEVALIDATION", DATE_TIME ); // validation date
-        add("organization_code", "CODEREFERER", NONE);
-        add("organization_name", "REFERER", NONE);
-        add("program", "PROGRAM", PROGRAM);
-        add("status_id", "STATUS", SAMPLE_STATUS);
+        add("accession_number", "Lab No", NONE);
+        add("lab_unit", "Lab Unit", NONE);
+        add("national_id", "Identifier", NONE);
+        add("gender", "Sex", NONE);
+        add("birth_date", "Birth Date", DATE);
+        add("entered_date", "Age (Years)", AGE_YEARS);
+        add("entered_date", "Age (Months)", AGE_MONTHS);
+        add("entered_date", "Age (Weeks)", AGE_WEEKS);
+        add("received_date", "Date Received", DATE_TIME);
+        add("entered_date", "Date Entered", DATE_TIME);
+        add("collection_date", "Date Collected", DATE_TIME);
+        add("organization_code", "Referrer Code", NONE);
+        add("organization_name", "Referrer", NONE);
+        add("program", "Program", PROGRAM);
+        add("status_id", "Status", SAMPLE_STATUS);
         // add("external_id", "SUJETSIT", NONE);
         // add("last_name", "NOM", NONE);
         // add("first_name", "PRENOM", NONE);
