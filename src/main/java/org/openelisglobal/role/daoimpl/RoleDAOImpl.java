@@ -146,11 +146,11 @@ public class RoleDAOImpl extends BaseDAOImpl<Role, Integer> implements RoleDAO {
     @Override
     @Transactional(readOnly = true)
     public Role getRoleByName(String name) throws LIMSRuntimeException {
-        String sql = "from Role r where trim(r.name) = :name";
+        String sql = "from Role r where r.name = :name";
 
         try {
             Query<Role> query = entityManager.unwrap(Session.class).createQuery(sql, Role.class);
-            query.setParameter("name", name);
+            query.setParameter("name", name == null ? null : name.trim());
             Role role = query.setMaxResults(1).uniqueResult();
             return role;
         } catch (HibernateException e) {
