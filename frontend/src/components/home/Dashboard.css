@@ -56,17 +56,17 @@
   color: #0f62fe;
 }
 
-.tile-title {
+.dashboard-tile__title {
   margin: 0;
 }
 
-.tile-subtitle {
+.dashboard-tile__subtitle {
   margin: 0.25rem 0 0;
   min-height: 1.125rem;
   color: var(--cds-text-secondary, #525252);
 }
 
-.tile-value {
+.dashboard-tile__value {
   margin: 0.5rem 0 0;
 }
 
@@ -85,17 +85,17 @@
   cursor: pointer;
 }
 
-.tile-title-view {
+.dashboard-tile__title-view {
   margin: 0;
 }
 
-.tile-subtitle-view {
+.dashboard-tile__subtitle-view {
   margin: 0.25rem 0 0;
   min-height: 1.5rem;
   color: var(--cds-text-secondary, #525252);
 }
 
-.tile-value-view {
+.dashboard-tile__value-view {
   margin: 0.5rem 0 0;
 }
 

@@ -537,9 +537,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                     <TileIcon size={28} />
                   </div>
                 )}
-                <h3 className="tile-title">{tile.title}</h3>
-                <p className="tile-subtitle">{tile.subTitle ?? " "}</p>
-                <h2 className="tile-value">{tile.value}</h2>
+                <h3 className="dashboard-tile__title">{tile.title}</h3>
+                <p className="dashboard-tile__subtitle">
+                  {tile.subTitle ?? " "}
+                </p>
+                <h2 className="dashboard-tile__value">{tile.value}</h2>
 
                 <div className="tile-icon">
                   <div
@@ -562,11 +564,15 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
           <Tile className="dashboard-tile">
             <Grid>
               <Column lg={16} md={8} sm={4}>
-                <h2 className="tile-title-view">{selectedTile.title}</h2>
-                <p className="tile-subtitle-view">
+                <h2 className="dashboard-tile__title-view">
+                  {selectedTile.title}
+                </h2>
+                <p className="dashboard-tile__subtitle-view">
                   {selectedTile.subTitle ?? " "}
                 </p>
-                <h1 className="tile-value-view">{selectedTile.value}</h1>
+                <h1 className="dashboard-tile__value-view">
+                  {selectedTile.value}
+                </h1>
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
@@ -586,9 +592,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   <div className="home-dashboard-container">
                     {averageTimeTileList.map((tile, index) => (
                       <Tile key={index} className="dashboard-tile">
-                        <h3 className="tile-title">{tile.title}</h3>
-                        <p className="tile-subtitle">{tile.subTitle}</p>
-                        <h2 className="tile-value">{tile.value}</h2>
+                        <h3 className="dashboard-tile__title">{tile.title}</h3>
+                        <p className="dashboard-tile__subtitle">
+                          {tile.subTitle}
+                        </p>
+                        <h2 className="dashboard-tile__value">{tile.value}</h2>
                       </Tile>
                     ))}
                   </div>
