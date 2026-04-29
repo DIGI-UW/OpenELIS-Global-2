@@ -539,7 +539,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                 )}
                 <h3 className="tile-title">{tile.title}</h3>
                 <p className="tile-subtitle">{tile.subTitle ?? " "}</p>
-                <p className="tile-value">{tile.value}</p>
+                <h2 className="tile-value">{tile.value}</h2>
 
                 <div className="tile-icon">
                   <div
@@ -562,11 +562,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
           <Tile className="dashboard-tile">
             <Grid>
               <Column lg={16} md={8} sm={4}>
-                <h3 className="tile-title-view">{selectedTile.title}</h3>
+                <h2 className="tile-title-view">{selectedTile.title}</h2>
                 <p className="tile-subtitle-view">
                   {selectedTile.subTitle ?? " "}
                 </p>
-                <p className="tile-value-view">{selectedTile.value}</p>
+                <h1 className="tile-value-view">{selectedTile.value}</h1>
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
@@ -588,7 +588,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                       <Tile key={index} className="dashboard-tile">
                         <h3 className="tile-title">{tile.title}</h3>
                         <p className="tile-subtitle">{tile.subTitle}</p>
-                        <p className="tile-value">{tile.value}</p>
+                        <h2 className="tile-value">{tile.value}</h2>
                       </Tile>
                     ))}
                   </div>
