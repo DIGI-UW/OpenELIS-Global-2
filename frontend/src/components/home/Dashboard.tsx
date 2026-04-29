@@ -537,7 +537,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                     <TileIcon size={28} />
                   </div>
                 )}
-                <h3 className="dashboard-tile__title">{tile.title}</h3>
+                <h5 className="dashboard-tile__title">{tile.title}</h5>
                 <p className="dashboard-tile__subtitle">
                   {tile.subTitle ?? " "}
                 </p>
@@ -592,7 +592,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   <div className="home-dashboard-container">
                     {averageTimeTileList.map((tile, index) => (
                       <Tile key={index} className="dashboard-tile">
-                        <h3 className="dashboard-tile__title">{tile.title}</h3>
+                        <h5 className="dashboard-tile__title">{tile.title}</h5>
                         <p className="dashboard-tile__subtitle">
                           {tile.subTitle}
                         </p>
