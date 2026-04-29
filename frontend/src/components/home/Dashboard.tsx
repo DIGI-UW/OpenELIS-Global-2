@@ -538,9 +538,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   </div>
                 )}
                 <h3 className="tile-title">{tile.title}</h3>
-                {tile.subTitle && (
-                  <p className="tile-subtitle">{tile.subTitle}</p>
-                )}
+                <p className="tile-subtitle">{tile.subTitle ?? " "}</p>
                 <p className="tile-value">{tile.value}</p>
 
                 <div className="tile-icon">
@@ -565,9 +563,9 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
             <Grid>
               <Column lg={16} md={8} sm={4}>
                 <h3 className="tile-title-view">{selectedTile.title}</h3>
-                {selectedTile.subTitle && (
-                  <p className="tile-subtitle-view">{selectedTile.subTitle}</p>
-                )}
+                <p className="tile-subtitle-view">
+                  {selectedTile.subTitle ?? " "}
+                </p>
                 <p className="tile-value-view">{selectedTile.value}</p>
                 {
                   <div className="tile-icon">
