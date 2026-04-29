@@ -58,25 +58,28 @@
 
 .tile-title {
   margin: 0;
-  font-size: 1.5rem;
-  line-height: 1.875rem;
-  font-weight: 600;
+  font-size: var(--cds-heading-03-font-size, 1.25rem);
+  font-weight: var(--cds-heading-03-font-weight, 400);
+  line-height: var(--cds-heading-03-line-height, 1.4);
+  letter-spacing: var(--cds-heading-03-letter-spacing, 0);
 }
 
 .tile-subtitle {
-  margin-top: 6px;
-  color: #525252;
-  font-size: 1.125rem;
-  line-height: 1.5rem;
-  min-height: 1.5rem;
-  font-weight: 400;
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: var(--cds-body-compact-01-font-size, 0.875rem);
+  font-weight: var(--cds-body-compact-01-font-weight, 400);
+  line-height: var(--cds-body-compact-01-line-height, 1.28572);
+  letter-spacing: var(--cds-body-compact-01-letter-spacing, 0.16px);
+  min-height: 1.125rem;
 }
 
 .tile-value {
-  margin-top: 10px;
-  font-size: 2.25rem;
-  line-height: 2.5rem;
-  font-weight: 700;
+  margin-top: 0.5rem;
+  font-size: var(--cds-heading-05-font-size, 2rem);
+  font-weight: var(--cds-heading-05-font-weight, 400);
+  line-height: var(--cds-heading-05-line-height, 1.25);
+  letter-spacing: var(--cds-heading-05-letter-spacing, 0);
 }
 
 .tile-icon {
@@ -96,25 +99,28 @@
 
 .tile-title-view {
   margin: 0;
-  font-size: 1.75rem;
-  line-height: 2.125rem;
-  font-weight: 600;
+  font-size: var(--cds-heading-04-font-size, 1.75rem);
+  font-weight: var(--cds-heading-04-font-weight, 400);
+  line-height: var(--cds-heading-04-line-height, 1.28572);
+  letter-spacing: var(--cds-heading-04-letter-spacing, 0);
 }
 
 .tile-subtitle-view {
-  margin-top: 6px;
-  color: #525252;
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  min-height: 1.75rem;
-  font-weight: 400;
+  margin-top: 0.25rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: var(--cds-body-01-font-size, 1rem);
+  font-weight: var(--cds-body-01-font-weight, 400);
+  line-height: var(--cds-body-01-line-height, 1.5);
+  letter-spacing: var(--cds-body-01-letter-spacing, 0.16px);
+  min-height: 1.5rem;
 }
 
 .tile-value-view {
-  margin-top: 10px;
-  font-size: 2.5rem;
-  line-height: 2.875rem;
-  font-weight: 700;
+  margin-top: 0.5rem;
+  font-size: var(--cds-heading-06-font-size, 2.625rem);
+  font-weight: var(--cds-heading-06-font-weight, 300);
+  line-height: var(--cds-heading-06-line-height, 1.199);
+  letter-spacing: var(--cds-heading-06-letter-spacing, 0);
 }
 
 @media (max-width: 925px) {
