@@ -58,15 +58,18 @@
 
 .tile-title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  line-height: 1.875rem;
+  font-weight: 600;
 }
 
 .tile-subtitle {
-  margin-top: 5px;
-  color: #666;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  min-height: 1.25rem;
+  margin-top: 6px;
+  color: #525252;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  min-height: 1.5rem;
+  font-weight: 400;
 }
 
 .tile-value {
@@ -92,15 +95,18 @@
 
 .tile-title-view {
   margin: 0;
-  font-size: 1.6rem;
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  font-weight: 600;
 }
 
 .tile-subtitle-view {
-  margin-top: 5px;
-  color: #666;
-  font-size: 1rem;
-  line-height: 1.5rem;
-  min-height: 1.5rem;
+  margin-top: 6px;
+  color: #525252;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  min-height: 1.75rem;
+  font-weight: 400;
 }
 
 .tile-value-view {
