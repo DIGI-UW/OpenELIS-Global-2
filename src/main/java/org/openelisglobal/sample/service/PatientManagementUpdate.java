@@ -152,6 +152,8 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         persistIdentityType(patientInfo.getAka(), "AKA");
         persistIdentityType(patientInfo.getInsuranceNumber(), "INSURANCE");
         persistIdentityType(patientInfo.getOccupation(), "OCCUPATION");
+        persistIdentityType(patientInfo.getCustomNotes(), "CUSTOM_NOTES");
+        persistIdentityType(patientInfo.getTargetDiseaseProgramme(), "DISEASE_PROGRAMME");
         persistIdentityType(patientInfo.getSubjectNumber(), "SUBJECT");
         persistIdentityType(patientInfo.getMothersInitial(), "MOTHERS_INITIAL");
         persistIdentityType(patientInfo.getEducation(), "EDUCATION");
@@ -179,7 +181,17 @@ public class PatientManagementUpdate extends ControllerUtills implements IPatien
         PersonAddress village = null;
         PersonAddress commune = null;
         PersonAddress dept = null;
+
+        // Skip if person ID is not yet assigned (newly created person not yet
+        // persisted)
+        if (person == null || person.getId() == null) {
+            return;
+        }
+
         List<PersonAddress> personAddressList = personAddressService.getAddressPartsByPersonId(person.getId());
+        if (personAddressList == null) {
+            return;
+        }
 
         for (PersonAddress address : personAddressList) {
             if (address.getAddressPartId().equals(ADDRESS_PART_COMMUNE_ID)) {

@@ -94,7 +94,7 @@ function ReflexRule() {
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/samples", fetchSamples);
+    getFromOpenElisServer("/rest/displayList/SAMPLE_TYPE_ACTIVE", fetchSamples);
     getFromOpenElisServer("/rest/reflexrule-options", fetchRuleOptions);
     getFromOpenElisServer("/rest/reflexrules", fetchReflexRules);
 

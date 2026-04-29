@@ -83,13 +83,13 @@ function TATFilterBar({ onGenerate }) {
   const [siteOptions, setSiteOptions] = useState([]);
 
   useEffect(() => {
-    getFromOpenElisServer("/rest/test-sections", (res) => {
+    getFromOpenElisServer("/rest/displayList/TEST_SECTION_ACTIVE", (res) => {
       if (res)
         setLabUnitOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/tests", (res) => {
+    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (res) => {
       if (res)
         setTestOptions(
           res.map((item) => ({ id: item.id, text: item.value })),
@@ -101,7 +101,7 @@ function TATFilterBar({ onGenerate }) {
           res.map((item) => ({ id: item.id, text: item.value })),
         );
     });
-    getFromOpenElisServer("/rest/site-names", (res) => {
+    getFromOpenElisServer("/rest/displayList/SAMPLE_PATIENT_REFERRING_CLINIC", (res) => {
       if (res)
         setSiteOptions(
           res.map((item) => ({

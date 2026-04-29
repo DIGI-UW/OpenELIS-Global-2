@@ -1,6 +1,6 @@
 import { LEVEL_ORDER } from "./useLocationPicker";
 
-export const ASSIGNABLE_LEVELS = ["device", "shelf", "rack", "box"];
+export const ASSIGNABLE_LEVELS = ["room", "device", "shelf", "rack", "box"];
 
 export function selectionToHierarchicalPath(selection = {}) {
   return LEVEL_ORDER.map((level) => selection[level]?.name)

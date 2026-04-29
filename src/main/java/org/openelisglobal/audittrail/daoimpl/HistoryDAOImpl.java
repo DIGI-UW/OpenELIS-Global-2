@@ -54,7 +54,7 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     @Override
     @Transactional(readOnly = true)
     public List<History> getSystemEventHistory(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search, int page, int pageSize)
+            List<String> referenceTableIds, String activity, String search, String referenceId, int page, int pageSize)
             throws LIMSRuntimeException {
         // sysUserId binds through LIMSStringNumberUserType, which calls
         // Integer.parseInt during binding; short-circuit to an empty result for
@@ -64,11 +64,11 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
         }
         try {
             StringBuilder hql = new StringBuilder("from History h where 1=1");
-            appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search);
+            appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search, referenceId);
             hql.append(" order by h.timestamp desc");
 
             Query<History> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), History.class);
-            setFilterParameters(query, startDate, endDate, sysUserId, referenceTableIds, activity, search);
+            setFilterParameters(query, startDate, endDate, sysUserId, referenceTableIds, activity, search, referenceId);
             query.setFirstResult((page - 1) * pageSize);
             query.setMaxResults(pageSize);
             return query.list();
@@ -81,16 +81,17 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     @Override
     @Transactional(readOnly = true)
     public long getSystemEventHistoryCount(Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search) throws LIMSRuntimeException {
+            List<String> referenceTableIds, String activity, String search, String referenceId)
+            throws LIMSRuntimeException {
         if (sysUserId != null && !sysUserId.isEmpty() && !GenericValidator.isInt(sysUserId)) {
             return 0L;
         }
         try {
             StringBuilder hql = new StringBuilder("select count(*) from History h where 1=1");
-            appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search);
+            appendFilters(hql, startDate, endDate, sysUserId, referenceTableIds, activity, search, referenceId);
 
             Query<Long> query = entityManager.unwrap(Session.class).createQuery(hql.toString(), Long.class);
-            setFilterParameters(query, startDate, endDate, sysUserId, referenceTableIds, activity, search);
+            setFilterParameters(query, startDate, endDate, sysUserId, referenceTableIds, activity, search, referenceId);
             return query.uniqueResult();
         } catch (HibernateException e) {
             LogEvent.logError(e);
@@ -99,7 +100,7 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
     }
 
     private void appendFilters(StringBuilder hql, Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search) {
+            List<String> referenceTableIds, String activity, String search, String referenceId) {
         if (startDate != null) {
             hql.append(" and h.timestamp >= :startDate");
         }
@@ -118,10 +119,13 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
         if (search != null && !search.isEmpty()) {
             hql.append(" and cast(h.referenceId as string) like :search");
         }
+        if (referenceId != null && !referenceId.isEmpty()) {
+            hql.append(" and h.referenceId = :referenceId");
+        }
     }
 
     private void setFilterParameters(Query<?> query, Timestamp startDate, Timestamp endDate, String sysUserId,
-            List<String> referenceTableIds, String activity, String search) {
+            List<String> referenceTableIds, String activity, String search, String referenceId) {
         if (startDate != null) {
             query.setParameter("startDate", startDate);
         }
@@ -139,6 +143,9 @@ public class HistoryDAOImpl extends BaseDAOImpl<History, String> implements Hist
         }
         if (search != null && !search.isEmpty()) {
             query.setParameter("search", "%" + search + "%");
+        }
+        if (referenceId != null && !referenceId.isEmpty()) {
+            query.setParameter("referenceId", referenceId);
         }
     }
 }
