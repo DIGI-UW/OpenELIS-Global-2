@@ -68,7 +68,7 @@ interface DashBoardProps {}
 
 interface Tile {
   title: string | JSX.Element;
-  subTitle: string | JSX.Element;
+  subTitle?: string | JSX.Element;
   type: MetricType;
   value: number;
   id?: number;
@@ -282,41 +282,34 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     },
     {
       title: <FormattedMessage id="dashboard.complete.orders.label" />,
-      subTitle: <FormattedMessage id="dashboard.orders.subtitle.label" />,
       type: "ORDERS_COMPLETED_TODAY",
       value: counts.ordersCompletedToday,
     },
     {
       title: <FormattedMessage id="dashboard.partially.completed.label" />,
       subTitle: (
-        <FormattedMessage id="dashboard.partially.completed..subtitle.label" />
+        <FormattedMessage id="dashboard.partially.completed.subtitle.label" />
       ),
       type: "ORDERS_PATIALLY_COMPLETED_TODAY",
       value: counts.patiallyCompletedToday,
     },
     {
       title: <FormattedMessage id="dashboard.user.orders.label" />,
-      subTitle: <FormattedMessage id="dashboard.user.orders.subtitle.label" />,
       type: "ORDERS_ENTERED_BY_USER_TODAY",
       value: counts.orderEnterdByUserToday,
     },
     {
       title: <FormattedMessage id="dashboard.rejected.orders" />,
-      subTitle: <FormattedMessage id="dashboard.rejected.orders.subtitle" />,
       type: "ORDERS_REJECTED_TODAY",
       value: counts.ordersRejectedToday,
     },
     {
       title: <FormattedMessage id="dashboard.unprints.results.label" />,
-      subTitle: (
-        <FormattedMessage id="dashboard.unprints.results.subtitle.label" />
-      ),
       type: "UN_PRINTED_RESULTS",
       value: counts.unPritendResults,
     },
     {
       title: <FormattedMessage id="sidenav.label.incomingorder" />,
-      subTitle: <FormattedMessage id="label.electronic.orders" />,
       type: "INCOMING_ORDERS",
       value: counts.incomigOrders,
     },
@@ -338,20 +331,23 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
 
   const averageTimeTileList: Array<Tile> = [
     {
-      title: "Reception To Validation Average Time",
-      subTitle: "Reception To Validation Average Time",
+      title: (
+        <FormattedMessage id="dashboard.avg.turn.around.reception.to.validation.label" />
+      ),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToValidation,
     },
     {
-      title: "Reception To Result Average Time",
-      subTitle: "Reception To Result Average Time",
+      title: (
+        <FormattedMessage id="dashboard.avg.turn.around.reception.to.result.label" />
+      ),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.receptionToResult,
     },
     {
-      title: "Result To Validation Average Time",
-      subTitle: "Result To Validation Average Time",
+      title: (
+        <FormattedMessage id="dashboard.avg.turn.around.result.to.validation.label" />
+      ),
       type: "AVERAGE_TURN_AROUND_TIME",
       value: timeMetrics.resultToValidation,
     },
@@ -373,9 +369,6 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     if (selectedTile.type == "ORDERS_FOR_USER") {
       const tile: Tile = {
         title: <FormattedMessage id="dashboard.user.orders.label" />,
-        subTitle: (
-          <FormattedMessage id="dashboard.user.orders.subtitle.label" />
-        ),
         type: "ORDERS_ENTERED_BY_USER_TODAY",
         value: counts.orderEnterdByUserToday,
       };
@@ -544,9 +537,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                     <TileIcon size={28} />
                   </div>
                 )}
-                <h3 className="tile-title">{tile.title}</h3>
-                <p className="tile-subtitle">{tile.subTitle}</p>
-                <p className="tile-value">{tile.value}</p>
+                <h5 className="dashboard-tile__title">{tile.title}</h5>
+                <p className="dashboard-tile__subtitle">
+                  {tile.subTitle ?? " "}
+                </p>
+                <h2 className="dashboard-tile__value">{tile.value}</h2>
 
                 <div className="tile-icon">
                   <div
@@ -569,9 +564,15 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
           <Tile className="dashboard-tile">
             <Grid>
               <Column lg={16} md={8} sm={4}>
-                <h3 className="tile-title-view">{selectedTile.title}</h3>
-                <p className="tile-subtitle-view">{selectedTile.subTitle}</p>
-                <p className="tile-value-view">{selectedTile.value}</p>
+                <h2 className="dashboard-tile__title-view">
+                  {selectedTile.title}
+                </h2>
+                <p className="dashboard-tile__subtitle-view">
+                  {selectedTile.subTitle ?? " "}
+                </p>
+                <h1 className="dashboard-tile__value-view">
+                  {selectedTile.value}
+                </h1>
                 {
                   <div className="tile-icon">
                     <div onClick={handleMinimizeClick} className="icon-wrapper">
@@ -591,9 +592,11 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   <div className="home-dashboard-container">
                     {averageTimeTileList.map((tile, index) => (
                       <Tile key={index} className="dashboard-tile">
-                        <h3 className="tile-title">{tile.title}</h3>
-                        <p className="tile-subtitle">{tile.subTitle}</p>
-                        <p className="tile-value">{tile.value}</p>
+                        <h5 className="dashboard-tile__title">{tile.title}</h5>
+                        <p className="dashboard-tile__subtitle">
+                          {tile.subTitle}
+                        </p>
+                        <h2 className="dashboard-tile__value">{tile.value}</h2>
                       </Tile>
                     ))}
                   </div>
