@@ -4,15 +4,19 @@ import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import AlertsDashboard from "../AlertsDashboard";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
-jest.mock("../../utils/Utils", () => ({
-  ...jest.requireActual("../../utils/Utils"),
-  getFromOpenElisServer: jest.fn(),
-  getFromOpenElisServerV2: jest.fn(),
-  putToOpenElisServer: jest.fn(),
-}));
+vi.mock("../../utils/Utils", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    getFromOpenElisServer: vi.fn(),
+    getFromOpenElisServerV2: vi.fn(),
+    putToOpenElisServer: vi.fn(),
+  };
+});
 
-const { getFromOpenElisServer } = require("../../utils/Utils");
+// Replaced inline utils require
 
 const renderWithIntl = (component) => {
   return render(
@@ -56,8 +60,8 @@ const mockDashboard = {
 
 describe("AlertsDashboard", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
     getFromOpenElisServer.mockImplementation((url, callback) => {
       if (url.includes("/summary")) {
         callback(mockSummary);
@@ -68,7 +72,7 @@ describe("AlertsDashboard", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   test("renders dashboard title", () => {

@@ -321,6 +321,15 @@ public class StorageLocationRestController extends BaseRestController {
 
     // ========== Device Endpoints ==========
 
+    @GetMapping("/devices/types")
+    public ResponseEntity<List<String>> getDeviceTypes() {
+        List<String> types = new ArrayList<>();
+        for (StorageDevice.DeviceType type : StorageDevice.DeviceType.values()) {
+            types.add(type.getValue());
+        }
+        return ResponseEntity.ok(types);
+    }
+
     @PostMapping("/devices")
     public ResponseEntity<?> createDevice(@Valid @RequestBody StorageDeviceForm form, HttpServletRequest request) {
         try {
@@ -1168,6 +1177,21 @@ public class StorageLocationRestController extends BaseRestController {
     }
 
     // ========== Box Endpoints ==========
+
+    @GetMapping("/boxes/{id}")
+    public ResponseEntity<StorageBoxResponse> getBoxById(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.parseInt(id);
+            StorageBox box = (StorageBox) storageLocationService.get(idInt, StorageBox.class);
+            if (box == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+            return ResponseEntity.ok(toBoxResponse(box));
+        } catch (Exception e) {
+            logger.error("Error getting box by id", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 
     @PostMapping("/boxes")
     public ResponseEntity<?> createBox(@Valid @RequestBody StorageBoxForm form, HttpServletRequest request) {

@@ -17,13 +17,13 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.ValidationResults;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -31,13 +31,13 @@ import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.sample.action.util.SampleUtil;
 import org.openelisglobal.sample.bean.SampleEditItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.form.SampleEditForm;
 import org.openelisglobal.sample.form.SampleEditForm.SampleEdit;
 import org.openelisglobal.sample.service.SampleEditService;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.validator.SampleEditFormValidator;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -58,7 +58,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.Errors;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,19 +74,21 @@ public class SampleEditRestController extends BaseSampleEntryController {
     @Autowired
     private FhirTransformService fhirTransformService;
 
+    @Autowired
+    private SampleUtil sampleUtil;
+
     // private ObservationHistory paymentObservation = null;
     private static final SampleEditItemComparator testComparator = new SampleEditItemComparator();
-    private static final Set<Integer> excludedAnalysisStatusList;
-    private static final Set<Integer> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
+    private static final Set<String> excludedAnalysisStatusList;
+    private static final Set<String> ENTERED_STATUS_SAMPLE_LIST = new HashSet<>();
     private static final Collection<String> ABLE_TO_CANCEL_ROLE_NAMES = new ArrayList<>();
 
     static {
         excludedAnalysisStatusList = new HashSet<>();
-        excludedAnalysisStatusList.add(
-                Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled)));
+        excludedAnalysisStatusList
+                .add(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled));
 
-        ENTERED_STATUS_SAMPLE_LIST
-                .add(Integer.parseInt(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered)));
+        ENTERED_STATUS_SAMPLE_LIST.add(SpringContext.getBean(IStatusService.class).getStatusID(SampleStatus.Entered));
         ABLE_TO_CANCEL_ROLE_NAMES.add("Validator");
         ABLE_TO_CANCEL_ROLE_NAMES.add("Validation");
         ABLE_TO_CANCEL_ROLE_NAMES.add("Biologist");
@@ -221,17 +222,17 @@ public class SampleEditRestController extends BaseSampleEntryController {
         if (result.hasErrors()) {
             saveErrors(result);
         }
-        boolean sampleChanged = accessionNumberChanged(form);
+        boolean sampleChanged = sampleUtil.accessionNumberChanged(form);
         Sample updatedSample = null;
 
         if (sampleChanged) {
-            validateNewAccessionNumber(form.getNewAccessionNumber(), result);
+            sampleUtil.validateNewAccessionNumber(form.getNewAccessionNumber(), result);
             if (result.hasErrors()) {
                 saveErrors(result);
             } else {
                 // updatedSample = updateAccessionNumberInSample(form);
             }
-            updatedSample = updateAccessionNumberInSample(form);
+            updatedSample = sampleUtil.updateAccessionNumberInSample(form, ControllerUtills.getSysUserId(request));
         }
 
         try {
@@ -429,37 +430,6 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
             possibleTestList.addAll(typeOfTestSampleItemList);
         }
-    }
-
-    private Errors validateNewAccessionNumber(String accessionNumber, Errors errors) {
-        ValidationResults results = AccessionNumberUtil.correctFormat(accessionNumber, false);
-
-        if (results != ValidationResults.SUCCESS) {
-            errors.reject("sample.entry.invalid.accession.number.format",
-                    "sample.entry.invalid.accession.number.format");
-        } else if (AccessionNumberUtil.isUsed(accessionNumber)) {
-            errors.reject("sample.entry.invalid.accession.number.used", "sample.entry.invalid.accession.number.used");
-        }
-
-        return errors;
-    }
-
-    private Sample updateAccessionNumberInSample(SampleEditForm form) {
-        Sample sample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
-
-        if (sample != null) {
-            sample.setAccessionNumber(form.getNewAccessionNumber());
-            sample.setSysUserId(getSysUserId(request));
-        }
-
-        return sample;
-    }
-
-    private boolean accessionNumberChanged(SampleEditForm form) {
-        String newAccessionNumber = form.getNewAccessionNumber();
-
-        return !GenericValidator.isBlankOrNull(newAccessionNumber)
-                && !newAccessionNumber.equals(form.getAccessionNumber());
     }
 
     private static class SampleEditItemComparator implements Comparator<SampleEditItem> {

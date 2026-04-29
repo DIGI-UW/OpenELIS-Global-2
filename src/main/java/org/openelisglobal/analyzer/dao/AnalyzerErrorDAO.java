@@ -16,11 +16,11 @@ public interface AnalyzerErrorDAO extends BaseDAO<AnalyzerError, String> {
      */
     int nullifyAnalyzerId(String analyzerId);
 
-    List<AnalyzerError> findByStatus(String status);
+    List<AnalyzerError> findByStatus(AnalyzerError.ErrorStatus status);
 
-    List<AnalyzerError> findByErrorType(String errorType);
+    List<AnalyzerError> findByErrorType(AnalyzerError.ErrorType errorType);
 
-    List<AnalyzerError> findBySeverity(String severity);
+    List<AnalyzerError> findBySeverity(AnalyzerError.Severity severity);
 
     List<AnalyzerError> findAll();
 

@@ -1,5 +1,9 @@
 # Plan: PR #3288 Electronic Signature — Review & Remediation
 
+> **ARCHIVED 2026-04-20** — PR #3288 merged 2026-04-09. This file captures the
+> historical review-and-remediation plan; feature is shipped. See spec.md status
+> block for the reality-aligned summary.
+
 ## Context
 
 PR #3288 by @samuelmale adds FDA 21 CFR Part 11 electronic signature support to

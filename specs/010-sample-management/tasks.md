@@ -202,11 +202,13 @@ metadata, and hierarchy
       after Phase 3 implementation
 - [ ] T026 [P] [US1] Frontend unit test for SampleSearch component in
       frontend/src/components/sampleManagement/SampleSearch.test.js (Template:
-      `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference:
+      `.specify/templates/testing/VitestComponent.test.jsx.template`) -
+      Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
-      Reference: [Jest Best Practices](.specify/guides/jest-best-practices.md) -
-      **TDD Workflow**: Write test FIRST (RED), then implement (GREEN) -
-      **Import Order**: React → Testing Library → userEvent → jest-dom → Intl →
+      Reference:
+      [Vitest Best Practices](.specify/guides/vitest-best-practices.md) - **TDD
+      Workflow**: Write test FIRST (RED), then implement (GREEN) - **Import
+      Order**: React → Testing Library → userEvent → jest-dom → Intl →
       Component - **Mocks BEFORE imports**: Jest hoisting requires mocks before
       imports - **userEvent PREFERRED**: Use `userEvent.type()` for search input
       (NOT `fireEvent`) - **Test Cases**: (1) search input renders, (2) search
@@ -215,14 +217,16 @@ metadata, and hierarchy
       Checkpoint**: Must pass after Phase 3 frontend implementation
 - [ ] T027 [P] [US1] Frontend unit test for SampleResultsTable component in
       frontend/src/components/sampleManagement/SampleResultsTable.test.js
-      (Template: `.specify/templates/testing/JestComponent.test.jsx.template`) -
+      (Template:
+      `.specify/templates/testing/VitestComponent.test.jsx.template`) -
       Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
-      Reference: [Jest Best Practices](.specify/guides/jest-best-practices.md) -
-      **Test Cases**: (1) renders results with sample data, (2) displays
-      hierarchy (parent-child indicators), (3) shows "no results" message when
-      empty, (4) row selection works correctly - **Carbon Components**: Use
-      `within()` for scoped queries in DataTable - **Coverage Goal**: >70%
+      Reference:
+      [Vitest Best Practices](.specify/guides/vitest-best-practices.md) - **Test
+      Cases**: (1) renders results with sample data, (2) displays hierarchy
+      (parent-child indicators), (3) shows "no results" message when empty, (4)
+      row selection works correctly - **Carbon Components**: Use `within()` for
+      scoped queries in DataTable - **Coverage Goal**: >70%
 - [ ] T028 [P] [US1] Cypress E2E test for sample search workflow in
       frontend/cypress/e2e/sampleManagement.cy.js (Template:
       `.specify/templates/testing/CypressE2E.cy.js.template`) - Reference:
@@ -347,12 +351,14 @@ tests list
       for empty testIds, (4) 404 NOT FOUND for non-existent sample
 - [ ] T040 [P] [US2] Frontend unit test for TestSelector component in
       frontend/src/components/sampleManagement/TestSelector.test.js (Template:
-      `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference:
+      `.specify/templates/testing/VitestComponent.test.jsx.template`) -
+      Reference:
       [Testing Roadmap - Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
-      Reference: [Jest Best Practices](.specify/guides/jest-best-practices.md) -
-      **Test Cases**: (1) renders test catalog with MultiSelect, (2) filters
-      tests by sample type, (3) selection works correctly, (4) displays
-      duplicate warning before submission, (5) handles API errors
+      Reference:
+      [Vitest Best Practices](.specify/guides/vitest-best-practices.md) - **Test
+      Cases**: (1) renders test catalog with MultiSelect, (2) filters tests by
+      sample type, (3) selection works correctly, (4) displays duplicate warning
+      before submission, (5) handles API errors
 - [ ] T041 [P] [US2] Integration test for complete add tests workflow in
       src/test/java/org/openelisglobal/sampleitem/integration/SampleManagementIntegrationTest.java -
       Reference:
@@ -465,7 +471,8 @@ created with external ID "originalID.1", (c) parent-child relationship recorded
       (5) 409 CONFLICT for concurrent modification
 - [ ] T053 [P] [US3] Frontend unit test for AliquotModal component in
       frontend/src/components/sampleManagement/AliquotModal.test.js (Template:
-      `.specify/templates/testing/JestComponent.test.jsx.template`) - Reference:
+      `.specify/templates/testing/VitestComponent.test.jsx.template`) -
+      Reference:
       [Jest + React Testing Library](.specify/guides/testing-roadmap.md#jest--react-testing-library-unit-tests) -
       **Test Cases**: (1) renders modal with parent info, (2) quantity input
       validation (exceeds remaining), (3) submit calls API, (4) displays error
