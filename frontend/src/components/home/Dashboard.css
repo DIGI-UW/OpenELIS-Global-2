@@ -58,6 +58,7 @@
 
 .dashboard-tile__title {
   margin: 0;
+  font-weight: var(--cds-body-01-font-weight, 400);
 }
 
 .dashboard-tile__subtitle {
