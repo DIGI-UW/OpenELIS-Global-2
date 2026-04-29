@@ -133,14 +133,12 @@ const Validation = (props) => {
     if (status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      // Refresh the parent dashboard tab (if opened via window.open) then
-      // close this tab. Falls back to navigating home if no opener exists.
+      // Refresh the parent dashboard tab (if opened via window.open) so it
+      // stays current, then reload this page to show fresh data.
       if (window.opener && !window.opener.closed) {
         window.opener.location.reload();
-        window.close();
-      } else {
-        navigateTo("/");
       }
+      window.location.reload();
     }
     addNotification({
       kind: kind,
@@ -475,16 +473,36 @@ const Validation = (props) => {
               }
             />
 
-            <Button
-              type="button"
-              onClick={() => handleSave(values)}
-              id="submit"
-              style={{ marginTop: "16px" }}
-              data-testid="Save-btn"
-              disabled={isSubmitting}
+            <div
+              style={{ display: "inline-flex", gap: "1rem", marginTop: "16px" }}
             >
-              <FormattedMessage id="label.button.save" />
-            </Button>
+              <Button
+                type="button"
+                onClick={() => handleSave(values)}
+                id="submit"
+                data-testid="Save-btn"
+                disabled={isSubmitting}
+              >
+                <FormattedMessage id="label.button.save" />
+              </Button>
+              <Button
+                type="button"
+                kind="tertiary"
+                id="backToHome"
+                onClick={() => {
+                  if (window.opener && !window.opener.closed) {
+                    window.close();
+                  } else {
+                    navigateTo("/");
+                  }
+                }}
+              >
+                <FormattedMessage
+                  id="label.button.back"
+                  defaultMessage="Back"
+                />
+              </Button>
+            </div>
           </Form>
         )}
       </Formik>

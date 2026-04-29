@@ -4,7 +4,7 @@ import Header from "./Header";
 import Footer from "./Footer";
 import { Content, Theme } from "@carbon/react";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { getFromOpenElisServer, hasRole, Roles } from "../utils/Utils";
 import { useSideNavPreference } from "./useSideNavPreference";
 import {
   languages as defaultLanguages,
@@ -134,6 +134,7 @@ export default function Layout(props) {
             SIDENAV_MODES={SIDENAV_MODES}
             defaultMode={layoutConfig.defaultMode}
             storageKeyPrefix={layoutConfig.storageKeyPrefix}
+            showSideNavToggle={hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)}
           />
           {/* Theme wrapper creates white theme zone for content area */}
           {/* Global SCSS theme = blue header/nav, this = light content */}

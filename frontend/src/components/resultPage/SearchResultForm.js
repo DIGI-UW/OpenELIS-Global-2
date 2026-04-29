@@ -1997,14 +1997,12 @@ export function SearchResults(props) {
         kind: NotificationKinds.success,
       });
       if (props.refreshOnSubmit) {
-        // Refresh the parent dashboard tab (if opened via window.open) then
-        // close this tab. Falls back to navigating home if no opener exists.
+        // Refresh the parent dashboard tab (if opened via window.open) so it
+        // stays current, then reload this page to show fresh data.
         if (window.opener && !window.opener.closed) {
           window.opener.location.reload();
-          window.close();
-        } else {
-          window.location.href = getFullPath("/");
         }
+        window.location.reload();
       }
     } else {
       addNotification({
@@ -2144,15 +2142,39 @@ export function SearchResults(props) {
                 />
 
                 {!isReadOnlyView && (
-                  <Button
-                    type="button"
-                    id="saveResults"
-                    onClick={handleSave}
-                    style={{ marginTop: "16px" }}
-                    disabled={isSubmitting}
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      gap: "1rem",
+                      marginTop: "16px",
+                    }}
                   >
-                    <FormattedMessage id="label.button.save" />
-                  </Button>
+                    <Button
+                      type="button"
+                      id="saveResults"
+                      onClick={handleSave}
+                      disabled={isSubmitting}
+                    >
+                      <FormattedMessage id="label.button.save" />
+                    </Button>
+                    <Button
+                      type="button"
+                      kind="tertiary"
+                      id="backToHome"
+                      onClick={() => {
+                        if (window.opener && !window.opener.closed) {
+                          window.close();
+                        } else {
+                          window.location.href = getFullPath("/");
+                        }
+                      }}
+                    >
+                      <FormattedMessage
+                        id="label.button.back"
+                        defaultMessage="Back"
+                      />
+                    </Button>
+                  </div>
                 )}
               </Form>
             )}

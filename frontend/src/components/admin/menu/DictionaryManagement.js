@@ -75,6 +75,34 @@ function DictionaryManagement() {
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 530);
 
+  const [formErrors, setFormErrors] = useState({
+    category: "",
+    dictEntry: "",
+    localAbbreviation: "",
+    loincCode: "",
+  });
+
+  const resetFormErrors = () =>
+    setFormErrors({
+      category: "",
+      dictEntry: "",
+      localAbbreviation: "",
+      loincCode: "",
+    });
+
+  const validateForm = () => {
+    const errors = {
+      category: !category ? "Dictionary Category is required." : "",
+      dictEntry: !dictionaryEntry.trim() ? "Dictionary Entry is required." : "",
+      localAbbreviation: !localAbbreviation.trim()
+        ? "Local Abbreviation is required."
+        : "",
+      loincCode: !loincCode.trim() ? "LOINC Code is required." : "",
+    };
+    setFormErrors(errors);
+    return !Object.values(errors).some(Boolean);
+  };
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 530);
     window.addEventListener("resize", handleResize);
@@ -264,6 +292,7 @@ function DictionaryManagement() {
 
   const handleSubmitModal = (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     postToOpenElisServerFullResponse(
       "/rest/Dictionary",
       JSON.stringify(postData),
@@ -274,6 +303,7 @@ function DictionaryManagement() {
 
   const handleUpdateModal = (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
     if (!componentMounted.current[dictionaryEntry]) {
       dirtyFieldsRef.current.add("dictEntry");
@@ -488,6 +518,7 @@ function DictionaryManagement() {
                     setIsActive(yesOrNo.find((item) => item.id === "Y"));
                     setLoincCode("");
                     dirtyFieldsRef.current = new Set();
+                    resetFormErrors();
                     setEditMode(true);
                     setOpen(true);
                   }}
@@ -508,7 +539,10 @@ function DictionaryManagement() {
                 <Modal
                   open={open}
                   size="sm"
-                  onRequestClose={() => setOpen(false)}
+                  onRequestClose={() => {
+                    setOpen(false);
+                    resetFormErrors();
+                  }}
                   modalHeading={editMode ? "Add Dictionary" : "Edit Dictionary"}
                   primaryButtonText={editMode ? "Add" : "Update"}
                   secondaryButtonText="Cancel"
@@ -536,9 +570,12 @@ function DictionaryManagement() {
                     itemToString={(item) => (item ? item.description : "")}
                     onChange={({ selectedItem }) => {
                       setCategory(selectedItem);
+                      setFormErrors((prev) => ({ ...prev, category: "" }));
                     }}
                     selectedItem={category}
                     size="md"
+                    invalid={!!formErrors.category}
+                    invalidText={formErrors.category}
                     style={{
                       marginBottom: "1rem",
                     }}
@@ -547,7 +584,12 @@ function DictionaryManagement() {
                     id="dictEntry"
                     labelText="Dictionary Entry"
                     value={dictionaryEntry}
-                    onChange={(e) => setDictionaryEntry(e.target.value)}
+                    onChange={(e) => {
+                      setDictionaryEntry(e.target.value);
+                      setFormErrors((prev) => ({ ...prev, dictEntry: "" }));
+                    }}
+                    invalid={!!formErrors.dictEntry}
+                    invalidText={formErrors.dictEntry}
                     style={{
                       marginBottom: "1rem",
                     }}
@@ -572,7 +614,15 @@ function DictionaryManagement() {
                     id="localAbbrev"
                     labelText="Local Abbreviation"
                     value={localAbbreviation}
-                    onChange={(e) => setLocalAbbreviation(e.target.value)}
+                    onChange={(e) => {
+                      setLocalAbbreviation(e.target.value);
+                      setFormErrors((prev) => ({
+                        ...prev,
+                        localAbbreviation: "",
+                      }));
+                    }}
+                    invalid={!!formErrors.localAbbreviation}
+                    invalidText={formErrors.localAbbreviation}
                     style={{
                       marginBottom: "1rem",
                     }}
@@ -582,11 +632,12 @@ function DictionaryManagement() {
                     id="loincCode"
                     labelText="LOINC Code"
                     value={loincCode}
-                    onChange={(e) => setLoincCode(e.target.value)}
-                    // invalid={!/^(?!-)(?:\d+-)*\d*$/.test(loincCode)}
-                    // invalidText={
-                    //   <FormattedMessage id="dictionary.loincCode.invalid" />
-                    // }
+                    onChange={(e) => {
+                      setLoincCode(e.target.value);
+                      setFormErrors((prev) => ({ ...prev, loincCode: "" }));
+                    }}
+                    invalid={!!formErrors.loincCode}
+                    invalidText={formErrors.loincCode}
                     style={{
                       marginBottom: "1rem",
                     }}
