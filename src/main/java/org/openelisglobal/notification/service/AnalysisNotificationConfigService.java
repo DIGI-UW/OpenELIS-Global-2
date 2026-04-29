@@ -6,12 +6,14 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.notification.valueholder.AnalysisNotificationConfig;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-@PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
 public interface AnalysisNotificationConfigService extends BaseObjectService<AnalysisNotificationConfig, Integer> {
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     Optional<AnalysisNotificationConfig> getAnalysisNotificationConfigForAnalysisId(String analysisId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<AnalysisNotificationConfig> getAnalysisNotificationConfigForAnalysisId(List<String> analysisIds);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     AnalysisNotificationConfig getForConfigOption(Integer configOptionId);
 }
