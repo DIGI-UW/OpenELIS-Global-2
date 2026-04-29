@@ -72,6 +72,21 @@ jobs:
       - name: check formatting
         run: mvn spotless:check
 
+      - name: Enforce no @PreAuthorize on controllers (S011c)
+        run: |
+          # Authorization must live on service interfaces, not controllers.
+          # LoggingController is the only permitted exception: it mutates runtime
+          # log config directly with no backing service.
+          violations=$(grep -rn "@PreAuthorize" src/main/java \
+            --include="*Controller.java" \
+            -l | grep -v "LoggingController.java" || true)
+          if [ -n "$violations" ]; then
+            echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "Controller @PreAuthorize check passed."
+
       - name: Initialize and build submodules
         run: |
           cd dataexport

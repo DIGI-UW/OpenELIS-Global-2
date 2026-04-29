@@ -36,7 +36,7 @@ public class SystemInitFlagTest {
         SystemInitFlag.set();
         assertTrue(SystemInitFlag.isSet());
 
-        boolean[] otherThreadSaw = {true};
+        boolean[] otherThreadSaw = { true };
         Thread t = new Thread(() -> otherThreadSaw[0] = SystemInitFlag.isSet());
         t.start();
         t.join();
