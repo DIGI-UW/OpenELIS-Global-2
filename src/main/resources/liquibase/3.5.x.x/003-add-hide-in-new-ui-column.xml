@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="sagar_khandagre" id="20250714000">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="menu" schemaName="clinlims" />
+            <not>
+                <columnExists
+                    tableName="menu"
+                    schemaName="clinlims"
+                    columnName="hide_in_new_ui"
+                />
+            </not>
+        </preConditions>
+        <comment>Add column to track if Menu shows up in new React UI</comment>
+        <addColumn tableName="menu" schemaName="clinlims">
+            <column
+                name="hide_in_new_ui"
+                type="BOOLEAN"
+                defaultValueBoolean="false"
+            />
+        </addColumn>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="hide_in_new_ui" valueBoolean="true" />
+            <where>element_id = 'menu_patient_consult'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
