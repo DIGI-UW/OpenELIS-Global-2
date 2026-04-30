@@ -38,16 +38,6 @@ export default function Layout(props) {
     location.pathname.startsWith("/analyzers") ||
     location.pathname.startsWith("/AnalyzerManagement");
 
-  // Admin pages render their own internal sub-nav. The side drawer can't
-  // share horizontal space with that sub-nav, so we force the drawer
-  // closed while on these routes — without mutating the user's persisted
-  // mode preference. When the user navigates back to a non-admin page,
-  // the drawer auto-restores to whatever mode they had before (LOCK,
-  // SHOW, or CLOSE).
-  const isAdminContext =
-    location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/MasterListsPage");
-
   const layoutConfig = {
     storageKeyPrefix: pageStorageKeyPrefix
       ? pageStorageKeyPrefix
@@ -69,41 +59,11 @@ export default function Layout(props) {
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
 
-  // Admin routes default to CLOSE so the page's internal sub-nav has
-  // full width. If the user explicitly opens the drawer while on an
-  // admin route (toggle button or setMode), record an override so we
-  // respect their choice for the rest of the admin session. The
-  // override resets when they navigate back to a non-admin route, so
-  // the next admin entry gets the auto-close default again.
-  const [adminOverride, setAdminOverride] = useState(false);
-  useEffect(() => {
-    if (!isAdminContext) setAdminOverride(false);
-  }, [isAdminContext]);
-
-  const effectiveMode = isAdminContext
-    ? adminOverride
-      ? mode
-      : SIDENAV_MODES.CLOSE
-    : mode;
-  const effectiveIsExpanded = effectiveMode !== SIDENAV_MODES.CLOSE;
-
-  // Wrap toggle/setMode so explicit user interaction while on admin
-  // flips the override flag. The wrappers are passed to Header in
-  // place of the bare hook returns.
-  const handleToggle = () => {
-    if (isAdminContext) setAdminOverride(true);
-    toggle();
-  };
-  const handleSetMode = (newMode) => {
-    if (isAdminContext) setAdminOverride(true);
-    setMode(newMode);
-  };
-
   // Only push content when sidenav is actually present (authenticated UX).
   // Otherwise, a persisted LOCK mode would incorrectly shift unauthenticated pages
   // like /login to the right (no sidenav toggle available there).
   const isLocked =
-    userSessionDetails.authenticated && effectiveMode === SIDENAV_MODES.LOCK;
+    userSessionDetails.authenticated && mode === SIDENAV_MODES.LOCK;
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
@@ -168,10 +128,10 @@ export default function Layout(props) {
         <div className="d-flex flex-column min-vh-100">
           <Header
             onChangeLanguage={props.onChangeLanguage}
-            mode={effectiveMode}
-            isExpanded={effectiveIsExpanded}
-            toggleSideNav={handleToggle}
-            setMode={handleSetMode}
+            mode={mode}
+            isExpanded={isExpanded}
+            toggleSideNav={toggle}
+            setMode={setMode}
             SIDENAV_MODES={SIDENAV_MODES}
             defaultMode={layoutConfig.defaultMode}
             storageKeyPrefix={layoutConfig.storageKeyPrefix}

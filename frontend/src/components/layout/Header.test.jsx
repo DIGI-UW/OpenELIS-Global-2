@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, prettyDOM } from "@testing-library/react";
+import { render, screen, prettyDOM, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -820,6 +820,63 @@ describe("Header Component - M2b Enhancement Tests", () => {
 
       // In CLOSE mode, SideNav should not be expanded
       expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(false);
+    });
+  });
+
+  // Pages that own their own internal sub-nav (currently /admin and
+  // /MasterListsPage) can't share horizontal space with the side drawer.
+  // The leaf-click handler fires setMode(CLOSE) once on the click — no
+  // route-watching, no admin-context state machine. After this single
+  // call, the drawer behaves normally; user can re-open if they want.
+  describe("Close drawer on click for pages with own sub-nav", () => {
+    const MENU_DATA = [
+      {
+        menu: {
+          elementId: "menu_home",
+          displayKey: "banner.menu.home",
+          actionURL: "/Dashboard",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_administration",
+          displayKey: "sidenav.label.admin",
+          actionURL: "/MasterListsPage",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ];
+
+    test("clicking link to /MasterListsPage fires setMode('close') once", async () => {
+      const { container, mockSetMode } = renderHeader({
+        sidenavMode: "lock",
+        menuData: MENU_DATA,
+      });
+      await waitFor(() => {
+        expect(
+          container.querySelector("#menu_administration_nav"),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_administration_nav"));
+      expect(mockSetMode).toHaveBeenCalledTimes(1);
+      expect(mockSetMode).toHaveBeenCalledWith("close");
+    });
+
+    test("clicking a non-admin leaf does NOT call setMode", async () => {
+      const { container, mockSetMode } = renderHeader({
+        sidenavMode: "lock",
+        menuData: MENU_DATA,
+      });
+      await waitFor(() => {
+        expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_home_nav"));
+      expect(mockSetMode).not.toHaveBeenCalled();
     });
   });
 });

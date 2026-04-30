@@ -473,6 +473,20 @@ function OEHeader({
         } else {
           history.push(menuItem.menu.actionURL);
         }
+
+        // One-shot close: navigating to a page that owns its own internal
+        // sub-nav (e.g. Admin's MasterListsPage). After this single
+        // setMode the drawer behaves normally — user can re-open it
+        // manually if they want, and the drawer state on subsequent
+        // navigations is whatever they left it at.
+        const PAGES_WITH_OWN_SUBNAV = ["/admin", "/MasterListsPage"];
+        if (
+          PAGES_WITH_OWN_SUBNAV.some((p) =>
+            menuItem.menu.actionURL.startsWith(p),
+          )
+        ) {
+          setMode(SIDENAV_MODES.CLOSE);
+        }
       }
     };
 
