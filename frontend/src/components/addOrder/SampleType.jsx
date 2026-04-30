@@ -649,6 +649,9 @@ const SampleType = (props) => {
                   })()
                 : null
             }
+            initialPosition={
+              sampleXml?.storageLocation?.positionCoordinate || null
+            }
             onChange={(state) => {
               // Adapt new picker shape → legacy sampleXml.storageLocation:
               // flat object with keys room/device/shelf/rack/box + a
