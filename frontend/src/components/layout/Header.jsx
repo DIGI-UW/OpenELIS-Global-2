@@ -474,6 +474,19 @@ function OEHeader({
           history.push(menuItem.menu.actionURL);
         }
       }
+
+      // TEMP: Admin's child page renders its own admin sub-nav, which the
+      // overlay drawer covers in SHOW mode. Collapse the drawer so the
+      // page underneath is visible. Fires here (leaf path) when distro
+      // whitelists menu_administration with empty childMenus, making it
+      // render as SideNavMenuItem rather than SideNavMenu (whose onToggle
+      // path is handled below).
+      if (
+        menuItem.menu.elementId === "menu_administration" &&
+        mode === SIDENAV_MODES.SHOW
+      ) {
+        setMode(SIDENAV_MODES.CLOSE);
+      }
     };
 
     const hasActiveChild = hasActiveDescendant(menuItem, currentPath);

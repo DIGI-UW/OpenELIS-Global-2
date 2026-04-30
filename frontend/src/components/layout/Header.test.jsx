@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, prettyDOM } from "@testing-library/react";
+import { render, screen, prettyDOM, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -308,11 +308,15 @@ const SIDENAV_MODES = {
 };
 
 const renderHeader = (options = {}) => {
-  const { initialRoute = "/", sidenavMode = "close" } = options;
+  const {
+    initialRoute = "/",
+    sidenavMode = "close",
+    menuData = MOCK_MENU_DATA,
+  } = options;
   const mockGetFromServer = getFromOpenElisServer;
   mockGetFromServer.mockImplementation((url, callback) => {
     if (url === "/rest/menu") {
-      callback(MOCK_MENU_DATA);
+      callback(menuData);
     } else if (url.includes("/notifications")) {
       callback([]);
     }
@@ -321,7 +325,7 @@ const renderHeader = (options = {}) => {
   const mockToggle = vi.fn();
   const mockSetMode = vi.fn();
 
-  return render(
+  const result = render(
     <MemoryRouter initialEntries={[initialRoute]}>
       <IntlProvider locale="en" messages={messages}>
         <UserSessionDetailsContext.Provider
@@ -343,6 +347,7 @@ const renderHeader = (options = {}) => {
       </IntlProvider>
     </MemoryRouter>,
   );
+  return { ...result, mockSetMode, mockToggle };
 };
 
 describe("Header Component - M2b Enhancement Tests", () => {
@@ -815,6 +820,80 @@ describe("Header Component - M2b Enhancement Tests", () => {
 
       // In CLOSE mode, SideNav should not be expanded
       expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(false);
+    });
+  });
+
+  // TEMP fix: when distro whitelists menu_administration with empty
+  // childMenus, it renders as a SideNavMenuItem (leaf) rather than a
+  // SideNavMenu (parent), so the leaf click handler must collapse the
+  // overlay drawer in SHOW mode — otherwise the admin landing page's
+  // own sub-nav stays hidden under the drawer.
+  describe("Admin overlay-drawer close-on-click (TEMP fix for distro)", () => {
+    const MENU_DATA_WITH_ADMIN_LEAF = [
+      {
+        menu: {
+          elementId: "menu_home",
+          displayKey: "banner.menu.home",
+          actionURL: "/Dashboard",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_administration",
+          displayKey: "sidenav.label.admin",
+          actionURL: "/MasterListsPage",
+          isActive: true,
+        },
+        childMenus: [],
+      },
+    ];
+
+    test("clicking Admin in SHOW mode closes the drawer", async () => {
+      const { container, mockSetMode } = renderHeader({
+        sidenavMode: "show",
+        menuData: MENU_DATA_WITH_ADMIN_LEAF,
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector("#menu_administration_nav"),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_administration_nav"));
+      expect(mockSetMode).toHaveBeenCalledWith("close");
+    });
+
+    test("clicking Admin in LOCK mode does NOT close the drawer", async () => {
+      const { container, mockSetMode } = renderHeader({
+        sidenavMode: "lock",
+        menuData: MENU_DATA_WITH_ADMIN_LEAF,
+      });
+
+      await waitFor(() => {
+        expect(
+          container.querySelector("#menu_administration_nav"),
+        ).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_administration_nav"));
+      expect(mockSetMode).not.toHaveBeenCalled();
+    });
+
+    test("clicking a non-admin leaf in SHOW mode does NOT close the drawer", async () => {
+      const { container, mockSetMode } = renderHeader({
+        sidenavMode: "show",
+        menuData: MENU_DATA_WITH_ADMIN_LEAF,
+      });
+
+      await waitFor(() => {
+        expect(container.querySelector("#menu_home_nav")).toBeTruthy();
+      });
+
+      fireEvent.click(container.querySelector("#menu_home_nav"));
+      expect(mockSetMode).not.toHaveBeenCalled();
     });
   });
 });
