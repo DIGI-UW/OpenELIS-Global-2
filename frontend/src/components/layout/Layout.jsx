@@ -69,12 +69,35 @@ export default function Layout(props) {
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
 
-  // Derived state: while on admin routes, render the drawer as if it
-  // were CLOSE regardless of the user's persisted mode. The underlying
-  // useSideNavPreference state is untouched, so navigating away
-  // restores the user's actual mode (e.g. LOCK pin) automatically.
-  const effectiveMode = isAdminContext ? SIDENAV_MODES.CLOSE : mode;
+  // Admin routes default to CLOSE so the page's internal sub-nav has
+  // full width. If the user explicitly opens the drawer while on an
+  // admin route (toggle button or setMode), record an override so we
+  // respect their choice for the rest of the admin session. The
+  // override resets when they navigate back to a non-admin route, so
+  // the next admin entry gets the auto-close default again.
+  const [adminOverride, setAdminOverride] = useState(false);
+  useEffect(() => {
+    if (!isAdminContext) setAdminOverride(false);
+  }, [isAdminContext]);
+
+  const effectiveMode = isAdminContext
+    ? adminOverride
+      ? mode
+      : SIDENAV_MODES.CLOSE
+    : mode;
   const effectiveIsExpanded = effectiveMode !== SIDENAV_MODES.CLOSE;
+
+  // Wrap toggle/setMode so explicit user interaction while on admin
+  // flips the override flag. The wrappers are passed to Header in
+  // place of the bare hook returns.
+  const handleToggle = () => {
+    if (isAdminContext) setAdminOverride(true);
+    toggle();
+  };
+  const handleSetMode = (newMode) => {
+    if (isAdminContext) setAdminOverride(true);
+    setMode(newMode);
+  };
 
   // Only push content when sidenav is actually present (authenticated UX).
   // Otherwise, a persisted LOCK mode would incorrectly shift unauthenticated pages
@@ -147,8 +170,8 @@ export default function Layout(props) {
             onChangeLanguage={props.onChangeLanguage}
             mode={effectiveMode}
             isExpanded={effectiveIsExpanded}
-            toggleSideNav={toggle}
-            setMode={setMode}
+            toggleSideNav={handleToggle}
+            setMode={handleSetMode}
             SIDENAV_MODES={SIDENAV_MODES}
             defaultMode={layoutConfig.defaultMode}
             storageKeyPrefix={layoutConfig.storageKeyPrefix}

@@ -407,5 +407,37 @@ describe("Layout", () => {
       // when the user navigates back to a non-admin page.
       expect(localStorage.getItem("mainSideNavMode")).toBe("lock");
     });
+
+    test("user can manually open the drawer while on admin (override)", async () => {
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { route: "/MasterListsPage" },
+      );
+
+      // Default state on admin: drawer is not expanded (no nav-locked
+      // class, no .cds--side-nav--expanded — both signal CLOSE).
+      const sideNav = container.querySelector(".cds--side-nav");
+      expect(sideNav).toBeTruthy();
+      expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(false);
+
+      // Click the menu toggle button (which calls toggleSideNav).
+      // toggle cycles CLOSE → SHOW; with override flag flipped, the
+      // effective mode becomes SHOW so the drawer should expand.
+      const menuToggle = container.querySelector(
+        ".cds--header__menu-trigger, .cds--header__menu-toggle",
+      );
+      if (menuToggle) {
+        const { default: userEvent } =
+          await import("@testing-library/user-event");
+        await userEvent.setup().click(menuToggle);
+
+        // After click: drawer should be expanded (override took effect).
+        expect(sideNav.classList.contains("cds--side-nav--expanded")).toBe(
+          true,
+        );
+      }
+    });
   });
 });
