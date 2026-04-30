@@ -76,11 +76,12 @@ public class CustomUserDetailsService implements UserDetailsService {
         return authorities;
     }
 
-    // Shared with KeycloakAuthoritiesExtractor so SAML/SSO logins produce the same
-    // ROLE_* authorities as form logins; @PreAuthorize("hasRole('ADMIN')")
-    // otherwise
-    // fails for SSO users because Keycloak ships role names like "oeg-Global
-    // Administrator".
+    /* 
+     * Shared with KeycloakAuthoritiesExtractor so SAML/SSO logins produce the same
+     * ROLE_* authorities as form logins; @PreAuthorize("hasRole('ADMIN')")
+     * otherwise fails for SSO users because Keycloak ships role names like "oeg-Global
+     * Administrator".
+     */
     public static void addAuthoritiesForRole(String roleName, Set<String> sink) {
         if (roleName == null) {
             return;
