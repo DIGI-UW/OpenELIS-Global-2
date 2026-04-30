@@ -563,22 +563,9 @@ public class SampleEditServiceImpl implements SampleEditService {
                 continue;
             }
 
-            try {
-                String sampleItemId = sampleItem.getId();
-
-                logger.info("Assigning storage location for SampleItem {}: locationId={}, locationType={}",
-                        sampleItemId, storageLocationId, storageLocationType);
-
-                sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
-                        storagePositionCoordinate, "Auto-assigned on order creation");
-
-                logger.info("Successfully assigned storage location for SampleItem {}", sampleItemId);
-
-            } catch (Exception e) {
-                // Log error but don't fail the entire order creation
-                logger.error("Failed to assign storage location for SampleItem {}: {}", sampleItem.getId(),
-                        e.getMessage(), e);
-            }
+            String sampleItemId = sampleItem.getId();
+            sampleStorageService.assignSampleItemWithLocation(sampleItemId, storageLocationId, storageLocationType,
+                    storagePositionCoordinate, "Auto-assigned on order creation");
         }
     }
 
