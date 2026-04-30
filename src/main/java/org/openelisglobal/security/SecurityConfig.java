@@ -560,18 +560,20 @@ public class SecurityConfig {
 
         private static final String OEG_PREFIX = "oeg-";
 
-        // Reads the `Role` SAML attribute (saml-role-list-mapper in Keycloak) and emits
-        // two parallel authority shapes for each role value:
-        //
-        // 1) The original Keycloak string (e.g. "oeg-Results-AllLabUnits"). This is
-        // what LoginPageController.setLabunitRolesForExistingUserFromGrantedAuthorities
-        // splits on `-` to recover (role, labUnit) pairs for the /session response.
-        //
-        // 2) A normalized "ROLE_*" string (e.g. "ROLE_RESULTS") derived from the role
-        // name component only — the lab-unit suffix is dropped so SSO matches what
-        // form login produces (CustomUserDetailsService.addAuthoritiesForRole). This
-        // makes method-level checks like @PreAuthorize("hasRole('ADMIN')") work for
-        // SSO users.
+        /* 
+         * Reads the `Role` SAML attribute (saml-role-list-mapper in Keycloak) and emits
+         * two parallel authority shapes for each role value:
+         *
+         * 1) The original Keycloak string (e.g. "oeg-Results-AllLabUnits"). This is
+         * what LoginPageController.setLabunitRolesForExistingUserFromGrantedAuthorities
+         * splits on `-` to recover (role, labUnit) pairs for the /session response.
+         *
+         * 2) A normalized "ROLE_*" string (e.g. "ROLE_RESULTS") derived from the role
+         * name component only — the lab-unit suffix is dropped so SSO matches what
+         * form login produces (CustomUserDetailsService.addAuthoritiesForRole). This
+         * makes method-level checks like @PreAuthorize("hasRole('ADMIN')") work for
+         * SSO users.
+         * /
         public Collection<GrantedAuthority> convert(Assertion assertion) {
             Set<String> authorityNames = new LinkedHashSet<>();
             for (AttributeStatement statement : assertion.getAttributeStatements()) {
