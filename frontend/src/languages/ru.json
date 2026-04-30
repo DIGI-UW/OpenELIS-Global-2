@@ -4294,7 +4294,7 @@
   "storage.picker.notes": "Notes",
   "storage.picker.position.optional": "Position (optional)",
   "storage.picker.select": "Select {level}",
-  "storage.picker.addNew": "Add new",
+  "storage.picker.addNewLevel": "Add new {level}",
   "storage.picker.inlineCreate.heading": "Create new {level}",
   "storage.picker.inlineCreate.error.title": "Could not create location",
   "storage.picker.inlineCreate.error": "Failed to create location",

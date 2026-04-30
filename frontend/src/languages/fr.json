@@ -4294,7 +4294,7 @@
   "storage.picker.notes": "Notes",
   "storage.picker.position.optional": "Position (facultatif)",
   "storage.picker.select": "Sélectionner {level}",
-  "storage.picker.addNew": "Ajouter",
+  "storage.picker.addNewLevel": "Add new {level}",
   "storage.picker.inlineCreate.heading": "Créer un nouveau {level}",
   "storage.picker.inlineCreate.error.title": "Impossible de créer l'emplacement",
   "storage.picker.inlineCreate.error": "Échec de la création de l'emplacement",
