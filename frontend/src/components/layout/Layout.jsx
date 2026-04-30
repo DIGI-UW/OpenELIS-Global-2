@@ -38,6 +38,16 @@ export default function Layout(props) {
     location.pathname.startsWith("/analyzers") ||
     location.pathname.startsWith("/AnalyzerManagement");
 
+  // Admin pages render their own internal sub-nav. The side drawer can't
+  // share horizontal space with that sub-nav, so we force the drawer
+  // closed while on these routes — without mutating the user's persisted
+  // mode preference. When the user navigates back to a non-admin page,
+  // the drawer auto-restores to whatever mode they had before (LOCK,
+  // SHOW, or CLOSE).
+  const isAdminContext =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/MasterListsPage");
+
   const layoutConfig = {
     storageKeyPrefix: pageStorageKeyPrefix
       ? pageStorageKeyPrefix
@@ -58,11 +68,19 @@ export default function Layout(props) {
   // Lock mode support - push content when sidenav is locked
   const { mode, isExpanded, toggle, setMode, SIDENAV_MODES } =
     useSideNavPreference(layoutConfig);
+
+  // Derived state: while on admin routes, render the drawer as if it
+  // were CLOSE regardless of the user's persisted mode. The underlying
+  // useSideNavPreference state is untouched, so navigating away
+  // restores the user's actual mode (e.g. LOCK pin) automatically.
+  const effectiveMode = isAdminContext ? SIDENAV_MODES.CLOSE : mode;
+  const effectiveIsExpanded = effectiveMode !== SIDENAV_MODES.CLOSE;
+
   // Only push content when sidenav is actually present (authenticated UX).
   // Otherwise, a persisted LOCK mode would incorrectly shift unauthenticated pages
   // like /login to the right (no sidenav toggle available there).
   const isLocked =
-    userSessionDetails.authenticated && mode === SIDENAV_MODES.LOCK;
+    userSessionDetails.authenticated && effectiveMode === SIDENAV_MODES.LOCK;
 
   const addNotification = (notificationBody) => {
     setNotifications([...notifications, notificationBody]);
@@ -127,8 +145,8 @@ export default function Layout(props) {
         <div className="d-flex flex-column min-vh-100">
           <Header
             onChangeLanguage={props.onChangeLanguage}
-            mode={mode}
-            isExpanded={isExpanded}
+            mode={effectiveMode}
+            isExpanded={effectiveIsExpanded}
             toggleSideNav={toggle}
             setMode={setMode}
             SIDENAV_MODES={SIDENAV_MODES}

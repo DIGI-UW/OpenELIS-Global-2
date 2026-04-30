@@ -342,4 +342,70 @@ describe("Layout", () => {
       expect(userIcon).toBeTruthy();
     });
   });
+
+  // The Admin landing pages (`/admin`, `/MasterListsPage`) render their
+  // own internal sub-nav. The side drawer can't share horizontal space
+  // with that sub-nav, so Layout derives an `effectiveMode` of CLOSE
+  // while on those routes — without mutating the user's persisted
+  // mode preference. When the user navigates back to a non-admin page,
+  // the drawer auto-restores to whatever mode they pinned.
+  describe("Admin route forces drawer closed (effectiveMode)", () => {
+    beforeEach(() => {
+      // useSideNavPreference reads from localStorage on mount; reset
+      // between tests so each starts from a known state.
+      localStorage.clear();
+    });
+
+    test("on /Dashboard with persisted LOCK mode → content has nav-locked class", () => {
+      localStorage.setItem("mainSideNavMode", "lock");
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { route: "/Dashboard" },
+      );
+
+      // isLocked = (authenticated && effectiveMode === LOCK) → push content
+      expect(container.querySelector(".content-nav-locked")).toBeTruthy();
+    });
+
+    test("on /MasterListsPage with persisted LOCK mode → content does NOT have nav-locked class", () => {
+      localStorage.setItem("mainSideNavMode", "lock");
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { route: "/MasterListsPage" },
+      );
+
+      // isAdminContext flips effectiveMode to CLOSE, so isLocked → false
+      expect(container.querySelector(".content-nav-locked")).toBeFalsy();
+    });
+
+    test("on /admin with persisted LOCK mode → content does NOT have nav-locked class", () => {
+      localStorage.setItem("mainSideNavMode", "lock");
+      const { container } = renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { route: "/admin/something" },
+      );
+
+      expect(container.querySelector(".content-nav-locked")).toBeFalsy();
+    });
+
+    test("persisted preference is preserved (not mutated) when on admin route", () => {
+      localStorage.setItem("mainSideNavMode", "lock");
+      renderWithProviders(
+        <Layout>
+          <div>Content</div>
+        </Layout>,
+        { route: "/MasterListsPage" },
+      );
+
+      // Persisted mode should still be LOCK so the drawer auto-restores
+      // when the user navigates back to a non-admin page.
+      expect(localStorage.getItem("mainSideNavMode")).toBe("lock");
+    });
+  });
 });
