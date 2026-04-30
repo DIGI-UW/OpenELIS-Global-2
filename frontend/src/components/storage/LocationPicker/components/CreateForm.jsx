@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   Dropdown,
   Button,
-  Modal,
   TextInput,
   NumberInput,
   InlineNotification,
@@ -11,6 +10,7 @@ import { Add } from "@carbon/icons-react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import useCreateLocation from "../../pages/hooks/useCreateLocation";
+import "./CreateForm.css";
 
 /**
  * CreateForm — 5-level cascading dropdown UI for the LocationPicker.
@@ -279,6 +279,155 @@ export default function CreateForm({ selection, onLevelChange }) {
     }
   };
 
+  // Inline create form, rendered directly under the row whose "Add new"
+  // button opened it. No nested Carbon Modal — modal-on-modal violates
+  // Carbon's design guidance and produces fighting sentinel focus traps
+  // that leave inner inputs unfocusable.
+  const renderInlineCreate = () => {
+    const levelMeta = LEVELS.find((l) => l.key === inlineCreate.level);
+    const heading = intl.formatMessage(
+      {
+        id: "storage.picker.inlineCreate.heading",
+        defaultMessage: "Create new {level}",
+      },
+      {
+        level: intl
+          .formatMessage({
+            id: levelMeta.labelId,
+            defaultMessage: levelMeta.label,
+          })
+          .toLowerCase(),
+      },
+    );
+    const submitDisabled =
+      !inlineCreate.name.trim() ||
+      (inlineCreate.level === "device" && !inlineCreate.type) ||
+      (inlineCreate.level === "box" &&
+        (!inlineCreate.code?.trim() ||
+          !(Number(inlineCreate.rows) >= 1) ||
+          !(Number(inlineCreate.columns) >= 1)));
+    return (
+      <section
+        className="storage-location-picker-inline-create"
+        role="group"
+        aria-label={heading}
+      >
+        <h5>{heading}</h5>
+        {createError && (
+          <InlineNotification
+            kind="error"
+            role="alert"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "storage.picker.inlineCreate.error.title",
+              defaultMessage: "Could not create location",
+            })}
+            subtitle={createError}
+          />
+        )}
+        <TextInput
+          id="location-picker-inline-create-name"
+          labelText={intl.formatMessage({
+            id: "label.name",
+            defaultMessage: "Name",
+          })}
+          value={inlineCreate.name}
+          onChange={(e) =>
+            setInlineCreate({ ...inlineCreate, name: e.target.value })
+          }
+        />
+        {inlineCreate.level === "device" && (
+          <Dropdown
+            id="location-picker-inline-create-device-type"
+            titleText={intl.formatMessage({
+              id: "storage.device.type",
+              defaultMessage: "Device type",
+            })}
+            label={intl.formatMessage({
+              id: "storage.picker.select",
+              defaultMessage: "Select device type",
+            })}
+            items={deviceTypes}
+            itemToString={(item) => item || ""}
+            selectedItem={inlineCreate.type || null}
+            onChange={({ selectedItem }) =>
+              setInlineCreate({
+                ...inlineCreate,
+                type: selectedItem || "",
+              })
+            }
+          />
+        )}
+        {inlineCreate.level === "box" && (
+          <>
+            <TextInput
+              id="location-picker-inline-create-box-code"
+              labelText={intl.formatMessage({
+                id: "label.code",
+                defaultMessage: "Code",
+              })}
+              helperText={intl.formatMessage({
+                id: "storage.box.code.helper",
+                defaultMessage: "Up to 10 characters",
+              })}
+              maxLength={10}
+              value={inlineCreate.code || ""}
+              onChange={(e) =>
+                setInlineCreate({ ...inlineCreate, code: e.target.value })
+              }
+            />
+            <NumberInput
+              id="location-picker-inline-create-box-rows"
+              label={intl.formatMessage({
+                id: "storage.box.rows",
+                defaultMessage: "Rows",
+              })}
+              min={1}
+              value={inlineCreate.rows === "" ? "" : Number(inlineCreate.rows)}
+              onChange={(_e, { value }) =>
+                setInlineCreate({ ...inlineCreate, rows: value })
+              }
+            />
+            <NumberInput
+              id="location-picker-inline-create-box-columns"
+              label={intl.formatMessage({
+                id: "storage.box.columns",
+                defaultMessage: "Columns",
+              })}
+              min={1}
+              value={
+                inlineCreate.columns === "" ? "" : Number(inlineCreate.columns)
+              }
+              onChange={(_e, { value }) =>
+                setInlineCreate({ ...inlineCreate, columns: value })
+              }
+            />
+          </>
+        )}
+        <div className="storage-location-picker-inline-create-actions">
+          <Button
+            kind="primary"
+            size="sm"
+            onClick={handleCreate}
+            disabled={submitDisabled}
+          >
+            <FormattedMessage
+              id="label.button.create"
+              defaultMessage="Create"
+            />
+          </Button>
+          <Button kind="ghost" size="sm" onClick={closeInlineCreate}>
+            <FormattedMessage
+              id="label.button.cancel"
+              defaultMessage="Cancel"
+            />
+          </Button>
+        </div>
+      </section>
+    );
+  };
+
   return (
     <div className="storage-location-picker-create-form">
       {LEVELS.map(({ key, label, labelId, parentLevel }) => {
@@ -290,188 +439,56 @@ export default function CreateForm({ selection, onLevelChange }) {
           defaultMessage: label,
         });
         return (
-          <div key={key} className="storage-location-picker-create-row">
-            <Dropdown
-              id={`location-picker-${key}`}
-              titleText={levelLabel}
-              label={intl.formatMessage(
-                {
-                  id: "storage.picker.select",
-                  defaultMessage: "Select {level}",
-                },
-                { level: levelLabel.toLowerCase() },
-              )}
-              items={items}
-              itemToString={(item) =>
-                item ? item.name || item.label || "" : ""
-              }
-              selectedItem={selection[key] || null}
-              disabled={!enabled}
-              onChange={({ selectedItem }) => {
-                onLevelChange(
-                  key,
-                  selectedItem
-                    ? {
-                        id: selectedItem.id,
-                        name: selectedItem.name || selectedItem.label,
-                      }
-                    : undefined,
-                );
-              }}
-            />
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Add}
-              disabled={!enabled}
-              onClick={() => openInlineCreate(key)}
-            >
-              <FormattedMessage
-                id="storage.picker.addNew"
-                defaultMessage="Add new"
+          <React.Fragment key={key}>
+            <div className="storage-location-picker-create-row">
+              <Dropdown
+                id={`location-picker-${key}`}
+                titleText={levelLabel}
+                label={intl.formatMessage(
+                  {
+                    id: "storage.picker.select",
+                    defaultMessage: "Select {level}",
+                  },
+                  { level: levelLabel.toLowerCase() },
+                )}
+                items={items}
+                itemToString={(item) =>
+                  item ? item.name || item.label || "" : ""
+                }
+                selectedItem={selection[key] || null}
+                disabled={!enabled}
+                onChange={({ selectedItem }) => {
+                  onLevelChange(
+                    key,
+                    selectedItem
+                      ? {
+                          id: selectedItem.id,
+                          name: selectedItem.name || selectedItem.label,
+                        }
+                      : undefined,
+                  );
+                }}
               />
-            </Button>
-          </div>
+              <Button
+                kind="ghost"
+                size="sm"
+                renderIcon={Add}
+                disabled={!enabled}
+                onClick={() => openInlineCreate(key)}
+              >
+                {intl.formatMessage(
+                  {
+                    id: "storage.picker.addNewLevel",
+                    defaultMessage: "Add new {level}",
+                  },
+                  { level: levelLabel },
+                )}
+              </Button>
+            </div>
+            {inlineCreate?.level === key && renderInlineCreate()}
+          </React.Fragment>
         );
       })}
-
-      {inlineCreate && (
-        <Modal
-          open
-          modalHeading={intl.formatMessage(
-            {
-              id: "storage.picker.inlineCreate.heading",
-              defaultMessage: "Create new {level}",
-            },
-            {
-              level: intl
-                .formatMessage({
-                  id: LEVELS.find((l) => l.key === inlineCreate.level).labelId,
-                  defaultMessage: LEVELS.find(
-                    (l) => l.key === inlineCreate.level,
-                  ).label,
-                })
-                .toLowerCase(),
-            },
-          )}
-          primaryButtonText={intl.formatMessage({
-            id: "label.button.create",
-            defaultMessage: "Create",
-          })}
-          primaryButtonDisabled={
-            !inlineCreate.name.trim() ||
-            (inlineCreate.level === "device" && !inlineCreate.type) ||
-            (inlineCreate.level === "box" &&
-              (!inlineCreate.code?.trim() ||
-                !(Number(inlineCreate.rows) >= 1) ||
-                !(Number(inlineCreate.columns) >= 1)))
-          }
-          secondaryButtonText={intl.formatMessage({
-            id: "label.button.cancel",
-            defaultMessage: "Cancel",
-          })}
-          onRequestSubmit={handleCreate}
-          onRequestClose={closeInlineCreate}
-          onSecondarySubmit={closeInlineCreate}
-        >
-          {createError && (
-            <InlineNotification
-              kind="error"
-              role="alert"
-              lowContrast
-              hideCloseButton
-              title={intl.formatMessage({
-                id: "storage.picker.inlineCreate.error.title",
-                defaultMessage: "Could not create location",
-              })}
-              subtitle={createError}
-            />
-          )}
-          <TextInput
-            id="location-picker-inline-create-name"
-            labelText={intl.formatMessage({
-              id: "label.name",
-              defaultMessage: "Name",
-            })}
-            value={inlineCreate.name}
-            onChange={(e) =>
-              setInlineCreate({ ...inlineCreate, name: e.target.value })
-            }
-          />
-          {inlineCreate.level === "device" && (
-            <Dropdown
-              id="location-picker-inline-create-device-type"
-              titleText={intl.formatMessage({
-                id: "storage.device.type",
-                defaultMessage: "Device type",
-              })}
-              label={intl.formatMessage({
-                id: "storage.picker.select",
-                defaultMessage: "Select device type",
-              })}
-              items={deviceTypes}
-              itemToString={(item) => item || ""}
-              selectedItem={inlineCreate.type || null}
-              onChange={({ selectedItem }) =>
-                setInlineCreate({
-                  ...inlineCreate,
-                  type: selectedItem || "",
-                })
-              }
-            />
-          )}
-          {inlineCreate.level === "box" && (
-            <>
-              <TextInput
-                id="location-picker-inline-create-box-code"
-                labelText={intl.formatMessage({
-                  id: "label.code",
-                  defaultMessage: "Code",
-                })}
-                helperText={intl.formatMessage({
-                  id: "storage.box.code.helper",
-                  defaultMessage: "Up to 10 characters",
-                })}
-                maxLength={10}
-                value={inlineCreate.code || ""}
-                onChange={(e) =>
-                  setInlineCreate({ ...inlineCreate, code: e.target.value })
-                }
-              />
-              <NumberInput
-                id="location-picker-inline-create-box-rows"
-                label={intl.formatMessage({
-                  id: "storage.box.rows",
-                  defaultMessage: "Rows",
-                })}
-                min={1}
-                value={
-                  inlineCreate.rows === "" ? "" : Number(inlineCreate.rows)
-                }
-                onChange={(_e, { value }) =>
-                  setInlineCreate({ ...inlineCreate, rows: value })
-                }
-              />
-              <NumberInput
-                id="location-picker-inline-create-box-columns"
-                label={intl.formatMessage({
-                  id: "storage.box.columns",
-                  defaultMessage: "Columns",
-                })}
-                min={1}
-                value={
-                  inlineCreate.columns === ""
-                    ? ""
-                    : Number(inlineCreate.columns)
-                }
-                onChange={(_e, { value }) =>
-                  setInlineCreate({ ...inlineCreate, columns: value })
-                }
-              />
-            </>
-          )}
-        </Modal>
-      )}
     </div>
   );
 }
