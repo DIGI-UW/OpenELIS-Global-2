@@ -43,12 +43,22 @@ const AddOrder = (props) => {
   const [paymentOptions, setPaymentOptions] = useState([]);
   const [samplingPerformed, setSamplingPerformed] = useState([]);
   const [siteNames, setSiteNames] = useState([]);
-  const [innitialized, setInnitialized] = useState(false);
+  // Ref (not state) because the value gates a one-time init inside an effect
+  // and is never read during render — using state would trigger an extra
+  // render and a react-hooks/set-state-in-effect lint violation.
+  const initializedRef = useRef(false);
   const [departments, setDepartments] = useState([]);
 
   useEffect(() => {
     componentMounted.current = true;
-    getFromOpenElisServer("/rest/SamplePatientEntry", getSampleEntryPreform);
+    getFromOpenElisServer("/rest/SamplePatientEntry", (response) => {
+      if (componentMounted.current) {
+        setSiteNames(response.sampleOrderItems.referringSiteList);
+        setPaymentOptions(response.sampleOrderItems.paymentOptions);
+        setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
+        setProviders(response.sampleOrderItems.providersList);
+      }
+    });
     window.scrollTo(0, 0);
     return () => {
       componentMounted.current = false;
@@ -79,11 +89,6 @@ const AddOrder = (props) => {
       ...orderFormValues,
       sampleOrderItems: obj,
     });
-
-    // Track changes for consent fields
-    if (datePicker === "consentRecordedAt") {
-      setChanged({ ...changed, "sampleOrderItems.consentRecordedAt": true });
-    }
   };
 
   function handlePaymentStatus(e) {
@@ -387,13 +392,6 @@ const AddOrder = (props) => {
           : "",
       },
     });
-    setChanged({
-      ...changed,
-      "sampleOrderItems.consentGiven": true,
-      "sampleOrderItems.consentFormReference": true,
-      "sampleOrderItems.consentRecordedAt": true,
-      "sampleOrderItems.consentRecordedBy": true,
-    });
   }
 
   function handleConsentReferenceChange(e) {
@@ -404,9 +402,7 @@ const AddOrder = (props) => {
         consentFormReference: e.target.value,
       },
     });
-    setChanged({ ...changed, "sampleOrderItems.consentFormReference": true });
   }
-
 
   function handleConsentRecordedByChange(e) {
     setOrderFormValues({
@@ -416,11 +412,10 @@ const AddOrder = (props) => {
         consentRecordedBy: e.target.value,
       },
     });
-    setChanged({ ...changed, "sampleOrderItems.consentRecordedBy": true });
   }
 
   useEffect(() => {
-    if (!innitialized) {
+    if (!initializedRef.current) {
       setOrderFormValues({
         ...orderFormValues,
         sampleOrderItems: {
@@ -433,7 +428,7 @@ const AddOrder = (props) => {
       });
     }
     if (orderFormValues.sampleOrderItems.requestDate != "") {
-      setInnitialized(true);
+      initializedRef.current = true;
     }
   }, [orderFormValues]);
 
@@ -485,15 +480,6 @@ const AddOrder = (props) => {
       providerSMSNotificationTestIds: object.providerSMSNotificationTestIds,
       providerEmailNotificationTestIds: object.providerEmailNotificationTestIds,
     });
-  };
-
-  const getSampleEntryPreform = (response) => {
-    if (componentMounted.current) {
-      setSiteNames(response.sampleOrderItems.referringSiteList);
-      setPaymentOptions(response.sampleOrderItems.paymentOptions);
-      setSamplingPerformed(response.sampleOrderItems.testLocationCodeList);
-      setProviders(response.sampleOrderItems.providersList);
-    }
   };
 
   const handleKeyPress = (event) => {
@@ -1027,10 +1013,11 @@ const AddOrder = (props) => {
                     labelText={intl.formatMessage({
                       id: "label.informedConsent.recordedBy",
                     })}
-                    placeholder="e.g. Dr. Smith"
-                    value={
-                      orderFormValues.sampleOrderItems.consentRecordedBy
-                    }
+                    placeholder={intl.formatMessage({
+                      id: "placeholder.informedConsent.recordedBy",
+                    })}
+                    maxLength={255}
+                    value={orderFormValues.sampleOrderItems.consentRecordedBy}
                     onChange={handleConsentRecordedByChange}
                     id="consentRecordedById"
                   />
@@ -1057,40 +1044,6 @@ const AddOrder = (props) => {
                       handleDatePickerChange("consentRecordedAt", date)
                     }
                   />
-                </Column>
-              </>
-            )}
-
-            {/* Consent Audit Information - Read Only */}
-            {(orderFormValues.sampleOrderItems.consentRecordedAt ||
-              orderFormValues.sampleOrderItems.consentRecordedBy) && (
-              <>
-                <Column lg={16} md={8} sm={3}>
-                  {" "}
-                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
-                </Column>
-                <Column lg={8} md={4} sm={4}>
-                  {/* Empty column for alignment */}
-                </Column>
-                <Column lg={8} md={4} sm={4}>
-                  <Stack gap={4} className="cds--type-body-compact-01 cds--text-03" style={{ marginTop: "1rem" }}>
-                    {orderFormValues.sampleOrderItems.consentRecordedAt && (
-                      <div>
-                        <strong>
-                          <FormattedMessage id="label.informedConsent.recordedAt" />:
-                        </strong>{" "}
-                        {orderFormValues.sampleOrderItems.consentRecordedAt}
-                      </div>
-                    )}
-                    {orderFormValues.sampleOrderItems.consentRecordedBy && (
-                      <div>
-                        <strong>
-                          <FormattedMessage id="label.informedConsent.recordedBy" />:
-                        </strong>{" "}
-                        {orderFormValues.sampleOrderItems.consentRecordedBy}
-                      </div>
-                    )}
-                  </Stack>
                 </Column>
               </>
             )}

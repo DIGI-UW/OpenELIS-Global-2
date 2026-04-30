@@ -934,15 +934,24 @@ public class SamplePatientUpdateData {
     }
 
     /**
-     * Update consent fields from form data. When consent is provided
-     * (true), use the user-supplied audit fields from the form. When
-     * consent is withdrawn (false/null), clear all consent fields.
+     * Update consent fields from form data. When consent is provided (true), use
+     * the user-supplied audit fields from the form. When consent is explicitly
+     * withdrawn (false), clear all consent fields. When the form omits the consent
+     * section entirely (consentGiven == null) on an update, preserve the persisted
+     * values rather than wiping the existing consent record.
      */
     private void updateConsentFieldsWithAudit(Sample sample, SampleOrderItem sampleOrder) {
         Boolean consentGiven = sampleOrder.getConsentGiven();
         String consentFormReference = sampleOrder.getConsentFormReference();
         String consentRecordedAt = sampleOrder.getConsentRecordedAt();
         String consentRecordedBy = sampleOrder.getConsentRecordedBy();
+
+        // On update, null consentGiven means the form did not include the consent
+        // section; leave the persisted values alone. On a new sample, fall through
+        // and default to "no consent recorded".
+        if (consentGiven == null && sample.getId() != null) {
+            return;
+        }
 
         if (Boolean.TRUE.equals(consentGiven)) {
             // Consent provided - set fields from form data
@@ -951,14 +960,8 @@ public class SamplePatientUpdateData {
 
             // Use form-supplied audit fields
             if (consentRecordedAt != null && !consentRecordedAt.trim().isEmpty()) {
-                try {
-                    // Parse date in dd/MM/yyyy format to Timestamp
-                    java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(consentRecordedAt, "dd/MM/yyyy");
-                    sample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
-                } catch (Exception e) {
-                    // If parsing fails, set to null
-                    sample.setConsentRecordedAt(null);
-                }
+                java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(consentRecordedAt);
+                sample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
             } else {
                 sample.setConsentRecordedAt(null);
             }

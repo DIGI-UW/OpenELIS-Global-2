@@ -1142,6 +1142,7 @@
   "label.informedConsent.statusTag": "Consent Recorded",
   "label.informedConsent.notRecorded": "Not recorded",
   "placeholder.informedConsent.formReference": "e.g. CF-2026-00123",
+  "placeholder.informedConsent.recordedBy": "e.g. Dr. Smith",
   "error.informedConsent.formReferenceMaxLength": "Consent form reference must be 100 characters or fewer",
   "error.informedConsent.formReferenceInvalidChars": "Only letters, numbers, hyphens, and spaces are allowed",
   "coldstorage.label.dashboard": "Cold Storage Dashboard",

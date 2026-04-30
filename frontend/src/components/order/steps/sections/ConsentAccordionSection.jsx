@@ -1,5 +1,5 @@
 import React from "react";
-import { useIntl, FormattedMessage } from "react-intl";
+import { useIntl } from "react-intl";
 import {
   Accordion,
   AccordionItem,
@@ -7,21 +7,20 @@ import {
   TextInput,
   Tag,
   Stack,
-  DatePicker,
-  DatePickerInput,
 } from "@carbon/react";
+import CustomDatePicker from "../../../common/CustomDatePicker";
 
 /**
- * ConsentAccordionSection - Informed consent capture per OGC-557 FRS v1.1.
+ * ConsentAccordionSection - Informed consent capture.
  *
  * Exported for reuse in Add Order, Edit Order, and the Sample Collection Wizard.
  *
  * Features:
- * - Carbon Accordion section, expanded by default (FR-1-001..FR-1-003)
- * - Teal "Consent Recorded" Tag in header when consent is given (FR-1-004)
- * - Consent acknowledgment checkbox (advisory per FR-5-001/FR-5-002)
+ * - Carbon Accordion section, expanded by default
+ * - Teal "Consent Recorded" Tag in header when consent is given
+ * - Consent acknowledgment checkbox
  * - Optional consent form reference number, revealed when checkbox checked
- * - Read-only audit Tile once consent is recorded server-side
+ * - Operator-entered "Recorded by" name and "Recorded at" date
  *
  * Spec: https://github.com/DIGI-UW/openelis-work/blob/main/designs/sample-collection/informed-consent.md
  */
@@ -43,8 +42,6 @@ export const ConsentAccordionSection = ({
     consentRecordedAt = "",
     consentRecordedBy = "",
   } = consentData;
-
-
 
   const validateFormRef = (value) => {
     if (!value) return null;
@@ -113,7 +110,7 @@ export const ConsentAccordionSection = ({
             })}
             checked={consentGiven}
             onChange={(_, { checked }) => {
-              // Clearing the checkbox clears all fields per FR-3-002
+              // Clearing the checkbox clears all fields
               if (!checked) {
                 onConsentChange({
                   ...consentData,
@@ -166,6 +163,7 @@ export const ConsentAccordionSection = ({
                   id: "placeholder.informedConsent.recordedBy",
                   defaultMessage: "e.g. Dr. Smith",
                 })}
+                maxLength={255}
                 value={consentRecordedBy}
                 onChange={(e) =>
                   handleConsentChange("consentRecordedBy", e.target.value)
@@ -174,33 +172,22 @@ export const ConsentAccordionSection = ({
                 style={{ maxWidth: "400px" }}
               />
 
-              <DatePicker
-                datePickerType="single"
-                dateFormat="d/m/Y"
-                value={consentRecordedAt}
-                onChange={(dateArray) => {
-                  const selectedDate = dateArray[0];
-                  const formattedDate = selectedDate
-                    ? selectedDate.toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })
-                    : "";
-                  handleConsentChange("consentRecordedAt", formattedDate);
-                }}
-              >
-                <DatePickerInput
+              <div style={{ maxWidth: "400px" }}>
+                <CustomDatePicker
                   id="consentRecordedAt"
                   labelText={intl.formatMessage({
                     id: "label.informedConsent.recordedAt",
                     defaultMessage: "Consent Recorded At",
                   })}
-                  placeholder="dd/mm/yyyy"
+                  value={consentRecordedAt}
+                  updateStateValue={true}
+                  disallowFutureDate={true}
                   disabled={isReadOnly}
-                  style={{ maxWidth: "400px" }}
+                  onChange={(date) =>
+                    handleConsentChange("consentRecordedAt", date)
+                  }
                 />
-              </DatePicker>
+              </div>
             </>
           )}
         </Stack>

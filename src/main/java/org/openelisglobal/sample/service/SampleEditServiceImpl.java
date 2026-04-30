@@ -160,55 +160,61 @@ public class SampleEditServiceImpl implements SampleEditService {
             updatedSample = orderArtifacts.getSample();
         }
 
-        // Update consent fields from form data including audit fields
+        // Update consent fields from form data including audit fields.
+        // A null consentGiven means the form did not include the consent section
+        // (e.g., modify-order flow); preserve the persisted values in that case
+        // rather than wiping the existing consent record.
         Boolean newConsentGiven = form.getSampleOrderItems().getConsentGiven();
-        String newConsentFormReference = form.getSampleOrderItems().getConsentFormReference();
-        String newConsentRecordedAt = form.getSampleOrderItems().getConsentRecordedAt();
-        String newConsentRecordedBy = form.getSampleOrderItems().getConsentRecordedBy();
+        boolean consentChanged = false;
 
-        // Normalize empty strings to null for consistent comparison
-        if (newConsentFormReference != null && newConsentFormReference.trim().isEmpty()) {
-            newConsentFormReference = null;
-        }
-        if (newConsentRecordedAt != null && newConsentRecordedAt.trim().isEmpty()) {
-            newConsentRecordedAt = null;
-        }
-        if (newConsentRecordedBy != null && newConsentRecordedBy.trim().isEmpty()) {
-            newConsentRecordedBy = null;
-        }
+        if (newConsentGiven != null) {
+            String newConsentFormReference = form.getSampleOrderItems().getConsentFormReference();
+            String newConsentRecordedAt = form.getSampleOrderItems().getConsentRecordedAt();
+            String newConsentRecordedBy = form.getSampleOrderItems().getConsentRecordedBy();
 
-        // Check if consent fields have actually changed using Objects.equals()
-        Boolean currentConsentGiven = updatedSample.getConsentGiven();
-        String currentConsentFormReference = updatedSample.getConsentFormReference();
+            // Normalize empty strings to null for consistent comparison
+            if (newConsentFormReference != null && newConsentFormReference.trim().isEmpty()) {
+                newConsentFormReference = null;
+            }
+            if (newConsentRecordedAt != null && newConsentRecordedAt.trim().isEmpty()) {
+                newConsentRecordedAt = null;
+            }
+            if (newConsentRecordedBy != null && newConsentRecordedBy.trim().isEmpty()) {
+                newConsentRecordedBy = null;
+            }
 
-        boolean consentGivenChanged = !Objects.equals(currentConsentGiven, newConsentGiven);
-        boolean consentFormReferenceChanged = !Objects.equals(currentConsentFormReference, newConsentFormReference);
-        boolean consentChanged = consentGivenChanged || consentFormReferenceChanged;
+            // Check if any consent field has changed — including audit fields, so
+            // edits that touch only the recorder name/date still mark the sample dirty.
+            Boolean currentConsentGiven = updatedSample.getConsentGiven();
+            String currentConsentFormReference = updatedSample.getConsentFormReference();
+            String currentConsentRecordedBy = updatedSample.getConsentRecordedBy();
+            String currentConsentRecordedAt = updatedSample.getConsentRecordedAt() == null ? null
+                    : DateUtil.convertTimestampToStringDate(updatedSample.getConsentRecordedAt());
 
-        // Update consent fields
-        updatedSample.setConsentGiven(newConsentGiven);
-        updatedSample.setConsentFormReference(newConsentFormReference);
+            consentChanged = !Objects.equals(currentConsentGiven, newConsentGiven)
+                    || !Objects.equals(currentConsentFormReference, newConsentFormReference)
+                    || !Objects.equals(currentConsentRecordedBy, newConsentRecordedBy)
+                    || !Objects.equals(currentConsentRecordedAt, newConsentRecordedAt);
 
-        // Update audit fields from form data
-        if (Boolean.TRUE.equals(newConsentGiven)) {
-            // Set audit fields from form data when consent is given
-            if (newConsentRecordedAt != null) {
-                try {
-                    // Parse date in dd/MM/yyyy format to Timestamp
-                    java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(newConsentRecordedAt, "dd/MM/yyyy");
+            // Update consent fields
+            updatedSample.setConsentGiven(newConsentGiven);
+            updatedSample.setConsentFormReference(newConsentFormReference);
+
+            // Update audit fields from form data
+            if (Boolean.TRUE.equals(newConsentGiven)) {
+                // Set audit fields from form data when consent is given
+                if (newConsentRecordedAt != null) {
+                    java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(newConsentRecordedAt);
                     updatedSample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
-                } catch (Exception e) {
-                    // If parsing fails, set to null
+                } else {
                     updatedSample.setConsentRecordedAt(null);
                 }
+                updatedSample.setConsentRecordedBy(newConsentRecordedBy);
             } else {
+                // Clear audit fields when consent is explicitly withdrawn
                 updatedSample.setConsentRecordedAt(null);
+                updatedSample.setConsentRecordedBy(null);
             }
-            updatedSample.setConsentRecordedBy(newConsentRecordedBy);
-        } else {
-            // Clear audit fields when consent is withdrawn or null
-            updatedSample.setConsentRecordedAt(null);
-            updatedSample.setConsentRecordedBy(null);
         }
 
         sampleChanged = sampleChanged || consentChanged;
