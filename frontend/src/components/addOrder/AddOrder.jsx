@@ -70,12 +70,20 @@ const AddOrder = (props) => {
       case "nextVisitDate":
         obj = { ...orderFormValues.sampleOrderItems, nextVisitDate: date };
         break;
+      case "consentRecordedAt":
+        obj = { ...orderFormValues.sampleOrderItems, consentRecordedAt: date };
+        break;
       default:
     }
     setOrderFormValues({
       ...orderFormValues,
       sampleOrderItems: obj,
     });
+
+    // Track changes for consent fields
+    if (datePicker === "consentRecordedAt") {
+      setChanged({ ...changed, "sampleOrderItems.consentRecordedAt": true });
+    }
   };
 
   function handlePaymentStatus(e) {
@@ -367,9 +375,15 @@ const AddOrder = (props) => {
       sampleOrderItems: {
         ...orderFormValues.sampleOrderItems,
         consentGiven: checked,
-        // Clear reference number if unchecking consent
+        // Clear all consent fields if unchecking consent
         consentFormReference: checked
           ? orderFormValues.sampleOrderItems.consentFormReference
+          : "",
+        consentRecordedAt: checked
+          ? orderFormValues.sampleOrderItems.consentRecordedAt
+          : "",
+        consentRecordedBy: checked
+          ? orderFormValues.sampleOrderItems.consentRecordedBy
           : "",
       },
     });
@@ -377,6 +391,8 @@ const AddOrder = (props) => {
       ...changed,
       "sampleOrderItems.consentGiven": true,
       "sampleOrderItems.consentFormReference": true,
+      "sampleOrderItems.consentRecordedAt": true,
+      "sampleOrderItems.consentRecordedBy": true,
     });
   }
 
@@ -389,6 +405,18 @@ const AddOrder = (props) => {
       },
     });
     setChanged({ ...changed, "sampleOrderItems.consentFormReference": true });
+  }
+
+
+  function handleConsentRecordedByChange(e) {
+    setOrderFormValues({
+      ...orderFormValues,
+      sampleOrderItems: {
+        ...orderFormValues.sampleOrderItems,
+        consentRecordedBy: e.target.value,
+      },
+    });
+    setChanged({ ...changed, "sampleOrderItems.consentRecordedBy": true });
   }
 
   useEffect(() => {
@@ -983,6 +1011,86 @@ const AddOrder = (props) => {
                     id="consentFormReferenceId"
                     maxLength={100}
                   />
+                </Column>
+
+                {/* Consent Recorded By Field */}
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    name="consentRecordedBy"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.recordedBy",
+                    })}
+                    placeholder="e.g. Dr. Smith"
+                    value={
+                      orderFormValues.sampleOrderItems.consentRecordedBy
+                    }
+                    onChange={handleConsentRecordedByChange}
+                    id="consentRecordedById"
+                  />
+                </Column>
+
+                {/* Consent Recorded At Field */}
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <CustomDatePicker
+                    id="consentRecordedAtId"
+                    labelText={intl.formatMessage({
+                      id: "label.informedConsent.recordedAt",
+                    })}
+                    autofillDate={false}
+                    value={orderFormValues.sampleOrderItems.consentRecordedAt}
+                    disallowFutureDate={true}
+                    onChange={(date) =>
+                      handleDatePickerChange("consentRecordedAt", date)
+                    }
+                  />
+                </Column>
+              </>
+            )}
+
+            {/* Consent Audit Information - Read Only */}
+            {(orderFormValues.sampleOrderItems.consentRecordedAt ||
+              orderFormValues.sampleOrderItems.consentRecordedBy) && (
+              <>
+                <Column lg={16} md={8} sm={3}>
+                  {" "}
+                  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;{" "}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  {/* Empty column for alignment */}
+                </Column>
+                <Column lg={8} md={4} sm={4}>
+                  <Stack gap={4} className="cds--type-body-compact-01 cds--text-03" style={{ marginTop: "1rem" }}>
+                    {orderFormValues.sampleOrderItems.consentRecordedAt && (
+                      <div>
+                        <strong>
+                          <FormattedMessage id="label.informedConsent.recordedAt" />:
+                        </strong>{" "}
+                        {orderFormValues.sampleOrderItems.consentRecordedAt}
+                      </div>
+                    )}
+                    {orderFormValues.sampleOrderItems.consentRecordedBy && (
+                      <div>
+                        <strong>
+                          <FormattedMessage id="label.informedConsent.recordedBy" />:
+                        </strong>{" "}
+                        {orderFormValues.sampleOrderItems.consentRecordedBy}
+                      </div>
+                    )}
+                  </Stack>
                 </Column>
               </>
             )}

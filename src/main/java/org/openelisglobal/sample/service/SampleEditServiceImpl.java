@@ -5,6 +5,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -158,6 +159,59 @@ public class SampleEditServiceImpl implements SampleEditService {
             sampleChanged = true;
             updatedSample = orderArtifacts.getSample();
         }
+
+        // Update consent fields from form data including audit fields
+        Boolean newConsentGiven = form.getSampleOrderItems().getConsentGiven();
+        String newConsentFormReference = form.getSampleOrderItems().getConsentFormReference();
+        String newConsentRecordedAt = form.getSampleOrderItems().getConsentRecordedAt();
+        String newConsentRecordedBy = form.getSampleOrderItems().getConsentRecordedBy();
+
+        // Normalize empty strings to null for consistent comparison
+        if (newConsentFormReference != null && newConsentFormReference.trim().isEmpty()) {
+            newConsentFormReference = null;
+        }
+        if (newConsentRecordedAt != null && newConsentRecordedAt.trim().isEmpty()) {
+            newConsentRecordedAt = null;
+        }
+        if (newConsentRecordedBy != null && newConsentRecordedBy.trim().isEmpty()) {
+            newConsentRecordedBy = null;
+        }
+
+        // Check if consent fields have actually changed using Objects.equals()
+        Boolean currentConsentGiven = updatedSample.getConsentGiven();
+        String currentConsentFormReference = updatedSample.getConsentFormReference();
+
+        boolean consentGivenChanged = !Objects.equals(currentConsentGiven, newConsentGiven);
+        boolean consentFormReferenceChanged = !Objects.equals(currentConsentFormReference, newConsentFormReference);
+        boolean consentChanged = consentGivenChanged || consentFormReferenceChanged;
+
+        // Update consent fields
+        updatedSample.setConsentGiven(newConsentGiven);
+        updatedSample.setConsentFormReference(newConsentFormReference);
+
+        // Update audit fields from form data
+        if (Boolean.TRUE.equals(newConsentGiven)) {
+            // Set audit fields from form data when consent is given
+            if (newConsentRecordedAt != null) {
+                try {
+                    // Parse date in dd/MM/yyyy format to Timestamp
+                    java.sql.Date parsedDate = DateUtil.convertStringDateToSqlDate(newConsentRecordedAt, "dd/MM/yyyy");
+                    updatedSample.setConsentRecordedAt(new java.sql.Timestamp(parsedDate.getTime()));
+                } catch (Exception e) {
+                    // If parsing fails, set to null
+                    updatedSample.setConsentRecordedAt(null);
+                }
+            } else {
+                updatedSample.setConsentRecordedAt(null);
+            }
+            updatedSample.setConsentRecordedBy(newConsentRecordedBy);
+        } else {
+            // Clear audit fields when consent is withdrawn or null
+            updatedSample.setConsentRecordedAt(null);
+            updatedSample.setConsentRecordedBy(null);
+        }
+
+        sampleChanged = sampleChanged || consentChanged;
         Patient patient = sampleService.getPatient(updatedSample);
         persistProviderData(orderArtifacts);
         SampleHuman sampleHuman = new SampleHuman();

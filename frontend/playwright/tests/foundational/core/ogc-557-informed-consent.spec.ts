@@ -38,7 +38,12 @@ interface PostResult {
 /** Build a SamplePatientEntry form payload with optional consent fields. */
 async function buildOrderForm(
   page: Page,
-  consent: { consentGiven: boolean; consentFormReference?: string },
+  consent: {
+    consentGiven: boolean;
+    consentFormReference?: string;
+    consentRecordedAt?: string;
+    consentRecordedBy?: string;
+  },
 ): Promise<Record<string, unknown>> {
   // Match the locale-aware date format the seed-tat-data.ts helper uses.
   const dateFormatRes = await page.request.get(
@@ -170,6 +175,8 @@ async function buildOrderForm(
       // ── OGC-557 FRS-named consent fields ──────────────────────────
       consentGiven: consent.consentGiven,
       consentFormReference: consent.consentFormReference || "",
+      consentRecordedAt: consent.consentRecordedAt || "",
+      consentRecordedBy: consent.consentRecordedBy || "",
     },
     initialSampleConditionList: [],
     sampleNatureList: null,
@@ -182,7 +189,12 @@ async function buildOrderForm(
 
 async function postOrder(
   page: Page,
-  consent: { consentGiven: boolean; consentFormReference?: string },
+  consent: {
+    consentGiven: boolean;
+    consentFormReference?: string;
+    consentRecordedAt?: string;
+    consentRecordedBy?: string;
+  },
 ): Promise<PostResult> {
   // Navigate so the browser context has a CSRF token + JSESSIONID for SamplePatientEntry.
   await page.goto("/SamplePatientEntry", {

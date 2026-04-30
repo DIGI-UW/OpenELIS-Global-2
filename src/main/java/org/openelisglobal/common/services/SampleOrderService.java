@@ -45,6 +45,8 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
@@ -61,6 +63,7 @@ public class SampleOrderService {
     private static OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
     private ObservationHistoryService observationHistoryService = SpringContext
             .getBean(ObservationHistoryService.class);
+    private SystemUserService systemUserService = SpringContext.getBean(SystemUserService.class);
 
     boolean needRequesterList = FormFields.getInstance().useField(FormFields.Field.RequesterSiteList);
     private boolean needPaymentOptions = ConfigurationProperties.getInstance()
@@ -197,11 +200,12 @@ public class SampleOrderService {
             sampleOrder.setReferringSiteCode(requesterService.getReferringSiteCode());
             sampleOrder.setReferringSiteName(requesterService.getReferringSiteName());
 
-            // Map consent audit fields (read-only)
+            // Map consent audit fields
             if (sample.getConsentRecordedAt() != null) {
-                sampleOrder.setConsentRecordedAt(DateUtil.convertTimestampToStringDate(sample.getConsentRecordedAt())
-                        + " " + DateUtil.convertTimestampToStringTime(sample.getConsentRecordedAt()));
+                // Format as dd/mm/yyyy for date picker compatibility
+                sampleOrder.setConsentRecordedAt(DateUtil.convertTimestampToStringDate(sample.getConsentRecordedAt()));
             }
+            // consentRecordedBy now stores names directly (post OGC-558 migration)
             sampleOrder.setConsentRecordedBy(sample.getConsentRecordedBy());
             sampleOrder.setConsentGiven(sample.getConsentGiven());
             sampleOrder.setConsentFormReference(sample.getConsentFormReference());
