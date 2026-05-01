@@ -153,12 +153,20 @@ verify_seed_contract() {
   verify_profile_catalog_ready "Mindray BS-200" "hl7/mindray-bs200"
   verify_profile_catalog_ready "QuantStudio 5" "file/quantstudio"
   verify_profile_catalog_ready "QuantStudio 7" "file/quantstudio"
+  verify_profile_catalog_ready "FluoroCycler XT" "file/fluorocycler-xt"
+  verify_profile_catalog_ready "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_profile_catalog_ready "Tecan Infinite F50" "file/tecan-f50"
+  verify_profile_catalog_ready "Thermo Multiskan FC" "file/multiskan-fc"
 
   verify_realized_analyzer_mappings "Cepheid GeneXpert (ASTM Mode)" "astm/genexpert-astm"
   verify_realized_analyzer_mappings "Mindray BC-5380" "hl7/mindray-bc5380"
   verify_realized_analyzer_mappings "Mindray BS-200" "hl7/mindray-bs200"
   verify_realized_analyzer_mappings "QuantStudio 5" "file/quantstudio"
   verify_realized_analyzer_mappings "QuantStudio 7" "file/quantstudio"
+  verify_realized_analyzer_mappings "FluoroCycler XT" "file/fluorocycler-xt"
+  verify_realized_analyzer_mappings "Wondfo Finecare FS-205" "file/wondfo-csv"
+  verify_realized_analyzer_mappings "Tecan Infinite F50" "file/tecan-f50"
+  verify_realized_analyzer_mappings "Thermo Multiskan FC" "file/multiskan-fc"
   echo "  Verified: harness catalog and analyzer mappings match seeded profiles"
 }
 
@@ -431,7 +439,43 @@ create_analyzer "QuantStudio 7" '{
   "defaultConfigId": "file/quantstudio"
 }'
 
+# 6. FluoroCycler XT (FILE) — Madagascar Hain GeneXpert alternative for HIV-VL
+create_analyzer "FluoroCycler XT" '{
+  "name": "FluoroCycler XT",
+  "analyzerType": "MOLECULAR",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/fluorocycler-xt"
+}'
+
+# 7. Wondfo Finecare FS-205 (FILE) — Madagascar HIV/Hep rapid diagnostic exporter
+create_analyzer "Wondfo Finecare FS-205" '{
+  "name": "Wondfo Finecare FS-205",
+  "analyzerType": "IMMUNOASSAY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/wondfo-csv"
+}'
+
+# 8. Tecan Infinite F50 (FILE) — Madagascar ELISA reader
+create_analyzer "Tecan Infinite F50" '{
+  "name": "Tecan Infinite F50",
+  "analyzerType": "IMMUNOASSAY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/tecan-f50"
+}'
+
+# 9. Thermo Multiskan FC (FILE) — Madagascar microplate reader
+create_analyzer "Thermo Multiskan FC" '{
+  "name": "Thermo Multiskan FC",
+  "analyzerType": "IMMUNOASSAY",
+  "pluginTypeId": "generic-file",
+  "status": "ACTIVE",
+  "defaultConfigId": "file/multiskan-fc"
+}'
+
 echo ""
 verify_seed_contract
 echo ""
-echo "Done. 4 analyzers seeded (1 ASTM + 1 HL7/MLLP + 2 FILE)."
+echo "Done. 9 analyzers seeded (1 ASTM + 2 HL7/MLLP + 6 FILE) — full Madagascar fleet."
