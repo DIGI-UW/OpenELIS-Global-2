@@ -1142,6 +1142,7 @@
   "label.informedConsent.statusTag": "Consentement enregistré",
   "label.informedConsent.notRecorded": "Non enregistré",
   "placeholder.informedConsent.formReference": "ex. CF-2026-00123",
+  "placeholder.informedConsent.recordedBy": "e.g. Dr. Smith",
   "error.informedConsent.formReferenceMaxLength": "La référence du formulaire de consentement doit contenir 100 caractères ou moins",
   "error.informedConsent.formReferenceInvalidChars": "Seules les lettres, chiffres, tirets et espaces sont autorisés",
   "coldstorage.label.dashboard": "Tableau de bord du stockage frigorifique",
@@ -3335,6 +3336,7 @@
   "process.testAdd.pressNext.ageRangeSelectiong": "Appuyez sur le bouton Suivant. L'étape de sélection de la tranche d'âge n'est pas requise !",
   "process.testAdd.pressNext.selectGroupDictionary": "Appuyez sur le bouton Suivant. L'étape de sélection de la liste de dictionnaires de groupe n'est pas requise !",
   "program.name.label": "Nom du programme",
+  "program.name.code": "Program Code",
   "project.ARVFollowupStudy.name": "ARV - Bilan de Suivi",
   "project.ARVStudies.name": "ARV",
   "project.ARVStudy.name": "ARV - Bilan Initial",
@@ -5113,5 +5115,6 @@
   "qc.instrumentDetail.chart.stats.mean": "Moyenne (x̄)",
   "qc.instrumentDetail.chart.stats.n": "N",
   "qc.instrumentDetail.chart.stats.sd": "Écart-type (s)",
-  "qc.instrumentDetail.error.loadFailed": "Échec du chargement des détails de l'instrument"
+  "qc.instrumentDetail.error.loadFailed": "Échec du chargement des détails de l'instrument",
+  "question.text.required": "Question text is required"
 }
