@@ -27,10 +27,8 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
-import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.EQAPriority;
-import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
@@ -126,9 +124,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     @Autowired
     private SampleEQAService sampleEQAService;
     @Autowired
-    private EQAProgramService eqaProgramService;
-    @Autowired
     private BarcodeInfoService barcodeInfoService;
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @Override
@@ -169,6 +167,16 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
+
+        // Publish post-persist event INSIDE this @Transactional method so any
+        // listener (e.g. SampleStorageAssignmentListener) runs while this tx
+        // is still open. If a listener throws, Spring stamps the tx as
+        // rollback-only and the entire persist (sample, patient, etc.) gets
+        // rolled back — same mechanism Edit Order uses. Previously this was
+        // published from the controller after persistData returned, so the
+        // tx had already committed by the time listeners ran.
+        eventPublisher.publishEvent(new org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent(this,
+                updateData, patientInfo, form));
     }
 
     private void persistObservations(SamplePatientUpdateData updateData) {
@@ -453,14 +461,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         sampleEQA.setSysUserId(updateData.getCurrentUserId());
 
         if (!GenericValidator.isBlankOrNull(updateData.getEqaProgramId())) {
-            EQAProgram eqaProgram = eqaProgramService.get(Long.parseLong(updateData.getEqaProgramId()));
-            sampleEQA.setEqaProgram(eqaProgram);
-        }
-        if (!GenericValidator.isBlankOrNull(updateData.getEqaProviderOrganizationId())) {
-            sampleEQA.setEqaProviderOrganizationId(Long.parseLong(updateData.getEqaProviderOrganizationId()));
+            sampleEQA.setEqaEnrollmentId(Long.parseLong(updateData.getEqaProgramId()));
         }
         sampleEQA.setEqaProviderSampleId(updateData.getEqaProviderSampleId());
-        sampleEQA.setEqaParticipantId(updateData.getEqaParticipantId());
 
         if (!GenericValidator.isBlankOrNull(updateData.getEqaDeadline())) {
             java.sql.Date deadlineDate = DateUtil.convertStringDateToSqlDate(updateData.getEqaDeadline());

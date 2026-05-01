@@ -56,11 +56,11 @@ public class SystemModuleUrlDAOImpl extends BaseDAOImpl<SystemModuleUrl, String>
             return moduleUrl;
         }
         try {
-            String sql = "From SystemModuleUrl smu where smu.urlPath = :urlPath AND smu.systemModule ="
+            String sql = "From SystemModuleUrl smu where smu.urlPath = :urlPath AND smu.systemModule.id ="
                     + " :systemModuleId";
             Query<SystemModuleUrl> query = entityManager.unwrap(Session.class).createQuery(sql, SystemModuleUrl.class);
             query.setParameter("urlPath", urlPath);
-            query.setParameter("systemModuleId", Integer.parseInt(moduleId));
+            query.setParameter("systemModuleId", moduleId);
             moduleUrl = query.getResultStream().findFirst().orElse(null);
         } catch (RuntimeException e) {
             LogEvent.logError(e);

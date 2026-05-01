@@ -22,7 +22,6 @@ import org.openelisglobal.common.rest.provider.bean.TestDisplayBean;
 import org.openelisglobal.common.rest.provider.form.DisplayListPagingForm;
 import org.openelisglobal.common.rest.util.DisplayListPaging;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
@@ -256,12 +255,6 @@ public class DisplayListController extends BaseRestController {
         return displayListform;
     }
 
-    @GetMapping(value = "tests", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTests() {
-        return DisplayListService.getInstance().getFreshList(ListType.ALL_TESTS);
-    }
-
     @GetMapping(value = "tests-by-sample", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public List<IdValuePair> getTestsBySample(@RequestParam String sampleType) {
@@ -277,84 +270,6 @@ public class DisplayListController extends BaseRestController {
             tests.add(new IdValuePair(test.getId(), TestServiceImpl.getLocalizedTestNameWithType(test)));
         });
         return tests;
-    }
-
-    @GetMapping(value = "samples", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getSamples() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_TYPE_ACTIVE);
-    }
-
-    @GetMapping(value = "health-regions", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getHealthRegions() {
-        return DisplayListService.getInstance().getList(ListType.PATIENT_HEALTH_REGIONS);
-    }
-
-    @GetMapping(value = "education-list", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getEducationList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_EDUCATION);
-    }
-
-    @GetMapping(value = "marital-statuses", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getMaritialList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_MARITAL_STATUS);
-    }
-
-    @GetMapping(value = "nationalities", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getNationalityList() {
-        return DisplayListService.getInstance().getFreshList(ListType.PATIENT_NATIONALITY);
-    }
-
-    @GetMapping(value = "programs", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getPrograms() {
-        return DisplayListService.getInstance().getList(ListType.PROGRAM);
-    }
-
-    @GetMapping(value = "dictionaryPrograms", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getDictionaryPrograms() {
-        return DisplayListService.getInstance().getList(ListType.DICTIONARY_PROGRAM);
-    }
-
-    @GetMapping(value = "patientPaymentsOptions", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getSamplePatientPaymentOptions() {
-        return DisplayListService.getInstance().getFreshList(ListType.SAMPLE_PATIENT_PAYMENT_OPTIONS);
-    }
-
-    @GetMapping(value = "testLocationCodes", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTestLocationCodes() {
-        return DisplayListService.getInstance().getList(ListType.TEST_LOCATION_CODE);
-    }
-
-    @GetMapping(value = "test-rejection-reasons", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    public List<IdValuePair> getTestRejectionReasons() {
-        return DisplayListService.getInstance().getList(ListType.REJECTION_REASONS);
-    }
-
-    @GetMapping(value = "referral-reasons", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createReferralReasonList() {
-        return DisplayListService.getInstance().getList(ListType.REFERRAL_REASONS);
-    }
-
-    @GetMapping(value = "referral-organizations", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createReferralOrganizationsList() {
-        return DisplayListService.getInstance().getList(ListType.REFERRAL_ORGANIZATIONS);
-    }
-
-    @GetMapping(value = "site-names", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> getSiteNameList() {
-        return DisplayListService.getInstance().getList(ListType.SAMPLE_PATIENT_REFERRING_CLINIC);
     }
 
     @GetMapping(value = "configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -404,6 +319,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.restrictFreeTextRefSiteEntry));
         configs.put(Property.PHONE_FORMAT.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PHONE_FORMAT));
+        configs.put(Property.DEFAULT_NATIONALITY.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_NATIONALITY));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),
@@ -476,24 +393,6 @@ public class DisplayListController extends BaseRestController {
         }
         Collections.sort(testList, new ValueComparator());
         return testList;
-    }
-
-    @GetMapping(value = "priorities", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createPriorityList() {
-        return DisplayListService.getInstance().getList(ListType.ORDER_PRIORITY);
-    }
-
-    @GetMapping(value = "panels", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createPanelList() {
-        return DisplayListService.getInstance().getList(ListType.PANELS);
-    }
-
-    @GetMapping(value = "test-sections", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    private List<IdValuePair> createTestSectionsList() {
-        return DisplayListService.getInstance().getList(ListType.TEST_SECTION_ACTIVE);
     }
 
     @GetMapping(value = "user-test-sections/{roleName}", produces = MediaType.APPLICATION_JSON_VALUE)

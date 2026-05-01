@@ -209,7 +209,10 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
                 found = true;
                 String status = sample.get("status").asText();
 
-                assertEquals("Status should be disposed status ID (24)", "24", status);
+                // Spec 001 contracts/storage-api.json:862,885 — status is an
+                // enum "active"|"disposed". We derive it from the sample's DB
+                // status_id via statusService.matches in SampleStorageServiceImpl.
+                assertEquals("Disposed sample should serialize as \"disposed\" enum", "disposed", status);
                 break;
             }
         }
