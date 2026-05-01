@@ -298,6 +298,32 @@ public class BiorepositoryQCInspectionRestControllerFlowTest {
                 && Boolean.TRUE.equals(sample.get("hasInspectionHistory"))));
     }
 
+    @Test
+    public void getQCStorageOverview_IncludesRoomPrefixedRackAssignments() {
+        BioSample rackLevelSample = buildStoredBioSample(100, "101");
+
+        when(bioSampleService.getAll()).thenReturn(List.of(rackLevelSample));
+        when(qcInspectionService.existsByBioSampleId(100)).thenReturn(false);
+        when(qcInspectionService.hasInspectionBetween(eq(100), any(), any())).thenReturn(false);
+        stubActiveStorageHierarchy();
+        when(storageService.getSampleItemLocation("101"))
+                .thenReturn(Map.of("hierarchicalPath", "Main Lab > Freezer-A > Shelf-1 > Rack-1 > A1",
+                        "positionCoordinate", "A1"));
+
+        ResponseEntity<Map<String, Object>> response = controller.getQCStorageOverview(null, null, null, null, true);
+        assertEquals(200, response.getStatusCode().value());
+
+        Map<String, Object> body = response.getBody();
+        assertNotNull(body);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> eligibleSamples = (List<Map<String, Object>>) body.get("eligibleSamples");
+        assertEquals(1, eligibleSamples.size());
+        assertEquals("Freezer-A", eligibleSamples.get(0).get("freezer"));
+        assertEquals("Shelf-1", eligibleSamples.get(0).get("shelf"));
+        assertEquals("Rack-1", eligibleSamples.get(0).get("rack"));
+        assertEquals("Unknown", eligibleSamples.get(0).get("box"));
+    }
+
     private BiorepositoryQCInspectionRestController.BulkQCInspectionRequest buildRequest(String correctionActionType,
             String discrepancyType) {
         BiorepositoryQCInspectionRestController.BulkQCInspectionRequest request = new BiorepositoryQCInspectionRestController.BulkQCInspectionRequest();

@@ -512,6 +512,20 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             String parsedShelf = levels[1];
             String parsedRack = levels[2];
             String parsedBox = levels[3];
+            boolean hierarchyMatches = validShelfKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf))
+                    && validRackKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf, parsedRack));
+            if (!hierarchyMatches) {
+                String[] roomPrefixedRackLevels = parseRoomPrefixedRackLevels(locationPath);
+                if (validShelfKeys.contains(buildHierarchyKey(roomPrefixedRackLevels[0], roomPrefixedRackLevels[1]))
+                        && validRackKeys.contains(buildHierarchyKey(roomPrefixedRackLevels[0], roomPrefixedRackLevels[1],
+                                roomPrefixedRackLevels[2]))) {
+                    levels = roomPrefixedRackLevels;
+                    parsedFreezer = levels[0];
+                    parsedShelf = levels[1];
+                    parsedRack = levels[2];
+                    parsedBox = levels[3];
+                }
+            }
 
             if (!validShelfKeys.contains(buildHierarchyKey(parsedFreezer, parsedShelf))) {
                 continue;
@@ -703,6 +717,28 @@ public class BiorepositoryQCInspectionRestController extends BaseRestController 
             return new String[] { structural.get(0), structural.get(1), "Unknown", "Unknown" };
         }
         return new String[] { structural.get(0), "Unknown", "Unknown", "Unknown" };
+    }
+
+    private String[] parseRoomPrefixedRackLevels(String locationPath) {
+        String[] defaults = new String[] { "Unknown", "Unknown", "Unknown", "Unknown" };
+        if (locationPath == null || locationPath.isBlank()) {
+            return defaults;
+        }
+        List<String> segments = Arrays.stream(locationPath.split("\\s*>\\s*")).map(String::trim).filter(s -> !s.isBlank())
+                .toList();
+        if (segments.size() < 4) {
+            return defaults;
+        }
+        int end = segments.size();
+        String tail = segments.get(end - 1);
+        if (tail.matches("^[A-Za-z]+\\d+$")) {
+            end = end - 1;
+        }
+        List<String> structural = segments.subList(0, Math.max(end, 0));
+        if (structural.size() == 4) {
+            return new String[] { structural.get(1), structural.get(2), structural.get(3), "Unknown" };
+        }
+        return defaults;
     }
 
     private String deviceName(StorageDevice device) {
