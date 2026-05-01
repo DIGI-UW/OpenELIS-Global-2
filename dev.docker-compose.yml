@@ -53,7 +53,7 @@ services:
         restart: always
         networks:
           default:
-              ipv4_address: 172.20.1.121
+              ipv4_address: 172.28.237.121
         environment:
             - DEFAULT_PW=adminADMIN! 
             - TZ=Africa/Nairobi
@@ -130,8 +130,8 @@ services:
         container_name: openelisglobal-proxy
        # platform: linux/amd64
         ports:
-            - 80:80
-            - 443:443
+            - "9080:80"
+            - "9443:443"
         volumes:
             - certs-vol:/etc/nginx/certs/
             - keys-vol:/etc/nginx/keys/
@@ -157,7 +157,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.20.1.0/24  
+        - subnet: 172.28.237.0/24
         
 volumes:
   db-data:
