@@ -128,7 +128,7 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
     private NoteBook createTemplate(JsonNode root, String title, String fileName) {
         NoteBook template = new NoteBook();
         template.setTitle(title);
-        template.setWorkflowType(textOrNull(root, "workflowType"));
+        template.setWorkflowType(resolveWorkflowType(root, title, fileName));
         template.setObjective(textOrNull(root, "objective"));
         template.setProtocol(textOrNull(root, "protocol"));
         template.setContent(textOrNull(root, "content"));
@@ -291,7 +291,7 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
      */
     private void updateTemplate(JsonNode root, NoteBook template, String title, String fileName) {
         // Update scalar fields (same fields as createTemplate)
-        template.setWorkflowType(textOrNull(root, "workflowType"));
+        template.setWorkflowType(resolveWorkflowType(root, title, fileName));
         template.setObjective(textOrNull(root, "objective"));
         template.setProtocol(textOrNull(root, "protocol"));
         template.setContent(textOrNull(root, "content"));
@@ -341,5 +341,30 @@ public class NotebookTemplateConfigurationHandler implements DomainConfiguration
         }
         String value = child.asText("").trim();
         return value.isEmpty() ? null : value;
+    }
+
+    private String resolveWorkflowType(JsonNode root, String title, String fileName) {
+        String workflowType = textOrNull(root, "workflowType");
+        if (!isPathologyTemplate(title, workflowType)) {
+            return workflowType;
+        }
+        if (workflowType == null) {
+            return PathologyWorkflowTypeConfig.HISTOPATHOLOGY_BIOPSY;
+        }
+
+        String normalized = PathologyWorkflowTypeConfig.normalizeWorkflowType(workflowType);
+        if (normalized == null) {
+            throw new IllegalArgumentException("Notebook template config " + fileName
+                    + " has invalid pathology workflowType '" + workflowType
+                    + "'. Expected one of: histopathology_biopsy_tissue, peripheral_smear_bone_marrow_morphology, fnac, cytology_liquid_based_pap_smear");
+        }
+        return normalized;
+    }
+
+    private boolean isPathologyTemplate(String title, String workflowType) {
+        String safeTitle = title != null ? title.toLowerCase(java.util.Locale.ROOT) : "";
+        String safeWorkflow = workflowType != null ? workflowType.toLowerCase(java.util.Locale.ROOT) : "";
+        return safeTitle.contains("pathology") || safeWorkflow.contains("pathology")
+                || PathologyWorkflowTypeConfig.normalizeWorkflowType(workflowType) != null;
     }
 }

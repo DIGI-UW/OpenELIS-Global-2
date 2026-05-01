@@ -59,6 +59,37 @@ const DEFAULT_PATHOLOGY_WORKFLOW_PAGES = [
   { id: "default-11", order: 11, title: "Disposal & Archiving" },
 ];
 
+const PATHOLOGY_WORKFLOW_STAGE_MAP = {
+  histopathology_biopsy_tissue: new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+  peripheral_smear_bone_marrow_morphology: new Set([1, 2, 6, 7, 8, 9, 10, 11]),
+  fnac: new Set([1, 2, 6, 7, 8, 9, 10, 11]),
+  cytology_liquid_based_pap_smear: new Set([1, 2, 5, 6, 7, 8, 9, 10, 11]),
+};
+
+const normalizePathologyWorkflowType = (workflowType) => {
+  const normalized = (workflowType || "").trim().toLowerCase();
+  if (PATHOLOGY_WORKFLOW_STAGE_MAP[normalized]) {
+    return normalized;
+  }
+  switch (normalized) {
+    case "histopathology":
+    case "biopsy":
+    case "histopathology/biopsy":
+    case "histopathology_biopsy":
+      return "histopathology_biopsy_tissue";
+    case "peripheral_smear":
+    case "bone_marrow":
+    case "peripheral_smear_bone_marrow":
+      return "peripheral_smear_bone_marrow_morphology";
+    case "cytology":
+    case "liquid_based_pap_smear":
+    case "pap_smear":
+      return "cytology_liquid_based_pap_smear";
+    default:
+      return "histopathology_biopsy_tissue";
+  }
+};
+
 /**
  * PathologyWorkflowTab - Container component for Pathology Laboratory workflow pages.
  * Displays the Pathology-specific workflow with progress indicators and navigation.
@@ -86,15 +117,29 @@ function PathologyWorkflowTab({ notebookId, entryId: propEntryId }) {
   // Use actual pages if available, otherwise use default Pathology workflow pages
   // Sort by pageOrder or order to ensure correct display sequence
   const effectivePages = useMemo(() => {
+    const workflowType = normalizePathologyWorkflowType(
+      notebook?.workflowType || entry?.notebook?.workflowType,
+    );
+    const enabledStages =
+      PATHOLOGY_WORKFLOW_STAGE_MAP[workflowType] ||
+      PATHOLOGY_WORKFLOW_STAGE_MAP.histopathology_biopsy_tissue;
+
+    const filterEnabledStages = (sourcePages) =>
+      sourcePages.filter((page) => {
+        const pageOrder = page.pageOrder ?? page.order ?? 0;
+        return enabledStages.has(pageOrder);
+      });
+
     if (pages && pages.length > 0) {
-      return [...pages].sort((a, b) => {
+      const sortedPages = [...pages].sort((a, b) => {
         const orderA = a.pageOrder ?? a.order ?? 0;
         const orderB = b.pageOrder ?? b.order ?? 0;
         return orderA - orderB;
       });
+      return filterEnabledStages(sortedPages);
     }
-    return DEFAULT_PATHOLOGY_WORKFLOW_PAGES;
-  }, [pages]);
+    return filterEnabledStages(DEFAULT_PATHOLOGY_WORKFLOW_PAGES);
+  }, [pages, notebook?.workflowType, entry?.notebook?.workflowType]);
 
   useEffect(() => {
     componentMounted.current = true;
