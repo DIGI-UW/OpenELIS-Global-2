@@ -1142,6 +1142,7 @@
   "label.informedConsent.statusTag": "Consent Recorded",
   "label.informedConsent.notRecorded": "Not recorded",
   "placeholder.informedConsent.formReference": "e.g. CF-2026-00123",
+  "placeholder.informedConsent.recordedBy": "e.g. Dr. Smith",
   "error.informedConsent.formReferenceMaxLength": "Consent form reference must be 100 characters or fewer",
   "error.informedConsent.formReferenceInvalidChars": "Only letters, numbers, hyphens, and spaces are allowed",
   "coldstorage.label.dashboard": "Cold Storage Dashboard",
@@ -3335,6 +3336,7 @@
   "process.testAdd.pressNext.ageRangeSelectiong": "Presione el botón Siguiente ¡La selección de Rango de Edad no es obligatoria!",
   "process.testAdd.pressNext.selectGroupDictionary": "Presione el botón Siguiente ¡La selección de la Lista de Diccionario de Grupo no es obligatoria!",
   "program.name.label": "Nombre del programa",
+  "program.name.code": "Program Code",
   "project.ARVFollowupStudy.name": "ARV de Seguimiento",
   "project.ARVStudies.name": "ARV",
   "project.ARVStudy.name": "ARV Inicial",
@@ -5113,5 +5115,6 @@
   "qc.instrumentDetail.chart.stats.mean": "Mean (x̄)",
   "qc.instrumentDetail.chart.stats.n": "N",
   "qc.instrumentDetail.chart.stats.sd": "Std Dev (s)",
-  "qc.instrumentDetail.error.loadFailed": "Failed to load instrument details"
+  "qc.instrumentDetail.error.loadFailed": "Failed to load instrument details",
+  "question.text.required": "Question text is required"
 }
